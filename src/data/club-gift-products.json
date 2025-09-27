@@ -1,0 +1,152 @@
+[
+  {
+    "id": "gift-ai-001",
+    "clubId": "c-ai",
+    "name": "AI Club T-Shirt",
+    "description": "Premium cotton t-shirt with AI Club logo and neural network design",
+    "type": "clothing",
+    "costPoints": 300,
+    "stock": 25,
+    "image": "/placeholder.svg?height=200&width=200"
+  },
+  {
+    "id": "gift-ai-002",
+    "clubId": "c-ai",
+    "name": "AI Club Lanyard",
+    "description": "Durable lanyard with AI Club branding and tech-inspired design",
+    "type": "accessory",
+    "costPoints": 150,
+    "stock": 50,
+    "image": "/placeholder.svg?height=200&width=200"
+  },
+  {
+    "id": "gift-ai-003",
+    "clubId": "c-ai",
+    "name": "AI Club Keychain",
+    "description": "Metal keychain with circuit board design and AI Club logo",
+    "type": "keychain",
+    "costPoints": 100,
+    "stock": 75,
+    "image": "/placeholder.svg?height=200&width=200"
+  },
+  {
+    "id": "gift-robot-001",
+    "clubId": "c-robot",
+    "name": "Robotics Club Hoodie",
+    "description": "Comfortable hoodie with robotic arm design and club logo",
+    "type": "clothing",
+    "costPoints": 450,
+    "stock": 20,
+    "image": "/placeholder.svg?height=200&width=200"
+  },
+  {
+    "id": "gift-robot-002",
+    "clubId": "c-robot",
+    "name": "Robotics Club Lanyard",
+    "description": "High-quality lanyard with gear pattern and robotics club branding",
+    "type": "accessory",
+    "costPoints": 150,
+    "stock": 40,
+    "image": "/placeholder.svg?height=200&width=200"
+  },
+  {
+    "id": "gift-robot-003",
+    "clubId": "c-robot",
+    "name": "Robot Keychain",
+    "description": "3D printed robot keychain with movable parts",
+    "type": "keychain",
+    "costPoints": 120,
+    "stock": 60,
+    "image": "/placeholder.svg?height=200&width=200"
+  },
+  {
+    "id": "gift-music-001",
+    "clubId": "c-music",
+    "name": "Music Club T-Shirt",
+    "description": "Stylish t-shirt with musical notes design and club logo",
+    "type": "clothing",
+    "costPoints": 280,
+    "stock": 30,
+    "image": "/placeholder.svg?height=200&width=200"
+  },
+  {
+    "id": "gift-music-002",
+    "clubId": "c-music",
+    "name": "Music Club Lanyard",
+    "description": "Colorful lanyard with treble clef design and music club branding",
+    "type": "accessory",
+    "costPoints": 140,
+    "stock": 45,
+    "image": "/placeholder.svg?height=200&width=200"
+  },
+  {
+    "id": "gift-music-003",
+    "clubId": "c-music",
+    "name": "Musical Note Keychain",
+    "description": "Elegant keychain shaped like a treble clef with club logo",
+    "type": "keychain",
+    "costPoints": 90,
+    "stock": 80,
+    "image": "/placeholder.svg?height=200&width=200"
+  },
+  {
+    "id": "gift-sport-001",
+    "clubId": "c-sport",
+    "name": "Sports Club Jersey",
+    "description": "Athletic jersey with moisture-wicking fabric and sports club logo",
+    "type": "clothing",
+    "costPoints": 350,
+    "stock": 35,
+    "image": "/placeholder.svg?height=200&width=200"
+  },
+  {
+    "id": "gift-sport-002",
+    "clubId": "c-sport",
+    "name": "Sports Club Lanyard",
+    "description": "Durable sports-themed lanyard with whistle attachment",
+    "type": "accessory",
+    "costPoints": 160,
+    "stock": 55,
+    "image": "/placeholder.svg?height=200&width=200"
+  },
+  {
+    "id": "gift-sport-003",
+    "clubId": "c-sport",
+    "name": "Sports Ball Keychain",
+    "description": "Mini sports ball keychain collection (football, basketball, tennis)",
+    "type": "keychain",
+    "costPoints": 110,
+    "stock": 70,
+    "image": "/placeholder.svg?height=200&width=200"
+  },
+  {
+    "id": "gift-art-001",
+    "clubId": "c-art",
+    "name": "Art Club Smock",
+    "description": "Artist smock with paint palette design and art club logo",
+    "type": "clothing",
+    "costPoints": 320,
+    "stock": 25,
+    "image": "/placeholder.svg?height=200&width=200"
+  },
+  {
+    "id": "gift-art-002",
+    "clubId": "c-art",
+    "name": "Art Club Lanyard",
+    "description": "Artistic lanyard with paintbrush design and colorful art club branding",
+    "type": "accessory",
+    "costPoints": 145,
+    "stock": 40,
+    "image": "/placeholder.svg?height=200&width=200"
+  },
+  {
+    "id": "gift-art-003",
+    "clubId": "c-art",
+    "name": "Paint Palette Keychain",
+    "description": "Miniature paint palette keychain with tiny brush attachment",
+    "type": "keychain",
+    "costPoints": 95,
+    "stock": 65,
+    "image": "/placeholder.svg?height=200&width=200"
+  }
+]

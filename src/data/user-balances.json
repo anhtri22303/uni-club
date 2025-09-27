@@ -1,0 +1,32 @@
+[
+  {
+    "userId": "1",
+    "balance": 3978,
+    "currency": "FUO",
+    "lastUpdated": "2024-01-15T10:30:00Z"
+  },
+  {
+    "userId": "2",
+    "balance": 2450,
+    "currency": "FUO",
+    "lastUpdated": "2024-01-14T15:20:00Z"
+  },
+  {
+    "userId": "3",
+    "balance": 5200,
+    "currency": "FUO",
+    "lastUpdated": "2024-01-13T09:45:00Z"
+  },
+  {
+    "userId": "4",
+    "balance": 1800,
+    "currency": "FUO",
+    "lastUpdated": "2024-01-12T14:10:00Z"
+  },
+  {
+    "userId": "5",
+    "balance": 4350,
+    "currency": "FUO",
+    "lastUpdated": "2024-01-11T11:25:00Z"
+  }
+]

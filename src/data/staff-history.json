@@ -1,0 +1,162 @@
+[
+  {
+    "id": "sh-001",
+    "staffUserId": "u-008",
+    "code": "COFFEE50-ABC123",
+    "offerId": "o-001",
+    "when": "2024-12-09T14:30:00Z",
+    "customerName": "Student Customer"
+  },
+  {
+    "id": "sh-002",
+    "staffUserId": "u-008",
+    "code": "PIZZA25-DEF456",
+    "offerId": "o-002",
+    "when": "2024-12-09T12:15:00Z",
+    "customerName": "Student Customer"
+  },
+  {
+    "id": "sh-003",
+    "staffUserId": "u-008",
+    "code": "BOOK10-GHI789",
+    "offerId": "o-003",
+    "when": "2024-12-08T16:45:00Z",
+    "customerName": "Student Customer"
+  },
+  {
+    "id": "sh-004",
+    "staffUserId": "u-008",
+    "code": "COFFEE50-JKL012",
+    "offerId": "o-001",
+    "when": "2024-12-08T10:20:00Z",
+    "customerName": "Student Customer"
+  },
+  {
+    "id": "sh-005",
+    "staffUserId": "u-008",
+    "code": "PIZZA25-MNO345",
+    "offerId": "o-002",
+    "when": "2024-12-07T13:30:00Z",
+    "customerName": "Student Customer"
+  },
+  {
+    "id": "sh-006",
+    "staffUserId": "u-008",
+    "code": "MOVIE15-PQR678",
+    "offerId": "o-004",
+    "when": "2024-12-07T18:00:00Z",
+    "customerName": "Student Customer"
+  },
+  {
+    "id": "sh-007",
+    "staffUserId": "u-008",
+    "code": "COFFEE50-STU901",
+    "offerId": "o-001",
+    "when": "2024-12-06T09:15:00Z",
+    "customerName": "Alex Johnson"
+  },
+  {
+    "id": "sh-008",
+    "staffUserId": "u-008",
+    "code": "BOOK10-VWX234",
+    "offerId": "o-003",
+    "when": "2024-12-06T15:20:00Z",
+    "customerName": "Sarah Chen"
+  },
+  {
+    "id": "sh-009",
+    "staffUserId": "u-008",
+    "code": "PIZZA25-YZA567",
+    "offerId": "o-002",
+    "when": "2024-12-05T19:45:00Z",
+    "customerName": "Mike Rodriguez"
+  },
+  {
+    "id": "sh-010",
+    "staffUserId": "u-008",
+    "code": "COFFEE50-BCD890",
+    "offerId": "o-001",
+    "when": "2024-12-05T11:30:00Z",
+    "customerName": "Emma Wilson"
+  },
+  {
+    "id": "sh-011",
+    "staffUserId": "u-008",
+    "code": "MOVIE15-EFG123",
+    "offerId": "o-004",
+    "when": "2024-12-04T20:00:00Z",
+    "customerName": "David Kim"
+  },
+  {
+    "id": "sh-012",
+    "staffUserId": "u-008",
+    "code": "COFFEE50-HIJ456",
+    "offerId": "o-001",
+    "when": "2024-12-04T08:45:00Z",
+    "customerName": "Lisa Thompson"
+  },
+  {
+    "id": "sh-013",
+    "staffUserId": "u-008",
+    "code": "PIZZA25-KLM789",
+    "offerId": "o-002",
+    "when": "2024-12-03T17:30:00Z",
+    "customerName": "James Park"
+  },
+  {
+    "id": "sh-014",
+    "staffUserId": "u-008",
+    "code": "BOOK10-NOP012",
+    "offerId": "o-003",
+    "when": "2024-12-03T14:15:00Z",
+    "customerName": "Anna Martinez"
+  },
+  {
+    "id": "sh-015",
+    "staffUserId": "u-008",
+    "code": "COFFEE50-QRS345",
+    "offerId": "o-001",
+    "when": "2024-12-02T16:20:00Z",
+    "customerName": "Ryan Lee"
+  },
+  {
+    "id": "sh-016",
+    "staffUserId": "u-008",
+    "code": "MOVIE15-TUV678",
+    "offerId": "o-004",
+    "when": "2024-12-02T21:15:00Z",
+    "customerName": "Sophie Brown"
+  },
+  {
+    "id": "sh-017",
+    "staffUserId": "u-008",
+    "code": "PIZZA25-WXY901",
+    "offerId": "o-002",
+    "when": "2024-12-01T12:45:00Z",
+    "customerName": "Kevin Zhang"
+  },
+  {
+    "id": "sh-018",
+    "staffUserId": "u-008",
+    "code": "COFFEE50-ZAB234",
+    "offerId": "o-001",
+    "when": "2024-12-01T07:30:00Z",
+    "customerName": "Rachel Green"
+  },
+  {
+    "id": "sh-019",
+    "staffUserId": "u-008",
+    "code": "BOOK10-CDE567",
+    "offerId": "o-003",
+    "when": "2024-11-30T13:00:00Z",
+    "customerName": "Tom Anderson"
+  },
+  {
+    "id": "sh-020",
+    "staffUserId": "u-008",
+    "code": "COFFEE50-FGH890",
+    "offerId": "o-001",
+    "when": "2024-11-30T10:15:00Z",
+    "customerName": "Jessica Taylor"
+  }
+]

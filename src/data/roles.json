@@ -1,0 +1,7 @@
+[
+  { "id": "student", "name": "Student" },
+  { "id": "club_manager", "name": "Club Manager" },
+  { "id": "uni_admin", "name": "University Admin" },
+  { "id": "admin", "name": "Admin" },
+  { "id": "staff", "name": "Staff" }
+]

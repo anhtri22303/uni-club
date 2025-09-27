@@ -1,0 +1,10 @@
+[
+  { "id": "of-coffee-10", "partner": "CoffeeLab", "title": "10% off Coffee", "costPoints": 100 },
+  { "id": "of-book-30", "partner": "ByteBook", "title": "30% off Book", "costPoints": 250 },
+  { "id": "of-tea-15", "partner": "TeaTime", "title": "15% off Tea", "costPoints": 120 },
+  { "id": "of-snack-20", "partner": "SnackHouse", "title": "20% off Snacks", "costPoints": 150 },
+  { "id": "of-movie-50", "partner": "CineMax", "title": "50% off Movie Ticket", "costPoints": 300 },
+  { "id": "of-gym-25", "partner": "FitZone", "title": "25% off Gym Membership", "costPoints": 400 },
+  { "id": "of-laptop-5", "partner": "TechWorld", "title": "5% off Laptop", "costPoints": 800 },
+  { "id": "of-stationery-40", "partner": "PaperPlus", "title": "40% off Stationery", "costPoints": 200 }
+]

@@ -1,0 +1,92 @@
+[
+  {
+    "id": "u-student-001",
+    "fullName": "Anh Nguyen",
+    "email": "student.anh@uit.edu.vn",
+    "password": "demo123",
+    "roles": ["student"],
+    "defaultRole": "student",
+    "points": 1250
+  },
+  {
+    "id": "u-club-manager-001",
+    "fullName": "Minh Le",
+    "email": "club-manager.minh@uit.edu.vn",
+    "password": "demo123",
+    "roles": ["club_manager"],
+    "defaultRole": "club_manager",
+    "points": 2850
+  },
+  {
+    "id": "u-admin-001",
+    "fullName": "University Admin",
+    "email": "admin@uit.edu.vn",
+    "password": "demo123",
+    "roles": ["uni_admin"],
+    "defaultRole": "uni_admin",
+    "points": 0
+  },
+  {
+    "id": "u-partner-admin-001",
+    "fullName": "CoffeeLab Admin",
+    "email": "partner.admin@coffeelab.vn",
+    "password": "demo123",
+    "roles": ["admin"],
+    "defaultRole": "admin",
+    "points": 0
+  },
+  {
+    "id": "u-staff-001",
+    "fullName": "Tam Tran",
+    "email": "staff.tam@coffeelab.vn",
+    "password": "demo123",
+    "roles": ["staff"],
+    "defaultRole": "staff",
+    "points": 0
+  },
+  {
+    "id": "u-student-002",
+    "fullName": "Bao Pham",
+    "email": "student.bao@uit.edu.vn",
+    "password": "demo123",
+    "roles": ["student"],
+    "defaultRole": "student",
+    "points": 980
+  },
+  {
+    "id": "u-student-003",
+    "fullName": "Chi Tran",
+    "email": "student.chi@uit.edu.vn",
+    "password": "demo123",
+    "roles": ["student"],
+    "defaultRole": "student",
+    "points": 1520
+  },
+  {
+    "id": "u-student-004",
+    "fullName": "Dung Vo",
+    "email": "student.dung@uit.edu.vn",
+    "password": "demo123",
+    "roles": ["student"],
+    "defaultRole": "student",
+    "points": 620
+  },
+  {
+    "id": "u-club-manager-002",
+    "fullName": "Lan Pham",
+    "email": "club-manager.lan@uit.edu.vn",
+    "password": "demo123",
+    "roles": ["club_manager"],
+    "defaultRole": "club_manager",
+    "points": 3100
+  },
+  {
+    "id": "u-club-manager-003",
+    "fullName": "Khoa Nguyen",
+    "email": "club-manager.khoa@uit.edu.vn",
+    "password": "demo123",
+    "roles": ["club_manager"],
+    "defaultRole": "club_manager",
+    "points": 2675
+  }
+]

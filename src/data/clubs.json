@@ -1,0 +1,7 @@
+[
+  { "id": "c-ai", "name": "AI Club", "category": "Tech", "members": 42 },
+  { "id": "c-robot", "name": "Robotics Club", "category": "Tech", "members": 28 },
+  { "id": "c-music", "name": "Music Club", "category": "Arts", "members": 55 },
+  { "id": "c-sport", "name": "Sports Club", "category": "Recreation", "members": 73 },
+  { "id": "c-art", "name": "Art Club", "category": "Arts", "members": 31 }
+]

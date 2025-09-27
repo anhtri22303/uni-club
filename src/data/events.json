@@ -1,0 +1,80 @@
+[
+  {
+    "id": "e-ai-workshop-today",
+    "clubId": "c-ai",
+    "title": "AI Workshop: Introduction to Machine Learning",
+    "date": "2025-01-27",
+    "time": "14:00",
+    "location": "Lab A101",
+    "description": "Hands-on workshop covering basic ML concepts and practical implementation",
+    "points": 75
+  },
+  {
+    "id": "e-ai-seminar-today",
+    "clubId": "c-ai",
+    "title": "AI Ethics Seminar",
+    "date": "2025-01-27",
+    "time": "16:30",
+    "location": "Conference Room B",
+    "description": "Discussion on ethical considerations in AI development and deployment",
+    "points": 50
+  },
+  {
+    "id": "e-ai-coding-today",
+    "clubId": "c-ai",
+    "title": "Python Coding Session",
+    "date": "2025-01-27",
+    "time": "19:00",
+    "location": "Computer Lab C203",
+    "description": "Collaborative coding session focusing on AI algorithms implementation",
+    "points": 60
+  },
+  {
+    "id": "e-sport-training-today",
+    "clubId": "c-sport",
+    "title": "Basketball Training Session",
+    "date": "2025-01-27",
+    "time": "15:00",
+    "location": "Sports Hall",
+    "description": "Weekly basketball training for club members. Bring your sports gear!",
+    "points": 40
+  },
+  {
+    "id": "e-sport-match-today",
+    "clubId": "c-sport",
+    "title": "Inter-Club Football Match",
+    "date": "2025-01-27",
+    "time": "17:00",
+    "location": "Football Field",
+    "description": "Friendly match between Sport Club and Engineering Club",
+    "points": 80
+  },
+  {
+    "id": "e-music-practice-today",
+    "clubId": "c-music",
+    "title": "Band Practice Session",
+    "date": "2025-01-27",
+    "time": "18:00",
+    "location": "Music Room 201",
+    "description": "Practice session for upcoming university concert. All instruments welcome!",
+    "points": 45
+  },
+  {
+    "id": "e-music-open-mic-today",
+    "clubId": "c-music",
+    "title": "Open Mic Night",
+    "date": "2025-01-27",
+    "time": "20:00",
+    "location": "Student Center",
+    "description": "Showcase your musical talents! Sign up at the venue.",
+    "points": 35
+  },
+  { "id": "e-ml101", "clubId": "c-ai", "title": "ML 101", "date": "2025-10-01", "points": 50 },
+  { "id": "e-robot-lab", "clubId": "c-robot", "title": "Robot Lab Tour", "date": "2025-10-05", "points": 40 },
+  { "id": "e-music-night", "clubId": "c-music", "title": "Acoustic Music Night", "date": "2025-10-10", "points": 30 },
+  { "id": "e-sport-day", "clubId": "c-sport", "title": "University Sport Day", "date": "2025-10-15", "points": 60 },
+  { "id": "e-art-exhibit", "clubId": "c-art", "title": "Student Art Exhibition", "date": "2025-10-18", "points": 35 },
+  { "id": "e-tech-talk", "clubId": "c-ai", "title": "AI & Society Talk", "date": "2025-10-20", "points": 45 },
+  { "id": "e-dance-show", "clubId": "c-dance", "title": "Hip-Hop Dance Show", "date": "2025-10-25", "points": 25 },
+  { "id": "e-volunteer", "clubId": "c-green", "title": "Green Volunteer Day", "date": "2025-10-28", "points": 50 }
+]

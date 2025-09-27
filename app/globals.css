@@ -1,0 +1,689 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Updated color palette for professional admin dashboard */
+  --background: #f9fafb;
+  --foreground: #4b5563;
+  --card: #ffffff;
+  --card-foreground: #4b5563;
+  --popover: #ffffff;
+  --popover-foreground: #4b5563;
+  --primary: #0891b2;
+  --primary-foreground: #ffffff;
+  --secondary: #6366f1;
+  --secondary-foreground: #ffffff;
+  --muted: #f9fafb;
+  --muted-foreground: #4b5563;
+  --accent: #6366f1;
+  --accent-foreground: #ffffff;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #e5e7eb;
+  --input: #ffffff;
+  --ring: #0891b2;
+  --chart-1: #3b82f6;
+  --chart-2: #fbbf24;
+  --chart-3: #34d399;
+  --chart-4: #ef4444;
+  --chart-5: #6366f1;
+  --radius: 0.5rem;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #4b5563;
+  --sidebar-primary: #f9fafb;
+  --sidebar-primary-foreground: #0891b2;
+  --sidebar-accent: #6366f1;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #e5e7eb;
+  --sidebar-ring: #6366f1;
+
+  /* Added professional dashboard gradients */
+  --gradient-primary: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%);
+  --gradient-secondary: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  --gradient-success: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+  --gradient-warning: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+  --gradient-danger: linear-gradient(135deg, #ef4444 0%, #f87171 100%);
+
+  /* Updated color palette for beautiful profile page design */
+  --gradient-profile: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  --gradient-card: linear-gradient(135deg, #f1f5f9 0%, #ffffff 100%);
+
+  /* Tier system colors */
+  --tier-bronze: #cd7f32;
+  --tier-silver: #c0c0c0;
+  --tier-gold: #ffd700;
+  --tier-platinum: #e5e4e2;
+  --tier-diamond: #b9f2ff;
+
+  /* Professional tier gradients */
+  --gradient-tier-bronze: linear-gradient(135deg, #cd7f32 0%, #b8860b 100%);
+  --gradient-tier-silver: linear-gradient(135deg, #c0c0c0 0%, #a8a8a8 100%);
+  --gradient-tier-gold: linear-gradient(135deg, #ffd700 0%, #ffb347 100%);
+  --gradient-tier-platinum: linear-gradient(135deg, #e5e4e2 0%, #d3d3d3 100%);
+  --gradient-tier-diamond: linear-gradient(135deg, #b9f2ff 0%, #87ceeb 100%);
+
+  /* Points system colors */
+  --points-primary: #6366f1;
+  --points-secondary: #8b5cf6;
+  --points-accent: #ec4899;
+
+  /* Updated color palette for staff dashboard */
+  --gradient-staff-primary: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  --gradient-staff-card: linear-gradient(135deg, #f1f5f9 0%, #ffffff 100%);
+  --gradient-validation: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+  --gradient-activity: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+
+  /* Loading specific colors */
+  --loading-primary: var(--primary);
+  --loading-secondary: var(--secondary);
+  --loading-muted: var(--muted-foreground);
+  --loading-overlay: rgba(255, 255, 255, 0.8);
+  --loading-backdrop: rgba(0, 0, 0, 0.1);
+}
+
+.dark {
+  /* Dark theme colors for Clubly */
+  --background: #0f172a;
+  --foreground: #f1f5f9;
+  --card: #1e293b;
+  --card-foreground: #10b981;
+  --popover: #0f172a;
+  --popover-foreground: #f1f5f9;
+  --primary: #10b981;
+  --primary-foreground: #0f172a;
+  --secondary: #1e293b;
+  --secondary-foreground: #f1f5f9;
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+  --accent: #059669;
+  --accent-foreground: #f1f5f9;
+  --destructive: #ea580c;
+  --destructive-foreground: #f1f5f9;
+  --border: #334155;
+  --input: #1e293b;
+  --ring: rgba(16, 185, 129, 0.5);
+  --chart-1: #10b981;
+  --chart-2: #059669;
+  --chart-3: #ea580c;
+  --chart-4: #1e293b;
+  --chart-5: #94a3b8;
+  --sidebar: #1e293b;
+  --sidebar-foreground: #f1f5f9;
+  --sidebar-primary: #10b981;
+  --sidebar-primary-foreground: #0f172a;
+  --sidebar-accent: #059669;
+  --sidebar-accent-foreground: #f1f5f9;
+  --sidebar-border: #334155;
+  --sidebar-ring: rgba(16, 185, 129, 0.5);
+
+  --loading-overlay: rgba(15, 23, 42, 0.8);
+  --loading-backdrop: rgba(255, 255, 255, 0.1);
+}
+
+.bright {
+  /* Bright theme colors for Clubly - very light and vibrant */
+  --background: #f0fdf4;
+  --foreground: #1f2937;
+  --card: #ecfdf5;
+  --card-foreground: #047857;
+  --popover: #f0fdf4;
+  --popover-foreground: #1f2937;
+  --primary: #047857;
+  --primary-foreground: #f0fdf4;
+  --secondary: #d1fae5;
+  --secondary-foreground: #1f2937;
+  --muted: #dcfce7;
+  --muted-foreground: #374151;
+  --accent: #059669;
+  --accent-foreground: #f0fdf4;
+  --destructive: #c2410c;
+  --destructive-foreground: #f0fdf4;
+  --border: #bbf7d0;
+  --input: #f7fee7;
+  --ring: rgba(4, 120, 87, 0.6);
+  --chart-1: #047857;
+  --chart-2: #059669;
+  --chart-3: #c2410c;
+  --chart-4: #d1fae5;
+  --chart-5: #374151;
+  --sidebar: #ecfdf5;
+  --sidebar-foreground: #1f2937;
+  --sidebar-primary: #047857;
+  --sidebar-primary-foreground: #f0fdf4;
+  --sidebar-accent: #059669;
+  --sidebar-accent-foreground: #f0fdf4;
+  --sidebar-border: #bbf7d0;
+  --sidebar-ring: rgba(4, 120, 87, 0.6);
+}
+
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    /* Ensure body always uses background color properly */
+    @apply bg-background text-foreground min-h-screen;
+  }
+}
+
+/* Added professional dashboard animations and effects */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(8, 145, 178, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(8, 145, 178, 0.5);
+  }
+}
+
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.stats-card-hover {
+  transition: all 0.3s ease;
+}
+
+.stats-card-hover:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+}
+
+.gradient-animated {
+  background-size: 200% 200%;
+  animation: gradient-shift 3s ease infinite;
+}
+
+.float-animation {
+  animation: float 6s ease-in-out infinite;
+}
+
+.pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.tier-shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+/* Tier-specific animations */
+@keyframes tierGlow {
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(255, 215, 0, 0.6);
+  }
+}
+
+@keyframes pointsPulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+@keyframes progressFill {
+  0% {
+    width: 0%;
+  }
+  100% {
+    width: var(--progress-width);
+  }
+}
+
+.tier-glow {
+  animation: tierGlow 3s ease-in-out infinite;
+}
+
+.points-pulse {
+  animation: pointsPulse 2s ease-in-out infinite;
+}
+
+.progress-animated {
+  animation: progressFill 2s ease-out forwards;
+}
+
+/* Professional card effects */
+.tier-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.tier-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  animation: shimmer 3s infinite;
+}
+
+.points-card {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.achievement-badge {
+  transition: all 0.3s ease;
+}
+
+.achievement-badge:hover {
+  transform: scale(1.1) rotate(5deg);
+}
+
+.profile-float {
+  animation: profileFloat 4s ease-in-out infinite;
+}
+
+.profile-glow {
+  animation: profileGlow 3s ease-in-out infinite;
+}
+
+.profile-card-hover {
+  transition: all 0.3s ease;
+}
+
+.profile-card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 15px 35px rgba(139, 92, 246, 0.15);
+}
+
+/* Added staff dashboard animations */
+@keyframes staffCardFloat {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes staffGlow {
+  0%,
+  100% {
+    box-shadow: 0 4px 20px rgba(5, 150, 105, 0.2);
+  }
+  50% {
+    box-shadow: 0 8px 30px rgba(5, 150, 105, 0.4);
+  }
+}
+
+.staff-card-hover {
+  transition: all 0.3s ease;
+}
+
+.staff-card-hover:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 20px 40px rgba(5, 150, 105, 0.15);
+}
+
+.staff-float {
+  animation: staffCardFloat 4s ease-in-out infinite;
+}
+
+.staff-glow {
+  animation: staffGlow 3s ease-in-out infinite;
+}
+
+/* Loading component animations */
+@keyframes loading-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes loading-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes loading-bounce {
+  0%,
+  80%,
+  100% {
+    transform: scale(0);
+  }
+  40% {
+    transform: scale(1);
+  }
+}
+
+@keyframes loading-wave {
+  0%,
+  60%,
+  100% {
+    transform: initial;
+  }
+  30% {
+    transform: translateY(-10px);
+  }
+}
+
+/* Loading component classes */
+.loading-spin {
+  animation: loading-spin 1s linear infinite;
+}
+
+.loading-pulse {
+  animation: loading-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.loading-bounce {
+  animation: loading-bounce 1.4s ease-in-out infinite both;
+}
+
+.loading-wave {
+  animation: loading-wave 1.2s ease-in-out infinite;
+}
+
+/* Loading dots animation */
+.loading-dots > div:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.loading-dots > div:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.loading-dots > div:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+/* Loading overlay transitions */
+.loading-overlay-enter {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+.loading-overlay-enter-active {
+  opacity: 1;
+  transform: scale(1);
+  transition: opacity 200ms ease-out, transform 200ms ease-out;
+}
+
+.loading-overlay-exit {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.loading-overlay-exit-active {
+  opacity: 0;
+  transform: scale(0.95);
+  transition: opacity 150ms ease-in, transform 150ms ease-in;
+}
+
+/* Button loading states */
+.button-loading {
+  position: relative;
+  pointer-events: none;
+}
+
+.button-loading::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: inherit;
+}
+
+/* Skeleton loading improvements */
+.skeleton-shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Progress bar enhancements */
+.progress-indeterminate {
+  background: linear-gradient(90deg, transparent, var(--primary), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Added unique loading animations for premium experience */
+@keyframes clubly-orbit {
+  0% {
+    transform: rotate(0deg) translateX(30px) rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg) translateX(30px) rotate(-360deg);
+  }
+}
+
+@keyframes clubly-pulse-ring {
+  0% {
+    transform: scale(0.8);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+@keyframes clubly-morph {
+  0%,
+  100% {
+    border-radius: 50%;
+    transform: rotate(0deg);
+  }
+  25% {
+    border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+    transform: rotate(90deg);
+  }
+  50% {
+    border-radius: 50%;
+    transform: rotate(180deg);
+  }
+  75% {
+    border-radius: 70% 30% 30% 70% / 70% 70% 30% 30%;
+    transform: rotate(270deg);
+  }
+}
+
+@keyframes clubly-gradient-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes clubly-float-up {
+  0% {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+}
+
+@keyframes clubly-hexagon-spin {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    transform: rotate(180deg) scale(1.1);
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+  }
+}
+
+@keyframes clubly-network-pulse {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+@keyframes clubly-text-glow {
+  0%,
+  100% {
+    text-shadow: 0 0 10px rgba(5, 150, 105, 0.3);
+  }
+  50% {
+    text-shadow: 0 0 20px rgba(5, 150, 105, 0.6), 0 0 30px rgba(16, 185, 129, 0.4);
+  }
+}
+
+/* Loading component classes */
+.clubly-orbit {
+  animation: clubly-orbit 2s linear infinite;
+}
+
+.clubly-pulse-ring {
+  animation: clubly-pulse-ring 2s ease-out infinite;
+}
+
+.clubly-morph {
+  animation: clubly-morph 3s ease-in-out infinite;
+}
+
+.clubly-gradient-flow {
+  background: linear-gradient(45deg, var(--primary), var(--secondary), var(--accent), var(--primary));
+  background-size: 300% 300%;
+  animation: clubly-gradient-flow 3s ease infinite;
+}
+
+.clubly-float-up {
+  animation: clubly-float-up 2s ease-in-out infinite;
+}
+
+.clubly-hexagon-spin {
+  animation: clubly-hexagon-spin 4s ease-in-out infinite;
+}
+
+.clubly-network-pulse {
+  animation: clubly-network-pulse 2s ease-in-out infinite;
+}
+
+.clubly-text-glow {
+  animation: clubly-text-glow 2s ease-in-out infinite;
+}
+
+/* Staggered animation delays */
+.clubly-delay-1 {
+  animation-delay: 0.2s;
+}
+.clubly-delay-2 {
+  animation-delay: 0.4s;
+}
+.clubly-delay-3 {
+  animation-delay: 0.6s;
+}
+.clubly-delay-4 {
+  animation-delay: 0.8s;
+}
+.clubly-delay-5 {
+  animation-delay: 1s;
+}

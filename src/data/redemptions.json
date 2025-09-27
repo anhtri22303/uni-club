@@ -1,0 +1,42 @@
+[
+  {
+    "code": "VCH-DEMO00",
+    "offerId": "of-book-30",
+    "userId": "u-student-001",
+    "used": true,
+    "validatedBy": "u-staff-001",
+    "date": "2025-09-01"
+  },
+  {
+    "code": "VCH-COF101",
+    "offerId": "of-coffee-10",
+    "userId": "u-student-002",
+    "used": true,
+    "validatedBy": "u-staff-001",
+    "date": "2025-09-05"
+  },
+  {
+    "code": "VCH-TEA202",
+    "offerId": "of-tea-15",
+    "userId": "u-student-003",
+    "used": false,
+    "validatedBy": null,
+    "date": null
+  },
+  {
+    "code": "VCH-MOV303",
+    "offerId": "of-movie-50",
+    "userId": "u-student-004",
+    "used": true,
+    "validatedBy": "u-staff-001",
+    "date": "2025-09-10"
+  },
+  {
+    "code": "VCH-SNK404",
+    "offerId": "of-snack-20",
+    "userId": "u-student-005",
+    "used": false,
+    "validatedBy": null,
+    "date": null
+  }
+]
