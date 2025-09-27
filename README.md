@@ -1,30 +1,101 @@
-# Student club system
+🎓 SEP490 – UniClub (SCLMS)
+**Student Club Loyalty & Membership System**
+Hệ thống quản lý thẻ thành viên CLB sinh viên với ưu đãi và tích điểm
+👉 Website (demo deploy): https://uniclub-fpt.vercel.app/
+📑 Table of Contents
+- Description
+- Features & Actors
+- Technology Stack
+- System Architecture
+- Documentation & Deliverables
+- Getting Started
+- Team Members
+- Supervisors
+- License & Copyright
+📝 Description
+University student clubs currently manage members manually (Excel, paper lists, chat groups).
+This leads to fragmented data, errors, fraud risk, and difficulty in distributing vouchers or partner gifts.
 
-*Automatically synced with your [v0.app](https://v0.app) deployments*
+UniClub (SCLMS) solves this by providing:
+- 🎟️ Digital membership management (roles, levels, tiering).
+- 📅 Event & Section management with dynamic QR (5s) + OTP check-in.
+- 💰 Wallet & point system with point caps, MoMo top-up (10,000 VND = 100 points).
+- 🎁 Voucher & product redemption (on-site pickup at Delivery Sessions).
+- 🔄 Return/refund support based on club policy.
+- 📊 Dashboards for University Admin & Club Managers.
+- 🤖 AI Chatbot for FAQ, guidance, tier/points inquiry.
 
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/anhtri22303s-projects/v0-clubly)
-[![Built with v0](https://img.shields.io/badge/Built%20with-v0.app-black?style=for-the-badge)](https://v0.app/chat/projects/YkMEb5vOEBC)
+🎯 Non-profit project: All funds go back to clubs for student activities.
+👥 Features & Actors
+University Admin:
+- Approve clubs, events, system configurations.
+- Cross-club reports, fraud monitoring.
 
-## Overview
+Club Manager:
+- Approve/reject member applications.
+- Manage membership levels, events, products, refunds.
+- Configure points, caps, and wallets.
+- View club-level dashboards.
 
-This repository will stay in sync with your deployed chats on [v0.app](https://v0.app).
-Any changes you make to your deployed app will be automatically pushed to this repository from [v0.app](https://v0.app).
+Club Staff:
+- Manage inventory (stock movements).
+- Handle returns & refunds.
 
-## Deployment
+Student (Club Member):
+- Join clubs & events, check-in via QR+OTP.
+- Earn points, redeem products.
+- Request refunds within policy.
+- Track history: attendance, wallet, products, tier progress.
 
-Your project is live at:
+External Systems:
+- MoMo Gateway: Top-up & payments.
+- Email/Web Notifications: Accounts, redeems, top-ups, tiers.
+- AI Chatbot: FAQ, tier/points guide.
+🛠 Technology Stack
+- Frontend: React (TypeScript, Tailwind, Shadcn UI)
+- Backend: Java Spring Boot
+- Database: PostgreSQL / MySQL
+- Mobile (optional): Android (Java/Kotlin)
+- Deployment: Vercel (FE), Cloud (Heroku/Azure/AWS)
+- Security: JWT Authentication, OTP, Audit Logs
+🏗 System Architecture
+- Membership API: accounts, membership levels, tiering.
+- Event API: event/section, QR + OTP check-in, attendance.
+- Wallet/Points API: ledger, top-up, cap enforcement.
+- Product API: catalog, redeem, delivery sessions, refund.
+- Reporting API: dashboards for Admin & Managers.
 
-**[https://vercel.com/anhtri22303s-projects/v0-clubly](https://vercel.com/anhtri22303s-projects/v0-clubly)**
+(See full diagrams in `/docs` folder.)
+📚 Documentation & Deliverables
+- URD, SRS, Use Case & UML diagrams
+- Architecture Design
+- Test Plan & Report
+- Installation & Deployment Guide
+- Source Code (Frontend + Backend)
+- Deployable Packages
+🚀 Getting Started
+### Clone source
 
-## Build your app
-
-Continue building your app on:
-
-**[https://v0.app/chat/projects/YkMEb5vOEBC](https://v0.app/chat/projects/YkMEb5vOEBC)**
-
-## How It Works
-
-1. Create and modify your project using [v0.app](https://v0.app)
-2. Deploy your chats from the v0 interface
-3. Changes are automatically pushed to this repository
-4. Vercel deploys the latest version from this repository
+git clone https://github.com/your-org/uniclub.git
+### Backend (Spring Boot)
+1. Configure `application.properties` with your DB & MoMo credentials.
+2. Run:
+./mvnw spring-boot:run
+### Frontend (React)
+1. Navigate to `/frontend` folder.
+2. Install dependencies:
+npm install
+3. Start app:
+npm start
+👨‍👩‍👦 Team Members
+- Phạm Trung Nguyên – Leader (SE170458)
+- Tạ Minh Đức – Member (SE171695)
+- Châu Ngọc Anh Trí – Member (SE173284)
+- Phan Quang Anh – Member (SE185118)
+🎓 Supervisors
+- Ms. Bùi Thị Thu Thủy – thuybtt21@fe.edu.vn
+- Ms. Trương Thị Mỹ Ngọc – ngocttm4@fe.edu.vn
+📄 License & Copyright
+© 2025 FPT University – Non-profit academic project.
+All rights reserved for educational & research purposes.
+👉 Hope to pass SEP490 successfully 🤟
