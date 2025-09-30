@@ -12,13 +12,42 @@ import { Building, Users, Calendar, TrendingUp, ChevronLeft, ChevronRight, Searc
 import { useMemo, useState } from "react"
 
 // Import data
-import clubs from "@/src/data/clubs.json"
-import events from "@/src/data/events.json"
+import clubsJson from "@/src/data/clubs.json"
+import eventsJson from "@/src/data/events.json"
 
 type ActivityLevel = "High" | "Medium" | "Low"
 
+// ===== Kiểu dữ liệu gốc từ JSON =====
+interface ClubRecord {
+  id: string
+  name: string
+  category: string
+  members: number
+  description?: string // optional: có thể không tồn tại trong JSON
+}
+
+interface EventRecord {
+  id: string
+  clubId: string
+  title: string
+  date: string
+  time?: string
+  points?: number
+}
+
+// ===== Kiểu sau khi enrich =====
+type EnhancedClub = ClubRecord & {
+  memberCount: number
+  pendingCount: number
+  eventCount: number
+  activityLevel: ActivityLevel
+}
+
 export default function AdminClubsPage() {
   const { clubMemberships, membershipApplications } = useData()
+
+  const events = eventsJson as EventRecord[]
+  const clubs = clubsJson as ClubRecord[]
 
   const getClubStats = (clubId: string) => {
     const members = clubMemberships.filter((m) => m.clubId === clubId && m.status === "APPROVED").length
@@ -27,7 +56,7 @@ export default function AdminClubsPage() {
     return { members, pending, events: clubEvents }
   }
 
-  const enhancedClubs = useMemo(() => {
+  const enhancedClubs: EnhancedClub[] = useMemo(() => {
     return clubs.map((club) => {
       const stats = getClubStats(club.id)
       const activityScore = stats.members + stats.events
@@ -45,7 +74,6 @@ export default function AdminClubsPage() {
 
   // ------- Search & Filters -------
   const [searchTerm, setSearchTerm] = useState("")
-  // dùng "all" (không rỗng) để tránh lỗi SelectItem value="" của Radix/shadcn
   const [category, setCategory] = useState<string>("all")
   const [activityLevel, setActivityLevel] = useState<"all" | ActivityLevel>("all")
 
@@ -61,12 +89,7 @@ export default function AdminClubsPage() {
   })
 
   // ------- Minimal Pagination (arrows + current page only) -------
-  const {
-    currentPage,
-    totalPages,
-    paginatedData,
-    setCurrentPage,
-  } = usePagination({
+  const { currentPage, totalPages, paginatedData, setCurrentPage } = usePagination({
     data: filteredClubs,
     initialPageSize: 6,
   })
@@ -102,7 +125,7 @@ export default function AdminClubsPage() {
               <Select
                 value={category}
                 onValueChange={(v) => {
-                  setCategory(v) // v luôn khác rỗng ("all" | Category)
+                  setCategory(v)
                   setCurrentPage(1)
                 }}
               >
@@ -123,7 +146,7 @@ export default function AdminClubsPage() {
               <Select
                 value={activityLevel}
                 onValueChange={(v: "all" | ActivityLevel) => {
-                  setActivityLevel(v) // v luôn khác rỗng
+                  setActivityLevel(v)
                   setCurrentPage(1)
                 }}
               >
@@ -167,7 +190,10 @@ export default function AdminClubsPage() {
                           <Building className="h-4 w-4" />
                           {club.name}
                         </div>
-                        <div className="text-xs text-muted-foreground">{club.description}</div>
+                        {/* render có điều kiện để tránh lỗi khi không có description */}
+                        {club.description ? (
+                          <div className="text-xs text-muted-foreground">{club.description}</div>
+                        ) : null}
                       </td>
                       <td className="px-4 py-3">
                         <Badge variant="outline">{club.category}</Badge>
@@ -193,7 +219,15 @@ export default function AdminClubsPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <Badge variant={club.activityLevel === "High" ? "default" : club.activityLevel === "Medium" ? "secondary" : "outline"}>
+                        <Badge
+                          variant={
+                            club.activityLevel === "High"
+                              ? "default"
+                              : club.activityLevel === "Medium"
+                              ? "secondary"
+                              : "outline"
+                          }
+                        >
                           <TrendingUp className="h-3 w-3 mr-1" />
                           {club.activityLevel}
                         </Badge>

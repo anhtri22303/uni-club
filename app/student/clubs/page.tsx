@@ -14,8 +14,170 @@ import { useData } from "@/contexts/data-context"
 import { useToast } from "@/hooks/use-toast"
 import { Users, UserPlus } from "lucide-react"
 
-// Import data
-import clubs from "@/src/data/clubs.json"
+const clubs = [
+  {
+    id: "1",
+    name: "Tech Club",
+    category: "Technology",
+    members: 50,
+    description: "A club for coding enthusiasts and technology innovators.",
+    founded: 2010,
+    location: "Campus A",
+  },
+  {
+    id: "2",
+    name: "Soccer Club",
+    category: "Sports",
+    members: 30,
+    description: "Join us for soccer matches and training sessions.",
+    founded: 2015,
+    location: "Field B",
+  },
+  {
+    id: "3",
+    name: "Art Society",
+    category: "Arts",
+    members: 40,
+    description: "Explore painting, drawing, and other artistic expressions.",
+    founded: 2005,
+    location: "Studio C",
+  },
+  {
+    id: "4",
+    name: "Math Club",
+    category: "Academic",
+    members: 25,
+    description: "Solve challenging math problems and participate in competitions.",
+    founded: 2020,
+    location: "Online",
+  },
+  {
+    id: "5",
+    name: "Debate Club",
+    category: "Social",
+    members: 35,
+    description: "Hone your debating skills and discuss current issues.",
+    founded: 2012,
+    location: "Hall D",
+  },
+  {
+    id: "6",
+    name: "Music Band",
+    category: "Arts",
+    members: 20,
+    description: "Play instruments and perform music together.",
+    founded: 2018,
+    location: "Auditorium",
+  },
+  {
+    id: "7",
+    name: "Robotics Club",
+    category: "Technology",
+    members: 45,
+    description: "Build and program robots for competitions.",
+    founded: 2016,
+    location: "Lab E",
+  },
+  {
+    id: "8",
+    name: "Basketball Team",
+    category: "Sports",
+    members: 28,
+    description: "Practice and compete in basketball games.",
+    founded: 2011,
+    location: "Gym F",
+  },
+  {
+    id: "9",
+    name: "Photography Club",
+    category: "Arts",
+    members: 32,
+    description: "Learn photography techniques and go on photo walks.",
+    founded: 2019,
+    location: "Studio G",
+  },
+  {
+    id: "10",
+    name: "Science Society",
+    category: "Academic",
+    members: 38,
+    description: "Conduct experiments and discuss scientific discoveries.",
+    founded: 2008,
+    location: "Lab H",
+  },
+  {
+    id: "11",
+    name: "Environmental Club",
+    category: "Social",
+    members: 42,
+    description: "Promote sustainability and organize eco-friendly events.",
+    founded: 2017,
+    location: "Campus I",
+  },
+  {
+    id: "12",
+    name: "Dance Group",
+    category: "Arts",
+    members: 26,
+    description: "Learn various dance styles and perform at events.",
+    founded: 2014,
+    location: "Hall J",
+  },
+  {
+    id: "13",
+    name: "AI Enthusiasts",
+    category: "Technology",
+    members: 55,
+    description: "Explore artificial intelligence and machine learning.",
+    founded: 2021,
+    location: "Online",
+  },
+  {
+    id: "14",
+    name: "Tennis Club",
+    category: "Sports",
+    members: 22,
+    description: "Play tennis and participate in tournaments.",
+    founded: 2013,
+    location: "Court K",
+  },
+  {
+    id: "15",
+    name: "Literature Circle",
+    category: "Academic",
+    members: 31,
+    description: "Read and discuss classic and contemporary literature.",
+    founded: 2007,
+    location: "Library L",
+  },
+  {
+    id: "16",
+    name: "Volunteer Society",
+    category: "Social",
+    members: 48,
+    description: "Organize community service projects and volunteer work.",
+    founded: 2022,
+    location: "Community Center M",
+  },
+  {
+    id: "17",
+    name: "Film Club",
+    category: "Arts",
+    members: 29,
+    description: "Watch and analyze films from various genres.",
+    founded: 2010,
+    location: "Theater N",
+  },
+  {
+    id: "18",
+    name: "Coding Bootcamp",
+    category: "Technology",
+    members: 60,
+    description: "Intensive coding sessions for skill development.",
+    founded: 2023,
+    location: "Lab O",
+  },
+]
 
 export default function StudentClubsPage() {
   const { auth } = useAuth()
@@ -42,6 +204,7 @@ export default function StudentClubsPage() {
   const enhancedClubs = clubs.map((club) => ({
     ...club,
     status: getClubStatus(club.id),
+    actions: undefined,
   }))
 
   const filters = [
@@ -71,6 +234,35 @@ export default function StudentClubsPage() {
       key: "members",
       label: "Member Count",
       type: "range" as const,
+    },
+    {
+      key: "founded",
+      label: "Founded Year",
+      type: "range" as const,
+    },
+    {
+      key: "location",
+      label: "Location",
+      type: "select" as const,
+      options: [
+        { value: "Campus A", label: "Campus A" },
+        { value: "Field B", label: "Field B" },
+        { value: "Studio C", label: "Studio C" },
+        { value: "Online", label: "Online" },
+        { value: "Hall D", label: "Hall D" },
+        { value: "Auditorium", label: "Auditorium" },
+        { value: "Lab E", label: "Lab E" },
+        { value: "Gym F", label: "Gym F" },
+        { value: "Studio G", label: "Studio G" },
+        { value: "Lab H", label: "Lab H" },
+        { value: "Campus I", label: "Campus I" },
+        { value: "Hall J", label: "Hall J" },
+        { value: "Court K", label: "Court K" },
+        { value: "Library L", label: "Library L" },
+        { value: "Community Center M", label: "Community Center M" },
+        { value: "Theater N", label: "Theater N" },
+        { value: "Lab O", label: "Lab O" },
+      ],
     },
   ]
 
@@ -116,6 +308,18 @@ export default function StudentClubsPage() {
           <div className="font-medium">{value}</div>
           <div className="text-sm text-muted-foreground">{club.category}</div>
         </div>
+      ),
+    },
+    {
+      key: "category" as const,
+      label: "Category",
+      render: (value: string) => <Badge variant="outline">{value}</Badge>,
+    },
+    {
+      key: "description" as const,
+      label: "Description",
+      render: (value: string) => (
+        <div className="text-sm text-muted-foreground">{value}</div>
       ),
     },
     {
@@ -182,6 +386,7 @@ export default function StudentClubsPage() {
               - pageSizeOptions để người dùng đổi số dòng/trang
               Lưu ý: DataTable của bạn đã có phân trang nội bộ, nên chỉ cần truyền props này. */}
           <DataTable
+            title="Club Directory"
             data={enhancedClubs}
             columns={columns}
             searchKey="name"

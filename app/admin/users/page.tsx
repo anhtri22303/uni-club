@@ -8,26 +8,42 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useData } from "@/contexts/data-context"
 import { Mail, Shield, Users, Plus, Star, Activity } from "lucide-react"
+import React from "react"
 
 // Import data
-import users from "@/src/data/users.json"
+import usersJson from "@/src/data/users.json"
 import roles from "@/src/data/roles.json"
+
+// ===== Types =====
+interface UserRecord {
+  id: string
+  fullName: string
+  email: string
+  password: string
+  roles: string[]
+  defaultRole: string
+  points: number
+}
+
+type EnhancedUser = UserRecord & {
+  membershipCount: number
+  primaryRoleName: string
+}
 
 export default function AdminUsersPage() {
   const { clubMemberships } = useData()
 
-  const getUserMembershipCount = (userId: string) => {
-    return clubMemberships.filter((m) => m.userId === userId && m.status === "APPROVED").length
-  }
+  const getUserMembershipCount = (userId: string) =>
+    clubMemberships.filter((m) => m.userId === userId && m.status === "APPROVED").length
 
-  const getRoleName = (roleId: string) => {
-    return roles.find((r) => r.id === roleId)?.name || roleId
-  }
+  const getRoleName = (roleId: string) => roles.find((r) => r.id === roleId)?.name || roleId
 
-  const enhancedUsers = users.map((user) => ({
-    ...user,
-    membershipCount: getUserMembershipCount(user.id),
-    primaryRoleName: getRoleName(user.defaultRole),
+  const users = usersJson as UserRecord[]
+
+  const enhancedUsers: EnhancedUser[] = users.map((u) => ({
+    ...u,
+    membershipCount: getUserMembershipCount(u.id),
+    primaryRoleName: getRoleName(u.defaultRole),
   }))
 
   const totalUsers = users.length
@@ -48,10 +64,7 @@ export default function AdminUsersPage() {
       key: "defaultRole",
       label: "Primary Role",
       type: "select" as const,
-      options: roles.map((role) => ({
-        value: role.id,
-        label: role.name,
-      })),
+      options: roles.map((role) => ({ value: role.id, label: role.name })),
     },
     {
       key: "membershipCount",
@@ -60,11 +73,12 @@ export default function AdminUsersPage() {
     },
   ]
 
+  // ===== Columns: dùng key thuộc keyof EnhancedUser =====
   const columns = [
     {
       key: "fullName" as const,
       label: "User Information",
-      render: (value: string, user: any) => (
+      render: (value: EnhancedUser["fullName"], user: EnhancedUser): JSX.Element => (
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-semibold text-sm">
             {value
@@ -86,7 +100,7 @@ export default function AdminUsersPage() {
     {
       key: "roles" as const,
       label: "All Roles",
-      render: (roleIds: string[]) => (
+      render: (roleIds: EnhancedUser["roles"]): JSX.Element => (
         <div className="flex flex-wrap gap-1">
           {roleIds.map((roleId) => {
             const style = roleColors[roleId] || "bg-gray-100 text-gray-700 border-gray-300"
@@ -102,33 +116,32 @@ export default function AdminUsersPage() {
     {
       key: "points" as const,
       label: "Points",
-      render: (points: number) => (
+      render: (points: EnhancedUser["points"]): JSX.Element => (
         <div className="flex items-center gap-2">
           <Star className="h-4 w-4 text-primary" />
           <span className="font-semibold text-primary">{(points || 0).toLocaleString()}</span>
         </div>
       ),
     },
+    // ⛳️ Sửa key từ "memberships" -> "membershipCount" (đúng với dữ liệu)
     {
-      key: "memberships" as const,
+      key: "membershipCount" as const,
       label: "Club Memberships",
-      render: (_: any, user: any) => {
-        const count = getUserMembershipCount(user.id)
-        return (
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-1">
-              <Users className="h-4 w-4 text-muted-foreground" />
-              <span className="font-semibold">{count}</span>
-            </div>
-            <div className="text-xs text-muted-foreground">clubs</div>
+      render: (count: EnhancedUser["membershipCount"], _user: EnhancedUser): JSX.Element => (
+        <div className="text-center">
+          <div className="flex items-center justify-center gap-1">
+            <Users className="h-4 w-4 text-muted-foreground" />
+            <span className="font-semibold">{count}</span>
           </div>
-        )
-      },
+          <div className="text-xs text-muted-foreground">clubs</div>
+        </div>
+      ),
     },
+    // ⛳️ "status" không có trong dữ liệu → dùng key hợp lệ, ví dụ "id"
     {
-      key: "status" as const,
+      key: "id" as const,
       label: "Status",
-      render: () => (
+      render: (_: EnhancedUser["id"], _user: EnhancedUser): JSX.Element => (
         <Badge variant="default" className="bg-gradient-to-r from-green-500 to-emerald-500 text-white">
           <Activity className="h-3 w-3 mr-1" />
           Active

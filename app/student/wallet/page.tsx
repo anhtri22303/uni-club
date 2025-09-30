@@ -126,12 +126,12 @@ export default function StudentWalletPage() {
         {/* Left: User identity */}
         <div className="flex items-center gap-4">
           <div className="h-14 w-14 rounded-2xl bg-white/15 backdrop-blur flex items-center justify-center text-white font-bold text-2xl ring-1 ring-white/20">
-            {(auth?.fullName?.charAt(0) || "U").toUpperCase()}
+            {(auth?.user?.fullName?.charAt(0) || "U").toUpperCase()}
           </div>
           <div>
             <p className="text-xs uppercase tracking-wider text-white/80">Tài khoản</p>
             <h3 className="text-xl md:text-2xl font-semibold leading-tight">
-              {auth?.fullName || "User"}
+              {auth?.user?.fullName || "User"}
             </h3>
             <p className="text-sm text-white/70">Thành viên</p>
           </div>

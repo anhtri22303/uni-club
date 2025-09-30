@@ -142,56 +142,59 @@ export default function StaffHistoryPage() {
 
           {/* Validation History by Date */}
           <div className="space-y-6">
-            {Object.entries(validationsByDate).map(([date, validations]) => (
-              <Card key={date}>
-                <CardHeader>
-                  <CardTitle className="text-lg">
-                    {new Date(date).toLocaleDateString("en-US", {
-                      weekday: "long",
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })}
-                  </CardTitle>
-                  <CardDescription>
-                    {validations.length} validation{validations.length !== 1 ? "s" : ""}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {validations.map((validation, index) => {
-                      const offer = getOfferDetails(validation.offerId)
-                      return (
-                        <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                          <div className="flex items-start gap-3">
-                            <div className="w-10 h-10 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center">
-                              <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+            {Object.entries(validationsByDate).map(([date, validations]) => {
+              const typedValidations = validations as any[];
+              return (
+                <Card key={date}>
+                  <CardHeader>
+                    <CardTitle className="text-lg">
+                      {new Date(date).toLocaleDateString("en-US", {
+                        weekday: "long",
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })}
+                    </CardTitle>
+                    <CardDescription>
+                      {typedValidations.length} validation{typedValidations.length !== 1 ? "s" : ""}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {typedValidations.map((validation, index) => {
+                        const offer = getOfferDetails(validation.offerId)
+                        return (
+                          <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-start gap-3">
+                              <div className="w-10 h-10 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center">
+                                <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                              </div>
+                              <div>
+                                <p className="font-medium">Voucher Validated</p>
+                                <p className="text-sm text-muted-foreground">
+                                  Code: <span className="font-mono">{validation.code}</span>
+                                </p>
+                                {offer && <p className="text-sm text-muted-foreground">Offer: {offer.title}</p>}
+                              </div>
                             </div>
-                            <div>
-                              <p className="font-medium">Voucher Validated</p>
-                              <p className="text-sm text-muted-foreground">
-                                Code: <span className="font-mono">{validation.code}</span>
-                              </p>
-                              {offer && <p className="text-sm text-muted-foreground">Offer: {offer.title}</p>}
-                            </div>
-                          </div>
 
-                          <div className="text-right">
-                            <Badge variant="default">Validated</Badge>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {new Date(validation.when).toLocaleTimeString("en-US", {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </p>
+                            <div className="text-right">
+                              <Badge variant="default">Validated</Badge>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {new Date(validation.when).toLocaleTimeString("en-US", {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                        )
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
           </div>
 
           {myValidations.length > 0 && (

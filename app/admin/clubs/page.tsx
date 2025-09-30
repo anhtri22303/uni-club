@@ -17,18 +17,35 @@ import events from "@/src/data/events.json"
 
 type ActivityLevel = "High" | "Medium" | "Low"
 
+// Kiểu bản ghi club gốc từ JSON
+interface ClubRecord {
+  id: string
+  name: string
+  category: string
+  members: number
+  description?: string // optional: JSON có thể có hoặc không
+}
+
+// Kiểu club sau khi enrich
+type EnhancedClub = ClubRecord & {
+  memberCount: number
+  pendingCount: number
+  eventCount: number
+  activityLevel: ActivityLevel
+}
+
 export default function AdminClubsPage() {
   const { clubMemberships, membershipApplications } = useData()
 
   const getClubStats = (clubId: string) => {
     const members = clubMemberships.filter((m) => m.clubId === clubId && m.status === "APPROVED").length
     const pending = membershipApplications.filter((a) => a.clubId === clubId && a.status === "PENDING").length
-    const clubEvents = events.filter((e) => e.clubId === clubId).length
+    const clubEvents = (events as Array<{ clubId: string }>).filter((e) => e.clubId === clubId).length
     return { members, pending, events: clubEvents }
   }
 
-  const enhancedClubs = useMemo(() => {
-    return clubs.map((club) => {
+  const enhancedClubs: EnhancedClub[] = useMemo(() => {
+    return (clubs as ClubRecord[]).map((club) => {
       const stats = getClubStats(club.id)
       const activityScore = stats.members + stats.events
       const activityLevel: ActivityLevel = activityScore > 10 ? "High" : activityScore > 5 ? "Medium" : "Low"
@@ -162,7 +179,9 @@ export default function AdminClubsPage() {
                           <Building className="h-4 w-4" />
                           {club.name}
                         </div>
-                        <div className="text-xs text-muted-foreground">{club.description}</div>
+                        {club.description ? (
+                          <div className="text-xs text-muted-foreground">{club.description}</div>
+                        ) : null}
                       </td>
                       <td className="px-4 py-3">
                         <Badge variant="outline">{club.category}</Badge>
@@ -193,8 +212,8 @@ export default function AdminClubsPage() {
                             club.activityLevel === "High"
                               ? "default"
                               : club.activityLevel === "Medium"
-                                ? "secondary"
-                                : "outline"
+                              ? "secondary"
+                              : "outline"
                           }
                         >
                           <TrendingUp className="h-3 w-3 mr-1" />
