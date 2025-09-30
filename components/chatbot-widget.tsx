@@ -1,18 +1,13 @@
 "use client"
 
-import type React from "react"
-import { useRef, useState } from "react"
+import React, { useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { MessageCircle, X, Send } from "lucide-react"
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@/components/ui/dropdown-menu"
+import { ChatbotPromptMenu } from "@/components/chatbot-prompt-menu"
+import axios from "axios"
 
 interface Message {
   id: string
@@ -35,16 +30,24 @@ export function ChatbotWidget() {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
-      text: "Xin chào! Tôi là trợ lý AI của SCLMS. Hiện tại tính năng này đang được phát triển.",
+      text: "Xin chào! Tôi là trợ lý AI của SCLMS. Bạn cần hỗ trợ gì?",
       isUser: false,
       timestamp: new Date(),
     },
   ])
   const [inputValue, setInputValue] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+  const [isPromptOpen, setIsPromptOpen] = useState(false) // state điều khiển dropdown
   const inputRef = useRef<HTMLInputElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
 
-  const handleSendMessage = () => {
-    if (!inputValue.trim()) return
+  // Scroll to bottom when messages change
+  React.useEffect(() => {
+    scrollRef.current?.scrollIntoView({ behavior: "smooth" })
+  }, [messages, isOpen])
+
+  const handleSendMessage = async () => {
+    if (!inputValue.trim() || isLoading) return
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -55,27 +58,76 @@ export function ChatbotWidget() {
 
     setMessages((prev) => [...prev, userMessage])
     setInputValue("")
+    setIsLoading(true)
 
-    setTimeout(() => {
+    try {
+      const chatbotUrl = process.env.NEXT_PUBLIC_AI_CHATBOT_URL
+      const apiKey = process.env.NEXT_PUBLIC_GROQ_API_KEY
+      if (!chatbotUrl) throw new Error("NEXT_PUBLIC_AI_CHATBOT_URL is not set.")
+      if (!apiKey) throw new Error("NEXT_PUBLIC_GROQ_API_KEY is not set.")
+
+      type ChatbotResponse = {
+        choices?: Array<{
+          message?: { content?: string }
+        }>
+      }
+
+      // Gọi Groq theo chuẩn OpenAI-compatible (giống file JSX của bạn)
+      const response = await axios.post<ChatbotResponse>(
+        chatbotUrl,
+        {
+          model: "llama-3.3-70b-versatile",
+          messages: [
+            {
+              role: "system",
+              content:
+                "Bạn là một trợ lý AI cho hệ thống quản lý câu lạc bộ và sự kiện trường đại học. Hãy trả lời ngắn gọn, thân thiện, hữu ích và đúng chủ đề.",
+            },
+            { role: "user", content: userMessage.text },
+          ],
+          temperature: 1,
+          top_p: 1,
+          stream: false,
+          max_tokens: 1024, // tương thích Groq OpenAI-compatible
+          stop: null,
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+        }
+      )
+
+      const botText =
+        response.data?.choices?.[0]?.message?.content?.trim() ||
+        "Xin lỗi, tôi không thể trả lời câu hỏi của bạn ngay bây giờ."
+
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: "Cảm ơn bạn đã quan tâm! Tính năng chatbot AI đang được phát triển và sẽ sớm ra mắt. Vui lòng quay lại sau nhé! 🚀",
+        text: botText,
         isUser: false,
         timestamp: new Date(),
       }
       setMessages((prev) => [...prev, botMessage])
-    }, 1000)
-  }
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleSendMessage()
+    } catch (error) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: (Date.now() + 1).toString(),
+          text: "Xin lỗi, tôi không thể trả lời câu hỏi của bạn ngay bây giờ.",
+          isUser: false,
+          timestamp: new Date(),
+        },
+      ])
+    } finally {
+      setIsLoading(false)
     }
   }
 
   const applyPrompt = (text: string) => {
     setInputValue(text)
-    // Đưa focus về ô nhập để người dùng sửa rồi gửi
+    // Focus vào ô nhập để người dùng sửa và gửi
     requestAnimationFrame(() => inputRef.current?.focus())
   }
 
@@ -88,6 +140,8 @@ export function ChatbotWidget() {
           size="icon"
           className="h-12 w-12 bg-green-200 shadow-lg hover:shadow-xl transition-shadow"
           onClick={() => setIsOpen(!isOpen)}
+          aria-label={isOpen ? "Đóng chat" : "Mở chat"}
+          title={isOpen ? "Đóng chat" : "Mở chat"}
         >
           <MessageCircle className="h-6 w-6" />
         </Button>
@@ -95,73 +149,82 @@ export function ChatbotWidget() {
 
       {/* Chatbot Interface */}
       {isOpen && (
-        <div className="fixed bottom-20 right-6 z-50 w-80 max-w-[calc(100vw-2rem)]">
-          <Card className="shadow-xl border-2">
+        <div className="fixed bottom-20 right-6 z-[1000] w-80 max-w-[calc(100vw-2rem)]">
+          {/* Dropdown menu đã được di chuyển vào phần Input + Actions */}
+          <Card className="shadow-xl border-2 overflow-visible">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg">AI Assistant</CardTitle>
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIsOpen(false)}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() => setIsOpen(false)}
+                  aria-label="Đóng"
+                >
                   <X className="h-4 w-4" />
                 </Button>
               </div>
             </CardHeader>
+
             <CardContent className="space-y-4">
               {/* Messages */}
               <ScrollArea className="h-64 w-full pr-4">
                 <div className="space-y-3">
                   {messages.map((message) => (
-                    <div key={message.id} className={`flex ${message.isUser ? "justify-end" : "justify-start"}`}>
+                    <div
+                      key={message.id}
+                      className={`flex ${message.isUser ? "justify-end" : "justify-start"}`}
+                    >
                       <div
                         className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
-                          message.isUser ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                          message.isUser
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-muted-foreground"
                         }`}
                       >
                         {message.text}
                       </div>
                     </div>
                   ))}
+                  {isLoading && (
+                    <div className="flex justify-start">
+                      <div className="max-w-[80%] rounded-lg px-3 py-2 text-sm bg-muted text-muted-foreground animate-pulse">
+                        Đang trả lời...
+                      </div>
+                    </div>
+                  )}
+                  <div ref={scrollRef} />
                 </div>
               </ScrollArea>
 
               {/* Input + Actions */}
               <div className="flex gap-2 items-center">
-                {/* Dropdown trigger ngay bên trái nút gửi */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      aria-label="Gợi ý nhanh"
-                      title="Gợi ý nhanh"
-                      className="min-w-10"
-                    >
-                      {/* Hiển thị đúng ký tự " \/" như yêu cầu */}
-                      <span className="text-sm leading-none select-none">\/</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent side="top" align="end" sideOffset={8} className="w-56">
-                    {/* Tên rút gọn cho menu */}
-                    <DropdownMenuItem onSelect={() => applyPrompt(PROMPTS.clubByMajor)}>
-                      CLB theo ngành
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => applyPrompt(PROMPTS.eventsByMajor)}>
-                      Sự kiện ngành
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => applyPrompt(PROMPTS.newEventContent)}>
-                      Nội dung event mới
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
                 <Input
                   placeholder="Nhập tin nhắn..."
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
-                  onKeyPress={handleKeyPress}
+                  onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
                   className="flex-1"
                   ref={inputRef}
+                  disabled={isLoading}
                 />
-                <Button size="icon" onClick={handleSendMessage} aria-label="Gửi">
+                
+                <ChatbotPromptMenu
+                  isOpen={isPromptOpen}
+                  onOpenChange={setIsPromptOpen}
+                  onSelectPrompt={applyPrompt}
+                  prompts={PROMPTS}
+                  disabled={isLoading}
+                />
+
+                <Button
+                  type="button"
+                  size="icon"
+                  onClick={handleSendMessage}
+                  aria-label="Gửi"
+                  disabled={isLoading}
+                >
                   <Send className="h-4 w-4" />
                 </Button>
               </div>

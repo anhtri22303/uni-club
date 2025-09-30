@@ -79,6 +79,7 @@ export default function ClubManagerEventsPage() {
       title: formData.title,
       description: formData.description,
       date: formData.date,
+      time: "14:00", // Default time, or you can add a time field to the form
       location: formData.location,
       points: formData.points,
       createdAt: new Date().toISOString(),
@@ -123,10 +124,11 @@ export default function ClubManagerEventsPage() {
         ? {
             ...e,
             title: formData.title,
-            description: formData.description,
+            description: formData.description ?? "",
             date: formData.date,
-            location: formData.location,
+            location: formData.location ?? "",
             points: formData.points,
+            time: e.time ?? "14:00",
             updatedAt: new Date().toISOString(),
           }
         : e,

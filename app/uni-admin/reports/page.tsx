@@ -348,7 +348,8 @@ export default function AdminReportsPage() {
                 <div className="space-y-4">
                   {Object.entries(membershipsByStatus).map(([status, count]) => {
                     const totalApps = membershipApplications.length || 1
-                    const percentage = Math.round((count / totalApps) * 100)
+                    const countNumber = typeof count === "number" ? count : Number(count)
+                    const percentage = Math.round((countNumber / totalApps) * 100)
                     const dotClass = statusDotClass[status] || "bg-muted-foreground"
                     return (
                       <div key={status} className="flex items-center justify-between p-3 border rounded-lg">
@@ -362,7 +363,7 @@ export default function AdminReportsPage() {
                               status === "APPROVED" ? "default" : status === "PENDING" ? "secondary" : "destructive"
                             }
                           >
-                            {count}
+                            {String(count)}
                           </Badge>
                           <span className="text-sm text-muted-foreground">({percentage}%)</span>
                         </div>

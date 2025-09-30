@@ -11,13 +11,34 @@ import { useParams, useRouter } from "next/navigation"
 import { Calendar, Users, Trophy, MapPin, Clock, ArrowLeft, UserCheck, Star, Share2 } from "lucide-react"
 
 // Import data
-import events from "@/src/data/events.json"
-import clubs from "@/src/data/clubs.json"
+import eventsJson from "@/src/data/events.json"
+import clubsJson from "@/src/data/clubs.json"
+
+type EventStatus = "past" | "upcoming" | "future"
+
+interface EventRecord {
+  id: string
+  clubId: string
+  title: string
+  date: string            // e.g. "2025-01-27"
+  time?: string           // e.g. "14:00"
+  points?: number
+}
+
+interface ClubRecord {
+  id: string
+  name: string
+  category: string
+  description?: string
+}
 
 export default function EventDetailPage() {
   const params = useParams()
   const router = useRouter()
   const eventId = params.id as string
+
+  const events = eventsJson as EventRecord[]
+  const clubs = clubsJson as ClubRecord[]
 
   const event = events.find((e) => e.id === eventId)
   const club = event ? clubs.find((c) => c.id === event.clubId) : null
@@ -35,17 +56,26 @@ export default function EventDetailPage() {
     )
   }
 
-  const getEventStatus = (eventDate: string) => {
+  const getEventStatus = (dateStr: string): EventStatus => {
     const now = new Date()
-    const eventDateTime = new Date(eventDate)
-
-    if (eventDateTime < now) return "past"
-    if (eventDateTime.getTime() - now.getTime() < 7 * 24 * 60 * 60 * 1000) return "upcoming"
+    const eventDateOnly = new Date(dateStr)
+    if (eventDateOnly < now) return "past"
+    if (eventDateOnly.getTime() - now.getTime() < 7 * 24 * 60 * 60 * 1000) return "upcoming"
     return "future"
   }
 
+  // Gộp date + time (nếu có) để hiển thị thân thiện
+  const buildEventDate = (e: EventRecord) => {
+    const base = new Date(e.date)
+    if (e.time) {
+      const [h, m] = e.time.split(":").map(Number)
+      base.setHours(h ?? 0, m ?? 0, 0, 0)
+    }
+    return base
+  }
+
   const status = getEventStatus(event.date)
-  const eventDate = new Date(event.date)
+  const eventDate = buildEventDate(event)
 
   return (
     <ProtectedRoute allowedRoles={["student"]}>
@@ -76,7 +106,7 @@ export default function EventDetailPage() {
                 <Badge variant={status === "past" ? "secondary" : status === "upcoming" ? "default" : "outline"}>
                   {status === "past" ? "Past Event" : status === "upcoming" ? "Coming Soon" : "Future Event"}
                 </Badge>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" aria-label="Share event">
                   <Share2 className="h-4 w-4" />
                 </Button>
               </div>
@@ -198,7 +228,7 @@ export default function EventDetailPage() {
                   <div className="flex items-center gap-3">
                     <Trophy className="h-5 w-5 text-muted-foreground" />
                     <div>
-                      <div className="font-medium">{event.points} Points</div>
+                      <div className="font-medium">{event.points ?? 0} Points</div>
                       <div className="text-sm text-muted-foreground">Loyalty reward</div>
                     </div>
                   </div>
@@ -244,8 +274,15 @@ export default function EventDetailPage() {
                       <div className="text-sm text-muted-foreground">{club.category}</div>
                     </div>
                   </div>
-                  <p className="text-sm text-muted-foreground">{club.description}</p>
-                  <Button variant="outline" className="w-full bg-transparent">
+                  <p className="text-sm text-muted-foreground">
+                    {club.description ?? `Explore more about ${club.name}.`}
+                  </p>
+                  <Button
+                    variant="outline"
+                    className="w-full bg-transparent"
+                    onClick={() => router.push(`/clubs/${club.id}`)}
+                    aria-label="View club profile"
+                  >
                     <Users className="h-4 w-4 mr-2" />
                     View Club Profile
                   </Button>

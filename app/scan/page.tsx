@@ -29,9 +29,9 @@ export default function ScanPage() {
   }, [isScanning])
 
   const handleClose = () => {
-    if (auth.user?.role === "student") {
+    if (auth.role === "student") {
       router.push("/student")
-    } else if (auth.user?.role === "staff") {
+    } else if (auth.role === "staff") {
       router.push("/staff/validate")
     } else {
       router.back()
@@ -51,7 +51,7 @@ export default function ScanPage() {
           <div className="absolute top-0 left-0 right-0 z-10 p-4 sm:p-6">
             <div className="flex items-center justify-between">
               <h1 className="text-lg sm:text-xl font-semibold">
-                {auth.user?.role === "student" ? "Scan QR Code" : "Validate Voucher"}
+                {auth.role === "student" ? "Scan QR Code" : "Validate Voucher"}
               </h1>
               <Button variant="ghost" size="icon" onClick={handleClose} className="text-white hover:bg-white/20">
                 <X className="h-5 w-5 sm:h-6 sm:w-6" />
@@ -120,7 +120,7 @@ export default function ScanPage() {
                       <p className="text-sm text-gray-300">Scanning...</p>
                     </div>
                     <p className="text-xs text-gray-400">
-                      {auth.user?.role === "student"
+                      {auth.role === "student"
                         ? "Position the QR code within the frame"
                         : "Position the voucher QR code within the frame"}
                     </p>
@@ -128,7 +128,7 @@ export default function ScanPage() {
                 ) : scanResult ? (
                   <div className="space-y-3">
                     <p className="text-sm text-gray-300">
-                      {auth.user?.role === "student"
+                      {auth.role === "student"
                         ? "QR code detected successfully!"
                         : "Voucher code scanned successfully!"}
                     </p>

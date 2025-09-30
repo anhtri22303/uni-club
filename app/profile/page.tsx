@@ -139,7 +139,8 @@ export default function ProfilePage() {
   const tierInfo = getTierInfo(userTier)
   const TierIcon = tierInfo.icon
 
-  const isAdminRole = ["uni_admin", "admin", "staff"].includes(auth.user?.role || "")
+  // Use auth.role instead of auth.user?.role
+  const isAdminRole = ["uni_admin", "admin", "staff"].includes(auth.role || "")
 
   if (isAdminRole) {
     return (
@@ -158,7 +159,7 @@ export default function ProfilePage() {
                   </Avatar>
                   <div>
                     <h1 className="text-3xl font-bold">{fullName || "Administrator"}</h1>
-                    <p className="text-xl text-white/80 capitalize">{auth.user?.role?.replace("_", " ")}</p>
+                    <p className="text-xl text-white/80 capitalize">{auth.role?.replace("_", " ")}</p>
                     <p className="text-white/70">{auth.user?.email}</p>
                   </div>
                 </div>
@@ -263,7 +264,7 @@ export default function ProfilePage() {
                     </CardHeader>
                     <CardContent>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {auth.user?.role === "uni_admin" && (
+                        {auth.role === "uni_admin" && (
                           <>
                             <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
                               <Building2 className="h-5 w-5 text-primary" />
@@ -283,7 +284,7 @@ export default function ProfilePage() {
                             </div>
                           </>
                         )}
-                        {(auth.user?.role === "admin" || auth.user?.role === "staff") && (
+                        {(auth.role === "admin" || auth.role === "staff") && (
                           <>
                             <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
                               <Globe className="h-5 w-5 text-primary" />

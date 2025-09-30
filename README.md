@@ -85,8 +85,24 @@ git clone https://github.com/your-org/uniclub.git
 1. Navigate to `/frontend` folder.
 2. Install dependencies:
 npm install
+npm install axios (Optional)
 3. Start app:
+npm run build
+# Nếu muốn xóa build cũ trước khi build lại:
+# (Tùy dự án, thường là 'build' hoặc 'dist')
+rm -rf build
+npm run build
 npm start
+
+# pnpm chưa được cài đặt
+1. Cài đặt pnpm toàn cục: Mở terminal/cmd và chạy:
+npm install -g pnpm
+2. Kiểm tra lại
+pnpm --version
+3. Chạy lại lệnh cài đặt:
+pnpm install
+
+
 👨‍👩‍👦 Team Members
 - Phạm Trung Nguyên – Leader (SE170458)
 - Tạ Minh Đức – Member (SE171695)
