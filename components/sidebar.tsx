@@ -74,7 +74,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
 
   return (
     <>
-      {/* Overlay cho mobile khi mở */}
+      {/* Overlay for mobile when open */}
       <div
         className={cn(
           "fixed inset-0 z-30 bg-black/40 transition-opacity md:hidden",
@@ -84,7 +84,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
         onClick={() => onNavigate?.()}
       />
 
-      {/* Sidebar: thay vì unmount, chỉ translate-x để ẩn/hiện */}
+      {/* Sidebar: translate-x to hide/show instead of unmounting */}
       <aside
         className={cn(
           "fixed z-40 inset-y-0 left-0 w-64 border-r bg-sidebar border-sidebar-border transition-transform",
@@ -93,7 +93,22 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
         )}
         aria-label="Sidebar"
       >
-        <div className="h-16 border-b border-sidebar-border" />
+        {/* Logo section above navigation */}
+        <div className="relative flex items-center h-24 border-b border-sidebar-border bg-sidebar px-4">
+          {/* Logo căn giữa header, xích qua phải */}
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+            <img
+              src="/images/Logo.png"
+              alt="UniClub Logo"
+              className="h-16 w-auto object-contain drop-shadow"
+            />
+          </div>
+          {/* Nút đổi theme sát mép phải */}
+          <div className="ml-auto z-10">
+            {/* @ts-ignore-next-line */}
+            {require("@/components/theme-toggle").ThemeToggle()}
+          </div>
+        </div>
         <div className="flex-1 overflow-auto py-4">
           <nav className="grid gap-1 px-2">
             {navigation.map((item) => {

@@ -251,6 +251,40 @@
   }
 }
 
+/* --- Thêm vào file globals.css --- */
+
+@keyframes flicker {
+  0%, 100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: translateY(-2px) scale(1.05);
+  }
+}
+
+@keyframes pulse-strong {
+  0%, 100% {
+    transform: scale(1);
+    /* `currentColor` sẽ tự động lấy màu của icon */
+    filter: drop-shadow(0 0 4px currentColor);
+  }
+  50% {
+    transform: scale(1.15);
+    filter: drop-shadow(0 0 9px currentColor);
+  }
+}
+
+/* Các lớp tiện ích để sử dụng animation */
+.animate-flicker {
+  animation: flicker 2s ease-in-out infinite;
+}
+
+.animate-pulse-strong {
+  animation: pulse-strong 1.5s ease-in-out infinite;
+}
+
 .stats-card-hover {
   transition: all 0.3s ease;
 }

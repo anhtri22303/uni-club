@@ -28,6 +28,17 @@ export default function ScanPage() {
     }
   }, [isScanning])
 
+  // Auto redirect to check-in page for student after scan
+  useEffect(() => {
+    if (scanResult && auth.role === "student") {
+      // Delay for a short moment to show success UI before redirect
+      const redirectTimer = setTimeout(() => {
+        router.push("/student/checkin")
+      }, 1200)
+      return () => clearTimeout(redirectTimer)
+    }
+  }, [scanResult, auth.role, router])
+
   const handleClose = () => {
     if (auth.role === "student") {
       router.push("/student")
