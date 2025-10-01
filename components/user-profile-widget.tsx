@@ -59,7 +59,7 @@ export function UserProfileWidget() {
     <div
       className={`fixed bottom-4 left-4 z-50 bg-background border border-border rounded-lg shadow-lg transition-all duration-300
       ${isHidden ? "opacity-0 -translate-x-full pointer-events-none" : "opacity-100 translate-x-0"}
-      p-4 space-y-3 min-w-[240px] hidden md:block`}
+      p-4 space-y-3 min-w-[240px] block`}
     >
       {shouldShowPoints && (
         <div className={`bg-gradient-to-r ${tierInfo.color} rounded-lg p-3 shadow-sm`}>
