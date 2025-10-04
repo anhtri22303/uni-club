@@ -1,6 +1,6 @@
 // src/app/service/signUpApi.ts
 
-import axiosInstance from '../../lib/axiosInstance';
+import axiosInstance from '../lib/axiosInstance';
 
 // --- Định nghĩa Types ---
 

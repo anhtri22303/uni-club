@@ -1,6 +1,6 @@
 // src/app/service/loginApi.ts
 
-import axiosInstance from '../../lib/axiosInstance';
+import axiosInstance from '../lib/axiosInstance';
 
 // --- Định nghĩa Types ---
 // Dữ liệu cần thiết để gửi đi khi đăng nhập
