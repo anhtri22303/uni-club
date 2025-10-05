@@ -247,7 +247,30 @@ export default function AdminUsersPage() {
             size="icon"
             variant="ghost"
             aria-label={`Delete user ${user.id}`}
-            onClick={() => console.log("delete user", user.id)}
+            onClick={async () => {
+              // confirm before deleting
+              const ok = confirm('Xác nhận xóa người dùng này?')
+              if (!ok) return
+              try {
+                // call delete API
+                const res: any = await (await import('@/service/userApi')).deleteUserById(user.id)
+                // If backend returns { success: true, message: 'Deleted', data: null }
+                if (res && res.success === true) {
+                  toast({ title: res.message || 'Đã xóa', description: '' })
+                  // refresh list
+                  await reloadUsers()
+                } else if (res && (res.deleted || res.success)) {
+                  // fallback for other flags
+                  toast({ title: res.message || 'Đã xóa', description: '' })
+                  await reloadUsers()
+                } else {
+                  toast({ title: 'Thất bại', description: (res && res.message) || 'Xóa người dùng thất bại.' })
+                }
+              } catch (err) {
+                console.error('Delete user failed:', err)
+                toast({ title: 'Lỗi', description: 'Có lỗi khi xóa người dùng.' })
+              }
+            }}
             title="Delete user"
           >
             <Trash className="h-4 w-4 text-destructive" />

@@ -32,10 +32,14 @@ const toastVariants = cva(
         default: 'border bg-background text-foreground',
         destructive:
           'destructive group border-destructive bg-destructive text-destructive-foreground',
+        success:
+          'success group border-emerald-200 bg-emerald-50 text-emerald-900',
       },
     },
     defaultVariants: {
-      variant: 'default',
+      // Use 'success' as the UI default so informational toasts (no variant)
+      // render with the green success styling by default.
+      variant: 'success',
     },
   },
 )
@@ -45,11 +49,15 @@ const Toast = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Root> &
     VariantProps<typeof toastVariants>
 >(({ className, variant, ...props }, ref) => {
+  // ensure to provide a default duration of 3000ms (3 seconds)
+  const { duration, ...rest } = props as any
+
   return (
     <ToastPrimitives.Root
       ref={ref}
+      duration={duration ?? 3000}
       className={cn(toastVariants({ variant }), className)}
-      {...props}
+      {...(rest as React.ComponentPropsWithoutRef<typeof ToastPrimitives.Root>)}
     />
   )
 })

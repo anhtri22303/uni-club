@@ -56,3 +56,14 @@ export const updateUserById = async (id: string | number, data: Record<string, a
     throw error
   }
 }
+
+export const deleteUserById = async (id: string | number) => {
+  try {
+    const response = await axiosInstance.delete(`api/users/${id}`)
+    // expected: response.data may contain { success, message, deleted }
+    return response.data as any
+  } catch (error) {
+    console.error(`Error deleting user ${id}:`, error)
+    throw error
+  }
+}
