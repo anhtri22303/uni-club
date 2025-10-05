@@ -95,6 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = () => {
     setAuth({ userId: null, role: null, user: null })
+    localStorage.removeItem("clubly-membership-applications")
     localStorage.removeItem("uniclub-auth")
     localStorage.removeItem("jwtToken")
     router.push("/")
