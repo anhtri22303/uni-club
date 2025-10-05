@@ -14,18 +14,25 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
-  const { auth, isAuthenticated } = useAuth()
   const router = useRouter()
+  // avoid redirect while auth state is still initializing
+  const { auth, isAuthenticated, initialized } = useAuth()
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    // only redirect when we've finished reading stored auth
+    if (initialized && !isAuthenticated) {
       router.push("/")
       return
     }
-  }, [isAuthenticated, router])
+  }, [initialized, isAuthenticated, router])
+
+  if (!initialized) {
+    // still loading auth from storage - don't render or redirect yet
+    return null
+  }
 
   if (!isAuthenticated) {
-    return null // Will redirect
+    return null // Will redirect once initialized
   }
 
   if (!allowedRoles.includes(auth.role!)) {

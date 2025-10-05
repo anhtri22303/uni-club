@@ -1,3 +1,8 @@
+account test:
+- Admin:anhtri@gmail.com / 123
+- Club Manager: trianh@gmail.com / 123
+- Student: student@gmail.com / 123
+
 🎓 SEP490 – UniClub (SCLMS)
 **Student Club Loyalty & Membership System**
 Hệ thống quản lý thẻ thành viên CLB sinh viên với ưu đãi và tích điểm

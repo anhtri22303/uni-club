@@ -1,7 +1,7 @@
 "use client"
 
 import { AppShell } from "@/components/app-shell"
-import { ProtectedRoute } from "@/components/protected-route"
+import { ProtectedRoute } from "@/contexts/protected-route"
 import { DataTable } from "@/components/data-table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -59,7 +59,7 @@ export default function AdminUsersPage() {
 
   const totalUsers = users.length
   const activeStudents = users.filter((u) => u.defaultRole === "student").length
-  const clubLeaders = users.filter((u) => u.defaultRole === "club_lead").length
+  const clubLeaders = users.filter((u) => u.defaultRole === "club_manager").length
 
   // Role → color mapping
   const roleColors: Record<string, string> = {

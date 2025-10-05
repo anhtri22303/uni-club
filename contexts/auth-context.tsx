@@ -20,6 +20,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<boolean>
   logout: () => void
   isAuthenticated: boolean
+  initialized: boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -30,6 +31,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     role: null,
     user: null,
   })
+  const [initialized, setInitialized] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -54,6 +56,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.warn("Failed to parse stored auth", err)
       }
     }
+    // mark initialization complete regardless of stored auth
+    setInitialized(true)
   }, [])
 
   const login = async (email: string, password: string): Promise<boolean> => {
@@ -110,6 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         login,
         logout,
         isAuthenticated,
+        initialized,
       }}
     >
       {children}
