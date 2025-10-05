@@ -12,7 +12,18 @@ import React from "react"
 
 // Import data
 import usersJson from "@/src/data/users.json"
-import roles from "@/src/data/roles.json"
+
+// Role display formatter (produce uppercase readable labels)
+const formatRoleName = (roleId: string) => {
+  const map: Record<string, string> = {
+    student: "STUDENT",
+    club_manager: "CLUB MANAGER",
+    uni_admin: "UNIVERSITY ADMIN",
+    admin: "ADMIN",
+    staff: "STAFF",
+  }
+  return map[roleId] || roleId.replace(/_/g, " ").toUpperCase()
+}
 
 // ===== Types =====
 interface UserRecord {
@@ -36,7 +47,7 @@ export default function AdminUsersPage() {
   const getUserMembershipCount = (userId: string) =>
     clubMemberships.filter((m) => m.userId === userId && m.status === "APPROVED").length
 
-  const getRoleName = (roleId: string) => roles.find((r) => r.id === roleId)?.name || roleId
+  const getRoleName = (roleId: string) => formatRoleName(roleId)
 
   const users = usersJson as UserRecord[]
 
@@ -53,18 +64,20 @@ export default function AdminUsersPage() {
   // Role → color mapping
   const roleColors: Record<string, string> = {
     student: "bg-green-100 text-green-700 border-green-300",
-    club_lead: "bg-purple-100 text-purple-700 border-purple-300",
+    club_manager: "bg-purple-100 text-purple-700 border-purple-300",
     uni_admin: "bg-blue-100 text-blue-700 border-blue-300",
-    partner_admin: "bg-orange-100 text-orange-700 border-orange-300",
-    guest: "bg-gray-100 text-gray-700 border-gray-300",
+    admin: "bg-orange-100 text-orange-700 border-orange-300",
+    staff: "bg-gray-100 text-gray-700 border-gray-300",
   }
 
+  // Build role options from data (unique defaultRole values)
+  const uniqueRoles = Array.from(new Set(users.map((u) => u.defaultRole)))
   const filters = [
     {
       key: "defaultRole",
       label: "Primary Role",
       type: "select" as const,
-      options: roles.map((role) => ({ value: role.id, label: role.name })),
+      options: uniqueRoles.map((roleId) => ({ value: roleId, label: getRoleName(roleId) })),
     },
     {
       key: "membershipCount",

@@ -3,26 +3,21 @@
 import type React from "react"
 import { createContext, useContext, useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import users from "@/src/data/users.json"
-
-interface User {
-  id: string
-  fullName: string
-  email: string
-  password: string
-  roles: string[]
-  defaultRole: string
-}
+import { login as loginApi, LoginResponse } from "@/service/authApi"
 
 interface AuthState {
-  userId: string | null
+  userId: string | number | null
   role: string | null
-  user: User | null
+  user: {
+    userId: string | number
+    email: string
+    fullName: string
+  } | null
 }
 
 interface AuthContextType {
   auth: AuthState
-  login: (email: string, password: string, role: string) => boolean
+  login: (email: string, password: string) => Promise<boolean>
   logout: () => void
   isAuthenticated: boolean
 }
@@ -39,28 +34,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Load auth state from localStorage on mount
-    const savedAuth = localStorage.getItem("uniclub-auth")
-    if (savedAuth) {
-      const parsedAuth = JSON.parse(savedAuth)
-      const user = users.find((u) => u.id === parsedAuth.userId)
-      if (user) {
+    const saved = localStorage.getItem("uniclub-auth")
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved) as { token: string } & LoginResponse
         setAuth({
-          userId: parsedAuth.userId,
-          role: parsedAuth.role,
-          user,
+          userId: parsed.userId,
+          // normalize internal role to lowercase for comparisons
+          role: parsed.role ? String(parsed.role).toLowerCase() : null,
+          user: {
+            userId: parsed.userId,
+            email: parsed.email,
+            fullName: parsed.fullName,
+          },
         })
+        // also set default Authorization header for axios if token exists
+        localStorage.setItem("jwtToken", parsed.token)
+      } catch (err) {
+        console.warn("Failed to parse stored auth", err)
       }
     }
   }, [])
 
-  const login = (email: string, password: string, role: string): boolean => {
-    const user = users.find((u) => u.email === email && u.password === password && u.roles.includes(role))
+  const login = async (email: string, password: string): Promise<boolean> => {
+    try {
+      const res: LoginResponse = await loginApi({ email, password })
 
-    if (user) {
-      const authState = { userId: user.id, role }
-      setAuth({ ...authState, user })
-      localStorage.setItem("uniclub-auth", JSON.stringify(authState))
+      // Persist full response (token + user info)
+      localStorage.setItem("uniclub-auth", JSON.stringify(res))
+      // Also store jwtToken separately for backward compatibility
+      localStorage.setItem("jwtToken", res.token)
 
+      setAuth({
+        userId: res.userId,
+        // normalize internal role to lowercase for logic (display functions can format)
+        role: res.role ? String(res.role).toLowerCase() : null,
+        user: {
+          userId: res.userId,
+          email: res.email,
+          fullName: res.fullName,
+        },
+      })
+
+      // Redirect based on role (map to app routes)
       const redirectMap: Record<string, string> = {
         student: "/student",
         club_manager: "/club-manager",
@@ -68,15 +84,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         admin: "/admin",
         staff: "/staff",
       }
-      router.push(redirectMap[role] || "/student")
+
+      router.push(redirectMap[res.role.toLowerCase()] || "/student")
       return true
+    } catch (err) {
+      console.error("Login failed", err)
+      return false
     }
-    return false
   }
 
   const logout = () => {
     setAuth({ userId: null, role: null, user: null })
     localStorage.removeItem("uniclub-auth")
+    localStorage.removeItem("jwtToken")
     router.push("/")
   }
 

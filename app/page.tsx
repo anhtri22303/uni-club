@@ -24,7 +24,17 @@ import {
 import { GoogleSignInButton } from "@/components/GoogleSignInButton"
 
 import users from "@/src/data/users.json"
-import roles from "@/src/data/roles.json"
+
+const formatRoleName = (roleId: string) => {
+  const map: Record<string, string> = {
+    student: "STUDENT",
+    club_manager: "CLUB MANAGER",
+    uni_admin: "UNIVERSITY ADMIN",
+    admin: "ADMIN",
+    staff: "STAFF",
+  }
+  return map[roleId] || roleId.replace(/_/g, " ").toUpperCase()
+}
 
 const quickPickUsers = [
   { user: users[0], icon: GraduationCap, color: "text-blue-600" },
@@ -37,7 +47,6 @@ const quickPickUsers = [
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [role, setRole] = useState("")
   const [selectedDemoUser, setSelectedDemoUser] = useState("")
   const [isSignUpMode, setIsSignUpMode] = useState(false)
   const [isAnimating, setIsAnimating] = useState(false)
@@ -46,11 +55,11 @@ export default function LoginPage() {
   const { login } = useAuth()
   const { toast } = useToast()
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (isSignUpMode) {
-      if (!fullName || !email || !password || !confirmPassword || !role) {
+      if (!fullName || !email || !password || !confirmPassword) {
         toast({
           title: "Missing Information",
           description: "Please fill in all fields",
@@ -79,7 +88,7 @@ export default function LoginPage() {
       return
     }
 
-    if (!email || !password || !role) {
+    if (!email || !password) {
       toast({
         title: "Missing Information",
         description: "Please fill in all fields",
@@ -88,19 +97,24 @@ export default function LoginPage() {
       return
     }
 
-    const success = login(email, password, role)
+    // call login which now performs an API request and persists the response
+    const success = await login(email, password)
     if (!success) {
       toast({
         title: "Login Failed",
-        description: "Invalid credentials or role not allowed for this user",
+        description: "Invalid credentials or server error",
         variant: "destructive",
+      })
+    } else {
+      toast({
+        title: "Login Successful",
+        description: "Redirecting...",
       })
     }
   }
 
   const handleQuickPick = (user: (typeof users)[0]) => {
     setEmail(user.email)
-    setRole(user.defaultRole)
     setPassword("demo123")
     setSelectedDemoUser(user.id)
   }
@@ -113,7 +127,6 @@ export default function LoginPage() {
       // Clear form fields when switching modes
       setEmail("")
       setPassword("")
-      setRole("")
       setFullName("")
       setConfirmPassword("")
       setSelectedDemoUser("")
@@ -245,23 +258,7 @@ export default function LoginPage() {
                   </div>
                 )}
 
-                <div className="space-y-2">
-                  <Label htmlFor="role" className="text-sm font-medium">
-                    Role
-                  </Label>
-                  <Select value={role} onValueChange={setRole}>
-                    <SelectTrigger className="h-10 sm:h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20">
-                      <SelectValue placeholder="Select your role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {roles.map((r) => (
-                        <SelectItem key={r.id} value={r.id}>
-                          {r.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {/* role selection removed - login no longer requires selecting a role */}
 
                 {!isSignUpMode && (
                   <div className="space-y-2">
@@ -282,9 +279,7 @@ export default function LoginPage() {
                             <div className="flex items-center space-x-2">
                               <Icon className={`h-4 w-4 ${color}`} />
                               <span className="truncate">{user.fullName}</span>
-                              <span className="text-xs text-muted-foreground hidden sm:inline">
-                                ({roles.find((r) => r.id === user.defaultRole)?.name})
-                              </span>
+                                (<span className="text-xs text-muted-foreground hidden sm:inline">({formatRoleName(user.defaultRole)})</span>)
                             </div>
                           </SelectItem>
                         ))}
