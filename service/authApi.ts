@@ -52,6 +52,45 @@ export const loginWithGoogleToken = async (credentials: { token: string }) => {
   }
 }
 
-export const signUp = async (credentials: { username: string; password: string }) => {
-  return axios.post("http://localhost:8080/auth/register", credentials)
+export interface SignUpCredentials {
+  email: string
+  password: string
+  fullName: string
+  roleName: string
+}
+
+export interface SignUpResponse {
+  token: string
+  userId: number
+  email: string
+  fullName: string
+  role: string
+}
+
+
+export const signUp = async (credentials: SignUpCredentials): Promise<SignUpResponse> => {
+  try {
+    const res = await axios.post<SignUpResponse>(
+      "http://localhost:8080/auth/register",
+      {
+        email: credentials.email,
+        password: credentials.password,
+        fullName: credentials.fullName,
+        roleName: credentials.roleName, // Swagger yêu cầu roleName
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    )
+    return res.data
+  } catch (error: any) {
+    if (error.response) {
+      console.error("Error response:", error.response.data)
+    } else {
+      console.error("Error during sign up:", error.message)
+    }
+    throw error
+  }
 }

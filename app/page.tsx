@@ -1,5 +1,6 @@
 "use client"
 
+import { signUp } from "@/service/authApi"  
 import type React from "react"
 import { useState } from "react"
 import { useAuth } from "@/contexts/auth-context"
@@ -77,16 +78,36 @@ export default function LoginPage() {
         return
       }
 
-      toast({
-        title: "Registration Successful",
-        description: "Your account has been created! You can now sign in.",
+      try {
+      const res = await signUp({
+        email,
+        password,
+        fullName,
+        roleName: "STUDENT", // hoặc cho user chọn role
       })
 
+      toast({
+        title: "Registration Successful",
+        description: `Welcome ${res.fullName}! You can now sign in.`,
+      })
+
+      // Reset form
       setIsSignUpMode(false)
       setFullName("")
       setConfirmPassword("")
-      return
+      setEmail("")
+      setPassword("")
+    } catch (error: any) {
+      toast({
+        title: "Sign Up Failed",
+        description: error.response?.data?.message || "Something went wrong",
+        variant: "destructive",
+      })
     }
+    return
+  }
+
+    
 
     if (!email || !password) {
       toast({
