@@ -7,11 +7,16 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useData } from "@/contexts/data-context"
-import { Mail, Shield, Users, Plus, Star, Activity } from "lucide-react"
+import { Mail, Shield, Users, Plus, Star, Activity, Edit, Trash } from "lucide-react"
 import React from "react"
 
-// Import data
-import usersJson from "@/src/data/users.json"
+// API
+import { fetchUser, fetchUserById, updateUserById } from "@/service/userApi"
+import { useEffect, useState } from "react"
+import { Modal } from "@/components/modal"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { useToast } from "@/hooks/use-toast"
 
 // Role display formatter (produce uppercase readable labels)
 const formatRoleName = (roleId: string) => {
@@ -27,13 +32,12 @@ const formatRoleName = (roleId: string) => {
 
 // ===== Types =====
 interface UserRecord {
-  id: string
+  id: string | number
   fullName: string
   email: string
-  password: string
-  roles: string[]
-  defaultRole: string
-  points: number
+  phone?: string | null
+  roleName: string
+  status?: string
 }
 
 type EnhancedUser = UserRecord & {
@@ -44,22 +48,91 @@ type EnhancedUser = UserRecord & {
 export default function AdminUsersPage() {
   const { clubMemberships } = useData()
 
-  const getUserMembershipCount = (userId: string) =>
+  const getUserMembershipCount = (userId: string | number) =>
     clubMemberships.filter((m) => m.userId === userId && m.status === "APPROVED").length
 
   const getRoleName = (roleId: string) => formatRoleName(roleId)
 
-  const users = usersJson as UserRecord[]
+  // Local state for users fetched from the API
+  const [users, setUsers] = useState<UserRecord[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const { toast } = useToast()
 
-  const enhancedUsers: EnhancedUser[] = users.map((u) => ({
+  // Modal / edit user state
+  const [editingUserId, setEditingUserId] = useState<number | string | null>(null)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+
+  // Form state for edit modal
+  const [editFullName, setEditFullName] = useState("")
+  const [editEmail, setEditEmail] = useState("")
+  const [editPhone, setEditPhone] = useState<string | null>(null)
+
+  useEffect(() => {
+    let mounted = true
+    setLoading(true)
+    fetchUser()
+      .then((data) => {
+        if (!mounted) return
+        // Map API response fields to our UserRecord shape
+        const mapped = (data || []).map((u: any) => ({
+          id: u.id,
+          fullName: u.fullName || u.name || "",
+          email: u.email,
+          phone: u.phone ?? null,
+          roleName: u.roleName?.toLowerCase() || (u.defaultRole ?? "unknown").toLowerCase(),
+          status: u.status,
+        }))
+        setUsers(mapped)
+        setError(null)
+      })
+      .catch((err) => {
+        console.error("Failed to fetch users for admin page:", err)
+        setError(String(err))
+      })
+      .finally(() => {
+        if (mounted) setLoading(false)
+      })
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  // helper to reload users
+  const reloadUsers = async () => {
+    setLoading(true)
+    try {
+      const data = await fetchUser()
+      const mapped = (data || []).map((u: any) => ({
+        id: u.id,
+        fullName: u.fullName || u.name || "",
+        email: u.email,
+        phone: u.phone ?? null,
+        roleName: u.roleName?.toLowerCase() || (u.defaultRole ?? "unknown").toLowerCase(),
+        status: u.status,
+      }))
+      setUsers(mapped)
+      setError(null)
+    } catch (err) {
+      console.error("Failed to reload users:", err)
+      setError(String(err))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Only show users whose status is ACTIVE
+  const visibleUsers = users.filter((u) => ((u.status || "").toLowerCase() === "active"))
+
+  const enhancedUsers: EnhancedUser[] = visibleUsers.map((u) => ({
     ...u,
     membershipCount: getUserMembershipCount(u.id),
-    primaryRoleName: getRoleName(u.defaultRole),
+    primaryRoleName: getRoleName((u.roleName || "").toLowerCase()),
   }))
 
-  const totalUsers = users.length
-  const activeStudents = users.filter((u) => u.defaultRole === "student").length
-  const clubLeaders = users.filter((u) => u.defaultRole === "club_manager").length
+  const totalUsers = visibleUsers.length
+  const activeStudents = visibleUsers.filter((u) => (u.roleName || "").toLowerCase() === "student").length
+  const clubLeaders = visibleUsers.filter((u) => (u.roleName || "").toLowerCase() === "club_manager").length
 
   // Role → color mapping
   const roleColors: Record<string, string> = {
@@ -71,10 +144,10 @@ export default function AdminUsersPage() {
   }
 
   // Build role options from data (unique defaultRole values)
-  const uniqueRoles = Array.from(new Set(users.map((u) => u.defaultRole)))
+  const uniqueRoles = Array.from(new Set(users.map((u) => (u.roleName || "").toLowerCase())))
   const filters = [
     {
-      key: "defaultRole",
+      key: "primaryRoleName",
       label: "Primary Role",
       type: "select" as const,
       options: uniqueRoles.map((roleId) => ({ value: roleId, label: getRoleName(roleId) })),
@@ -86,7 +159,7 @@ export default function AdminUsersPage() {
     },
   ]
 
-  // ===== Columns: dùng key thuộc keyof EnhancedUser =====
+  // ===== Columns: keys must match EnhancedUser/UserRecord =====
   const columns = [
     {
       key: "fullName" as const,
@@ -111,32 +184,23 @@ export default function AdminUsersPage() {
       ),
     },
     {
-      key: "roles" as const,
-      label: "All Roles",
-      render: (roleIds: EnhancedUser["roles"]): JSX.Element => (
-        <div className="flex flex-wrap gap-1">
-          {roleIds.map((roleId) => {
-            const style = roleColors[roleId] || "bg-gray-100 text-gray-700 border-gray-300"
-            return (
-              <Badge key={roleId} className={`text-xs px-2 py-0.5 border ${style}`} title={getRoleName(roleId)}>
-                {getRoleName(roleId)}
-              </Badge>
-            )
-          })}
-        </div>
-      ),
+      key: "primaryRoleName" as const,
+      label: "Role",
+      render: (role: EnhancedUser["primaryRoleName"]): JSX.Element => {
+        const roleKey = (role || "").toLowerCase().replace(/ /g, "_")
+        const style = roleColors[roleKey] || "bg-gray-100 text-gray-700 border-gray-300"
+        return (
+          <Badge className={`text-xs px-2 py-0.5 border ${style}`}>{role}</Badge>
+        )
+      },
     },
     {
-      key: "points" as const,
-      label: "Points",
-      render: (points: EnhancedUser["points"]): JSX.Element => (
-        <div className="flex items-center gap-2">
-          <Star className="h-4 w-4 text-primary" />
-          <span className="font-semibold text-primary">{(points || 0).toLocaleString()}</span>
-        </div>
+      key: "phone" as const,
+      label: "Phone",
+      render: (phone: EnhancedUser["phone"]): JSX.Element => (
+        <div className="text-sm text-muted-foreground">{phone || "-"}</div>
       ),
     },
-    // ⛳️ Sửa key từ "memberships" -> "membershipCount" (đúng với dữ liệu)
     {
       key: "membershipCount" as const,
       label: "Club Memberships",
@@ -150,18 +214,73 @@ export default function AdminUsersPage() {
         </div>
       ),
     },
-    // ⛳️ "status" không có trong dữ liệu → dùng key hợp lệ, ví dụ "id"
     {
       key: "id" as const,
-      label: "Status",
-      render: (_: EnhancedUser["id"], _user: EnhancedUser): JSX.Element => (
-        <Badge variant="default" className="bg-gradient-to-r from-green-500 to-emerald-500 text-white">
-          <Activity className="h-3 w-3 mr-1" />
-          Active
-        </Badge>
+      label: "Actions",
+      render: (_: EnhancedUser["id"], user: EnhancedUser): JSX.Element => (
+        <div className="flex items-center gap-2">
+          <Button
+            size="icon"
+            variant="ghost"
+            aria-label={`Update user ${user.id}`}
+            onClick={async () => {
+              // open modal and load details
+              setEditingUserId(user.id)
+              setIsEditModalOpen(true)
+              try {
+                const details: any = await fetchUserById(user.id)
+                setEditFullName(details?.fullName || details?.name || "")
+                setEditEmail(details?.email || "")
+                setEditPhone(details?.phone ?? null)
+              } catch (err) {
+                console.error("Failed to fetch user details:", err)
+                toast({ title: "Lỗi", description: "Không thể tải thông tin người dùng." })
+                setIsEditModalOpen(false)
+              }
+            }}
+            title="Update user"
+          >
+            <Edit className="h-4 w-4" />
+          </Button>
+
+          <Button
+            size="icon"
+            variant="ghost"
+            aria-label={`Delete user ${user.id}`}
+            onClick={() => console.log("delete user", user.id)}
+            title="Delete user"
+          >
+            <Trash className="h-4 w-4 text-destructive" />
+          </Button>
+        </div>
       ),
     },
   ]
+
+  // Save handler for modal
+  const handleModalSave = async () => {
+    if (!editingUserId) return
+    try {
+      const payload = {
+        fullName: editFullName,
+        email: editEmail,
+        phone: editPhone,
+      }
+      const res = await updateUserById(editingUserId, payload)
+      if (res && (res.success || res.updated)) {
+        toast({ title: "Cập nhật thành công", description: "Thông tin người dùng đã được cập nhật." })
+        setIsEditModalOpen(false)
+        setEditingUserId(null)
+        // reload users to reflect changes
+        await reloadUsers()
+      } else {
+        toast({ title: "Thất bại", description: (res as any)?.message || "Cập nhật thất bại" })
+      }
+    } catch (err) {
+      console.error("Update user failed:", err)
+      toast({ title: "Lỗi", description: "Có lỗi khi cập nhật người dùng." })
+    }
+  }
 
   return (
     <ProtectedRoute allowedRoles={["admin"]}>
@@ -247,6 +366,44 @@ export default function AdminUsersPage() {
               />
             </CardContent>
           </Card>
+            {/* Edit user modal */}
+            <Modal
+              open={isEditModalOpen}
+              onOpenChange={(open) => {
+                setIsEditModalOpen(open)
+                if (!open) {
+                  setEditingUserId(null)
+                }
+              }}
+              title="Update user"
+              description="Cập nhật thông tin người dùng"
+            >
+              <div className="space-y-4 p-2">
+                <div>
+                  <Label htmlFor="edit-fullName">Fullname</Label>
+                  <Input id="edit-fullName" value={editFullName} onChange={(e) => setEditFullName(e.target.value)} />
+                </div>
+
+                <div>
+                  <Label htmlFor="edit-email">Email</Label>
+                  <Input id="edit-email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} />
+                </div>
+
+                <div>
+                  <Label htmlFor="edit-phone">Phone</Label>
+                  <Input id="edit-phone" value={editPhone || ""} onChange={(e) => setEditPhone(e.target.value || null)} />
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-2">
+                  <Button variant="outline" onClick={() => { setIsEditModalOpen(false); setEditingUserId(null); }}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleModalSave}>
+                    Update
+                  </Button>
+                </div>
+              </div>
+            </Modal>
         </div>
       </AppShell>
     </ProtectedRoute>
