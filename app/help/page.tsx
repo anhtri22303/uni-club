@@ -1,7 +1,7 @@
 "use client"
 
 import { AppShell } from "@/components/app-shell"
-import { ProtectedRoute } from "@/components/protected-route"
+import { ProtectedRoute } from "@/contexts/protected-route"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { HelpCircle, Mail, MessageCircle } from "lucide-react"
@@ -41,7 +41,7 @@ const faqs = [
 
 export default function HelpPage() {
   return (
-    <ProtectedRoute allowedRoles={["student", "club_lead", "uni_admin", "admin", "staff"]}>
+    <ProtectedRoute allowedRoles={["student", "club_manager", "uni_admin", "admin", "staff"]}>
       <AppShell>
         <div className="space-y-6 max-w-4xl">
           <div>

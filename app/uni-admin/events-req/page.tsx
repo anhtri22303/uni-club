@@ -1,7 +1,7 @@
 "use client"
 
 import { AppShell } from "@/components/app-shell"
-import { ProtectedRoute } from "@/components/protected-route"
+import { ProtectedRoute } from "@/contexts/protected-route"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"

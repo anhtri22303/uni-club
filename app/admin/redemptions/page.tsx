@@ -1,7 +1,7 @@
 "use client"
 
 import { AppShell } from "@/components/app-shell"
-import { ProtectedRoute } from "@/components/protected-route"
+import { ProtectedRoute } from "@/contexts/protected-route"
 import { DataTable } from "@/components/data-table"
 import { Badge } from "@/components/ui/badge"
 import { useData } from "@/contexts/data-context"

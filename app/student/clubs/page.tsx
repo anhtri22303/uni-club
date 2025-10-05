@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { AppShell } from "@/components/app-shell"
-import { ProtectedRoute } from "@/components/protected-route"
+import { ProtectedRoute } from "@/contexts/protected-route"
 import { DataTable } from "@/components/data-table"
 import { Modal } from "@/components/modal"
 import { Button } from "@/components/ui/button"

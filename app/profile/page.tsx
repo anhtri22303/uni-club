@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { AppShell } from "@/components/app-shell"
-import { ProtectedRoute } from "@/components/protected-route"
+import { ProtectedRoute } from "@/contexts/protected-route"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
+import { useRouter } from "next/navigation"
 import {
   User,
   Mail,
@@ -30,17 +31,31 @@ import {
   Building2,
   Trophy,
 } from "lucide-react"
+import { fetchUserById, updateUserById } from "@/service/userApi"
 
 export default function ProfilePage() {
   const { auth } = useAuth()
   const { toast } = useToast()
+  const router = useRouter()
 
-  // --- Dữ liệu tĩnh cho giao diện ---
-  const [fullName, setFullName] = useState("Nguyễn Văn An")
-  const [phone, setPhone] = useState("0901234567")
-  const [bio, setBio] = useState("Sinh viên đam mê công nghệ và các hoạt động ngoại khóa. Thích tham gia các CLB để học hỏi và kết nối.")
-  const [location, setLocation] = useState("TP. Hồ Chí Minh, Việt Nam")
-  const [userPoints, setUserPoints] = useState(2450)
+  const formatRoleName = (roleId?: string | null) => {
+    if (!roleId) return ""
+    const map: Record<string, string> = {
+      student: "STUDENT",
+      club_manager: "CLUB MANAGER",
+      uni_admin: "UNIVERSITY ADMIN",
+      admin: "ADMIN",
+      staff: "STAFF",
+    }
+    // auth.role is normalized to lowercase in context; ensure lookup uses lowercase
+    return map[String(roleId).toLowerCase()] || String(roleId).replace(/_/g, " ").toUpperCase()
+  }
+
+  // --- Profile data (loaded from API) ---
+  const [fullName, setFullName] = useState<string>("")
+  const [email, setEmail] = useState<string>("")
+  const [phone, setPhone] = useState<string>("")
+  const [userPoints, setUserPoints] = useState<number>(0)
 
   // Dữ liệu tĩnh cho hoạt động người dùng
   const userStats = {
@@ -57,27 +72,59 @@ export default function ProfilePage() {
     reportsGenerated: "156",
   }
 
-  // --- Logic xử lý ---
-
+  // --- Logic: load user profile from API when mounted ---
   useEffect(() => {
-    if (auth.user) {
-      const savedProfile = localStorage.getItem(`clubly-profile-${auth.userId}`)
-      if (savedProfile) {
-        const profile = JSON.parse(savedProfile)
-        setPhone(profile.phone || "0901234567")
-        setBio(profile.bio || "Sinh viên đam mê công nghệ...")
-        setLocation(profile.location || "TP. Hồ Chí Minh, Việt Nam")
+    const loadProfile = async () => {
+      const id = auth.userId
+      if (!id) return
+
+      try {
+        const user = (await fetchUserById(id)) as any
+        // Map API fields to local state with fallbacks
+        setFullName(user?.fullName || user?.full_name || user?.name || auth.user?.fullName || "")
+        setEmail(user?.email || auth.user?.email || "")
+        setPhone(user?.phone || user?.mobile || "")
+        setUserPoints(Number(user?.points || user?.loyaltyPoints || 0))
+      } catch (err) {
+        console.error("Failed to load profile", err)
       }
     }
-  }, [auth.user, auth.userId])
 
-  const handleSave = () => {
-    const profile = { fullName, phone, bio, location }
-    localStorage.setItem(`clubly-profile-${auth.userId}`, JSON.stringify(profile))
-    toast({
-      title: "Cập nhật thành công",
-      description: "Thông tin hồ sơ của bạn đã được lưu lại.",
-    })
+    loadProfile()
+  }, [auth.userId])
+
+  const handleSave = async () => {
+    const id = auth.userId
+    if (!id) {
+      toast({ title: "Không thể lưu", description: "Không tìm thấy userId." })
+      return
+    }
+
+    const payload = { email, fullName, phone }
+
+    try {
+      const res = (await updateUserById(id, payload)) as any
+      if (res && res.success) {
+        toast({
+          title: "Cập nhật thành công",
+          description: "Thông tin hồ sơ của bạn đã được lưu lại.",
+        })
+        // Refresh the current page so updated profile is fetched and displayed
+        try {
+          router.refresh()
+        } catch {
+          // fallback to full reload if router.refresh() isn't available
+          try {
+            window.location.reload()
+          } catch {}
+        }
+      } else {
+        toast({ title: "Thất bại", description: (res as any)?.message || "Không thể cập nhật hồ sơ" })
+      }
+    } catch (err) {
+      console.error("Update failed", err)
+      toast({ title: "Lỗi", description: "Có lỗi xảy ra khi cập nhật hồ sơ" })
+    }
   }
 
   const getInitials = (name: string) => {
@@ -142,7 +189,7 @@ export default function ProfilePage() {
   // =================================================================
   if (isAdminRole) {
     return (
-      <ProtectedRoute allowedRoles={["student", "club_lead", "uni_admin", "admin", "staff"]}>
+      <ProtectedRoute allowedRoles={["student", "club_manager", "uni_admin", "admin", "staff"]}>
         <AppShell>
           <div className="min-h-screen bg-slate-50">
             {/* Header chuyên nghiệp */}
@@ -155,7 +202,7 @@ export default function ProfilePage() {
                   </Avatar>
                   <div>
                     <h1 className="text-4xl font-bold tracking-tight">{fullName || "Administrator"}</h1>
-                    <p className="text-xl text-white/80 capitalize">{auth.role?.replace("_", " ")}</p>
+                    <p className="text-xl text-white/80">{formatRoleName(auth.role)}</p>
                     <p className="text-md text-white/70 mt-1">{auth.user?.email}</p>
                   </div>
                 </div>
@@ -188,22 +235,9 @@ export default function ProfilePage() {
                           <Label htmlFor="admin-phone">Số điện thoại</Label>
                           <Input id="admin-phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
                         </div>
-                        <div className="space-y-1">
-                          <Label htmlFor="admin-location">Vị trí</Label>
-                          <Input id="admin-location" value={location} onChange={(e) => setLocation(e.target.value)} />
-                        </div>
+                        {/* location removed */}
                       </div>
-                      <div className="space-y-1">
-                        <Label htmlFor="admin-bio">Giới thiệu</Label>
-                        <textarea
-                          id="admin-bio"
-                          value={bio}
-                          onChange={(e) => setBio(e.target.value)}
-                          placeholder="Giới thiệu đôi chút về vai trò của bạn..."
-                          rows={3}
-                          className="w-full px-3 py-2 border border-border rounded-md focus:border-primary focus:ring-primary resize-none text-sm"
-                        />
-                      </div>
+                      {/* bio removed */}
                       <Button onClick={handleSave} className="w-fit">
                         <Save className="h-4 w-4 mr-2" /> Lưu thay đổi
                       </Button>
@@ -313,10 +347,10 @@ export default function ProfilePage() {
   }
 
   // =================================================================
-  // GIAO DIỆN DÀNH CHO NGƯỜI DÙNG THƯỜNG (STUDENT, CLUB_LEAD)
+  // GIAO DIỆN DÀNH CHO NGƯỜI DÙNG THƯỜNG (STUDENT, CLUB_MANAGER)
   // =================================================================
   return (
-    <ProtectedRoute allowedRoles={["student", "club_lead", "uni_admin", "admin", "staff"]}>
+    <ProtectedRoute allowedRoles={["student", "club_manager", "uni_admin", "admin", "staff"]}>
       <AppShell>
         <div className="min-h-screen bg-slate-50">
           {/* Header với ảnh đại diện */}
@@ -358,22 +392,8 @@ export default function ProfilePage() {
                         <Label htmlFor="user-phone">Số điện thoại</Label>
                         <Input id="user-phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
                       </div>
-                      <div className="space-y-1">
-                        <Label htmlFor="user-location">Vị trí</Label>
-                        <Input id="user-location" value={location} onChange={(e) => setLocation(e.target.value)} />
-                      </div>
                     </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="user-bio">Giới thiệu bản thân</Label>
-                      <textarea
-                        id="user-bio"
-                        value={bio}
-                        onChange={(e) => setBio(e.target.value)}
-                        placeholder="Giới thiệu đôi chút về bạn..."
-                        rows={4}
-                        className="w-full px-3 py-2 border border-border rounded-md focus:border-primary focus:ring-primary resize-none text-sm"
-                      />
-                    </div>
+                    {/* location & bio removed per request */}
                     <Button onClick={handleSave} className="w-fit bg-primary hover:bg-primary/90">
                       <Save className="h-4 w-4 mr-2" />
                       Lưu thay đổi

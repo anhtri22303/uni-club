@@ -6,7 +6,8 @@ import * as React from 'react'
 import type { ToastActionElement, ToastProps } from '@/components/ui/toast'
 
 const TOAST_LIMIT = 1
-const TOAST_REMOVE_DELAY = 1000000
+// Keep remove delay slightly longer than visible duration to allow radix to animate out
+const TOAST_REMOVE_DELAY = 3500
 
 type ToasterToast = ToastProps & {
   id: string
@@ -142,6 +143,22 @@ type Toast = Omit<ToasterToast, 'id'>
 function toast({ ...props }: Toast) {
   const id = genId()
 
+  // normalize variant aliases coming from callers
+  const normalizedProps = { ...props } as any
+  // If caller didn't supply a variant, treat as success by default so
+  // regular informational toasts appear green. If a variant is supplied
+  // map common aliases to our design tokens.
+  if (!normalizedProps.variant) {
+    normalizedProps.variant = 'success'
+  } else {
+    const v = String(normalizedProps.variant).toLowerCase()
+    if (v === 'fail' || v === 'error') {
+      normalizedProps.variant = 'destructive'
+    } else if (v === 'success') {
+      normalizedProps.variant = 'success'
+    }
+  }
+
   const update = (props: ToasterToast) =>
     dispatch({
       type: 'UPDATE_TOAST',
@@ -152,7 +169,7 @@ function toast({ ...props }: Toast) {
   dispatch({
     type: 'ADD_TOAST',
     toast: {
-      ...props,
+      ...normalizedProps,
       id,
       open: true,
       onOpenChange: (open) => {
