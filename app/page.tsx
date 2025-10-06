@@ -29,8 +29,8 @@ import users from "@/src/data/users.json"
 const formatRoleName = (roleId: string) => {
   const map: Record<string, string> = {
     student: "STUDENT",
-    club_manager: "CLUB MANAGER",
-    uni_admin: "UNIVERSITY ADMIN",
+    club_manager: "CLUB_MANAGER",
+    uni_admin: "UNIVERSITY_ADMIN",
     admin: "ADMIN",
     staff: "STAFF",
   }

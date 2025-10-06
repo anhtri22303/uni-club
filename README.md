@@ -1,7 +1,8 @@
 account test:
-- Admin:anhtri@gmail.com / 123
-- Club Manager: trianh@gmail.com / 123
+- Admin:admin1@gmail.com / 123
+- Club Manager: clubmanager@gmail.com / 123
 - Student: student@gmail.com / 123
+- University Admin: universityadmin@gmail.com / 123
 
 🎓 SEP490 – UniClub (SCLMS)
 **Student Club Loyalty & Membership System**
