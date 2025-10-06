@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { AppShell } from "@/components/app-shell"
 import { ProtectedRoute } from "@/contexts/protected-route"
 import { DataTable } from "@/components/data-table"
@@ -13,171 +13,16 @@ import { useAuth } from "@/contexts/auth-context"
 import { useData } from "@/contexts/data-context"
 import { useToast } from "@/hooks/use-toast"
 import { Users, UserPlus } from "lucide-react"
+import { fetchClub } from "@/service/clubApi"
 
-const clubs = [
-  {
-    id: "1",
-    name: "Tech Club",
-    category: "Technology",
-    members: 50,
-    description: "A club for coding enthusiasts and technology innovators.",
-    founded: 2010,
-    location: "Campus A",
-  },
-  {
-    id: "2",
-    name: "Soccer Club",
-    category: "Sports",
-    members: 30,
-    description: "Join us for soccer matches and training sessions.",
-    founded: 2015,
-    location: "Field B",
-  },
-  {
-    id: "3",
-    name: "Art Society",
-    category: "Arts",
-    members: 40,
-    description: "Explore painting, drawing, and other artistic expressions.",
-    founded: 2005,
-    location: "Studio C",
-  },
-  {
-    id: "4",
-    name: "Math Club",
-    category: "Academic",
-    members: 25,
-    description: "Solve challenging math problems and participate in competitions.",
-    founded: 2020,
-    location: "Online",
-  },
-  {
-    id: "5",
-    name: "Debate Club",
-    category: "Social",
-    members: 35,
-    description: "Hone your debating skills and discuss current issues.",
-    founded: 2012,
-    location: "Hall D",
-  },
-  {
-    id: "6",
-    name: "Music Band",
-    category: "Arts",
-    members: 20,
-    description: "Play instruments and perform music together.",
-    founded: 2018,
-    location: "Auditorium",
-  },
-  {
-    id: "7",
-    name: "Robotics Club",
-    category: "Technology",
-    members: 45,
-    description: "Build and program robots for competitions.",
-    founded: 2016,
-    location: "Lab E",
-  },
-  {
-    id: "8",
-    name: "Basketball Team",
-    category: "Sports",
-    members: 28,
-    description: "Practice and compete in basketball games.",
-    founded: 2011,
-    location: "Gym F",
-  },
-  {
-    id: "9",
-    name: "Photography Club",
-    category: "Arts",
-    members: 32,
-    description: "Learn photography techniques and go on photo walks.",
-    founded: 2019,
-    location: "Studio G",
-  },
-  {
-    id: "10",
-    name: "Science Society",
-    category: "Academic",
-    members: 38,
-    description: "Conduct experiments and discuss scientific discoveries.",
-    founded: 2008,
-    location: "Lab H",
-  },
-  {
-    id: "11",
-    name: "Environmental Club",
-    category: "Social",
-    members: 42,
-    description: "Promote sustainability and organize eco-friendly events.",
-    founded: 2017,
-    location: "Campus I",
-  },
-  {
-    id: "12",
-    name: "Dance Group",
-    category: "Arts",
-    members: 26,
-    description: "Learn various dance styles and perform at events.",
-    founded: 2014,
-    location: "Hall J",
-  },
-  {
-    id: "13",
-    name: "AI Enthusiasts",
-    category: "Technology",
-    members: 55,
-    description: "Explore artificial intelligence and machine learning.",
-    founded: 2021,
-    location: "Online",
-  },
-  {
-    id: "14",
-    name: "Tennis Club",
-    category: "Sports",
-    members: 22,
-    description: "Play tennis and participate in tournaments.",
-    founded: 2013,
-    location: "Court K",
-  },
-  {
-    id: "15",
-    name: "Literature Circle",
-    category: "Academic",
-    members: 31,
-    description: "Read and discuss classic and contemporary literature.",
-    founded: 2007,
-    location: "Library L",
-  },
-  {
-    id: "16",
-    name: "Volunteer Society",
-    category: "Social",
-    members: 48,
-    description: "Organize community service projects and volunteer work.",
-    founded: 2022,
-    location: "Community Center M",
-  },
-  {
-    id: "17",
-    name: "Film Club",
-    category: "Arts",
-    members: 29,
-    description: "Watch and analyze films from various genres.",
-    founded: 2010,
-    location: "Theater N",
-  },
-  {
-    id: "18",
-    name: "Coding Bootcamp",
-    category: "Technology",
-    members: 60,
-    description: "Intensive coding sessions for skill development.",
-    founded: 2023,
-    location: "Lab O",
-  },
-]
+// We'll fetch clubs from the backend and only use the `content` array.
+type ClubApiItem = {
+  id: number
+  name: string
+  description?: string
+  majorPolicyName?: string
+}
+
 
 export default function StudentClubsPage() {
   const { auth } = useAuth()
@@ -186,6 +31,9 @@ export default function StudentClubsPage() {
   const [selectedClub, setSelectedClub] = useState<any>(null)
   const [applicationText, setApplicationText] = useState("")
   const [showApplicationModal, setShowApplicationModal] = useState(false)
+  const [clubs, setClubs] = useState<ClubApiItem[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   // Get user's current memberships and applications
   const userMemberships = clubMemberships.filter((m) => m.userId === auth.userId)
@@ -201,9 +49,17 @@ export default function StudentClubsPage() {
     return "none"
   }
 
+  // Map API items to table rows. Note: API `id` is numeric.
   const enhancedClubs = clubs.map((club) => ({
-    ...club,
-    status: getClubStatus(club.id),
+    id: String(club.id),
+    name: club.name,
+    category: "", // category not provided by API; leave empty or map if you have a field
+    description: club.description,
+    members: 0,
+    founded: 0,
+    location: "",
+    policy: club.majorPolicyName ?? "",
+    status: getClubStatus(String(club.id)),
     actions: undefined,
   }))
 
@@ -271,6 +127,29 @@ export default function StudentClubsPage() {
     setShowApplicationModal(true)
   }
 
+  useEffect(() => {
+    let mounted = true
+    const load = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const res: any = await fetchClub({ page: 0, size: 10, sort: ["name"] })
+        // Expecting the API shape described by the user. Use only `content`.
+        if (mounted) setClubs(res?.content ?? [])
+      } catch (err: any) {
+        console.error(err)
+        if (mounted) setError(err?.message ?? "Failed to load clubs")
+      } finally {
+        if (mounted) setLoading(false)
+      }
+    }
+
+    load()
+    return () => {
+      mounted = false
+    }
+  }, [])
+
   const submitApplication = () => {
     if (!selectedClub || !applicationText.trim()) {
       toast({
@@ -313,13 +192,22 @@ export default function StudentClubsPage() {
     {
       key: "category" as const,
       label: "Category",
-      render: (value: string) => <Badge variant="outline">{value}</Badge>,
+      render: (value: string) => (
+        <Badge title={value || ""} variant={value ? "secondary" : "outline"} className="max-w-[160px] truncate">
+          {value || "-"}
+        </Badge>
+      ),
     },
     {
       key: "description" as const,
       label: "Description",
       render: (value: string) => (
-        <div className="text-sm text-muted-foreground">{value}</div>
+        <div
+          className="text-sm text-muted-foreground max-w-[180px] truncate"
+          title={value}
+        >
+          {value || "-"}
+        </div>
       ),
     },
     {
@@ -341,6 +229,19 @@ export default function StudentClubsPage() {
           <Badge variant={status === "member" ? "default" : status === "pending" ? "secondary" : "outline"}>
             {status === "member" ? "Member" : status === "pending" ? "Pending" : "Not Applied"}
           </Badge>
+        )
+      },
+    },
+    {
+      key: "policy" as const,
+      label: "Major Policy",
+      render: (value: string) => {
+        return (
+          <div className="max-w-[220px]">
+            <Badge title={value || ""} variant={"outline"} className="truncate max-w-full">
+              {value || "-"}
+            </Badge>
+          </div>
         )
       },
     },
@@ -395,6 +296,13 @@ export default function StudentClubsPage() {
             initialPageSize={6}
             pageSizeOptions={[6, 12, 24, 48]}
           />
+          {loading && (
+            <div className="text-center text-sm text-muted-foreground">Loading clubs...</div>
+          )}
+
+          {error && (
+            <div className="text-center text-sm text-destructive">Error: {error}</div>
+          )}
 
           <Modal
             open={showApplicationModal}

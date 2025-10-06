@@ -7,52 +7,22 @@ import { useAuth } from "@/contexts/auth-context"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
-import {
-  GraduationCap,
-  Users,
-  Shield,
-  Building,
-  UserCheck,
-  CreditCard,
-  Star,
-  ArrowRight,
-  UserPlus,
-  Smartphone,
-} from "lucide-react"
+import { ArrowRight, UserPlus, Smartphone, Eye, EyeOff } from "lucide-react"
 import { GoogleSignInButton } from "@/components/GoogleSignInButton"
 
-import users from "@/src/data/users.json"
-
-const formatRoleName = (roleId: string) => {
-  const map: Record<string, string> = {
-    student: "STUDENT",
-    club_manager: "CLUB_MANAGER",
-    uni_admin: "UNIVERSITY_ADMIN",
-    admin: "ADMIN",
-    staff: "STAFF",
-  }
-  return map[roleId] || roleId.replace(/_/g, " ").toUpperCase()
-}
-
-const quickPickUsers = [
-  { user: users[0], icon: GraduationCap, color: "text-blue-600" },
-  { user: users[1], icon: Users, color: "text-green-600" },
-  { user: users[2], icon: Shield, color: "text-purple-600" },
-  { user: users[3], icon: Building, color: "text-orange-600" },
-  { user: users[4], icon: UserCheck, color: "text-cyan-600" },
-]
+// Quick demo accounts removed — production flow only
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [selectedDemoUser, setSelectedDemoUser] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
   const [isSignUpMode, setIsSignUpMode] = useState(false)
   const [isAnimating, setIsAnimating] = useState(false)
   const [fullName, setFullName] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const { login } = useAuth()
   const { toast } = useToast()
 
@@ -134,11 +104,7 @@ export default function LoginPage() {
     }
   }
 
-  const handleQuickPick = (user: (typeof users)[0]) => {
-    setEmail(user.email)
-    setPassword("demo123")
-    setSelectedDemoUser(user.id)
-  }
+  // Quick demo helper removed
 
   const toggleMode = () => {
     setIsAnimating(true)
@@ -150,7 +116,6 @@ export default function LoginPage() {
       setPassword("")
       setFullName("")
       setConfirmPassword("")
-      setSelectedDemoUser("")
     }, 250) // khớp với thời lượng animation ~0.22–0.28s
   }
 
@@ -253,14 +218,24 @@ export default function LoginPage() {
                   <Label htmlFor="password" className="text-sm font-medium">
                     Password
                   </Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter your password"
-                    className="h-10 sm:h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
-                  />
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Enter your password"
+                      className="h-10 sm:h-11 pr-10 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 flex items-center justify-center text-muted-foreground hover:text-primary"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
 
                 {isSignUpMode && (
@@ -268,46 +243,30 @@ export default function LoginPage() {
                     <Label htmlFor="confirmPassword" className="text-sm font-medium">
                       Confirm Password
                     </Label>
-                    <Input
-                      id="confirmPassword"
-                      type="password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Confirm your password"
-                      className="h-10 sm:h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
-                    />
+                    <div className="relative">
+                      <Input
+                        id="confirmPassword"
+                        type={showConfirmPassword ? "text" : "password"}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Confirm your password"
+                        className="h-10 sm:h-11 pr-10 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword((v) => !v)}
+                        aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 flex items-center justify-center text-muted-foreground hover:text-primary"
+                      >
+                        {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
                   </div>
                 )}
 
                 {/* role selection removed - login no longer requires selecting a role */}
 
-                {!isSignUpMode && (
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Quick Demo Login</Label>
-                    <Select
-                      value={selectedDemoUser}
-                      onValueChange={(userId) => {
-                        const user = users.find((u) => u.id === userId)
-                        if (user) handleQuickPick(user)
-                      }}
-                    >
-                      <SelectTrigger className="h-10 sm:h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20">
-                        <SelectValue placeholder="Choose a demo account" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {quickPickUsers.map(({ user, icon: Icon, color }) => (
-                          <SelectItem key={user.id} value={user.id}>
-                            <div className="flex items-center space-x-2">
-                              <Icon className={`h-4 w-4 ${color}`} />
-                              <span className="truncate">{user.fullName}</span>
-                                (<span className="text-xs text-muted-foreground hidden sm:inline">({formatRoleName(user.defaultRole)})</span>)
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
+                {/* Quick demo login removed */}
 
                 <Button
                   type="submit"
