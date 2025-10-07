@@ -1,6 +1,6 @@
 "use client"
 
-import { signUp } from "@/service/authApi"  
+import { signUp } from "@/service/authApi"
 import type React from "react"
 import { useState } from "react"
 import { useAuth } from "@/contexts/auth-context"
@@ -25,6 +25,8 @@ export default function LoginPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const { login } = useAuth()
   const { toast } = useToast()
+  const [phone, setPhone] = useState("")
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -49,35 +51,37 @@ export default function LoginPage() {
       }
 
       try {
-      const res = await signUp({
-        email,
-        password,
-        fullName,
-        roleName: "STUDENT", // hoặc cho user chọn role
-      })
+        const res = await signUp({
+          email,
+          password,
+          fullName,
+          phone,
+          roleName: "STUDENT", // hoặc cho user chọn role
+        })
 
-      toast({
-        title: "Registration Successful",
-        description: `Welcome ${res.fullName}! You can now sign in.`,
-      })
+        toast({
+          title: "Registration Successful",
+          description: `Welcome ${res.fullName}! You can now sign in.`,
+        })
 
-      // Reset form
-      setIsSignUpMode(false)
-      setFullName("")
-      setConfirmPassword("")
-      setEmail("")
-      setPassword("")
-    } catch (error: any) {
-      toast({
-        title: "Sign Up Failed",
-        description: error.response?.data?.message || "Something went wrong",
-        variant: "destructive",
-      })
+        // Reset form and switch to login mode
+        setIsSignUpMode(false)
+        setFullName("")
+        setPhone("")
+        setConfirmPassword("")
+        setEmail("")
+        setPassword("")
+      } catch (error: any) {
+        toast({
+          title: "Sign Up Failed",
+          description: error.response?.data?.message || "Something went wrong",
+          variant: "destructive",
+        })
+      }
+      return
     }
-    return
-  }
 
-    
+
 
     if (!email || !password) {
       toast({
@@ -184,6 +188,7 @@ export default function LoginPage() {
             </CardHeader>
             <CardContent className="space-y-4 sm:space-y-6 px-4 sm:px-6">
               <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
+
                 {isSignUpMode && (
                   <div className="space-y-2">
                     <Label htmlFor="fullName" className="text-sm font-medium">
@@ -200,6 +205,22 @@ export default function LoginPage() {
                   </div>
                 )}
 
+                {isSignUpMode && (
+                  <div className="space-y-2">
+                    <Label htmlFor="phone" className="text-sm font-medium">
+                      Phone
+                    </Label>
+                    <Input
+                      id="phone"
+                      type="text"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="Enter your phone number"
+                      className="h-10 sm:h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+                    />
+                  </div>
+                )}
+
                 <div className="space-y-2">
                   <Label htmlFor="email" className="text-sm font-medium">
                     Email
@@ -209,7 +230,7 @@ export default function LoginPage() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Enter your email"
+                    placeholder="Enter yours email"
                     className="h-10 sm:h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
                   />
                 </div>

@@ -1,3 +1,13 @@
+// Xóa club theo id
+export const deleteClub = async (id: string | number) => {
+  try {
+    const response = await axiosInstance.delete(`/api/clubs/${id}`)
+    return response.data
+  } catch (error) {
+    console.error("Error deleting club:", error)
+    throw error
+  }
+}
 import axiosInstance from "@/lib/axiosInstance"
 
 export const fetchClub = async (pageable: { page?: number; size?: number; sort?: string[] } = { page: 0, size: 10, sort: ["name"] }) => {
@@ -17,6 +27,17 @@ export const fetchClub = async (pageable: { page?: number; size?: number; sort?:
     return response.data
   } catch (error) {
     console.error("Error fetching clubs:", error)
+    throw error
+  }
+}
+
+// Tạo club mới (POST)
+export const createClub = async (clubData: { name: string; description: string; majorPolicyId: number }) => {
+  try {
+    const response = await axiosInstance.post("/api/clubs", clubData)
+    return response.data
+  } catch (error) {
+    console.error("Error creating club:", error)
     throw error
   }
 }
