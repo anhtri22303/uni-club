@@ -52,11 +52,15 @@ export const loginWithGoogleToken = async (credentials: { token: string }) => {
   }
 }
 
+// function to call sign up API
+
 export interface SignUpCredentials {
   email: string
   password: string
   fullName: string
+  phone: string
   roleName: string
+
 }
 
 export interface SignUpResponse {
@@ -65,8 +69,8 @@ export interface SignUpResponse {
   email: string
   fullName: string
   role: string
-}
 
+}
 
 export const signUp = async (credentials: SignUpCredentials): Promise<SignUpResponse> => {
   try {
@@ -76,6 +80,7 @@ export const signUp = async (credentials: SignUpCredentials): Promise<SignUpResp
         email: credentials.email,
         password: credentials.password,
         fullName: credentials.fullName,
+        phone: credentials.phone,
         roleName: credentials.roleName, // Swagger yêu cầu roleName
       },
       {

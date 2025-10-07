@@ -40,10 +40,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (saved) {
       try {
         const parsed = JSON.parse(saved) as { token: string } & LoginResponse
+
+        // map backend role values to the app's internal role keys
+        const normalizeRole = (r?: string | null) => {
+          if (!r) return null
+          const lower = String(r).toLowerCase()
+          const map: Record<string, string> = {
+            student: "student",
+            club_manager: "club_manager",
+            "club manager": "club_manager",
+            uni_admin: "uni_admin",
+            university_admin: "uni_admin",
+            admin: "admin",
+            staff: "staff",
+          }
+          return map[lower] || lower
+        }
+
         setAuth({
           userId: parsed.userId,
-          // normalize internal role to lowercase for comparisons
-          role: parsed.role ? String(parsed.role).toLowerCase() : null,
+          // normalize role to the app's canonical key (e.g. 'uni_admin')
+          role: normalizeRole(parsed.role),
           user: {
             userId: parsed.userId,
             email: parsed.email,
@@ -69,10 +86,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Also store jwtToken separately for backward compatibility
       localStorage.setItem("jwtToken", res.token)
 
+      // normalize backend role to canonical internal key
+      const normalizeRole = (r?: string | null) => {
+        if (!r) return null
+        const lower = String(r).toLowerCase()
+        const map: Record<string, string> = {
+          student: "student",
+          club_manager: "club_manager",
+          "club manager": "club_manager",
+          uni_admin: "uni_admin",
+          university_admin: "uni_admin",
+          admin: "admin",
+          staff: "staff",
+        }
+        return map[lower] || lower
+      }
+
+      const normalizedRole = normalizeRole(res.role)
+
       setAuth({
         userId: res.userId,
-        // normalize internal role to lowercase for logic (display functions can format)
-        role: res.role ? String(res.role).toLowerCase() : null,
+        role: normalizedRole,
         user: {
           userId: res.userId,
           email: res.email,
@@ -80,7 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         },
       })
 
-      // Redirect based on role (map to app routes)
+      // Redirect based on normalized role
       const redirectMap: Record<string, string> = {
         student: "/student",
         club_manager: "/club-manager",
@@ -89,7 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         staff: "/staff",
       }
 
-      router.push(redirectMap[res.role.toLowerCase()] || "/student")
+      router.push(redirectMap[normalizedRole || ""] || "/student")
       return true
     } catch (err) {
       console.error("Login failed", err)

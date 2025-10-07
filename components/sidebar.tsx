@@ -35,6 +35,7 @@ const navigationConfig = {
   uni_admin: [
     { href: "/uni-admin", label: "Dashboard", icon: LayoutDashboard },
     { href: "/uni-admin/clubs", label: "Clubs", icon: Building },
+    { href: "/uni-admin/policies", label: "Policies", icon: FileText },
     { href: "/uni-admin/clubs-req", label: "Club Requests", icon: FileText },
     { href: "/uni-admin/events-req", label: "Event Requests", icon: Calendar },
     { href: "/uni-admin/reports", label: "Reports", icon: BarChart3 },
