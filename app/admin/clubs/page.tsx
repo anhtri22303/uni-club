@@ -13,7 +13,7 @@ import { fetchClub } from "@/service/clubApi"
 type ClubApiItem = {
   id: number
   name: string
-  category?: string
+  majorName?: string
   description?: string
   majorPolicyName?: string
   memberCount?: number
@@ -62,7 +62,7 @@ export default function AdminClubsPage() {
     return {
       id: String(club.id),
       name: club.name,
-      category: club.category ?? "",
+      category: club.majorName ?? "-",
       description: club.description || "-",
       // members: memberCount,
       members: 0,

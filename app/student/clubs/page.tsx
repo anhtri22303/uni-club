@@ -20,6 +20,7 @@ type ClubApiItem = {
   id: number
   name: string
   description?: string
+  majorName?: string
   majorPolicyName?: string
 }
 
@@ -53,7 +54,7 @@ export default function StudentClubsPage() {
   const enhancedClubs = clubs.map((club) => ({
     id: String(club.id),
     name: club.name,
-    category: "", // category not provided by API; leave empty or map if you have a field
+    category: club.majorName ?? "-", // category not provided by API; leave empty or map if you have a field
     description: club.description,
     members: 0,
     founded: 0,
