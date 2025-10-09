@@ -46,6 +46,7 @@ export default function ProfilePage() {
       student: "STUDENT",
       club_leader: "CLUB LEADER",
       uni_admin: "UNIVERSITY ADMIN",
+      uni_staff: "UNIVERSITY STAFF", // <-- added to display normalized uni_staff role
       admin: "ADMIN",
       staff: "STAFF",
     }
@@ -204,7 +205,7 @@ export default function ProfilePage() {
     }
   }
 
-  const isAdminRole = ["uni_admin", "admin", "staff"].includes(auth.role || "")
+  const isAdminRole = ["uni_staff", "uni_admin", "admin", "staff"].includes(auth.role || "")
   
   const pointsCardStyle = getPointsCardStyle(userPoints)
 
@@ -213,7 +214,7 @@ export default function ProfilePage() {
   // =================================================================
   if (isAdminRole) {
     return (
-      <ProtectedRoute allowedRoles={["member", "student", "club_leader", "uni_admin", "admin", "staff"]}>
+      <ProtectedRoute allowedRoles={["member", "student", "club_leader", "uni_staff", "admin", "staff"]}>
         <AppShell>
           <div className="min-h-screen bg-slate-50">
             {/* Header chuyên nghiệp */}
@@ -276,7 +277,7 @@ export default function ProfilePage() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {auth.role === "uni_admin" && (
+                        {auth.role === "uni_staff" && (
                           <>
                             <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg"><Building2 className="h-5 w-5 text-primary" /><span>Quản lý trường</span></div>
                             <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg"><Users className="h-5 w-5 text-primary" /><span>Quản trị người dùng</span></div>
@@ -374,7 +375,7 @@ export default function ProfilePage() {
   // GIAO DIỆN DÀNH CHO NGƯỜI DÙNG THƯỜNG (STUDENT, CLUB_LEADER)
   // =================================================================
   return (
-  <ProtectedRoute allowedRoles={["member", "student", "club_leader", "uni_admin", "admin", "staff"]}>
+  <ProtectedRoute allowedRoles={["member", "student", "club_leader", "uni_staff", "admin", "staff"]}>
       <AppShell>
         <div className="min-h-screen bg-slate-50">
           {/* Header với ảnh đại diện */}

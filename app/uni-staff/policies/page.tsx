@@ -2,7 +2,8 @@
 
 import { AppShell } from "@/components/app-shell"
 import { ProtectedRoute } from "@/contexts/protected-route"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -16,7 +17,7 @@ import { FileText, Search, Eye, Trash, Plus } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 
-export default function UniAdminPoliciesPage() {
+export default function UniStaffPoliciesPage() {
   const [policies, setPolicies] = useState<Policy[]>([])
   const [loading, setLoading] = useState(false)
   const [query, setQuery] = useState("")
@@ -85,8 +86,8 @@ export default function UniAdminPoliciesPage() {
     // populate edit fields
     setEditPolicyName(p.policyName || p.name || "")
     setEditDescription(p.description || "")
-  // if backend uses policy id as majorId, default to policy id when majorId is missing
-  setEditMajorId(p.majorId ?? p.id ?? undefined)
+    // if backend uses policy id as majorId, default to policy id when majorId is missing
+    setEditMajorId(p.majorId ?? p.id ?? undefined)
     setEditMajorName(p.majorName)
     setEditMaxClubJoin(p.maxClubJoin ?? undefined)
     setEditRewardMultiplier(p.rewardMultiplier ?? undefined)
@@ -127,7 +128,7 @@ export default function UniAdminPoliciesPage() {
   }
 
   return (
-    <ProtectedRoute allowedRoles={["uni_admin"]}>
+    <ProtectedRoute allowedRoles={["uni_staff"]}>
       <AppShell>
         <div className="space-y-6 p-6">
           <div className="flex items-center justify-between gap-4">
@@ -218,11 +219,9 @@ export default function UniAdminPoliciesPage() {
                                     try {
                                       const res: any = await deletePolicyById(p.id)
                                       if (res && (res.success === true || res.deleted)) {
-                                        // Show toast like users page and reload
                                         toast({ title: res.message || 'Đã xóa', description: '' })
                                         if (selected?.id === p.id) setDialogOpen(false)
                                         await reloadPolicies()
-                                        // refresh the route to ensure a full reload
                                         try { router.refresh() } catch (e) { /* ignore */ }
                                       } else {
                                         toast({ title: 'Thất bại', description: (res && res.message) || 'Xóa policy thất bại.' })

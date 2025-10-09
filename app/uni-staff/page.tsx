@@ -29,7 +29,7 @@ import clubs from "@/src/data/clubs.json"
 import events from "@/src/data/events.json"
 import redemptions from "@/src/data/redemptions.json"
 
-export default function AdminReportsPage() {
+export default function UniStaffReportsPage() {
   const { clubMemberships, membershipApplications, vouchers } = useData()
 
   const usersByRole = users.reduce(
@@ -93,7 +93,6 @@ export default function AdminReportsPage() {
     : 0
   const eventsPerClub = totalClubs ? (totalEvents / totalClubs).toFixed(1) : "0.0"
 
-  // --- Pagination for Top Performing Clubs (minimal: arrows + current page only) ---
   const {
     currentPage,
     pageSize,
@@ -103,10 +102,9 @@ export default function AdminReportsPage() {
     setCurrentPage,
   } = usePagination({
     data: clubPerformance,
-    initialPageSize: 3, // giữ nguyên theo code bạn gửi
+    initialPageSize: 3,
   })
 
-  // Fixed Tailwind color map cho status chấm tròn
   const statusDotClass: Record<string, string> = {
     APPROVED: "bg-green-500",
     PENDING: "bg-yellow-500",
@@ -117,7 +115,7 @@ export default function AdminReportsPage() {
   const goNext = () => setCurrentPage(Math.min(totalPages, currentPage + 1))
 
   return (
-    <ProtectedRoute allowedRoles={["uni_admin"]}>
+    <ProtectedRoute allowedRoles={["uni_staff"]}>
       <AppShell>
         <div className="space-y-8 p-6">
           <div className="flex items-center justify-between">
@@ -208,7 +206,6 @@ export default function AdminReportsPage() {
           </div>
 
           <div className="grid gap-6 lg:grid-cols-3">
-            {/* User Distribution */}
             <Card className="lg:col-span-1">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -244,7 +241,6 @@ export default function AdminReportsPage() {
               </CardContent>
             </Card>
 
-            {/* Top Performing Clubs + Minimal Pager */}
             <Card className="lg:col-span-2">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -300,7 +296,6 @@ export default function AdminReportsPage() {
                   })}
                 </div>
 
-                {/* Minimal pager: chỉ 2 mũi tên và số trang hiện tại ở giữa */}
                 {totalPages > 1 && (
                   <div className="mt-4 flex items-center justify-center gap-3">
                     <Button
@@ -333,7 +328,6 @@ export default function AdminReportsPage() {
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">
-            {/* Membership Analytics */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -374,7 +368,6 @@ export default function AdminReportsPage() {
               </CardContent>
             </Card>
 
-            {/* Event Timeline */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">

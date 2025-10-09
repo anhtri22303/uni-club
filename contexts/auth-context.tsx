@@ -51,8 +51,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             member: "member",
             club_manager: "club_leader",
             "club manager": "club_leader",
-            uni_admin: "uni_admin",
-            university_admin: "uni_admin",
+            // Support different backend naming for university staff/admin
+            uni_admin: "uni_staff",
+            university_admin: "uni_staff",
+            university_staff: "uni_staff", // <-- added to handle UNIVERSITY_STAFF
+            "university staff": "uni_staff",
             admin: "admin",
             staff: "staff",
           }
@@ -97,8 +100,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           member: "member",
           club_manager: "club_leader",
           "club manager": "club_leader",
-          uni_admin: "uni_admin",
-          university_admin: "uni_admin",
+          uni_admin: "uni_staff",
+          university_admin: "uni_staff",
+          university_staff: "uni_staff", // <-- added to handle UNIVERSITY_STAFF
+          "university staff": "uni_staff",
           admin: "admin",
           staff: "staff",
         }
@@ -123,7 +128,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // students land on the Clubs-only page
         student: "/student/clubs",
         club_leader: "/club-leader",
-        uni_admin: "/uni-admin",
+        uni_staff: "/uni-staff",
         admin: "/admin",
         staff: "/staff",
       }

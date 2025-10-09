@@ -36,13 +36,13 @@ const navigationConfig = {
     { href: "/club-leader/events", label: "Events", icon: Calendar },
     { href: "/club-leader/gift", label: "Gift", icon: Gift },
   ],
-  uni_admin: [
-    { href: "/uni-admin", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/uni-admin/clubs", label: "Clubs", icon: Building },
-    { href: "/uni-admin/policies", label: "Policies", icon: FileText },
-    { href: "/uni-admin/clubs-req", label: "Club Requests", icon: FileText },
-    { href: "/uni-admin/events-req", label: "Event Requests", icon: Calendar },
-    { href: "/uni-admin/reports", label: "Reports", icon: BarChart3 },
+  uni_staff: [
+    { href: "/uni-staff", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/uni-staff/clubs", label: "Clubs", icon: Building },
+    { href: "/uni-staff/policies", label: "Policies", icon: FileText },
+    { href: "/uni-staff/clubs-req", label: "Club Requests", icon: FileText },
+    { href: "/uni-staff/events-req", label: "Event Requests", icon: Calendar },
+    { href: "/uni-staff/reports", label: "Reports", icon: BarChart3 },
   ],
   admin: [
     { href: "/admin", label: "Dashboard", icon: LayoutDashboard },

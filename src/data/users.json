@@ -22,8 +22,8 @@
     "fullName": "University Admin",
     "email": "admin@uit.edu.vn",
     "password": "demo123",
-    "roles": ["uni_admin"],
-    "defaultRole": "uni_admin",
+    "roles": ["uni_staff"],
+    "defaultRole": "uni_staff",
     "points": 0
   },
   {

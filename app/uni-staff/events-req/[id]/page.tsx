@@ -7,40 +7,41 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import {
-  Building,
-  Users,
   Calendar,
+  Users,
+  MapPin,
   Mail,
-  GraduationCap,
+  Building,
   FileText,
   CheckCircle,
   XCircle,
   ArrowLeft,
   Clock,
+  DollarSign,
 } from "lucide-react"
 import Link from "next/link"
-import { clubRequests } from "../page"
+import { eventRequests } from "../page"
 
-interface ClubRequestDetailPageProps {
+interface EventRequestDetailPageProps {
   params: {
     id: string
   }
 }
 
-export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageProps) {
-  const request = clubRequests.find((req) => req.id === params.id)
+export default function EventRequestDetailPage({ params }: EventRequestDetailPageProps) {
+  const request = eventRequests.find((req) => req.id === params.id)
 
   if (!request) {
     return (
-      <ProtectedRoute allowedRoles={["uni_admin"]}>
+      <ProtectedRoute allowedRoles={["uni_staff"]}>
         <AppShell>
           <div className="text-center py-8">
-            <h1 className="text-2xl font-bold mb-2">Club Request Not Found</h1>
-            <p className="text-muted-foreground mb-4">The requested club request could not be found.</p>
-            <Link href="/uni-admin/clubs-req">
+            <h1 className="text-2xl font-bold mb-2">Event Request Not Found</h1>
+            <p className="text-muted-foreground mb-4">The requested event request could not be found.</p>
+            <Link href="/uni-staff/events-req">
               <Button>
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Club Requests
+                Back to Event Requests
               </Button>
             </Link>
           </div>
@@ -77,21 +78,28 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
     }
   }
 
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+    }).format(amount)
+  }
+
   return (
-    <ProtectedRoute allowedRoles={["uni_admin"]}>
+    <ProtectedRoute allowedRoles={["uni_staff"]}>
       <AppShell>
         <div className="space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
-              <Link href="/uni-admin/clubs-req">
+              <Link href="/uni-staff/events-req">
                 <Button variant="ghost" size="sm" className="mb-2">
                   <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back to Club Requests
+                  Back to Event Requests
                 </Button>
               </Link>
-              <h1 className="text-3xl font-bold">{request.clubName}</h1>
-              <p className="text-muted-foreground">Club Registration Request Details</p>
+              <h1 className="text-3xl font-bold">{request.eventName}</h1>
+              <p className="text-muted-foreground">Event Organization Request Details</p>
             </div>
             <div className="flex items-center gap-2">
               {getStatusBadge(request.status)}
@@ -114,20 +122,28 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Building className="h-5 w-5" />
-                    Club Information
+                    <Calendar className="h-5 w-5" />
+                    Event Information
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
-                    <label className="text-sm font-medium text-muted-foreground">Club Name</label>
-                    <p className="text-lg font-semibold">{request.clubName}</p>
+                    <label className="text-sm font-medium text-muted-foreground">Event Name</label>
+                    <p className="text-lg font-semibold">{request.eventName}</p>
                   </div>
 
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Category</label>
-                    <div className="mt-1">
-                      <Badge variant="outline">{request.category}</Badge>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Event Type</label>
+                      <div className="mt-1">
+                        <Badge variant="outline">{request.eventType}</Badge>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Category</label>
+                      <div className="mt-1">
+                        <Badge variant="outline">{request.category}</Badge>
+                      </div>
                     </div>
                   </div>
 
@@ -136,19 +152,45 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
                     <p className="mt-1">{request.description}</p>
                   </div>
 
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Faculty</label>
-                    <div className="flex items-center gap-2 mt-1">
-                      <GraduationCap className="h-4 w-4 text-muted-foreground" />
-                      <span>{request.faculty}</span>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Event Date</label>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <span>{new Date(request.eventDate).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Event Time</label>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                        <span>{request.eventTime}</span>
+                      </div>
                     </div>
                   </div>
 
                   <div>
-                    <label className="text-sm font-medium text-muted-foreground">Expected Members</label>
+                    <label className="text-sm font-medium text-muted-foreground">Venue</label>
                     <div className="flex items-center gap-2 mt-1">
-                      <Users className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-semibold">{request.expectedMembers} members</span>
+                      <MapPin className="h-4 w-4 text-muted-foreground" />
+                      <span>{request.venue}</span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Expected Attendees</label>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-semibold">{request.expectedAttendees} people</span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Budget</label>
+                      <div className="flex items-center gap-2 mt-1">
+                        <DollarSign className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-semibold">{formatCurrency(request.budget)}</span>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
@@ -158,11 +200,11 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <FileText className="h-5 w-5" />
-                    Purpose & Reason
+                    Purpose & Objectives
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="leading-relaxed">{request.reason}</p>
+                  <p className="leading-relaxed">{request.purpose}</p>
                 </CardContent>
               </Card>
             </div>
@@ -185,8 +227,16 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
                   <Separator />
 
                   <div>
-                    <label className="text-sm font-medium text-muted-foreground">Requested By</label>
-                    <p className="font-semibold mt-1">{request.requestedBy}</p>
+                    <label className="text-sm font-medium text-muted-foreground">Organizing Club</label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Building className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-semibold">{request.requestedBy}</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Contact Person</label>
+                    <p className="font-semibold mt-1">{request.requestedByContact}</p>
                   </div>
 
                   <div>
@@ -224,7 +274,7 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
                     </Button>
                     <Button className="w-full bg-transparent" variant="outline">
                       <Mail className="h-4 w-4 mr-2" />
-                      Contact Requester
+                      Contact Organizer
                     </Button>
                   </CardContent>
                 </Card>

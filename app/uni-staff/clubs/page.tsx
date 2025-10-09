@@ -21,7 +21,7 @@ type ClubApiItem = {
   major?: { name?: string }
 }
 
-export default function AdminClubsPage() {
+export default function UniStaffClubsPage() {
   const { toast } = useToast()
   const [clubs, setClubs] = useState<ClubApiItem[]>([])
   const [loading, setLoading] = useState(false)
@@ -66,11 +66,9 @@ export default function AdminClubsPage() {
     actions: undefined, // dummy field for actions column
   }))
 
-  // Xử lý xóa club
   const handleDelete = async (id: string) => {
     setDeletingId(id)
     try {
-      // Gọi API xóa club (giả lập, cần implement thực tế ở service/clubApi)
       await deleteClub(id)
       setClubs((prev) => prev.filter((c) => String(c.id) !== id))
       toast({ title: "Deleted", description: "Club deleted successfully" })
@@ -206,7 +204,7 @@ export default function AdminClubsPage() {
   ]
 
   return (
-    <ProtectedRoute allowedRoles={["uni_admin"]}>
+    <ProtectedRoute allowedRoles={["uni_staff"]}>
       <AppShell>
         <div className="space-y-6">
           <div className="flex items-center justify-between">
@@ -312,4 +310,3 @@ export default function AdminClubsPage() {
     </ProtectedRoute>
   )
 }
-
