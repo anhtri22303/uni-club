@@ -17,7 +17,7 @@ export const fetchPolicies = async (): Promise<Policy[]> => {
 		console.log("fetchPolicies: GET api/university/policies")
 		const response = await axiosInstance.get("api/university/policies")
 		const body = response.data
-		console.log("fetchPolicies response:", body)
+		console.log("fetchPolicies:", body)
 		// if backend returns { content: [...] } or similar wrapper
 		if (body && typeof body === "object" && "content" in body && Array.isArray(body.content)) {
 			return body.content

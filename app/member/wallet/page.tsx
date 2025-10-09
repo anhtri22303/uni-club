@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { AppShell } from "@/components/app-shell"
 import { ProtectedRoute } from "@/contexts/protected-route"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,19 +9,38 @@ import { Button } from "@/components/ui/button"
 import { WalletHistory } from "@/components/wallet-history"
 import { TopupModal } from "@/components/topup-modal"
 import { useAuth } from "@/contexts/auth-context"
-import { useData } from "@/contexts/data-context"
+import { getWallet } from "@/service/walletApi"
 import { ShoppingBag, ArrowLeft } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 export default function MemberWalletPage() {
   const { auth } = useAuth()
-  const { getUserBalance } = useData()
+  const [userBalance, setUserBalance] = useState<number>(0)
   const { toast } = useToast()
   const [currentView, setCurrentView] = useState<"shop" | "history">("shop")
   const [isTopupModalOpen, setIsTopupModalOpen] = useState(false)
   const [selectedAmountVND, setSelectedAmountVND] = useState<number | null>(null)
 
-  const userBalance = getUserBalance(String(auth?.userId ?? ""))
+  // load wallet balance from API
+  useEffect(() => {
+    let mounted = true
+    const load = async () => {
+      try {
+        const data: any = await getWallet()
+        console.debug("MemberWalletPage.getWallet ->", data)
+        if (!mounted) return
+        const pts = Number(data?.points ?? data?.balance ?? 0)
+        setUserBalance(pts)
+        console.debug("MemberWalletPage setUserBalance ->", pts)
+      } catch (err) {
+        console.error("Failed to load wallet", err)
+      }
+    }
+    load()
+    return () => {
+      mounted = false
+    }
+  }, [auth?.userId])
 
   // Tỷ giá: 10,000 VND = 100 points => 1 point = 100 VND
   const VND_PER_POINT = 100

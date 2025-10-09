@@ -1,14 +1,13 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { useAuth } from "@/contexts/auth-context"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useRouter } from "next/navigation"
 import { User, LogOut, Award, Trophy, Gem, Star } from "lucide-react"
 import { useSidebarContext } from "@/components/app-shell"
-
-// Import users data to get points
-import users from "@/src/data/users.json"
+import { getWallet } from "@/service/walletApi"
 
 function getTierInfo(points: number, role: string) {
   if (role === "member") {
@@ -33,14 +32,30 @@ export function UserProfileWidget() {
   const { auth, logout } = useAuth()
   const router = useRouter()
   const { sidebarCollapsed, sidebarOpen } = useSidebarContext()
+  const [userPoints, setUserPoints] = useState<number>(0)
 
   if (!auth.role || !auth.user) return null
 
-  const currentUser = (users as any[]).find((u) => u.id === auth.userId)
-  const userPoints: number = currentUser?.points ?? 0
-  const shouldShowPoints = auth.role === "member" || auth.role === "club_leader"
-  const tierInfo = getTierInfo(userPoints, auth.role)
-  const TierIcon = tierInfo.icon
+  // Load wallet points from API
+  useEffect(() => {
+    let mounted = true
+    const load = async () => {
+      try {
+        const data: any = await getWallet()
+        console.debug("UserProfileWidget.getWallet ->", data)
+        if (!mounted) return
+        const pts = Number(data?.points ?? data?.balance ?? 0)
+        setUserPoints(pts)
+        console.debug("UserProfileWidget setUserPoints ->", pts)
+      } catch (err) {
+        console.error("Failed to load wallet in UserProfileWidget", err)
+      }
+    }
+    load()
+    return () => {
+      mounted = false
+    }
+  }, [auth?.userId])
 
   const userInitials = auth.user.fullName
     .split(" ")
@@ -54,6 +69,10 @@ export function UserProfileWidget() {
 
   // Ẩn khi sidebar đang collapsed (desktop) hoặc đang mở Sheet (mobile)
   const isHidden = sidebarCollapsed || sidebarOpen
+
+  const shouldShowPoints = auth.role === "member" || auth.role === "club_leader"
+  const tierInfo = getTierInfo(userPoints, auth.role)
+  const TierIcon = tierInfo.icon
 
   return (
     <div
