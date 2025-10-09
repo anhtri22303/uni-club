@@ -44,6 +44,21 @@ export default function MemberClubsPage() {
   const userMemberships = clubMemberships.filter((m) => m.userId === auth.userId)
   const userApplications = membershipApplications.filter((a) => a.userId === auth.userId)
 
+  const categoryColors: Record<string, string> = {
+    "Software Engineering": "#0052CC",
+    "Artificial Intelligence": "#6A00FF",
+    "Information Assurance": "#243447",
+    "Data Science": "#00B8A9",
+    "Business Administration": "#1E2A78",
+    "Digital Marketing": "#FF3366",
+    "Graphic Design": "#FFC300",
+    "Multimedia Communication": "#FF6B00",
+    "Hospitality Management": "#E1B382",
+    "International Business": "#007F73",
+    "Finance and Banking": "#006B3C",
+    "Japanese Language": "#D80032",
+    "Korean Language": "#5DADEC",
+  }
   const getClubStatus = (clubId: string) => {
     // If we have a local pending marker for this club, show pending immediately
     if (pendingClubIds.includes(clubId)) return "pending"
@@ -180,7 +195,7 @@ export default function MemberClubsPage() {
     }
 
     // Call backend API to create membership application
-    ;(async () => {
+    ; (async () => {
       if (!auth.userId) {
         toast({ title: "Not authenticated", description: "You must be signed in to apply", variant: "destructive" })
         return
@@ -283,10 +298,25 @@ export default function MemberClubsPage() {
     {
       key: "category" as const,
       label: "Category",
+      // render: (value: string) => {
+      //   const variant = getMajorVariant(value)
+      //   return (
+      //     <Badge title={value || ""} variant={variant as any} className="max-w-[140px] truncate">
+      //       {value || "-"}
+      //     </Badge>
+      //   )
+      // },
       render: (value: string) => {
-        const variant = getMajorVariant(value)
+        const color = categoryColors[value] || "#E2E8F0" // fallback nếu không có
         return (
-          <Badge title={value || ""} variant={variant as any} className="max-w-[140px] truncate">
+          <Badge
+            variant="secondary"
+            className="max-w-[160px] truncate"
+            style={{
+              backgroundColor: color,
+              color: "#fff", // chữ trắng cho rõ
+            }}
+          >
             {value || "-"}
           </Badge>
         )
