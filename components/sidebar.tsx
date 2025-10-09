@@ -29,6 +29,7 @@ const navigationConfig = {
   // Student role: limited view — only Clubs (per new requirement)
   student: [
     { href: "/student/clubs", label: "Clubs", icon: Users },
+    { href: "/student/history", label: "History", icon: History },
   ],
   club_leader: [
     { href: "/club-leader", label: "Dashboard", icon: LayoutDashboard },

@@ -125,8 +125,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Redirect based on normalized role
       const redirectMap: Record<string, string> = {
         member: "/member",
-        // students land on the Clubs-only page
-        student: "/student/clubs",
+        student: "/student",
         club_leader: "/club-leader",
         uni_staff: "/uni-staff",
         admin: "/admin",

@@ -14,6 +14,7 @@ import { useData } from "@/contexts/data-context"
 import { useToast } from "@/hooks/use-toast"
 import { Users, UserPlus } from "lucide-react"
 import { fetchClub } from "@/service/clubApi"
+import { postMemAppli } from "@/service/memberApplicationApi"
 
 // We'll fetch clubs from the backend and only use the `content` array.
 type ClubApiItem = {
@@ -167,6 +168,7 @@ export default function StudentClubsPage() {
   }, [])
 
   const submitApplication = () => {
+    // validate
     if (!selectedClub || !applicationText.trim()) {
       toast({
         title: "Missing Information",
@@ -175,23 +177,45 @@ export default function StudentClubsPage() {
       })
       return
     }
+    // call backend and persist response in sessionStorage
+    const doPost = async () => {
+      try {
+        // minimal backend payload
+        const payload = { clubId: selectedClub.id, reason: applicationText.trim() }
+        const res: any = await postMemAppli(payload)
 
-    addMembershipApplication({
-      clubId: selectedClub.id,
-      userId: auth.userId,
-      status: "PENDING",
-      applicationText: applicationText.trim(),
-      appliedAt: new Date().toISOString(),
-    })
+        // also add to in-memory data context (so other pages in-app see it immediately)
+        try {
+          addMembershipApplication({
+            clubId: String(res.clubId ?? selectedClub.id),
+            userId: res.userId ?? auth.userId,
+            status: res.status ?? "PENDING",
+            applicationText: res.reason ?? applicationText.trim(),
+            appliedAt: res.submittedAt ?? new Date().toISOString(),
+          })
+        } catch (e) {
+          console.error("Failed to update data context with new membership application", e)
+        }
 
-    toast({
-      title: "Application Submitted",
-      description: `Your application to ${selectedClub.name} has been submitted successfully`,
-    })
+        toast({
+          title: "Application Submitted",
+          description: `Your application to ${selectedClub.name} has been submitted successfully`,
+        })
 
-    setShowApplicationModal(false)
-    setApplicationText("")
-    setSelectedClub(null)
+        setShowApplicationModal(false)
+        setApplicationText("")
+        setSelectedClub(null)
+      } catch (err: any) {
+        console.error(err)
+        toast({
+          title: "Submission Failed",
+          description: err?.response?.data?.message ?? err?.message ?? "Failed to submit application",
+          variant: "destructive",
+        })
+      }
+    }
+
+    void doPost()
   }
 
   const columns = [

@@ -13,3 +13,15 @@ export const postMemAppli = async (payload: { clubId: number | string; reason: s
   }
 }
 
+// Fetch all member applications (GET /api/member-applications)
+export const getMemberApplications = async () => {
+  try {
+    const response = await axiosInstance.get("/api/member-applications")
+    // Expecting an array of application objects
+    return response.data
+  } catch (error: any) {
+    console.error("Error fetching member applications:", error)
+    throw error
+  }
+}
+
