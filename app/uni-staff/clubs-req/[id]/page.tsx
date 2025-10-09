@@ -19,7 +19,8 @@ import {
   Clock,
 } from "lucide-react"
 import Link from "next/link"
-import { clubRequests } from "../page"
+import { useEffect, useState } from "react"
+import { getClubApplications, ClubApplication } from "@/service/clubApplicationAPI"
 
 interface ClubRequestDetailPageProps {
   params: {
@@ -28,9 +29,75 @@ interface ClubRequestDetailPageProps {
 }
 
 export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageProps) {
-  const request = clubRequests.find((req) => req.id === params.id)
+  type UiDetail = {
+    applicationId: number
+    id: string
+    clubName: string
+    category: string
+    description: string
+    faculty?: string
+    expectedMembers?: number | null
+    reason?: string
+    requestedBy: string
+    requestedByEmail: string
+    requestDate: string
+    status: string
+  }
 
-  if (!request) {
+  const [request, setRequest] = useState<UiDetail | null>(null)
+  const [loading, setLoading] = useState<boolean>(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let mounted = true
+    setLoading(true)
+    getClubApplications()
+      .then((data: ClubApplication[]) => {
+        if (!mounted) return
+        // params.id might be 'req-<id>' or numeric string. Support both.
+        const found = data.find((d) => `req-${d.applicationId}` === params.id || String(d.applicationId) === params.id)
+        if (!found) {
+          setRequest(null)
+        } else {
+          const mapped: UiDetail = {
+            applicationId: found.applicationId,
+            id: `req-${found.applicationId}`,
+            clubName: found.clubName,
+            category: (found as any).category ?? "Unknown",
+            description: found.description,
+            faculty: (found as any).faculty ?? "-",
+            expectedMembers: (found as any).expectedMembers ?? null,
+            reason: (found as any).reason ?? found.description,
+            requestedBy: found.submittedBy?.fullName ?? "Unknown",
+            requestedByEmail: found.submittedBy?.email ?? "",
+            requestDate: found.submittedAt ?? "",
+            status: found.status,
+          }
+          setRequest(mapped)
+        }
+      })
+      .catch((err) => {
+        console.error(err)
+        setError("Failed to load application")
+      })
+      .finally(() => mounted && setLoading(false))
+
+    return () => {
+      mounted = false
+    }
+  }, [params.id])
+
+  if (loading) {
+    return (
+      <ProtectedRoute allowedRoles={["uni_staff"]}>
+        <AppShell>
+          <div className="py-8 text-center">Loading...</div>
+        </AppShell>
+      </ProtectedRoute>
+    )
+  }
+
+  if (error || !request) {
     return (
       <ProtectedRoute allowedRoles={["uni_staff"]}>
         <AppShell>
@@ -58,11 +125,11 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
             Pending
           </Badge>
         )
-      case "APPROVED":
+      case "SUBMITTED":
         return (
           <Badge variant="default" className="bg-green-100 text-green-700 border-green-300">
             <CheckCircle className="h-3 w-3 mr-1" />
-            Approved
+            Submitted
           </Badge>
         )
       case "REJECTED":
@@ -216,7 +283,7 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
                   <CardContent className="space-y-3">
                     <Button className="w-full" variant="default">
                       <CheckCircle className="h-4 w-4 mr-2" />
-                      Approve Request
+                      Submit Request
                     </Button>
                     <Button className="w-full" variant="destructive">
                       <XCircle className="h-4 w-4 mr-2" />

@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { AppShell } from "@/components/app-shell"
 import { ProtectedRoute } from "@/contexts/protected-route"
 import { Badge } from "@/components/ui/badge"
@@ -7,90 +8,162 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Building, Users, Calendar, Search, CheckCircle, XCircle, Clock, Eye } from "lucide-react"
-import { useState } from "react"
+import { Building, Users, Calendar, Search, CheckCircle, XCircle, Clock, Eye, Plus } from "lucide-react"
 import Link from "next/link"
+import { getClubApplications, ClubApplication, putClubApplicationStatus } from "@/service/clubApplicationAPI"
+import { postClubApplication } from "@/service/clubApplicationAPI"
+import { Modal } from "@/components/modal"
+import { useToast } from "@/hooks/use-toast"
 
-export const clubRequests = [
-	{
-		id: "req-001",
-		clubName: "AI & Machine Learning Society",
-		category: "Technology",
-		description:
-			"A club dedicated to exploring artificial intelligence and machine learning technologies",
-		requestedBy: "Nguyen Van A",
-		requestedByEmail: "nguyenvana@university.edu",
-		requestDate: "2024-01-15",
-		status: "PENDING",
-		expectedMembers: 25,
-		faculty: "Computer Science",
-		reason:
-			"To provide students with hands-on experience in AI/ML technologies and foster innovation in the field",
-	},
-	{
-		id: "req-002",
-		clubName: "Sustainable Living Club",
-		category: "Social",
-		description: "Promoting environmental awareness and sustainable practices on campus",
-		requestedBy: "Tran Thi B",
-		requestedByEmail: "tranthib@university.edu",
-		requestDate: "2024-01-12",
-		status: "APPROVED",
-		expectedMembers: 40,
-		faculty: "Environmental Science",
-		reason:
-			"To create awareness about environmental issues and promote sustainable living practices among students",
-	},
-	{
-		id: "req-003",
-		clubName: "Digital Photography Club",
-		category: "Arts",
-		description: "For students passionate about photography and digital arts",
-		requestedBy: "Le Van C",
-		requestedByEmail: "levanc@university.edu",
-		requestDate: "2024-01-10",
-		status: "REJECTED",
-		expectedMembers: 15,
-		faculty: "Fine Arts",
-		reason:
-			"To provide a platform for photography enthusiasts to learn and showcase their work",
-	},
-	{
-		id: "req-004",
-		clubName: "Blockchain & Cryptocurrency Club",
-		category: "Technology",
-		description: "Exploring blockchain technology and cryptocurrency applications",
-		requestedBy: "Pham Thi D",
-		requestedByEmail: "phamthid@university.edu",
-		requestDate: "2024-01-08",
-		status: "PENDING",
-		expectedMembers: 30,
-		faculty: "Business",
-		reason:
-			"To educate students about blockchain technology and its real-world applications",
-	},
-	{
-		id: "req-005",
-		clubName: "Mental Health Awareness Club",
-		category: "Social",
-		description: "Supporting student mental health and wellness on campus",
-		requestedBy: "Hoang Van E",
-		requestedByEmail: "hoangvane@university.edu",
-		requestDate: "2024-01-05",
-		status: "APPROVED",
-		expectedMembers: 50,
-		faculty: "Psychology",
-		reason:
-			"To create a supportive community for mental health awareness and provide resources for students",
-	},
-]
+// We'll fetch real club application data from the backend and map it to the
+// UI data shape used previously.
+
+type UiClubRequest = {
+	id: string
+	applicationId?: number
+	clubName: string
+	category: string
+	description: string
+	requestedBy: string
+	requestedByEmail: string
+	requestDate: string
+	status: string
+	expectedMembers?: number
+	faculty?: string
+	reason?: string
+}
 
 export default function UniStaffClubRequestsPage() {
 	const [searchTerm, setSearchTerm] = useState("")
 	const [statusFilter, setStatusFilter] = useState<string>("all")
 	const [categoryFilter, setCategoryFilter] = useState<string>("all")
+	const [requests, setRequests] = useState<UiClubRequest[]>([])
+	const [loading, setLoading] = useState<boolean>(false)
+	const [error, setError] = useState<string | null>(null)
+	const [isModalOpen, setIsModalOpen] = useState<boolean>(false)
+	const [newClubName, setNewClubName] = useState<string>("")
+	const [newDescription, setNewDescription] = useState<string>("")
+	const { toast } = useToast()
 
-	const filteredRequests = clubRequests.filter((req) => {
+	useEffect(() => {
+		let mounted = true
+		setLoading(true)
+		getClubApplications()
+			.then((data: ClubApplication[]) => {
+				if (!mounted) return
+				// Map API shape to UI shape. The API doesn't include category, expectedMembers, etc.
+				const mapped: UiClubRequest[] = data.map((d) => ({
+					id: `req-${d.applicationId}`,
+					clubName: d.clubName,
+					category: "Unknown",
+					description: d.description,
+					requestedBy: d.submittedBy?.fullName ?? "Unknown",
+					requestedByEmail: d.submittedBy?.email ?? "",
+					requestDate: d.submittedAt,
+					status: d.status,
+				}))
+				setRequests(mapped)
+			})
+			.catch((err) => {
+				console.error(err)
+				setError("Failed to load club applications")
+			})
+			.finally(() => mounted && setLoading(false))
+
+		return () => {
+			mounted = false
+		}
+	}, []) 
+
+	async function handleSendNewApplication() {
+		setLoading(true)
+		setError(null)
+		try {
+			const created = await postClubApplication({ clubName: newClubName, description: newDescription })
+			toast({ title: 'Application sent', description: `${created.clubName} submitted`, variant: 'success' })
+			// reload list
+			const data = await getClubApplications()
+			const mapped: UiClubRequest[] = data.map((d) => ({
+				id: `req-${d.applicationId}`,
+				applicationId: d.applicationId,
+				clubName: d.clubName,
+				category: "Unknown",
+				description: d.description,
+				requestedBy: d.submittedBy?.fullName ?? "Unknown",
+				requestedByEmail: d.submittedBy?.email ?? "",
+				requestDate: d.submittedAt,
+				status: d.status,
+			}))
+			setRequests(mapped)
+			setIsModalOpen(false)
+			setNewClubName("")
+			setNewDescription("")
+		} catch (err) {
+			console.error(err)
+			setError('Failed to create application')
+			toast({ title: 'Error', description: 'Failed to send application', variant: 'destructive' })
+		} finally {
+			setLoading(false)
+		}
+	}
+
+	async function approveApplication(appId?: number) {
+		if (!appId) return
+		setLoading(true)
+		try {
+			const updated = await putClubApplicationStatus(appId, 'SUBMITTED')
+			// Safe behavior: refetch the whole list from backend and update UI
+			const data = await getClubApplications()
+			const mapped: UiClubRequest[] = data.map((d) => ({
+				id: `req-${d.applicationId}`,
+				applicationId: d.applicationId,
+				clubName: d.clubName,
+				category: "Unknown",
+				description: d.description,
+				requestedBy: d.submittedBy?.fullName ?? "Unknown",
+				requestedByEmail: d.submittedBy?.email ?? "",
+				requestDate: d.submittedAt,
+				status: d.status,
+			}))
+			setRequests(mapped)
+			toast({ title: 'Application submitted', description: `Application ${updated.applicationId} set to ${updated.status}`, variant: 'success' })
+		} catch (err) {
+			console.error(err)
+			toast({ title: 'Error', description: 'Failed to update status', variant: 'destructive' })
+		} finally {
+			setLoading(false)
+		}
+	}
+
+	async function rejectApplication(appId?: number) {
+		if (!appId) return
+		setLoading(true)
+		try {
+			const updated = await putClubApplicationStatus(appId, 'REJECTED')
+			// Safe behavior: refetch the whole list from backend and update UI
+			const data = await getClubApplications()
+			const mapped: UiClubRequest[] = data.map((d) => ({
+				id: `req-${d.applicationId}`,
+				applicationId: d.applicationId,
+				clubName: d.clubName,
+				category: "Unknown",
+				description: d.description,
+				requestedBy: d.submittedBy?.fullName ?? "Unknown",
+				requestedByEmail: d.submittedBy?.email ?? "",
+				requestDate: d.submittedAt,
+				status: d.status,
+			}))
+			setRequests(mapped)
+			toast({ title: 'Application rejected', description: `Application ${updated.applicationId} set to ${updated.status}`, variant: 'destructive' })
+		} catch (err) {
+			console.error(err)
+			toast({ title: 'Error', description: 'Failed to update status', variant: 'destructive' })
+		} finally {
+			setLoading(false)
+		}
+	}
+
+	const filteredRequests = requests.filter((req) => {
 		const matchSearch =
 			req.clubName.toLowerCase().includes(searchTerm.toLowerCase()) ||
 			req.requestedBy.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -114,14 +187,14 @@ export default function UniStaffClubRequestsPage() {
 						Pending
 					</Badge>
 				)
-			case "APPROVED":
+			case "SUBMITTED":
 				return (
 					<Badge
 						variant="default"
 						className="bg-green-100 text-green-700 border-green-300"
 					>
 						<CheckCircle className="h-3 w-3 mr-1" />
-						Approved
+						Submitted
 					</Badge>
 				)
 			case "REJECTED":
@@ -139,20 +212,46 @@ export default function UniStaffClubRequestsPage() {
 		}
 	}
 
-	const pendingCount = clubRequests.filter((req) => req.status === "PENDING").length
-	const approvedCount = clubRequests.filter((req) => req.status === "APPROVED").length
-	const rejectedCount = clubRequests.filter((req) => req.status === "REJECTED").length
+	const pendingCount = requests.filter((req) => req.status === "PENDING").length
+	const approvedCount = requests.filter((req) => req.status === "SUBMITTED").length
+	const rejectedCount = requests.filter((req) => req.status === "REJECTED").length
 
 	return (
 		<ProtectedRoute allowedRoles={["uni_staff"]}>
 			<AppShell>
+				{/* Floating add button (always visible) */}
+				<Button
+					aria-label="Add club application"
+					size="sm"
+					variant="default"
+					className="fixed top-4 right-4 z-50 h-10 w-10 rounded-full flex items-center justify-center"
+					onClick={() => setIsModalOpen(true)}
+				>
+					<Plus className="h-5 w-5" />
+				</Button>
 				<div className="space-y-6">
 					<div>
-						<h1 className="text-3xl font-bold">Club Requests</h1>
+						<div className="flex items-center gap-3">
+							<h1 className="text-3xl font-bold">Club Requests</h1>
+						</div>
 						<p className="text-muted-foreground">
 							Review and manage club registration requests
 						</p>
 					</div>
+
+					{/* Modal for creating new club application */}
+					<Modal open={isModalOpen} onOpenChange={setIsModalOpen} title="Create Club Application">
+						<div className="space-y-3">
+							<label className="text-sm font-medium">Club Name</label>
+							<Input value={newClubName} onChange={(e) => setNewClubName(e.target.value)} placeholder="Tri&Duc" />
+							<label className="text-sm font-medium">Description</label>
+							<Input value={newDescription} onChange={(e) => setNewDescription(e.target.value)} placeholder="Description" />
+							<div className="flex justify-end gap-2 pt-2">
+								<Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
+								<Button onClick={handleSendNewApplication}>Send</Button>
+							</div>
+						</div>
+					</Modal>
 
 					{/* Stats Cards */}
 					<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -182,7 +281,7 @@ export default function UniStaffClubRequestsPage() {
 						<Card className="border-0 shadow-md bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900">
 							<CardHeader className="pb-1 px-4 pt-3">
 								<CardTitle className="text-xs font-medium text-green-700 dark:text-green-300">
-									Approved
+									Submitted
 								</CardTitle>
 							</CardHeader>
 							<CardContent className="pb-3 px-4">
@@ -195,7 +294,7 @@ export default function UniStaffClubRequestsPage() {
 											{approvedCount}
 										</div>
 										<p className="text-xs text-green-600 dark:text-green-400">
-											Successfully approved
+											Successfully submitted
 										</p>
 									</div>
 								</div>
@@ -218,7 +317,7 @@ export default function UniStaffClubRequestsPage() {
 											{rejectedCount}
 										</div>
 										<p className="text-xs text-red-600 dark:text-red-400">
-											Not approved
+											Not submitted
 										</p>
 									</div>
 								</div>
@@ -245,7 +344,7 @@ export default function UniStaffClubRequestsPage() {
 								<SelectContent>
 									<SelectItem value="all">All Status</SelectItem>
 									<SelectItem value="PENDING">Pending</SelectItem>
-									<SelectItem value="APPROVED">Approved</SelectItem>
+									<SelectItem value="SUBMITTED">Submitted</SelectItem>
 									<SelectItem value="REJECTED">Rejected</SelectItem>
 								</SelectContent>
 							</Select>
@@ -267,7 +366,19 @@ export default function UniStaffClubRequestsPage() {
 					</div>
 
 					<div className="grid gap-4">
-						{filteredRequests.length === 0 ? (
+						{loading ? (
+							<Card>
+								<CardContent className="py-8 text-center text-muted-foreground">
+									Loading club applications...
+								</CardContent>
+							</Card>
+						) : error ? (
+							<Card>
+								<CardContent className="py-8 text-center text-destructive">
+									{error}
+								</CardContent>
+							</Card>
+						) : filteredRequests.length === 0 ? (
 							<Card>
 								<CardContent className="py-8 text-center text-muted-foreground">
 									No club requests found
@@ -301,7 +412,7 @@ export default function UniStaffClubRequestsPage() {
 													<div className="flex items-center gap-6 text-sm text-muted-foreground">
 														<div className="flex items-center gap-1">
 															<Users className="h-4 w-4" />
-															<span>{request.expectedMembers} members</span>
+															<span>{request.expectedMembers ?? "-"} members</span>
 														</div>
 														<div className="flex items-center gap-1">
 															<Calendar className="h-4 w-4" />
@@ -324,6 +435,7 @@ export default function UniStaffClubRequestsPage() {
 																size="sm"
 																variant="default"
 																className="h-8 w-8 p-0"
+																onClick={() => approveApplication(request.applicationId)}
 															>
 																<CheckCircle className="h-4 w-4" />
 															</Button>
@@ -331,6 +443,7 @@ export default function UniStaffClubRequestsPage() {
 																size="sm"
 																variant="destructive"
 																className="h-8 w-8 p-0"
+																onClick={() => rejectApplication(request.applicationId)}
 															>
 																<XCircle className="h-4 w-4" />
 															</Button>
