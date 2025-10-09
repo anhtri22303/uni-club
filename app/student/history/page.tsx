@@ -15,7 +15,7 @@ import { History, UserPlus, Gift, CheckCircle } from "lucide-react"
 import clubs from "@/src/data/clubs.json"
 import offers from "@/src/data/offers.json"
 
-export default function StudentHistoryPage() {
+export default function MemberHistoryPage() {
   const { auth } = useAuth()
   const { membershipApplications, vouchers } = useData()
 
@@ -60,7 +60,7 @@ export default function StudentHistoryPage() {
 
   if (activities.length === 0) {
     return (
-      <ProtectedRoute allowedRoles={["student"]}>
+  <ProtectedRoute allowedRoles={["member"]}>
         <AppShell>
           <div className="space-y-6">
             <div>
@@ -74,7 +74,7 @@ export default function StudentHistoryPage() {
               description="Your club applications and voucher redemptions will appear here"
               action={{
                 label: "Browse Clubs",
-                onClick: () => (window.location.href = "/student/clubs"),
+                onClick: () => (window.location.href = "/member/clubs"),
               }}
             />
           </div>
@@ -84,7 +84,7 @@ export default function StudentHistoryPage() {
   }
 
   return (
-    <ProtectedRoute allowedRoles={["student"]}>
+    <ProtectedRoute allowedRoles={["member"]}>
       <AppShell>
         <div className="space-y-6">
           <div>

@@ -16,38 +16,33 @@ import clubs from "@/src/data/clubs.json"
 import events from "@/src/data/events.json"
 import users from "@/src/data/users.json"
 
-export default function ClubManagerDashboard() {
+export default function ClubLeaderDashboardPage() {
   const { auth } = useAuth()
   const { clubMemberships, membershipApplications } = useData()
   const router = useRouter()
 
-  // For demo purposes, assume the club manager manages the first club
-  // In a real app, this would be determined by the user's club association
-  const managedClub = clubs[0] // AI Club
+  // For demo purposes, assume the club leader manages the first club
+  const managedClub = clubs[0]
 
-  // Get club-specific data
   const clubMembers = clubMemberships.filter((m) => m.clubId === managedClub.id && m.status === "APPROVED")
 
-  const pendingApplications = membershipApplications.filter(
-    (a) => a.clubId === managedClub.id && a.status === "PENDING",
-  )
+  const pendingApplications = membershipApplications.filter((a) => a.clubId === managedClub.id && a.status === "PENDING")
 
   const clubEvents = events.filter((e) => e.clubId === managedClub.id)
 
   const upcomingEvents = clubEvents.filter((event) => new Date(event.date) > new Date()).length
 
-  // Recent applications (last 5)
   const recentApplications = membershipApplications
     .filter((a) => a.clubId === managedClub.id)
     .sort((a, b) => new Date(b.appliedAt || 0).getTime() - new Date(a.appliedAt || 0).getTime())
     .slice(0, 5)
 
   return (
-    <ProtectedRoute allowedRoles={["club_manager"]}>
+    <ProtectedRoute allowedRoles={["club_leader"]}>
       <AppShell>
         <div className="space-y-6">
           <div>
-            <h1 className="text-3xl font-bold text-balance">Club Manager Dashboard</h1>
+            <h1 className="text-3xl font-bold text-balance">Club Leader Dashboard</h1>
             <p className="text-muted-foreground">Managing {managedClub.name}</p>
           </div>
 
@@ -84,7 +79,6 @@ export default function ClubManagerDashboard() {
           </div>
 
           <div className="grid gap-6 md:grid-cols-2">
-            {/* Recent Applications */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -106,18 +100,12 @@ export default function ClubManagerDashboard() {
                             <p className="font-medium">{applicant?.fullName}</p>
                             <p className="text-sm text-muted-foreground">{applicant?.email}</p>
                             <p className="text-xs text-muted-foreground">
-                              {application.appliedAt
-                                ? new Date(application.appliedAt).toLocaleDateString()
-                                : "Recently"}
+                              {application.appliedAt ? new Date(application.appliedAt).toLocaleDateString() : "Recently"}
                             </p>
                           </div>
                           <Badge
                             variant={
-                              application.status === "APPROVED"
-                                ? "default"
-                                : application.status === "PENDING"
-                                  ? "secondary"
-                                  : "destructive"
+                              application.status === "APPROVED" ? "default" : application.status === "PENDING" ? "secondary" : "destructive"
                             }
                           >
                             {application.status}
@@ -126,18 +114,11 @@ export default function ClubManagerDashboard() {
                       )
                     })
                   )}
-                  <Button
-                    variant="outline"
-                    className="w-full mt-3 bg-transparent"
-                    onClick={() => router.push("/club-manager/members")}
-                  >
-                    Manage All Applications
-                  </Button>
+                  <Button variant="outline" className="w-full mt-3 bg-transparent" onClick={() => router.push("/club-leader/members")}>Manage All Applications</Button>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Club Overview */}
             <Card>
               <CardHeader>
                 <CardTitle>Club Overview</CardTitle>
@@ -166,7 +147,6 @@ export default function ClubManagerDashboard() {
             </Card>
           </div>
 
-          {/* Quick Actions */}
           <Card>
             <CardHeader>
               <CardTitle>Quick Actions</CardTitle>
@@ -174,15 +154,15 @@ export default function ClubManagerDashboard() {
             </CardHeader>
             <CardContent>
               <div className="grid gap-3 md:grid-cols-3">
-                <Button variant="outline" onClick={() => router.push("/club-manager/members")}>
+                <Button variant="outline" onClick={() => router.push("/club-leader/members")}>
                   <Users className="h-4 w-4 mr-2" />
                   Review Applications
                 </Button>
-                <Button variant="outline" onClick={() => router.push("/club-manager/events")}>
+                <Button variant="outline" onClick={() => router.push("/club-leader/events")}>
                   <Calendar className="h-4 w-4 mr-2" />
                   Create Event
                 </Button>
-                <Button variant="outline" onClick={() => router.push("/club-manager/members")}>
+                <Button variant="outline" onClick={() => router.push("/club-leader/members")}>
                   <UserCheck className="h-4 w-4 mr-2" />
                   Manage Members
                 </Button>

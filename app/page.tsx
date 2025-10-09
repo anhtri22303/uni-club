@@ -56,7 +56,7 @@ export default function LoginPage() {
           password,
           fullName,
           phone,
-          roleName: "STUDENT", // hoặc cho user chọn role
+          roleName: "MEMBER", // hoặc cho user chọn role
         })
 
         toast({

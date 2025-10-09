@@ -68,7 +68,7 @@ const MinimalPager = ({ current, total, onPrev, onNext }: { current: number, tot
     </div>
   ) : null
 
-export default function ClubManagerGiftPage() {
+export default function ClubLeaderGiftPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [activeTab, setActiveTab] = useState("club")
   const [eventFilter, setEventFilter] = useState("all")
@@ -88,7 +88,7 @@ export default function ClubManagerGiftPage() {
   const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
 
   return (
-    <ProtectedRoute allowedRoles={["club_manager"]}>
+    <ProtectedRoute allowedRoles={["club_leader"]}>
       <AppShell>
         <div className="space-y-6">
           <div>

@@ -46,9 +46,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (!r) return null
           const lower = String(r).toLowerCase()
           const map: Record<string, string> = {
+            // keep backend STUDENT as its own internal 'student' role
             student: "student",
-            club_manager: "club_manager",
-            "club manager": "club_manager",
+            member: "member",
+            club_manager: "club_leader",
+            "club manager": "club_leader",
             uni_admin: "uni_admin",
             university_admin: "uni_admin",
             admin: "admin",
@@ -92,8 +94,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const lower = String(r).toLowerCase()
         const map: Record<string, string> = {
           student: "student",
-          club_manager: "club_manager",
-          "club manager": "club_manager",
+          member: "member",
+          club_manager: "club_leader",
+          "club manager": "club_leader",
           uni_admin: "uni_admin",
           university_admin: "uni_admin",
           admin: "admin",
@@ -116,14 +119,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Redirect based on normalized role
       const redirectMap: Record<string, string> = {
-        student: "/student",
-        club_manager: "/club-manager",
+        member: "/member",
+        // students land on the Clubs-only page
+        student: "/student/clubs",
+        club_leader: "/club-leader",
         uni_admin: "/uni-admin",
         admin: "/admin",
         staff: "/staff",
       }
 
-      router.push(redirectMap[normalizedRole || ""] || "/student")
+  router.push(redirectMap[normalizedRole || ""] || "/member")
       return true
     } catch (err) {
       console.error("Login failed", err)

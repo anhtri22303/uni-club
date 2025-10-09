@@ -1,7 +1,7 @@
 [
-  { "code": "VCH-ABCD12", "offerId": "of-coffee-10", "userId": "u-student-001", "used": false },
-  { "code": "VCH-EFGH34", "offerId": "of-tea-20", "userId": "u-student-002", "used": false },
-  { "code": "VCH-IJKL56", "offerId": "of-snack-15", "userId": "u-student-003", "used": true },
-  { "code": "VCH-MNOP78", "offerId": "of-book-25", "userId": "u-student-004", "used": false },
-  { "code": "VCH-QRST90", "offerId": "of-movie-30", "userId": "u-student-005", "used": true }
+  { "code": "VCH-ABCD12", "offerId": "of-coffee-10", "userId": "u-member-001", "used": false },
+  { "code": "VCH-EFGH34", "offerId": "of-tea-20", "userId": "u-member-002", "used": false },
+  { "code": "VCH-IJKL56", "offerId": "of-snack-15", "userId": "u-member-003", "used": true },
+  { "code": "VCH-MNOP78", "offerId": "of-book-25", "userId": "u-member-004", "used": false },
+  { "code": "VCH-QRST90", "offerId": "of-movie-30", "userId": "u-member-005", "used": true }
 ]

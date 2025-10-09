@@ -1,9 +1,9 @@
 [
-  { "id": "a-1", "clubId": "c-robot", "userId": "u-student-001", "status": "PENDING" },
-  { "id": "a-2", "clubId": "c-robot", "userId": "u-student-002", "status": "APPROVED" },
-  { "id": "a-3", "clubId": "c-music", "userId": "u-student-003", "status": "PENDING" },
-  { "id": "a-4", "clubId": "c-sport", "userId": "u-student-004", "status": "REJECTED" },
-  { "id": "a-5", "clubId": "c-art", "userId": "u-student-005", "status": "APPROVED" },
-  { "id": "a-6", "clubId": "c-music", "userId": "u-student-006", "status": "PENDING" },
-  { "id": "a-7", "clubId": "c-sport", "userId": "u-student-007", "status": "APPROVED" }
+  { "id": "a-1", "clubId": "c-robot", "userId": "u-member-001", "status": "PENDING" },
+  { "id": "a-2", "clubId": "c-robot", "userId": "u-member-002", "status": "APPROVED" },
+  { "id": "a-3", "clubId": "c-music", "userId": "u-member-003", "status": "PENDING" },
+  { "id": "a-4", "clubId": "c-sport", "userId": "u-member-004", "status": "REJECTED" },
+  { "id": "a-5", "clubId": "c-art", "userId": "u-member-005", "status": "APPROVED" },
+  { "id": "a-6", "clubId": "c-music", "userId": "u-member-006", "status": "PENDING" },
+  { "id": "a-7", "clubId": "c-sport", "userId": "u-member-007", "status": "APPROVED" }
 ]

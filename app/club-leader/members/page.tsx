@@ -29,7 +29,7 @@ import {
 import clubs from "@/src/data/clubs.json"
 import users from "@/src/data/users.json"
 
-export default function ClubManagerMembersPage() {
+export default function ClubLeaderMembersPage() {
   const { auth } = useAuth()
   const { clubMemberships, membershipApplications, updateClubMemberships, updateMembershipApplications } = useData()
   const { toast } = useToast()
@@ -39,7 +39,7 @@ export default function ClubManagerMembersPage() {
   const [reviewNote, setReviewNote] = useState("")
 
   // For demo purposes, assume managing the first club
-  const managedClub = clubs[0] // AI Club
+  const managedClub = clubs[0]
 
   const mockPendingApplications = [
     {
@@ -72,9 +72,9 @@ export default function ClubManagerMembersPage() {
   ]
 
   const mockPendingUsers = [
-    { id: "u-pending-1", fullName: "Sarah Chen", email: "sarah.chen@university.edu", role: "student" },
-    { id: "u-pending-2", fullName: "Michael Rodriguez", email: "m.rodriguez@university.edu", role: "student" },
-    { id: "u-pending-3", fullName: "Emily Johnson", email: "emily.j@university.edu", role: "student" },
+    { id: "u-pending-1", fullName: "Sarah Chen", email: "sarah.chen@university.edu", role: "member" },
+    { id: "u-pending-2", fullName: "Michael Rodriguez", email: "m.rodriguez@university.edu", role: "member" },
+    { id: "u-pending-3", fullName: "Emily Johnson", email: "emily.j@university.edu", role: "member" },
   ]
 
   const mockRejectedApplications = [
@@ -121,10 +121,10 @@ export default function ClubManagerMembersPage() {
   ]
 
   const mockRejectedUsers = [
-    { id: "u-rejected-1", fullName: "David Kim", email: "david.kim@university.edu", role: "student" },
-    { id: "u-rejected-2", fullName: "Lisa Thompson", email: "lisa.t@university.edu", role: "student" },
-    { id: "u-rejected-3", fullName: "James Wilson", email: "j.wilson@university.edu", role: "student" },
-    { id: "u-rejected-4", fullName: "Maria Garcia", email: "maria.garcia@university.edu", role: "student" },
+    { id: "u-rejected-1", fullName: "David Kim", email: "david.kim@university.edu", role: "member" },
+    { id: "u-rejected-2", fullName: "Lisa Thompson", email: "lisa.t@university.edu", role: "member" },
+    { id: "u-rejected-3", fullName: "James Wilson", email: "j.wilson@university.edu", role: "member" },
+    { id: "u-rejected-4", fullName: "Maria Garcia", email: "maria.garcia@university.edu", role: "member" },
   ]
 
   // Get club-specific data
@@ -135,7 +135,7 @@ export default function ClubManagerMembersPage() {
     ...mockRejectedApplications,
   ]
 
-  // --- Pagination (tối giản) cho từng Tab ---
+  // pagination hooks... (same as source)
   const {
     currentPage: pendingPage,
     totalPages: pendingPages,
@@ -167,7 +167,6 @@ export default function ClubManagerMembersPage() {
     const application = pendingApplications.find((a) => a.id === applicationId)
     if (!application) return
     toast({ title: "Application Approved", description: "The member has been added to your club" })
-    // Demo: mock không cập nhật danh sách pending
     setPendingPage(1)
   }
 
@@ -228,52 +227,25 @@ export default function ClubManagerMembersPage() {
 
   const getUserDetails = (userId: string) => {
     return (
-      users.find((u) => u.id === userId) ||
-      mockPendingUsers.find((u) => u.id === userId) ||
-      mockRejectedUsers.find((u) => u.id === userId)
+      users.find((u) => u.id === userId) || mockPendingUsers.find((u) => u.id === userId) || mockRejectedUsers.find((u) => u.id === userId)
     )
   }
 
-  // --- Minimal Pager component ---
-  const MinimalPager = ({
-    current,
-    total,
-    onPrev,
-    onNext,
-  }: {
-    current: number
-    total: number
-    onPrev: () => void
-    onNext: () => void
-  }) =>
+  const MinimalPager = ({ current, total, onPrev, onNext }: { current: number; total: number; onPrev: () => void; onNext: () => void }) =>
     total > 1 ? (
       <div className="flex items-center justify-center gap-3">
-        <Button
-          aria-label="Previous page"
-          variant="outline"
-          size="sm"
-          className="h-8 w-8 p-0"
-          onClick={onPrev}
-          disabled={current === 1}
-        >
+        <Button aria-label="Previous page" variant="outline" size="sm" className="h-8 w-8 p-0" onClick={onPrev} disabled={current === 1}>
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <div className="min-w-[2rem] text-center text-sm font-medium">{current}</div>
-        <Button
-          aria-label="Next page"
-          variant="outline"
-          size="sm"
-          className="h-8 w-8 p-0"
-          onClick={onNext}
-          disabled={current === total}
-        >
+        <Button aria-label="Next page" variant="outline" size="sm" className="h-8 w-8 p-0" onClick={onNext} disabled={current === total}>
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
     ) : null
 
   return (
-    <ProtectedRoute allowedRoles={["club_manager"]}>
+    <ProtectedRoute allowedRoles={["club_leader"]}>
       <AppShell>
         <div className="space-y-6">
           <div>
@@ -319,8 +291,7 @@ export default function ClubManagerMembersPage() {
                               <h3 className="font-semibold">{user?.fullName}</h3>
                               <p className="text-sm text-muted-foreground">{user?.email}</p>
                               <p className="text-xs text-muted-foreground mt-1">
-                                Applied:{" "}
-                                {application.appliedAt ? new Date(application.appliedAt).toLocaleDateString() : "Recently"}
+                                Applied: {application.appliedAt ? new Date(application.appliedAt).toLocaleDateString() : "Recently"}
                               </p>
                               {application.applicationText && (
                                 <p className="text-sm mt-2 p-2 bg-muted rounded">"{application.applicationText}"</p>
@@ -385,8 +356,7 @@ export default function ClubManagerMembersPage() {
                               <h3 className="font-semibold">{user?.fullName}</h3>
                               <p className="text-sm text-muted-foreground">{user?.email}</p>
                               <p className="text-xs text-muted-foreground mt-1">
-                                Joined:{" "}
-                                {membership.joinedAt ? new Date(membership.joinedAt).toLocaleDateString() : "Recently"}
+                                Joined: {membership.joinedAt ? new Date(membership.joinedAt).toLocaleDateString() : "Recently"}
                               </p>
                             </div>
                             <div className="flex items-center gap-3">
@@ -438,15 +408,11 @@ export default function ClubManagerMembersPage() {
                               <h3 className="font-semibold">{user?.fullName}</h3>
                               <p className="text-sm text-muted-foreground">{user?.email}</p>
                               <p className="text-xs text-muted-foreground mt-1">
-                                Reviewed:{" "}
-                                {application.reviewedAt
-                                  ? new Date(application.reviewedAt).toLocaleDateString()
-                                  : "Recently"}
+                                Reviewed: {application.reviewedAt ? new Date(application.reviewedAt).toLocaleDateString() : "Recently"}
                               </p>
                               {application.reviewNote && (
                                 <p className="text-sm mt-2 p-2 bg-muted rounded">
-                                  <span className="font-medium text-red-600">Rejection reason:</span> "
-                                  {application.reviewNote}"
+                                  <span className="font-medium text-red-600">Rejection reason:</span> "{application.reviewNote}"
                                 </p>
                               )}
                             </div>
@@ -478,61 +444,61 @@ export default function ClubManagerMembersPage() {
                 </>
               )}
             </TabsContent>
-          </Tabs>
 
-          {/* Application Review Modal */}
-          <Modal
-            open={showApplicationModal}
-            onOpenChange={setShowApplicationModal}
-            title="Review Application"
-            description={selectedApplication ? `Application from ${getUserDetails(selectedApplication.userId)?.fullName}` : ""}
-          >
-            {selectedApplication && (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Applicant</Label>
-                  <div className="p-3 bg-muted rounded">
-                    <p className="font-medium">{getUserDetails(selectedApplication.userId)?.fullName}</p>
-                    <p className="text-sm text-muted-foreground">{getUserDetails(selectedApplication.userId)?.email}</p>
-                  </div>
-                </div>
-
-                {selectedApplication.applicationText && (
+            {/* Application Review Modal */}
+            <Modal
+              open={showApplicationModal}
+              onOpenChange={setShowApplicationModal}
+              title="Review Application"
+              description={selectedApplication ? `Application from ${getUserDetails(selectedApplication.userId)?.fullName}` : ""}
+            >
+              {selectedApplication && (
+                <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label>Application Message</Label>
+                    <Label>Applicant</Label>
                     <div className="p-3 bg-muted rounded">
-                      <p className="text-sm">{selectedApplication.applicationText}</p>
+                      <p className="font-medium">{getUserDetails(selectedApplication.userId)?.fullName}</p>
+                      <p className="text-sm text-muted-foreground">{getUserDetails(selectedApplication.userId)?.email}</p>
                     </div>
                   </div>
-                )}
 
-                <div className="space-y-2">
-                  <Label htmlFor="reviewNote">Review Note (Optional)</Label>
-                  <Textarea
-                    id="reviewNote"
-                    placeholder="Add a note about your decision..."
-                    value={reviewNote}
-                    onChange={(e) => setReviewNote(e.target.value)}
-                    rows={3}
-                  />
-                </div>
+                  {selectedApplication.applicationText && (
+                    <div className="space-y-2">
+                      <Label>Application Message</Label>
+                      <div className="p-3 bg-muted rounded">
+                        <p className="text-sm">{selectedApplication.applicationText}</p>
+                      </div>
+                    </div>
+                  )}
 
-                <div className="flex gap-2 justify-end">
-                  <Button variant="outline" onClick={() => setShowApplicationModal(false)}>
-                    Cancel
-                  </Button>
-                  <Button variant="destructive" onClick={() => handleReject(selectedApplication.id)}>
-                    <XCircle className="h-4 w-4 mr-1" />
-                    Reject
-                  </Button>
-                  <Button onClick={() => handleApprove(selectedApplication.id)}>
-                    <CheckCircle className="h-4 w-4 mr-1" />
-                    Approve
-                  </Button>
+                  <div className="space-y-2">
+                    <Label htmlFor="reviewNote">Review Note (Optional)</Label>
+                    <Textarea
+                      id="reviewNote"
+                      placeholder="Add a note about your decision..."
+                      value={reviewNote}
+                      onChange={(e) => setReviewNote(e.target.value)}
+                      rows={3}
+                    />
+                  </div>
+
+                  <div className="flex gap-2 justify-end">
+                    <Button variant="outline" onClick={() => setShowApplicationModal(false)}>
+                      Cancel
+                    </Button>
+                    <Button variant="destructive" onClick={() => handleReject(selectedApplication.id)}>
+                      <XCircle className="h-4 w-4 mr-1" />
+                      Reject
+                    </Button>
+                    <Button onClick={() => handleApprove(selectedApplication.id)}>
+                      <CheckCircle className="h-4 w-4 mr-1" />
+                      Approve
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            )}
-          </Modal>
+              )}
+            </Modal>
+          </Tabs>
         </div>
       </AppShell>
     </ProtectedRoute>

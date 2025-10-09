@@ -1,12 +1,12 @@
 [
-  { "id": "m-1", "clubId": "c-ai", "userId": "u-student-001", "role": "MEMBER", "status": "APPROVED" },
-  { "id": "m-demo-2", "clubId": "c-sport", "userId": "u-student-001", "role": "MEMBER", "status": "APPROVED" },
-  { "id": "m-demo-3", "clubId": "c-music", "userId": "u-student-001", "role": "MEMBER", "status": "APPROVED" },
-  { "id": "m-2", "clubId": "c-ai", "userId": "u-club-manager-001", "role": "CLUB_MANAGER", "status": "APPROVED" },
-  { "id": "m-3", "clubId": "c-robot", "userId": "u-student-002", "role": "MEMBER", "status": "APPROVED" },
-  { "id": "m-4", "clubId": "c-robot", "userId": "u-club-manager-003", "role": "CLUB_MANAGER", "status": "APPROVED" },
-  { "id": "m-5", "clubId": "c-music", "userId": "u-student-003", "role": "MEMBER", "status": "PENDING" },
-  { "id": "m-6", "clubId": "c-sport", "userId": "u-student-004", "role": "MEMBER", "status": "APPROVED" },
-  { "id": "m-7", "clubId": "c-art", "userId": "u-student-005", "role": "MEMBER", "status": "REJECTED" },
-  { "id": "m-8", "clubId": "c-sport", "userId": "u-club-manager-002", "role": "CLUB_MANAGER", "status": "APPROVED" }
+  { "id": "m-1", "clubId": "c-ai", "userId": "u-member-001", "role": "MEMBER", "status": "APPROVED" },
+  { "id": "m-demo-2", "clubId": "c-sport", "userId": "u-member-001", "role": "MEMBER", "status": "APPROVED" },
+  { "id": "m-demo-3", "clubId": "c-music", "userId": "u-member-001", "role": "MEMBER", "status": "APPROVED" },
+  { "id": "m-2", "clubId": "c-ai", "userId": "u-club-manager-001", "role": "CLUB_LEADER", "status": "APPROVED" },
+  { "id": "m-3", "clubId": "c-robot", "userId": "u-member-002", "role": "MEMBER", "status": "APPROVED" },
+  { "id": "m-4", "clubId": "c-robot", "userId": "u-club-manager-003", "role": "CLUB_LEADER", "status": "APPROVED" },
+  { "id": "m-5", "clubId": "c-music", "userId": "u-member-003", "role": "MEMBER", "status": "PENDING" },
+  { "id": "m-6", "clubId": "c-sport", "userId": "u-member-004", "role": "MEMBER", "status": "APPROVED" },
+  { "id": "m-7", "clubId": "c-art", "userId": "u-member-005", "role": "MEMBER", "status": "REJECTED" },
+  { "id": "m-8", "clubId": "c-sport", "userId": "u-club-manager-002", "role": "CLUB_LEADER", "status": "APPROVED" }
 ]

@@ -67,7 +67,7 @@ export function WalletHistory() {
         description="Redeem offers to get voucher codes you can use at partner stores"
         action={{
           label: "Browse Offers",
-          onClick: () => (window.location.href = "/student/offers"),
+          onClick: () => (window.location.href = "/member/offers"),
         }}
       />
     )

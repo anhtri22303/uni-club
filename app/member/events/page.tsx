@@ -16,7 +16,7 @@ import { useRouter } from "next/navigation"
 import events from "@/src/data/events.json"
 import clubs from "@/src/data/clubs.json"
 
-export default function StudentEventsPage() {
+export default function MemberEventsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const router = useRouter()
 
@@ -36,7 +36,7 @@ export default function StudentEventsPage() {
     setPageSize,
   } = usePagination({
     data: filteredEvents,
-    initialPageSize: 6, // giảm còn 6 để có >=2 trang khi >6 items
+    initialPageSize: 6,
   })
 
   const getEventStatus = (eventDate: string) => {
@@ -48,11 +48,11 @@ export default function StudentEventsPage() {
   }
 
   const handleEventDetail = (eventId: string) => {
-    router.push(`/student/events/${eventId}`)
+    router.push(`/member/events/${eventId}`)
   }
 
   return (
-    <ProtectedRoute allowedRoles={["student"]}>
+    <ProtectedRoute allowedRoles={["member"]}>
       <AppShell>
         <div className="space-y-6">
           <div>
@@ -66,7 +66,7 @@ export default function StudentEventsPage() {
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value)
-                setCurrentPage(1) // reset trang khi search
+                setCurrentPage(1)
               }}
               className="max-w-sm"
             />
@@ -135,7 +135,6 @@ export default function StudentEventsPage() {
             )}
           </div>
 
-          {/* Luôn render Pagination; component tự ẩn nếu chỉ có 1 trang */}
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}
@@ -144,7 +143,7 @@ export default function StudentEventsPage() {
             onPageChange={setCurrentPage}
             onPageSizeChange={(size) => {
               setPageSize(size)
-              setCurrentPage(1) // reset về trang 1 khi đổi số dòng/trang
+              setCurrentPage(1)
             }}
             pageSizeOptions={[6, 12, 24, 48]}
           />

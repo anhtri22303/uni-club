@@ -11,13 +11,13 @@ import { useSidebarContext } from "@/components/app-shell"
 import users from "@/src/data/users.json"
 
 function getTierInfo(points: number, role: string) {
-  if (role === "student") {
+  if (role === "member") {
     if (points >= 2000)
       return { tier: "Gold", color: "from-yellow-400 to-yellow-600", textColor: "text-yellow-900", icon: Trophy }
     if (points >= 1000)
       return { tier: "Silver", color: "from-gray-300 to-gray-500", textColor: "text-gray-900", icon: Award }
     return { tier: "Bronze", color: "from-amber-600 to-amber-800", textColor: "text-amber-100", icon: Star }
-  } else if (role === "club_manager") {
+  } else if (role === "club_leader") {
     if (points >= 3000)
       return { tier: "Platinum", color: "from-purple-400 to-purple-600", textColor: "text-purple-100", icon: Gem }
     if (points >= 2000)
@@ -38,7 +38,7 @@ export function UserProfileWidget() {
 
   const currentUser = (users as any[]).find((u) => u.id === auth.userId)
   const userPoints: number = currentUser?.points ?? 0
-  const shouldShowPoints = auth.role === "student" || auth.role === "club_manager"
+  const shouldShowPoints = auth.role === "member" || auth.role === "club_leader"
   const tierInfo = getTierInfo(userPoints, auth.role)
   const TierIcon = tierInfo.icon
 

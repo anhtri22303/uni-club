@@ -17,20 +17,24 @@ interface SidebarProps {
 }
 
 const navigationConfig = {
-  student: [
-    { href: "/student", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/student/clubs", label: "Clubs", icon: Users },
-    { href: "/student/events", label: "Events", icon: Calendar },
-    { href: "/student/checkin", label: "Check In", icon: CheckCircle },
-    { href: "/student/gift", label: "Gift", icon: Gift },
-    { href: "/student/wallet", label: "Wallet", icon: Wallet },
-    { href: "/student/history", label: "History", icon: History },
+  member: [
+    { href: "/member", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/member/clubs", label: "Clubs", icon: Users },
+    { href: "/member/events", label: "Events", icon: Calendar },
+    { href: "/member/checkin", label: "Check In", icon: CheckCircle },
+    { href: "/member/gift", label: "Gift", icon: Gift },
+    { href: "/member/wallet", label: "Wallet", icon: Wallet },
+    { href: "/member/history", label: "History", icon: History },
   ],
-  club_manager: [
-    { href: "/club-manager", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/club-manager/members", label: "Members", icon: Users },
-    { href: "/club-manager/events", label: "Events", icon: Calendar },
-    { href: "/club-manager/gift", label: "Gift", icon: Gift },
+  // Student role: limited view — only Clubs (per new requirement)
+  student: [
+    { href: "/student/clubs", label: "Clubs", icon: Users },
+  ],
+  club_leader: [
+    { href: "/club-leader", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/club-leader/members", label: "Members", icon: Users },
+    { href: "/club-leader/events", label: "Events", icon: Calendar },
+    { href: "/club-leader/gift", label: "Gift", icon: Gift },
   ],
   uni_admin: [
     { href: "/uni-admin", label: "Dashboard", icon: LayoutDashboard },

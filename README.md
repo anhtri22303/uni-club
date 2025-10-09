@@ -1,6 +1,6 @@
 account test:
 - Admin:admin1@gmail.com / 123
-- Club Manager: clubmanager@gmail.com / 123
+- Club Leader: clubmanager@gmail.com / 123
 - Student: student@gmail.com / 123
 - University Admin: universityadmin@gmail.com / 123
 
@@ -28,7 +28,7 @@ UniClub (SCLMS) solves this by providing:
 - 💰 Wallet & point system with point caps, MoMo top-up (10,000 VND = 100 points).
 - 🎁 Voucher & product redemption (on-site pickup at Delivery Sessions).
 - 🔄 Return/refund support based on club policy.
-- 📊 Dashboards for University Admin & Club Managers.
+- 📊 Dashboards for University Admin & Club Leaders.
 - 🤖 AI Chatbot for FAQ, guidance, tier/points inquiry.
 
 🎯 Non-profit project: All funds go back to clubs for student activities.
@@ -37,7 +37,7 @@ University Admin:
 - Approve clubs, events, system configurations.
 - Cross-club reports, fraud monitoring.
 
-Club Manager:
+Club Leader:
 - Approve/reject member applications.
 - Manage membership levels, events, products, refunds.
 - Configure points, caps, and wallets.

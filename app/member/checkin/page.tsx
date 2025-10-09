@@ -15,7 +15,7 @@ import { useState } from "react"
 import clubs from "@/src/data/clubs.json"
 import events from "@/src/data/events.json"
 
-export default function StudentCheckinPage() {
+export default function MemberCheckinPage() {
   const { auth } = useAuth()
   const { clubMemberships } = useData()
   const { toast } = useToast()
@@ -84,7 +84,7 @@ export default function StudentCheckinPage() {
   }
 
   return (
-    <ProtectedRoute allowedRoles={["student"]}>
+  <ProtectedRoute allowedRoles={["member"]}>
       <AppShell>
         <div className="space-y-4 sm:space-y-6">
           <div className="space-y-1 sm:space-y-2">

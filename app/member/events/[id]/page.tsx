@@ -20,8 +20,8 @@ interface EventRecord {
   id: string
   clubId: string
   title: string
-  date: string            // e.g. "2025-01-27"
-  time?: string           // e.g. "14:00"
+  date: string
+  time?: string
   points?: number
 }
 
@@ -32,7 +32,7 @@ interface ClubRecord {
   description?: string
 }
 
-export default function EventDetailPage() {
+export default function MemberEventDetailPage() {
   const params = useParams()
   const router = useRouter()
   const eventId = params.id as string
@@ -45,7 +45,7 @@ export default function EventDetailPage() {
 
   if (!event || !club) {
     return (
-      <ProtectedRoute allowedRoles={["student"]}>
+      <ProtectedRoute allowedRoles={["member"]}>
         <AppShell>
           <div className="text-center py-12">
             <h1 className="text-2xl font-bold mb-4">Event Not Found</h1>
@@ -64,7 +64,6 @@ export default function EventDetailPage() {
     return "future"
   }
 
-  // Gộp date + time (nếu có) để hiển thị thân thiện
   const buildEventDate = (e: EventRecord) => {
     const base = new Date(e.date)
     if (e.time) {
@@ -78,10 +77,9 @@ export default function EventDetailPage() {
   const eventDate = buildEventDate(event)
 
   return (
-    <ProtectedRoute allowedRoles={["student"]}>
+    <ProtectedRoute allowedRoles={["member"]}>
       <AppShell>
         <div className="space-y-6">
-          {/* Header */}
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="sm" onClick={() => router.back()}>
               <ArrowLeft className="h-4 w-4 mr-2" />
@@ -89,7 +87,6 @@ export default function EventDetailPage() {
             </Button>
           </div>
 
-          {/* Event Header */}
           <div className="space-y-4">
             <div className="flex items-start justify-between">
               <div className="space-y-2">
@@ -114,9 +111,7 @@ export default function EventDetailPage() {
           </div>
 
           <div className="grid gap-6 lg:grid-cols-3">
-            {/* Main Content */}
             <div className="lg:col-span-2 space-y-6">
-              {/* Event Image */}
               <Card>
                 <CardContent className="p-0">
                   <div className="aspect-video bg-gradient-to-br from-blue-50 to-indigo-100 rounded-t-lg flex items-center justify-center">
@@ -125,7 +120,6 @@ export default function EventDetailPage() {
                 </CardContent>
               </Card>
 
-              {/* Description */}
               <Card>
                 <CardHeader>
                   <CardTitle>About This Event</CardTitle>
@@ -143,7 +137,6 @@ export default function EventDetailPage() {
                 </CardContent>
               </Card>
 
-              {/* Agenda */}
               <Card>
                 <CardHeader>
                   <CardTitle>Event Schedule</CardTitle>
@@ -180,9 +173,7 @@ export default function EventDetailPage() {
               </Card>
             </div>
 
-            {/* Sidebar */}
             <div className="space-y-6">
-              {/* Event Details */}
               <Card>
                 <CardHeader>
                   <CardTitle>Event Details</CardTitle>
@@ -235,7 +226,6 @@ export default function EventDetailPage() {
                 </CardContent>
               </Card>
 
-              {/* Action Buttons */}
               <Card>
                 <CardContent className="pt-6">
                   <div className="space-y-3">
@@ -258,7 +248,6 @@ export default function EventDetailPage() {
                 </CardContent>
               </Card>
 
-              {/* Club Info */}
               <Card>
                 <CardHeader>
                   <CardTitle>About {club.name}</CardTitle>

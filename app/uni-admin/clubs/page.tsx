@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { DataTable } from "@/components/data-table"
 import { useToast } from "@/hooks/use-toast"
-import { Users } from "lucide-react"
+import { Users, Trash, Plus } from "lucide-react"
 import { fetchClub, deleteClub, createClub } from "@/service/clubApi"
 // Thêm import useRef nếu cần
 import { useRef } from "react"
@@ -17,6 +17,8 @@ type ClubApiItem = {
   name: string
   description?: string
   majorPolicyName?: string
+  majorName?: string
+  major?: { name?: string }
 }
 
 export default function AdminClubsPage() {
@@ -55,7 +57,7 @@ export default function AdminClubsPage() {
   const enhancedClubs = clubs.map((club) => ({
     id: String(club.id),
     name: club.name,
-    category: "", // chưa có field category từ API
+    category: club.majorName ?? (club as any).major?.name ?? "",
     description: club.description,
     members: 0, // placeholder, chưa có dữ liệu số thành viên
     founded: 0,
@@ -135,7 +137,6 @@ export default function AdminClubsPage() {
       render: (value: string, club: any) => (
         <div>
           <div className="font-medium">{value}</div>
-          <div className="text-sm text-muted-foreground">{club.category}</div>
         </div>
       ),
     },
@@ -181,20 +182,26 @@ export default function AdminClubsPage() {
     {
       key: "actions" as const,
       label: "Actions",
-      render: (_: any, club: any) => (
-        <Button
-          variant="destructive"
-          size="sm"
-          disabled={deletingId === club.id}
-          onClick={() => {
-            if (window.confirm("Are you sure you want to delete this club?")) {
-              handleDelete(club.id)
-            }
-          }}
-        >
-          {deletingId === club.id ? "Deleting..." : "Delete"}
-        </Button>
-      ),
+        render: (_: any, club: any) => (
+          <Button
+            variant="destructive"
+            size="sm"
+            disabled={deletingId === club.id}
+            onClick={() => {
+              if (window.confirm("Are you sure you want to delete this club?")) {
+                handleDelete(club.id)
+              }
+            }}
+            aria-label={`Delete ${club.name}`}
+            title="Delete"
+          >
+            {deletingId === club.id ? (
+              "Deleting..."
+            ) : (
+              <Trash className="h-4 w-4" />
+            )}
+          </Button>
+        ),
     },
   ]
 
@@ -207,8 +214,8 @@ export default function AdminClubsPage() {
               <h1 className="text-3xl font-bold">Club Management</h1>
               <p className="text-muted-foreground">View and manage all clubs in the university</p>
             </div>
-            <Button onClick={() => setShowAddModal(true)} variant="default">
-              + Add Club
+            <Button onClick={() => setShowAddModal(true)} variant="default" title="Add club" aria-label="Add club">
+              <Plus className="h-4 w-4" />
             </Button>
           </div>
 

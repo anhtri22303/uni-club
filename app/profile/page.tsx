@@ -41,8 +41,9 @@ export default function ProfilePage() {
   const formatRoleName = (roleId?: string | null) => {
     if (!roleId) return ""
     const map: Record<string, string> = {
+      member: "MEMBER",
       student: "STUDENT",
-      club_manager: "CLUB MANAGER",
+      club_leader: "CLUB LEADER",
       uni_admin: "UNIVERSITY ADMIN",
       admin: "ADMIN",
       staff: "STAFF",
@@ -189,7 +190,7 @@ export default function ProfilePage() {
   // =================================================================
   if (isAdminRole) {
     return (
-      <ProtectedRoute allowedRoles={["student", "club_manager", "uni_admin", "admin", "staff"]}>
+      <ProtectedRoute allowedRoles={["member", "student", "club_leader", "uni_admin", "admin", "staff"]}>
         <AppShell>
           <div className="min-h-screen bg-slate-50">
             {/* Header chuyên nghiệp */}
@@ -347,10 +348,10 @@ export default function ProfilePage() {
   }
 
   // =================================================================
-  // GIAO DIỆN DÀNH CHO NGƯỜI DÙNG THƯỜNG (STUDENT, CLUB_MANAGER)
+  // GIAO DIỆN DÀNH CHO NGƯỜI DÙNG THƯỜNG (STUDENT, CLUB_LEADER)
   // =================================================================
   return (
-    <ProtectedRoute allowedRoles={["student", "club_manager", "uni_admin", "admin", "staff"]}>
+  <ProtectedRoute allowedRoles={["member", "student", "club_leader", "uni_admin", "admin", "staff"]}>
       <AppShell>
         <div className="min-h-screen bg-slate-50">
           {/* Header với ảnh đại diện */}

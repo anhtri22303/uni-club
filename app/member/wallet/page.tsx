@@ -1,4 +1,5 @@
 "use client"
+
 import { useState, useMemo } from "react"
 import { AppShell } from "@/components/app-shell"
 import { ProtectedRoute } from "@/contexts/protected-route"
@@ -9,7 +10,7 @@ import { WalletHistory } from "@/components/wallet-history"
 import { TopupModal } from "@/components/topup-modal"
 import { useAuth } from "@/contexts/auth-context"
 import { useData } from "@/contexts/data-context"
-import { Wallet, Plus, History, ShoppingBag, ArrowLeft, CreditCard } from "lucide-react"
+import { ShoppingBag, ArrowLeft } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 export default function MemberWalletPage() {
@@ -76,7 +77,7 @@ export default function MemberWalletPage() {
 
   if (currentView === "history") {
     return (
-  <ProtectedRoute allowedRoles={["member"]}>
+      <ProtectedRoute allowedRoles={["member"]}>
         <AppShell>
           <div className="space-y-6">
             <div className="flex items-center gap-4">
@@ -111,59 +112,57 @@ export default function MemberWalletPage() {
             <div>
               <h1 className="text-3xl font-bold text-balance">Wallet</h1>
             </div>
-            
           </div>
 
           {/* Wallet Overview (clean version) */}
-<div className="grid gap-4">
-  <Card className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 text-white">
-    {/* decorative blobs */}
-    <div className="pointer-events-none absolute -top-10 -right-10 h-48 w-48 rounded-full bg-white/10 blur-3xl" />
-    <div className="pointer-events-none absolute -bottom-16 -left-16 h-56 w-56 rounded-full bg-black/20 blur-3xl" />
+          <div className="grid gap-4">
+            <Card className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 text-white">
+              {/* decorative blobs */}
+              <div className="pointer-events-none absolute -top-10 -right-10 h-48 w-48 rounded-full bg-white/10 blur-3xl" />
+              <div className="pointer-events-none absolute -bottom-16 -left-16 h-56 w-56 rounded-full bg-black/20 blur-3xl" />
 
-    <CardContent className="p-4 md:p-5">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-        {/* Left: User identity */}
-        <div className="flex items-center gap-4">
-          <div className="h-14 w-14 rounded-2xl bg-white/15 backdrop-blur flex items-center justify-center text-white font-bold text-2xl ring-1 ring-white/20">
-            {(auth?.user?.fullName?.charAt(0) || "U").toUpperCase()}
+              <CardContent className="p-4 md:p-5">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+                  {/* Left: User identity */}
+                  <div className="flex items-center gap-4">
+                    <div className="h-14 w-14 rounded-2xl bg-white/15 backdrop-blur flex items-center justify-center text-white font-bold text-2xl ring-1 ring-white/20">
+                      {(auth?.user?.fullName?.charAt(0) || "U").toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-wider text-white/80">Tài khoản</p>
+                      <h3 className="text-xl md:text-2xl font-semibold leading-tight">
+                        {auth?.user?.fullName || "User"}
+                      </h3>
+                      <p className="text-sm text-white/70">Thành viên</p>
+                    </div>
+                  </div>
+
+                  {/* Right: Balance + actions */}
+                  <div className="w-full md:w-auto">
+                    <div className="text-right">
+                      <p className="text-xs uppercase tracking-wider text-white/80">Số dư hiện tại</p>
+                      <div className="mt-1 text-3xl md:text-4xl font-extrabold tracking-tight">
+                        {userBalance.toLocaleString()}{" "}
+                        <span className="text-base font-semibold">Points</span>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="mt-3 flex items-center justify-end gap-2">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => setCurrentView("history")}
+                          className="bg-white text-indigo-700 hover:bg-white/90"
+                        >
+                          Lịch sử
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
-          <div>
-            <p className="text-xs uppercase tracking-wider text-white/80">Tài khoản</p>
-            <h3 className="text-xl md:text-2xl font-semibold leading-tight">
-              {auth?.user?.fullName || "User"}
-            </h3>
-            <p className="text-sm text-white/70">Thành viên</p>
-          </div>
-        </div>
-
-        {/* Right: Balance + actions */}
-        <div className="w-full md:w-auto">
-          <div className="text-right">
-            <p className="text-xs uppercase tracking-wider text-white/80">Số dư hiện tại</p>
-            <div className="mt-1 text-3xl md:text-4xl font-extrabold tracking-tight">
-              {userBalance.toLocaleString()}{" "}
-              <span className="text-base font-semibold">Points</span>
-            </div>
-
-            {/* Actions */}
-            <div className="mt-3 flex items-center justify-end gap-2">           
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => setCurrentView("history")}
-                className="bg-white text-indigo-700 hover:bg-white/90"
-              >
-                Lịch sử
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </CardContent>
-  </Card>
-</div>
-
 
           {/* Top-up Packages */}
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
