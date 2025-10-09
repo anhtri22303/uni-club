@@ -33,7 +33,7 @@ export const fetchUserById = async (id: string | number) => {
     // If the backend wraps payload in { success, message, data }, unwrap it.
     const body = response.data
     // Always log the raw response body for easier debugging
-    console.log("fetchUserById response body:", body)
+    console.log("fetchUserById:", body)
     if (body && typeof body === "object" && "data" in body) {
       console.log("fetchUserById unwrapped data:", body.data)
       return body.data

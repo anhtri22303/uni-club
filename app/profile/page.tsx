@@ -32,6 +32,7 @@ import {
   Trophy,
 } from "lucide-react"
 import { fetchUserById, updateUserById } from "@/service/userApi"
+import { getWallet } from "@/service/walletApi"
 
 export default function ProfilePage() {
   const { auth } = useAuth()
@@ -85,13 +86,35 @@ export default function ProfilePage() {
         setFullName(user?.fullName || user?.full_name || user?.name || auth.user?.fullName || "")
         setEmail(user?.email || auth.user?.email || "")
         setPhone(user?.phone || user?.mobile || "")
-        setUserPoints(Number(user?.points || user?.loyaltyPoints || 0))
+  // NOTE: do not set userPoints here to avoid overwriting wallet API result.
+  // Wallet points are loaded from getWallet() in a separate effect.
       } catch (err) {
         console.error("Failed to load profile", err)
       }
     }
 
     loadProfile()
+  }, [auth.userId])
+
+  // load wallet points
+  useEffect(() => {
+    let mounted = true
+    const loadWallet = async () => {
+      try {
+        const data: any = await getWallet()
+        console.debug("ProfilePage.getWallet ->", data)
+        if (!mounted) return
+        const pts = Number(data?.points ?? data?.balance ?? 0)
+        setUserPoints(pts)
+        console.debug("ProfilePage setUserPoints ->", pts)
+      } catch (err) {
+        console.error("Failed to load wallet in profile page", err)
+      }
+    }
+    loadWallet()
+    return () => {
+      mounted = false
+    }
   }, [auth.userId])
 
   const handleSave = async () => {
