@@ -20,6 +20,22 @@ type ClubApiItem = {
   majorName?: string
   major?: { name?: string }
 }
+// Bảng màu theo ngành học
+const categoryColors: Record<string, string> = {
+  "Software Engineering": "#0052CC",
+  "Artificial Intelligence": "#6A00FF",
+  "Information Assurance": "#243447",
+  "Data Science": "#00B8A9",
+  "Business Administration": "#1E2A78",
+  "Digital Marketing": "#FF3366",
+  "Graphic Design": "#FFC300",
+  "Multimedia Communication": "#FF6B00",
+  "Hospitality Management": "#E1B382",
+  "International Business": "#007F73",
+  "Finance and Banking": "#006B3C",
+  "Japanese Language": "#D80032",
+  "Korean Language": "#5DADEC",
+}
 
 export default function UniStaffClubsPage() {
   const { toast } = useToast()
@@ -141,11 +157,21 @@ export default function UniStaffClubsPage() {
     {
       key: "category" as const,
       label: "Category",
-      render: (value: string) => (
-        <Badge title={value || ""} variant={value ? "secondary" : "outline"} className="max-w-[160px] truncate">
-          {value || "-"}
-        </Badge>
-      ),
+      render: (value: string) => {
+        const color = categoryColors[value] || "#E2E8F0" // fallback nếu không có
+        return (
+          <Badge
+            variant="secondary"
+            className="max-w-[160px] truncate"
+            style={{
+              backgroundColor: color,
+              color: "#fff", // chữ trắng cho rõ
+            }}
+          >
+            {value || "-"}
+          </Badge>
+        )
+      },
     },
     {
       key: "description" as const,
@@ -180,26 +206,26 @@ export default function UniStaffClubsPage() {
     {
       key: "actions" as const,
       label: "Actions",
-        render: (_: any, club: any) => (
-          <Button
-            variant="destructive"
-            size="sm"
-            disabled={deletingId === club.id}
-            onClick={() => {
-              if (window.confirm("Are you sure you want to delete this club?")) {
-                handleDelete(club.id)
-              }
-            }}
-            aria-label={`Delete ${club.name}`}
-            title="Delete"
-          >
-            {deletingId === club.id ? (
-              "Deleting..."
-            ) : (
-              <Trash className="h-4 w-4" />
-            )}
-          </Button>
-        ),
+      render: (_: any, club: any) => (
+        <Button
+          variant="destructive"
+          size="sm"
+          disabled={deletingId === club.id}
+          onClick={() => {
+            if (window.confirm("Are you sure you want to delete this club?")) {
+              handleDelete(club.id)
+            }
+          }}
+          aria-label={`Delete ${club.name}`}
+          title="Delete"
+        >
+          {deletingId === club.id ? (
+            "Deleting..."
+          ) : (
+            <Trash className="h-4 w-4" />
+          )}
+        </Button>
+      ),
     },
   ]
 
