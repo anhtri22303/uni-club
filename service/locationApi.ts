@@ -19,3 +19,14 @@ export const fetchLocation = async (pageable: { page?: number; size?: number; so
     throw error
   }
 }
+
+export const getLocationById = async (id: string | number) => {
+  try {
+    const response = await axiosInstance.get(`api/locations/${id}`)
+    console.log("Fetched location by id:", response.data)
+    return response.data
+  } catch (error) {
+    console.error(`Error fetching location ${id}:`, error)
+    throw error
+  }
+}

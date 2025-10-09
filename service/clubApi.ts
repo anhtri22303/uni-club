@@ -62,3 +62,14 @@ export const deleteClub = async (id: string | number) => {
     throw error
   }
 }
+
+export const getClubById = async (id: string | number) => {
+  try {
+    const response = await axiosInstance.get(`/api/clubs/${id}`)
+    console.log(`Fetched club by id ${id}:`, response.data)
+    return response.data
+  } catch (error) {
+    console.error(`Error fetching club ${id}:`, error)
+    throw error
+  }
+}

@@ -8,101 +8,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Calendar, Users, MapPin, Search, CheckCircle, XCircle, Clock, Building, Eye } from "lucide-react"
-import { useState } from "react"
+import { renderTypeBadge } from "@/lib/eventUtils"
+import { useState, useEffect } from "react"
+import { fetchLocation } from "@/service/locationApi"
+import { fetchClub } from "@/service/clubApi"
 import Link from "next/link"
+import { fetchEvent } from "@/service/eventApi"
 
-export const eventRequests = [
-	{
-		id: "evt-req-001",
-		eventName: "Tech Innovation Summit 2024",
-		eventType: "Conference",
-		description: "A summit showcasing the latest innovations in technology and startups",
-		requestedBy: "AI & Machine Learning Society",
-		requestedByContact: "Nguyen Van A",
-		requestedByEmail: "nguyenvana@university.edu",
-		requestDate: "2024-01-20",
-		eventDate: "2024-03-15",
-		eventTime: "09:00 - 17:00",
-		venue: "Main Auditorium",
-		expectedAttendees: 200,
-		budget: 5000000,
-		status: "PENDING",
-		category: "Technology",
-		purpose: "To showcase student innovations and connect with industry professionals",
-	},
-	{
-		id: "evt-req-002",
-		eventName: "Environmental Awareness Week",
-		eventType: "Workshop Series",
-		description: "A week-long series of workshops on environmental conservation",
-		requestedBy: "Sustainable Living Club",
-		requestedByContact: "Tran Thi B",
-		requestedByEmail: "tranthib@university.edu",
-		requestDate: "2024-01-18",
-		eventDate: "2024-04-22",
-		eventTime: "08:00 - 18:00",
-		venue: "Student Center",
-		expectedAttendees: 150,
-		budget: 3000000,
-		status: "APPROVED",
-		category: "Social",
-		purpose: "To raise awareness about environmental issues and promote sustainable practices",
-	},
-	{
-		id: "evt-req-003",
-		eventName: "Photography Exhibition",
-		eventType: "Exhibition",
-		description: "Student photography exhibition showcasing campus life",
-		requestedBy: "Digital Photography Club",
-		requestedByContact: "Le Van C",
-		requestedByEmail: "levanc@university.edu",
-		requestDate: "2024-01-15",
-		eventDate: "2024-02-28",
-		eventTime: "10:00 - 20:00",
-		venue: "Art Gallery",
-		expectedAttendees: 100,
-		budget: 1500000,
-		status: "REJECTED",
-		category: "Arts",
-		purpose: "To showcase student photography talents and promote visual arts",
-	},
-	{
-		id: "evt-req-004",
-		eventName: "Blockchain Workshop",
-		eventType: "Workshop",
-		description: "Hands-on workshop on blockchain development",
-		requestedBy: "Blockchain & Cryptocurrency Club",
-		requestedByContact: "Pham Thi D",
-		requestedByEmail: "phamthid@university.edu",
-		requestDate: "2024-01-12",
-		eventDate: "2024-03-10",
-		eventTime: "13:00 - 17:00",
-		venue: "Computer Lab 1",
-		expectedAttendees: 50,
-		budget: 2000000,
-		status: "PENDING",
-		category: "Technology",
-		purpose: "To provide practical experience in blockchain development",
-	},
-	{
-		id: "evt-req-005",
-		eventName: "Mental Health Awareness Day",
-		eventType: "Seminar",
-		description: "Seminar on mental health awareness and support resources",
-		requestedBy: "Mental Health Awareness Club",
-		requestedByContact: "Hoang Van E",
-		requestedByEmail: "hoangvane@university.edu",
-		requestDate: "2024-01-10",
-		eventDate: "2024-05-10",
-		eventTime: "14:00 - 16:00",
-		venue: "Conference Room A",
-		expectedAttendees: 80,
-		budget: 1000000,
-		status: "APPROVED",
-		category: "Social",
-		purpose: "To promote mental health awareness and provide support resources",
-	},
-]
+// events will be fetched from the API. The API returns a paginated object
+// and the UI should display only the `content` array.
 
 export default function UniStaffEventRequestsPage() {
 	const [searchTerm, setSearchTerm] = useState("")
@@ -110,15 +24,66 @@ export default function UniStaffEventRequestsPage() {
 	const [categoryFilter, setCategoryFilter] = useState<string>("all")
 	const [typeFilter, setTypeFilter] = useState<string>("all")
 
-	const filteredRequests = eventRequests.filter((req) => {
-		const matchSearch =
-			req.eventName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-			req.requestedBy.toLowerCase().includes(searchTerm.toLowerCase()) ||
-			req.requestedByContact.toLowerCase().includes(searchTerm.toLowerCase())
+	const [events, setEvents] = useState<any[]>([])
+	const [locations, setLocations] = useState<any[]>([])
+	const [clubs, setClubs] = useState<any[]>([])
+	const [loading, setLoading] = useState<boolean>(false)
+	const [error, setError] = useState<string | null>(null)
 
-		const matchStatus = statusFilter === "all" ? true : req.status === statusFilter
-		const matchCategory = categoryFilter === "all" ? true : req.category === categoryFilter
-		const matchType = typeFilter === "all" ? true : req.eventType === typeFilter
+	const getLocationById = (id: string | number | undefined) => {
+		if (id === undefined || id === null) return null
+		return locations.find((l) => String(l.id) === String(id)) ?? null
+	}
+
+	const getLocationCapacity = (id: string | number | undefined) => {
+		const loc: any = getLocationById(id)
+		if (!loc) return null
+		// common field names: capacity, maxCapacity, seatingCapacity
+		return loc.capacity ?? loc.maxCapacity ?? loc.seatingCapacity ?? null
+	}
+
+	useEffect(() => {
+		let mounted = true
+		const load = async () => {
+			setLoading(true)
+			try {
+				// fetch events, locations and clubs in parallel
+				const [eventsRes, locationsRes, clubsRes] = await Promise.all([fetchEvent(), fetchLocation(), fetchClub()])
+				const eventsContent = (eventsRes as any) && Array.isArray((eventsRes as any).content) ? (eventsRes as any).content : Array.isArray(eventsRes) ? eventsRes : []
+				const locationsContent = (locationsRes as any) && Array.isArray((locationsRes as any).content) ? (locationsRes as any).content : Array.isArray(locationsRes) ? locationsRes : []
+				const clubsContent = (clubsRes as any) && Array.isArray((clubsRes as any).content) ? (clubsRes as any).content : Array.isArray(clubsRes) ? clubsRes : []
+				if (mounted) {
+					setEvents(eventsContent)
+					setLocations(locationsContent)
+					setClubs(clubsContent)
+				}
+			} catch (err: any) {
+				console.error(err)
+				if (mounted) setError(err?.message || "Failed to fetch events or locations")
+			} finally {
+				if (mounted) setLoading(false)
+			}
+		}
+
+		load()
+		return () => {
+			mounted = false
+		}
+	}, [])
+
+	// Filter events based on API shape: { id, clubId, name, description, type, date, time, locationId }
+	const filteredRequests = events.filter((evt) => {
+		const q = searchTerm.trim().toLowerCase()
+		const matchSearch =
+			q === "" ||
+			evt.name?.toLowerCase().includes(q) ||
+			// club names are not included in this payload; fallback to clubId
+			String(evt.clubId || "").includes(q)
+
+		// status/category filters were for the old static data; map them to type for now
+		const matchStatus = statusFilter === "all" ? true : (evt.status || evt.type) === statusFilter
+		const matchCategory = categoryFilter === "all" ? true : (evt.category || "") === categoryFilter
+		const matchType = typeFilter === "all" ? true : (evt.type || "") === typeFilter
 
 		return matchSearch && matchStatus && matchCategory && matchType
 	})
@@ -158,9 +123,11 @@ export default function UniStaffEventRequestsPage() {
 		}).format(amount)
 	}
 
-	const pendingCount = eventRequests.filter((req) => req.status === "PENDING").length
-	const approvedCount = eventRequests.filter((req) => req.status === "APPROVED").length
-	const rejectedCount = eventRequests.filter((req) => req.status === "REJECTED").length
+	// Since API uses `type` (PUBLIC/PRIVATE) and doesn't provide status/category in example,
+	// we'll compute simple counts: total, public, private
+	const totalCount = events.length
+	const publicCount = events.filter((e) => e.type === "PUBLIC").length
+	const privateCount = events.filter((e) => e.type === "PRIVATE").length
 
 	return (
 		<ProtectedRoute allowedRoles={["uni_staff"]}>
@@ -186,9 +153,9 @@ export default function UniStaffEventRequestsPage() {
 									</div>
 									<div>
 										<div className="text-lg font-bold text-yellow-900 dark:text-yellow-100">
-											{pendingCount}
+											{totalCount}
 										</div>
-										<p className="text-xs text-yellow-600 dark:text-yellow-400">Awaiting review</p>
+										<p className="text-xs text-yellow-600 dark:text-yellow-400">Total events</p>
 									</div>
 								</div>
 							</CardContent>
@@ -207,9 +174,9 @@ export default function UniStaffEventRequestsPage() {
 									</div>
 									<div>
 										<div className="text-lg font-bold text-green-900 dark:text-green-100">
-											{approvedCount}
+											{publicCount}
 										</div>
-										<p className="text-xs text-green-600 dark:text-green-400">Successfully approved</p>
+										<p className="text-xs text-green-600 dark:text-green-400">Public events</p>
 									</div>
 								</div>
 							</CardContent>
@@ -226,9 +193,9 @@ export default function UniStaffEventRequestsPage() {
 									</div>
 									<div>
 										<div className="text-lg font-bold text-red-900 dark:text-red-100">
-											{rejectedCount}
+											{privateCount}
 										</div>
-										<p className="text-xs text-red-600 dark:text-red-400">Not approved</p>
+										<p className="text-xs text-red-600 dark:text-red-400">Private events</p>
 									</div>
 								</div>
 							</CardContent>
@@ -290,11 +257,17 @@ export default function UniStaffEventRequestsPage() {
 					</div>
 
 					<div className="grid gap-4">
-						{filteredRequests.length === 0 ? (
+						{loading ? (
 							<Card>
-								<CardContent className="py-8 text-center text-muted-foreground">
-									No event requests found
-								</CardContent>
+								<CardContent className="py-8 text-center text-muted-foreground">Loading events...</CardContent>
+							</Card>
+						) : error ? (
+							<Card>
+								<CardContent className="py-8 text-center text-destructive">{error}</CardContent>
+							</Card>
+						) : filteredRequests.length === 0 ? (
+							<Card>
+								<CardContent className="py-8 text-center text-muted-foreground">No events found</CardContent>
 							</Card>
 						) : (
 							filteredRequests.map((request) => (
@@ -305,34 +278,51 @@ export default function UniStaffEventRequestsPage() {
 												<div className="flex-1">
 													<div className="flex items-center gap-3 mb-2">
 														<Calendar className="h-5 w-5 text-muted-foreground" />
-														<h3 className="font-semibold text-lg">{request.eventName}</h3>
-														<Badge variant="outline">{request.eventType}</Badge>
-														<Badge variant="outline">{request.category}</Badge>
-														{getStatusBadge(request.status)}
+														<h3 className="font-semibold text-lg">{request.name || request.eventName}</h3>
+														{renderTypeBadge(request.type || request.eventType)}
+														{/* category not provided by API example */}
+														{getStatusBadge(request.status || request.type)}
 													</div>
 
-													<p className="text-muted-foreground mb-3 line-clamp-2">
-														{request.description}
-													</p>
+													<p className="text-muted-foreground mb-3 line-clamp-2">{request.description}</p>
 
 													<div className="flex items-center gap-6 text-sm text-muted-foreground">
 														<div className="flex items-center gap-1">
 															<Calendar className="h-4 w-4" />
-															<span>
-																{new Date(request.eventDate).toLocaleDateString()}
-															</span>
+															<span>{request.date ? new Date(request.date).toLocaleDateString() : request.eventDate}</span>
 														</div>
 														<div className="flex items-center gap-1">
 															<MapPin className="h-4 w-4" />
-															<span>{request.venue}</span>
+															<span>{
+																(() => {
+																	const loc = locations.find((l) => String(l.id) === String(request.locationId))
+																	if (loc && loc.name) return loc.name
+																	if (request.venue) return request.venue
+																	return `Location #${request.locationId ?? "N/A"}`
+																})()
+															}</span>
 														</div>
 														<div className="flex items-center gap-1">
 															<Users className="h-4 w-4" />
-															<span>{request.expectedAttendees} attendees</span>
+															<span>{
+																(() => {
+																	const cap = getLocationCapacity(request.locationId)
+																	if (cap !== null && cap !== undefined) return `${cap} capacity`
+																	if (request.expectedAttendees) return `${request.expectedAttendees} attendees`
+																	return "-"
+																})()
+															}</span>
 														</div>
 														<div className="flex items-center gap-1">
 															<Building className="h-4 w-4" />
-															<span>{request.requestedBy}</span>
+															<span>{
+																(() => {
+																	const club = clubs.find((c) => String(c.id) === String(request.clubId))
+																	if (club && club.name) return club.name
+																	if (request.requestedBy) return request.requestedBy
+																	return `Club #${request.clubId || "?"}`
+																})()
+															}</span>
 														</div>
 													</div>
 												</div>
@@ -359,7 +349,7 @@ export default function UniStaffEventRequestsPage() {
 								</Card>
 							))
 						)}
-					</div>
+						</div>
 				</div>
 			</AppShell>
 		</ProtectedRoute>

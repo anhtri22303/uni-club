@@ -27,3 +27,18 @@ export const createEvent = async (payload: any) => {
     throw error
   }
 }
+
+export const getEventById = async (id: string | number) => {
+  try {
+    const response = await axiosInstance.get(`api/events/${id}`)
+    const resData: any = response.data
+    console.log(`Fetched event ${id}:`, resData)
+    // Some backends wrap the payload in { success, message, data }
+    // Normalize to return the inner event object when present.
+    if (resData && resData.data) return resData.data
+    return resData
+  } catch (error) {
+    console.error(`Error fetching event by id ${id}:`, error)
+    throw error
+  }
+}

@@ -38,6 +38,9 @@ export function UserProfileWidget() {
 
   // Load wallet points from API
   useEffect(() => {
+    // Only fetch wallet when user has role 'club_leader'
+    if (auth.role !== "club_leader") return
+
     let mounted = true
     const load = async () => {
       try {
