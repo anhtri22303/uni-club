@@ -11,9 +11,9 @@ import { useToast } from "@/hooks/use-toast"
 import { CheckCircle, Calendar, MapPin, Users, Trophy, Clock } from "lucide-react"
 import { useState } from "react"
 
-// Import data
-import clubs from "@/src/data/clubs.json"
-import events from "@/src/data/events.json"
+// Removed static `src/data` imports — use empty fallbacks. Replace with API/context in future if needed.
+const clubs: any[] = []
+const events: any[] = []
 
 export default function MemberCheckinPage() {
   const { auth } = useAuth()

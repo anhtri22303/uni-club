@@ -17,6 +17,7 @@ export const postMemAppli = async (payload: { clubId: number | string; reason: s
 export const getMemberApplications = async () => {
   try {
     const response = await axiosInstance.get("/api/member-applications")
+    console.log("Member apply:", response.data)
     // Expecting an array of application objects
     return response.data
   } catch (error: any) {

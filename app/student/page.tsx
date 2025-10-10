@@ -11,9 +11,9 @@ import { useData } from "@/contexts/data-context"
 import { Trophy, Users, Calendar, Gift, Scan, Crown, Medal, Award, Star, CheckCircle } from "lucide-react"
 import { useRouter } from "next/navigation"
 
-// Import data
-import clubs from "@/src/data/clubs.json"
-import events from "@/src/data/events.json"
+// Removed static `src/data` imports per cleanup — use empty fallbacks or replace with API/context later
+const clubs: any[] = []
+const events: any[] = []
 
 export default function StudentDashboard() {
   const { auth } = useAuth()
@@ -69,7 +69,7 @@ export default function StudentDashboard() {
     .slice(0, 3)
 
   return (
-  <ProtectedRoute allowedRoles={["member"]}>
+  <ProtectedRoute allowedRoles={["member", "student"]}>
       <AppShell>
         <div className="space-y-4 sm:space-y-6">
           <div className="flex items-center justify-between">

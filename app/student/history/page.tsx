@@ -13,9 +13,9 @@ import { History, UserPlus, Gift, CheckCircle } from "lucide-react"
 import { useEffect, useState } from "react"
 import { getMemberApplications } from "@/service/memberApplicationApi"
 
-// Import data
-import clubs from "@/src/data/clubs.json"
-import offers from "@/src/data/offers.json"
+// Removed static `src/data` imports — use empty fallbacks. Prefer remote `clubName` from activity data when available.
+const clubs: any[] = []
+const offers: any[] = []
 
 export default function MemberHistoryPage() {
   const { auth } = useAuth()
@@ -46,7 +46,9 @@ export default function MemberHistoryPage() {
         applicationId: app.applicationId,
         userId: app.userId,
         clubId: String(app.clubId),
+        clubName: app.clubName || app.club?.name || app.clubName,
         status: app.status,
+        reviewedBy: app.reviewedBy ?? null,
         reason: app.reason,
         submittedAt: app.submittedAt,
       },
@@ -123,7 +125,11 @@ export default function MemberHistoryPage() {
   })
 
   const getClubName = (clubId: string) => {
-    return clubs.find((c) => c.id === clubId)?.name || "Unknown Club"
+    // clubId in local data are strings like "c-ai"; remote clubId may be numeric or string.
+    // Try exact match first, then coerce numeric ids to string and try again.
+    const byId = clubs.find((c) => String(c.id) === String(clubId))?.name
+    // Return undefined when not found so callers can prefer other sources (e.g. remote activity.data.clubName)
+    return byId
   }
 
   const getOfferTitle = (offerId: string) => {
@@ -195,7 +201,7 @@ export default function MemberHistoryPage() {
                             <>
                               <h3 className="font-medium">Club Application</h3>
                               <p className="text-sm text-muted-foreground">
-                                Applied to {getClubName(activity.data.clubId)}
+                                Applied to {activity.data.clubName || getClubName(activity.data.clubId) || "Unknown Club"}
                               </p>
                             </>
                           ) : (
@@ -231,15 +237,22 @@ export default function MemberHistoryPage() {
                         </div>
                       </div>
 
-                      <p className="text-xs text-muted-foreground mt-2">
-                        {new Date(activity.date).toLocaleDateString("en-US", {
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </p>
+                      <div className="mt-2">
+                        <p className="text-sm text-muted-foreground">{activity.data.reason}</p>
+                        {activity.data.reviewedBy && (
+                          <p className="text-xs text-muted-foreground mt-1">Reviewed by: {activity.data.reviewedBy}</p>
+                        )}
+
+                        <p className="text-xs text-muted-foreground mt-2">
+                          {new Date(activity.date).toLocaleDateString("en-US", {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </CardContent>

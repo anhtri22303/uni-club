@@ -7,10 +7,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useData } from "@/contexts/data-context"
 import { Gift, TrendingUp, CheckCircle, Clock } from "lucide-react"
 
-// Import data
-import offers from "@/src/data/offers.json"
-import redemptions from "@/src/data/redemptions.json"
-import users from "@/src/data/users.json"
+// Removed static `src/data` imports — use empty fallbacks. Replace with real data from API/context later.
+const offers: any[] = []
+const redemptions: any[] = []
+const users: any[] = []
 
 export default function PartnerDashboard() {
   const { vouchers } = useData()

@@ -10,8 +10,8 @@ import { useData } from "@/contexts/data-context"
 import { Wallet, Copy, CheckCircle, Clock, Trash2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
-// Import data
-import offers from "@/src/data/offers.json"
+// Removed static `src/data` import — use empty fallback. Replace with API/context later if needed.
+const offers: any[] = []
 
 export function WalletHistory() {
   const { auth } = useAuth()

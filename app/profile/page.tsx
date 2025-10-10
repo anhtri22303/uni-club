@@ -99,8 +99,8 @@ export default function ProfilePage() {
 
   // load wallet points
   useEffect(() => {
-    // Only fetch wallet when user has role 'club_leader'
-    if (auth.role !== "club_leader") return
+    // Fetch wallet for club leaders, members, and students (if backend provides points)
+    if (!(auth.role === "club_leader" || auth.role === "member" || auth.role === "student")) return
 
     let mounted = true
     const loadWallet = async () => {
@@ -119,7 +119,7 @@ export default function ProfilePage() {
     return () => {
       mounted = false
     }
-  }, [auth.userId])
+  }, [auth.userId, auth.role])
 
   const handleSave = async () => {
     const id = auth.userId

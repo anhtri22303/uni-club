@@ -9,7 +9,7 @@ export async function getWallet() {
       data.points ?? data.balance ?? data.balancePoints ?? data.balance_points ?? 0
     )
     const normalized = { ...data, points }
-    console.log("getWallet (normalized):", normalized)
+    console.log("getWallet:", normalized)
     return normalized
   } catch (err) {
     console.error("walletApi.getWallet failed", err)
