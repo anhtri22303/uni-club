@@ -8,7 +8,7 @@ import { useState } from "react"
 import { LoadingSpinner } from "@/components/loading-spinner"
 import {
   LayoutDashboard, Users, Calendar, Gift, Wallet, History, BarChart3,
-  Building, Home, CheckCircle, FileText,
+  Building, Home, CheckCircle, FileText, FileUser,
 } from "lucide-react"
 
 interface SidebarProps {
@@ -33,6 +33,7 @@ const navigationConfig = {
   ],
   club_leader: [
     { href: "/club-leader", label: "Dashboard", icon: LayoutDashboard },
+        { href: "/club-leader/applications", label: "Applications", icon: FileUser },
     { href: "/club-leader/members", label: "Members", icon: Users },
     { href: "/club-leader/events", label: "Events", icon: Calendar },
     { href: "/club-leader/gift", label: "Gift", icon: Gift },
