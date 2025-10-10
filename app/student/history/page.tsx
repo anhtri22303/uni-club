@@ -10,14 +10,21 @@ import { usePagination } from "@/hooks/use-pagination"
 import { useAuth } from "@/contexts/auth-context"
 import { useData } from "@/contexts/data-context"
 import { History, UserPlus, Gift, CheckCircle } from "lucide-react"
+import { useEffect, useState } from "react"
+import { getMemberApplications } from "@/service/memberApplicationApi"
 
-// Import data
-import clubs from "@/src/data/clubs.json"
-import offers from "@/src/data/offers.json"
+// Removed static `src/data` imports — use empty fallbacks. Prefer remote `clubName` from activity data when available.
+const clubs: any[] = []
+const offers: any[] = []
 
-export default function StudentHistoryPage() {
+export default function MemberHistoryPage() {
   const { auth } = useAuth()
   const { membershipApplications, vouchers } = useData()
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [remoteApplications, setRemoteApplications] = useState<any[]>([])
+
+  // Load any session-saved applications (from recent POSTs)
 
   // Get user's activity history
   const userApplications = membershipApplications.filter((a) => a.userId === auth.userId)
@@ -25,10 +32,26 @@ export default function StudentHistoryPage() {
 
   // Combine and sort activities by date
   const activities = [
+    // local context apps
     ...userApplications.map((app) => ({
       type: "application" as const,
       date: app.appliedAt || new Date().toISOString(),
       data: app,
+    })),
+    // remote apps fetched from backend (filter applied below)
+    ...remoteApplications.map((app) => ({
+      type: "application" as const,
+      date: app.submittedAt || app.appliedAt || new Date().toISOString(),
+      data: {
+        applicationId: app.applicationId,
+        userId: app.userId,
+        clubId: String(app.clubId),
+        clubName: app.clubName || app.club?.name || app.clubName,
+        status: app.status,
+        reviewedBy: app.reviewedBy ?? null,
+        reason: app.reason,
+        submittedAt: app.submittedAt,
+      },
     })),
     ...userVouchers.map((voucher) => ({
       type: "redemption" as const,
@@ -36,6 +59,57 @@ export default function StudentHistoryPage() {
       data: voucher,
     })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+
+  // dedupe by applicationId (when available), otherwise by clubId+userId+date
+  const activitiesToDisplay = (() => {
+    const out: typeof activities = []
+    const seen = new Set<string>()
+    for (const act of activities) {
+      if (act.type !== "application") {
+        out.push(act)
+        continue
+      }
+      const app = act.data
+      const key = app.applicationId ? `id:${app.applicationId}` : `cu:${app.clubId}:${app.userId}:${app.submittedAt || app.appliedAt || act.date}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      out.push(act)
+    }
+    return out
+  })()
+
+  // Fetch remote applications for this user
+  useEffect(() => {
+    let mounted = true
+    const load = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const res: any = await getMemberApplications()
+        if (!mounted) return
+        // determine current userId from localStorage 'uniclub-auth'
+        let stored: any = null
+        try {
+          stored = JSON.parse(localStorage.getItem("uniclub-auth") ?? "null")
+        } catch (e) {
+          console.warn("Failed parse stored auth", e)
+        }
+        const currentUserId = stored?.userId ?? stored?.user?.userId ?? auth.userId
+        const filtered = Array.isArray(res) ? res.filter((r: any) => String(r.userId) === String(currentUserId)) : []
+        setRemoteApplications(filtered)
+      } catch (err: any) {
+        console.error(err)
+        if (!mounted) return
+        setError(err?.message ?? "Failed to fetch member applications")
+      } finally {
+        if (mounted) setLoading(false)
+      }
+    }
+    load()
+    return () => {
+      mounted = false
+    }
+  }, [auth.userId])
 
   const {
     currentPage,
@@ -46,21 +120,26 @@ export default function StudentHistoryPage() {
     setCurrentPage,
     setPageSize,
   } = usePagination({
-    data: activities,
+    data: activitiesToDisplay,
     initialPageSize: 6, // ↓ để hiện phân trang khi > 6 activity
   })
 
   const getClubName = (clubId: string) => {
-    return clubs.find((c) => c.id === clubId)?.name || "Unknown Club"
+    // clubId in local data are strings like "c-ai"; remote clubId may be numeric or string.
+    // Try exact match first, then coerce numeric ids to string and try again.
+    const byId = clubs.find((c) => String(c.id) === String(clubId))?.name
+    // Return undefined when not found so callers can prefer other sources (e.g. remote activity.data.clubName)
+    return byId
   }
 
   const getOfferTitle = (offerId: string) => {
     return offers.find((o) => o.id === offerId)?.title || "Unknown Offer"
   }
 
-  if (activities.length === 0) {
+  if (activitiesToDisplay.length === 0) {
+    // show loading / error / empty states
     return (
-      <ProtectedRoute allowedRoles={["student"]}>
+      <ProtectedRoute allowedRoles={["student", "member"]}>
         <AppShell>
           <div className="space-y-6">
             <div>
@@ -68,15 +147,21 @@ export default function StudentHistoryPage() {
               <p className="text-muted-foreground">Track your club applications and voucher redemptions</p>
             </div>
 
-            <EmptyState
-              icon={History}
-              title="No activity yet"
-              description="Your club applications and voucher redemptions will appear here"
-              action={{
-                label: "Browse Clubs",
-                onClick: () => (window.location.href = "/student/clubs"),
-              }}
-            />
+            {loading ? (
+              <div className="text-center text-sm text-muted-foreground">Loading applications...</div>
+            ) : error ? (
+              <div className="text-center text-sm text-destructive">Error: {error}</div>
+            ) : (
+              <EmptyState
+                icon={History}
+                title="No activity yet"
+                description="Your club applications and voucher redemptions will appear here"
+                action={{
+                  label: "Browse Clubs",
+                  onClick: () => (window.location.href = "/student/clubs"),
+                }}
+              />
+            )}
           </div>
         </AppShell>
       </ProtectedRoute>
@@ -84,7 +169,7 @@ export default function StudentHistoryPage() {
   }
 
   return (
-    <ProtectedRoute allowedRoles={["student"]}>
+      <ProtectedRoute allowedRoles={["student", "member"]}>
       <AppShell>
         <div className="space-y-6">
           <div>
@@ -116,7 +201,7 @@ export default function StudentHistoryPage() {
                             <>
                               <h3 className="font-medium">Club Application</h3>
                               <p className="text-sm text-muted-foreground">
-                                Applied to {getClubName(activity.data.clubId)}
+                                Applied to {activity.data.clubName || getClubName(activity.data.clubId) || "Unknown Club"}
                               </p>
                             </>
                           ) : (
@@ -152,15 +237,22 @@ export default function StudentHistoryPage() {
                         </div>
                       </div>
 
-                      <p className="text-xs text-muted-foreground mt-2">
-                        {new Date(activity.date).toLocaleDateString("en-US", {
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </p>
+                      <div className="mt-2">
+                        <p className="text-sm text-muted-foreground">{activity.data.reason}</p>
+                        {activity.data.reviewedBy && (
+                          <p className="text-xs text-muted-foreground mt-1">Reviewed by: {activity.data.reviewedBy}</p>
+                        )}
+
+                        <p className="text-xs text-muted-foreground mt-2">
+                          {new Date(activity.date).toLocaleDateString("en-US", {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </CardContent>

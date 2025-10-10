@@ -14,15 +14,32 @@ import { useData } from "@/contexts/data-context"
 import { useToast } from "@/hooks/use-toast"
 import { Users, UserPlus } from "lucide-react"
 import { fetchClub } from "@/service/clubApi"
+import { postMemAppli } from "@/service/memberApplicationApi"
 
 // We'll fetch clubs from the backend and only use the `content` array.
 type ClubApiItem = {
   id: number
   name: string
   description?: string
+  majorName?: string
   majorPolicyName?: string
 }
-
+// Bảng màu theo ngành học
+const categoryColors: Record<string, string> = {
+  "Software Engineering": "#0052CC",
+  "Artificial Intelligence": "#6A00FF",
+  "Information Assurance": "#243447",
+  "Data Science": "#00B8A9",
+  "Business Administration": "#1E2A78",
+  "Digital Marketing": "#FF3366",
+  "Graphic Design": "#FFC300",
+  "Multimedia Communication": "#FF6B00",
+  "Hospitality Management": "#E1B382",
+  "International Business": "#007F73",
+  "Finance and Banking": "#006B3C",
+  "Japanese Language": "#D80032",
+  "Korean Language": "#5DADEC",
+}
 
 export default function StudentClubsPage() {
   const { auth } = useAuth()
@@ -53,7 +70,7 @@ export default function StudentClubsPage() {
   const enhancedClubs = clubs.map((club) => ({
     id: String(club.id),
     name: club.name,
-    category: "", // category not provided by API; leave empty or map if you have a field
+    category: club.majorName ?? "-", // category not provided by API; leave empty or map if you have a field
     description: club.description,
     members: 0,
     founded: 0,
@@ -151,6 +168,7 @@ export default function StudentClubsPage() {
   }, [])
 
   const submitApplication = () => {
+    // validate
     if (!selectedClub || !applicationText.trim()) {
       toast({
         title: "Missing Information",
@@ -159,23 +177,45 @@ export default function StudentClubsPage() {
       })
       return
     }
+    // call backend and persist response in sessionStorage
+    const doPost = async () => {
+      try {
+        // minimal backend payload
+        const payload = { clubId: selectedClub.id, reason: applicationText.trim() }
+        const res: any = await postMemAppli(payload)
 
-    addMembershipApplication({
-      clubId: selectedClub.id,
-      userId: auth.userId,
-      status: "PENDING",
-      applicationText: applicationText.trim(),
-      appliedAt: new Date().toISOString(),
-    })
+        // also add to in-memory data context (so other pages in-app see it immediately)
+        try {
+          addMembershipApplication({
+            clubId: String(res.clubId ?? selectedClub.id),
+            userId: res.userId ?? auth.userId,
+            status: res.status ?? "PENDING",
+            applicationText: res.reason ?? applicationText.trim(),
+            appliedAt: res.submittedAt ?? new Date().toISOString(),
+          })
+        } catch (e) {
+          console.error("Failed to update data context with new membership application", e)
+        }
 
-    toast({
-      title: "Application Submitted",
-      description: `Your application to ${selectedClub.name} has been submitted successfully`,
-    })
+        toast({
+          title: "Application Submitted",
+          description: `Your application to ${selectedClub.name} has been submitted successfully`,
+        })
 
-    setShowApplicationModal(false)
-    setApplicationText("")
-    setSelectedClub(null)
+        setShowApplicationModal(false)
+        setApplicationText("")
+        setSelectedClub(null)
+      } catch (err: any) {
+        console.error(err)
+        toast({
+          title: "Submission Failed",
+          description: err?.response?.data?.message ?? err?.message ?? "Failed to submit application",
+          variant: "destructive",
+        })
+      }
+    }
+
+    void doPost()
   }
 
   const columns = [
@@ -192,11 +232,21 @@ export default function StudentClubsPage() {
     {
       key: "category" as const,
       label: "Category",
-      render: (value: string) => (
-        <Badge title={value || ""} variant={value ? "secondary" : "outline"} className="max-w-[160px] truncate">
-          {value || "-"}
-        </Badge>
-      ),
+      render: (value: string) => {
+        const color = categoryColors[value] || "#E2E8F0" // fallback nếu không có
+        return (
+          <Badge
+            variant="secondary"
+            className="max-w-[160px] truncate"
+            style={{
+              backgroundColor: color,
+              color: "#fff", // chữ trắng cho rõ
+            }}
+          >
+            {value || "-"}
+          </Badge>
+        )
+      },
     },
     {
       key: "description" as const,

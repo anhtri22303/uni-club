@@ -12,10 +12,10 @@ interface ModalProps {
   children: React.ReactNode
 }
 
-export function Modal({ open, onOpenChange, title, description, children }: ModalProps) {
+export function Modal({ open, onOpenChange, title, description, children, showCloseButton = true }: ModalProps & { showCloseButton?: boolean }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" showCloseButton={showCloseButton}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           {description && <DialogDescription>{description}</DialogDescription>}

@@ -11,9 +11,9 @@ import { useData } from "@/contexts/data-context"
 import { Trophy, Users, Calendar, Gift, Scan, Crown, Medal, Award, Star, CheckCircle } from "lucide-react"
 import { useRouter } from "next/navigation"
 
-// Import data
-import clubs from "@/src/data/clubs.json"
-import events from "@/src/data/events.json"
+// Removed static `src/data` imports per cleanup — use empty fallbacks or replace with API/context later
+const clubs: any[] = []
+const events: any[] = []
 
 export default function StudentDashboard() {
   const { auth } = useAuth()
@@ -69,7 +69,7 @@ export default function StudentDashboard() {
     .slice(0, 3)
 
   return (
-    <ProtectedRoute allowedRoles={["student"]}>
+  <ProtectedRoute allowedRoles={["member", "student"]}>
       <AppShell>
         <div className="space-y-4 sm:space-y-6">
           <div className="flex items-center justify-between">
@@ -263,7 +263,7 @@ export default function StudentDashboard() {
                   <Button
                     variant="outline"
                     className="w-full mt-4 bg-white/80 backdrop-blur-sm border-2 border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 font-semibold text-sm h-10 sm:h-11 transition-all duration-300"
-                    onClick={() => router.push("/student/events")}
+                    onClick={() => router.push("/member/events")}
                   >
                     <Calendar className="h-4 w-4 mr-2" />
                     View All Events
@@ -283,7 +283,7 @@ export default function StudentDashboard() {
               <div className="grid gap-2 sm:gap-3 grid-cols-2 sm:grid-cols-4">
                 <Button
                   variant="outline"
-                  onClick={() => router.push("/student/clubs")}
+                  onClick={() => router.push("/member/clubs")}
                   className="h-9 sm:h-10 text-xs sm:text-sm"
                 >
                   <Users className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
@@ -291,7 +291,7 @@ export default function StudentDashboard() {
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={() => router.push("/student/checkin")}
+                  onClick={() => router.push("/member/checkin")}
                   className="h-9 sm:h-10 text-xs sm:text-sm"
                 >
                   <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
@@ -299,7 +299,7 @@ export default function StudentDashboard() {
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={() => router.push("/student/offers")}
+                  onClick={() => router.push("/member/offers")}
                   className="h-9 sm:h-10 text-xs sm:text-sm"
                 >
                   <Gift className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
@@ -307,7 +307,7 @@ export default function StudentDashboard() {
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={() => router.push("/student/wallet")}
+                  onClick={() => router.push("/member/wallet")}
                   className="h-9 sm:h-10 text-xs sm:text-sm"
                 >
                   <Gift className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
@@ -315,7 +315,7 @@ export default function StudentDashboard() {
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={() => router.push("/student/history")}
+                  onClick={() => router.push("/member/history")}
                   className="h-9 sm:h-10 text-xs sm:text-sm"
                 >
                   <Calendar className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />

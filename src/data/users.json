@@ -1,11 +1,11 @@
 [
   {
-    "id": "u-student-001",
+  "id": "u-member-001",
     "fullName": "Anh Nguyen",
     "email": "student.anh@uit.edu.vn",
     "password": "demo123",
-    "roles": ["student"],
-    "defaultRole": "student",
+    "roles": ["member"],
+    "defaultRole": "member",
     "points": 1250
   },
   {
@@ -13,8 +13,8 @@
     "fullName": "Minh Le",
     "email": "club-manager.minh@uit.edu.vn",
     "password": "demo123",
-    "roles": ["club_manager"],
-    "defaultRole": "club_manager",
+    "roles": ["club_leader"],
+    "defaultRole": "club_leader",
     "points": 2850
   },
   {
@@ -22,8 +22,8 @@
     "fullName": "University Admin",
     "email": "admin@uit.edu.vn",
     "password": "demo123",
-    "roles": ["uni_admin"],
-    "defaultRole": "uni_admin",
+    "roles": ["uni_staff"],
+    "defaultRole": "uni_staff",
     "points": 0
   },
   {

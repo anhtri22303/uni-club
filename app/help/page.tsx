@@ -12,10 +12,10 @@ const faqs = [
     answer:
       "You can earn loyalty points by attending club events, participating in activities, and completing challenges. Each event has a specific point value that you'll receive upon attendance.",
   },
-  {
+    {
     question: "How do I join a club?",
     answer:
-      "Navigate to the Clubs page, browse available clubs, and click 'Apply' on any club you're interested in. You'll need to provide a brief explanation of why you want to join. Club managers will review and approve applications.",
+      "Navigate to the Clubs page, browse available clubs, and click 'Apply' on any club you're interested in. You'll need to provide a brief explanation of why you want to join. Club leaders will review and approve applications.",
   },
   {
     question: "What are the different membership tiers?",
@@ -41,7 +41,7 @@ const faqs = [
 
 export default function HelpPage() {
   return (
-    <ProtectedRoute allowedRoles={["student", "club_manager", "uni_admin", "admin", "staff"]}>
+  <ProtectedRoute allowedRoles={["member", "club_leader", "uni_admin", "admin", "staff"]}>
       <AppShell>
         <div className="space-y-6 max-w-4xl">
           <div>

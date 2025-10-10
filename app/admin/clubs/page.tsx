@@ -9,11 +9,28 @@ import { useToast } from "@/hooks/use-toast"
 import { Users, Calendar, TrendingUp } from "lucide-react"
 import { fetchClub } from "@/service/clubApi"
 
+// Bảng màu theo ngành học
+const categoryColors: Record<string, string> = {
+  "Software Engineering": "#0052CC",
+  "Artificial Intelligence": "#6A00FF",
+  "Information Assurance": "#243447",
+  "Data Science": "#00B8A9",
+  "Business Administration": "#1E2A78",
+  "Digital Marketing": "#FF3366",
+  "Graphic Design": "#FFC300",
+  "Multimedia Communication": "#FF6B00",
+  "Hospitality Management": "#E1B382",
+  "International Business": "#007F73",
+  "Finance and Banking": "#006B3C",
+  "Japanese Language": "#D80032",
+  "Korean Language": "#5DADEC",
+}
+
 // Kiểu dữ liệu từ API
 type ClubApiItem = {
   id: number
   name: string
-  category?: string
+  majorName?: string
   description?: string
   majorPolicyName?: string
   memberCount?: number
@@ -62,7 +79,7 @@ export default function AdminClubsPage() {
     return {
       id: String(club.id),
       name: club.name,
-      category: club.category ?? "",
+      category: club.majorName ?? "-",
       description: club.description || "-",
       // members: memberCount,
       members: 0,
@@ -112,11 +129,21 @@ export default function AdminClubsPage() {
     {
       key: "category" as const,
       label: "Category",
-      render: (value: string) => (
-        <Badge variant={value ? "secondary" : "outline"} className="max-w-[160px] truncate">
-          {value || "-"}
-        </Badge>
-      ),
+      render: (value: string) => {
+        const color = categoryColors[value] || "#E2E8F0" // fallback nếu không có
+        return (
+          <Badge
+            variant="secondary"
+            className="max-w-[160px] truncate"
+            style={{
+              backgroundColor: color,
+              color: "#fff", // chữ trắng cho rõ
+            }}
+          >
+            {value || "-"}
+          </Badge>
+        )
+      },
     },
     {
       key: "description" as const,
@@ -159,7 +186,7 @@ export default function AdminClubsPage() {
     // {
     //   key: "activityLevel" as const,
     //   label: "Activity Level",
-/*************  ✨ Windsurf Command 🌟  *************/
+    /*************  ✨ Windsurf Command 🌟  *************/
     //   render: (value: "High" | "Medium" | "low") => {
     //     console.log("Render activity level badge with value:", value)
     //     const variant = value === "High"
@@ -188,7 +215,7 @@ export default function AdminClubsPage() {
     //       {value}
     //     </Badge>
     //   ),
-/*******  2c527d3a-0876-4ea2-b576-a59839ef6b4b  *******/
+    /*******  2c527d3a-0876-4ea2-b576-a59839ef6b4b  *******/
     // },
   ]
 

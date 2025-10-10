@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { MessageCircle, X, Send } from "lucide-react"
+import { MessageCircle, X, Send, Maximize2, Minimize2 } from "lucide-react"
 import { ChatbotPromptMenu } from "@/components/chatbot-prompt-menu"
 import axios from "axios"
 
@@ -40,6 +40,7 @@ export function ChatbotWidget() {
   const [isPromptOpen, setIsPromptOpen] = useState(false) // state điều khiển dropdown
   const inputRef = useRef<HTMLInputElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const [isExpanded, setIsExpanded] = useState(false)
 
   // Scroll to bottom when messages change
   React.useEffect(() => {
@@ -149,27 +150,39 @@ export function ChatbotWidget() {
 
       {/* Chatbot Interface */}
       {isOpen && (
-        <div className="fixed bottom-20 right-6 z-[1000] w-80 max-w-[calc(100vw-2rem)]">
+        <div className={`fixed bottom-20 right-6 z-[1000] ${isExpanded ? 'inset-4 w-auto max-w-[calc(100vw-2rem)]' : 'w-80 max-w-[calc(100vw-2rem)]'}`}>
           {/* Dropdown menu đã được di chuyển vào phần Input + Actions */}
           <Card className="shadow-xl border-2 overflow-visible">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">AI Assistant</CardTitle>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6"
-                  onClick={() => setIsOpen(false)}
-                  aria-label="Đóng"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardHeader>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">Uniclub Bot</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={() => setIsExpanded((v) => !v)}
+                      aria-label={isExpanded ? 'Thu nhỏ' : 'Mở rộng'}
+                      title={isExpanded ? 'Thu nhỏ' : 'Mở rộng'}
+                    >
+                      {isExpanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={() => setIsOpen(false)}
+                      aria-label="Đóng"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
 
             <CardContent className="space-y-4">
               {/* Messages */}
-              <ScrollArea className="h-64 w-full pr-4">
+              <ScrollArea className={`${isExpanded ? 'h-[70vh]' : 'h-64'} w-full pr-4`}>
                 <div className="space-y-3">
                   {messages.map((message) => (
                     <div

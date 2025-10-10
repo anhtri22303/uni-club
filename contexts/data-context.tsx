@@ -35,6 +35,8 @@ interface DataContextType {
   getUserBalance: (userId: string) => number
   updateUserBalance: (userId: string, newBalance: number) => void
   purchaseProduct: (userId: string, productId: string, quantity?: number) => boolean
+  removeMembershipApplication: (id: string) => void
+  replaceMembershipApplication: (tempId: string, newApp: any) => void
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined)
@@ -52,7 +54,17 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [userBalances, setUserBalances] = useLocalStorage("clubly-user-balances", initialUserBalances)
 
   const addMembershipApplication = (application: any) => {
-    setMembershipApplications((prev) => [...prev, { ...application, id: `a-${Date.now()}` }])
+    const id = application.id ?? `a-${Date.now()}`
+    setMembershipApplications((prev) => [...prev, { ...application, id }])
+    return id
+  }
+
+  const removeMembershipApplication = (id: string) => {
+    setMembershipApplications((prev) => prev.filter((a) => String(a.id) !== String(id)))
+  }
+
+  const replaceMembershipApplication = (tempId: string, newApp: any) => {
+    setMembershipApplications((prev) => prev.map((a) => (String(a.id) === String(tempId) ? newApp : a)))
   }
 
   const addVoucher = (voucher: any) => {
@@ -128,7 +140,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         updateClubGiftProducts: setClubGiftProducts,
         updateShopProducts: setShopProducts,
         updateUserBalances: setUserBalances,
-        addMembershipApplication,
+  addMembershipApplication,
+  removeMembershipApplication,
+  replaceMembershipApplication,
         addVoucher,
         addStaffHistoryEntry,
         removeVoucher,

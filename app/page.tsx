@@ -21,6 +21,8 @@ export default function LoginPage() {
   const [isSignUpMode, setIsSignUpMode] = useState(false)
   const [isAnimating, setIsAnimating] = useState(false)
   const [fullName, setFullName] = useState("")
+  const [studentCode, setStudentCode] = useState("")
+  const [majorName, setMajorName] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const { login } = useAuth()
@@ -32,22 +34,53 @@ export default function LoginPage() {
     e.preventDefault()
 
     if (isSignUpMode) {
-      if (!fullName || !email || !password || !confirmPassword) {
-        toast({
-          title: "Missing Information",
-          description: "Please fill in all fields",
-          variant: "destructive",
-        })
-        return
+      // Validate từng trường
+      if (!fullName) {
+        toast({ title: "Missing Full Name", description: "Please enter your full name.", variant: "destructive" });
+        return;
       }
-
+      if (!studentCode) {
+        toast({ title: "Missing Student ID", description: "Please enter your student ID.", variant: "destructive" });
+        return;
+      }
+      // Mã số sinh viên: 2 chữ cái đầu (in hoa), 6 số liền kề
+      if (!/^[A-Z]{2}\d{6}$/.test(studentCode)) {
+        toast({ title: "Invalid Student ID", description: "Student ID must start with 2 letters followed by 6 digits (e.g. SE123456).", variant: "destructive" });
+        return;
+      }
+      if (!majorName) {
+        toast({ title: "Missing Major", description: "Please enter your major name.", variant: "destructive" });
+        return;
+      }
+      if (!email) {
+        toast({ title: "Missing Email", description: "Please enter your email.", variant: "destructive" });
+        return;
+      }
+      // Email hợp lệ
+      if (!/^\S+@\S+\.\S+$/.test(email)) {
+        toast({ title: "Invalid Email", description: "Please enter a valid email address.", variant: "destructive" });
+        return;
+      }
+      if (!phone) {
+        toast({ title: "Missing Phone", description: "Please enter your phone number.", variant: "destructive" });
+        return;
+      }
+      // Số điện thoại: chỉ cho phép số, đúng 10 số
+      if (!/^\d{10}$/.test(phone)) {
+        toast({ title: "Invalid Phone Number", description: "Phone number must be exactly 10 digits.", variant: "destructive" });
+        return;
+      }
+      if (!password) {
+        toast({ title: "Missing Password", description: "Please enter your password.", variant: "destructive" });
+        return;
+      }
+      if (!confirmPassword) {
+        toast({ title: "Missing Confirm Password", description: "Please confirm your password.", variant: "destructive" });
+        return;
+      }
       if (password !== confirmPassword) {
-        toast({
-          title: "Password Mismatch",
-          description: "Passwords do not match",
-          variant: "destructive",
-        })
-        return
+        toast({ title: "Password Mismatch", description: "Passwords do not match.", variant: "destructive" });
+        return;
       }
 
       try {
@@ -56,7 +89,9 @@ export default function LoginPage() {
           password,
           fullName,
           phone,
-          roleName: "STUDENT", // hoặc cho user chọn role
+          studentCode,
+          majorName,
+          roleName: "MEMBER", // hoặc cho user chọn role
         })
 
         toast({
@@ -67,6 +102,8 @@ export default function LoginPage() {
         // Reset form and switch to login mode
         setIsSignUpMode(false)
         setFullName("")
+        setStudentCode("")
+        setMajorName("")
         setPhone("")
         setConfirmPassword("")
         setEmail("")
@@ -78,7 +115,7 @@ export default function LoginPage() {
           variant: "destructive",
         })
       }
-      return
+      return;
     }
 
 
@@ -117,8 +154,11 @@ export default function LoginPage() {
       setIsAnimating(false)
       // Clear form fields when switching modes
       setEmail("")
+      setPhone("")
       setPassword("")
       setFullName("")
+      setStudentCode("")
+      setMajorName("")
       setConfirmPassword("")
     }, 250) // khớp với thời lượng animation ~0.22–0.28s
   }
@@ -202,6 +242,53 @@ export default function LoginPage() {
                       placeholder="Enter your full name"
                       className="h-10 sm:h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
                     />
+                  </div>
+                )}
+
+                {isSignUpMode && (
+                  <div className="space-y-2">
+                    <Label htmlFor="studentCode" className="text-sm font-medium">
+                      Student ID
+                    </Label>
+                    <Input
+                      id="studentCode"
+                      type="text"
+                      value={studentCode}
+                      onChange={(e) => setStudentCode(e.target.value.toUpperCase())}
+                      placeholder="Enter your student ID (e.g. SE123456)"
+                      className="h-10 sm:h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+                      maxLength={8}
+                    />
+                  </div>
+                )}
+
+                {isSignUpMode && (
+                  <div className="space-y-2">
+                    <Label htmlFor="majorName" className="text-sm font-medium">
+                      Major Name
+                    </Label>
+                    <select
+                      id="majorName"
+                      value={majorName}
+                      onChange={e => setMajorName(e.target.value)}
+                      className="h-10 sm:h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      required
+                    >
+                      <option value="" disabled>Select your major</option>
+                      <option value="Software Engineering">Software Engineering - Kỹ thuật phần mềm</option>
+                      <option value="Artificial Intelligence">Artificial Intelligence - Trí tuệ nhân tạo</option>
+                      <option value="Information Assurance">Information Assurance - Đảm bảo thông tin</option>
+                      <option value="Data Science">Data Science - Khoa học dữ liệu</option>
+                      <option value="Business Administration">Business Administration - Quản lý doanh nghiệp</option>
+                      <option value="Digital Marketing">Digital Marketing - Tiếp thị số</option>
+                      <option value="Graphic Design">Graphic Design - Thiết kế đồ hoạ</option>
+                      <option value="Multimedia Communication">Multimedia Communication - Truyền thông đa phương tiện</option>
+                      <option value="Hospitality Management">Hospitality Management - Quản trị khách sạn</option>
+                      <option value="International Business">International Business - Kinh doanh quốc tế</option>
+                      <option value="Finance and Banking">Finance and Banking - Tài chính và ngân hàng</option>
+                      <option value="Japanese Language">Japanese Language - Ngôn ngữ Nhật</option>
+                      <option value="Korean Language">Korean Language - Ngôn ngữ Hàn</option>
+                    </select>
                   </div>
                 )}
 

@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
@@ -31,7 +32,7 @@ import {
   Building2,
   Trophy,
 } from "lucide-react"
-import { fetchUserById, updateUserById } from "@/service/userApi"
+import { editProfile, fetchProfile } from "@/service/userApi"
 
 export default function ProfilePage() {
   const { auth } = useAuth()
@@ -41,9 +42,11 @@ export default function ProfilePage() {
   const formatRoleName = (roleId?: string | null) => {
     if (!roleId) return ""
     const map: Record<string, string> = {
+      member: "MEMBER",
       student: "STUDENT",
-      club_manager: "CLUB MANAGER",
+      club_leader: "CLUB LEADER",
       uni_admin: "UNIVERSITY ADMIN",
+      uni_staff: "UNIVERSITY STAFF", // <-- added to display normalized uni_staff role
       admin: "ADMIN",
       staff: "STAFF",
     }
@@ -55,6 +58,9 @@ export default function ProfilePage() {
   const [fullName, setFullName] = useState<string>("")
   const [email, setEmail] = useState<string>("")
   const [phone, setPhone] = useState<string>("")
+  const [majorName, setMajorName] = useState<string>("")
+  const [studentCode, setStudentCode] = useState<string>("")
+  const [bio, setBio] = useState<string>("")
   const [userPoints, setUserPoints] = useState<number>(0)
 
   // Dữ liệu tĩnh cho hoạt động người dùng
@@ -75,16 +81,43 @@ export default function ProfilePage() {
   // --- Logic: load user profile from API when mounted ---
   useEffect(() => {
     const loadProfile = async () => {
-      const id = auth.userId
-      if (!id) return
-
       try {
-        const user = (await fetchUserById(id)) as any
-        // Map API fields to local state with fallbacks
-        setFullName(user?.fullName || user?.full_name || user?.name || auth.user?.fullName || "")
-        setEmail(user?.email || auth.user?.email || "")
-        setPhone(user?.phone || user?.mobile || "")
-        setUserPoints(Number(user?.points || user?.loyaltyPoints || 0))
+        const profile: any = await fetchProfile()
+        if (!profile) return
+
+        // Profile shape per backend: { userId, email, fullName, phone, wallet: { balancePoints } ... }
+  setFullName(profile?.fullName || profile?.full_name || profile?.name || auth.user?.fullName || "")
+  setEmail(profile?.email || auth.user?.email || "")
+  setPhone(profile?.phone || profile?.mobile || "")
+  setMajorName(profile?.majorName ?? profile?.major_name ?? "")
+  setStudentCode(profile?.studentCode ?? profile?.student_code ?? "")
+  setBio(profile?.bio ?? "")
+
+  // set points from nested wallet.balancePoints if present
+  const pts = Number(profile?.wallet?.balancePoints ?? 0)
+  setUserPoints(pts)
+  
+  // Persist member-staff flag so other client components (sidebar) can read it
+  try {
+    const isMemberStaff = !!profile?.staff
+    localStorage.setItem("uniclub-member-staff", JSON.stringify(isMemberStaff))
+
+    // Also sync the stored uniclub-auth object if present so other parts of app can access it
+    const savedAuth = localStorage.getItem("uniclub-auth")
+    if (savedAuth) {
+      try {
+        const parsedAuth = JSON.parse(savedAuth)
+        if (parsedAuth && typeof parsedAuth === "object") {
+          parsedAuth.staff = isMemberStaff
+          localStorage.setItem("uniclub-auth", JSON.stringify(parsedAuth))
+        }
+      } catch (e) {
+        // ignore JSON errors
+      }
+    }
+  } catch (e) {
+    console.warn("Failed to persist member staff flag", e)
+  }
       } catch (err) {
         console.error("Failed to load profile", err)
       }
@@ -92,28 +125,23 @@ export default function ProfilePage() {
 
     loadProfile()
   }, [auth.userId])
+  // NOTE: wallet balancePoints now loaded from fetchProfile above, so no separate wallet call is needed
 
   const handleSave = async () => {
-    const id = auth.userId
-    if (!id) {
-      toast({ title: "Không thể lưu", description: "Không tìm thấy userId." })
-      return
-    }
-
-    const payload = { email, fullName, phone }
+    // For editing current authenticated user's profile we call editProfile
+    const payload: Record<string, any> = { email, fullName, phone, majorName, bio }
+    // studentCode is intentionally excluded from editable payload per request
 
     try {
-      const res = (await updateUserById(id, payload)) as any
+      const res = (await editProfile(payload)) as any
       if (res && res.success) {
         toast({
           title: "Cập nhật thành công",
           description: "Thông tin hồ sơ của bạn đã được lưu lại.",
         })
-        // Refresh the current page so updated profile is fetched and displayed
         try {
           router.refresh()
         } catch {
-          // fallback to full reload if router.refresh() isn't available
           try {
             window.location.reload()
           } catch {}
@@ -122,7 +150,7 @@ export default function ProfilePage() {
         toast({ title: "Thất bại", description: (res as any)?.message || "Không thể cập nhật hồ sơ" })
       }
     } catch (err) {
-      console.error("Update failed", err)
+      console.error("Edit profile failed", err)
       toast({ title: "Lỗi", description: "Có lỗi xảy ra khi cập nhật hồ sơ" })
     }
   }
@@ -180,7 +208,7 @@ export default function ProfilePage() {
     }
   }
 
-  const isAdminRole = ["uni_admin", "admin", "staff"].includes(auth.role || "")
+  const isAdminRole = ["uni_staff", "uni_admin", "admin", "staff"].includes(auth.role || "")
   
   const pointsCardStyle = getPointsCardStyle(userPoints)
 
@@ -189,7 +217,7 @@ export default function ProfilePage() {
   // =================================================================
   if (isAdminRole) {
     return (
-      <ProtectedRoute allowedRoles={["student", "club_manager", "uni_admin", "admin", "staff"]}>
+      <ProtectedRoute allowedRoles={["member", "student", "club_leader", "uni_staff", "admin", "staff"]}>
         <AppShell>
           <div className="min-h-screen bg-slate-50">
             {/* Header chuyên nghiệp */}
@@ -232,12 +260,23 @@ export default function ProfilePage() {
                           <Input id="admin-fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} />
                         </div>
                         <div className="space-y-1">
+                          <Label htmlFor="admin-studentCode">Mã sinh viên</Label>
+                          <Input id="admin-studentCode" value={studentCode} disabled className="bg-slate-100" />
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="admin-majorName">Ngành</Label>
+                          <Input id="admin-majorName" value={majorName} onChange={(e) => setMajorName(e.target.value)} />
+                        </div>
+                        <div className="space-y-1">
                           <Label htmlFor="admin-phone">Số điện thoại</Label>
                           <Input id="admin-phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
                         </div>
                         {/* location removed */}
                       </div>
-                      {/* bio removed */}
+                      <div className="space-y-1">
+                        <Label htmlFor="admin-bio">Tiểu sử / Bio</Label>
+                        <Textarea id="admin-bio" value={bio} onChange={(e) => setBio(e.target.value)} className="min-h-[80px]" />
+                      </div>
                       <Button onClick={handleSave} className="w-fit">
                         <Save className="h-4 w-4 mr-2" /> Lưu thay đổi
                       </Button>
@@ -252,7 +291,7 @@ export default function ProfilePage() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {auth.role === "uni_admin" && (
+                        {auth.role === "uni_staff" && (
                           <>
                             <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg"><Building2 className="h-5 w-5 text-primary" /><span>Quản lý trường</span></div>
                             <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg"><Users className="h-5 w-5 text-primary" /><span>Quản trị người dùng</span></div>
@@ -347,10 +386,10 @@ export default function ProfilePage() {
   }
 
   // =================================================================
-  // GIAO DIỆN DÀNH CHO NGƯỜI DÙNG THƯỜNG (STUDENT, CLUB_MANAGER)
+  // GIAO DIỆN DÀNH CHO NGƯỜI DÙNG THƯỜNG (STUDENT, CLUB_LEADER)
   // =================================================================
   return (
-    <ProtectedRoute allowedRoles={["student", "club_manager", "uni_admin", "admin", "staff"]}>
+  <ProtectedRoute allowedRoles={["member", "student", "club_leader", "uni_staff", "admin", "staff"]}>
       <AppShell>
         <div className="min-h-screen bg-slate-50">
           {/* Header với ảnh đại diện */}
@@ -392,8 +431,20 @@ export default function ProfilePage() {
                         <Label htmlFor="user-phone">Số điện thoại</Label>
                         <Input id="user-phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
                       </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="user-studentCode">Mã sinh viên</Label>
+                        <Input id="user-studentCode" value={studentCode} disabled className="bg-slate-100" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="user-majorName">Ngành</Label>
+                        <Input id="user-majorName" value={majorName} onChange={(e) => setMajorName(e.target.value)} />
+                      </div>
                     </div>
-                    {/* location & bio removed per request */}
+                    {/* location removed */}
+                    <div className="space-y-1">
+                      <Label htmlFor="user-bio">Tiểu sử / Bio</Label>
+                      <Textarea id="user-bio" value={bio} onChange={(e) => setBio(e.target.value)} className="min-h-[80px]" />
+                    </div>
                     <Button onClick={handleSave} className="w-fit bg-primary hover:bg-primary/90">
                       <Save className="h-4 w-4 mr-2" />
                       Lưu thay đổi

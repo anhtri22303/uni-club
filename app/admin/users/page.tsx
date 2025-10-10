@@ -21,8 +21,8 @@ import { useToast } from "@/hooks/use-toast"
 // Role display formatter (produce uppercase readable labels)
 const formatRoleName = (roleId: string) => {
   const map: Record<string, string> = {
-    student: "STUDENT",
-    club_manager: "CLUB MANAGER",
+    member: "MEMBER",
+    club_leader: "CLUB LEADER",
     uni_admin: "UNIVERSITY ADMIN",
     admin: "ADMIN",
     staff: "STAFF",
@@ -131,13 +131,13 @@ export default function AdminUsersPage() {
   }))
 
   const totalUsers = visibleUsers.length
-  const activeStudents = visibleUsers.filter((u) => (u.roleName || "").toLowerCase() === "student").length
-  const clubLeaders = visibleUsers.filter((u) => (u.roleName || "").toLowerCase() === "club_manager").length
+  const activeStudents = visibleUsers.filter((u) => (u.roleName || "").toLowerCase() === "member").length
+  const clubLeaders = visibleUsers.filter((u) => (u.roleName || "").toLowerCase() === "club_leader").length
 
   // Role → color mapping
   const roleColors: Record<string, string> = {
-    student: "bg-green-100 text-green-700 border-green-300",
-    club_manager: "bg-purple-100 text-purple-700 border-purple-300",
+    member: "bg-green-100 text-green-700 border-green-300",
+    club_leader: "bg-purple-100 text-purple-700 border-purple-300",
     uni_admin: "bg-blue-100 text-blue-700 border-blue-300",
     admin: "bg-orange-100 text-orange-700 border-orange-300",
     staff: "bg-gray-100 text-gray-700 border-gray-300",
@@ -161,6 +161,7 @@ export default function AdminUsersPage() {
 
   // ===== Columns: keys must match EnhancedUser/UserRecord =====
   const columns = [
+
     {
       key: "fullName" as const,
       label: "User Information",
@@ -194,7 +195,20 @@ export default function AdminUsersPage() {
         )
       },
     },
+     {
+      key: "status" as const,
+      label: "Status",
+      render: (status: EnhancedUser["status"]): JSX.Element => {
+        let color = "bg-gray-100 text-gray-700 border-gray-300"
+        if (status?.toLowerCase() === "active") color = "bg-green-100 text-green-700 border-green-300"
+        if (status?.toLowerCase() === "inactive") color = "bg-red-100 text-red-700 border-red-300"
+        return (
+          <Badge className={`text-xs px-2 py-0.5 border ${color}`}>{status || "-"}</Badge>
+        )
+      },
+    },
     {
+    
       key: "phone" as const,
       label: "Phone",
       render: (phone: EnhancedUser["phone"]): JSX.Element => (
@@ -331,7 +345,7 @@ export default function AdminUsersPage() {
 
               <Card className="border-0 shadow-md bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900">
                 <CardHeader className="pb-1 px-4 pt-3">
-                  <CardTitle className="text-xs font-medium text-green-700 dark:text-green-300">Students</CardTitle>
+                  <CardTitle className="text-xs font-medium text-green-700 dark:text-green-300">Members</CardTitle>
                 </CardHeader>
                 <CardContent className="pb-3 px-4">
                   <div className="flex items-center gap-2">
@@ -340,7 +354,7 @@ export default function AdminUsersPage() {
                     </div>
                     <div>
                       <div className="text-lg font-bold text-green-900 dark:text-green-100">{activeStudents}</div>
-                      <p className="text-xs text-green-600 dark:text-green-400">Student accounts</p>
+                      <p className="text-xs text-green-600 dark:text-green-400">Member accounts</p>
                     </div>
                   </div>
                 </CardContent>
@@ -348,9 +362,9 @@ export default function AdminUsersPage() {
 
               <Card className="border-0 shadow-md bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900">
                 <CardHeader className="pb-1 px-4 pt-3">
-                  <CardTitle className="text-xs font-medium text-purple-700 dark:text-purple-300">
-                    Club Managers
-                  </CardTitle>
+                    <CardTitle className="text-xs font-medium text-purple-700 dark:text-purple-300">
+                      Club Leaders
+                    </CardTitle>
                 </CardHeader>
                 <CardContent className="pb-3 px-4">
                   <div className="flex items-center gap-2">

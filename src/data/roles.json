@@ -1,7 +1,8 @@
 [
+  { "id": "member", "name": "Member" },
   { "id": "student", "name": "Student" },
-  { "id": "club_manager", "name": "Club Manager" },
-  { "id": "uni_admin", "name": "University Admin" },
+  { "id": "club_leader", "name": "Club Leader" },
+  { "id": "uni_staff", "name": "University Staff" },
   { "id": "admin", "name": "Admin" },
   { "id": "staff", "name": "Staff" }
 ]

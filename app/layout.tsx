@@ -14,6 +14,9 @@ export const metadata: Metadata = {
   title: "UniClub - Student Club Loyalty & Membership System",
   description: "Modern student club loyalty and membership management system",
   generator: "v0.app",
+  icons: {
+    icon: "/images/logo_web.png", 
+  },
 }
 
 export default function RootLayout({

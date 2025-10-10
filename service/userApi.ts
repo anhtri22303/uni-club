@@ -26,6 +26,30 @@ export const fetchUser = async () => {
   }
 }
 
+// New: fetchProfile - returns the current authenticated user's profile (unwrapped `data`)
+export const fetchProfile = async () => {
+  try {
+    const response = await axiosInstance.get("api/users/profile")
+    const body = response.data
+    console.log("Fetched profile response:", body)
+
+    // If backend uses { success, message, data }
+    if (body && typeof body === "object" && "data" in body) {
+      return body.data
+    }
+
+    // If the endpoint returns the profile object directly
+    if (body && typeof body === "object") {
+      return body
+    }
+
+    return null
+  } catch (error) {
+    console.error("Error fetching profile:", error)
+    throw error
+  }
+}
+
 export const fetchUserById = async (id: string | number) => {
   try {
     const response = await axiosInstance.get(`api/users/${id}`)
@@ -33,7 +57,7 @@ export const fetchUserById = async (id: string | number) => {
     // If the backend wraps payload in { success, message, data }, unwrap it.
     const body = response.data
     // Always log the raw response body for easier debugging
-    console.log("fetchUserById response body:", body)
+    console.log("fetchUserById:", body)
     if (body && typeof body === "object" && "data" in body) {
       console.log("fetchUserById unwrapped data:", body.data)
       return body.data
@@ -53,6 +77,17 @@ export const updateUserById = async (id: string | number, data: Record<string, a
     return response.data as any
   } catch (error) {
     console.error(`Error updating user ${id}:`, error)
+    throw error
+  }
+}
+
+// New: editProfile - update current authenticated user's profile
+export const editProfile = async (data: Record<string, any>) => {
+  try {
+    const response = await axiosInstance.put(`api/users/profile`, data)
+    return response.data as any
+  } catch (error) {
+    console.error("Error editing profile:", error)
     throw error
   }
 }
