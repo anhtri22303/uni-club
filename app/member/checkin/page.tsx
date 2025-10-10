@@ -9,7 +9,7 @@ import { useAuth } from "@/contexts/auth-context"
 import { useData } from "@/contexts/data-context"
 import { useToast } from "@/hooks/use-toast"
 import { CheckCircle, Calendar, MapPin, Users, Trophy, Clock } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 
 // Removed static `src/data` imports — use empty fallbacks. Replace with API/context in future if needed.
 const clubs: any[] = []
@@ -20,6 +20,7 @@ export default function MemberCheckinPage() {
   const { clubMemberships } = useData()
   const { toast } = useToast()
   const [checkedInEvents, setCheckedInEvents] = useState<string[]>([])
+  const [tokenState, setTokenState] = useState<{ valid: boolean; reason?: string; eventId?: string } | null>(null)
 
   // Get user's club memberships
   const userClubMemberships = clubMemberships.filter(
@@ -65,6 +66,11 @@ export default function MemberCheckinPage() {
   })
 
   const handleCheckin = (event: (typeof allEvents)[0]) => {
+    if (tokenState && !tokenState.valid) {
+      toast({ title: "Invalid QR", description: "This QR code is expired or invalid.", variant: "destructive" })
+      return
+    }
+
     if (checkedInEvents.includes(event.id)) {
       toast({
         title: "Already Checked In",
@@ -83,6 +89,37 @@ export default function MemberCheckinPage() {
     })
   }
 
+  // validate token in URL (if present)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const token = params.get('token')
+    if (!token) {
+      setTokenState(null)
+      return
+    }
+
+    ;(async () => {
+      try {
+        const res = await fetch('/api/checkin/validate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token }),
+        })
+        const json = await res.json()
+        if (json?.success) {
+          setTokenState({ valid: true, eventId: json.eventId })
+        } else {
+          // redirect to invalid page
+          try { window.location.href = '/member/checkin/invalid' } catch {} 
+          setTokenState({ valid: false, reason: json.reason || json.message })
+        }
+      } catch (err) {
+        try { window.location.href = '/member/checkin/invalid' } catch {}
+        setTokenState({ valid: false, reason: 'error' })
+      }
+    })()
+  }, [])
+
   return (
   <ProtectedRoute allowedRoles={["member"]}>
       <AppShell>
@@ -95,6 +132,12 @@ export default function MemberCheckinPage() {
               Check in to today's events and earn points
             </p>
           </div>
+
+          {tokenState && !tokenState.valid && (
+            <div className="p-3 rounded-md bg-red-50 text-red-700">
+              This QR code is invalid or expired. Please request a new QR from the event organizer.
+            </div>
+          )}
 
           {availableEvents.length === 0 ? (
             <Card className="text-center py-12">

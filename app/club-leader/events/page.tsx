@@ -13,6 +13,8 @@ import { Modal } from "@/components/modal"
 import { useToast } from "@/hooks/use-toast"
 import { usePagination } from "@/hooks/use-pagination"
 import { Calendar, Plus, Edit, MapPin, Trophy, ChevronLeft, ChevronRight, Filter, X } from "lucide-react"
+import { QrCode } from "lucide-react"
+import QRCode from "qrcode"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 import clubs from "@/src/data/clubs.json"
@@ -48,6 +50,60 @@ export default function ClubLeaderEventsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<any>(null)
+  const [showQrModal, setShowQrModal] = useState(false)
+  const [qrDataUrls, setQrDataUrls] = useState<{ local?: string; prod?: string }>({})
+  const [qrLinks, setQrLinks] = useState<{ local?: string; prod?: string }>({})
+  const [qrRotations, setQrRotations] = useState<{ local: string[]; prod: string[] }>({ local: [], prod: [] })
+  const [visibleIndex, setVisibleIndex] = useState(0)
+  const [displayedIndex, setDisplayedIndex] = useState(0)
+  const [isFading, setIsFading] = useState(false)
+  const ROTATION_INTERVAL_MS = 8000 
+  const VARIANTS = 3
+
+  const [countdown, setCountdown] = useState(() => Math.floor(ROTATION_INTERVAL_MS / 1000))
+
+  // rotate QR image index while modal open and maintain a countdown (seconds)
+  useEffect(() => {
+    if (!showQrModal) {
+      // reset countdown when modal closed
+      setCountdown(Math.floor(ROTATION_INTERVAL_MS / 1000))
+      setDisplayedIndex(0)
+      setIsFading(false)
+      return
+    }
+
+    // start with full countdown when modal opens
+    setCountdown(Math.floor(ROTATION_INTERVAL_MS / 1000))
+
+    const rotId = setInterval(() => {
+      setVisibleIndex((i) => i + 1)
+      // reset countdown when rotation happens
+      setCountdown(Math.floor(ROTATION_INTERVAL_MS / 1000))
+    }, ROTATION_INTERVAL_MS)
+
+    const cntId = setInterval(() => {
+      setCountdown((s) => (s <= 1 ? Math.floor(ROTATION_INTERVAL_MS / 1000) : s - 1))
+    }, 1000)
+
+    return () => {
+      clearInterval(rotId)
+      clearInterval(cntId)
+    }
+  }, [showQrModal])
+
+  // handle fade animation when visibleIndex changes
+  useEffect(() => {
+    if (!showQrModal) return
+    // start fade-out
+    setIsFading(true)
+    const t = setTimeout(() => {
+      setDisplayedIndex(visibleIndex)
+      // fade-in
+      setIsFading(false)
+    }, 300) // 300ms fade duration
+
+    return () => clearTimeout(t)
+  }, [visibleIndex, showQrModal])
 
   // For demo purposes, assume managing the first club
   const managedClub = clubs[0]
@@ -326,6 +382,56 @@ export default function ClubLeaderEventsPage() {
                             <Edit className="h-4 w-4 mr-2" />
                             Edit Event
                           </Button>
+                          <div className="flex justify-end">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={async () => {
+                                try {
+                                  // request a short-lived token for this event
+                                  const tokenResp = await fetch('/api/checkin/token', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ eventId: String(event.id) }),
+                                  })
+                                  const tokenJson = await tokenResp.json()
+                                  if (!tokenJson?.success) throw new Error('Token mint failed')
+                                  const token = tokenJson.token
+
+                                  // build canonical URLs that include the token (so screenshots expire)
+                                  const localUrl = `http://localhost:3000/member/checkin?event=${encodeURIComponent(String(event.id))}&token=${encodeURIComponent(token)}`
+                                  const prodUrl = `https://uniclub-fpt.vercel.app/member/checkin?event=${encodeURIComponent(String(event.id))}&token=${encodeURIComponent(token)}`
+
+                                  // generate multiple visually-distinct images (noise via fragment)
+                                  const localVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
+                                    const noise = `__noise=${i}_${Date.now()}`
+                                    return QRCode.toDataURL(`${localUrl}#${noise}`)
+                                  })
+                                  const prodVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
+                                    const noise = `__noise=${i}_${Date.now()}`
+                                    return QRCode.toDataURL(`${prodUrl}#${noise}`)
+                                  })
+
+                                  const [localVariants, prodVariants] = await Promise.all([
+                                    Promise.all(localVariantsPromises),
+                                    Promise.all(prodVariantsPromises),
+                                  ])
+
+                                  setQrRotations({ local: localVariants, prod: prodVariants })
+                                  setQrLinks({ local: localUrl, prod: prodUrl })
+                                  setVisibleIndex(0)
+                                  setDisplayedIndex(0)
+                                  setShowQrModal(true)
+                                } catch (err) {
+                                  console.error('Failed to generate QR', err)
+                                  toast({ title: 'QR Error', description: 'Could not generate QR code', variant: 'destructive' })
+                                }
+                              }}
+                              className="h-8 w-8 p-0"
+                            >
+                              <QrCode className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
@@ -470,6 +576,49 @@ export default function ClubLeaderEventsPage() {
                 <Button variant="outline" onClick={() => setShowEditModal(false)}>Cancel</Button>
                 <Button onClick={handleUpdate}>Update Event</Button>
               </div>
+            </div>
+          </Modal>
+
+          {/* QR Modal */}
+          <Modal open={showQrModal} onOpenChange={setShowQrModal} title="Event QR Code" description="Scan to check-in">
+            <div className="flex flex-col items-center gap-4">
+              {/* Countdown box */}
+              <div className="p-2 rounded-md bg-muted/60 text-sm text-muted-foreground">
+                Next QR in <span className="font-medium">{countdown}s</span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex flex-col items-center">
+                  <div className="text-sm font-medium mb-2">Local (dev)</div>
+                  {qrRotations.local.length ? (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={qrRotations.local[displayedIndex % qrRotations.local.length]} alt="QR Code Local" className={`w-40 h-40 transition-opacity duration-300 ${isFading ? 'opacity-0' : 'opacity-100'}`} />
+                      <div className="flex gap-2 mt-2">
+                        <Button size="sm" variant="outline" onClick={async () => { try { await navigator.clipboard.writeText(qrLinks.local || ""); toast({ title: 'Copied', description: 'Local link copied to clipboard' }) } catch { toast({ title: 'Copy failed' }) } }}>Copy link</Button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-sm text-muted-foreground">Generating...</div>
+                  )}
+                </div>
+
+                <div className="flex flex-col items-center">
+                  <div className="text-sm font-medium mb-2">Production (vercel)</div>
+                  {qrRotations.prod.length ? (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={qrRotations.prod[displayedIndex % qrRotations.prod.length]} alt="QR Code Prod" className={`w-40 h-40 transition-opacity duration-300 ${isFading ? 'opacity-0' : 'opacity-100'}`} />
+                      <div className="flex gap-2 mt-2">
+                        <Button size="sm" variant="outline" onClick={async () => { try { await navigator.clipboard.writeText(qrLinks.prod || ""); toast({ title: 'Copied', description: 'Production link copied to clipboard' }) } catch { toast({ title: 'Copy failed' }) } }}>Copy link</Button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-sm text-muted-foreground">Generating...</div>
+                  )}
+                </div>
+              </div>
+
+              <div className="text-xs text-muted-foreground">Scan a QR to open the check-in page (local or production)</div>
             </div>
           </Modal>
         </div>

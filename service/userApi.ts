@@ -26,6 +26,30 @@ export const fetchUser = async () => {
   }
 }
 
+// New: fetchProfile - returns the current authenticated user's profile (unwrapped `data`)
+export const fetchProfile = async () => {
+  try {
+    const response = await axiosInstance.get("api/users/profile")
+    const body = response.data
+    console.log("Fetched profile response:", body)
+
+    // If backend uses { success, message, data }
+    if (body && typeof body === "object" && "data" in body) {
+      return body.data
+    }
+
+    // If the endpoint returns the profile object directly
+    if (body && typeof body === "object") {
+      return body
+    }
+
+    return null
+  } catch (error) {
+    console.error("Error fetching profile:", error)
+    throw error
+  }
+}
+
 export const fetchUserById = async (id: string | number) => {
   try {
     const response = await axiosInstance.get(`api/users/${id}`)

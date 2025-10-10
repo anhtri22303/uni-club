@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
@@ -31,8 +32,7 @@ import {
   Building2,
   Trophy,
 } from "lucide-react"
-import { fetchUserById, updateUserById } from "@/service/userApi"
-import { getWallet } from "@/service/walletApi"
+import { updateUserById, fetchProfile } from "@/service/userApi"
 
 export default function ProfilePage() {
   const { auth } = useAuth()
@@ -58,6 +58,9 @@ export default function ProfilePage() {
   const [fullName, setFullName] = useState<string>("")
   const [email, setEmail] = useState<string>("")
   const [phone, setPhone] = useState<string>("")
+  const [majorName, setMajorName] = useState<string>("")
+  const [studentCode, setStudentCode] = useState<string>("")
+  const [bio, setBio] = useState<string>("")
   const [userPoints, setUserPoints] = useState<number>(0)
 
   // Dữ liệu tĩnh cho hoạt động người dùng
@@ -78,17 +81,21 @@ export default function ProfilePage() {
   // --- Logic: load user profile from API when mounted ---
   useEffect(() => {
     const loadProfile = async () => {
-      const id = auth.userId
-      if (!id) return
-
       try {
-        const user = (await fetchUserById(id)) as any
-        // Map API fields to local state with fallbacks
-        setFullName(user?.fullName || user?.full_name || user?.name || auth.user?.fullName || "")
-        setEmail(user?.email || auth.user?.email || "")
-        setPhone(user?.phone || user?.mobile || "")
-  // NOTE: do not set userPoints here to avoid overwriting wallet API result.
-  // Wallet points are loaded from getWallet() in a separate effect.
+        const profile: any = await fetchProfile()
+        if (!profile) return
+
+        // Profile shape per backend: { userId, email, fullName, phone, wallet: { balancePoints } ... }
+  setFullName(profile?.fullName || profile?.full_name || profile?.name || auth.user?.fullName || "")
+  setEmail(profile?.email || auth.user?.email || "")
+  setPhone(profile?.phone || profile?.mobile || "")
+  setMajorName(profile?.majorName ?? profile?.major_name ?? "")
+  setStudentCode(profile?.studentCode ?? profile?.student_code ?? "")
+  setBio(profile?.bio ?? "")
+
+  // set points from nested wallet.balancePoints if present
+  const pts = Number(profile?.wallet?.balancePoints ?? 0)
+  setUserPoints(pts)
       } catch (err) {
         console.error("Failed to load profile", err)
       }
@@ -96,30 +103,7 @@ export default function ProfilePage() {
 
     loadProfile()
   }, [auth.userId])
-
-  // load wallet points
-  useEffect(() => {
-    // Fetch wallet for club leaders, members, and students (if backend provides points)
-    if (!(auth.role === "club_leader" || auth.role === "member" || auth.role === "student")) return
-
-    let mounted = true
-    const loadWallet = async () => {
-      try {
-        const data: any = await getWallet()
-        console.debug("ProfilePage.getWallet ->", data)
-        if (!mounted) return
-        const pts = Number(data?.points ?? data?.balance ?? 0)
-        setUserPoints(pts)
-        console.debug("ProfilePage setUserPoints ->", pts)
-      } catch (err) {
-        console.error("Failed to load wallet in profile page", err)
-      }
-    }
-    loadWallet()
-    return () => {
-      mounted = false
-    }
-  }, [auth.userId, auth.role])
+  // NOTE: wallet balancePoints now loaded from fetchProfile above, so no separate wallet call is needed
 
   const handleSave = async () => {
     const id = auth.userId
@@ -128,7 +112,7 @@ export default function ProfilePage() {
       return
     }
 
-    const payload = { email, fullName, phone }
+  const payload = { email, fullName, phone, majorName, studentCode, bio }
 
     try {
       const res = (await updateUserById(id, payload)) as any
@@ -260,12 +244,23 @@ export default function ProfilePage() {
                           <Input id="admin-fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} />
                         </div>
                         <div className="space-y-1">
+                          <Label htmlFor="admin-studentCode">Mã sinh viên</Label>
+                          <Input id="admin-studentCode" value={studentCode} onChange={(e) => setStudentCode(e.target.value)} />
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="admin-majorName">Ngành</Label>
+                          <Input id="admin-majorName" value={majorName} onChange={(e) => setMajorName(e.target.value)} />
+                        </div>
+                        <div className="space-y-1">
                           <Label htmlFor="admin-phone">Số điện thoại</Label>
                           <Input id="admin-phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
                         </div>
                         {/* location removed */}
                       </div>
-                      {/* bio removed */}
+                      <div className="space-y-1">
+                        <Label htmlFor="admin-bio">Tiểu sử / Bio</Label>
+                        <Textarea id="admin-bio" value={bio} onChange={(e) => setBio(e.target.value)} className="min-h-[80px]" />
+                      </div>
                       <Button onClick={handleSave} className="w-fit">
                         <Save className="h-4 w-4 mr-2" /> Lưu thay đổi
                       </Button>
@@ -420,8 +415,20 @@ export default function ProfilePage() {
                         <Label htmlFor="user-phone">Số điện thoại</Label>
                         <Input id="user-phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
                       </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="user-studentCode">Mã sinh viên</Label>
+                        <Input id="user-studentCode" value={studentCode} onChange={(e) => setStudentCode(e.target.value)} />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="user-majorName">Ngành</Label>
+                        <Input id="user-majorName" value={majorName} onChange={(e) => setMajorName(e.target.value)} />
+                      </div>
                     </div>
-                    {/* location & bio removed per request */}
+                    {/* location removed */}
+                    <div className="space-y-1">
+                      <Label htmlFor="user-bio">Tiểu sử / Bio</Label>
+                      <Textarea id="user-bio" value={bio} onChange={(e) => setBio(e.target.value)} className="min-h-[80px]" />
+                    </div>
                     <Button onClick={handleSave} className="w-fit bg-primary hover:bg-primary/90">
                       <Save className="h-4 w-4 mr-2" />
                       Lưu thay đổi
