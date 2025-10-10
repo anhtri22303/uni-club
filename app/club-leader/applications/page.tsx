@@ -168,17 +168,20 @@ export default function ClubLeaderApplicationsPage() {
                                         <Card key={app.applicationId}>
                                             <CardContent className="pt-6">
                                                 <div className="flex items-start justify-between">
-                                                    <div>
+                                                    <div className="flex-1">
                                                         <h3 className="font-semibold">{app.userName}</h3>
-                                                        <p className="text-sm text-muted-foreground">{app.clubName}</p>
                                                         <p className="text-xs text-muted-foreground mt-1">
                                                             Submitted: {new Date(app.submittedAt).toLocaleDateString()}
                                                         </p>
-                                                        <p className="text-sm mt-2 p-2 bg-muted rounded">Reason: "{app.reason}"</p>
+                                                        {app.reason && (
+                                                            <p className="text-sm mt-2 p-2 bg-muted rounded">"{app.reason}"</p>
+                                                        )}
                                                     </div>
-                                                    <Button size="sm" variant="outline" onClick={() => handleViewApplication(app)}>
-                                                        <Eye className="h-4 w-4" />
-                                                    </Button>
+                                                    <div className="flex gap-2 ml-4">
+                                                        <Button size="sm" variant="outline" onClick={() => handleViewApplication(app)}>
+                                                            <Eye className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
                                                 </div>
                                             </CardContent>
                                         </Card>
@@ -209,20 +212,32 @@ export default function ClubLeaderApplicationsPage() {
                                         <Card key={app.applicationId}>
                                             <CardContent className="pt-6">
                                                 <div className="flex items-start justify-between">
-                                                    <div>
+                                                    <div className="flex-1">
                                                         <h3 className="font-semibold">{app.userName}</h3>
-                                                        <p className="text-sm text-muted-foreground">{app.clubName}</p>
                                                         <p className="text-xs text-muted-foreground mt-1">
-                                                            Reviewed: {new Date(app.updatedAt).toLocaleDateString()}
+                                                            Reviewed: {app.updatedAt ? new Date(app.updatedAt).toLocaleDateString() : "Recently"}
                                                         </p>
                                                         {app.reason && (
                                                             <p className="text-sm mt-2 p-2 bg-muted rounded">
-                                                                <span className="font-medium text-red-600">Reason:</span> "{app.reason}"
+                                                                <span className="font-medium text-red-600">Application message:</span> "{app.reason}"
+                                                            </p>
+                                                        )}
+                                                        {app.reviewNote && (
+                                                            <p className="text-sm mt-2 p-2 bg-muted rounded">
+                                                                <span className="font-medium text-red-600">Review note:</span> "{app.reviewNote}"
                                                             </p>
                                                         )}
                                                     </div>
                                                     <Badge variant={app.status === "APPROVED" ? "default" : "destructive"}>
-                                                        {app.status}
+                                                        {app.status === "APPROVED" ? (
+                                                            <>
+                                                                <CheckCircle className="h-3 w-3 mr-1" /> Approved
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <XCircle className="h-3 w-3 mr-1" /> Rejected
+                                                            </>
+                                                        )}
                                                     </Badge>
                                                 </div>
                                             </CardContent>
@@ -238,6 +253,81 @@ export default function ClubLeaderApplicationsPage() {
                             )}
                         </TabsContent>
                     </Tabs>
+
+                    {/* Modal review application - styled giống members */}
+                    <Modal
+                        open={showApplicationModal}
+                        onOpenChange={setShowApplicationModal}
+                        title="Review Application"
+                        description={selectedApplication ? `Application from ${selectedApplication.userName}` : ""}
+                        showCloseButton={false}
+                    >
+                        {selectedApplication && (
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label>Applicant</Label>
+                                    <div className="p-3 bg-muted rounded">
+                                        <p className="font-medium">{selectedApplication.userName}</p>
+                                    </div>
+                                </div>
+
+                                {selectedApplication.reason && (
+                                    <div className="space-y-2">
+                                        <Label>Application Message</Label>
+                                        <div className="p-3 bg-muted rounded">
+                                            <p className="text-sm">{selectedApplication.reason}</p>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="reviewNote">Review Note (Optional)</Label>
+                                    <Textarea
+                                        id="reviewNote"
+                                        placeholder="Add a note about your decision..."
+                                        value={reviewNote}
+                                        onChange={(e) => setReviewNote(e.target.value)}
+                                        rows={3}
+                                    />
+                                </div>
+
+                                <div className="flex gap-2 justify-end">
+                                    <Button variant="outline" onClick={() => setShowApplicationModal(false)}>
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        variant="destructive"
+                                        onClick={async () => {
+                                            try {
+                                                await rejectMemberApplication(selectedApplication.applicationId, reviewNote)
+                                                toast({ title: "Đã từ chối đơn", description: `Đơn của ${selectedApplication.userName} đã bị từ chối.` })
+                                                setShowApplicationModal(false)
+                                                setApplications(applications => applications.map(app => app.applicationId === selectedApplication.applicationId ? { ...app, status: "REJECTED", reviewNote } : app))
+                                            } catch (error) {
+                                                toast({ title: "Lỗi từ chối đơn", description: "Không thể từ chối đơn này.", variant: "destructive" })
+                                            }
+                                        }}
+                                    >
+                                        <XCircle className="h-4 w-4 mr-1" /> Reject
+                                    </Button>
+                                    <Button
+                                        onClick={async () => {
+                                            try {
+                                                await approveMemberApplication(selectedApplication.applicationId)
+                                                toast({ title: "Đã duyệt đơn", description: `Đơn của ${selectedApplication.userName} đã được duyệt.` })
+                                                setShowApplicationModal(false)
+                                                setApplications(applications => applications.map(app => app.applicationId === selectedApplication.applicationId ? { ...app, status: "APPROVED" } : app))
+                                            } catch (error) {
+                                                toast({ title: "Lỗi duyệt đơn", description: "Không thể duyệt đơn này.", variant: "destructive" })
+                                            }
+                                        }}
+                                    >
+                                        <CheckCircle className="h-4 w-4 mr-1" /> Approve
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+                    </Modal>
                 </div>
             </AppShell>
         </ProtectedRoute>
