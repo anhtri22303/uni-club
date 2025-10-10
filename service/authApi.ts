@@ -60,7 +60,8 @@ export interface SignUpCredentials {
   fullName: string
   phone: string
   roleName: string
-
+  studentCode: string 
+  majorName: string 
 }
 
 export interface SignUpResponse {
@@ -69,7 +70,6 @@ export interface SignUpResponse {
   email: string
   fullName: string
   role: string
-
 }
 
 export const signUp = async (credentials: SignUpCredentials): Promise<SignUpResponse> => {
@@ -82,6 +82,8 @@ export const signUp = async (credentials: SignUpCredentials): Promise<SignUpResp
         fullName: credentials.fullName,
         phone: credentials.phone,
         roleName: credentials.roleName, // Swagger yêu cầu roleName
+        studentCode: credentials.studentCode, // Thêm studentCode vào payload
+        majorName: credentials.majorName || "Undeclared", // Thêm majorName vào payload, mặc định là "Undeclared"
       },
       {
         headers: {
