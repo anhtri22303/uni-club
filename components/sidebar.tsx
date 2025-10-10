@@ -16,6 +16,8 @@ interface SidebarProps {
   open?: boolean
 }
 
+type NavItem = { href: string; label: string; icon: any }
+
 const navigationConfig = {
   member: [
     { href: "/member", label: "Dashboard", icon: LayoutDashboard },
@@ -50,15 +52,14 @@ const navigationConfig = {
     { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
     { href: "/admin/users", label: "Users", icon: Users },
     { href: "/admin/clubs", label: "Clubs", icon: Building },
-    { href: "/admin/offers", label: "Offers", icon: Gift },
     { href: "/admin/redemptions", label: "Redemptions", icon: FileText },
   ],
-  staff: [
-    { href: "/staff", label: "Home", icon: Home },
-    { href: "/staff/validate", label: "Validate", icon: CheckCircle },
-    { href: "/staff/history", label: "History", icon: History },
-    { href: "/staff/gift", label: "Gift", icon: Gift },
-  ],
+  // staff: [
+  //   { href: "/staff", label: "Home", icon: Home },
+  //   { href: "/staff/validate", label: "Validate", icon: CheckCircle },
+  //   { href: "/staff/history", label: "History", icon: History },
+  //   { href: "/staff/gift", label: "Gift", icon: Gift },
+  // ],
 } as const
 
 export function Sidebar({ onNavigate, open = true }: SidebarProps) {
@@ -68,7 +69,26 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
   const [loadingPath, setLoadingPath] = useState<string | null>(null)
 
   if (!auth.role || !auth.user) return null
-  const navigation = navigationConfig[auth.role as keyof typeof navigationConfig] || []
+  // Default navigation per role (cast to a mutable, wide type to avoid readonly tuple issues)
+  let navigation = (navigationConfig[auth.role as keyof typeof navigationConfig] || []) as unknown as NavItem[]
+
+  // If the user is a MEMBER and localStorage indicates they are also staff,
+  // show the staff Gift page (reuse the existing staff gift route)
+  if (auth.role === "member") {
+    try {
+      const stored = localStorage.getItem("uniclub-member-staff")
+      const isMemberStaff = stored ? JSON.parse(stored) === true : false
+      if (isMemberStaff) {
+        // Avoid duplicate if already present
+        const exists = navigation.some((i) => i.href === "/member/gift")
+        if (!exists) {
+          navigation.push({ href: "/member/gift", label: "Gift", icon: Gift })
+        }
+      }
+    } catch (e) {
+      // ignore JSON parse errors
+    }
+  }
 
   const handleNavigation = async (href: string) => {
     if (pathname === href) return

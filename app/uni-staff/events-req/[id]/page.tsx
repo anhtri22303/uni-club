@@ -21,7 +21,8 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { useState, useEffect } from "react"
-import { getEventById } from "@/service/eventApi"
+import { getEventById, putEventStatus } from "@/service/eventApi"
+import { useToast } from "@/hooks/use-toast"
 import { renderTypeBadge } from "@/lib/eventUtils"
 import { getLocationById } from "@/service/locationApi"
 import { getClubById } from "@/service/clubApi"
@@ -42,6 +43,8 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
   const [club, setClub] = useState<any | null>(null)
   const [clubLoading, setClubLoading] = useState<boolean>(false)
   const [clubError, setClubError] = useState<string | null>(null)
+  const { toast } = useToast()
+  const [processing, setProcessing] = useState(false)
 
   useEffect(() => {
     let mounted = true
@@ -163,6 +166,25 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
     }
   }
 
+  // effective status (prefer status over type) for checks and display
+  const effectiveStatus = (request.status ?? request.type ?? "").toString().toUpperCase()
+
+  const updateStatus = async (status: string) => {
+    if (!request) return
+    setProcessing(true)
+    try {
+      await putEventStatus(request.id, status)
+      // optimistic/local update
+      setRequest({ ...request, status })
+      toast({ title: status === "APPROVED" ? "Approved" : "Rejected", description: `Event ${request.name || request.id} ${status === "APPROVED" ? "approved" : "rejected"}.` })
+    } catch (err: any) {
+      console.error('Update status failed', err)
+      toast({ title: 'Error', description: err?.message || 'Failed to update event status' })
+    } finally {
+      setProcessing(false)
+    }
+  }
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("vi-VN", {
       style: "currency",
@@ -187,13 +209,14 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
               <p className="text-muted-foreground">Event Organization Request Details</p>
             </div>
             <div className="flex items-center gap-2">
-              {getStatusBadge(request.status || request.type)}
-              {(request.status || request.type) !== "APPROVED" && (request.status || request.type) !== "REJECTED" && (
+              {/* prefer status, fallback to type */}
+              {getStatusBadge(effectiveStatus)}
+              {effectiveStatus !== "APPROVED" && effectiveStatus !== "REJECTED" && (
                 <div className="flex gap-2">
-                  <Button variant="default" size="sm" className="h-8 w-8 p-0">
+                  <Button variant="default" size="sm" className="h-8 w-8 p-0" onClick={() => updateStatus('APPROVED')} disabled={processing}>
                     <CheckCircle className="h-4 w-4" />
                   </Button>
-                  <Button variant="destructive" size="sm" className="h-8 w-8 p-0">
+                  <Button variant="destructive" size="sm" className="h-8 w-8 p-0" onClick={() => updateStatus('REJECTED')} disabled={processing}>
                     <XCircle className="h-4 w-4" />
                   </Button>
                 </div>
@@ -377,19 +400,19 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                 </CardContent>
               </Card>
 
-              {(request.status || request.type) !== "APPROVED" && (request.status || request.type) !== "REJECTED" && (
+              {effectiveStatus !== "APPROVED" && effectiveStatus !== "REJECTED" && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg">Actions</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <Button className="w-full" variant="default">
+                    <Button className="w-full" variant="default" onClick={() => updateStatus('APPROVED')} disabled={processing}>
                       <CheckCircle className="h-4 w-4 mr-2" />
-                      Approve Request
+                      {processing ? 'Processing...' : 'Approve Request'}
                     </Button>
-                    <Button className="w-full" variant="destructive">
+                    <Button className="w-full" variant="destructive" onClick={() => updateStatus('REJECTED')} disabled={processing}>
                       <XCircle className="h-4 w-4 mr-2" />
-                      Reject Request
+                      {processing ? 'Processing...' : 'Reject Request'}
                     </Button>
                     <Button className="w-full bg-transparent" variant="outline">
                       <Mail className="h-4 w-4 mr-2" />

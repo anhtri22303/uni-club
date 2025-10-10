@@ -81,6 +81,21 @@ export default function UniStaffPoliciesPage() {
     return policies.filter((p) => (p.policyName || p.name || "").toLowerCase().includes(q) || (p.description || "").toLowerCase().includes(q) || (p.majorName || "").toLowerCase().includes(q))
   }, [policies, query])
 
+  // Minimal pagination state
+  const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(10)
+
+  // Ensure page is clamped when filtered data or pageSize change
+  useEffect(() => {
+    const lastPage = Math.max(0, Math.ceil(filtered.length / pageSize) - 1)
+    if (page > lastPage) setPage(lastPage)
+  }, [filtered.length, pageSize])
+
+  const paginated = useMemo(() => {
+    const start = page * pageSize
+    return filtered.slice(start, start + pageSize)
+  }, [filtered, page, pageSize])
+
   const openDetail = (p: Policy) => {
     setSelected(p)
     // populate edit fields
@@ -192,7 +207,7 @@ export default function UniStaffPoliciesPage() {
                           <TableCell colSpan={7} className="p-6 text-center">No policies found</TableCell>
                         </TableRow>
                       ) : (
-                        filtered.map((p, idx) => (
+                        paginated.map((p, idx) => (
                           <TableRow
                             key={p.id}
                             className={`${idx % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-slate-50 dark:bg-slate-800'} hover:bg-slate-100 dark:hover:bg-slate-700`}
@@ -241,6 +256,31 @@ export default function UniStaffPoliciesPage() {
                       )}
                     </TableBody>
                   </Table>
+                </div>
+                {/* Pagination controls */}
+                <div className="mt-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <div>Showing</div>
+                    <div className="font-medium">{filtered.length === 0 ? 0 : page * pageSize + 1}</div>
+                    <div>to</div>
+                    <div className="font-medium">{Math.min((page + 1) * pageSize, filtered.length)}</div>
+                    <div>of</div>
+                    <div className="font-medium">{filtered.length}</div>
+                    <div>policies</div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" variant="outline" onClick={() => setPage(0)} disabled={page === 0}>First</Button>
+                    <Button size="sm" variant="outline" onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}>Prev</Button>
+                    <div className="px-2 text-sm">Page {filtered.length === 0 ? 0 : page + 1} / {Math.max(1, Math.ceil(filtered.length / pageSize))}</div>
+                    <Button size="sm" variant="outline" onClick={() => setPage(p => Math.min(p + 1, Math.max(0, Math.ceil(filtered.length / pageSize) - 1)))} disabled={(page + 1) * pageSize >= filtered.length}>Next</Button>
+                    <Button size="sm" variant="outline" onClick={() => setPage(Math.max(0, Math.ceil(filtered.length / pageSize) - 1))} disabled={(page + 1) * pageSize >= filtered.length}>Last</Button>
+                    <select aria-label="Items per page" className="ml-2 rounded border px-2 py-1 text-sm" value={pageSize} onChange={(e) => { setPageSize(Number((e.target as HTMLSelectElement).value)); setPage(0) }}>
+                      <option value={5}>5</option>
+                      <option value={10}>10</option>
+                      <option value={20}>20</option>
+                    </select>
+                  </div>
                 </div>
               </div>
             </CardContent>

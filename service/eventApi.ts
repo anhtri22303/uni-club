@@ -42,3 +42,17 @@ export const getEventById = async (id: string | number) => {
     throw error
   }
 }
+
+export const putEventStatus = async (id: string | number, status: string) => {
+  try {
+    const response = await axiosInstance.put(`api/events/${id}/status`, { status })
+    const data: any = response.data
+    console.log(`Updated event ${id} status -> ${status}:`, data)
+    // normalize
+    if (data && data.data) return data.data
+    return data
+  } catch (error) {
+    console.error(`Error updating event ${id} status:`, error)
+    throw error
+  }
+}

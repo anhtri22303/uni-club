@@ -81,6 +81,17 @@ export const updateUserById = async (id: string | number, data: Record<string, a
   }
 }
 
+// New: editProfile - update current authenticated user's profile
+export const editProfile = async (data: Record<string, any>) => {
+  try {
+    const response = await axiosInstance.put(`api/users/profile`, data)
+    return response.data as any
+  } catch (error) {
+    console.error("Error editing profile:", error)
+    throw error
+  }
+}
+
 export const deleteUserById = async (id: string | number) => {
   try {
     const response = await axiosInstance.delete(`api/users/${id}`)

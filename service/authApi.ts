@@ -17,6 +17,7 @@ export interface LoginCredentials {
 // POST /auth/login -> returns token + user info
 export const login = async (credentials: LoginCredentials): Promise<LoginResponse> => {
   const res = await axios.post<LoginResponse>("http://localhost:8080/auth/login", credentials)
+  console.log("Login response:", res.data)
   return res.data
 }
 

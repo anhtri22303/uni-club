@@ -32,7 +32,7 @@ import {
   Building2,
   Trophy,
 } from "lucide-react"
-import { updateUserById, fetchProfile } from "@/service/userApi"
+import { editProfile, fetchProfile } from "@/service/userApi"
 
 export default function ProfilePage() {
   const { auth } = useAuth()
@@ -96,6 +96,28 @@ export default function ProfilePage() {
   // set points from nested wallet.balancePoints if present
   const pts = Number(profile?.wallet?.balancePoints ?? 0)
   setUserPoints(pts)
+  
+  // Persist member-staff flag so other client components (sidebar) can read it
+  try {
+    const isMemberStaff = !!profile?.staff
+    localStorage.setItem("uniclub-member-staff", JSON.stringify(isMemberStaff))
+
+    // Also sync the stored uniclub-auth object if present so other parts of app can access it
+    const savedAuth = localStorage.getItem("uniclub-auth")
+    if (savedAuth) {
+      try {
+        const parsedAuth = JSON.parse(savedAuth)
+        if (parsedAuth && typeof parsedAuth === "object") {
+          parsedAuth.staff = isMemberStaff
+          localStorage.setItem("uniclub-auth", JSON.stringify(parsedAuth))
+        }
+      } catch (e) {
+        // ignore JSON errors
+      }
+    }
+  } catch (e) {
+    console.warn("Failed to persist member staff flag", e)
+  }
       } catch (err) {
         console.error("Failed to load profile", err)
       }
@@ -106,26 +128,20 @@ export default function ProfilePage() {
   // NOTE: wallet balancePoints now loaded from fetchProfile above, so no separate wallet call is needed
 
   const handleSave = async () => {
-    const id = auth.userId
-    if (!id) {
-      toast({ title: "Không thể lưu", description: "Không tìm thấy userId." })
-      return
-    }
-
-  const payload = { email, fullName, phone, majorName, studentCode, bio }
+    // For editing current authenticated user's profile we call editProfile
+    const payload: Record<string, any> = { email, fullName, phone, majorName, bio }
+    // studentCode is intentionally excluded from editable payload per request
 
     try {
-      const res = (await updateUserById(id, payload)) as any
+      const res = (await editProfile(payload)) as any
       if (res && res.success) {
         toast({
           title: "Cập nhật thành công",
           description: "Thông tin hồ sơ của bạn đã được lưu lại.",
         })
-        // Refresh the current page so updated profile is fetched and displayed
         try {
           router.refresh()
         } catch {
-          // fallback to full reload if router.refresh() isn't available
           try {
             window.location.reload()
           } catch {}
@@ -134,7 +150,7 @@ export default function ProfilePage() {
         toast({ title: "Thất bại", description: (res as any)?.message || "Không thể cập nhật hồ sơ" })
       }
     } catch (err) {
-      console.error("Update failed", err)
+      console.error("Edit profile failed", err)
       toast({ title: "Lỗi", description: "Có lỗi xảy ra khi cập nhật hồ sơ" })
     }
   }
@@ -245,7 +261,7 @@ export default function ProfilePage() {
                         </div>
                         <div className="space-y-1">
                           <Label htmlFor="admin-studentCode">Mã sinh viên</Label>
-                          <Input id="admin-studentCode" value={studentCode} onChange={(e) => setStudentCode(e.target.value)} />
+                          <Input id="admin-studentCode" value={studentCode} disabled className="bg-slate-100" />
                         </div>
                         <div className="space-y-1">
                           <Label htmlFor="admin-majorName">Ngành</Label>
@@ -417,7 +433,7 @@ export default function ProfilePage() {
                       </div>
                       <div className="space-y-1">
                         <Label htmlFor="user-studentCode">Mã sinh viên</Label>
-                        <Input id="user-studentCode" value={studentCode} onChange={(e) => setStudentCode(e.target.value)} />
+                        <Input id="user-studentCode" value={studentCode} disabled className="bg-slate-100" />
                       </div>
                       <div className="space-y-1">
                         <Label htmlFor="user-majorName">Ngành</Label>

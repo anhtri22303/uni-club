@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar, Users, MapPin, Search, CheckCircle, XCircle, Clock, Building, Eye } from "lucide-react"
 import { renderTypeBadge } from "@/lib/eventUtils"
 import { useState, useEffect } from "react"
+import { useToast } from "@/hooks/use-toast"
+import { putEventStatus } from "@/service/eventApi"
 import { fetchLocation } from "@/service/locationApi"
 import { fetchClub } from "@/service/clubApi"
 import Link from "next/link"
@@ -29,6 +31,9 @@ export default function UniStaffEventRequestsPage() {
 	const [clubs, setClubs] = useState<any[]>([])
 	const [loading, setLoading] = useState<boolean>(false)
 	const [error, setError] = useState<string | null>(null)
+
+	const { toast } = useToast()
+	const [processingId, setProcessingId] = useState<number | string | null>(null)
 
 	const getLocationById = (id: string | number | undefined) => {
 		if (id === undefined || id === null) return null
@@ -71,7 +76,7 @@ export default function UniStaffEventRequestsPage() {
 		}
 	}, [])
 
-	// Filter events based on API shape: { id, clubId, name, description, type, date, time, locationId }
+	// Filter events based on API shape: { id, clubId, name, description, type, date, time, locationId, status }
 	const filteredRequests = events.filter((evt) => {
 		const q = searchTerm.trim().toLowerCase()
 		const matchSearch =
@@ -80,13 +85,28 @@ export default function UniStaffEventRequestsPage() {
 			// club names are not included in this payload; fallback to clubId
 			String(evt.clubId || "").includes(q)
 
-		// status/category filters were for the old static data; map them to type for now
-		const matchStatus = statusFilter === "all" ? true : (evt.status || evt.type) === statusFilter
+		// status/category filters: prefer `status` field (new API). fall back to `type` when `status` missing
+		const matchStatus = statusFilter === "all" ? true : ((evt.status ?? evt.type) === statusFilter)
 		const matchCategory = categoryFilter === "all" ? true : (evt.category || "") === categoryFilter
 		const matchType = typeFilter === "all" ? true : (evt.type || "") === typeFilter
 
 		return matchSearch && matchStatus && matchCategory && matchType
 	})
+
+		// Minimal pagination state
+		const [page, setPage] = useState(0)
+		const [pageSize, setPageSize] = useState(3)
+
+		// Clamp page when filteredRequests or pageSize change
+		useEffect(() => {
+			const last = Math.max(0, Math.ceil(filteredRequests.length / pageSize) - 1)
+			if (page > last) setPage(last)
+		}, [filteredRequests.length, pageSize])
+
+		const paginated = (() => {
+			const start = page * pageSize
+			return filteredRequests.slice(start, start + pageSize)
+		})()
 
 	const getStatusBadge = (status: string) => {
 		switch (status) {
@@ -123,11 +143,11 @@ export default function UniStaffEventRequestsPage() {
 		}).format(amount)
 	}
 
-	// Since API uses `type` (PUBLIC/PRIVATE) and doesn't provide status/category in example,
-	// we'll compute simple counts: total, public, private
+	// Compute counts by status (prefer `status` field). Fallback to type-based heuristics when missing
 	const totalCount = events.length
-	const publicCount = events.filter((e) => e.type === "PUBLIC").length
-	const privateCount = events.filter((e) => e.type === "PRIVATE").length
+	const pendingCount = events.filter((e) => (e.status ?? "").toUpperCase() === "PENDING").length
+	const approvedCount = events.filter((e) => (e.status ?? "").toUpperCase() === "APPROVED").length
+	const rejectedCount = events.filter((e) => (e.status ?? "").toUpperCase() === "REJECTED").length
 
 	return (
 		<ProtectedRoute allowedRoles={["uni_staff"]}>
@@ -153,9 +173,9 @@ export default function UniStaffEventRequestsPage() {
 									</div>
 									<div>
 										<div className="text-lg font-bold text-yellow-900 dark:text-yellow-100">
-											{totalCount}
-										</div>
-										<p className="text-xs text-yellow-600 dark:text-yellow-400">Total events</p>
+																{pendingCount}
+															</div>
+															<p className="text-xs text-yellow-600 dark:text-yellow-400">Pending events</p>
 									</div>
 								</div>
 							</CardContent>
@@ -174,9 +194,9 @@ export default function UniStaffEventRequestsPage() {
 									</div>
 									<div>
 										<div className="text-lg font-bold text-green-900 dark:text-green-100">
-											{publicCount}
-										</div>
-										<p className="text-xs text-green-600 dark:text-green-400">Public events</p>
+																{approvedCount}
+															</div>
+															<p className="text-xs text-green-600 dark:text-green-400">Approved events</p>
 									</div>
 								</div>
 							</CardContent>
@@ -193,9 +213,9 @@ export default function UniStaffEventRequestsPage() {
 									</div>
 									<div>
 										<div className="text-lg font-bold text-red-900 dark:text-red-100">
-											{privateCount}
-										</div>
-										<p className="text-xs text-red-600 dark:text-red-400">Private events</p>
+																{rejectedCount}
+															</div>
+															<p className="text-xs text-red-600 dark:text-red-400">Rejected events</p>
 									</div>
 								</div>
 							</CardContent>
@@ -270,7 +290,7 @@ export default function UniStaffEventRequestsPage() {
 								<CardContent className="py-8 text-center text-muted-foreground">No events found</CardContent>
 							</Card>
 						) : (
-							filteredRequests.map((request) => (
+							paginated.map((request) => (
 								<Card key={request.id} className="hover:shadow-md transition-shadow cursor-pointer">
 									<Link href={`/uni-staff/events-req/${request.id}`}>
 										<CardContent className="p-6">
@@ -330,10 +350,39 @@ export default function UniStaffEventRequestsPage() {
 												<div className="flex items-center gap-2 ml-4">
 													{request.status === "PENDING" && (
 														<>
-															<Button size="sm" variant="default" className="h-8 w-8 p-0">
+															<Button size="sm" variant="default" className="h-8 w-8 p-0" onClick={async (e) => {
+																e.preventDefault()
+																if (processingId) return
+																setProcessingId(request.id)
+																try {
+																	await putEventStatus(request.id, "APPROVED")
+																	// optimistic update in local state
+																	setEvents(prev => prev.map(ev => ev.id === request.id ? { ...ev, status: "APPROVED" } : ev))
+																	toast({ title: 'Approved', description: `Event ${request.name || request.id} approved.` })
+																} catch (err: any) {
+																	console.error('Approve failed', err)
+																	toast({ title: 'Error', description: err?.message || 'Failed to approve event' })
+																} finally {
+																	setProcessingId(null)
+																}
+															}}>
 																<CheckCircle className="h-4 w-4" />
 															</Button>
-															<Button size="sm" variant="destructive" className="h-8 w-8 p-0">
+															<Button size="sm" variant="destructive" className="h-8 w-8 p-0" onClick={async (e) => {
+																e.preventDefault()
+																if (processingId) return
+																setProcessingId(request.id)
+																try {
+																	await putEventStatus(request.id, "REJECTED")
+																	setEvents(prev => prev.map(ev => ev.id === request.id ? { ...ev, status: "REJECTED" } : ev))
+																	toast({ title: 'Rejected', description: `Event ${request.name || request.id} rejected.` })
+																} catch (err: any) {
+																	console.error('Reject failed', err)
+																	toast({ title: 'Error', description: err?.message || 'Failed to reject event' })
+																} finally {
+																	setProcessingId(null)
+																}
+															}}>
 																<XCircle className="h-4 w-4" />
 															</Button>
 														</>
@@ -349,6 +398,25 @@ export default function UniStaffEventRequestsPage() {
 								</Card>
 							))
 						)}
+						</div>
+
+						{/* Pagination controls */}
+						<div className="flex items-center justify-between mt-2">
+							<div className="text-sm text-muted-foreground">
+								Showing {filteredRequests.length === 0 ? 0 : page * pageSize + 1} to {Math.min((page + 1) * pageSize, filteredRequests.length)} of {filteredRequests.length} requests
+							</div>
+							<div className="flex items-center gap-2">
+								<Button size="sm" variant="outline" onClick={() => setPage(0)} disabled={page === 0}>First</Button>
+								<Button size="sm" variant="outline" onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}>Prev</Button>
+								<div className="px-2 text-sm">Page {filteredRequests.length === 0 ? 0 : page + 1} / {Math.max(1, Math.ceil(filteredRequests.length / pageSize))}</div>
+								<Button size="sm" variant="outline" onClick={() => setPage(p => Math.min(p + 1, Math.max(0, Math.ceil(filteredRequests.length / pageSize) - 1)))} disabled={(page + 1) * pageSize >= filteredRequests.length}>Next</Button>
+								<Button size="sm" variant="outline" onClick={() => setPage(Math.max(0, Math.ceil(filteredRequests.length / pageSize) - 1))} disabled={(page + 1) * pageSize >= filteredRequests.length}>Last</Button>
+								<select aria-label="Items per page" className="ml-2 rounded border px-2 py-1 text-sm" value={pageSize} onChange={(e) => { setPageSize(Number((e.target as HTMLSelectElement).value)); setPage(0) }}>
+									<option value={3}>3</option>
+									<option value={6}>6</option>
+									<option value={12}>12</option>
+								</select>
+							</div>
 						</div>
 				</div>
 			</AppShell>

@@ -145,6 +145,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem("clubly-membership-applications")
     localStorage.removeItem("uniclub-auth")
     localStorage.removeItem("jwtToken")
+    localStorage.removeItem("uniclub-member-staff")
+    
     router.push("/")
   }
 
