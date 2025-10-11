@@ -20,6 +20,7 @@ interface AuthContextType {
   login: (
     email: string,
     password: string,
+    // Bỏ redirectTo khỏi định nghĩa vì không dùng nữa, nhưng để optional cho an toàn
     redirectTo?: string
   ) => Promise<boolean>;
   logout: () => void;
@@ -39,26 +40,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    // Load auth state from localStorage on mount
+    // Phần useEffect này giữ nguyên
     const saved = localStorage.getItem("uniclub-auth");
     if (saved) {
       try {
         const parsed = JSON.parse(saved) as { token: string } & LoginResponse;
-
-        // map backend role values to the app's internal role keys
         const normalizeRole = (r?: string | null) => {
           if (!r) return null;
           const lower = String(r).toLowerCase();
           const map: Record<string, string> = {
-            // keep backend STUDENT as its own internal 'student' role
             student: "student",
             member: "member",
             club_manager: "club_leader",
             "club manager": "club_leader",
-            // Support different backend naming for university staff/admin
             uni_admin: "uni_staff",
             university_admin: "uni_staff",
-            university_staff: "uni_staff", // <-- added to handle UNIVERSITY_STAFF
+            university_staff: "uni_staff",
             "university staff": "uni_staff",
             admin: "admin",
             staff: "staff",
@@ -68,7 +65,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         setAuth({
           userId: parsed.userId,
-          // normalize role to the app's canonical key (e.g. 'uni_admin')
           role: normalizeRole(parsed.role),
           user: {
             userId: parsed.userId,
@@ -76,30 +72,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             fullName: parsed.fullName,
           },
         });
-        // also set default Authorization header for axios if token exists
         localStorage.setItem("jwtToken", parsed.token);
       } catch (err) {
         console.warn("Failed to parse stored auth", err);
       }
     }
-    // mark initialization complete regardless of stored auth
     setInitialized(true);
   }, []);
 
   const login = async (
     email: string,
     password: string,
-    redirectTo?: string
+    // tham số redirectTo giờ không còn quan trọng
+    redirectTo?: string 
   ): Promise<boolean> => {
     try {
       const res: LoginResponse = await loginApi({ email, password });
-
-      // Persist full response (token + user info)
       localStorage.setItem("uniclub-auth", JSON.stringify(res));
-      // Also store jwtToken separately for backward compatibility
       localStorage.setItem("jwtToken", res.token);
 
-      // normalize backend role to canonical internal key
       const normalizeRole = (r?: string | null) => {
         if (!r) return null;
         const lower = String(r).toLowerCase();
@@ -110,14 +101,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           "club manager": "club_leader",
           uni_admin: "uni_staff",
           university_admin: "uni_staff",
-          university_staff: "uni_staff", // <-- added to handle UNIVERSITY_STAFF
+          university_staff: "uni_staff",
           "university staff": "uni_staff",
           admin: "admin",
           staff: "staff",
         };
         return map[lower] || lower;
       };
-
       const normalizedRole = normalizeRole(res.role);
 
       setAuth({
@@ -130,71 +120,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         },
       });
 
-      // Redirect based on `redirectTo` if provided, otherwise based on normalized role
-      const redirectMap: Record<string, string> = {
-        member: "/member",
-        student: "/student",
-        club_leader: "/club-leader",
-        uni_staff: "/uni-staff",
-        admin: "/admin",
-        staff: "/staff",
-      };
+      // ⭐ LOGIC ĐIỀU HƯỚNG MỚI, CHẮC CHẮN VÀ ĐƠN GIẢN
+      
+      // 1. Luôn kiểm tra sessionStorage trước tiên
+      const intendedPath = sessionStorage.getItem('intendedPath');
 
-      // Đoạn code thay thế trong AuthContext.tsx, hàm login
-
-      // Thay thế khối if/else cũ trong hàm login bằng khối này
-
-      console.log("--- AuthContext: Bắt đầu đăng nhập ---");
-      console.log("Giá trị redirectTo nhận được:", redirectTo);
-
-      if (redirectTo) {
-        try {
-          console.log("Origin hiện tại của trang:", window.location.origin);
-          const targetUrl = new URL(redirectTo, window.location.origin);
-          console.log("Đã phân tích URL thành:", targetUrl.href);
-          console.log("Origin của URL đích:", targetUrl.origin);
-
-          if (targetUrl.origin === window.location.origin) {
-            const safeRedirectPath =
-              targetUrl.pathname + targetUrl.search + targetUrl.hash;
-            console.log(
-              "QUYẾT ĐỊNH: Điều hướng đến đường dẫn AN TOÀN:",
-              safeRedirectPath
-            );
-            router.push(safeRedirectPath);
-          } else {
-            console.warn(
-              "CẢNH BÁO: Đã CHẶN điều hướng ra ngoài trang web tới:",
-              redirectTo
-            );
-            const fallbackPath = redirectMap[normalizedRole || ""] || "/member";
-            console.log(
-              "QUYẾT ĐỊNH: Điều hướng đến trang MẶC ĐỊNH (do khác origin):",
-              fallbackPath
-            );
-            router.push(fallbackPath);
-          }
-        } catch (error) {
-          console.error(
-            "LỖI: Không thể phân tích redirectTo:",
-            redirectTo,
-            error
-          );
-          const fallbackPath = redirectMap[normalizedRole || ""] || "/member";
-          console.log(
-            "QUYẾT ĐỊNH: Điều hướng đến trang MẶC ĐỊNH (do lỗi):",
-            fallbackPath
-          );
-          router.push(fallbackPath);
-        }
+      if (intendedPath) {
+        console.log(`AuthContext: Tìm thấy intendedPath trong sessionStorage: ${intendedPath}`);
+        // Xóa ngay sau khi đọc để lần đăng nhập sau không bị ảnh hưởng
+        sessionStorage.removeItem('intendedPath'); 
+        router.push(intendedPath);
       } else {
+        // 2. Nếu không có, mới fallback về trang theo role
+        const redirectMap: Record<string, string> = {
+          member: "/member",
+          student: "/student",
+          club_leader: "/club-leader",
+          uni_staff: "/uni-staff",
+          admin: "/admin",
+          staff: "/staff",
+        };
         const fallbackPath = redirectMap[normalizedRole || ""] || "/member";
-        console.log(
-          "QUYẾT ĐỊNH: Không có redirectTo, điều hướng đến trang MẶC ĐỊNH:",
-          fallbackPath
-        );
+        console.log(`AuthContext: Không có intendedPath, điều hướng mặc định tới: ${fallbackPath}`);
         router.push(fallbackPath);
       }
+
       return true;
     } catch (err) {
       console.error("Login failed", err);
@@ -208,7 +158,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem("uniclub-auth");
     localStorage.removeItem("jwtToken");
     localStorage.removeItem("uniclub-member-staff");
-
+    sessionStorage.removeItem("intendedPath"); // Dọn dẹp khi logout
     router.push("/");
   };
 

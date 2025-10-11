@@ -132,8 +132,10 @@ export default function LoginPage() {
 
     // ⭐ SỬA LỖI TẠI ĐÂY: Lấy giá trị 'next' ngay trước khi gọi login
     // để đảm bảo luôn có giá trị mới nhất, tránh lỗi stale state.
-    const next = searchParams.get('next');
-    const success = await login(email, password, next || undefined)
+    // Thêm decode để đảm bảo path đúng (ví dụ: %2F thành /)
+    const nextRaw = searchParams.get('next')
+    const next = nextRaw ? decodeURIComponent(nextRaw) : undefined
+    const success = await login(email, password, next)
 
     if (success) {
       toast({
