@@ -43,19 +43,6 @@ export const getEventById = async (id: string | number) => {
   }
 }
 
-export const getEventByCode = async (code: string) => {
-  try {
-    const response = await axiosInstance.get(`api/events/checkin/${encodeURIComponent(code)}`)
-    const resData: any = response.data
-    console.log(`Fetched event by code ${code}:`, resData)
-    if (resData && resData.data) return resData.data
-    return resData
-  } catch (error) {
-    console.error(`Error fetching event by code ${code}:`, error)
-    throw error
-  }
-}
-
 export const putEventStatus = async (id: string | number, status: string) => {
   try {
     const response = await axiosInstance.put(`api/events/${id}/status`, { status })
@@ -68,4 +55,22 @@ export const putEventStatus = async (id: string | number, status: string) => {
     console.error(`Error updating event ${id} status:`, error)
     throw error
   }
+}
+
+export const getEventByCode = async (code: string) => {
+	// call the endpoint used in your screenshot: /api/events/checkin/{code}
+	try {
+		const response = await axiosInstance.get(`/api/events/checkin/${encodeURIComponent(code)}`)
+		const resData: any = response.data
+		console.debug(`Fetched event by code ${code}:`, resData)
+		// expected response shape:
+		// { success: true, message: null, data: { ...event fields... } }
+		if (resData?.success && resData?.data) return resData.data
+		// fallback: if API returns raw event object
+		if (resData && typeof resData === "object" && (resData.id || resData.name)) return resData
+		throw new Error(resData?.message || "Event not found")
+	} catch (err) {
+		console.error(`Error fetching event by code ${code}:`, err)
+		throw err
+	}
 }

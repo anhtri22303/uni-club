@@ -22,55 +22,37 @@ export default function MemberCheckinByCodePage() {
   const [checkedInEvents, setCheckedInEvents] = useState<string[]>([])
   const [tokenState, setTokenState] = useState<{ valid: boolean; reason?: string; eventId?: string } | null>(null)
 
-  const checkInCode = params?.checkInCode || null
+  // read route param produced by the [code] folder
+  const checkInCode = (params as any)?.code || (params as any)?.checkInCode || null
+
+  // helpful debug when things don't run
+  useEffect(() => {
+    console.debug('MemberCheckinByCode params:', params, 'resolved checkInCode:', checkInCode)
+  }, [params, checkInCode])
+
   const [eventData, setEventData] = useState<any | null>(null)
 
   useEffect(() => {
     if (!checkInCode) return
     ;(async () => {
       try {
-        const res = await fetch('/api/checkin/validate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token: checkInCode }),
-        })
-        const json = await res.json()
-        if (json?.success) {
-          setTokenState({ valid: true, eventId: json.eventId })
-          // Try to fetch event details by code (server returns event in expected shape)
-          try {
-            if (typeof checkInCode === 'string') {
-              const ev = await getEventByCode(checkInCode)
-              setEventData(ev)
-            }
-          } catch (err) {
-            console.warn('Failed to fetch event by code', err)
-          }
-        } else {
-          try { router.replace('/member/checkin/invalid') } catch {}
-          setTokenState({ valid: false, reason: json.reason || json.message })
+        if (typeof checkInCode === "string") {
+          const ev = await getEventByCode(checkInCode)
+          setEventData(ev)
+          setTokenState({ valid: true, eventId: String(ev?.id ?? "") })
         }
       } catch (err) {
-        try { router.replace('/member/checkin/invalid') } catch {}
-        setTokenState({ valid: false, reason: 'error' })
+        console.warn("Failed to fetch event by code", err)
+        setEventData(null)
+        setTokenState({ valid: false, reason: "not_found" })
       }
     })()
   }, [checkInCode])
 
-  const handleCheckin = (event: any) => {
-    if (tokenState && !tokenState.valid) {
-      toast({ title: "Invalid QR", description: "This QR code is expired or invalid.", variant: "destructive" })
-      return
-    }
-
-    if (checkedInEvents.includes(event.id)) {
-      toast({ title: "Already Checked In", description: "You have already checked in to this event", variant: "destructive" })
-      return
-    }
-
-    setCheckedInEvents((prev) => [...prev, event.id])
-
-    toast({ title: "Đã checkin thành công!", description: `+ ${event.points} points`, duration: 3000 })
+  const handleCheckin = (_event: any) => {
+    // Notify user that the check-in action is not yet available
+    toast({ title: "Coming soon", description: "Checkin button available soon", duration: 3000 })
+    return
   }
 
   return (
