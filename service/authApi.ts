@@ -1,4 +1,4 @@
-import axios from "axios"
+import axiosInstance from "../lib/axiosInstance"
 
 // Expected response shape from backend on successful login
 export interface LoginResponse {
@@ -16,7 +16,7 @@ export interface LoginCredentials {
 
 // POST /auth/login -> returns token + user info
 export const login = async (credentials: LoginCredentials): Promise<LoginResponse> => {
-  const res = await axios.post<LoginResponse>("http://localhost:8080/auth/login", credentials)
+  const res = await axiosInstance.post<LoginResponse>("/auth/login", credentials)
   console.log("Login response:", res.data)
   return res.data
 }
@@ -24,7 +24,10 @@ export const login = async (credentials: LoginCredentials): Promise<LoginRespons
 // Keep other helpers (OAuth) as-is for the future
 export const loginWithGoogle = async (): Promise<void> => {
   try {
-    window.location.href = "http://localhost:8080/oauth2/authorization/google"
+    // build absolute redirect url from axiosInstance baseURL so it stays consistent
+    const base = axiosInstance.defaults.baseURL || ""
+    const redirect = new URL("oauth2/authorization/google", base).toString()
+    window.location.href = redirect
   } catch (error) {
     console.error("Error during Google login:", error)
     throw error
@@ -33,7 +36,7 @@ export const loginWithGoogle = async (): Promise<void> => {
 
 export const handleGoogleCallback = async (code: string) => {
   try {
-    const response = await axios.get(`http://localhost:8080/auth/oauth2/callback?code=${code}`)
+    const response = await axiosInstance.get(`/auth/oauth2/callback?code=${code}`)
     console.log("Google callback success", response.data)
     return response.data
   } catch (error) {
@@ -44,7 +47,7 @@ export const handleGoogleCallback = async (code: string) => {
 
 export const loginWithGoogleToken = async (credentials: { token: string }) => {
   try {
-    const response = await axios.post("http://localhost:8080/auth/login/token/google", credentials)
+    const response = await axiosInstance.post("/auth/login/token/google", credentials)
     console.log("Google token login success")
     return response.data
   } catch (error) {
@@ -76,7 +79,7 @@ export interface SignUpResponse {
 export const signUp = async (credentials: SignUpCredentials): Promise<SignUpResponse> => {
   try {
     const res = await axios.post<SignUpResponse>(
-      "http://localhost:8080/auth/register",
+      "/auth/register",
       {
         email: credentials.email,
         password: credentials.password,

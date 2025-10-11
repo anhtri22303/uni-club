@@ -43,6 +43,19 @@ export const getEventById = async (id: string | number) => {
   }
 }
 
+export const getEventByCode = async (code: string) => {
+  try {
+    const response = await axiosInstance.get(`api/events/checkin/${encodeURIComponent(code)}`)
+    const resData: any = response.data
+    console.log(`Fetched event by code ${code}:`, resData)
+    if (resData && resData.data) return resData.data
+    return resData
+  } catch (error) {
+    console.error(`Error fetching event by code ${code}:`, error)
+    throw error
+  }
+}
+
 export const putEventStatus = async (id: string | number, status: string) => {
   try {
     const response = await axiosInstance.put(`api/events/${id}/status`, { status })

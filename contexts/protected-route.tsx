@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useAuth } from "@/contexts/auth-context"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -15,13 +15,16 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
   const router = useRouter()
+  const pathname = usePathname()
   // avoid redirect while auth state is still initializing
   const { auth, isAuthenticated, initialized } = useAuth()
 
   useEffect(() => {
     // only redirect when we've finished reading stored auth
     if (initialized && !isAuthenticated) {
-      router.push("/")
+      // include the current path so the user can be redirected back after login
+      const dest = pathname ? `/?next=${encodeURIComponent(pathname)}` : "/"
+      router.push(dest)
       return
     }
   }, [initialized, isAuthenticated, router])

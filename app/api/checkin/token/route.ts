@@ -9,8 +9,8 @@ export async function POST(req: Request) {
     if (!eventId) return NextResponse.json({ success: false, message: 'missing eventId' }, { status: 400 })
 
     const token = randomUUID()
-  // TTL 30 seconds
-  await createToken(token, eventId, 30 * 1000)
+  // TTL 60 seconds
+  await createToken(token, eventId, 60 * 1000)
 
     return NextResponse.json({ success: true, token })
   } catch (err) {

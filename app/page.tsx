@@ -4,6 +4,7 @@ import { signUp } from "@/service/authApi"
 import type React from "react"
 import { useState } from "react"
 import { useAuth } from "@/contexts/auth-context"
+import { useSearchParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -27,6 +28,8 @@ export default function LoginPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const { login } = useAuth()
   const { toast } = useToast()
+  const searchParams = useSearchParams()
+  const router = useRouter()
   const [phone, setPhone] = useState("")
 
 
@@ -142,6 +145,15 @@ export default function LoginPage() {
         title: "Login Successful",
         description: "Redirecting...",
       })
+      // honor optional `next` query param if provided and safe
+      try {
+        const next = searchParams.get('next')
+        if (next && next.startsWith('/')) {
+          router.push(next)
+        }
+      } catch (e) {
+        // ignore and let auth-context handle default redirect
+      }
     }
   }
 
@@ -269,6 +281,7 @@ export default function LoginPage() {
                     </Label>
                     <select
                       id="majorName"
+                      aria-label="Select your major"
                       value={majorName}
                       onChange={e => setMajorName(e.target.value)}
                       className="h-10 sm:h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
