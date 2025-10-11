@@ -47,8 +47,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Phần useEffect này giữ nguyên nhưng dùng safe storage
     const saved = safeLocalStorage.getItem("uniclub-auth");
 
-    // Phần useEffect này giữ nguyên
-    const saved = localStorage.getItem("uniclub-auth");
 
     if (saved) {
       try {
@@ -142,8 +140,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // 1. Luôn kiểm tra sessionStorage trước tiên
 
       const intendedPath = safeSessionStorage.getItem('intendedPath');
-
-      const intendedPath = sessionStorage.getItem('intendedPath');
 
 
       if (intendedPath) {

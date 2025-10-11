@@ -24,13 +24,6 @@ interface ProtectedRouteProps {
 }
 
 
-export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
-  const router = useRouter()
-  const pathname = usePathname()
-  // avoid redirect while auth state is still initializing
-  const { auth, isAuthenticated, initialized } = useAuth()
-  const [isRedirecting, setIsRedirecting] = useState(false)
-
 export function ProtectedRoute({
   children,
   allowedRoles,
