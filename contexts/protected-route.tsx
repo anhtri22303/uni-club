@@ -14,10 +14,15 @@ import {
 } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 
+import { safeSessionStorage } from "@/lib/browser-utils";
+
+
+
 interface ProtectedRouteProps {
   children: React.ReactNode;
   allowedRoles: string[];
 }
+
 
 export function ProtectedRoute({
   children,
@@ -27,6 +32,7 @@ export function ProtectedRoute({
   const pathname = usePathname();
   const { auth, isAuthenticated, initialized } = useAuth();
   const [isRedirecting, setIsRedirecting] = useState(false);
+
 
   useEffect(() => {
     // Chờ context và pathname sẵn sàng
@@ -48,9 +54,15 @@ export function ProtectedRoute({
     // Kích hoạt overlay
     setIsRedirecting(true);
 
+
+    // Lưu đường dẫn với safe storage
+    console.log(`ProtectedRoute: Đang lưu intendedPath: ${pathname}`);
+    safeSessionStorage.setItem('intendedPath', pathname);
+
     // Lưu đường dẫn
     console.log(`ProtectedRoute: Đang lưu intendedPath: ${pathname}`);
     sessionStorage.setItem('intendedPath', pathname);
+
 
     // Đặt hẹn giờ chuyển hướng
     const timer = setTimeout(() => {

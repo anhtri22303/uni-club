@@ -4,6 +4,9 @@ import type React from "react";
 import { createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { login as loginApi, LoginResponse } from "@/service/authApi";
+import { safeSessionStorage, safeLocalStorage } from "@/lib/browser-utils";
+import { ClientOnlyWrapper } from "@/components/client-only-wrapper";
+
 
 interface AuthState {
   userId: string | number | null;
@@ -40,8 +43,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    // Phần useEffect này giữ nguyên
-    const saved = localStorage.getItem("uniclub-auth");
+
+    // Phần useEffect này giữ nguyên nhưng dùng safe storage
+    const saved = safeLocalStorage.getItem("uniclub-auth");
+
+
     if (saved) {
       try {
         const parsed = JSON.parse(saved) as { token: string } & LoginResponse;
@@ -72,7 +78,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             fullName: parsed.fullName,
           },
         });
+
+        safeLocalStorage.setItem("jwtToken", parsed.token);
+
         localStorage.setItem("jwtToken", parsed.token);
+
       } catch (err) {
         console.warn("Failed to parse stored auth", err);
       }
@@ -88,8 +98,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   ): Promise<boolean> => {
     try {
       const res: LoginResponse = await loginApi({ email, password });
+
+      safeLocalStorage.setItem("uniclub-auth", JSON.stringify(res));
+      safeLocalStorage.setItem("jwtToken", res.token);
+
       localStorage.setItem("uniclub-auth", JSON.stringify(res));
       localStorage.setItem("jwtToken", res.token);
+
 
       const normalizeRole = (r?: string | null) => {
         if (!r) return null;
@@ -123,12 +138,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // ⭐ LOGIC ĐIỀU HƯỚNG MỚI, CHẮC CHẮN VÀ ĐƠN GIẢN
       
       // 1. Luôn kiểm tra sessionStorage trước tiên
-      const intendedPath = sessionStorage.getItem('intendedPath');
+
+      const intendedPath = safeSessionStorage.getItem('intendedPath');
+
 
       if (intendedPath) {
         console.log(`AuthContext: Tìm thấy intendedPath trong sessionStorage: ${intendedPath}`);
         // Xóa ngay sau khi đọc để lần đăng nhập sau không bị ảnh hưởng
+
+        safeSessionStorage.removeItem('intendedPath'); 
+
         sessionStorage.removeItem('intendedPath'); 
+
         router.push(intendedPath);
       } else {
         // 2. Nếu không có, mới fallback về trang theo role
@@ -154,11 +175,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = () => {
     setAuth({ userId: null, role: null, user: null });
+
+    safeLocalStorage.removeItem("clubly-membership-applications");
+    safeLocalStorage.removeItem("uniclub-auth");
+    safeLocalStorage.removeItem("jwtToken");
+    safeLocalStorage.removeItem("uniclub-member-staff");
+    safeSessionStorage.removeItem("intendedPath"); // Dọn dẹp khi logout
+
     localStorage.removeItem("clubly-membership-applications");
     localStorage.removeItem("uniclub-auth");
     localStorage.removeItem("jwtToken");
     localStorage.removeItem("uniclub-member-staff");
     sessionStorage.removeItem("intendedPath"); // Dọn dẹp khi logout
+
     router.push("/");
   };
 
@@ -174,7 +203,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         initialized,
       }}
     >
-      {children}
+      <ClientOnlyWrapper>
+        {children}
+      </ClientOnlyWrapper>
     </AuthContext.Provider>
   );
 }
