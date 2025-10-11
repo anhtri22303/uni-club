@@ -19,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 import clubs from "@/src/data/clubs.json"
 import { fetchEvent } from "@/service/eventApi"
-import { createEvent } from "@/service/eventApi"
+import { createEvent, getEventById } from "@/service/eventApi"
 
 export default function ClubLeaderEventsPage() {
   const [events, setEvents] = useState<any[]>([])
@@ -57,7 +57,8 @@ export default function ClubLeaderEventsPage() {
   const [visibleIndex, setVisibleIndex] = useState(0)
   const [displayedIndex, setDisplayedIndex] = useState(0)
   const [isFading, setIsFading] = useState(false)
-  const ROTATION_INTERVAL_MS = 8000 
+  // show each QR visual for 30 seconds
+  const ROTATION_INTERVAL_MS = 30 * 1000
   const VARIANTS = 3
 
   const [countdown, setCountdown] = useState(() => Math.floor(ROTATION_INTERVAL_MS / 1000))
@@ -387,46 +388,75 @@ export default function ClubLeaderEventsPage() {
                               variant="ghost"
                               size="sm"
                               onClick={async () => {
-                                try {
-                                  // request a short-lived token for this event
-                                  const tokenResp = await fetch('/api/checkin/token', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ eventId: String(event.id) }),
-                                  })
-                                  const tokenJson = await tokenResp.json()
-                                  if (!tokenJson?.success) throw new Error('Token mint failed')
-                                  const token = tokenJson.token
+                                  try {
+                                    // Prefer server-side persistent checkInCode when available.
+                                    let code: string | null = null
+                                    try {
+                                      const serverEvent = await getEventById(String(event.id))
+                                      if (serverEvent) {
+                                        // If the server explicitly has no checkInCode, surface error and abort
+                                        if (!serverEvent.checkInCode) {
+                                          toast({ title: 'No check-in code', description: 'This event has not been assigned a persistent check-in code. Please contact the organizer.', variant: 'destructive' })
+                                          return
+                                        }
+                                        code = String(serverEvent.checkInCode)
+                                      }
+                                    } catch (e) {
+                                      // on server error, fall back to minting a token
+                                    }
 
-                                  // build canonical URLs that include the token (so screenshots expire)
-                                  const localUrl = `http://localhost:3000/member/checkin?event=${encodeURIComponent(String(event.id))}&token=${encodeURIComponent(token)}`
-                                  const prodUrl = `https://uniclub-fpt.vercel.app/member/checkin?event=${encodeURIComponent(String(event.id))}&token=${encodeURIComponent(token)}`
+                                    // If we still don't have a persistent code (because server errored), mint a short-lived token
+                                    if (!code) {
+                                      const tokenResp = await fetch('/api/checkin/token', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ eventId: String(event.id) }),
+                                      })
+                                      const tokenJson = await tokenResp.json()
+                                      if (!tokenJson?.success) throw new Error('Token mint failed')
+                                      code = tokenJson.token
+                                    }
 
-                                  // generate multiple visually-distinct images (noise via fragment)
-                                  const localVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
-                                    const noise = `__noise=${i}_${Date.now()}`
-                                    return QRCode.toDataURL(`${localUrl}#${noise}`)
-                                  })
-                                  const prodVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
-                                    const noise = `__noise=${i}_${Date.now()}`
-                                    return QRCode.toDataURL(`${prodUrl}#${noise}`)
-                                  })
+                                    // Build canonical URLs using a query parameter: /member/checkin?code={checkInCode}
+                                    // This avoids path-based routing and makes it easy for the check-in page
+                                    // to read the code from the URL and fetch event data.
+                                    const localUrl = `http://localhost:3000/member/checkin/${encodeURIComponent(String(code))}`
+                                    const prodUrl = `https://uniclub-fpt.vercel.app/member/checkin/${encodeURIComponent(String(code))}`
 
-                                  const [localVariants, prodVariants] = await Promise.all([
-                                    Promise.all(localVariantsPromises),
-                                    Promise.all(prodVariantsPromises),
-                                  ])
+                                    // generate multiple visually-distinct images by varying QR styling options
+                                    // NOTE: We avoid adding a URL fragment (#...) because scanners will include
+                                    // the fragment in the opened URL. Keeping the encoded URL identical
+                                    // ensures the scanned link is exactly `/member/checkin/{code}`.
+                                    const styleVariants = [
+                                      { color: { dark: '#000000', light: '#FFFFFF' }, margin: 1 },
+                                      { color: { dark: '#111111', light: '#FFFFFF' }, margin: 2 },
+                                      { color: { dark: '#222222', light: '#FFFFFF' }, margin: 0 },
+                                    ]
 
-                                  setQrRotations({ local: localVariants, prod: prodVariants })
-                                  setQrLinks({ local: localUrl, prod: prodUrl })
-                                  setVisibleIndex(0)
-                                  setDisplayedIndex(0)
-                                  setShowQrModal(true)
-                                } catch (err) {
-                                  console.error('Failed to generate QR', err)
-                                  toast({ title: 'QR Error', description: 'Could not generate QR code', variant: 'destructive' })
-                                }
-                              }}
+                                    const localVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
+                                      const opts = styleVariants[i % styleVariants.length]
+                                      return QRCode.toDataURL(localUrl, opts as any)
+                                    })
+                                    const prodVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
+                                      const opts = styleVariants[i % styleVariants.length]
+                                      return QRCode.toDataURL(prodUrl, opts as any)
+                                    })
+
+                                    const [localVariants, prodVariants] = await Promise.all([
+                                      Promise.all(localVariantsPromises),
+                                      Promise.all(prodVariantsPromises),
+                                    ])
+
+                                    setQrRotations({ local: localVariants, prod: prodVariants })
+                                    setQrLinks({ local: localUrl, prod: prodUrl })
+                                    setVisibleIndex(0)
+                                    setDisplayedIndex(0)
+                                    setShowQrModal(true)
+                                  } catch (err) {
+                                    console.error('Failed to generate QR', err)
+                                    toast({ title: 'QR Error', description: 'Could not generate QR code', variant: 'destructive' })
+                                  }
+                                }}
                               className="h-8 w-8 p-0"
                             >
                               <QrCode className="h-4 w-4" />

@@ -10,6 +10,7 @@ import { useData } from "@/contexts/data-context"
 import { useToast } from "@/hooks/use-toast"
 import { CheckCircle, Calendar, MapPin, Users, Trophy, Clock } from "lucide-react"
 import { useState, useEffect } from "react"
+import { getEventByCode } from '@/service/eventApi'
 
 // Removed static `src/data` imports — use empty fallbacks. Replace with API/context in future if needed.
 const clubs: any[] = []
@@ -21,6 +22,7 @@ export default function MemberCheckinPage() {
   const { toast } = useToast()
   const [checkedInEvents, setCheckedInEvents] = useState<string[]>([])
   const [tokenState, setTokenState] = useState<{ valid: boolean; reason?: string; eventId?: string } | null>(null)
+  const [eventData, setEventData] = useState<any | null>(null)
 
   // Get user's club memberships
   const userClubMemberships = clubMemberships.filter(
@@ -89,10 +91,33 @@ export default function MemberCheckinPage() {
     })
   }
 
-  // validate token in URL (if present)
+  // Handle URL params: prefer ?code=... (fetch events and match by checkInCode).
+  // Fallback: ?token=... (legacy short-lived token validation).
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
+    const code = params.get('code')
     const token = params.get('token')
+
+    if (code) {
+      ;(async () => {
+        try {
+          const ev = await getEventByCode(code)
+          if (ev) {
+            setEventData(ev)
+            setTokenState({ valid: true, eventId: String(ev.id) })
+          } else {
+            try { window.location.href = '/member/checkin/invalid' } catch {}
+            setTokenState({ valid: false, reason: 'not_found' })
+          }
+        } catch (err) {
+          console.error('Failed to fetch event by code', err)
+          try { window.location.href = '/member/checkin/invalid' } catch {}
+          setTokenState({ valid: false, reason: 'error' })
+        }
+      })()
+      return
+    }
+
     if (!token) {
       setTokenState(null)
       return
@@ -110,7 +135,7 @@ export default function MemberCheckinPage() {
           setTokenState({ valid: true, eventId: json.eventId })
         } else {
           // redirect to invalid page
-          try { window.location.href = '/member/checkin/invalid' } catch {} 
+          try { window.location.href = '/member/checkin/invalid' } catch {}
           setTokenState({ valid: false, reason: json.reason || json.message })
         }
       } catch (err) {
