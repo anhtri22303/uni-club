@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import type React from "react";
 import { useAuth } from "@/contexts/auth-context";
@@ -13,12 +13,16 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
+
 import { safeSessionStorage } from "@/lib/browser-utils";
 
+
+
 interface ProtectedRouteProps {
-  children: React.ReactNode
-  allowedRoles: string[]
+  children: React.ReactNode;
+  allowedRoles: string[];
 }
+
 
 export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
   const router = useRouter()
@@ -26,6 +30,16 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
   // avoid redirect while auth state is still initializing
   const { auth, isAuthenticated, initialized } = useAuth()
   const [isRedirecting, setIsRedirecting] = useState(false)
+
+export function ProtectedRoute({
+  children,
+  allowedRoles,
+}: ProtectedRouteProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const { auth, isAuthenticated, initialized } = useAuth();
+  const [isRedirecting, setIsRedirecting] = useState(false);
+
 
   useEffect(() => {
     // Chờ context và pathname sẵn sàng
@@ -47,9 +61,15 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
     // Kích hoạt overlay
     setIsRedirecting(true);
 
+
     // Lưu đường dẫn với safe storage
     console.log(`ProtectedRoute: Đang lưu intendedPath: ${pathname}`);
     safeSessionStorage.setItem('intendedPath', pathname);
+
+    // Lưu đường dẫn
+    console.log(`ProtectedRoute: Đang lưu intendedPath: ${pathname}`);
+    sessionStorage.setItem('intendedPath', pathname);
+
 
     // Đặt hẹn giờ chuyển hướng
     const timer = setTimeout(() => {
