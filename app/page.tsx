@@ -242,6 +242,18 @@ export default function LoginPage() {
             <CardContent className="space-y-4 sm:space-y-6 px-4 sm:px-6">
               <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
 
+                  {nextParam && (
+                    <div className="text-sm text-muted-foreground mb-2">
+                      Returning to: {(() => {
+                        try {
+                          return decodeURIComponent(nextParam)
+                        } catch (e) {
+                          return nextParam
+                        }
+                      })()}
+                    </div>
+                  )}
+
                 {isSignUpMode && (
                   <div className="space-y-2">
                     <Label htmlFor="fullName" className="text-sm font-medium">
