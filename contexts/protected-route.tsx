@@ -20,19 +20,30 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
   const { auth, isAuthenticated, initialized } = useAuth()
 
   useEffect(() => {
-    // only redirect when we've finished reading stored auth
-    if (initialized && !isAuthenticated) {
-      // include the current path so the user can be redirected back after login
-      const dest = pathname ? `/?next=${encodeURIComponent(pathname)}` : "/"
-      router.push(dest)
-      return
+    // only redirect when we've finished reading stored auth and we have a pathname
+    if (!initialized || isAuthenticated) return
+
+    // If usePathname hasn't populated yet (race on client hydrate), fall back
+    // to window.location.pathname so we don't lose the original path.
+    let resolvedPath = pathname
+    if (!resolvedPath && typeof window !== "undefined") {
+      resolvedPath = window.location?.pathname || ""
     }
-  }, [initialized, isAuthenticated, router])
+
+    const dest = resolvedPath ? `/?next=${encodeURIComponent(resolvedPath)}` : "/"
+    console.debug("ProtectedRoute redirecting to", dest)
+    router.push(dest)
+    return
+  }, [initialized, isAuthenticated, router, pathname])
 
   if (!initialized) return null
 
   if (!isAuthenticated) {
-    const dest = pathname ? `/?next=${encodeURIComponent(pathname)}` : "/"
+    let resolvedPath = pathname
+    if (!resolvedPath && typeof window !== "undefined") {
+      resolvedPath = window.location?.pathname || ""
+    }
+    const dest = resolvedPath ? `/?next=${encodeURIComponent(resolvedPath)}` : "/"
     router.push(dest)
     return null // Will redirect once initialized
   }
