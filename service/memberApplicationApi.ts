@@ -41,7 +41,10 @@ export const fetchAllMemberApplications = async () => {
 // DUYỆT ĐƠN XIN GIA NHẬP (APPROVE)
 export const approveMemberApplication = async (applicationId: number | string) => {
   try {
-    const response = await axiosInstance.put(`/api/member-applications/${applicationId}/approve`)
+    const response = await axiosInstance.put(`/api/member-applications/${applicationId}/status`, {
+      status: "APPROVED",
+      reason: "Approved by club leader",
+    })
     console.log("✅ Approved membership application:", response.data)
     return response.data
   } catch (error: any) {
@@ -56,7 +59,8 @@ export const rejectMemberApplication = async (
   reason: string
 ) => {
   try {
-    const response = await axiosInstance.put(`/api/member-applications/${applicationId}/reject`, {
+    const response = await axiosInstance.put(`/api/member-applications/${applicationId}/status`, {
+      status: "REJECTED",
       reason,
     })
     console.log("✅ Rejected membership application:", response.data)
@@ -66,6 +70,7 @@ export const rejectMemberApplication = async (
     throw error
   }
 }
+
 
 // XOÁ ĐƠN XIN GIA NHẬP (nếu cần)
 export const deleteMemberApplication = async (applicationId: number | string) => {
