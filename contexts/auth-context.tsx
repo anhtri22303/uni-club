@@ -1,9 +1,11 @@
 "use client"
 
-import type React from "react"
-import { createContext, useContext, useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { login as loginApi, LoginResponse } from "@/service/authApi"
+import type React from "react";
+import { createContext, useContext, useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { login as loginApi, LoginResponse } from "@/service/authApi";
+import { safeSessionStorage, safeLocalStorage } from "@/lib/browser-utils";
+import { ClientOnlyWrapper } from "@/components/client-only-wrapper";
 
 interface AuthState {
   userId: string | number | null
@@ -35,8 +37,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
 
   useEffect(() => {
-    // Load auth state from localStorage on mount
-    const saved = localStorage.getItem("uniclub-auth")
+    // Phần useEffect này giữ nguyên nhưng dùng safe storage
+    const saved = safeLocalStorage.getItem("uniclub-auth");
     if (saved) {
       try {
         const parsed = JSON.parse(saved) as { token: string } & LoginResponse
@@ -71,9 +73,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             email: parsed.email,
             fullName: parsed.fullName,
           },
-        })
-        // also set default Authorization header for axios if token exists
-        localStorage.setItem("jwtToken", parsed.token)
+        });
+        safeLocalStorage.setItem("jwtToken", parsed.token);
       } catch (err) {
         console.warn("Failed to parse stored auth", err)
       }
@@ -84,14 +85,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string, redirectTo?: string): Promise<boolean> => {
     try {
-      const res: LoginResponse = await loginApi({ email, password })
+      const res: LoginResponse = await loginApi({ email, password });
+      safeLocalStorage.setItem("uniclub-auth", JSON.stringify(res));
+      safeLocalStorage.setItem("jwtToken", res.token);
 
-      // Persist full response (token + user info)
-      localStorage.setItem("uniclub-auth", JSON.stringify(res))
-      // Also store jwtToken separately for backward compatibility
-      localStorage.setItem("jwtToken", res.token)
-
-      // normalize backend role to canonical internal key
       const normalizeRole = (r?: string | null) => {
         if (!r) return null
         const lower = String(r).toLowerCase()
@@ -120,36 +117,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           email: res.email,
           fullName: res.fullName,
         },
-      })
+      });
 
-      // Redirect based on `redirectTo` if provided, otherwise based on normalized role
-      const redirectMap: Record<string, string> = {
-        member: "/member",
-        student: "/student",
-        club_leader: "/club-leader",
-        uni_staff: "/uni-staff",
-        admin: "/admin",
-        staff: "/staff",
-      }
+      // ⭐ LOGIC ĐIỀU HƯỚNG MỚI, CHẮC CHẮN VÀ ĐƠN GIẢN
+      
+      // 1. Luôn kiểm tra sessionStorage trước tiên
+      const intendedPath = safeSessionStorage.getItem('intendedPath');
 
-      if (redirectTo) {
-        // The `next` query param may be percent-encoded (e.g. %2Fmember%2F...),
-        // decode it before validating to avoid falling back to role-based route.
-        let decoded: string = String(redirectTo)
-        try {
-          decoded = decodeURIComponent(decoded)
-        } catch (e) {
-          // ignore malformed encoding and fall back to raw value
-        }
-        if (decoded.startsWith('/')) {
-          router.push(decoded)
-        } else {
-          router.push(redirectMap[normalizedRole || ""] || "/member")
-        }
+      if (intendedPath) {
+        console.log(`AuthContext: Tìm thấy intendedPath trong sessionStorage: ${intendedPath}`);
+        // Xóa ngay sau khi đọc để lần đăng nhập sau không bị ảnh hưởng
+        safeSessionStorage.removeItem('intendedPath'); 
+        router.push(intendedPath);
       } else {
-        router.push(redirectMap[normalizedRole || ""] || "/member")
+        // 2. Nếu không có, mới fallback về trang theo role
+        const redirectMap: Record<string, string> = {
+          member: "/member",
+          student: "/student",
+          club_leader: "/club-leader",
+          uni_staff: "/uni-staff",
+          admin: "/admin",
+          staff: "/staff",
+        };
+        const fallbackPath = redirectMap[normalizedRole || ""] || "/member";
+        console.log(`AuthContext: Không có intendedPath, điều hướng mặc định tới: ${fallbackPath}`);
+        router.push(fallbackPath);
       }
-      return true
+
+      return true;
     } catch (err) {
       console.error("Login failed", err)
       return false
@@ -157,14 +152,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const logout = () => {
-    setAuth({ userId: null, role: null, user: null })
-    localStorage.removeItem("clubly-membership-applications")
-    localStorage.removeItem("uniclub-auth")
-    localStorage.removeItem("jwtToken")
-    localStorage.removeItem("uniclub-member-staff")
-    
-    router.push("/")
-  }
+    setAuth({ userId: null, role: null, user: null });
+    safeLocalStorage.removeItem("clubly-membership-applications");
+    safeLocalStorage.removeItem("uniclub-auth");
+    safeLocalStorage.removeItem("jwtToken");
+    safeLocalStorage.removeItem("uniclub-member-staff");
+    safeSessionStorage.removeItem("intendedPath"); // Dọn dẹp khi logout
+    router.push("/");
+  };
 
   const isAuthenticated = auth.userId !== null && auth.role !== null
 
@@ -178,7 +173,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         initialized,
       }}
     >
-      {children}
+      <ClientOnlyWrapper>
+        {children}
+      </ClientOnlyWrapper>
     </AuthContext.Provider>
   )
 }
