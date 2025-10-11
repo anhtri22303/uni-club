@@ -29,12 +29,11 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
     }
   }, [initialized, isAuthenticated, router])
 
-  if (!initialized) {
-    // still loading auth from storage - don't render or redirect yet
-    return null
-  }
+  if (!initialized) return null
 
   if (!isAuthenticated) {
+    const dest = pathname ? `/?next=${encodeURIComponent(pathname)}` : "/"
+    router.push(dest)
     return null // Will redirect once initialized
   }
 
