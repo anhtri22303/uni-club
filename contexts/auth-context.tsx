@@ -142,33 +142,58 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Đoạn code thay thế trong AuthContext.tsx, hàm login
 
+      // Thay thế khối if/else cũ trong hàm login bằng khối này
+
+      console.log("--- AuthContext: Bắt đầu đăng nhập ---");
+      console.log("Giá trị redirectTo nhận được:", redirectTo);
+
       if (redirectTo) {
         try {
-          // Tạo một đối tượng URL. Cách này hoạt động với cả path tương đối ("/...")
-          // và URL tuyệt đối ("https://...").
-          // window.location.origin là URL gốc của trang web, ví dụ: "https://uniclub-fpt.vercel.app"
+          console.log("Origin hiện tại của trang:", window.location.origin);
           const targetUrl = new URL(redirectTo, window.location.origin);
+          console.log("Đã phân tích URL thành:", targetUrl.href);
+          console.log("Origin của URL đích:", targetUrl.origin);
 
-          // KIỂM TRA BẢO MẬT: Đảm bảo rằng URL không phải là một trang web bên ngoài.
-          // Đây là bước quan trọng để tránh lỗ hổng "Open Redirect".
           if (targetUrl.origin === window.location.origin) {
-            // Lấy pathname, search params, và hash để đảm bảo giữ nguyên toàn bộ URL.
             const safeRedirectPath =
               targetUrl.pathname + targetUrl.search + targetUrl.hash;
+            console.log(
+              "QUYẾT ĐỊNH: Điều hướng đến đường dẫn AN TOÀN:",
+              safeRedirectPath
+            );
             router.push(safeRedirectPath);
           } else {
-            // Nếu là một trang web lạ, không điều hướng và fallback về trang mặc định.
-            console.warn(`Blocked external redirect to "${redirectTo}"`);
-            router.push(redirectMap[normalizedRole || ""] || "/member");
+            console.warn(
+              "CẢNH BÁO: Đã CHẶN điều hướng ra ngoài trang web tới:",
+              redirectTo
+            );
+            const fallbackPath = redirectMap[normalizedRole || ""] || "/member";
+            console.log(
+              "QUYẾT ĐỊNH: Điều hướng đến trang MẶC ĐỊNH (do khác origin):",
+              fallbackPath
+            );
+            router.push(fallbackPath);
           }
         } catch (error) {
-          // Nếu new URL() bị lỗi (do redirectTo không hợp lệ), fallback về trang mặc định.
-          console.error(`Invalid redirectTo parameter: "${redirectTo}"`, error);
-          router.push(redirectMap[normalizedRole || ""] || "/member");
+          console.error(
+            "LỖI: Không thể phân tích redirectTo:",
+            redirectTo,
+            error
+          );
+          const fallbackPath = redirectMap[normalizedRole || ""] || "/member";
+          console.log(
+            "QUYẾT ĐỊNH: Điều hướng đến trang MẶC ĐỊNH (do lỗi):",
+            fallbackPath
+          );
+          router.push(fallbackPath);
         }
       } else {
-        // Logic cũ: không có redirectTo thì điều hướng theo role.
-        router.push(redirectMap[normalizedRole || ""] || "/member");
+        const fallbackPath = redirectMap[normalizedRole || ""] || "/member";
+        console.log(
+          "QUYẾT ĐỊNH: Không có redirectTo, điều hướng đến trang MẶC ĐỊNH:",
+          fallbackPath
+        );
+        router.push(fallbackPath);
       }
       return true;
     } catch (err) {
