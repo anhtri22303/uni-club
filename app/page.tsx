@@ -134,28 +134,22 @@ export default function LoginPage() {
     }
 
   // call login which now performs an API request and persists the response
+  // ...
+  // Chỉ cần gọi login và truyền nextParam. AuthContext sẽ lo phần còn lại.
   const success = await login(email, password, nextParam || undefined)
-    if (!success) {
-      toast({
-        title: "Login Failed",
-        description: "Invalid credentials or server error",
-        variant: "destructive",
-      })
-    } else {
-      toast({
-        title: "Login Successful",
-        description: "Redirecting...",
-      })
-      // honor optional `next` query param if provided and safe
-      try {
-        const next = searchParams.get('next')
-        if (next && next.startsWith('/')) {
-          router.push(next)
-        }
-      } catch (e) {
-        // ignore and let auth-context handle default redirect
-      }
-    }
+
+  if (success) {
+    toast({
+      title: "Login Successful",
+      description: "Redirecting...",
+    })
+  } else {
+    toast({
+      title: "Login Failed",
+      description: "Invalid credentials or server error",
+      variant: "destructive",
+    })
+  }
   }
 
   // Quick demo helper removed
