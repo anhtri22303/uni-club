@@ -17,7 +17,7 @@ interface AuthState {
 
 interface AuthContextType {
   auth: AuthState
-  login: (email: string, password: string) => Promise<boolean>
+  login: (email: string, password: string, redirectTo?: string) => Promise<boolean>
   logout: () => void
   isAuthenticated: boolean
   initialized: boolean
@@ -82,7 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setInitialized(true)
   }, [])
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string, redirectTo?: string): Promise<boolean> => {
     try {
       const res: LoginResponse = await loginApi({ email, password })
 
@@ -122,7 +122,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         },
       })
 
-      // Redirect based on normalized role
+      // Redirect based on `redirectTo` if provided, otherwise based on normalized role
       const redirectMap: Record<string, string> = {
         member: "/member",
         student: "/student",
@@ -132,7 +132,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         staff: "/staff",
       }
 
-  router.push(redirectMap[normalizedRole || ""] || "/member")
+      if (redirectTo && String(redirectTo).startsWith('/')) {
+        router.push(redirectTo)
+      } else {
+        router.push(redirectMap[normalizedRole || ""] || "/member")
+      }
       return true
     } catch (err) {
       console.error("Login failed", err)

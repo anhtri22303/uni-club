@@ -29,6 +29,7 @@ export default function LoginPage() {
   const { login } = useAuth()
   const { toast } = useToast()
   const searchParams = useSearchParams()
+  const nextParam = searchParams.get('next')
   const router = useRouter()
   const [phone, setPhone] = useState("")
 
@@ -132,8 +133,8 @@ export default function LoginPage() {
       return
     }
 
-    // call login which now performs an API request and persists the response
-    const success = await login(email, password)
+  // call login which now performs an API request and persists the response
+  const success = await login(email, password, nextParam || undefined)
     if (!success) {
       toast({
         title: "Login Failed",
