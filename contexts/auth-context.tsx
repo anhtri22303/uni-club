@@ -132,8 +132,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         staff: "/staff",
       }
 
-      if (redirectTo && String(redirectTo).startsWith('/')) {
-        router.push(redirectTo)
+      if (redirectTo) {
+        // The `next` query param may be percent-encoded (e.g. %2Fmember%2F...),
+        // decode it before validating to avoid falling back to role-based route.
+        let decoded: string = String(redirectTo)
+        try {
+          decoded = decodeURIComponent(decoded)
+        } catch (e) {
+          // ignore malformed encoding and fall back to raw value
+        }
+        if (decoded.startsWith('/')) {
+          router.push(decoded)
+        } else {
+          router.push(redirectMap[normalizedRole || ""] || "/member")
+        }
       } else {
         router.push(redirectMap[normalizedRole || ""] || "/member")
       }
