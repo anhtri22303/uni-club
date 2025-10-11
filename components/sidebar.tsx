@@ -52,7 +52,7 @@ const navigationConfig = {
     { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
     { href: "/admin/users", label: "Users", icon: Users },
     { href: "/admin/clubs", label: "Clubs", icon: Building },
-    { href: "/admin/redemptions", label: "Redemptions", icon: FileText },
+    { href: "/admin/attendances", label: "Attendances", icon: FileText },
   ],
   // staff: [
   //   { href: "/staff", label: "Home", icon: Home },
