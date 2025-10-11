@@ -13,8 +13,6 @@ import { useToast } from "@/hooks/use-toast"
 import { ArrowRight, UserPlus, Smartphone, Eye, EyeOff } from "lucide-react"
 import { GoogleSignInButton } from "@/components/GoogleSignInButton"
 
-// Quick demo accounts removed — production flow only
-
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -29,10 +27,11 @@ export default function LoginPage() {
   const { login } = useAuth()
   const { toast } = useToast()
   const searchParams = useSearchParams()
-  const nextParam = searchParams.get('next')
   const router = useRouter()
   const [phone, setPhone] = useState("")
 
+  // nextParam này chỉ dùng cho mục đích hiển thị trên UI
+  const nextParamForDisplay = searchParams.get('next')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -122,8 +121,6 @@ export default function LoginPage() {
       return;
     }
 
-
-
     if (!email || !password) {
       toast({
         title: "Missing Information",
@@ -133,33 +130,30 @@ export default function LoginPage() {
       return
     }
 
-  // call login which now performs an API request and persists the response
-  // ...
-  // Chỉ cần gọi login và truyền nextParam. AuthContext sẽ lo phần còn lại.
-  const success = await login(email, password, nextParam || undefined)
+    // ⭐ SỬA LỖI TẠI ĐÂY: Lấy giá trị 'next' ngay trước khi gọi login
+    // để đảm bảo luôn có giá trị mới nhất, tránh lỗi stale state.
+    const next = searchParams.get('next');
+    const success = await login(email, password, next || undefined)
 
-  if (success) {
-    toast({
-      title: "Login Successful",
-      description: "Redirecting...",
-    })
-  } else {
-    toast({
-      title: "Login Failed",
-      description: "Invalid credentials or server error",
-      variant: "destructive",
-    })
+    if (success) {
+      toast({
+        title: "Login Successful",
+        description: "Redirecting...",
+      })
+    } else {
+      toast({
+        title: "Login Failed",
+        description: "Invalid credentials or server error",
+        variant: "destructive",
+      })
+    }
   }
-  }
-
-  // Quick demo helper removed
 
   const toggleMode = () => {
     setIsAnimating(true)
     setTimeout(() => {
       setIsSignUpMode((v) => !v)
       setIsAnimating(false)
-      // Clear form fields when switching modes
       setEmail("")
       setPhone("")
       setPassword("")
@@ -167,7 +161,7 @@ export default function LoginPage() {
       setStudentCode("")
       setMajorName("")
       setConfirmPassword("")
-    }, 250) // khớp với thời lượng animation ~0.22–0.28s
+    }, 250)
   }
 
   const handleDownloadApp = () => {
@@ -177,7 +171,6 @@ export default function LoginPage() {
     })
   }
 
-  // Dummy handler for Google sign-in (replace with real logic if needed)
   const handleGoogleSignIn = () => {
     toast({
       title: "Google Sign-In",
@@ -236,17 +229,17 @@ export default function LoginPage() {
             <CardContent className="space-y-4 sm:space-y-6 px-4 sm:px-6">
               <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
 
-                  {nextParam && (
-                    <div className="text-sm text-muted-foreground mb-2">
-                      Returning to: {(() => {
-                        try {
-                          return decodeURIComponent(nextParam)
-                        } catch (e) {
-                          return nextParam
-                        }
-                      })()}
-                    </div>
-                  )}
+                {nextParamForDisplay && (
+                  <div className="text-sm text-muted-foreground mb-2">
+                    Returning to: {(() => {
+                      try {
+                        return decodeURIComponent(nextParamForDisplay)
+                      } catch (e) {
+                        return nextParamForDisplay
+                      }
+                    })()}
+                  </div>
+                )}
 
                 {isSignUpMode && (
                   <div className="space-y-2">
@@ -391,10 +384,6 @@ export default function LoginPage() {
                     </div>
                   </div>
                 )}
-
-                {/* role selection removed - login no longer requires selecting a role */}
-
-                {/* Quick demo login removed */}
 
                 <Button
                   type="submit"
