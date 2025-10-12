@@ -10,16 +10,43 @@ import { useAuth } from "@/contexts/auth-context"
 import { useData } from "@/contexts/data-context"
 import { Users, Calendar, UserCheck, Clock, TrendingUp } from "lucide-react"
 import { useRouter } from "next/navigation"
-
+import { fetchProfile } from "@/service/userApi"
+import { useEffect, useState } from "react"
+import { fetchClub } from "@/service/clubApi"
 // Import data
 import clubs from "@/src/data/clubs.json"
 import events from "@/src/data/events.json"
 import users from "@/src/data/users.json"
 
+
 export default function ClubLeaderDashboardPage() {
   const { auth } = useAuth()
   const { clubMemberships, membershipApplications } = useData()
   const router = useRouter()
+  const [profile, setProfile] = useState<any>(null)
+  const [clubName, setClubName] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        //Lấy thông tin user hiện tại
+        const user = await fetchProfile()
+        setProfile(user)
+        
+
+
+      } catch (error) {
+        console.error("Error loading profile:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadData()
+  }, [])
+
+
 
   // For demo purposes, assume the club leader manages the first club
   const managedClub = clubs[0]
@@ -37,12 +64,17 @@ export default function ClubLeaderDashboardPage() {
     .sort((a, b) => new Date(b.appliedAt || 0).getTime() - new Date(a.appliedAt || 0).getTime())
     .slice(0, 5)
 
+
+
+
   return (
     <ProtectedRoute allowedRoles={["club_leader"]}>
       <AppShell>
         <div className="space-y-6">
           <div>
-            <h1 className="text-3xl font-bold text-balance">Club Leader Dashboard</h1>
+            <h1 className="text-3xl font-bold text-balance">
+              Welcome, {profile?.fullName || "Club Leader"} 👋
+            </h1>
             <p className="text-muted-foreground">Managing {managedClub.name}</p>
           </div>
 
