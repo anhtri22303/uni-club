@@ -53,6 +53,7 @@ const navigationConfig = {
     { href: "/admin/users", label: "Users", icon: Users },
     { href: "/admin/clubs", label: "Clubs", icon: Building },
     { href: "/admin/attendances", label: "Attendances", icon: FileText },
+      { href: "/admin/events", label: "Events", icon: Calendar },
   ],
   // staff: [
   //   { href: "/staff", label: "Home", icon: Home },
@@ -72,22 +73,23 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
   // Default navigation per role (cast to a mutable, wide type to avoid readonly tuple issues)
   let navigation = (navigationConfig[auth.role as keyof typeof navigationConfig] || []) as unknown as NavItem[]
 
-  // If the user is a MEMBER and localStorage indicates they are also staff,
-  // show the staff Gift page (reuse the existing staff gift route)
-  if (auth.role === "member") {
-    try {
-      const stored = localStorage.getItem("uniclub-member-staff")
-      const isMemberStaff = stored ? JSON.parse(stored) === true : false
-      if (isMemberStaff) {
-        // Avoid duplicate if already present
-        const exists = navigation.some((i) => i.href === "/member/gift")
-        if (!exists) {
-          navigation.push({ href: "/member/gift", label: "Gift", icon: Gift })
-        }
+  // If the user is a MEMBER and auth indicates they are also staff,
+  // show additional staff functionality
+  if (auth.role === "member" && auth.staff) {
+    // Add staff-specific navigation items for members
+    const staffItems = [
+      { href: "/staff/validate", label: "Validate", icon: CheckCircle },
+      { href: "/staff/history", label: "Staff History", icon: History },
+      { href: "/staff/gift", label: "Staff Gift", icon: Gift },
+    ]
+    
+    // Add staff items that don't already exist
+    staffItems.forEach(staffItem => {
+      const exists = navigation.some((i) => i.href === staffItem.href)
+      if (!exists) {
+        navigation.push(staffItem)
       }
-    } catch (e) {
-      // ignore JSON parse errors
-    }
+    })
   }
 
   const handleNavigation = async (href: string) => {

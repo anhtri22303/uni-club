@@ -27,41 +27,45 @@ import {
   FileText,
   BarChart3,
   Globe,
-  Flame, // Thay thế Star bằng Flame
+  Flame,
   Zap,
   Building2,
   Trophy,
+  Loader2,
+  AlertCircle,
 } from "lucide-react"
 import { editProfile, fetchProfile } from "@/service/userApi"
+
+// Types for profile data
+interface ProfileData {
+  fullName: string
+  email: string
+  phone: string
+  majorName: string
+  studentCode: string
+  bio: string
+  userPoints: number
+}
+
+interface ProfileState {
+  data: ProfileData | null
+  loading: boolean
+  error: string | null
+  saving: boolean
+}
 
 export default function ProfilePage() {
   const { auth } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
 
-  const formatRoleName = (roleId?: string | null) => {
-    if (!roleId) return ""
-    const map: Record<string, string> = {
-      member: "MEMBER",
-      student: "STUDENT",
-      club_leader: "CLUB LEADER",
-      uni_admin: "UNIVERSITY ADMIN",
-      uni_staff: "UNIVERSITY STAFF", // <-- added to display normalized uni_staff role
-      admin: "ADMIN",
-      staff: "STAFF",
-    }
-    // auth.role is normalized to lowercase in context; ensure lookup uses lowercase
-    return map[String(roleId).toLowerCase()] || String(roleId).replace(/_/g, " ").toUpperCase()
-  }
-
-  // --- Profile data (loaded from API) ---
-  const [fullName, setFullName] = useState<string>("")
-  const [email, setEmail] = useState<string>("")
-  const [phone, setPhone] = useState<string>("")
-  const [majorName, setMajorName] = useState<string>("")
-  const [studentCode, setStudentCode] = useState<string>("")
-  const [bio, setBio] = useState<string>("")
-  const [userPoints, setUserPoints] = useState<number>(0)
+  // State management for profile data
+  const [profileState, setProfileState] = useState<ProfileState>({
+    data: null,
+    loading: true,
+    error: null,
+    saving: false,
+  })
 
   // Dữ liệu tĩnh cho hoạt động người dùng
   const userStats = {
@@ -78,81 +82,113 @@ export default function ProfilePage() {
     reportsGenerated: "156",
   }
 
-  // --- Logic: load user profile from API when mounted ---
-  useEffect(() => {
-    const loadProfile = async () => {
-      try {
-        const profile: any = await fetchProfile()
-        if (!profile) return
-
-        // Profile shape per backend: { userId, email, fullName, phone, wallet: { balancePoints } ... }
-  setFullName(profile?.fullName || profile?.full_name || profile?.name || auth.user?.fullName || "")
-  setEmail(profile?.email || auth.user?.email || "")
-  setPhone(profile?.phone || profile?.mobile || "")
-  setMajorName(profile?.majorName ?? profile?.major_name ?? "")
-  setStudentCode(profile?.studentCode ?? profile?.student_code ?? "")
-  setBio(profile?.bio ?? "")
-
-  // set points from nested wallet.balancePoints if present
-  const pts = Number(profile?.wallet?.balancePoints ?? 0)
-  setUserPoints(pts)
-  
-  // Persist member-staff flag so other client components (sidebar) can read it
-  try {
-    const isMemberStaff = !!profile?.staff
-    localStorage.setItem("uniclub-member-staff", JSON.stringify(isMemberStaff))
-
-    // Also sync the stored uniclub-auth object if present so other parts of app can access it
-    const savedAuth = localStorage.getItem("uniclub-auth")
-    if (savedAuth) {
-      try {
-        const parsedAuth = JSON.parse(savedAuth)
-        if (parsedAuth && typeof parsedAuth === "object") {
-          parsedAuth.staff = isMemberStaff
-          localStorage.setItem("uniclub-auth", JSON.stringify(parsedAuth))
-        }
-      } catch (e) {
-        // ignore JSON errors
-      }
+  const formatRoleName = (roleId?: string | null) => {
+    if (!roleId) return ""
+    const map: Record<string, string> = {
+      member: "MEMBER",
+      student: "STUDENT",
+      club_leader: "CLUB LEADER",
+      uni_admin: "UNIVERSITY ADMIN",
+      uni_staff: "UNIVERSITY STAFF",
+      admin: "ADMIN",
+      staff: "STAFF",
     }
-  } catch (e) {
-    console.warn("Failed to persist member staff flag", e)
+    return map[String(roleId).toLowerCase()] || String(roleId).replace(/_/g, " ").toUpperCase()
   }
-      } catch (err) {
-        console.error("Failed to load profile", err)
-      }
+
+  // Load profile data from API
+  const loadProfile = async () => {
+    if (!auth.userId) {
+      setProfileState(prev => ({
+        ...prev,
+        loading: false,
+        error: "User not authenticated"
+      }))
+      return
     }
-
-    loadProfile()
-  }, [auth.userId])
-  // NOTE: wallet balancePoints now loaded from fetchProfile above, so no separate wallet call is needed
-
-  const handleSave = async () => {
-    // For editing current authenticated user's profile we call editProfile
-    const payload: Record<string, any> = { email, fullName, phone, majorName, bio }
-    // studentCode is intentionally excluded from editable payload per request
 
     try {
+      setProfileState(prev => ({ ...prev, loading: true, error: null }))
+      
+      const profile = await fetchProfile() as any
+      
+      if (!profile) {
+        throw new Error("Profile not found")
+      }
+
+      const profileData: ProfileData = {
+        fullName: profile?.fullName || profile?.full_name || profile?.name || auth.user?.fullName || "",
+        email: profile?.email || auth.user?.email || "",
+        phone: profile?.phone || profile?.mobile || "",
+        majorName: profile?.majorName ?? profile?.major_name ?? "",
+        studentCode: profile?.studentCode ?? profile?.student_code ?? "",
+        bio: profile?.bio ?? "",
+        userPoints: Number(profile?.wallet?.balancePoints ?? 0),
+      }
+
+      setProfileState({
+        data: profileData,
+        loading: false,
+        error: null,
+        saving: false,
+      })
+
+    } catch (err) {
+      console.error("Failed to load profile:", err)
+      setProfileState(prev => ({
+        ...prev,
+        loading: false,
+        error: err instanceof Error ? err.message : "Failed to load profile"
+      }))
+    }
+  }
+
+  // Load profile when component mounts or auth.userId changes
+  useEffect(() => {
+    loadProfile()
+  }, [auth.userId])
+
+  // Handle profile update
+  const handleSave = async () => {
+    if (!profileState.data) return
+
+    const { fullName, email, phone, majorName, bio } = profileState.data
+    const payload: Record<string, any> = { email, fullName, phone, majorName, bio }
+
+    try {
+      setProfileState(prev => ({ ...prev, saving: true }))
+      
       const res = (await editProfile(payload)) as any
+      
       if (res && res.success) {
         toast({
           title: "Cập nhật thành công",
           description: "Thông tin hồ sơ của bạn đã được lưu lại.",
         })
-        try {
-          router.refresh()
-        } catch {
-          try {
-            window.location.reload()
-          } catch {}
-        }
+        // Reload profile data after successful update
+        await loadProfile()
       } else {
-        toast({ title: "Thất bại", description: (res as any)?.message || "Không thể cập nhật hồ sơ" })
+        throw new Error(res?.message || "Không thể cập nhật hồ sơ")
       }
     } catch (err) {
-      console.error("Edit profile failed", err)
-      toast({ title: "Lỗi", description: "Có lỗi xảy ra khi cập nhật hồ sơ" })
+      console.error("Edit profile failed:", err)
+      toast({ 
+        title: "Lỗi", 
+        description: err instanceof Error ? err.message : "Có lỗi xảy ra khi cập nhật hồ sơ" 
+      })
+    } finally {
+      setProfileState(prev => ({ ...prev, saving: false }))
     }
+  }
+
+  // Update profile data handlers
+  const updateProfileData = (field: keyof ProfileData, value: string | number) => {
+    if (!profileState.data) return
+    
+    setProfileState(prev => ({
+      ...prev,
+      data: prev.data ? { ...prev.data, [field]: value } : null
+    }))
   }
 
   const getInitials = (name: string) => {
@@ -163,6 +199,72 @@ export default function ProfilePage() {
       .toUpperCase()
       .slice(0, 2)
   }
+
+  // Show loading state
+  if (profileState.loading) {
+    return (
+      <ProtectedRoute allowedRoles={["member", "student", "club_leader", "uni_staff", "admin", "staff"]}>
+        <AppShell>
+          <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+            <Card className="w-full max-w-md">
+              <CardContent className="flex flex-col items-center space-y-4 p-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="text-lg font-medium">Đang tải thông tin hồ sơ...</p>
+                <p className="text-sm text-muted-foreground text-center">
+                  Vui lòng chờ trong giây lát
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </AppShell>
+      </ProtectedRoute>
+    )
+  }
+
+  // Show error state
+  if (profileState.error) {
+    return (
+      <ProtectedRoute allowedRoles={["member", "student", "club_leader", "uni_staff", "admin", "staff"]}>
+        <AppShell>
+          <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+            <Card className="w-full max-w-md">
+              <CardContent className="flex flex-col items-center space-y-4 p-8">
+                <AlertCircle className="h-12 w-12 text-red-500" />
+                <div className="text-center space-y-2">
+                  <h3 className="text-lg font-semibold">Không thể tải hồ sơ</h3>
+                  <p className="text-sm text-muted-foreground">{profileState.error}</p>
+                </div>
+                <Button onClick={loadProfile} className="w-full">
+                  Thử lại
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </AppShell>
+      </ProtectedRoute>
+    )
+  }
+
+  // Return early if no profile data
+  if (!profileState.data) {
+    return (
+      <ProtectedRoute allowedRoles={["member", "student", "club_leader", "uni_staff", "admin", "staff"]}>
+        <AppShell>
+          <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+            <Card className="w-full max-w-md">
+              <CardContent className="flex flex-col items-center space-y-4 p-8">
+                <AlertCircle className="h-8 w-8 text-yellow-500" />
+                <p className="text-lg font-medium">Không tìm thấy thông tin hồ sơ</p>
+              </CardContent>
+            </Card>
+          </div>
+        </AppShell>
+      </ProtectedRoute>
+    )
+  }
+
+  // Destructure profile data for easier access
+  const { fullName, email, phone, majorName, studentCode, bio, userPoints } = profileState.data
   
   // --- HÀM ĐÃ CẬP NHẬT: Thêm logic trả về lớp animation ---
   const getPointsCardStyle = (points: number) => {
@@ -257,7 +359,11 @@ export default function ProfilePage() {
                         </div>
                         <div className="space-y-1">
                           <Label htmlFor="admin-fullName">Họ và Tên</Label>
-                          <Input id="admin-fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+                          <Input 
+                            id="admin-fullName" 
+                            value={fullName} 
+                            onChange={(e) => updateProfileData('fullName', e.target.value)} 
+                          />
                         </div>
                         <div className="space-y-1">
                           <Label htmlFor="admin-studentCode">Mã sinh viên</Label>
@@ -265,20 +371,38 @@ export default function ProfilePage() {
                         </div>
                         <div className="space-y-1">
                           <Label htmlFor="admin-majorName">Ngành</Label>
-                          <Input id="admin-majorName" value={majorName} onChange={(e) => setMajorName(e.target.value)} />
+                          <Input 
+                            id="admin-majorName" 
+                            value={majorName} 
+                            onChange={(e) => updateProfileData('majorName', e.target.value)} 
+                          />
                         </div>
                         <div className="space-y-1">
                           <Label htmlFor="admin-phone">Số điện thoại</Label>
-                          <Input id="admin-phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+                          <Input 
+                            id="admin-phone" 
+                            value={phone} 
+                            onChange={(e) => updateProfileData('phone', e.target.value)} 
+                          />
                         </div>
                         {/* location removed */}
                       </div>
                       <div className="space-y-1">
                         <Label htmlFor="admin-bio">Tiểu sử / Bio</Label>
-                        <Textarea id="admin-bio" value={bio} onChange={(e) => setBio(e.target.value)} className="min-h-[80px]" />
+                        <Textarea 
+                          id="admin-bio" 
+                          value={bio} 
+                          onChange={(e) => updateProfileData('bio', e.target.value)} 
+                          className="min-h-[80px]" 
+                        />
                       </div>
-                      <Button onClick={handleSave} className="w-fit">
-                        <Save className="h-4 w-4 mr-2" /> Lưu thay đổi
+                      <Button onClick={handleSave} disabled={profileState.saving} className="w-fit">
+                        {profileState.saving ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Save className="h-4 w-4 mr-2" />
+                        )}
+                        {profileState.saving ? "Đang lưu..." : "Lưu thay đổi"}
                       </Button>
                     </CardContent>
                   </Card>
@@ -425,11 +549,19 @@ export default function ProfilePage() {
                       </div>
                       <div className="space-y-1">
                         <Label htmlFor="user-fullName">Họ và Tên</Label>
-                        <Input id="user-fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+                        <Input 
+                          id="user-fullName" 
+                          value={fullName} 
+                          onChange={(e) => updateProfileData('fullName', e.target.value)} 
+                        />
                       </div>
                       <div className="space-y-1">
                         <Label htmlFor="user-phone">Số điện thoại</Label>
-                        <Input id="user-phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+                        <Input 
+                          id="user-phone" 
+                          value={phone} 
+                          onChange={(e) => updateProfileData('phone', e.target.value)} 
+                        />
                       </div>
                       <div className="space-y-1">
                         <Label htmlFor="user-studentCode">Mã sinh viên</Label>
@@ -437,17 +569,34 @@ export default function ProfilePage() {
                       </div>
                       <div className="space-y-1">
                         <Label htmlFor="user-majorName">Ngành</Label>
-                        <Input id="user-majorName" value={majorName} onChange={(e) => setMajorName(e.target.value)} />
+                        <Input 
+                          id="user-majorName" 
+                          value={majorName} 
+                          onChange={(e) => updateProfileData('majorName', e.target.value)} 
+                        />
                       </div>
                     </div>
                     {/* location removed */}
                     <div className="space-y-1">
                       <Label htmlFor="user-bio">Tiểu sử / Bio</Label>
-                      <Textarea id="user-bio" value={bio} onChange={(e) => setBio(e.target.value)} className="min-h-[80px]" />
+                      <Textarea 
+                        id="user-bio" 
+                        value={bio} 
+                        onChange={(e) => updateProfileData('bio', e.target.value)} 
+                        className="min-h-[80px]" 
+                      />
                     </div>
-                    <Button onClick={handleSave} className="w-fit bg-primary hover:bg-primary/90">
-                      <Save className="h-4 w-4 mr-2" />
-                      Lưu thay đổi
+                    <Button 
+                      onClick={handleSave} 
+                      disabled={profileState.saving} 
+                      className="w-fit bg-primary hover:bg-primary/90"
+                    >
+                      {profileState.saving ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Save className="h-4 w-4 mr-2" />
+                      )}
+                      {profileState.saving ? "Đang lưu..." : "Lưu thay đổi"}
                     </Button>
                   </CardContent>
                 </Card>

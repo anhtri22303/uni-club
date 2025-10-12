@@ -7,10 +7,10 @@ import { login as loginApi, LoginResponse } from "@/service/authApi";
 import { safeSessionStorage, safeLocalStorage } from "@/lib/browser-utils";
 import { ClientOnlyWrapper } from "@/components/client-only-wrapper";
 
-
 interface AuthState {
   userId: string | number | null;
   role: string | null;
+  staff: boolean;
   user: {
     userId: string | number;
     email: string;
@@ -37,16 +37,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [auth, setAuth] = useState<AuthState>({
     userId: null,
     role: null,
+    staff: false,
     user: null,
   });
   const [initialized, setInitialized] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
-
     // Phần useEffect này giữ nguyên nhưng dùng safe storage
     const saved = safeLocalStorage.getItem("uniclub-auth");
-
 
     if (saved) {
       try {
@@ -72,6 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setAuth({
           userId: parsed.userId,
           role: normalizeRole(parsed.role),
+          staff: (parsed as any).staff || false,
           user: {
             userId: parsed.userId,
             email: parsed.email,
@@ -82,7 +82,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         safeLocalStorage.setItem("jwtToken", parsed.token);
 
         localStorage.setItem("jwtToken", parsed.token);
-
       } catch (err) {
         console.warn("Failed to parse stored auth", err);
       }
@@ -94,7 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     email: string,
     password: string,
     // tham số redirectTo giờ không còn quan trọng
-    redirectTo?: string 
+    redirectTo?: string
   ): Promise<boolean> => {
     try {
       const res: LoginResponse = await loginApi({ email, password });
@@ -104,7 +103,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       localStorage.setItem("uniclub-auth", JSON.stringify(res));
       localStorage.setItem("jwtToken", res.token);
-
 
       const normalizeRole = (r?: string | null) => {
         if (!r) return null;
@@ -128,6 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setAuth({
         userId: res.userId,
         role: normalizedRole,
+        staff: res.staff || false,
         user: {
           userId: res.userId,
           email: res.email,
@@ -136,19 +135,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       // ⭐ LOGIC ĐIỀU HƯỚNG MỚI, CHẮC CHẮN VÀ ĐƠN GIẢN
-      
+
       // 1. Luôn kiểm tra sessionStorage trước tiên
 
-      const intendedPath = safeSessionStorage.getItem('intendedPath');
-
+      const intendedPath = safeSessionStorage.getItem("intendedPath");
 
       if (intendedPath) {
-        console.log(`AuthContext: Tìm thấy intendedPath trong sessionStorage: ${intendedPath}`);
+        console.log(
+          `AuthContext: Tìm thấy intendedPath trong sessionStorage: ${intendedPath}`
+        );
         // Xóa ngay sau khi đọc để lần đăng nhập sau không bị ảnh hưởng
 
-        safeSessionStorage.removeItem('intendedPath'); 
+        safeSessionStorage.removeItem("intendedPath");
 
-        sessionStorage.removeItem('intendedPath'); 
+        sessionStorage.removeItem("intendedPath");
 
         router.push(intendedPath);
       } else {
@@ -162,7 +162,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           staff: "/staff",
         };
         const fallbackPath = redirectMap[normalizedRole || ""] || "/member";
-        console.log(`AuthContext: Không có intendedPath, điều hướng mặc định tới: ${fallbackPath}`);
+        console.log(
+          `AuthContext: Không có intendedPath, điều hướng mặc định tới: ${fallbackPath}`
+        );
         router.push(fallbackPath);
       }
 
@@ -173,22 +175,67 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Trong file AuthContext của bạn
+
   const logout = () => {
-    setAuth({ userId: null, role: null, user: null });
+    // --- Bước 1: Định nghĩa tất cả các key cần xóa ---
+    const keysToRemove = [
+      // Local Storage keys
+      "uniclub-auth",
+      "jwtToken",
+      "clubly-membership-applications",
+      // Session Storage keys
+      "intendedPath",
+    ];
 
-    safeLocalStorage.removeItem("clubly-membership-applications");
-    safeLocalStorage.removeItem("uniclub-auth");
-    safeLocalStorage.removeItem("jwtToken");
-    safeLocalStorage.removeItem("uniclub-member-staff");
-    safeSessionStorage.removeItem("intendedPath"); // Dọn dẹp khi logout
+    console.log("Logout: Bắt đầu quá trình dọn dẹp storage...");
 
-    localStorage.removeItem("clubly-membership-applications");
-    localStorage.removeItem("uniclub-auth");
-    localStorage.removeItem("jwtToken");
-    localStorage.removeItem("uniclub-member-staff");
-    sessionStorage.removeItem("intendedPath"); // Dọn dẹp khi logout
+    try {
+      // --- Bước 2: Thực hiện xóa ---
+      keysToRemove.forEach((key) => {
+        safeLocalStorage.removeItem(key);
+        safeSessionStorage.removeItem(key); // Dùng cả hai cho chắc chắn
 
-    router.push("/");
+        // Xóa trực tiếp để đảm bảo không bị ảnh hưởng bởi wrapper `safe`
+        localStorage.removeItem(key);
+        sessionStorage.removeItem(key);
+      });
+
+      console.log("Logout: Đã thực hiện xong các lệnh xóa.");
+
+      // --- Bước 3: Kiểm tra lại storage ---
+      const remainingKeys = keysToRemove.filter((key) => {
+        return (
+          localStorage.getItem(key) !== null ||
+          sessionStorage.getItem(key) !== null
+        );
+      });
+
+      if (remainingKeys.length > 0) {
+        // Nếu vẫn còn key sót lại, báo lỗi ngay lập tức
+        console.error(
+          "LỖI NGHIÊM TRỌNG KHI LOGOUT: Các key sau vẫn còn tồn tại trong storage:",
+          remainingKeys
+        );
+        // Bạn có thể gửi một thông báo lỗi tới hệ thống giám sát ở đây
+      } else {
+        console.log(
+          "✅ Logout: Kiểm tra thành công! Storage đã được dọn dẹp sạch sẽ."
+        );
+      }
+    } catch (err) {
+      console.error(
+        "Logout: Đã có lỗi xảy ra trong quá trình dọn dẹp storage.",
+        err
+      );
+    } finally {
+      // --- Bước 4: Luôn luôn chuyển trang ---
+      // Khối `finally` đảm bảo rằng việc chuyển trang sẽ luôn xảy ra,
+      // kể cả khi có lỗi trong khối `try`.
+      console.log("Logout: Chuyển hướng về trang chủ.");
+      setAuth({ userId: null, role: null, staff: false, user: null }); // Cập nhật state
+      router.replace("/"); // Dùng replace để không quay lại được trang cũ
+    }
   };
 
   const isAuthenticated = auth.userId !== null && auth.role !== null;
@@ -203,9 +250,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         initialized,
       }}
     >
-      <ClientOnlyWrapper>
-        {children}
-      </ClientOnlyWrapper>
+      <ClientOnlyWrapper>{children}</ClientOnlyWrapper>
     </AuthContext.Provider>
   );
 }

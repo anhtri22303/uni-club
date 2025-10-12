@@ -7,6 +7,8 @@ export interface LoginResponse {
   email: string
   fullName: string
   role: string
+  staff: boolean
+  clubIds?: number[]
 }
 
 export interface LoginCredentials {
