@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { AppShell } from "@/components/app-shell"
 import { ProtectedRoute } from "@/contexts/protected-route"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -10,9 +11,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Modal } from "@/components/modal"
+import { QRModal } from "@/components/qr-modal"
 import { useToast } from "@/hooks/use-toast"
 import { usePagination } from "@/hooks/use-pagination"
-import { Calendar, Plus, Edit, MapPin, Trophy, ChevronLeft, ChevronRight, Filter, X } from "lucide-react"
+import { Calendar, Plus, Edit, MapPin, Trophy, ChevronLeft, ChevronRight, Filter, X, Eye } from "lucide-react"
 import { QrCode } from "lucide-react"
 import QRCode from "qrcode"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -22,8 +24,39 @@ import { fetchEvent } from "@/service/eventApi"
 import { createEvent, getEventById } from "@/service/eventApi"
 
 export default function AdminEventsPage() {
+  const router = useRouter()
   const [events, setEvents] = useState<any[]>([])
   const { toast } = useToast()
+
+  // Add fullscreen and environment states
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [activeEnvironment, setActiveEnvironment] = useState<'local' | 'prod'>('prod')
+
+  // Helper function to sort events by date and time (newest to oldest)
+  const sortEventsByDateTime = (eventList: any[]) => {
+    return eventList.sort((a: any, b: any) => {
+      // Parse dates for comparison
+      const dateA = new Date(a.date || '1970-01-01')
+      const dateB = new Date(b.date || '1970-01-01')
+      
+      // Compare dates first (newest first)
+      if (dateA.getTime() !== dateB.getTime()) {
+        return dateB.getTime() - dateA.getTime()
+      }
+      
+      // If dates are equal, compare times (latest time first)
+      const timeA = a.time || '00:00'
+      const timeB = b.time || '00:00'
+      
+      // Convert time strings to comparable format (HH:MM to minutes)
+      const parseTime = (timeStr: string) => {
+        const [hours, minutes] = timeStr.split(':').map(Number)
+        return (hours || 0) * 60 + (minutes || 0)
+      }
+      
+      return parseTime(timeB) - parseTime(timeA)
+    })
+  }
 
   useEffect(() => {
     let mounted = true
@@ -33,7 +66,11 @@ export default function AdminEventsPage() {
         if (!mounted) return
         const raw: any[] = Array.isArray(data) ? data : (data?.events ?? [])
         const normalized = raw.map((e: any) => ({ ...e, title: e.title ?? e.name }))
-        setEvents(normalized)
+        
+        // Sort events by date first, then by time if same date
+        const sorted = sortEventsByDateTime(normalized)
+        
+        setEvents(sorted)
       } catch (error) {
         console.error("Failed to load events:", error)
         toast({ title: "Error fetching events", description: "Could not load events from server.", variant: "destructive" })
@@ -127,6 +164,20 @@ export default function AdminEventsPage() {
       const df = new Date(dateFilter).toDateString()
       if (it !== df) return false
     }
+    
+    // status filter
+    const statusFilter = activeFilters["status"]
+    if (statusFilter && statusFilter !== "all") {
+      const status = getEventStatus(item.date, item.time)
+      if (String(status).toLowerCase() !== String(statusFilter).toLowerCase()) return false
+    }
+
+    // approval status filter
+    const approvalFilter = activeFilters["approval"]
+    if (approvalFilter && approvalFilter !== "all") {
+      if (String(item.status).toUpperCase() !== String(approvalFilter).toUpperCase()) return false
+    }
+
     return true
   })
 
@@ -190,12 +241,65 @@ export default function AdminEventsPage() {
   }
   const handleUpdate = () => { /* same as source */ }
 
-  const getEventStatus = (eventDate: string) => {
+  // Helper functions for QR actions
+  const handleDownloadQR = (environment: 'local' | 'prod') => {
+    try {
+      const qrDataUrl = environment === 'local' 
+        ? qrRotations.local[displayedIndex % qrRotations.local.length]
+        : qrRotations.prod[displayedIndex % qrRotations.prod.length]
+      
+      if (!qrDataUrl) return
+
+      const link = document.createElement('a')
+      link.download = `qr-code-${selectedEvent?.name?.replace(/[^a-zA-Z0-9]/g, '-')}-${environment}.png`
+      link.href = qrDataUrl
+      link.click()
+      
+      toast({ 
+        title: 'Downloaded', 
+        description: `QR code downloaded for ${environment} environment` 
+      })
+    } catch (err) {
+      toast({ title: 'Download failed', description: 'Could not download QR code' })
+    }
+  }
+
+  const handleCopyLink = async (environment: 'local' | 'prod') => {
+    try {
+      const link = environment === 'local' ? qrLinks.local : qrLinks.prod
+      if (!link) return
+      
+      await navigator.clipboard.writeText(link)
+      toast({ 
+        title: 'Copied', 
+        description: `${environment.charAt(0).toUpperCase() + environment.slice(1)} link copied to clipboard` 
+      })
+    } catch {
+      toast({ title: 'Copy failed', description: 'Could not copy link to clipboard' })
+    }
+  }
+
+  // Helper to get event status based on date and time
+  const getEventStatus = (eventDate: string, eventTime: string) => {
+    if (!eventDate) return "Finished"
     const now = new Date()
+    // Combine date and time into a single Date object
+    const [hour = "00", minute = "00"] = (eventTime || "00:00").split(":")
     const event = new Date(eventDate)
-    if (event < now) return "past"
-    if (event.getTime() - now.getTime() < 7 * 24 * 60 * 60 * 1000) return "upcoming"
-    return "future"
+    event.setHours(Number(hour), Number(minute), 0, 0)
+
+    // Event duration: assume 2 hours for "Now" window (customize as needed)
+    const EVENT_DURATION_MS = 2 * 60 * 60 * 1000
+    const start = event.getTime()
+    const end = start + EVENT_DURATION_MS
+
+    if (now.getTime() < start) {
+      // If event starts within next 7 days, it's "Soon"
+      if (start - now.getTime() < 7 * 24 * 60 * 60 * 1000) return "Soon"
+      return "Future"
+    }
+    if (now.getTime() >= start && now.getTime() <= end) return "Now"
+    return "Finished"
   }
 
   return (
@@ -242,7 +346,7 @@ export default function AdminEventsPage() {
                     </Button>
                   )}
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-muted-foreground">Type</label>
                     <Select value={activeFilters["type"] || "all"} onValueChange={(v) => handleFilterChange("type", v)}>
@@ -274,6 +378,34 @@ export default function AdminEventsPage() {
                       </SelectContent>
                     </Select>
                   </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground">Status</label>
+                    <Select value={activeFilters["status"] || "all"} onValueChange={(v) => handleFilterChange("status", v)}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All</SelectItem>
+                        <SelectItem value="Soon">Soon</SelectItem>
+                        <SelectItem value="Now">Now</SelectItem>
+                        <SelectItem value="Finished">Finished</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground">Approval</label>
+                    <Select value={activeFilters["approval"] || "all"} onValueChange={(v) => handleFilterChange("approval", v)}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All</SelectItem>
+                        <SelectItem value="APPROVED">Approved</SelectItem>
+                        <SelectItem value="PENDING">Pending</SelectItem>
+                        <SelectItem value="REJECTED">Rejected</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
             )}
@@ -295,24 +427,65 @@ export default function AdminEventsPage() {
             <>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {paginatedEvents.map((event: any) => {
-                  const status = getEventStatus(event.date)
+                  const status = getEventStatus(event.date, event.time)
+                  // Border color logic
+                  let borderColor = ""
+                  if (event.status === "APPROVED") borderColor = "border-green-500"
+                  else if (event.status === "REJECTED") borderColor = "border-red-500"
+                  else borderColor = "border-transparent"
+
                   return (
-                    <Card key={event.id} className="hover:shadow-md transition-shadow">
+                    <Card
+                      key={event.id}
+                      className={`hover:shadow-md transition-shadow border-2 ${borderColor} h-full flex flex-col`}
+                    >
                       <CardHeader>
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <CardTitle className="text-lg">{event.title}</CardTitle>
-                            {event.description && <CardDescription className="mt-1">{event.description}</CardDescription>}
+                            {event.description && (
+                              <CardDescription 
+                                className="mt-1 text-sm leading-5 max-h-[3.75rem] overflow-hidden"
+                                style={{
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: 3,
+                                  WebkitBoxOrient: 'vertical' as const,
+                                  textOverflow: 'ellipsis'
+                                }}
+                              >
+                                {event.description}
+                              </CardDescription>
+                            )}
                           </div>
                           <Badge
-                            variant={status === "past" ? "secondary" : status === "upcoming" ? "default" : "outline"}
+                            variant={
+                              status === "Finished"
+                                ? "secondary"
+                                : status === "Soon"
+                                ? "default"
+                                : status === "Now"
+                                ? "destructive"
+                                : "outline"
+                            }
                           >
-                            {status === "past" ? "Past" : status === "upcoming" ? "Soon" : "Future"}
+                            {status}
                           </Badge>
                         </div>
+                        {/* Approval status badge */}
+                        <div className="mt-2">
+                          {event.status === "APPROVED" && (
+                            <Badge variant="default">Approved</Badge>
+                          )}
+                          {event.status === "PENDING" && (
+                            <Badge variant="outline">Pending</Badge>
+                          )}
+                          {event.status === "REJECTED" && (
+                            <Badge variant="destructive">Rejected</Badge>
+                          )}
+                        </div>
                       </CardHeader>
-                      <CardContent>
-                        <div className="space-y-3">
+                      <CardContent className="flex-1 flex flex-col">
+                        <div className="space-y-3 flex-1">
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <Calendar className="h-4 w-4" />
                             {new Date(event.date).toLocaleDateString("en-US", {
@@ -332,25 +505,38 @@ export default function AdminEventsPage() {
                             <Trophy className="h-4 w-4" />
                             {event.points} loyalty points
                           </div>
-                          <Button variant="outline" className="w-full bg-transparent" onClick={() => handleEdit(event)}>
-                            <Edit className="h-4 w-4 mr-2" />
-                            Edit Event
-                          </Button>
-                          <div className="flex justify-end">
+                        </div>
+
+                        {/* Buttons section - pushed to bottom */}
+                        <div className="mt-auto pt-4 space-y-3">
+                          <div className="grid grid-cols-2 gap-2">
+                            <Button variant="outline" onClick={() => router.push(`/admin/events/${event.id}`)}>
+                              <Eye className="h-4 w-4 mr-2" />
+                              View Detail
+                            </Button>
+                            <Button variant="outline" onClick={() => handleEdit(event)}>
+                              <Edit className="h-4 w-4 mr-2" />
+                              Edit Event
+                            </Button>
+                          </div>
+                          {/* QR Code Section */}
+                          <div className="mt-3 pt-3 border-t border-muted">
                             <Button
-                              variant="ghost"
+                              variant="default"
                               size="sm"
+                              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium"
                               onClick={async () => {
+                                setSelectedEvent(event);
                                 try {
-                                  let code: string | null = null
+                                  let code: string | null = null;
                                   try {
-                                    const serverEvent = await getEventById(String(event.id))
+                                    const serverEvent = await getEventById(String(event.id));
                                     if (serverEvent) {
                                       if (!serverEvent.checkInCode) {
-                                        toast({ title: 'No check-in code', description: 'This event has not been assigned a persistent check-in code. Please contact the organizer.', variant: 'destructive' })
-                                        return
+                                        toast({ title: 'No check-in code', description: 'This event has not been assigned a persistent check-in code. Please contact the organizer.', variant: 'destructive' });
+                                        return;
                                       }
-                                      code = String(serverEvent.checkInCode)
+                                      code = String(serverEvent.checkInCode);
                                     }
                                   } catch (e) {}
                                   if (!code) {
@@ -358,43 +544,43 @@ export default function AdminEventsPage() {
                                       method: 'POST',
                                       headers: { 'Content-Type': 'application/json' },
                                       body: JSON.stringify({ eventId: String(event.id) }),
-                                    })
-                                    const tokenJson = await tokenResp.json()
-                                    if (!tokenJson?.success) throw new Error('Token mint failed')
-                                    code = tokenJson.token
+                                    });
+                                    const tokenJson = await tokenResp.json();
+                                    if (!tokenJson?.success) throw new Error('Token mint failed');
+                                    code = tokenJson.token;
                                   }
-                                  const localUrl = `http://localhost:3000/member/checkin/${encodeURIComponent(String(code))}`
-                                  const prodUrl = `https://uniclub-fpt.vercel.app/member/checkin/${encodeURIComponent(String(code))}`
+                                  const localUrl = `http://localhost:3000/member/checkin/${encodeURIComponent(String(code))}`;
+                                  const prodUrl = `https://uniclub-fpt.vercel.app/member/checkin/${encodeURIComponent(String(code))}`;
                                   const styleVariants = [
                                     { color: { dark: '#000000', light: '#FFFFFF' }, margin: 1 },
                                     { color: { dark: '#111111', light: '#FFFFFF' }, margin: 2 },
                                     { color: { dark: '#222222', light: '#FFFFFF' }, margin: 0 },
-                                  ]
+                                  ];
                                   const localVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
-                                    const opts = styleVariants[i % styleVariants.length]
-                                    return QRCode.toDataURL(localUrl, opts as any)
-                                  })
+                                    const opts = styleVariants[i % styleVariants.length];
+                                    return QRCode.toDataURL(localUrl, opts as any);
+                                  });
                                   const prodVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
-                                    const opts = styleVariants[i % styleVariants.length]
-                                    return QRCode.toDataURL(prodUrl, opts as any)
-                                  })
+                                    const opts = styleVariants[i % styleVariants.length];
+                                    return QRCode.toDataURL(prodUrl, opts as any);
+                                  });
                                   const [localVariants, prodVariants] = await Promise.all([
                                     Promise.all(localVariantsPromises),
                                     Promise.all(prodVariantsPromises),
-                                  ])
-                                  setQrRotations({ local: localVariants, prod: prodVariants })
-                                  setQrLinks({ local: localUrl, prod: prodUrl })
-                                  setVisibleIndex(0)
-                                  setDisplayedIndex(0)
-                                  setShowQrModal(true)
+                                  ]);
+                                  setQrRotations({ local: localVariants, prod: prodVariants });
+                                  setQrLinks({ local: localUrl, prod: prodUrl });
+                                  setVisibleIndex(0);
+                                  setDisplayedIndex(0);
+                                  setShowQrModal(true);
                                 } catch (err) {
-                                  console.error('Failed to generate QR', err)
-                                  toast({ title: 'QR Error', description: 'Could not generate QR code', variant: 'destructive' })
+                                  console.error('Failed to generate QR', err);
+                                  toast({ title: 'QR Error', description: 'Could not generate QR code', variant: 'destructive' });
                                 }
                               }}
-                              className="h-8 w-8 p-0"
                             >
-                              <QrCode className="h-4 w-4" />
+                              <QrCode className="h-4 w-4 mr-2" />
+                              Generate QR Code
                             </Button>
                           </div>
                         </div>
@@ -535,44 +721,25 @@ export default function AdminEventsPage() {
           </Modal>
 
           {/* QR Modal */}
-          <Modal open={showQrModal} onOpenChange={setShowQrModal} title="Event QR Code" description="Scan to check-in">
-            <div className="flex flex-col items-center gap-4">
-              <div className="p-2 rounded-md bg-muted/60 text-sm text-muted-foreground">
-                Next QR in <span className="font-medium">{countdown}s</span>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex flex-col items-center">
-                  <div className="text-sm font-medium mb-2">Local (dev)</div>
-                  {qrRotations.local.length ? (
-                    <>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={qrRotations.local[displayedIndex % qrRotations.local.length]} alt="QR Code Local" className={`w-40 h-40 transition-opacity duration-300 ${isFading ? 'opacity-0' : 'opacity-100'}`} />
-                      <div className="flex gap-2 mt-2">
-                        <Button size="sm" variant="outline" onClick={async () => { try { await navigator.clipboard.writeText(qrLinks.local || ""); toast({ title: 'Copied', description: 'Local link copied to clipboard' }) } catch { toast({ title: 'Copy failed' }) } }}>Copy link</Button>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="text-sm text-muted-foreground">Generating...</div>
-                  )}
-                </div>
-                <div className="flex flex-col items-center">
-                  <div className="text-sm font-medium mb-2">Production (vercel)</div>
-                  {qrRotations.prod.length ? (
-                    <>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={qrRotations.prod[displayedIndex % qrRotations.prod.length]} alt="QR Code Prod" className={`w-40 h-40 transition-opacity duration-300 ${isFading ? 'opacity-0' : 'opacity-100'}`} />
-                      <div className="flex gap-2 mt-2">
-                        <Button size="sm" variant="outline" onClick={async () => { try { await navigator.clipboard.writeText(qrLinks.prod || ""); toast({ title: 'Copied', description: 'Production link copied to clipboard' }) } catch { toast({ title: 'Copy failed' }) } }}>Copy link</Button>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="text-sm text-muted-foreground">Generating...</div>
-                  )}
-                </div>
-              </div>
-              <div className="text-xs text-muted-foreground">Scan a QR to open the check-in page (local or production)</div>
-            </div>
-          </Modal>
+          {selectedEvent && (
+            <QRModal
+              open={showQrModal}
+              onOpenChange={setShowQrModal}
+              eventName={selectedEvent.name ?? ''}
+              checkInCode={selectedEvent.checkInCode ?? ''}
+              qrRotations={qrRotations}
+              qrLinks={qrLinks}
+              countdown={countdown}
+              isFullscreen={isFullscreen}
+              setIsFullscreen={setIsFullscreen}
+              activeEnvironment={activeEnvironment}
+              setActiveEnvironment={setActiveEnvironment}
+              displayedIndex={displayedIndex}
+              isFading={isFading}
+              handleCopyLink={handleCopyLink}
+              handleDownloadQR={handleDownloadQR}
+            />
+          )}
         </div>
       </AppShell>
     </ProtectedRoute>

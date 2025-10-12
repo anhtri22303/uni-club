@@ -22,10 +22,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import clubs from "@/src/data/clubs.json"
 import { fetchEvent } from "@/service/eventApi"
 import { createEvent, getEventById } from "@/service/eventApi"
+import { safeLocalStorage } from "@/lib/browser-utils"
 
 export default function ClubLeaderEventsPage() {
   const router = useRouter()
   const [events, setEvents] = useState<any[]>([])
+  const [userClubId, setUserClubId] = useState<number | null>(null)
   const { toast } = useToast()
   
   // Add fullscreen and environment states
@@ -58,6 +60,21 @@ export default function ClubLeaderEventsPage() {
     })
   }
 
+  // Get clubId from localStorage
+  useEffect(() => {
+    try {
+      const saved = safeLocalStorage.getItem("uniclub-auth")
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (parsed.clubId) {
+          setUserClubId(Number(parsed.clubId))
+        }
+      }
+    } catch (error) {
+      console.error("Failed to get clubId from localStorage:", error)
+    }
+  }, [])
+
   // Load events from API on mount
   useEffect(() => {
     let mounted = true
@@ -65,13 +82,20 @@ export default function ClubLeaderEventsPage() {
       try {
         const data: any = await fetchEvent()
         if (!mounted) return
+        
         // API should return an array; guard defensively
-        const raw: any[] = Array.isArray(data) ? data : (data?.events ?? [])
+        const raw: any[] = Array.isArray(data) ? data : (data?.content ?? data?.events ?? [])
         // Normalize shape: some APIs use `name` instead of `title`.
         const normalized = raw.map((e: any) => ({ ...e, title: e.title ?? e.name }))
         
+        // Filter events by user's clubId if available
+        let filteredByClub = normalized
+        if (userClubId !== null) {
+          filteredByClub = normalized.filter((e: any) => Number(e.clubId) === userClubId)
+        }
+        
         // Sort events by date first, then by time if same date
-        const sorted = sortEventsByDateTime(normalized)
+        const sorted = sortEventsByDateTime(filteredByClub)
         
         setEvents(sorted)
       } catch (error) {
@@ -80,9 +104,12 @@ export default function ClubLeaderEventsPage() {
       }
     }
 
-    load()
+    // Only load events if we have tried to get clubId (including null case)
+    if (userClubId !== null || userClubId === null) {
+      load()
+    }
     return () => { mounted = false }
-  }, [])
+  }, [userClubId, toast])
 
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
@@ -143,11 +170,13 @@ export default function ClubLeaderEventsPage() {
     return () => clearTimeout(t)
   }, [visibleIndex, showQrModal])
 
-  // For demo purposes, assume managing the first club
-  const managedClub = clubs[0]
+  // Find managed club based on userClubId or fallback to first club
+  const managedClub = userClubId 
+    ? clubs.find(club => Number(club.id) === userClubId) || clubs[0] 
+    : clubs[0]
 
   const [formData, setFormData] = useState({
-    clubId: managedClub.id,
+    clubId: userClubId || managedClub.id,
     name: "",
     description: "",
     type: "PUBLIC",
@@ -155,10 +184,16 @@ export default function ClubLeaderEventsPage() {
     time: "13:30",
     locationId: 0,
   })
-  // Try to match by clubId; note: local clubs may use string ids (e.g. "c-ai")
-  // while the API may use numeric clubId. If no match, fall back to showing all events.
-  const clubEvents = events.filter((e) => String(e.clubId) === String(managedClub.id))
-  const effectiveEvents = clubEvents.length ? clubEvents : events
+
+  // Update formData clubId when userClubId changes
+  useEffect(() => {
+    if (userClubId !== null) {
+      setFormData(prev => ({ ...prev, clubId: userClubId }))
+    }
+  }, [userClubId])
+
+  // Events are already filtered by clubId in the load effect, so use them directly
+  const effectiveEvents = events
 
   // Filters (DataTable-style)
   const [searchTerm, setSearchTerm] = useState("")
@@ -227,7 +262,7 @@ export default function ClubLeaderEventsPage() {
 
   const hasActiveFilters = Object.values(activeFilters).some((v) => v && v !== "all") || Boolean(searchTerm)
 
-  const resetForm = () => setFormData({ clubId: managedClub.id, name: "", description: "", type: "PUBLIC", date: "", time: "13:30", locationId: 0 })
+  const resetForm = () => setFormData({ clubId: userClubId || managedClub.id, name: "", description: "", type: "PUBLIC", date: "", time: "13:30", locationId: 0 })
 
   const handleCreate = async () => {
     // validate required
@@ -266,7 +301,7 @@ export default function ClubLeaderEventsPage() {
   const handleEdit = (event: any) => {
     setSelectedEvent(event)
     setFormData({
-      clubId: event.clubId ?? managedClub.id,
+      clubId: event.clubId ?? userClubId ?? managedClub.id,
       name: event.name ?? event.title ?? "",
       description: event.description ?? "",
       type: event.type ?? "PUBLIC",
@@ -346,7 +381,10 @@ export default function ClubLeaderEventsPage() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold">Events</h1>
-              <p className="text-muted-foreground">Manage {managedClub.name} events</p>
+              <p className="text-muted-foreground">
+                Manage {managedClub ? managedClub.name : 'Club'} events
+                {userClubId && <span className="text-xs text-muted-foreground/70 ml-2">(Club ID: {userClubId})</span>}
+              </p>
             </div>
             <Button onClick={() => setShowCreateModal(true)}>
               <Plus className="h-4 w-4 mr-2" /> Create Event

@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Users, UserPlus } from "lucide-react"
 import { fetchClub } from "@/service/clubApi"
 import { postMemAppli } from "@/service/memberApplicationApi"
+import { safeLocalStorage } from "@/lib/browser-utils"
 
 // We'll fetch clubs from the backend and only use the `content` array.
 type ClubApiItem = {
@@ -39,10 +40,26 @@ export default function MemberClubsPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pendingClubIds, setPendingClubIds] = useState<string[]>([])
+  const [userClubId, setUserClubId] = useState<number | null>(null)
 
   // Get user's current memberships and applications
   const userMemberships = clubMemberships.filter((m) => m.userId === auth.userId)
   const userApplications = membershipApplications.filter((a) => a.userId === auth.userId)
+
+  // Get user's club ID from localStorage
+  useEffect(() => {
+    try {
+      const saved = safeLocalStorage.getItem("uniclub-auth")
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (parsed.clubId) {
+          setUserClubId(Number(parsed.clubId))
+        }
+      }
+    } catch (error) {
+      console.error("Failed to get clubId from localStorage:", error)
+    }
+  }, [])
 
   const categoryColors: Record<string, string> = {
     "Software Engineering": "#0052CC",
@@ -71,19 +88,27 @@ export default function MemberClubsPage() {
     return "none"
   }
 
-  // Map API items to table rows. Note: API `id` is numeric.
-  const enhancedClubs = clubs.map((club) => ({
-    id: String(club.id),
-    name: club.name,
-    category: club.majorName ?? (club as any).major?.name ?? (club as any).major?.majorName ?? "",
-    description: club.description,
-    members: 0,
-    founded: 0,
-    location: "",
-    policy: club.majorPolicyName ?? "",
-    status: getClubStatus(String(club.id)),
-    actions: undefined,
-  }))
+  // Map API items to table rows and filter out user's current club
+  const enhancedClubs = clubs
+    .filter((club) => {
+      // Hide the club that user is already a member of
+      if (userClubId && Number(club.id) === userClubId) {
+        return false
+      }
+      return true
+    })
+    .map((club) => ({
+      id: String(club.id),
+      name: club.name,
+      category: club.majorName ?? (club as any).major?.name ?? (club as any).major?.majorName ?? "",
+      description: club.description,
+      members: 0,
+      founded: 0,
+      location: "",
+      policy: club.majorPolicyName ?? "",
+      status: getClubStatus(String(club.id)),
+      actions: undefined,
+    }))
 
   const getMajorVariant = (major?: string) => {
     if (!major) return "outline"
@@ -374,15 +399,8 @@ export default function MemberClubsPage() {
       label: "Actions",
       render: (_: any, club: any) => {
         const status = getClubStatus(club.id)
-        // Members are read-only: disable interactive apply actions (match student page behavior)
-        if (auth.role === "member") {
-          return (
-            <Button size="sm" variant="outline" disabled>
-              {status === "member" ? "Joined" : status === "pending" ? "Applied" : "Restricted"}
-            </Button>
-          )
-        }
-
+        
+        // Allow members to apply to clubs (except their current club which is already filtered out)
         return (
           <Button
             size="sm"
@@ -406,15 +424,16 @@ export default function MemberClubsPage() {
     },
   ]
 
-  const isMember = auth.role === "member"
-
   return (
     <ProtectedRoute allowedRoles={["member"]}>
       <AppShell>
         <div className="space-y-6">
           <div>
             <h1 className="text-3xl font-bold">Club Directory</h1>
-            <p className="text-muted-foreground">Discover clubs. Member accounts have read-only access here; to join a club, contact the club leader or admin.</p>
+            <p className="text-muted-foreground">
+              Discover and join clubs that match your interests. 
+              {userClubId && <span className="text-xs text-muted-foreground/70 ml-2">(Your current club is hidden)</span>}
+            </p>
           </div>
 
           {/* Thêm cấu hình phân trang giống trang Offers:

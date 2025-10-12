@@ -10,7 +10,7 @@ import { WalletHistory } from "@/components/wallet-history"
 import { TopupModal } from "@/components/topup-modal"
 import { useAuth } from "@/contexts/auth-context"
 import { getWallet } from "@/service/walletApi"
-import { ShoppingBag, ArrowLeft } from "lucide-react"
+import { ShoppingBag, ArrowLeft, Wallet, CreditCard, History, Sparkles, TrendingUp, Shield } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 export default function MemberWalletPage() {
@@ -53,44 +53,38 @@ export default function MemberWalletPage() {
       const vnd = points * VND_PER_POINT
       return {
         id: `pkg-${points}`,
-        title: `Gói ${points.toLocaleString()} Points`,
-        description: `Nạp ${vnd.toLocaleString()} VND → nhận ${points.toLocaleString()} Points`,
+        title: `${points.toLocaleString()} Points Package`,
+        description: `Top up ${vnd.toLocaleString()} VND → Get ${points.toLocaleString()} Points`,
         points,
         vnd,
-        badge: idx === MULTIPLIERS.length - 1 ? "BEST VALUE" : undefined,
-        color: ["blue", "green", "red", "purple", "gray"][idx % 5] as
-          | "blue"
-          | "green"
-          | "red"
-          | "purple"
-          | "gray",
+        badge: idx === MULTIPLIERS.length - 1 ? "HOT DEAL" : idx === 2 ? "POPULAR" : undefined,
+        gradient: [
+          "from-slate-600 via-blue-600 to-gray-700",
+          "from-blue-700 via-slate-700 to-indigo-700", 
+          "from-teal-700 via-cyan-700 to-blue-800",
+          "from-indigo-700 via-purple-700 to-slate-800",
+          "from-gray-800 via-blue-800 to-black"
+        ][idx],
+        pointsColor: [
+          "text-emerald-500",
+          "text-blue-500",
+          "text-purple-500", 
+          "text-orange-500",
+          "text-red-500"
+        ][idx],
+        icon: [CreditCard, Wallet, TrendingUp, Sparkles, Shield][idx],
       }
     })
   }, [])
 
-  const getColorClasses = (color: string) => {
-    switch (color) {
-      case "blue":
-        return "from-blue-500 to-blue-600 text-white"
-      case "green":
-        return "from-green-500 to-green-600 text-white"
-      case "red":
-        return "from-red-500 to-red-600 text-white"
-      case "purple":
-        return "from-purple-500 to-purple-600 text-white"
-      case "gray":
-        return "from-gray-500 to-gray-600 text-white"
-      default:
-        return "from-primary to-primary/80 text-primary-foreground"
-    }
-  }
+
 
   const handleSelectPackage = (amountVND: number) => {
     setSelectedAmountVND(amountVND)
     setIsTopupModalOpen(true)
     toast({
-      title: "Đã chọn gói nạp",
-      description: `Số tiền cần chuyển: ${amountVND.toLocaleString()} VND`,
+      title: "Package Selected",
+      description: `Transfer amount: ${amountVND.toLocaleString()} VND`,
     })
   }
 
@@ -98,24 +92,35 @@ export default function MemberWalletPage() {
     return (
       <ProtectedRoute allowedRoles={["member"]}>
         <AppShell>
-          <div className="space-y-6">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setCurrentView("shop")}
-                className="flex items-center gap-2"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back to Shop
-              </Button>
-              <div>
-                <h1 className="text-3xl font-bold">Voucher History</h1>
-                <p className="text-muted-foreground">Your redeemed vouchers and codes</p>
+          <div className="min-h-screen bg-gradient-to-br from-gray-100 via-slate-100 to-blue-100">
+            <div className="space-y-8 p-6">
+              {/* Enhanced Header with Blue Theme */}
+              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-700 via-blue-800 to-gray-800 p-6 shadow-2xl">
+                <div className="absolute inset-0 bg-white/5 backdrop-blur-sm"></div>
+                <div className="relative flex items-center gap-6">
+                  <Button
+                    variant="ghost"
+                    size="lg"
+                    onClick={() => setCurrentView("shop")}
+                    className="flex items-center gap-3 text-white hover:bg-white/10 border border-white/20 rounded-xl transition-all duration-300"
+                  >
+                    <ArrowLeft className="h-5 w-5" />
+                    Back to Shop
+                  </Button>
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 rounded-xl bg-white/10 backdrop-blur">
+                      <History className="h-8 w-8 text-white" />
+                    </div>
+                    <div>
+                      <h1 className="text-3xl font-bold text-white">Transaction History</h1>
+                      <p className="text-white/90">Track your vouchers and transactions</p>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
 
-            <WalletHistory />
+              <WalletHistory />
+            </div>
           </div>
         </AppShell>
       </ProtectedRoute>
@@ -125,104 +130,166 @@ export default function MemberWalletPage() {
   return (
     <ProtectedRoute allowedRoles={["member"]}>
       <AppShell>
-        <div className="space-y-6">
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-balance">Wallet</h1>
+        <div className="min-h-screen bg-gradient-to-br from-gray-100 via-slate-100 to-blue-100">
+          <div className="space-y-8 p-6">
+            {/* Enhanced Header */}
+            <div className="text-center space-y-4">
+              <div className="inline-flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-slate-700 via-blue-800 to-gray-800 rounded-2xl text-white shadow-lg">
+                <Wallet className="h-8 w-8" />
+                <h1 className="text-3xl font-bold">UniClub Wallet</h1>
+              </div>
+              <p className="text-lg text-gray-800 font-medium">Smart financial management for students</p>
             </div>
-          </div>
 
-          {/* Wallet Overview (clean version) */}
-          <div className="grid gap-4">
-            <Card className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 text-white">
-              {/* decorative blobs */}
-              <div className="pointer-events-none absolute -top-10 -right-10 h-48 w-48 rounded-full bg-white/10 blur-3xl" />
-              <div className="pointer-events-none absolute -bottom-16 -left-16 h-56 w-56 rounded-full bg-black/20 blur-3xl" />
-
-              <CardContent className="p-4 md:p-5">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-                  {/* Left: User identity */}
+            {/* Compact Premium Wallet Card */}
+            <Card className="relative overflow-hidden bg-gradient-to-r from-slate-700 via-blue-800 to-gray-800 text-white border-0 shadow-xl">
+              <CardContent className="p-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                  {/* Left: User Info */}
                   <div className="flex items-center gap-4">
-                    <div className="h-14 w-14 rounded-2xl bg-white/15 backdrop-blur flex items-center justify-center text-white font-bold text-2xl ring-1 ring-white/20">
-                      {(auth?.user?.fullName?.charAt(0) || "U").toUpperCase()}
+                    <div className="h-16 w-16 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center border border-white/20">
+                      <span className="text-2xl font-bold text-white">
+                        {(auth?.user?.fullName?.charAt(0) || "U").toUpperCase()}
+                      </span>
                     </div>
                     <div>
-                      <p className="text-xs uppercase tracking-wider text-white/80">Tài khoản</p>
-                      <h3 className="text-xl md:text-2xl font-semibold leading-tight">
-                        {auth?.user?.fullName || "User"}
-                      </h3>
-                      <p className="text-sm text-white/70">Thành viên</p>
+                      <h2 className="text-xl md:text-2xl font-bold text-white">
+                        {auth?.user?.fullName || "UniClub Member"}
+                      </h2>
+                      <Badge className="bg-white/15 text-white border-0 mt-1">
+                        {auth?.user?.email || "UniClub Member"}
+                      </Badge>
                     </div>
                   </div>
 
-                  {/* Right: Balance + actions */}
-                  <div className="w-full md:w-auto">
-                    <div className="text-right">
-                      <p className="text-xs uppercase tracking-wider text-white/80">Số dư hiện tại</p>
-                      <div className="mt-1 text-3xl md:text-4xl font-extrabold tracking-tight">
-                        {userBalance.toLocaleString()}{" "}
-                        <span className="text-base font-semibold">Points</span>
+                  {/* Right: Balance & Actions */}
+                  <div className="text-center md:text-right">
+                    <p className="text-white/80 text-sm font-medium mb-1">Current Balance</p>
+                    <div className="text-4xl font-black text-white mb-1">
+                      {userBalance.toLocaleString()}
+                    </div>
+                    <p className="text-white/90 text-sm mb-3">UniClub Points</p>
+                    
+                    <Button
+                      onClick={() => setCurrentView("history")}
+                      className="bg-white/15 hover:bg-white/25 text-white border border-white/20 backdrop-blur-sm transition-all duration-300"
+                    >
+                      <History className="h-4 w-4 mr-2" />
+                      History
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Premium Top-up Packages */}
+            <div className="space-y-6">
+              <div className="text-center space-y-2">
+                <h2 className="text-3xl font-bold text-gray-800">
+                  Points Packages
+                </h2>
+                <p className="text-lg text-gray-700">Choose the package that fits your needs</p>
+              </div>
+
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {topupPackages.map((pkg, index) => {
+                  const IconComponent = pkg.icon
+                  return (
+                    <Card key={pkg.id} className="group relative overflow-hidden border-0 shadow-xl hover:shadow-2xl transition-all duration-500 hover:scale-105">
+                      {/* Pastel blue panel for large header */}
+                      <div className="relative h-32 bg-blue-900 flex items-center justify-center">
+                        {/* Background Pattern */}
+                        <div className="absolute inset-0 opacity-20">
+                          <div className="absolute top-3 right-3 w-12 h-12 border-2 border-white/30 rounded-full"></div>
+                          <div className="absolute bottom-3 left-3 w-8 h-8 border-2 border-white/20 rounded-full"></div>
+                        </div>
+
+                        {/* Badge */}
+                        {pkg.badge && (
+                          <div className="absolute top-3 right-3">
+                            <Badge className="bg-gradient-to-r from-orange-500 to-red-600 text-white border-0 shadow-lg font-bold text-xs px-2 py-1">
+                              {pkg.badge}
+                            </Badge>
+                          </div>
+                        )}
+
+                        {/* Points Only (no icon) */}
+                        <div className="text-center text-white z-10">
+                          <div className="space-y-1">
+                            <div className="text-xs font-medium opacity-90">UNICLUB POINTS</div>
+                            <div
+                              className={`text-3xl font-extrabold tracking-tight px-5 py-2 rounded-2xl mx-auto text-white drop-shadow-2xl border-4 border-white shadow-2xl ${[
+                                "bg-blue-700",
+                                "bg-blue-800",
+                                "bg-blue-900",
+                                "bg-sky-900",
+                                "bg-cyan-900"
+                              ][index]}`}
+                            >
+                              {pkg.points.toLocaleString()}
+                            </div>
+                          </div>
+                        </div>
                       </div>
 
-                      {/* Actions */}
-                      <div className="mt-3 flex items-center justify-end gap-2">
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => setCurrentView("history")}
-                          className="bg-white text-indigo-700 hover:bg-white/90"
+                      {/* Card Content */}
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-lg font-bold text-gray-800 leading-tight">{pkg.title}</CardTitle>
+                        <CardDescription className="text-sm text-gray-600 font-medium">{pkg.description}</CardDescription>
+                      </CardHeader>
+
+                      <CardContent className="space-y-4">
+                        {/* Pricing Display - unified pastel panel */}
+                        <div className="relative p-4 bg-gradient-to-r from-blue-100 via-sky-100 to-cyan-100 rounded-xl border border-blue-200 shadow-inner">
+                          <div className="text-center space-y-1">
+                            <div className="text-3xl font-black text-gray-800">
+                              {pkg.vnd.toLocaleString()}
+                              <span className="text-base font-bold ml-1">VND</span>
+                            </div>
+                            <div className={`text-sm font-medium ${pkg.pointsColor}`}>
+                              {pkg.points.toLocaleString()} points • {VND_PER_POINT} VND/point
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Action Button */}
+                        <Button 
+                          className="w-full h-12 text-base font-bold bg-gradient-to-r from-slate-700 via-blue-800 to-gray-800 hover:from-slate-800 hover:via-blue-900 hover:to-gray-900 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300 group-hover:scale-105" 
+                          onClick={() => handleSelectPackage(pkg.vnd)}
                         >
-                          Lịch sử
+                          <ShoppingBag className="h-4 w-4 mr-2" />
+                          Buy Now
                         </Button>
-                      </div>
-                    </div>
+                      </CardContent>
+                    </Card>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Trust & Security Footer */}
+            <Card className="border-0 bg-gray-50 shadow-lg">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-center gap-8 text-gray-700">
+                  <div className="flex items-center gap-2">
+                    <Shield className="h-5 w-5 text-green-600" />
+                    <span className="font-semibold">100% Secure</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="h-5 w-5 text-blue-600" />
+                    <span className="font-semibold">Safe Payment</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-5 w-5 text-yellow-600" />
+                    <span className="font-semibold">24/7 Support</span>
                   </div>
                 </div>
               </CardContent>
             </Card>
           </div>
-
-          {/* Top-up Packages */}
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {topupPackages.map((pkg) => (
-              <Card key={pkg.id} className="overflow-hidden hover:shadow-lg transition-all duration-300">
-                <div className={`h-32 bg-gradient-to-br ${getColorClasses(pkg.color)} relative`}>
-                  {pkg.badge && (
-                    <Badge className="absolute top-3 right-3 bg-red-500 text-white">{pkg.badge}</Badge>
-                  )}
-                  <div className="absolute bottom-3 left-3 text-white">
-                    <div className="text-xs opacity-90">TOP-UP</div>
-                    <div className="text-lg font-bold">{pkg.points.toLocaleString()} Points</div>
-                  </div>
-                </div>
-
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg leading-tight">{pkg.title}</CardTitle>
-                  <CardDescription className="text-sm">{pkg.description}</CardDescription>
-                </CardHeader>
-
-                <CardContent className="space-y-4">
-                  {/* Price */}
-                  <div className="bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg p-4">
-                    <div className="text-2xl font-bold text-primary">{pkg.vnd.toLocaleString()} VND</div>
-                    <div className="text-sm text-muted-foreground">
-                      {pkg.points.toLocaleString()} points @ 1 point = {VND_PER_POINT.toLocaleString()} VND
-                    </div>
-                  </div>
-
-                  {/* Action Button */}
-                  <Button className="w-full" onClick={() => handleSelectPackage(pkg.vnd)}>
-                    <ShoppingBag className="h-4 w-4 mr-2" />
-                    Mua gói
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
         </div>
 
-        {/* Truyền số tiền đã chọn xuống modal */}
+        {/* Enhanced Modal */}
         <TopupModal
           isOpen={isTopupModalOpen}
           onClose={() => setIsTopupModalOpen(false)}

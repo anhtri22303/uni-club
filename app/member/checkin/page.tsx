@@ -5,11 +5,13 @@ import { ProtectedRoute } from "@/contexts/protected-route"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import { useAuth } from "@/contexts/auth-context"
 import { useData } from "@/contexts/data-context"
 import { useToast } from "@/hooks/use-toast"
-import { CheckCircle, Calendar, MapPin, Users, Trophy, Clock } from "lucide-react"
+import { CheckCircle, Calendar, MapPin, Users, Trophy, Clock, QrCode } from "lucide-react"
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { getEventByCode } from '@/service/eventApi'
 
 // Removed static `src/data` imports — use empty fallbacks. Replace with API/context in future if needed.
@@ -20,9 +22,11 @@ export default function MemberCheckinPage() {
   const { auth } = useAuth()
   const { clubMemberships } = useData()
   const { toast } = useToast()
+  const router = useRouter()
   const [checkedInEvents, setCheckedInEvents] = useState<string[]>([])
   const [tokenState, setTokenState] = useState<{ valid: boolean; reason?: string; eventId?: string } | null>(null)
   const [eventData, setEventData] = useState<any | null>(null)
+  const [checkInCode, setCheckInCode] = useState<string>("")
 
   // Get user's club memberships
   const userClubMemberships = clubMemberships.filter(
@@ -89,6 +93,20 @@ export default function MemberCheckinPage() {
       description: `+ ${event.points} points`,
       duration: 3000,
     })
+  }
+
+  const handleCheckInSubmit = () => {
+    if (!checkInCode.trim()) {
+      toast({
+        title: "Lỗi",
+        description: "Vui lòng nhập mã check-in",
+        variant: "destructive"
+      })
+      return
+    }
+
+    // Navigate to the dynamic route with the code
+    router.push(`/member/checkin/${checkInCode.trim()}`)
   }
 
   // Handle URL params: prefer ?code=... (fetch events and match by checkInCode).
@@ -167,14 +185,33 @@ export default function MemberCheckinPage() {
           {availableEvents.length === 0 ? (
             <Card className="text-center py-12">
               <CardContent>
-                <Calendar className="h-16 w-16 text-muted-foreground mx-auto mb-4 opacity-50" />
-                <h3 className="text-lg font-semibold mb-2">No Events Today</h3>
-                <p className="text-muted-foreground mb-4">
-                  There are no events scheduled for today in your clubs.
+                <QrCode className="h-16 w-16 text-primary mx-auto mb-4" />
+                <h3 className="text-xl font-semibold mb-2">Nhập mã Check-in</h3>
+                <p className="text-muted-foreground mb-6">
+                  Nhập mã check-in từ sự kiện để tham gia
                 </p>
-                <p className="text-sm text-muted-foreground">
-                  Check back tomorrow or visit the Events page to see upcoming events.
-                </p>
+                <div className="max-w-md mx-auto space-y-4">
+                  <Input
+                    type="text"
+                    placeholder="Nhập mã check-in..."
+                    value={checkInCode}
+                    onChange={(e) => setCheckInCode(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        handleCheckInSubmit()
+                      }
+                    }}
+                    className="text-center text-lg py-3"
+                  />
+                  <Button
+                    onClick={handleCheckInSubmit}
+                    className="w-full py-3 text-lg font-semibold bg-primary hover:bg-primary/90"
+                    disabled={!checkInCode.trim()}
+                  >
+                    <CheckCircle className="h-5 w-5 mr-2" />
+                    Tham gia sự kiện
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ) : (
