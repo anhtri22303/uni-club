@@ -151,6 +151,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                   className={cn(
                     "w-full justify-start gap-3 h-11 text-sm font-medium",
                     isActive && "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm",
+                    // isActive && "bg-primary text-primary-foreground shadow-md",
                     isLoading && "opacity-75 cursor-wait",
                   )}
                   onClick={() => handleNavigation(item.href)}
