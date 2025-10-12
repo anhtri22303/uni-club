@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Building, Users, Calendar, Search, CheckCircle, XCircle, Clock, Eye, Plus } from "lucide-react"
 import Link from "next/link"
 import { getClubApplications, ClubApplication, putClubApplicationStatus } from "@/service/clubApplicationAPI"
@@ -35,7 +36,6 @@ type UiClubRequest = {
 
 export default function UniStaffClubRequestsPage() {
 	const [searchTerm, setSearchTerm] = useState("")
-	const [statusFilter, setStatusFilter] = useState<string>("all")
 	const [categoryFilter, setCategoryFilter] = useState<string>("all")
 	const [requests, setRequests] = useState<UiClubRequest[]>([])
 	const [loading, setLoading] = useState<boolean>(false)
@@ -43,6 +43,7 @@ export default function UniStaffClubRequestsPage() {
 	const [isModalOpen, setIsModalOpen] = useState<boolean>(false)
 	const [newClubName, setNewClubName] = useState<string>("")
 	const [newDescription, setNewDescription] = useState<string>("")
+	const [activeTab, setActiveTab] = useState<string>("pending")
 	const { toast } = useToast()
 
 	useEffect(() => {
@@ -163,17 +164,28 @@ export default function UniStaffClubRequestsPage() {
 		}
 	}
 
-	const filteredRequests = requests.filter((req) => {
-		const matchSearch =
-			req.clubName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-			req.requestedBy.toLowerCase().includes(searchTerm.toLowerCase()) ||
-			req.category.toLowerCase().includes(searchTerm.toLowerCase())
+	const getFilteredRequests = (tabType: "pending" | "processed") => {
+		return requests.filter((req) => {
+			const matchSearch =
+				req.clubName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+				req.requestedBy.toLowerCase().includes(searchTerm.toLowerCase()) ||
+				req.category.toLowerCase().includes(searchTerm.toLowerCase())
 
-		const matchStatus = statusFilter === "all" ? true : req.status === statusFilter
-		const matchCategory = categoryFilter === "all" ? true : req.category === categoryFilter
+			const matchCategory = categoryFilter === "all" ? true : req.category === categoryFilter
 
-		return matchSearch && matchStatus && matchCategory
-	})
+			let matchStatus = false
+			if (tabType === "pending") {
+				matchStatus = req.status === "PENDING"
+			} else {
+				matchStatus = req.status === "SUBMITTED" || req.status === "REJECTED"
+			}
+
+			return matchSearch && matchStatus && matchCategory
+		})
+	}
+
+	const pendingRequests = getFilteredRequests("pending")
+	const processedRequests = getFilteredRequests("processed")
 
 	const getStatusBadge = (status: string) => {
 		switch (status) {
@@ -337,18 +349,6 @@ export default function UniStaffClubRequestsPage() {
 						</div>
 
 						<div className="flex items-center gap-3">
-							<Select value={statusFilter} onValueChange={setStatusFilter}>
-								<SelectTrigger className="w-40">
-									<SelectValue placeholder="All Status" />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value="all">All Status</SelectItem>
-									<SelectItem value="PENDING">Pending</SelectItem>
-									<SelectItem value="SUBMITTED">Submitted</SelectItem>
-									<SelectItem value="REJECTED">Rejected</SelectItem>
-								</SelectContent>
-							</Select>
-
 							<Select value={categoryFilter} onValueChange={setCategoryFilter}>
 								<SelectTrigger className="w-40">
 									<SelectValue placeholder="All Categories" />
@@ -365,106 +365,203 @@ export default function UniStaffClubRequestsPage() {
 						</div>
 					</div>
 
-					<div className="grid gap-4">
-						{loading ? (
-							<Card>
-								<CardContent className="py-8 text-center text-muted-foreground">
-									Loading club applications...
-								</CardContent>
-							</Card>
-						) : error ? (
-							<Card>
-								<CardContent className="py-8 text-center text-destructive">
-									{error}
-								</CardContent>
-							</Card>
-						) : filteredRequests.length === 0 ? (
-							<Card>
-								<CardContent className="py-8 text-center text-muted-foreground">
-									No club requests found
-								</CardContent>
-							</Card>
-						) : (
-							filteredRequests.map((request) => (
-								<Card
-									key={request.id}
-									className="hover:shadow-md transition-shadow cursor-pointer"
-								>
-									<Link href={`/uni-staff/clubs-req/${request.id}`}>
-										<CardContent className="p-6">
-											<div className="flex items-start justify-between">
-												<div className="flex-1">
-													<div className="flex items-center gap-3 mb-2">
-														<Building className="h-5 w-5 text-muted-foreground" />
-														<h3 className="font-semibold text-lg">
-															{request.clubName}
-														</h3>
-														<Badge variant="outline">
-															{request.category}
-														</Badge>
-														{getStatusBadge(request.status)}
-													</div>
+					{/* Tabs */}
+					<Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+						<TabsList className="grid w-full grid-cols-2">
+							<TabsTrigger value="pending" className="flex items-center gap-2">
+								<Clock className="h-4 w-4" />
+								Pending ({pendingRequests.length})
+							</TabsTrigger>
+							<TabsTrigger value="processed" className="flex items-center gap-2">
+								<CheckCircle className="h-4 w-4" />
+								Processed ({processedRequests.length})
+							</TabsTrigger>
+						</TabsList>
 
-													<p className="text-muted-foreground mb-3 line-clamp-2">
-														{request.description}
-													</p>
-
-													<div className="flex items-center gap-6 text-sm text-muted-foreground">
-														<div className="flex items-center gap-1">
-															<Users className="h-4 w-4" />
-															<span>{request.expectedMembers ?? "-"} members</span>
-														</div>
-														<div className="flex items-center gap-1">
-															<Calendar className="h-4 w-4" />
-															<span>
-																{new Date(
-																	request.requestDate
-																).toLocaleDateString()}
-															</span>
-														</div>
-														<div>
-															<span>by {request.requestedBy}</span>
-														</div>
-													</div>
-												</div>
-
-												<div className="flex items-center gap-2 ml-4">
-													{request.status === "PENDING" && (
-														<>
-															<Button
-																size="sm"
-																variant="default"
-																className="h-8 w-8 p-0"
-																onClick={() => approveApplication(request.applicationId)}
-															>
-																<CheckCircle className="h-4 w-4" />
-															</Button>
-															<Button
-																size="sm"
-																variant="destructive"
-																className="h-8 w-8 p-0"
-																onClick={() => rejectApplication(request.applicationId)}
-															>
-																<XCircle className="h-4 w-4" />
-															</Button>
-														</>
-													)}
-													<Button
-														size="sm"
-														variant="outline"
-														className="h-8 bg-transparent"
-													>
-														<Eye className="h-3 w-3 mr-1" />
-														View Details
-													</Button>
-												</div>
-											</div>
-										</CardContent>
-									</Link>
+						<TabsContent value="pending" className="space-y-4 mt-6">
+							{loading ? (
+								<Card>
+									<CardContent className="py-8 text-center text-muted-foreground">
+										Loading club applications...
+									</CardContent>
 								</Card>
-							))
-						)}
-					</div>
+							) : error ? (
+								<Card>
+									<CardContent className="py-8 text-center text-destructive">
+										{error}
+									</CardContent>
+								</Card>
+							) : pendingRequests.length === 0 ? (
+								<Card>
+									<CardContent className="py-8 text-center text-muted-foreground">
+										No pending club requests found
+									</CardContent>
+								</Card>
+							) : (
+								pendingRequests.map((request) => (
+									<Card
+										key={request.id}
+										className="hover:shadow-md transition-shadow cursor-pointer"
+									>
+										<Link href={`/uni-staff/clubs-req/${request.id}`}>
+											<CardContent className="p-6">
+												<div className="flex items-start justify-between">
+													<div className="flex-1">
+														<div className="flex items-center gap-3 mb-2">
+															<Building className="h-5 w-5 text-muted-foreground" />
+															<h3 className="font-semibold text-lg">
+																{request.clubName}
+															</h3>
+															<Badge variant="outline">
+																{request.category}
+															</Badge>
+															{getStatusBadge(request.status)}
+														</div>
+
+														<p className="text-muted-foreground mb-3 line-clamp-2">
+															{request.description}
+														</p>
+
+														<div className="flex items-center gap-6 text-sm text-muted-foreground">
+															<div className="flex items-center gap-1">
+																<Users className="h-4 w-4" />
+																<span>{request.expectedMembers ?? "-"} members</span>
+															</div>
+															<div className="flex items-center gap-1">
+																<Calendar className="h-4 w-4" />
+																<span>
+																	{new Date(
+																		request.requestDate
+																	).toLocaleDateString()}
+																</span>
+															</div>
+															<div>
+																<span>by {request.requestedBy}</span>
+															</div>
+														</div>
+													</div>
+
+													<div className="flex items-center gap-2 ml-4">
+														<Button
+															size="sm"
+															variant="default"
+															className="h-8 w-8 p-0"
+															onClick={(e) => {
+																e.preventDefault()
+																approveApplication(request.applicationId)
+															}}
+														>
+															<CheckCircle className="h-4 w-4" />
+														</Button>
+														<Button
+															size="sm"
+															variant="destructive"
+															className="h-8 w-8 p-0"
+															onClick={(e) => {
+																e.preventDefault()
+																rejectApplication(request.applicationId)
+															}}
+														>
+															<XCircle className="h-4 w-4" />
+														</Button>
+														<Button
+															size="sm"
+															variant="outline"
+															className="h-8 bg-transparent"
+														>
+															<Eye className="h-3 w-3 mr-1" />
+															View Details
+														</Button>
+													</div>
+												</div>
+											</CardContent>
+										</Link>
+									</Card>
+								))
+							)}
+						</TabsContent>
+
+						<TabsContent value="processed" className="space-y-4 mt-6">
+							{loading ? (
+								<Card>
+									<CardContent className="py-8 text-center text-muted-foreground">
+										Loading club applications...
+									</CardContent>
+								</Card>
+							) : error ? (
+								<Card>
+									<CardContent className="py-8 text-center text-destructive">
+										{error}
+									</CardContent>
+								</Card>
+							) : processedRequests.length === 0 ? (
+								<Card>
+									<CardContent className="py-8 text-center text-muted-foreground">
+										No processed club requests found
+									</CardContent>
+								</Card>
+							) : (
+								processedRequests.map((request) => (
+									<Card
+										key={request.id}
+										className="hover:shadow-md transition-shadow cursor-pointer"
+									>
+										<Link href={`/uni-staff/clubs-req/${request.id}`}>
+											<CardContent className="p-6">
+												<div className="flex items-start justify-between">
+													<div className="flex-1">
+														<div className="flex items-center gap-3 mb-2">
+															<Building className="h-5 w-5 text-muted-foreground" />
+															<h3 className="font-semibold text-lg">
+																{request.clubName}
+															</h3>
+															<Badge variant="outline">
+																{request.category}
+															</Badge>
+															{getStatusBadge(request.status)}
+														</div>
+
+														<p className="text-muted-foreground mb-3 line-clamp-2">
+															{request.description}
+														</p>
+
+														<div className="flex items-center gap-6 text-sm text-muted-foreground">
+															<div className="flex items-center gap-1">
+																<Users className="h-4 w-4" />
+																<span>{request.expectedMembers ?? "-"} members</span>
+															</div>
+															<div className="flex items-center gap-1">
+																<Calendar className="h-4 w-4" />
+																<span>
+																	{new Date(
+																		request.requestDate
+																	).toLocaleDateString()}
+																</span>
+															</div>
+															<div>
+																<span>by {request.requestedBy}</span>
+															</div>
+														</div>
+													</div>
+
+													<div className="flex items-center gap-2 ml-4">
+														<Button
+															size="sm"
+															variant="outline"
+															className="h-8 bg-transparent"
+														>
+															<Eye className="h-3 w-3 mr-1" />
+															View Details
+														</Button>
+													</div>
+												</div>
+											</CardContent>
+										</Link>
+									</Card>
+								))
+							)}
+						</TabsContent>
+					</Tabs>
 				</div>
 			</AppShell>
 		</ProtectedRoute>

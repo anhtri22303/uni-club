@@ -40,20 +40,36 @@ export default function MemberClubsPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pendingClubIds, setPendingClubIds] = useState<string[]>([])
-  const [userClubId, setUserClubId] = useState<number | null>(null)
+  const [userClubIds, setUserClubIds] = useState<number[]>([])
+  const [userClubId, setUserClubId] = useState<number | null>(null) // Keep for backward compatibility
 
   // Get user's current memberships and applications
   const userMemberships = clubMemberships.filter((m) => m.userId === auth.userId)
   const userApplications = membershipApplications.filter((a) => a.userId === auth.userId)
 
-  // Get user's club ID from localStorage
+  // Get user's club IDs from localStorage
   useEffect(() => {
     try {
       const saved = safeLocalStorage.getItem("uniclub-auth")
+      console.log("Raw localStorage data:", saved)
       if (saved) {
         const parsed = JSON.parse(saved)
-        if (parsed.clubId) {
-          setUserClubId(Number(parsed.clubId))
+        console.log("Parsed localStorage data:", parsed)
+        
+        // Check for clubIds array first, then fallback to single clubId
+        if (parsed.clubIds && Array.isArray(parsed.clubIds)) {
+          const clubIdNumbers = parsed.clubIds.map((id: any) => Number(id)).filter((id: number) => !isNaN(id))
+          console.log("Setting userClubIds from clubIds array to:", clubIdNumbers)
+          setUserClubIds(clubIdNumbers)
+          // Set the first club as primary for backward compatibility
+          if (clubIdNumbers.length > 0) {
+            setUserClubId(clubIdNumbers[0])
+          }
+        } else if (parsed.clubId) {
+          const clubIdNumber = Number(parsed.clubId)
+          console.log("Setting userClubId from single clubId to:", clubIdNumber)
+          setUserClubId(clubIdNumber)
+          setUserClubIds([clubIdNumber])
         }
       }
     } catch (error) {
@@ -88,11 +104,14 @@ export default function MemberClubsPage() {
     return "none"
   }
 
-  // Map API items to table rows and filter out user's current club
+  // Map API items to table rows and filter out user's current clubs
+  console.log("Total clubs before filter:", clubs.length, "userClubIds:", userClubIds)
   const enhancedClubs = clubs
     .filter((club) => {
-      // Hide the club that user is already a member of
-      if (userClubId && Number(club.id) === userClubId) {
+      // Hide clubs that user is already a member of
+      const clubIdNumber = Number(club.id)
+      if (userClubIds.length > 0 && userClubIds.includes(clubIdNumber)) {
+        console.log(`Hiding club ${club.name} (ID: ${club.id}) - user is member of this club`)
         return false
       }
       return true
@@ -109,6 +128,7 @@ export default function MemberClubsPage() {
       status: getClubStatus(String(club.id)),
       actions: undefined,
     }))
+  console.log("Enhanced clubs after filter:", enhancedClubs.length)
 
   const getMajorVariant = (major?: string) => {
     if (!major) return "outline"
@@ -432,7 +452,11 @@ export default function MemberClubsPage() {
             <h1 className="text-3xl font-bold">Club Directory</h1>
             <p className="text-muted-foreground">
               Discover and join clubs that match your interests. 
-              {userClubId && <span className="text-xs text-muted-foreground/70 ml-2">(Your current club is hidden)</span>}
+              {userClubIds.length > 0 && (
+                <span className="text-xs text-muted-foreground/70 ml-2">
+                  (Your club{userClubIds.length > 1 ? 's' : ''} {userClubIds.join(', ')} {userClubIds.length > 1 ? 'are' : 'is'} hidden)
+                </span>
+              )}
             </p>
           </div>
 

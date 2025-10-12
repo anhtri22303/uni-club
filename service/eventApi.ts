@@ -1,17 +1,22 @@
 import axiosInstance from "@/lib/axiosInstance"
 
 export const fetchEvent = async () => {
+  const timestamp = new Date().toISOString()
+  const stack = new Error().stack
+  console.log(`🚀 fetchEvent called at ${timestamp}`)
+  console.log(`📍 Call stack:`, stack?.split('\n').slice(1, 4).join('\n'))
+  
   try {
     const response = await axiosInstance.get("api/events")
     // If the API uses pagination, the events array may be in `response.data.content`
-  const data: any = response.data
-    console.log("Fetched events:", data)
-  if (data && Array.isArray(data)) return data
-  if (data && Array.isArray(data.content)) return data.content
+    const data: any = response.data
+    console.log(`✅ fetchEvent completed at ${new Date().toISOString()}:`, data)
+    if (data && Array.isArray(data)) return data
+    if (data && Array.isArray(data.content)) return data.content
     // Fallback to returning the raw data
     return data
   } catch (error) {
-    console.error("Error fetching events:", error)
+    console.error(`❌ fetchEvent error at ${new Date().toISOString()}:`, error)
     throw error
   }
 }

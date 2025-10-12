@@ -7,6 +7,11 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { usePagination } from "@/hooks/use-pagination"
 import { useData } from "@/contexts/data-context"
+import { fetchPolicies } from "@/service/policyApi"
+import { fetchEvent } from "@/service/eventApi"
+import { fetchClub } from "@/service/clubApi"
+import { getClubApplications } from "@/service/clubApplicationAPI"
+import { useEffect } from "react"
 import {
   PieChart,
   Users,
@@ -25,12 +30,45 @@ import {
 
 // Import data
 import users from "@/src/data/users.json"
-import clubs from "@/src/data/clubs.json"
-import events from "@/src/data/events.json"
 import redemptions from "@/src/data/redemptions.json"
 
 export default function UniStaffReportsPage() {
-  const { clubMemberships, membershipApplications, vouchers } = useData()
+  const { clubMemberships, membershipApplications, vouchers, events, clubs, policies, clubApplications, eventRequests, updateEvents, updateClubs, updatePolicies, updateClubApplications, updateEventRequests } = useData()
+
+  // Fetch data when component mounts
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        // Fetch events
+        const eventData = await fetchEvent()
+        updateEvents(eventData || [])
+        
+        // Fetch clubs
+        const clubData: any = await fetchClub()
+        if (clubData && Array.isArray(clubData)) {
+          updateClubs(clubData)
+        } else if (clubData && clubData.content && Array.isArray(clubData.content)) {
+          updateClubs(clubData.content)
+        } else {
+          updateClubs([])
+        }
+
+        // Fetch policies
+        const policyData = await fetchPolicies()
+        updatePolicies(policyData || [])
+
+        // Fetch club applications
+        const clubAppData = await getClubApplications()
+        updateClubApplications(clubAppData || [])
+
+        // Sử dụng cùng dữ liệu events cho eventRequests (tránh gọi API hai lần)
+        updateEventRequests(eventData || [])
+      } catch (error) {
+        console.error("Failed to fetch data:", error)
+      }
+    }
+    loadData()
+  }, []) // Loại bỏ dependencies để tránh infinite loop
 
   const usersByRole = users.reduce(
     (acc, user) => {
@@ -43,7 +81,7 @@ export default function UniStaffReportsPage() {
   )
 
   const clubsByCategory = clubs.reduce(
-    (acc, club) => {
+    (acc: Record<string, number>, club: any) => {
       acc[club.category] = (acc[club.category] || 0) + 1
       return acc
     },
@@ -59,7 +97,7 @@ export default function UniStaffReportsPage() {
   )
 
   const eventsByMonth = events.reduce(
-    (acc, event) => {
+    (acc: Record<string, number>, event: any) => {
       const month = new Date(event.date).toLocaleDateString("en-US", { month: "short", year: "numeric" })
       acc[month] = (acc[month] || 0) + 1
       return acc
@@ -74,17 +112,20 @@ export default function UniStaffReportsPage() {
   }
 
   const clubPerformance = clubs
-    .map((club) => {
-      const members = clubMemberships.filter((m) => m.clubId === club.id && m.status === "APPROVED").length
-      const clubEvents = events.filter((e) => e.clubId === club.id).length
+    .map((club: any) => {
+      const members = clubMemberships.filter((m: any) => m.clubId === club.id && m.status === "APPROVED").length
+      const clubEvents = events.filter((e: any) => e.clubId === club.id).length
       const score = members * 2 + clubEvents
       return { ...club, members, events: clubEvents, score }
     })
-    .sort((a, b) => b.score - a.score)
+    .sort((a: any, b: any) => b.score - a.score)
 
   const totalUsers = users.length
   const totalClubs = clubs.length
   const totalEvents = events.length
+  const totalPolicies = policies.length
+  const totalClubApplications = clubApplications.length
+  const totalEventRequests = eventRequests.length
   const engagementRate = totalUsers
     ? Math.round((clubMemberships.filter((m) => m.status === "APPROVED").length / totalUsers) * 100)
     : 0
@@ -126,10 +167,6 @@ export default function UniStaffReportsPage() {
               <p className="text-muted-foreground mt-2 text-lg">Comprehensive insights and performance metrics</p>
             </div>
             <div className="flex gap-3">
-              <Button variant="outline" size="sm" className="gap-2 bg-transparent">
-                <Filter className="h-4 w-4" />
-                Filters
-              </Button>
               <Button size="sm" className="gap-2 bg-gradient-to-r from-primary to-secondary">
                 <Download className="h-4 w-4" />
                 Export Report
@@ -140,13 +177,13 @@ export default function UniStaffReportsPage() {
           <div className="grid gap-6 md:grid-cols-4">
             <Card className="stats-card-hover border-0 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-blue-700 dark:text-blue-300">Total Users</CardTitle>
+                <CardTitle className="text-sm font-medium text-blue-700 dark:text-blue-300">Total Clubs</CardTitle>
                 <div className="p-2 bg-blue-500 rounded-lg">
-                  <Users className="h-4 w-4 text-white" />
+                  <Building className="h-4 w-4 text-white" />
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-blue-900 dark:text-blue-100">{totalUsers}</div>
+                <div className="text-3xl font-bold text-blue-900 dark:text-blue-100">{totalClubs}</div>
                 <div className="flex items-center text-xs text-blue-600 dark:text-blue-400 mt-1">
                   <ArrowUpRight className="h-3 w-3 mr-1" />
                   +12% from last month
@@ -156,13 +193,13 @@ export default function UniStaffReportsPage() {
 
             <Card className="stats-card-hover border-0 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-green-700 dark:text-green-300">Active Clubs</CardTitle>
+                <CardTitle className="text-sm font-medium text-green-700 dark:text-green-300">Club Requests</CardTitle>
                 <div className="p-2 bg-green-500 rounded-lg">
                   <Building className="h-4 w-4 text-white" />
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-green-900 dark:text-green-100">{totalClubs}</div>
+                <div className="text-3xl font-bold text-green-900 dark:text-green-100">{totalClubApplications}</div>
                 <div className="flex items-center text-xs text-green-600 dark:text-green-400 mt-1">
                   <ArrowUpRight className="h-3 w-3 mr-1" />
                   +8% from last month
@@ -172,13 +209,13 @@ export default function UniStaffReportsPage() {
 
             <Card className="stats-card-hover border-0 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-purple-700 dark:text-purple-300">Total Events</CardTitle>
+                <CardTitle className="text-sm font-medium text-purple-700 dark:text-purple-300">Event Requests</CardTitle>
                 <div className="p-2 bg-purple-500 rounded-lg">
                   <Calendar className="h-4 w-4 text-white" />
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-purple-900 dark:text-purple-100">{totalEvents}</div>
+                <div className="text-3xl font-bold text-purple-900 dark:text-purple-100">{totalEventRequests}</div>
                 <div className="flex items-center text-xs text-purple-600 dark:text-purple-400 mt-1">
                   <ArrowUpRight className="h-3 w-3 mr-1" />
                   +24% from last month
@@ -189,14 +226,14 @@ export default function UniStaffReportsPage() {
             <Card className="stats-card-hover border-0 bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-950 dark:to-orange-900">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-orange-700 dark:text-orange-300">
-                  Engagement Rate
+                  Total Policies
                 </CardTitle>
                 <div className="p-2 bg-orange-500 rounded-lg">
                   <Activity className="h-4 w-4 text-white" />
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-orange-900 dark:text-orange-100">{engagementRate}%</div>
+                <div className="text-3xl font-bold text-orange-900 dark:text-orange-100">{totalPolicies}</div>
                 <div className="flex items-center text-xs text-orange-600 dark:text-orange-400 mt-1">
                   <ArrowUpRight className="h-3 w-3 mr-1" />
                   +5% from last month
@@ -231,7 +268,7 @@ export default function UniStaffReportsPage() {
                         <div className="w-full bg-muted rounded-full h-2">
                           <div
                             className="bg-gradient-to-r from-primary to-secondary h-2 rounded-full transition-all duration-500"
-                            style={{ width: `${percentage}%` }}
+                            style={{ width: `${Math.min(percentage, 100)}%` }}
                           />
                         </div>
                       </div>
@@ -381,18 +418,19 @@ export default function UniStaffReportsPage() {
               <CardContent>
                 <div className="space-y-4">
                   {Object.entries(eventsByMonth).map(([month, count]) => {
-                    const maxCount = Math.max(...Object.values(eventsByMonth), 1)
-                    const percentage = (count / maxCount) * 100
+                    const maxCount = Math.max(...Object.values(eventsByMonth).map(v => Number(v)), 1)
+                    const countNum = Number(count)
+                    const percentage = (countNum / maxCount) * 100
                     return (
                       <div key={month} className="space-y-2">
                         <div className="flex justify-between text-sm">
                           <span className="font-medium">{month}</span>
-                          <span className="text-muted-foreground">{count} events</span>
+                          <span className="text-muted-foreground">{countNum} events</span>
                         </div>
                         <div className="w-full bg-muted rounded-full h-3">
                           <div
                             className="bg-gradient-to-r from-purple-500 to-purple-600 h-3 rounded-full transition-all duration-700"
-                            style={{ width: `${percentage}%` }}
+                            style={{ width: `${Math.min(percentage, 100)}%` }}
                           />
                         </div>
                       </div>

@@ -52,18 +52,34 @@ export default function UniStaffEventRequestsPage() {
 		const load = async () => {
 			setLoading(true)
 			try {
+				console.log("🔄 Starting to fetch data for events-req page...")
 				// fetch events, locations and clubs in parallel
-				const [eventsRes, locationsRes, clubsRes] = await Promise.all([fetchEvent(), fetchLocation(), fetchClub()])
-				const eventsContent = (eventsRes as any) && Array.isArray((eventsRes as any).content) ? (eventsRes as any).content : Array.isArray(eventsRes) ? eventsRes : []
-				const locationsContent = (locationsRes as any) && Array.isArray((locationsRes as any).content) ? (locationsRes as any).content : Array.isArray(locationsRes) ? locationsRes : []
-				const clubsContent = (clubsRes as any) && Array.isArray((clubsRes as any).content) ? (clubsRes as any).content : Array.isArray(clubsRes) ? clubsRes : []
+				const [eventsRes, locationsRes, clubsRes] = await Promise.all([
+					fetchEvent(), 
+					fetchLocation(), 
+					fetchClub()
+				])
+				
+				console.log("✅ Received API responses:", { eventsRes, locationsRes, clubsRes })
+				
+				const eventsContent = (eventsRes as any) && Array.isArray((eventsRes as any).content) 
+					? (eventsRes as any).content 
+					: Array.isArray(eventsRes) ? eventsRes : []
+				const locationsContent = (locationsRes as any) && Array.isArray((locationsRes as any).content) 
+					? (locationsRes as any).content 
+					: Array.isArray(locationsRes) ? locationsRes : []
+				const clubsContent = (clubsRes as any) && Array.isArray((clubsRes as any).content) 
+					? (clubsRes as any).content 
+					: Array.isArray(clubsRes) ? clubsRes : []
+				
 				if (mounted) {
+					console.log("📝 Setting state with data:", { eventsContent, locationsContent, clubsContent })
 					setEvents(eventsContent)
 					setLocations(locationsContent)
 					setClubs(clubsContent)
 				}
 			} catch (err: any) {
-				console.error(err)
+				console.error("❌ Error in events-req page:", err)
 				if (mounted) setError(err?.message || "Failed to fetch events or locations")
 			} finally {
 				if (mounted) setLoading(false)

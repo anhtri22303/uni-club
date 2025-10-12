@@ -46,7 +46,7 @@ export default function ClubLeaderMembersPage() {
       setMembersLoading(true)
       setMembersError(null)
       try {
-        const data = await membershipApi.getMyClubMembers()
+        const data = await membershipApi.getClubMembers()
         if (!mounted) return
         setApiMembers(data)
       } catch (err: any) {

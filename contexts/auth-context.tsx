@@ -184,6 +184,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       "uniclub-auth",
       "jwtToken",
       "clubly-membership-applications",
+      "clubly-events",
+      "clubly-clubs",
+      "clubly-users",
       // Session Storage keys
       "intendedPath",
     ];
