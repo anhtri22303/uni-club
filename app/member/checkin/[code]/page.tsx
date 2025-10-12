@@ -58,61 +58,76 @@ export default function MemberCheckinByCodePage() {
   return (
     <ProtectedRoute allowedRoles={["member"]}>
       <AppShell>
-        <div className="space-y-4 sm:space-y-6">
-          <div className="space-y-1 sm:space-y-2">
-            <h1 className="text-2xl sm:text-3xl font-bold text-balance leading-tight">Event Check-in</h1>
-            <p className="text-sm sm:text-base text-muted-foreground">Check in to events</p>
-          </div>
+        <div className="flex flex-col items-center justify-center min-h-[70vh] px-2">
+          <div className="w-full max-w-md">
+            <h1 className="text-3xl font-extrabold text-center mb-2 text-primary">Event Check-in</h1>
+            <p className="text-base text-center text-muted-foreground mb-6">Xác nhận tham gia sự kiện bằng mã QR</p>
 
-          {tokenState && !tokenState.valid && (
-            <div className="p-3 rounded-md bg-red-50 text-red-700">This QR code is invalid or expired. Please request a new QR from the event organizer.</div>
-          )}
+            {tokenState && !tokenState.valid && (
+              <div className="p-4 rounded-lg bg-red-50 text-red-700 text-center shadow mb-4 border border-red-200">
+                Mã QR không hợp lệ hoặc đã hết hạn.<br />Vui lòng liên hệ ban tổ chức để nhận mã mới.
+              </div>
+            )}
 
-          {/* Event details and check-in */}
-          {tokenState && tokenState.valid ? (
-            eventData ? (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">{eventData.name || eventData.title}</CardTitle>
-                  <CardDescription>{eventData.description}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                      <Calendar className="h-4 w-4" />
-                      <span>{new Date(eventData.date).toLocaleDateString()} • {eventData.time}</span>
+            {/* Event details and check-in */}
+            {tokenState && tokenState.valid ? (
+              eventData ? (
+                <Card className="shadow-lg border border-gray-200">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-2xl font-bold text-primary text-center mb-1">
+                      {eventData.name || eventData.title}
+                    </CardTitle>
+                    {eventData.description && (
+                      <CardDescription className="text-center text-muted-foreground mb-2">
+                        {eventData.description}
+                      </CardDescription>
+                    )}
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 gap-3 mb-6">
+                      <div className="flex items-center gap-2 text-base">
+                        <Calendar className="h-5 w-5 text-primary" />
+                        <span className="font-medium">{new Date(eventData.date).toLocaleDateString()} <span className="mx-1">|</span> {eventData.time}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-base">
+                        <MapPin className="h-5 w-5 text-primary" />
+                        <span className="font-medium">{eventData.locationId ? `Phòng ${eventData.locationId}` : eventData.location || 'Địa điểm sự kiện'}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-base">
+                        <Trophy className="h-5 w-5 text-yellow-500" />
+                        <span className="font-medium">{eventData.points ?? 0} điểm thưởng</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                      <MapPin className="h-4 w-4" />
-                      <span>{eventData.locationId ? `Room ${eventData.locationId}` : eventData.location || 'Event location'}</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                      <Trophy className="h-4 w-4" />
-                      <span>{eventData.points ?? eventData.points ?? 0} points</span>
-                    </div>
-                  </div>
-
-                  <div className="mt-4">
-                    <Button onClick={() => handleCheckin({ id: eventData.id, points: eventData.points ?? 0 })}>
-                      <CheckCircle className="h-4 w-4 mr-2" /> Check In
+                    <Button
+                      size="lg"
+                      className="w-full py-6 text-lg font-semibold flex items-center justify-center gap-2 bg-gradient-to-r from-primary to-blue-500 hover:from-blue-500 hover:to-primary transition"
+                      onClick={() => handleCheckin({ id: eventData.id, points: eventData.points ?? 0 })}
+                    >
+                      <CheckCircle className="h-6 w-6 mr-2" /> Check In
                     </Button>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card className="shadow border border-gray-200">
+                  <CardContent>
+                    <div className="flex flex-col items-center py-8">
+                      <Clock className="h-8 w-8 text-muted-foreground mb-2 animate-pulse" />
+                      <p className="text-muted-foreground text-center">Đang tải thông tin sự kiện...</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            ) : (
+              <Card className="shadow border border-gray-200">
+                <CardContent>
+                  <div className="flex flex-col items-center py-8">
+                    <Clock className="h-8 w-8 text-muted-foreground mb-2 animate-pulse" />
+                    <p className="text-muted-foreground text-center">Vui lòng quét mã QR hợp lệ để hiển thị thông tin sự kiện.</p>
                   </div>
                 </CardContent>
               </Card>
-            ) : (
-              <Card>
-                <CardContent>
-                  <p className="text-muted-foreground">Fetching event information...</p>
-                </CardContent>
-              </Card>
-            )
-          ) : (
-            <Card>
-              <CardContent>
-                <p className="text-muted-foreground">Waiting for a valid QR code...</p>
-              </CardContent>
-            </Card>
-          )}
+            )}
+          </div>
         </div>
       </AppShell>
     </ProtectedRoute>

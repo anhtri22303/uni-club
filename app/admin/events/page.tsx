@@ -14,7 +14,7 @@ import { Modal } from "@/components/modal"
 import { QRModal } from "@/components/qr-modal"
 import { useToast } from "@/hooks/use-toast"
 import { usePagination } from "@/hooks/use-pagination"
-import { Calendar, Plus, Edit, MapPin, Trophy, ChevronLeft, ChevronRight, Filter, X, Eye, Maximize2, Minimize2, Copy, Download, RotateCcw, Monitor, Smartphone } from "lucide-react"
+import { Calendar, Plus, Edit, MapPin, Trophy, ChevronLeft, ChevronRight, Filter, X, Eye } from "lucide-react"
 import { QrCode } from "lucide-react"
 import QRCode from "qrcode"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -22,14 +22,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import clubs from "@/src/data/clubs.json"
 import { fetchEvent } from "@/service/eventApi"
 import { createEvent, getEventById } from "@/service/eventApi"
-import { safeLocalStorage } from "@/lib/browser-utils"
 
-export default function ClubLeaderEventsPage() {
+export default function AdminEventsPage() {
   const router = useRouter()
   const [events, setEvents] = useState<any[]>([])
-  const [userClubId, setUserClubId] = useState<number | null>(null)
   const { toast } = useToast()
-  
+
   // Add fullscreen and environment states
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [activeEnvironment, setActiveEnvironment] = useState<'local' | 'prod'>('prod')
@@ -60,42 +58,17 @@ export default function ClubLeaderEventsPage() {
     })
   }
 
-  // Get clubId from localStorage
-  useEffect(() => {
-    try {
-      const saved = safeLocalStorage.getItem("uniclub-auth")
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        if (parsed.clubId) {
-          setUserClubId(Number(parsed.clubId))
-        }
-      }
-    } catch (error) {
-      console.error("Failed to get clubId from localStorage:", error)
-    }
-  }, [])
-
-  // Load events from API on mount
   useEffect(() => {
     let mounted = true
     const load = async () => {
       try {
         const data: any = await fetchEvent()
         if (!mounted) return
-        
-        // API should return an array; guard defensively
-        const raw: any[] = Array.isArray(data) ? data : (data?.content ?? data?.events ?? [])
-        // Normalize shape: some APIs use `name` instead of `title`.
+        const raw: any[] = Array.isArray(data) ? data : (data?.events ?? [])
         const normalized = raw.map((e: any) => ({ ...e, title: e.title ?? e.name }))
         
-        // Filter events by user's clubId if available
-        let filteredByClub = normalized
-        if (userClubId !== null) {
-          filteredByClub = normalized.filter((e: any) => Number(e.clubId) === userClubId)
-        }
-        
         // Sort events by date first, then by time if same date
-        const sorted = sortEventsByDateTime(filteredByClub)
+        const sorted = sortEventsByDateTime(normalized)
         
         setEvents(sorted)
       } catch (error) {
@@ -103,13 +76,9 @@ export default function ClubLeaderEventsPage() {
         toast({ title: "Error fetching events", description: "Could not load events from server.", variant: "destructive" })
       }
     }
-
-    // Only load events if we have tried to get clubId (including null case)
-    if (userClubId !== null || userClubId === null) {
-      load()
-    }
+    load()
     return () => { mounted = false }
-  }, [userClubId, toast])
+  }, [])
 
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
@@ -121,62 +90,46 @@ export default function ClubLeaderEventsPage() {
   const [visibleIndex, setVisibleIndex] = useState(0)
   const [displayedIndex, setDisplayedIndex] = useState(0)
   const [isFading, setIsFading] = useState(false)
-  // show each QR visual for 30 seconds
   const ROTATION_INTERVAL_MS = 30 * 1000
   const VARIANTS = 3
-
   const [countdown, setCountdown] = useState(() => Math.floor(ROTATION_INTERVAL_MS / 1000))
 
-  // rotate QR image index while modal open and maintain a countdown (seconds)
   useEffect(() => {
     if (!showQrModal) {
-      // reset countdown when modal closed
       setCountdown(Math.floor(ROTATION_INTERVAL_MS / 1000))
       setDisplayedIndex(0)
       setIsFading(false)
       return
     }
-
-    // start with full countdown when modal opens
     setCountdown(Math.floor(ROTATION_INTERVAL_MS / 1000))
-
     const rotId = setInterval(() => {
       setVisibleIndex((i) => i + 1)
-      // reset countdown when rotation happens
       setCountdown(Math.floor(ROTATION_INTERVAL_MS / 1000))
     }, ROTATION_INTERVAL_MS)
-
     const cntId = setInterval(() => {
       setCountdown((s) => (s <= 1 ? Math.floor(ROTATION_INTERVAL_MS / 1000) : s - 1))
     }, 1000)
-
     return () => {
       clearInterval(rotId)
       clearInterval(cntId)
     }
   }, [showQrModal])
 
-  // handle fade animation when visibleIndex changes
   useEffect(() => {
     if (!showQrModal) return
-    // start fade-out
     setIsFading(true)
     const t = setTimeout(() => {
       setDisplayedIndex(visibleIndex)
-      // fade-in
-      setIsFading(false)
-    }, 300) // 300ms fade duration
-
+      setIsFading(false
+      )
+    }, 300)
     return () => clearTimeout(t)
   }, [visibleIndex, showQrModal])
 
-  // Find managed club based on userClubId or fallback to first club
-  const managedClub = userClubId 
-    ? clubs.find(club => Number(club.id) === userClubId) || clubs[0] 
-    : clubs[0]
-
+  // For admin, show all clubs
+  const managedClub = clubs[0]
   const [formData, setFormData] = useState({
-    clubId: userClubId || managedClub.id,
+    clubId: managedClub.id,
     name: "",
     description: "",
     type: "PUBLIC",
@@ -185,48 +138,33 @@ export default function ClubLeaderEventsPage() {
     locationId: 0,
   })
 
-  // Update formData clubId when userClubId changes
-  useEffect(() => {
-    if (userClubId !== null) {
-      setFormData(prev => ({ ...prev, clubId: userClubId }))
-    }
-  }, [userClubId])
-
-  // Events are already filtered by clubId in the load effect, so use them directly
+  // Admin sees all events
   const effectiveEvents = events
 
-  // Filters (DataTable-style)
   const [searchTerm, setSearchTerm] = useState("")
   const [activeFilters, setActiveFilters] = useState<Record<string, any>>({})
   const [showFilters, setShowFilters] = useState(false)
 
   const filteredEvents = effectiveEvents.filter((item) => {
-    // search by title/name
     if (searchTerm) {
       const v = String(item.title || item.name || "").toLowerCase()
       if (!v.includes(searchTerm.toLowerCase())) return false
     }
-
-    // type filter
     const typeFilter = activeFilters["type"]
     if (typeFilter && typeFilter !== "all") {
       if (String(item.type || "").toUpperCase() !== String(typeFilter).toUpperCase()) return false
     }
-
-    // club filter
     const clubFilter = activeFilters["club"]
     if (clubFilter && clubFilter !== "all") {
       if (String(item.clubId) !== String(clubFilter)) return false
     }
-
-    // date exact match (can be extended to ranges)
     const dateFilter = activeFilters["date"]
     if (dateFilter) {
       const it = new Date(item.date).toDateString()
       const df = new Date(dateFilter).toDateString()
       if (it !== df) return false
     }
-
+    
     // status filter
     const statusFilter = activeFilters["status"]
     if (statusFilter && statusFilter !== "all") {
@@ -243,34 +181,26 @@ export default function ClubLeaderEventsPage() {
     return true
   })
 
-  // Pagination (use filtered events)
   const { currentPage, totalPages, paginatedData: paginatedEvents, setCurrentPage } = usePagination({ data: filteredEvents, initialPageSize: 6 })
-
   const goPrev = () => setCurrentPage(Math.max(1, currentPage - 1))
   const goNext = () => setCurrentPage(Math.min(totalPages, currentPage + 1))
-
   const handleFilterChange = (filterKey: string, value: any) => {
     setActiveFilters((prev) => ({ ...prev, [filterKey]: value }))
     setCurrentPage(1)
   }
-
   const clearFilters = () => {
     setActiveFilters({})
     setSearchTerm("")
     setCurrentPage(1)
   }
-
   const hasActiveFilters = Object.values(activeFilters).some((v) => v && v !== "all") || Boolean(searchTerm)
-
-  const resetForm = () => setFormData({ clubId: userClubId || managedClub.id, name: "", description: "", type: "PUBLIC", date: "", time: "13:30", locationId: 0 })
+  const resetForm = () => setFormData({ clubId: managedClub.id, name: "", description: "", type: "PUBLIC", date: "", time: "13:30", locationId: 0 })
 
   const handleCreate = async () => {
-    // validate required
     if (!formData.name || !formData.date) {
       toast({ title: "Missing Information", description: "Please fill in all required fields", variant: "destructive" })
       return
     }
-
     try {
       const clubId = String(formData.clubId).match(/^\d+$/) ? Number(formData.clubId) : formData.clubId
       const payload = {
@@ -282,11 +212,9 @@ export default function ClubLeaderEventsPage() {
         time: formData.time,
         locationId: formData.locationId,
       }
-
       const res: any = await createEvent(payload)
       if (res && res.success) {
         toast({ title: "Event Created", description: res.message || "Event created successfully" })
-        // close modal and reload to refresh data from API
         setShowCreateModal(false)
         window.location.reload()
       } else {
@@ -301,7 +229,7 @@ export default function ClubLeaderEventsPage() {
   const handleEdit = (event: any) => {
     setSelectedEvent(event)
     setFormData({
-      clubId: event.clubId ?? userClubId ?? managedClub.id,
+      clubId: event.clubId ?? managedClub.id,
       name: event.name ?? event.title ?? "",
       description: event.description ?? "",
       type: event.type ?? "PUBLIC",
@@ -375,23 +303,20 @@ export default function ClubLeaderEventsPage() {
   }
 
   return (
-    <ProtectedRoute allowedRoles={["club_leader"]}>
+    <ProtectedRoute allowedRoles={["admin"]}>
       <AppShell>
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold">Events</h1>
-              <p className="text-muted-foreground">
-                Manage {managedClub ? managedClub.name : 'Club'} events
-                {userClubId && <span className="text-xs text-muted-foreground/70 ml-2">(Club ID: {userClubId})</span>}
-              </p>
+              <p className="text-muted-foreground">Admin: Manage all club events and activities</p>
             </div>
             <Button onClick={() => setShowCreateModal(true)}>
               <Plus className="h-4 w-4 mr-2" /> Create Event
             </Button>
           </div>
 
-          {/* Search + Filters (DataTable-style) */}
+          {/* Search + Filters */}
           <div className="space-y-3">
             <div className="flex items-center gap-3">
               <Input
@@ -400,7 +325,6 @@ export default function ClubLeaderEventsPage() {
                 onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1) }}
                 className="max-w-sm"
               />
-
               <Button variant="outline" size="sm" onClick={() => setShowFilters(!showFilters)} className="flex items-center gap-2">
                 <Filter className="h-4 w-4" />
                 Filters
@@ -411,7 +335,6 @@ export default function ClubLeaderEventsPage() {
                 )}
               </Button>
             </div>
-
             {showFilters && (
               <div className="space-y-3 p-4 border rounded-lg bg-muted/50">
                 <div className="flex items-center justify-between">
@@ -423,7 +346,6 @@ export default function ClubLeaderEventsPage() {
                     </Button>
                   )}
                 </div>
-
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-muted-foreground">Type</label>
@@ -438,12 +360,10 @@ export default function ClubLeaderEventsPage() {
                       </SelectContent>
                     </Select>
                   </div>
-
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-muted-foreground">Date</label>
                     <Input type="date" value={activeFilters["date"] || ""} onChange={(e) => handleFilterChange("date", e.target.value)} className="h-8 text-xs" />
                   </div>
-
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-muted-foreground">Club</label>
                     <Select value={activeFilters["club"] || "all"} onValueChange={(v) => handleFilterChange("club", v)}>
@@ -458,7 +378,6 @@ export default function ClubLeaderEventsPage() {
                       </SelectContent>
                     </Select>
                   </div>
-
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-muted-foreground">Status</label>
                     <Select value={activeFilters["status"] || "all"} onValueChange={(v) => handleFilterChange("status", v)}>
@@ -473,8 +392,6 @@ export default function ClubLeaderEventsPage() {
                       </SelectContent>
                     </Select>
                   </div>
-
-                  {/* New approval status filter */}
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-muted-foreground">Approval</label>
                     <Select value={activeFilters["approval"] || "all"} onValueChange={(v) => handleFilterChange("approval", v)}>
@@ -578,14 +495,12 @@ export default function ClubLeaderEventsPage() {
                               day: "numeric",
                             })}
                           </div>
-
                           {event.location && (
                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
                               <MapPin className="h-4 w-4" />
                               {event.location}
                             </div>
                           )}
-
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <Trophy className="h-4 w-4" />
                             {event.points} loyalty points
@@ -595,7 +510,7 @@ export default function ClubLeaderEventsPage() {
                         {/* Buttons section - pushed to bottom */}
                         <div className="mt-auto pt-4 space-y-3">
                           <div className="grid grid-cols-2 gap-2">
-                            <Button variant="outline" onClick={() => router.push(`/club-leader/events/${event.id}`)}>
+                            <Button variant="outline" onClick={() => router.push(`/admin/events/${event.id}`)}>
                               <Eye className="h-4 w-4 mr-2" />
                               View Detail
                             </Button>
@@ -604,80 +519,76 @@ export default function ClubLeaderEventsPage() {
                               Edit Event
                             </Button>
                           </div>
-                          {/* QR Code Section - Only show if APPROVED */}
-                          {event.status === "APPROVED" && (
-                            <div className="mt-3 pt-3 border-t border-muted">
-                              <Button
-                                variant="default"
-                                size="sm"
-                                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium"
-                                onClick={async () => {
-                                  setSelectedEvent(event);
+                          {/* QR Code Section */}
+                          <div className="mt-3 pt-3 border-t border-muted">
+                            <Button
+                              variant="default"
+                              size="sm"
+                              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium"
+                              onClick={async () => {
+                                setSelectedEvent(event);
+                                try {
+                                  let code: string | null = null;
                                   try {
-                                    let code: string | null = null;
-                                    try {
-                                      const serverEvent = await getEventById(String(event.id));
-                                      if (serverEvent) {
-                                        if (!serverEvent.checkInCode) {
-                                          toast({ title: 'No check-in code', description: 'This event has not been assigned a persistent check-in code. Please contact the organizer.', variant: 'destructive' });
-                                          return;
-                                        }
-                                        code = String(serverEvent.checkInCode);
+                                    const serverEvent = await getEventById(String(event.id));
+                                    if (serverEvent) {
+                                      if (!serverEvent.checkInCode) {
+                                        toast({ title: 'No check-in code', description: 'This event has not been assigned a persistent check-in code. Please contact the organizer.', variant: 'destructive' });
+                                        return;
                                       }
-                                    } catch (e) {}
-                                    if (!code) {
-                                      const tokenResp = await fetch('/api/checkin/token', {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({ eventId: String(event.id) }),
-                                      });
-                                      const tokenJson = await tokenResp.json();
-                                      if (!tokenJson?.success) throw new Error('Token mint failed');
-                                      code = tokenJson.token;
+                                      code = String(serverEvent.checkInCode);
                                     }
-                                    const localUrl = `http://localhost:3000/member/checkin/${encodeURIComponent(String(code))}`;
-                                    const prodUrl = `https://uniclub-fpt.vercel.app/member/checkin/${encodeURIComponent(String(code))}`;
-                                    const styleVariants = [
-                                      { color: { dark: '#000000', light: '#FFFFFF' }, margin: 1 },
-                                      { color: { dark: '#111111', light: '#FFFFFF' }, margin: 2 },
-                                      { color: { dark: '#222222', light: '#FFFFFF' }, margin: 0 },
-                                    ];
-                                    const localVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
-                                      const opts = styleVariants[i % styleVariants.length];
-                                      return QRCode.toDataURL(localUrl, opts as any);
+                                  } catch (e) {}
+                                  if (!code) {
+                                    const tokenResp = await fetch('/api/checkin/token', {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ eventId: String(event.id) }),
                                     });
-                                    const prodVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
-                                      const opts = styleVariants[i % styleVariants.length];
-                                      return QRCode.toDataURL(prodUrl, opts as any);
-                                    });
-                                    const [localVariants, prodVariants] = await Promise.all([
-                                      Promise.all(localVariantsPromises),
-                                      Promise.all(prodVariantsPromises),
-                                    ]);
-                                    setQrRotations({ local: localVariants, prod: prodVariants });
-                                    setQrLinks({ local: localUrl, prod: prodUrl });
-                                    setVisibleIndex(0);
-                                    setDisplayedIndex(0);
-                                    setShowQrModal(true);
-                                  } catch (err) {
-                                    console.error('Failed to generate QR', err);
-                                    toast({ title: 'QR Error', description: 'Could not generate QR code', variant: 'destructive' });
+                                    const tokenJson = await tokenResp.json();
+                                    if (!tokenJson?.success) throw new Error('Token mint failed');
+                                    code = tokenJson.token;
                                   }
-                                }}
-                              >
-                                <QrCode className="h-4 w-4 mr-2" />
-                                Generate QR Code
-                              </Button>
-                            </div>
-                          )}
+                                  const localUrl = `http://localhost:3000/member/checkin/${encodeURIComponent(String(code))}`;
+                                  const prodUrl = `https://uniclub-fpt.vercel.app/member/checkin/${encodeURIComponent(String(code))}`;
+                                  const styleVariants = [
+                                    { color: { dark: '#000000', light: '#FFFFFF' }, margin: 1 },
+                                    { color: { dark: '#111111', light: '#FFFFFF' }, margin: 2 },
+                                    { color: { dark: '#222222', light: '#FFFFFF' }, margin: 0 },
+                                  ];
+                                  const localVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
+                                    const opts = styleVariants[i % styleVariants.length];
+                                    return QRCode.toDataURL(localUrl, opts as any);
+                                  });
+                                  const prodVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
+                                    const opts = styleVariants[i % styleVariants.length];
+                                    return QRCode.toDataURL(prodUrl, opts as any);
+                                  });
+                                  const [localVariants, prodVariants] = await Promise.all([
+                                    Promise.all(localVariantsPromises),
+                                    Promise.all(prodVariantsPromises),
+                                  ]);
+                                  setQrRotations({ local: localVariants, prod: prodVariants });
+                                  setQrLinks({ local: localUrl, prod: prodUrl });
+                                  setVisibleIndex(0);
+                                  setDisplayedIndex(0);
+                                  setShowQrModal(true);
+                                } catch (err) {
+                                  console.error('Failed to generate QR', err);
+                                  toast({ title: 'QR Error', description: 'Could not generate QR code', variant: 'destructive' });
+                                }
+                              }}
+                            >
+                              <QrCode className="h-4 w-4 mr-2" />
+                              Generate QR Code
+                            </Button>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
                   )
                 })}
               </div>
-
-              {/* Minimal Pager */}
               {totalPages > 1 && (
                 <div className="flex items-center justify-center gap-3 mt-6">
                   <Button
@@ -690,9 +601,7 @@ export default function ClubLeaderEventsPage() {
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
-
                   <div className="min-w-[2rem] text-center text-sm font-medium">{currentPage}</div>
-
                   <Button
                     aria-label="Next page"
                     variant="outline"
@@ -725,7 +634,6 @@ export default function ClubLeaderEventsPage() {
                   placeholder="Enter event name"
                 />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
                 <Textarea
@@ -736,7 +644,6 @@ export default function ClubLeaderEventsPage() {
                   rows={3}
                 />
               </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="date">Date *</Label>
@@ -747,7 +654,6 @@ export default function ClubLeaderEventsPage() {
                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                   />
                 </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="time">Time</Label>
                   <Input
@@ -758,7 +664,6 @@ export default function ClubLeaderEventsPage() {
                   />
                 </div>
               </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="type">Type</Label>
@@ -768,7 +673,6 @@ export default function ClubLeaderEventsPage() {
                     onChange={(e) => setFormData({ ...formData, type: e.target.value })}
                   />
                 </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="locationId">Location ID</Label>
                   <Input
@@ -779,7 +683,6 @@ export default function ClubLeaderEventsPage() {
                   />
                 </div>
               </div>
-
               <div className="flex gap-2 justify-end">
                 <Button variant="outline" onClick={() => setShowCreateModal(false)}>
                   Cancel

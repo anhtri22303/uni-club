@@ -6,6 +6,10 @@ import { StatsCard } from "@/components/stats-card"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useData } from "@/contexts/data-context"
 import { Gift, TrendingUp, CheckCircle, Clock } from "lucide-react"
+import { fetchEvent } from "@/service/eventApi"
+import { fetchClub } from "@/service/clubApi"
+import { fetchUser } from "@/service/userApi"
+import { useEffect } from "react"
 
 // Removed static `src/data` imports — use empty fallbacks. Replace with real data from API/context later.
 const offers: any[] = []
@@ -13,7 +17,36 @@ const redemptions: any[] = []
 const users: any[] = []
 
 export default function PartnerDashboard() {
-  const { vouchers } = useData()
+  const { vouchers, events, clubs, users, updateEvents, updateClubs, updateUsers } = useData()
+
+  // Fetch events, clubs and users when component mounts
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        // Fetch events
+        const eventData = await fetchEvent()
+        updateEvents(eventData || [])
+        
+        // Fetch clubs
+        const clubData: any = await fetchClub()
+        // Handle paginated response from API
+        if (clubData && Array.isArray(clubData)) {
+          updateClubs(clubData)
+        } else if (clubData && clubData.content && Array.isArray(clubData.content)) {
+          updateClubs(clubData.content)
+        } else {
+          updateClubs([])
+        }
+
+        // Fetch users
+        const userData = await fetchUser()
+        updateUsers(userData || [])
+      } catch (error) {
+        console.error("Failed to fetch data:", error)
+      }
+    }
+    loadData()
+  }, [updateEvents, updateClubs, updateUsers])
 
   // For demo purposes, assume this admin manages CoffeeLab offers
   const partnerName = "CoffeeLab"
@@ -28,9 +61,10 @@ export default function PartnerDashboard() {
     return offer?.partner === partnerName
   })
 
-  const totalOffers = partnerOffers.length
+  const totalClubs = clubs.length
+  const totalEvents = events.length
+  const totalUsers = users.length
   const totalRedemptions = partnerRedemptions.length + partnerVouchers.length
-  const usedVouchers = partnerVouchers.filter((v) => v.used).length + partnerRedemptions.length
   const activeVouchers = partnerVouchers.filter((v) => !v.used).length
 
   // Recent activity (combine redemptions and vouchers)
@@ -50,24 +84,24 @@ export default function PartnerDashboard() {
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <StatsCard
-              title="Total Offers"
-              value={totalOffers}
-              description="Active offers"
+              title="Total Clubs"
+              value={totalClubs}
+              description="Active clubs"
               icon={Gift}
               variant="primary"
             />
             <StatsCard
-              title="Total Redemptions"
-              value={totalRedemptions}
-              description="All time"
+              title="Total Events"
+              value={totalEvents}
+              description="All events"
               icon={TrendingUp}
               trend={{ value: 12, label: "from last month" }}
               variant="success"
             />
             <StatsCard
-              title="Used Vouchers"
-              value={usedVouchers}
-              description="Completed transactions"
+              title="Total Users"
+              value={totalUsers}
+              description="Registered users"
               icon={CheckCircle}
               variant="info"
             />
@@ -159,8 +193,8 @@ export default function PartnerDashboard() {
             <CardContent>
               <div className="grid gap-4 md:grid-cols-4">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-primary">{totalOffers}</div>
-                  <div className="text-sm text-muted-foreground">Total Offers</div>
+                  <div className="text-2xl font-bold text-primary">{totalClubs}</div>
+                  <div className="text-sm text-muted-foreground">Total Clubs</div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-green-600">{totalRedemptions}</div>
@@ -168,15 +202,15 @@ export default function PartnerDashboard() {
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-blue-600">
-                    {partnerOffers.length > 0 ? Math.round(totalRedemptions / partnerOffers.length) : 0}
+                    {totalEvents}
                   </div>
-                  <div className="text-sm text-muted-foreground">Avg per Offer</div>
+                  <div className="text-sm text-muted-foreground">Total Events</div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-orange-600">
-                    {totalRedemptions > 0 ? Math.round((usedVouchers / totalRedemptions) * 100) : 0}%
+                    {totalUsers}
                   </div>
-                  <div className="text-sm text-muted-foreground">Completion Rate</div>
+                  <div className="text-sm text-muted-foreground">Total Users</div>
                 </div>
               </div>
             </CardContent>

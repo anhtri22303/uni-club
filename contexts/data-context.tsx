@@ -21,6 +21,12 @@ interface DataContextType {
   clubGiftProducts: any[]
   shopProducts: any[]
   userBalances: any[]
+  events: any[]
+  clubs: any[]
+  users: any[]
+  policies: any[]
+  clubApplications: any[]
+  eventRequests: any[]
   updateClubMemberships: (data: any[]) => void
   updateMembershipApplications: (data: any[]) => void
   updateVouchers: (data: any[]) => void
@@ -28,6 +34,12 @@ interface DataContextType {
   updateClubGiftProducts: (data: any[]) => void
   updateShopProducts: (data: any[]) => void
   updateUserBalances: (data: any[]) => void
+  updateEvents: (data: any[]) => void
+  updateClubs: (data: any[]) => void
+  updateUsers: (data: any[]) => void
+  updatePolicies: (data: any[]) => void
+  updateClubApplications: (data: any[]) => void
+  updateEventRequests: (data: any[]) => void
   addMembershipApplication: (application: any) => void
   addVoucher: (voucher: any) => void
   addStaffHistoryEntry: (entry: any) => void
@@ -48,6 +60,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     initialMembershipApplications,
   )
   const [vouchers, setVouchers] = useLocalStorage("clubly-vouchers", initialVouchers)
+  const [events, setEvents] = useLocalStorage("clubly-events", [] as any[])
+  const [clubs, setClubs] = useLocalStorage("clubly-clubs", [] as any[])
+  const [users, setUsers] = useLocalStorage("clubly-users", [] as any[])
+  const [policies, setPolicies] = useLocalStorage("clubly-policies", [] as any[])
+  const [clubApplications, setClubApplications] = useLocalStorage("clubly-club-applications", [] as any[])
+  const [eventRequests, setEventRequests] = useLocalStorage("clubly-event-requests", [] as any[])
   const [staffHistory, setStaffHistory] = useLocalStorage("clubly-staff-history", initialStaffHistory)
   const [clubGiftProducts, setClubGiftProducts] = useLocalStorage("clubly-club-gift-products", initialClubGiftProducts)
   const [shopProducts, setShopProducts] = useLocalStorage("clubly-shop-products", initialShopProducts)
@@ -133,6 +151,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         clubGiftProducts,
         shopProducts,
         userBalances,
+        events,
+        clubs,
+        users,
+        policies,
+        clubApplications,
+        eventRequests,
         updateClubMemberships: setClubMemberships,
         updateMembershipApplications: setMembershipApplications,
         updateVouchers: setVouchers,
@@ -140,6 +164,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         updateClubGiftProducts: setClubGiftProducts,
         updateShopProducts: setShopProducts,
         updateUserBalances: setUserBalances,
+        updateEvents: setEvents,
+        updateClubs: setClubs,
+        updateUsers: setUsers,
+        updatePolicies: setPolicies,
+        updateClubApplications: setClubApplications,
+        updateEventRequests: setEventRequests,
   addMembershipApplication,
   removeMembershipApplication,
   replaceMembershipApplication,

@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Users, UserPlus } from "lucide-react"
 import { fetchClub } from "@/service/clubApi"
 import { postMemAppli } from "@/service/memberApplicationApi"
+import { safeLocalStorage } from "@/lib/browser-utils"
 
 // We'll fetch clubs from the backend and only use the `content` array.
 type ClubApiItem = {
@@ -39,10 +40,42 @@ export default function MemberClubsPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pendingClubIds, setPendingClubIds] = useState<string[]>([])
+  const [userClubIds, setUserClubIds] = useState<number[]>([])
+  const [userClubId, setUserClubId] = useState<number | null>(null) // Keep for backward compatibility
 
   // Get user's current memberships and applications
   const userMemberships = clubMemberships.filter((m) => m.userId === auth.userId)
   const userApplications = membershipApplications.filter((a) => a.userId === auth.userId)
+
+  // Get user's club IDs from localStorage
+  useEffect(() => {
+    try {
+      const saved = safeLocalStorage.getItem("uniclub-auth")
+      console.log("Raw localStorage data:", saved)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        console.log("Parsed localStorage data:", parsed)
+        
+        // Check for clubIds array first, then fallback to single clubId
+        if (parsed.clubIds && Array.isArray(parsed.clubIds)) {
+          const clubIdNumbers = parsed.clubIds.map((id: any) => Number(id)).filter((id: number) => !isNaN(id))
+          console.log("Setting userClubIds from clubIds array to:", clubIdNumbers)
+          setUserClubIds(clubIdNumbers)
+          // Set the first club as primary for backward compatibility
+          if (clubIdNumbers.length > 0) {
+            setUserClubId(clubIdNumbers[0])
+          }
+        } else if (parsed.clubId) {
+          const clubIdNumber = Number(parsed.clubId)
+          console.log("Setting userClubId from single clubId to:", clubIdNumber)
+          setUserClubId(clubIdNumber)
+          setUserClubIds([clubIdNumber])
+        }
+      }
+    } catch (error) {
+      console.error("Failed to get clubId from localStorage:", error)
+    }
+  }, [])
 
   const categoryColors: Record<string, string> = {
     "Software Engineering": "#0052CC",
@@ -71,19 +104,31 @@ export default function MemberClubsPage() {
     return "none"
   }
 
-  // Map API items to table rows. Note: API `id` is numeric.
-  const enhancedClubs = clubs.map((club) => ({
-    id: String(club.id),
-    name: club.name,
-    category: club.majorName ?? (club as any).major?.name ?? (club as any).major?.majorName ?? "",
-    description: club.description,
-    members: 0,
-    founded: 0,
-    location: "",
-    policy: club.majorPolicyName ?? "",
-    status: getClubStatus(String(club.id)),
-    actions: undefined,
-  }))
+  // Map API items to table rows and filter out user's current clubs
+  console.log("Total clubs before filter:", clubs.length, "userClubIds:", userClubIds)
+  const enhancedClubs = clubs
+    .filter((club) => {
+      // Hide clubs that user is already a member of
+      const clubIdNumber = Number(club.id)
+      if (userClubIds.length > 0 && userClubIds.includes(clubIdNumber)) {
+        console.log(`Hiding club ${club.name} (ID: ${club.id}) - user is member of this club`)
+        return false
+      }
+      return true
+    })
+    .map((club) => ({
+      id: String(club.id),
+      name: club.name,
+      category: club.majorName ?? (club as any).major?.name ?? (club as any).major?.majorName ?? "",
+      description: club.description,
+      members: 0,
+      founded: 0,
+      location: "",
+      policy: club.majorPolicyName ?? "",
+      status: getClubStatus(String(club.id)),
+      actions: undefined,
+    }))
+  console.log("Enhanced clubs after filter:", enhancedClubs.length)
 
   const getMajorVariant = (major?: string) => {
     if (!major) return "outline"
@@ -374,15 +419,8 @@ export default function MemberClubsPage() {
       label: "Actions",
       render: (_: any, club: any) => {
         const status = getClubStatus(club.id)
-        // Members are read-only: disable interactive apply actions (match student page behavior)
-        if (auth.role === "member") {
-          return (
-            <Button size="sm" variant="outline" disabled>
-              {status === "member" ? "Joined" : status === "pending" ? "Applied" : "Restricted"}
-            </Button>
-          )
-        }
-
+        
+        // Allow members to apply to clubs (except their current club which is already filtered out)
         return (
           <Button
             size="sm"
@@ -406,15 +444,20 @@ export default function MemberClubsPage() {
     },
   ]
 
-  const isMember = auth.role === "member"
-
   return (
     <ProtectedRoute allowedRoles={["member"]}>
       <AppShell>
         <div className="space-y-6">
           <div>
             <h1 className="text-3xl font-bold">Club Directory</h1>
-            <p className="text-muted-foreground">Discover clubs. Member accounts have read-only access here; to join a club, contact the club leader or admin.</p>
+            <p className="text-muted-foreground">
+              Discover and join clubs that match your interests. 
+              {userClubIds.length > 0 && (
+                <span className="text-xs text-muted-foreground/70 ml-2">
+                  (Your club{userClubIds.length > 1 ? 's' : ''} {userClubIds.join(', ')} {userClubIds.length > 1 ? 'are' : 'is'} hidden)
+                </span>
+              )}
+            </p>
           </div>
 
           {/* Thêm cấu hình phân trang giống trang Offers:
