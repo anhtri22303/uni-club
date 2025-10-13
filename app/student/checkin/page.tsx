@@ -106,7 +106,7 @@ export default function MemberCheckinPage() {
     }
 
     // Navigate to the dynamic route with the code
-    router.push(`/member/checkin/${checkInCode.trim()}`)
+    router.push(`/student/checkin/${checkInCode.trim()}`)
   }
 
   // Handle URL params: prefer ?code=... (fetch events and match by checkInCode).
@@ -124,12 +124,12 @@ export default function MemberCheckinPage() {
             setEventData(ev)
             setTokenState({ valid: true, eventId: String(ev.id) })
           } else {
-            try { window.location.href = '/member/checkin/invalid' } catch {}
+            try { window.location.href = '/student/checkin/invalid' } catch {}
             setTokenState({ valid: false, reason: 'not_found' })
           }
         } catch (err) {
           console.error('Failed to fetch event by code', err)
-          try { window.location.href = '/member/checkin/invalid' } catch {}
+          try { window.location.href = '/student/checkin/invalid' } catch {}
           setTokenState({ valid: false, reason: 'error' })
         }
       })()
@@ -153,18 +153,18 @@ export default function MemberCheckinPage() {
           setTokenState({ valid: true, eventId: json.eventId })
         } else {
           // redirect to invalid page
-          try { window.location.href = '/member/checkin/invalid' } catch {}
+          try { window.location.href = '/student/checkin/invalid' } catch {}
           setTokenState({ valid: false, reason: json.reason || json.message })
         }
       } catch (err) {
-        try { window.location.href = '/member/checkin/invalid' } catch {}
+        try { window.location.href = '/student/checkin/invalid' } catch {}
         setTokenState({ valid: false, reason: 'error' })
       }
     })()
   }, [])
 
   return (
-  <ProtectedRoute allowedRoles={["member"]}>
+  <ProtectedRoute allowedRoles={["student"]}>
       <AppShell>
         <div className="space-y-4 sm:space-y-6">
           <div className="space-y-1 sm:space-y-2">

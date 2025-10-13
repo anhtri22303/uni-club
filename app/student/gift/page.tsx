@@ -176,7 +176,7 @@ export default function MemberGiftPage() {
 	} = usePagination({ data: filteredEventProducts, initialPageSize: 3 })
 
 	return (
-		<ProtectedRoute allowedRoles={["member"]}>
+		<ProtectedRoute allowedRoles={["student"]}>
 			<AppShell>
 				<div className="space-y-6">
 					<div>

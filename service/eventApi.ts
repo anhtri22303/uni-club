@@ -79,3 +79,26 @@ export const getEventByCode = async (code: string) => {
 		throw err
 	}
 }
+
+export const getEventByClubId = async (clubId: string | number) => {
+	try {
+		const response = await axiosInstance.get(`/api/events/club/${clubId}`)
+		const resData: any = response.data
+		console.log(`Fetched events for club ${clubId}:`, resData)
+		
+		// If response is direct array of events
+		if (Array.isArray(resData)) return resData
+		
+		// If response has wrapper structure like { success, data, message }
+		if (resData?.data && Array.isArray(resData.data)) return resData.data
+		
+		// If response has content property (pagination)
+		if (resData?.content && Array.isArray(resData.content)) return resData.content
+		
+		// Fallback to empty array if no events found
+		return []
+	} catch (error) {
+		console.error(`Error fetching events for club ${clubId}:`, error)
+		throw error
+	}
+}

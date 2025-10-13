@@ -12,7 +12,7 @@ import { fetchProfile } from "@/service/userApi"
 
 function getTierInfo(points: number, role: string) {
   // Keep a minimal tier fallback for accessory data, but primary UI is points card.
-  if (role === "member") {
+  if (role === "student") {
     if (points >= 2000)
       return { tier: "Gold", color: "from-yellow-400 to-yellow-600", textColor: "text-yellow-900", icon: Trophy }
     if (points >= 1000)
@@ -99,7 +99,7 @@ export function UserProfileWidget() {
         }
 
         // Load wallet points only for eligible roles
-        if (auth.role === "club_leader" || auth.role === "member" || auth.role === "student") {
+        if (auth.role === "club_leader" || auth.role === "student") {
           const walletData: any = await getWallet()
           console.debug("UserProfileWidget.getWallet ->", walletData)
           if (!mounted) return
@@ -130,7 +130,7 @@ export function UserProfileWidget() {
   // Ẩn khi sidebar đang collapsed (desktop) hoặc đang mở Sheet (mobile)
   const isHidden = sidebarCollapsed || sidebarOpen
 
-  const shouldShowPoints = auth.role === "member" || auth.role === "club_leader" || auth.role === "student"
+  const shouldShowPoints = auth.role === "student" || auth.role === "club_leader"
   const tierInfo = getTierInfo(userPoints, auth.role)
   const TierIcon = tierInfo.icon
 

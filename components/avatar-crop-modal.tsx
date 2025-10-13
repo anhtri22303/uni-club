@@ -112,7 +112,7 @@ export function AvatarCropModal({ isOpen, onClose, imageSrc, onCropComplete }: A
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CropIcon className="h-5 w-5" />
-            Cắt ảnh đại diện
+            Crop Avatar
           </DialogTitle>
         </DialogHeader>
         
@@ -139,7 +139,7 @@ export function AvatarCropModal({ isOpen, onClose, imageSrc, onCropComplete }: A
           </div>
           
           <div className="text-sm text-muted-foreground text-center">
-            Kéo để di chuyển và thay đổi kích thước vùng cắt. Ảnh sẽ được cắt thành hình vuông cho avatar.
+            Drag to move and resize the crop area. The image will be cropped to a square for the avatar.
           </div>
           
           <div className="flex justify-end gap-3 pt-4 border-t">
@@ -149,7 +149,7 @@ export function AvatarCropModal({ isOpen, onClose, imageSrc, onCropComplete }: A
               disabled={isProcessing}
             >
               <X className="h-4 w-4 mr-2" />
-              Hủy
+              Cancel
             </Button>
             <Button
               onClick={handleCropComplete}
@@ -160,7 +160,7 @@ export function AvatarCropModal({ isOpen, onClose, imageSrc, onCropComplete }: A
               ) : (
                 <CropIcon className="h-4 w-4 mr-2" />
               )}
-              {isProcessing ? 'Đang xử lý...' : 'Cắt ảnh'}
+              {isProcessing ? 'Processing...' : 'Crop Image'}
             </Button>
           </div>
         </div>

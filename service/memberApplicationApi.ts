@@ -83,3 +83,27 @@ export const deleteMemberApplication = async (applicationId: number | string) =>
     throw error
   }
 }
+
+// LẤY DANH SÁCH ĐƠN XIN GIA NHẬP THEO CLUB ID
+export const getMemberApplyByClubId = async (clubId: string | number) => {
+  try {
+    const response = await axiosInstance.get(`/api/member-applications/club/${clubId}`)
+    const resData: any = response.data
+    console.log(`✅ Fetched member applications for club ${clubId}:`, resData)
+    
+    // If response is direct array of applications
+    if (Array.isArray(resData)) return resData
+    
+    // If response has wrapper structure like { success, data, message }
+    if (resData?.data && Array.isArray(resData.data)) return resData.data
+    
+    // If response has content property (pagination)
+    if (resData?.content && Array.isArray(resData.content)) return resData.content
+    
+    // Fallback to empty array if no applications found
+    return []
+  } catch (error: any) {
+    console.error(`❌ Error fetching member applications for club ${clubId}:`, error.response?.data || error.message)
+    throw error
+  }
+}

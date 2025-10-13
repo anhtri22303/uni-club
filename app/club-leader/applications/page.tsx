@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { usePagination } from "@/hooks/use-pagination"
 import { UserCheck, Eye, ChevronLeft, ChevronRight, CheckCircle, XCircle } from "lucide-react"
-import { fetchAllMemberApplications, approveMemberApplication, rejectMemberApplication } from "@/service/memberApplicationApi"
+import { fetchAllMemberApplications, approveMemberApplication, rejectMemberApplication, getMemberApplyByClubId } from "@/service/memberApplicationApi"
 
 type MemberApplication = {
   applicationId: number
@@ -37,6 +37,8 @@ export default function ClubLeaderApplicationsPage() {
   const { toast } = useToast()
   const [applications, setApplications] = useState<MemberApplication[]>([])
   const [loading, setLoading] = useState(true)
+  const [processingIds, setProcessingIds] = useState<Set<number>>(new Set())
+  const [bulkProcessing, setBulkProcessing] = useState(false)
 
   const [selectedApplication, setSelectedApplication] = useState<MemberApplication | null>(null)
   const [showApplicationModal, setShowApplicationModal] = useState(false)
@@ -68,33 +70,43 @@ export default function ClubLeaderApplicationsPage() {
     }
   }, [])
 
-  // Fetch dữ liệu application
+  // Fetch dữ liệu application theo clubId
   useEffect(() => {
     const load = async () => {
       try {
-        const data = await fetchAllMemberApplications()
+        // Only fetch applications if we have a clubId
+        if (managedClubId === null) {
+          setApplications([])
+          return
+        }
+
+        // Use new API to get applications for specific club
+        const data = await getMemberApplyByClubId(managedClubId)
         setApplications(data as MemberApplication[])
       } catch (error) {
+        console.error("Failed to load applications:", error)
         toast({
           title: "Error loading applications",
           description: "Không thể tải danh sách đơn xin gia nhập.",
           variant: "destructive",
         })
+        setApplications([])
       } finally {
         setLoading(false)
       }
     }
-    load()
-  }, [toast])
 
-  // Lọc theo clubId từ localStorage (safe when managedClubId is null)
-  const clubApplications = useMemo(
-    () =>
-      managedClubId === null
-        ? []
-        : applications.filter((a) => Number(a.clubId) === managedClubId),
-    [applications, managedClubId]
-  )
+    // Load applications when managedClubId is available
+    if (managedClubId !== null) {
+      load()
+    } else {
+      setApplications([])
+      setLoading(false)
+    }
+  }, [managedClubId, toast])
+
+  // Applications are already filtered by clubId from API, so use them directly
+  const clubApplications = applications
 
   const pendingApplications = clubApplications.filter((a) => a.status === "PENDING")
   const processedApplications = clubApplications.filter((a) => a.status !== "PENDING")
@@ -120,6 +132,66 @@ export default function ClubLeaderApplicationsPage() {
     setReviewNote("")
   }
 
+  const handleApprove = async (app: MemberApplication) => {
+    setProcessingIds(prev => new Set([...prev, app.applicationId]))
+    try {
+      await approveMemberApplication(app.applicationId)
+      toast({
+        title: "Đã duyệt đơn",
+        description: `Đơn của ${app.userName} đã được duyệt.`,
+      })
+      setApplications((list) =>
+        list.map((application) =>
+          application.applicationId === app.applicationId
+            ? { ...application, status: "APPROVED" as const }
+            : application
+        )
+      )
+    } catch (error) {
+      toast({
+        title: "Lỗi duyệt đơn",
+        description: "Không thể duyệt đơn này.",
+        variant: "destructive",
+      })
+    } finally {
+      setProcessingIds(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(app.applicationId)
+        return newSet
+      })
+    }
+  }
+
+  const handleReject = async (app: MemberApplication, reason = "Rejected by club leader") => {
+    setProcessingIds(prev => new Set([...prev, app.applicationId]))
+    try {
+      await rejectMemberApplication(app.applicationId, reason)
+      toast({
+        title: "Đã từ chối đơn",
+        description: `Đơn của ${app.userName} đã bị từ chối.`,
+      })
+      setApplications((list) =>
+        list.map((application) =>
+          application.applicationId === app.applicationId
+            ? { ...application, status: "REJECTED" as const }
+            : application
+        )
+      )
+    } catch (error) {
+      toast({
+        title: "Lỗi từ chối đơn",
+        description: "Không thể từ chối đơn này.",
+        variant: "destructive",
+      })
+    } finally {
+      setProcessingIds(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(app.applicationId)
+        return newSet
+      })
+    }
+  }
+
   const MinimalPager = ({
     current,
     total,
@@ -143,12 +215,22 @@ export default function ClubLeaderApplicationsPage() {
       </div>
     ) : null
 
-  // Khi chưa có clubId (chưa đọc xong localStorage) thì chờ
-  if (loading || managedClubId === null) {
+  // Khi chưa có clubId (chưa đọc xong localStorage) hoặc đang loading thì hiển thị loading
+  if (managedClubId === null) {
     return (
       <AppShell>
         <div className="flex items-center justify-center h-[60vh] text-muted-foreground">
-          {managedClubId === null ? "Đang đọc thông tin câu lạc bộ..." : "Loading applications..."}
+          Đang đọc thông tin câu lạc bộ...
+        </div>
+      </AppShell>
+    )
+  }
+
+  if (loading) {
+    return (
+      <AppShell>
+        <div className="flex items-center justify-center h-[60vh] text-muted-foreground">
+          Loading applications...
         </div>
       </AppShell>
     )
@@ -193,6 +275,98 @@ export default function ClubLeaderApplicationsPage() {
 
             {/* Pending */}
             <TabsContent value="pending" className="space-y-4">
+              {/* Bulk Actions */}
+              {pendingApplications.length > 0 && (
+                <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                  <div className="text-sm text-muted-foreground">
+                    {pendingApplications.length} pending application{pendingApplications.length > 1 ? 's' : ''}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      disabled={bulkProcessing}
+                      onClick={async () => {
+                        const confirmReject = window.confirm(
+                          `Bạn có chắc muốn từ chối tất cả ${pendingApplications.length} đơn xin gia nhập?`
+                        )
+                        if (!confirmReject) return
+                        
+                        setBulkProcessing(true)
+                        try {
+                          await Promise.all(
+                            pendingApplications.map(app => 
+                              rejectMemberApplication(app.applicationId, "Bulk rejected by club leader")
+                            )
+                          )
+                          toast({
+                            title: "Đã từ chối tất cả",
+                            description: `${pendingApplications.length} đơn đã bị từ chối.`,
+                          })
+                          setApplications((list) =>
+                            list.map((app) =>
+                              pendingApplications.find(pending => pending.applicationId === app.applicationId)
+                                ? { ...app, status: "REJECTED" as const }
+                                : app
+                            )
+                          )
+                        } catch (error) {
+                          toast({
+                            title: "Lỗi từ chối đơn",
+                            description: "Không thể từ chối một số đơn.",
+                            variant: "destructive",
+                          })
+                        } finally {
+                          setBulkProcessing(false)
+                        }
+                      }}
+                    >
+                      <XCircle className="h-4 w-4 mr-1" />
+                      {bulkProcessing ? "Processing..." : "Reject All"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      disabled={bulkProcessing}
+                      onClick={async () => {
+                        const confirmApprove = window.confirm(
+                          `Bạn có chắc muốn duyệt tất cả ${pendingApplications.length} đơn xin gia nhập?`
+                        )
+                        if (!confirmApprove) return
+                        
+                        setBulkProcessing(true)
+                        try {
+                          await Promise.all(
+                            pendingApplications.map(app => approveMemberApplication(app.applicationId))
+                          )
+                          toast({
+                            title: "Đã duyệt tất cả",
+                            description: `${pendingApplications.length} đơn đã được duyệt.`,
+                          })
+                          setApplications((list) =>
+                            list.map((app) =>
+                              pendingApplications.find(pending => pending.applicationId === app.applicationId)
+                                ? { ...app, status: "APPROVED" as const }
+                                : app
+                            )
+                          )
+                        } catch (error) {
+                          toast({
+                            title: "Lỗi duyệt đơn",
+                            description: "Không thể duyệt một số đơn.",
+                            variant: "destructive",
+                          })
+                        } finally {
+                          setBulkProcessing(false)
+                        }
+                      }}
+                    >
+                      <CheckCircle className="h-4 w-4 mr-1" />
+                      {bulkProcessing ? "Processing..." : "Approve All"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+              
               {pendingApplications.length === 0 ? (
                 <Card>
                   <CardContent className="flex flex-col items-center justify-center py-12 text-center">
@@ -215,8 +389,30 @@ export default function ClubLeaderApplicationsPage() {
                             {app.reason && <p className="text-sm mt-2 p-2 bg-muted rounded">"{app.reason}"</p>}
                           </div>
                           <div className="flex gap-2 ml-4">
-                            <Button size="sm" variant="outline" onClick={() => handleViewApplication(app)}>
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              onClick={() => handleViewApplication(app)}
+                              title="View details"
+                            >
                               <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="destructive"
+                              onClick={() => handleReject(app)}
+                              disabled={processingIds.has(app.applicationId)}
+                              title="Reject application"
+                            >
+                              <XCircle className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              size="sm"
+                              onClick={() => handleApprove(app)}
+                              disabled={processingIds.has(app.applicationId)}
+                              title="Approve application"
+                            >
+                              <CheckCircle className="h-4 w-4" />
                             </Button>
                           </div>
                         </div>

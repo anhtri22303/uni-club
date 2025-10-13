@@ -210,7 +210,7 @@ export default function MyClubPage() {
   const premiumMembers = members.filter(m => m.level === "PREMIUM").length
 
   return (
-    <ProtectedRoute allowedRoles={["member"]}>
+    <ProtectedRoute allowedRoles={["student"]}>
       <AppShell>
         <div className="space-y-6">
           {/* Header */}
@@ -347,7 +347,7 @@ export default function MyClubPage() {
                 <Users className="h-12 w-12 text-muted-foreground mb-4" />
                 <h3 className="text-lg font-semibold mb-2">No Club Membership</h3>
                 <p className="text-muted-foreground mb-4">You need to join a club first to view members</p>
-                <Button onClick={() => window.location.href = '/member/clubs'}>
+                <Button onClick={() => window.location.href = '/student/clubs'}>
                   Browse Clubs
                 </Button>
               </CardContent>

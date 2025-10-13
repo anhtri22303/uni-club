@@ -89,7 +89,7 @@ export default function ProfilePage() {
     achievements: 3,
   }
 
-  // Dữ liệu tĩnh cho quản trị viên
+  // Static data for administrators
   const adminStats = {
     totalUsers: "1,247",
     activeEvents: "89",
@@ -99,7 +99,6 @@ export default function ProfilePage() {
   const formatRoleName = (roleId?: string | null) => {
     if (!roleId) return ""
     const map: Record<string, string> = {
-      member: "MEMBER",
       student: "STUDENT",
       club_leader: "CLUB LEADER",
       uni_admin: "UNIVERSITY ADMIN",
@@ -352,7 +351,7 @@ export default function ProfilePage() {
   // Show loading state
   if (profileState.loading) {
     return (
-      <ProtectedRoute allowedRoles={["member", "student", "club_leader", "uni_staff", "admin", "staff"]}>
+      <ProtectedRoute allowedRoles={["student", "club_leader", "uni_staff", "admin", "staff"]}>
         <AppShell>
           <div className="min-h-screen bg-slate-50 flex items-center justify-center">
             <Card className="w-full max-w-md">
@@ -373,7 +372,7 @@ export default function ProfilePage() {
   // Show error state
   if (profileState.error) {
     return (
-      <ProtectedRoute allowedRoles={["member", "student", "club_leader", "uni_staff", "admin", "staff"]}>
+      <ProtectedRoute allowedRoles={["student", "club_leader", "uni_staff", "admin", "staff"]}>
         <AppShell>
           <div className="min-h-screen bg-slate-50 flex items-center justify-center">
             <Card className="w-full max-w-md">
@@ -397,7 +396,7 @@ export default function ProfilePage() {
   // Return early if no profile data
   if (!profileState.data) {
     return (
-      <ProtectedRoute allowedRoles={["member", "student", "club_leader", "uni_staff", "admin", "staff"]}>
+      <ProtectedRoute allowedRoles={["student", "club_leader", "uni_staff", "admin", "staff"]}>
         <AppShell>
           <div className="min-h-screen bg-slate-50 flex items-center justify-center">
             <Card className="w-full max-w-md">
@@ -468,7 +467,7 @@ export default function ProfilePage() {
   // =================================================================
   if (isAdminRole) {
     return (
-      <ProtectedRoute allowedRoles={["member", "student", "club_leader", "uni_staff", "admin", "staff"]}>
+      <ProtectedRoute allowedRoles={["student", "club_leader", "uni_staff", "admin", "staff"]}>
         <AppShell>
           <div className="min-h-screen bg-slate-50">
             {/* Header chuyên nghiệp */}
@@ -590,24 +589,24 @@ export default function ProfilePage() {
                     <CardHeader>
                       <CardTitle className="flex items-center gap-3 text-xl">
                         <UserCheck className="h-5 w-5 text-primary" />
-                        Vai trò & Trách nhiệm
+                        Role & Responsibilities
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {auth.role === "uni_staff" && (
                           <>
-                            <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg"><Building2 className="h-5 w-5 text-primary" /><span>Quản lý trường</span></div>
-                            <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg"><Users className="h-5 w-5 text-primary" /><span>Quản trị người dùng</span></div>
-                            <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg"><BarChart3 className="h-5 w-5 text-primary" /><span>Phân tích & Báo cáo</span></div>
-                            <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg"><Settings className="h-5 w-5 text-primary" /><span>Cấu hình hệ thống</span></div>
+                            <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg"><Building2 className="h-5 w-5 text-primary" /><span>University Management</span></div>
+                            <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg"><Users className="h-5 w-5 text-primary" /><span>User Administration</span></div>
+                            <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg"><BarChart3 className="h-5 w-5 text-primary" /><span>Analytics & Reports</span></div>
+                            <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg"><Settings className="h-5 w-5 text-primary" /><span>System Configuration</span></div>
                           </>
                         )}
                         {(auth.role === "admin" || auth.role === "staff") && (
                           <>
-                            <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg"><Globe className="h-5 w-5 text-primary" /><span>Quản lý đối tác</span></div>
-                            <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg"><FileText className="h-5 w-5 text-primary" /><span>Quản lý ưu đãi</span></div>
-                            <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg"><UserCheck className="h-5 w-5 text-primary" /><span>Hỗ trợ khách hàng</span></div>
-                            <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg"><BarChart3 className="h-5 w-5 text-primary" /><span>Phân tích hiệu suất</span></div>
+                            <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg"><Globe className="h-5 w-5 text-primary" /><span>Partner Management</span></div>
+                            <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg"><FileText className="h-5 w-5 text-primary" /><span>Offer Management</span></div>
+                            <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg"><UserCheck className="h-5 w-5 text-primary" /><span>Customer Support</span></div>
+                            <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg"><BarChart3 className="h-5 w-5 text-primary" /><span>Performance Analytics</span></div>
                           </>
                         )}
                     </CardContent>
@@ -620,28 +619,28 @@ export default function ProfilePage() {
                     <CardHeader>
                       <CardTitle className="flex items-center gap-3 text-xl">
                         <BarChart3 className="h-5 w-5 text-primary" />
-                        Thống kê nhanh
+                        Quick Statistics
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                         <div className="flex items-center gap-3">
                             <Users className="h-6 w-6 text-blue-600" />
-                            <span className="text-gray-700">Tổng người dùng</span>
+                            <span className="text-gray-700">Total Users</span>
                         </div>
                         <span className="text-xl font-bold text-blue-600">{adminStats.totalUsers}</span>
                       </div>
                        <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
                         <div className="flex items-center gap-3">
                             <Calendar className="h-6 w-6 text-green-600" />
-                            <span className="text-gray-700">Sự kiện đang diễn ra</span>
+                            <span className="text-gray-700">Active Events</span>
                         </div>
                         <span className="text-xl font-bold text-green-600">{adminStats.activeEvents}</span>
                       </div>
                        <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
                         <div className="flex items-center gap-3">
                             <FileText className="h-6 w-6 text-purple-600" />
-                            <span className="text-gray-700">Báo cáo đã tạo</span>
+                            <span className="text-gray-700">Reports Generated</span>
                         </div>
                         <span className="text-xl font-bold text-purple-600">{adminStats.reportsGenerated}</span>
                       </div>
@@ -652,29 +651,29 @@ export default function ProfilePage() {
                     <CardHeader>
                        <CardTitle className="flex items-center gap-3 text-xl">
                         <Clock className="h-5 w-5 text-primary" />
-                        Hoạt động gần đây
+                        Recent Activity
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="flex items-start gap-3 text-sm">
                             <Settings className="h-5 w-5 text-slate-500 mt-0.5" />
                             <div>
-                                <p>Đã cập nhật <span className="font-semibold">Cài đặt hệ thống</span>.</p>
-                                <p className="text-xs text-muted-foreground">2 giờ trước</p>
+                                <p>Updated <span className="font-semibold">System Settings</span>.</p>
+                                <p className="text-xs text-muted-foreground">2 hours ago</p>
                             </div>
                         </div>
                         <div className="flex items-start gap-3 text-sm">
                             <FileText className="h-5 w-5 text-slate-500 mt-0.5" />
                             <div>
-                                <p>Đã tạo <span className="font-semibold">Báo cáo tháng 9</span>.</p>
-                                <p className="text-xs text-muted-foreground">5 giờ trước</p>
+                                <p>Created <span className="font-semibold">September Report</span>.</p>
+                                <p className="text-xs text-muted-foreground">5 hours ago</p>
                             </div>
                         </div>
                         <div className="flex items-start gap-3 text-sm">
                             <UserCheck className="h-5 w-5 text-slate-500 mt-0.5" />
                             <div>
-                                <p>Phê duyệt đối tác mới: <span className="font-semibold">ABC Corp</span>.</p>
-                                <p className="text-xs text-muted-foreground">1 ngày trước</p>
+                                <p>Approved new partner: <span className="font-semibold">ABC Corp</span>.</p>
+                                <p className="text-xs text-muted-foreground">1 day ago</p>
                             </div>
                         </div>
                     </CardContent>
@@ -692,7 +691,7 @@ export default function ProfilePage() {
   // GIAO DIỆN DÀNH CHO NGƯỜI DÙNG THƯỜNG (STUDENT, CLUB_LEADER)
   // =================================================================
   return (
-  <ProtectedRoute allowedRoles={["member", "student", "club_leader", "uni_staff", "admin", "staff"]}>
+  <ProtectedRoute allowedRoles={["student", "club_leader", "uni_staff", "admin", "staff"]}>
       <AppShell>
         <div className="min-h-screen bg-slate-50">
           {/* Header với ảnh đại diện */}
@@ -723,7 +722,7 @@ export default function ProfilePage() {
                   />
                 </div>
                 
-                {/* Nút Save Avatar - chỉ hiện khi có file được chọn */}
+                {/* Save Avatar Button - only shown when file is selected */}
                 {selectedFile && (
                   <Button
                     onClick={handleSaveAvatar}
@@ -736,7 +735,7 @@ export default function ProfilePage() {
                     ) : (
                       <Save className="h-3 w-3 mr-2" />
                     )}
-                    {savingAvatar ? "Đang lưu..." : "Lưu Avatar"}
+                    {savingAvatar ? "Saving..." : "Save Avatar"}
                   </Button>
                 )}
               </div>
@@ -748,24 +747,24 @@ export default function ProfilePage() {
           {/* Phần nội dung chính */}
           <div className="relative -mt-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Cột trái - Thông tin cá nhân */}
+              {/* Left Column - Personal Information */}
               <div className="lg:col-span-2">
                 <Card className="shadow-lg border-0">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-3 text-xl">
                       <Edit3 className="h-5 w-5 text-primary" />
-                      Thông tin cá nhân
+                      Personal Information
                     </CardTitle>
-                    <CardDescription>Cập nhật hồ sơ và các thông tin liên quan của bạn.</CardDescription>
+                    <CardDescription>Update your profile and related information.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-1">
-                        <Label htmlFor="user-email">Địa chỉ Email</Label>
+                        <Label htmlFor="user-email">Email Address</Label>
                         <Input id="user-email" value={auth.user?.email || ""} disabled className="bg-slate-100" />
                       </div>
                       <div className="space-y-1">
-                        <Label htmlFor="user-fullName">Họ và Tên</Label>
+                        <Label htmlFor="user-fullName">Full Name</Label>
                         <Input 
                           id="user-fullName" 
                           value={fullName} 
@@ -773,7 +772,7 @@ export default function ProfilePage() {
                         />
                       </div>
                       <div className="space-y-1">
-                        <Label htmlFor="user-phone">Số điện thoại</Label>
+                        <Label htmlFor="user-phone">Phone Number</Label>
                         <Input 
                           id="user-phone" 
                           value={phone} 
@@ -781,11 +780,11 @@ export default function ProfilePage() {
                         />
                       </div>
                       <div className="space-y-1">
-                        <Label htmlFor="user-studentCode">Mã sinh viên</Label>
+                        <Label htmlFor="user-studentCode">Student Code</Label>
                         <Input id="user-studentCode" value={studentCode} disabled className="bg-slate-100" />
                       </div>
                       <div className="space-y-1">
-                        <Label htmlFor="user-majorName">Ngành</Label>
+                        <Label htmlFor="user-majorName">Major</Label>
                         <Input 
                           id="user-majorName" 
                           value={majorName} 
@@ -794,7 +793,7 @@ export default function ProfilePage() {
                       </div>
                     </div>
                     <div className="space-y-1">
-                      <Label htmlFor="user-bio">Tiểu sử / Bio</Label>
+                      <Label htmlFor="user-bio">Biography / Bio</Label>
                       <Textarea 
                         id="user-bio" 
                         value={bio} 
@@ -808,10 +807,10 @@ export default function ProfilePage() {
                       <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
                         <p className="text-sm text-blue-700 flex items-center gap-2">
                           <Camera className="h-4 w-4" />
-                          Ảnh đại diện mới đã được chọn: <strong>{selectedFile.name}</strong>
+                          New avatar selected: <strong>{selectedFile.name}</strong>
                         </p>
                         <p className="text-xs text-blue-600 mt-1">
-                          Nhấn nút "Lưu Avatar" bên trên để cập nhật ảnh đại diện.
+                          Click the "Save Avatar" button above to update your profile picture.
                         </p>
                       </div>
                     )}
@@ -826,20 +825,20 @@ export default function ProfilePage() {
                       ) : (
                         <Save className="h-4 w-4 mr-2" />
                       )}
-                      {profileState.saving ? "Đang lưu..." : "Lưu thay đổi"}
+                      {profileState.saving ? "Saving..." : "Save Changes"}
                     </Button>
                   </CardContent>
                 </Card>
               </div>
 
-              {/* Cột phải - Điểm và Thống kê */}
+              {/* Right Column - Points and Statistics */}
               <div className="space-y-6">
-                {/* --- KHUNG ĐIỂM TÍCH LŨY VỚI ICON LỬA VÀ ANIMATION --- */}
+                {/* --- ACCUMULATED POINTS FRAME WITH FIRE ICON AND ANIMATION --- */}
                 <Card className={`shadow-lg border-0 transition-all duration-300 ${pointsCardStyle.cardClassName}`}>
                   <CardContent className="p-4 flex items-center justify-between">
                     <div>
                       <p className={`text-sm font-medium transition-colors duration-300 ${pointsCardStyle.subtitleColorClassName}`}>
-                        Điểm Tích Lũy
+                        Accumulated Points
                       </p>
                       <p className={`text-3xl font-bold transition-colors duration-300 ${pointsCardStyle.textColorClassName}`}>
                         {userPoints.toLocaleString()}
@@ -855,33 +854,53 @@ export default function ProfilePage() {
                   </CardContent>
                 </Card>
 
+                {/* Virtual Card Button */}
+                <Card className="shadow-lg border-0 bg-gradient-to-r from-blue-500 to-purple-600 text-white">
+                  <CardContent className="p-6 text-center">
+                    <div className="mb-4">
+                      <svg className="h-12 w-12 mx-auto mb-2 text-white/90" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/>
+                      </svg>
+                      <h3 className="text-xl font-bold">Virtual Student Card</h3>
+                      <p className="text-white/80 text-sm mt-1">View your digital student ID</p>
+                    </div>
+                    <Button 
+                      onClick={() => router.push('/virtual-card')}
+                      variant="secondary" 
+                      className="bg-white text-blue-600 hover:bg-white/90 font-semibold px-6"
+                    >
+                      View Card
+                    </Button>
+                  </CardContent>
+                </Card>
+
                 <Card className="shadow-lg border-0">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-3 text-xl">
                       <Zap className="h-5 w-5 text-primary" />
-                      Thống kê hoạt động
+                      Activity Statistics
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="grid grid-cols-2 gap-4">
                     <div className="text-center p-4 bg-slate-100 rounded-lg">
                       <Users className="h-7 w-7 text-blue-600 mx-auto mb-1" />
                       <div className="text-2xl font-bold text-blue-800">{userStats.clubsJoined}</div>
-                      <div className="text-xs text-slate-600">CLB đã tham gia</div>
+                      <div className="text-xs text-slate-600">Clubs Joined</div>
                     </div>
                     <div className="text-center p-4 bg-slate-100 rounded-lg">
                       <Calendar className="h-7 w-7 text-green-600 mx-auto mb-1" />
                       <div className="text-2xl font-bold text-green-800">{userStats.eventsAttended}</div>
-                      <div className="text-xs text-slate-600">Sự kiện tham dự</div>
+                      <div className="text-xs text-slate-600">Events Attended</div>
                     </div>
                     <div className="text-center p-4 bg-slate-100 rounded-lg">
                       <Clock className="h-7 w-7 text-purple-600 mx-auto mb-1" />
                       <div className="text-2xl font-bold text-purple-800">{userStats.monthsActive}</div>
-                      <div className="text-xs text-slate-600">Tháng hoạt động</div>
+                      <div className="text-xs text-slate-600">Months Active</div>
                     </div>
                      <div className="text-center p-4 bg-slate-100 rounded-lg">
                       <Trophy className="h-7 w-7 text-amber-600 mx-auto mb-1" />
                       <div className="text-2xl font-bold text-amber-800">{userStats.achievements}</div>
-                      <div className="text-xs text-slate-600">Thành tích</div>
+                      <div className="text-xs text-slate-600">Achievements</div>
                     </div>
                   </CardContent>
                 </Card>

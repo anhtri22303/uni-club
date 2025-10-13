@@ -28,20 +28,20 @@ export default function ScanPage() {
     }
   }, [isScanning])
 
-  // Auto redirect to check-in page for member after scan
+  // Auto redirect to check-in page for student after scan
   useEffect(() => {
-    if (scanResult && auth.role === "member") {
+    if (scanResult && auth.role === "student") {
       // Delay for a short moment to show success UI before redirect
       const redirectTimer = setTimeout(() => {
-        router.push("/member/checkin")
+        router.push("/student/checkin")
       }, 1200)
       return () => clearTimeout(redirectTimer)
     }
   }, [scanResult, auth.role, router])
 
   const handleClose = () => {
-    if (auth.role === "member") {
-      router.push("/member")
+    if (auth.role === "student") {
+      router.push("/student")
     } else if (auth.role === "staff") {
       router.push("/staff/validate")
     } else {
@@ -55,14 +55,14 @@ export default function ScanPage() {
   }
 
   return (
-  <ProtectedRoute allowedRoles={["member", "staff"]}>
+  <ProtectedRoute allowedRoles={["student", "staff"]}>
       <AppShell>
         <div className="min-h-screen bg-black text-white relative overflow-hidden">
           {/* Header */}
           <div className="absolute top-0 left-0 right-0 z-10 p-4 sm:p-6">
             <div className="flex items-center justify-between">
               <h1 className="text-lg sm:text-xl font-semibold">
-                {auth.role === "member" ? "Scan QR Code" : "Validate Voucher"}
+                {auth.role === "student" ? "Scan QR Code" : "Validate Voucher"}
               </h1>
               <Button variant="ghost" size="icon" onClick={handleClose} className="text-white hover:bg-white/20">
                 <X className="h-5 w-5 sm:h-6 sm:w-6" />
@@ -131,7 +131,7 @@ export default function ScanPage() {
                       <p className="text-sm text-gray-300">Scanning...</p>
                     </div>
                     <p className="text-xs text-gray-400">
-                      {auth.role === "member"
+                      {auth.role === "student"
                         ? "Position the QR code within the frame"
                         : "Position the voucher QR code within the frame"}
                     </p>
@@ -139,7 +139,7 @@ export default function ScanPage() {
                 ) : scanResult ? (
                   <div className="space-y-3">
                     <p className="text-sm text-gray-300">
-                      {auth.role === "member"
+                      {auth.role === "student"
                         ? "QR code detected successfully!"
                         : "Voucher code scanned successfully!"}
                     </p>

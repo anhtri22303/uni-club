@@ -56,7 +56,7 @@ export default function MemberCheckinByCodePage() {
   }
 
   return (
-    <ProtectedRoute allowedRoles={["member"]}>
+    <ProtectedRoute allowedRoles={["student"]}>
       <AppShell>
         <div className="flex flex-col items-center justify-center min-h-[70vh] px-2">
           <div className="w-full max-w-md">

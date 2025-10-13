@@ -16,10 +16,4 @@ On production: ensure `REDIS_URL` is configured in your deployment environment.
 
 
 Login Google
-Avatar sau khi login
-GET member application theo CLubId /Club Leader
-GET event theo club id
 GET membership my club thêm full name và MSSV
-Event theo club id
-University staff PUT event
-Sửa Logout
