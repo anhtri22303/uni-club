@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react"
 import { useAuth } from "@/contexts/auth-context"
 import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useRouter } from "next/navigation"
 import { User, LogOut, Award, Trophy, Gem, Star, Flame } from "lucide-react"
 import { useSidebarContext } from "@/components/app-shell"
 import { getWallet } from "@/service/walletApi"
+import { fetchProfile } from "@/service/userApi"
 
 function getTierInfo(points: number, role: string) {
   // Keep a minimal tier fallback for accessory data, but primary UI is points card.
@@ -76,25 +77,38 @@ export function UserProfileWidget() {
   const router = useRouter()
   const { sidebarCollapsed, sidebarOpen } = useSidebarContext()
   const [userPoints, setUserPoints] = useState<number>(0)
+  const [avatarUrl, setAvatarUrl] = useState<string>("")
 
   if (!auth.role || !auth.user) return null
 
-  // Load wallet points from API
+  // Load wallet points and profile from API
   useEffect(() => {
-    // Fetch wallet for club leaders and members (and re-run when role changes)
-    if (!(auth.role === "club_leader" || auth.role === "member" || auth.role === "student")) return
-
     let mounted = true
     const load = async () => {
       try {
-        const data: any = await getWallet()
-        console.debug("UserProfileWidget.getWallet ->", data)
-        if (!mounted) return
-        const pts = Number(data?.points ?? data?.balance ?? 0)
-        setUserPoints(pts)
-        console.debug("UserProfileWidget setUserPoints ->", pts)
+        // Load profile for avatar (all roles can have avatar)
+        try {
+          const profileData: any = await fetchProfile()
+          console.debug("UserProfileWidget.fetchProfile ->", profileData)
+          if (!mounted) return
+          setAvatarUrl(profileData?.avatarUrl || "")
+        } catch (profileErr) {
+          console.error("Failed to load profile in UserProfileWidget:", profileErr)
+          console.log("Role:", auth.role, "Will fallback to initials for avatar")
+          // Avatar will fallback to initials if failed to load
+        }
+
+        // Load wallet points only for eligible roles
+        if (auth.role === "club_leader" || auth.role === "member" || auth.role === "student") {
+          const walletData: any = await getWallet()
+          console.debug("UserProfileWidget.getWallet ->", walletData)
+          if (!mounted) return
+          const pts = Number(walletData?.points ?? walletData?.balance ?? 0)
+          setUserPoints(pts)
+          console.debug("UserProfileWidget setUserPoints ->", pts)
+        }
       } catch (err) {
-        console.error("Failed to load wallet in UserProfileWidget", err)
+        console.error("Failed to load data in UserProfileWidget", err)
       }
     }
     load()
@@ -103,7 +117,7 @@ export function UserProfileWidget() {
     }
   }, [auth?.userId, auth?.role])
 
-  const userInitials = auth.user.fullName
+  const userInitials = (auth.user?.fullName || "User")
     .split(" ")
     .map((name) => name[0])
     .join("")
@@ -145,13 +159,14 @@ export function UserProfileWidget() {
 
       <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
         <Avatar className="h-10 w-10">
+          <AvatarImage src={avatarUrl || "/placeholder-user.jpg"} alt={auth.user?.fullName || "User"} />
           <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
             {userInitials}
           </AvatarFallback>
         </Avatar>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-foreground truncate">{auth.user.fullName}</p>
-          <p className="text-xs text-muted-foreground truncate">{auth.user.email}</p>
+          <p className="text-sm font-semibold text-foreground truncate">{auth.user?.fullName || "User"}</p>
+          <p className="text-xs text-muted-foreground truncate">{auth.user?.email || ""}</p>
         </div>
       </div>
 

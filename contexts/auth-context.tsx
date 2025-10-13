@@ -187,6 +187,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       "clubly-events",
       "clubly-clubs",
       "clubly-users",
+      "clubly-club-applications",
+      "clubly-policies",
+      "clubly-event-requests",
+      
       // Session Storage keys
       "intendedPath",
     ];

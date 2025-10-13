@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { AppShell } from "@/components/app-shell"
 import { ProtectedRoute } from "@/contexts/protected-route"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -33,8 +33,10 @@ import {
   Trophy,
   Loader2,
   AlertCircle,
+  Camera,
 } from "lucide-react"
-import { editProfile, fetchProfile } from "@/service/userApi"
+import { editProfile, fetchProfile, uploadAvatar } from "@/service/userApi"
+import { AvatarCropModal } from "@/components/avatar-crop-modal"
 
 // Types for profile data
 interface ProfileData {
@@ -44,6 +46,7 @@ interface ProfileData {
   majorName: string
   studentCode: string
   bio: string
+  avatarUrl: string
   userPoints: number
 }
 
@@ -58,6 +61,7 @@ export default function ProfilePage() {
   const { auth } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // State management for profile data
   const [profileState, setProfileState] = useState<ProfileState>({
@@ -66,6 +70,16 @@ export default function ProfilePage() {
     error: null,
     saving: false,
   })
+
+  // State for temporary avatar preview (before saving)
+  const [previewAvatarUrl, setPreviewAvatarUrl] = useState<string>("")
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [savingAvatar, setSavingAvatar] = useState<boolean>(false)
+  
+  // States for crop modal
+  const [showCropModal, setShowCropModal] = useState<boolean>(false)
+  const [imageToCrop, setImageToCrop] = useState<string>("")
+  const [croppedFile, setCroppedFile] = useState<File | null>(null)
 
   // Dữ liệu tĩnh cho hoạt động người dùng
   const userStats = {
@@ -123,6 +137,7 @@ export default function ProfilePage() {
         majorName: profile?.majorName ?? profile?.major_name ?? "",
         studentCode: profile?.studentCode ?? profile?.student_code ?? "",
         bio: profile?.bio ?? "",
+        avatarUrl: profile?.avatarUrl ?? "",
         userPoints: Number(profile?.wallet?.balancePoints ?? 0),
       }
 
@@ -132,6 +147,10 @@ export default function ProfilePage() {
         error: null,
         saving: false,
       })
+      
+      // Clear file selection when profile loads
+      setSelectedFile(null)
+      setPreviewAvatarUrl("")
 
     } catch (err) {
       console.error("Failed to load profile:", err)
@@ -148,33 +167,40 @@ export default function ProfilePage() {
     loadProfile()
   }, [auth.userId])
 
-  // Handle profile update
+  // Handle profile update (không bao gồm avatar)
   const handleSave = async () => {
     if (!profileState.data) return
 
-    const { fullName, email, phone, majorName, bio } = profileState.data
-    const payload: Record<string, any> = { email, fullName, phone, majorName, bio }
-
     try {
       setProfileState(prev => ({ ...prev, saving: true }))
-      
+
+      // Chỉ cập nhật thông tin profile (không bao gồm avatar)
+      const { fullName, email, phone, majorName, bio } = profileState.data
+      const payload: Record<string, any> = { 
+        email, 
+        fullName, 
+        phone, 
+        majorName, 
+        bio
+      }
+
       const res = (await editProfile(payload)) as any
       
       if (res && res.success) {
         toast({
-          title: "Cập nhật thành công",
-          description: "Thông tin hồ sơ của bạn đã được lưu lại.",
+          title: "Update Successful",
+          description: "Your profile information has been saved.",
         })
         // Reload profile data after successful update
         await loadProfile()
       } else {
-        throw new Error(res?.message || "Không thể cập nhật hồ sơ")
+        throw new Error(res?.message || "Unable to update profile")
       }
     } catch (err) {
       console.error("Edit profile failed:", err)
       toast({ 
-        title: "Lỗi", 
-        description: err instanceof Error ? err.message : "Có lỗi xảy ra khi cập nhật hồ sơ" 
+        title: "Error", 
+        description: err instanceof Error ? err.message : "An error occurred while updating profile" 
       })
     } finally {
       setProfileState(prev => ({ ...prev, saving: false }))
@@ -189,6 +215,129 @@ export default function ProfilePage() {
       ...prev,
       data: prev.data ? { ...prev.data, [field]: value } : null
     }))
+  }
+
+  // Handle avatar click to open file picker
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  // Handle save avatar separately - upload trực tiếp file
+  const handleSaveAvatar = async () => {
+    if (!selectedFile) return
+
+    try {
+      setSavingAvatar(true)
+
+      toast({
+        title: "Uploading...",
+        description: "Uploading image, please wait...",
+      })
+
+      // Gọi API upload avatar trực tiếp với file đã được crop
+      const avatarRes = await uploadAvatar(selectedFile)
+      if (avatarRes && avatarRes.success) {
+        // Clear all avatar upload states
+        setSelectedFile(null)
+        setCroppedFile(null)
+        setPreviewAvatarUrl("") 
+        
+        // Clear file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = ""
+        }
+
+        toast({
+          title: "Avatar Updated Successfully",
+          description: "Your profile picture has been changed.",
+        })
+
+        // Reload profile data to get updated avatar
+        await loadProfile()
+      } else {
+        throw new Error(avatarRes?.message || "Unable to update avatar")
+      }
+    } catch (err) {
+      console.error("Save avatar failed:", err)
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : "An error occurred while updating profile picture"
+      })
+    } finally {
+      setSavingAvatar(false)
+    }
+  }
+
+  // Handle file selection and preview
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Error",
+        description: "Please select an image file (jpg, png, gif, etc.)",
+        variant: "destructive"
+      })
+      return
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "Error", 
+        description: "File size must be smaller than 5MB",
+        variant: "destructive"
+      })
+      return
+    }
+
+    // Create preview URL và mở modal crop
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const result = e.target?.result as string
+      setImageToCrop(result)
+      setShowCropModal(true)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  // Reset preview when component mounts or profile loads
+  useEffect(() => {
+    if (profileState.data?.avatarUrl && !previewAvatarUrl) {
+      setPreviewAvatarUrl(profileState.data.avatarUrl)
+    }
+  }, [profileState.data?.avatarUrl, previewAvatarUrl])
+
+  // Handle crop complete - convert blob to file and set for upload
+  const handleCropComplete = (croppedBlob: Blob) => {
+    // Convert blob to file
+    const croppedFile = new File([croppedBlob], 'cropped-avatar.jpg', {
+      type: 'image/jpeg',
+      lastModified: Date.now()
+    })
+    
+    setCroppedFile(croppedFile)
+    setSelectedFile(croppedFile)
+    
+    // Create preview URL từ blob
+    const previewUrl = URL.createObjectURL(croppedBlob)
+    setPreviewAvatarUrl(previewUrl)
+    
+    // Close modal
+    setShowCropModal(false)
+    setImageToCrop("")
+  }
+
+  // Handle crop cancel
+  const handleCropCancel = () => {
+    setShowCropModal(false)
+    setImageToCrop("")
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
+    }
   }
 
   const getInitials = (name: string) => {
@@ -209,9 +358,9 @@ export default function ProfilePage() {
             <Card className="w-full max-w-md">
               <CardContent className="flex flex-col items-center space-y-4 p-8">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="text-lg font-medium">Đang tải thông tin hồ sơ...</p>
+                <p className="text-lg font-medium">Loading Profile...</p>
                 <p className="text-sm text-muted-foreground text-center">
-                  Vui lòng chờ trong giây lát
+                  Please wait a moment
                 </p>
               </CardContent>
             </Card>
@@ -231,11 +380,11 @@ export default function ProfilePage() {
               <CardContent className="flex flex-col items-center space-y-4 p-8">
                 <AlertCircle className="h-12 w-12 text-red-500" />
                 <div className="text-center space-y-2">
-                  <h3 className="text-lg font-semibold">Không thể tải hồ sơ</h3>
+                  <h3 className="text-lg font-semibold">Unable to Load Profile</h3>
                   <p className="text-sm text-muted-foreground">{profileState.error}</p>
                 </div>
                 <Button onClick={loadProfile} className="w-full">
-                  Thử lại
+                  Try Again
                 </Button>
               </CardContent>
             </Card>
@@ -264,7 +413,7 @@ export default function ProfilePage() {
   }
 
   // Destructure profile data for easier access
-  const { fullName, email, phone, majorName, studentCode, bio, userPoints } = profileState.data
+  const { fullName, email, phone, majorName, studentCode, bio, avatarUrl, userPoints } = profileState.data
   
   // --- HÀM ĐÃ CẬP NHẬT: Thêm logic trả về lớp animation ---
   const getPointsCardStyle = (points: number) => {
@@ -326,10 +475,40 @@ export default function ProfilePage() {
             <div className="bg-gradient-to-r from-primary to-secondary text-white">
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
                 <div className="flex items-center space-x-6">
-                  <Avatar className="w-24 h-24 border-4 border-white/30 shadow-lg">
-                    <AvatarImage src="/placeholder-user.jpg" alt={fullName} />
-                    <AvatarFallback className="text-3xl bg-white/20">{getInitials(fullName || "A")}</AvatarFallback>
-                  </Avatar>
+                  <div className="relative flex flex-col items-center">
+                    <div className="relative">
+                      <Avatar 
+                        className="w-24 h-24 border-4 border-white/30 shadow-lg cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={handleAvatarClick}
+                      >
+                        <AvatarImage src={previewAvatarUrl || avatarUrl || "/placeholder-user.jpg"} alt={fullName} />
+                        <AvatarFallback className="text-3xl bg-white/20">{getInitials(fullName || "A")}</AvatarFallback>
+                      </Avatar>
+                      <div 
+                        className="absolute bottom-0 right-0 bg-primary text-primary-foreground rounded-full p-2 cursor-pointer hover:bg-primary/80 transition-colors shadow-lg"
+                        onClick={handleAvatarClick}
+                      >
+                        <Camera className="h-3 w-3" />
+                      </div>
+                    </div>
+                    
+                    {/* Nút Save Avatar cho admin - chỉ hiện khi có file được chọn */}
+                    {selectedFile && (
+                      <Button
+                        onClick={handleSaveAvatar}
+                        disabled={savingAvatar}
+                        size="sm"
+                        className="mt-2 bg-white/20 text-white hover:bg-white/30 border border-white/30"
+                      >
+                        {savingAvatar ? (
+                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                        ) : (
+                          <Save className="h-3 w-3 mr-1" />
+                        )}
+                        {savingAvatar ? "Lưu..." : "Lưu"}
+                      </Button>
+                    )}
+                  </div>
                   <div>
                     <h1 className="text-4xl font-bold tracking-tight">{fullName || "Administrator"}</h1>
                     <p className="text-xl text-white/80">{formatRoleName(auth.role)}</p>
@@ -347,18 +526,18 @@ export default function ProfilePage() {
                     <CardHeader>
                       <CardTitle className="flex items-center gap-3 text-xl">
                         <User className="h-5 w-5 text-primary" />
-                        Thông tin cá nhân
+                        Personal Information
                       </CardTitle>
-                      <CardDescription>Quản lý chi tiết tài khoản của bạn.</CardDescription>
+                      <CardDescription>Manage your account details.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-1">
-                          <Label htmlFor="admin-email">Địa chỉ Email</Label>
+                          <Label htmlFor="admin-email">Email Address</Label>
                           <Input id="admin-email" value={auth.user?.email || ""} disabled className="bg-slate-100" />
                         </div>
                         <div className="space-y-1">
-                          <Label htmlFor="admin-fullName">Họ và Tên</Label>
+                          <Label htmlFor="admin-fullName">Full Name</Label>
                           <Input 
                             id="admin-fullName" 
                             value={fullName} 
@@ -366,11 +545,11 @@ export default function ProfilePage() {
                           />
                         </div>
                         <div className="space-y-1">
-                          <Label htmlFor="admin-studentCode">Mã sinh viên</Label>
+                          <Label htmlFor="admin-studentCode">Student Code</Label>
                           <Input id="admin-studentCode" value={studentCode} disabled className="bg-slate-100" />
                         </div>
                         <div className="space-y-1">
-                          <Label htmlFor="admin-majorName">Ngành</Label>
+                          <Label htmlFor="admin-majorName">Major</Label>
                           <Input 
                             id="admin-majorName" 
                             value={majorName} 
@@ -378,7 +557,7 @@ export default function ProfilePage() {
                           />
                         </div>
                         <div className="space-y-1">
-                          <Label htmlFor="admin-phone">Số điện thoại</Label>
+                          <Label htmlFor="admin-phone">Phone Number</Label>
                           <Input 
                             id="admin-phone" 
                             value={phone} 
@@ -388,7 +567,7 @@ export default function ProfilePage() {
                         {/* location removed */}
                       </div>
                       <div className="space-y-1">
-                        <Label htmlFor="admin-bio">Tiểu sử / Bio</Label>
+                        <Label htmlFor="admin-bio">Biography / Bio</Label>
                         <Textarea 
                           id="admin-bio" 
                           value={bio} 
@@ -402,7 +581,7 @@ export default function ProfilePage() {
                         ) : (
                           <Save className="h-4 w-4 mr-2" />
                         )}
-                        {profileState.saving ? "Đang lưu..." : "Lưu thay đổi"}
+                        {profileState.saving ? "Saving..." : "Save Changes"}
                       </Button>
                     </CardContent>
                   </Card>
@@ -519,10 +698,48 @@ export default function ProfilePage() {
           {/* Header với ảnh đại diện */}
           <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 pb-20">
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 text-center">
-              <Avatar className="w-28 h-28 mx-auto border-4 border-white/50 shadow-xl">
-                <AvatarImage src="/placeholder-user.jpg" alt={fullName} />
-                <AvatarFallback className="text-4xl bg-white/30 text-white">{getInitials(fullName)}</AvatarFallback>
-              </Avatar>
+              <div className="relative flex flex-col items-center">
+                <div className="relative">
+                  <Avatar 
+                    className="w-28 h-28 mx-auto border-4 border-white/50 shadow-xl cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={handleAvatarClick}
+                  >
+                    <AvatarImage src={previewAvatarUrl || avatarUrl || "/placeholder-user.jpg"} alt={fullName} />
+                    <AvatarFallback className="text-4xl bg-white/30 text-white">{getInitials(fullName)}</AvatarFallback>
+                  </Avatar>
+                  <div 
+                    className="absolute bottom-0 right-0 bg-primary text-primary-foreground rounded-full p-2 cursor-pointer hover:bg-primary/80 transition-colors shadow-lg"
+                    onClick={handleAvatarClick}
+                  >
+                    <Camera className="h-4 w-4" />
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="hidden"
+                    aria-label="Upload avatar image"
+                  />
+                </div>
+                
+                {/* Nút Save Avatar - chỉ hiện khi có file được chọn */}
+                {selectedFile && (
+                  <Button
+                    onClick={handleSaveAvatar}
+                    disabled={savingAvatar}
+                    size="sm"
+                    className="mt-3 bg-white/20 text-white hover:bg-white/30 border border-white/30"
+                  >
+                    {savingAvatar ? (
+                      <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                    ) : (
+                      <Save className="h-3 w-3 mr-2" />
+                    )}
+                    {savingAvatar ? "Đang lưu..." : "Lưu Avatar"}
+                  </Button>
+                )}
+              </div>
               <h1 className="mt-4 text-3xl font-bold text-white tracking-tight">{fullName}</h1>
               <p className="mt-1 text-lg text-white/80">{auth.user?.email}</p>
             </div>
@@ -576,7 +793,6 @@ export default function ProfilePage() {
                         />
                       </div>
                     </div>
-                    {/* location removed */}
                     <div className="space-y-1">
                       <Label htmlFor="user-bio">Tiểu sử / Bio</Label>
                       <Textarea 
@@ -586,6 +802,20 @@ export default function ProfilePage() {
                         className="min-h-[80px]" 
                       />
                     </div>
+                    
+                    {/* Preview notification */}
+                    {selectedFile && (
+                      <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <p className="text-sm text-blue-700 flex items-center gap-2">
+                          <Camera className="h-4 w-4" />
+                          Ảnh đại diện mới đã được chọn: <strong>{selectedFile.name}</strong>
+                        </p>
+                        <p className="text-xs text-blue-600 mt-1">
+                          Nhấn nút "Lưu Avatar" bên trên để cập nhật ảnh đại diện.
+                        </p>
+                      </div>
+                    )}
+
                     <Button 
                       onClick={handleSave} 
                       disabled={profileState.saving} 
@@ -660,6 +890,14 @@ export default function ProfilePage() {
           </div>
         </div>
       </AppShell>
+      
+      {/* Avatar Crop Modal */}
+      <AvatarCropModal
+        isOpen={showCropModal}
+        onClose={handleCropCancel}
+        imageSrc={imageToCrop}
+        onCropComplete={handleCropComplete}
+      />
     </ProtectedRoute>
   )
 }
