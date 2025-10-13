@@ -97,7 +97,7 @@ export default function ClubLeaderApplicationsPage() {
   )
 
   const pendingApplications = clubApplications.filter((a) => a.status === "PENDING")
-  const reviewedApplications = clubApplications.filter((a) => a.status !== "PENDING")
+  const processedApplications = clubApplications.filter((a) => a.status !== "PENDING")
 
   // Phân trang (pagination hooks MUST run on every render)
   const {
@@ -112,7 +112,7 @@ export default function ClubLeaderApplicationsPage() {
     totalPages: reviewedPages,
     paginatedData: paginatedReviewed,
     setCurrentPage: setReviewedPage,
-  } = usePagination({ data: reviewedApplications, initialPageSize: 3 })
+  } = usePagination({ data: processedApplications, initialPageSize: 3 })
 
   const handleViewApplication = (application: MemberApplication) => {
     setSelectedApplication(application)
@@ -167,14 +167,29 @@ export default function ClubLeaderApplicationsPage() {
           </div>
 
           <Tabs defaultValue="pending" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="pending" className="flex items-center gap-2">
+            <TabsList className="grid w-full grid-cols-2 bg-muted rounded-lg p-1">
+              <TabsTrigger
+                value="pending"
+                className="flex items-center gap-2
+                          data-[state=active]:bg-primary data-[state=active]:text-primary-foreground
+                          dark:data-[state=active]:bg-[#059669]
+                          hover:bg-primary/10 dark:hover:bg-[#059669]/20 transition-colors"
+              >
                 <UserCheck className="h-4 w-4" /> Pending ({pendingApplications.length})
               </TabsTrigger>
-              <TabsTrigger value="reviewed" className="flex items-center gap-2">
-                <Eye className="h-4 w-4" /> Reviewed ({reviewedApplications.length})
+
+              <TabsTrigger
+                value="reviewed"
+                className="flex items-center gap-2
+                          data-[state=active]:bg-primary data-[state=active]:text-primary-foreground
+                          dark:data-[state=active]:bg-[#059669]
+                          hover:bg-primary/10 dark:hover:bg-[#059669]/20 transition-colors"
+              >
+                <Eye className="h-4 w-4" /> Processed ({processedApplications.length})
               </TabsTrigger>
             </TabsList>
+
+
 
             {/* Pending */}
             <TabsContent value="pending" className="space-y-4">
@@ -220,12 +235,12 @@ export default function ClubLeaderApplicationsPage() {
 
             {/* Reviewed */}
             <TabsContent value="reviewed" className="space-y-4">
-              {reviewedApplications.length === 0 ? (
+              {processedApplications.length === 0 ? (
                 <Card>
                   <CardContent className="flex flex-col items-center justify-center py-12 text-center">
                     <Eye className="h-12 w-12 text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">No Reviewed Applications</h3>
-                    <p className="text-muted-foreground">Applications you've reviewed will appear here</p>
+                    <h3 className="text-lg font-semibold mb-2">No Processed Applications</h3>
+                    <p className="text-muted-foreground">Applications you've processed will appear here</p>
                   </CardContent>
                 </Card>
               ) : (

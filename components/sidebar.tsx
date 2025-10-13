@@ -9,7 +9,7 @@ import { useState } from "react"
 import { LoadingSpinner } from "@/components/loading-spinner"
 import {
   LayoutDashboard, Users, Calendar, Gift, Wallet, History, BarChart3,
-  Building, Home, CheckCircle, FileText, FileUser,
+  Building, Home, CheckCircle, FileText, FileUser, HandCoins,
 } from "lucide-react"
 
 interface SidebarProps {
@@ -37,10 +37,11 @@ const navigationConfig = {
   ],
   club_leader: [
     { href: "/club-leader", label: "Dashboard", icon: LayoutDashboard },
-        { href: "/club-leader/applications", label: "Applications", icon: FileUser },
+    { href: "/club-leader/applications", label: "Applications", icon: FileUser },
     { href: "/club-leader/members", label: "Members", icon: Users },
     { href: "/club-leader/events", label: "Events", icon: Calendar },
     { href: "/club-leader/gift", label: "Gift", icon: Gift },
+    { href: "/club-leader/points", label: "Points", icon: HandCoins },
   ],
   uni_staff: [
     { href: "/uni-staff", label: "Dashboard", icon: LayoutDashboard },
@@ -55,7 +56,7 @@ const navigationConfig = {
     { href: "/admin/users", label: "Users", icon: Users },
     { href: "/admin/clubs", label: "Clubs", icon: Building },
     // { href: "/admin/attendances", label: "Attendances", icon: FileText },
-      { href: "/admin/events", label: "Events", icon: Calendar },
+    { href: "/admin/events", label: "Events", icon: Calendar },
   ],
   // staff: [
   //   { href: "/staff", label: "Home", icon: Home },
@@ -85,7 +86,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
       { href: "/staff/history", label: "Staff History", icon: History, isStaff: true },
       { href: "/staff/gift", label: "Staff Gift", icon: Gift, isStaff: true },
     ]
-    
+
     // Add staff items that don't already exist
     staffItems.forEach(staffItem => {
       const exists = navigation.some((i) => i.href === staffItem.href)
@@ -160,7 +161,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
               const policiesCount = policies.length
               const clubApplicationsCount = clubApplications.length
               const eventRequestsCount = eventRequests.length
-              
+
               return (
                 <Button
                   key={item.href}
@@ -177,7 +178,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                   disabled={isLoading}
                 >
                   {isLoading ? (
-                    <LoadingSpinner size="sm" /> 
+                    <LoadingSpinner size="sm" />
                   ) : (
                     <Icon className={cn(
                       "h-4 w-4 flex-shrink-0",

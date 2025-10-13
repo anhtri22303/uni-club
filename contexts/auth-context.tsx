@@ -11,6 +11,7 @@ interface AuthState {
   userId: string | number | null;
   role: string | null;
   staff: boolean;
+  
   user: {
     userId: string | number;
     email: string;
