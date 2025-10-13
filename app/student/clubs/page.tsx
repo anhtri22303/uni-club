@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { AppShell } from "@/components/app-shell"
 import { ProtectedRoute } from "@/contexts/protected-route"
 import { DataTable } from "@/components/data-table"
@@ -15,35 +16,22 @@ import { useToast } from "@/hooks/use-toast"
 import { Users, UserPlus } from "lucide-react"
 import { fetchClub } from "@/service/clubApi"
 import { postMemAppli } from "@/service/memberApplicationApi"
+import { safeLocalStorage } from "@/lib/browser-utils"
 
 // We'll fetch clubs from the backend and only use the `content` array.
 type ClubApiItem = {
   id: number
   name: string
   description?: string
-  majorName?: string
   majorPolicyName?: string
-}
-// Bảng màu theo ngành học
-const categoryColors: Record<string, string> = {
-  "Software Engineering": "#0052CC",
-  "Artificial Intelligence": "#6A00FF",
-  "Information Assurance": "#243447",
-  "Data Science": "#00B8A9",
-  "Business Administration": "#1E2A78",
-  "Digital Marketing": "#FF3366",
-  "Graphic Design": "#FFC300",
-  "Multimedia Communication": "#FF6B00",
-  "Hospitality Management": "#E1B382",
-  "International Business": "#007F73",
-  "Finance and Banking": "#006B3C",
-  "Japanese Language": "#D80032",
-  "Korean Language": "#5DADEC",
+  majorName?: string
+  major?: { name?: string; majorName?: string }
 }
 
-export default function StudentClubsPage() {
+export default function MemberClubsPage() {
+  const router = useRouter()
   const { auth } = useAuth()
-  const { clubMemberships, membershipApplications, addMembershipApplication } = useData()
+  const { clubMemberships, membershipApplications, addMembershipApplication, removeMembershipApplication, replaceMembershipApplication } = useData()
   const { toast } = useToast()
   const [selectedClub, setSelectedClub] = useState<any>(null)
   const [applicationText, setApplicationText] = useState("")
@@ -51,12 +39,62 @@ export default function StudentClubsPage() {
   const [clubs, setClubs] = useState<ClubApiItem[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [pendingClubIds, setPendingClubIds] = useState<string[]>([])
+  const [userClubIds, setUserClubIds] = useState<number[]>([])
+  const [userClubId, setUserClubId] = useState<number | null>(null) // Keep for backward compatibility
 
   // Get user's current memberships and applications
   const userMemberships = clubMemberships.filter((m) => m.userId === auth.userId)
   const userApplications = membershipApplications.filter((a) => a.userId === auth.userId)
 
+  // Get user's club IDs from localStorage
+  useEffect(() => {
+    try {
+      const saved = safeLocalStorage.getItem("uniclub-auth")
+      console.log("Raw localStorage data:", saved)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        console.log("Parsed localStorage data:", parsed)
+        
+        // Check for clubIds array first, then fallback to single clubId
+        if (parsed.clubIds && Array.isArray(parsed.clubIds)) {
+          const clubIdNumbers = parsed.clubIds.map((id: any) => Number(id)).filter((id: number) => !isNaN(id))
+          console.log("Setting userClubIds from clubIds array to:", clubIdNumbers)
+          setUserClubIds(clubIdNumbers)
+          // Set the first club as primary for backward compatibility
+          if (clubIdNumbers.length > 0) {
+            setUserClubId(clubIdNumbers[0])
+          }
+        } else if (parsed.clubId) {
+          const clubIdNumber = Number(parsed.clubId)
+          console.log("Setting userClubId from single clubId to:", clubIdNumber)
+          setUserClubId(clubIdNumber)
+          setUserClubIds([clubIdNumber])
+        }
+      }
+    } catch (error) {
+      console.error("Failed to get clubId from localStorage:", error)
+    }
+  }, [])
+
+  const categoryColors: Record<string, string> = {
+    "Software Engineering": "#0052CC",
+    "Artificial Intelligence": "#6A00FF",
+    "Information Assurance": "#243447",
+    "Data Science": "#00B8A9",
+    "Business Administration": "#1E2A78",
+    "Digital Marketing": "#FF3366",
+    "Graphic Design": "#FFC300",
+    "Multimedia Communication": "#FF6B00",
+    "Hospitality Management": "#E1B382",
+    "International Business": "#007F73",
+    "Finance and Banking": "#006B3C",
+    "Japanese Language": "#D80032",
+    "Korean Language": "#5DADEC",
+  }
   const getClubStatus = (clubId: string) => {
+    // If we have a local pending marker for this club, show pending immediately
+    if (pendingClubIds.includes(clubId)) return "pending"
     const membership = userMemberships.find((m) => m.clubId === clubId)
     if (membership?.status === "APPROVED") return "member"
 
@@ -66,19 +104,42 @@ export default function StudentClubsPage() {
     return "none"
   }
 
-  // Map API items to table rows. Note: API `id` is numeric.
-  const enhancedClubs = clubs.map((club) => ({
-    id: String(club.id),
-    name: club.name,
-    category: club.majorName ?? "-", // category not provided by API; leave empty or map if you have a field
-    description: club.description,
-    members: 0,
-    founded: 0,
-    location: "",
-    policy: club.majorPolicyName ?? "",
-    status: getClubStatus(String(club.id)),
-    actions: undefined,
-  }))
+  // Map API items to table rows and filter out user's current clubs
+  console.log("Total clubs before filter:", clubs.length, "userClubIds:", userClubIds)
+  const enhancedClubs = clubs
+    .filter((club) => {
+      // Hide clubs that user is already a member of
+      const clubIdNumber = Number(club.id)
+      if (userClubIds.length > 0 && userClubIds.includes(clubIdNumber)) {
+        console.log(`Hiding club ${club.name} (ID: ${club.id}) - user is member of this club`)
+        return false
+      }
+      return true
+    })
+    .map((club) => ({
+      id: String(club.id),
+      name: club.name,
+      category: club.majorName ?? (club as any).major?.name ?? (club as any).major?.majorName ?? "",
+      description: club.description,
+      members: 0,
+      founded: 0,
+      location: "",
+      policy: club.majorPolicyName ?? "",
+      status: getClubStatus(String(club.id)),
+      actions: undefined,
+    }))
+  console.log("Enhanced clubs after filter:", enhancedClubs.length)
+
+  const getMajorVariant = (major?: string) => {
+    if (!major) return "outline"
+    const m = major.toLowerCase()
+    if (m.includes("design") || m.includes("arts")) return "secondary"
+    if (m.includes("business") || m.includes("management")) return "destructive"
+    if (m.includes("technology") || m.includes("computer") || m.includes("ai") || m.includes("artificial")) return "default"
+    if (m.includes("environment") || m.includes("sustain")) return "secondary"
+    // fallback
+    return "outline"
+  }
 
   const filters = [
     {
@@ -152,6 +213,7 @@ export default function StudentClubsPage() {
       try {
         const res: any = await fetchClub({ page: 0, size: 10, sort: ["name"] })
         // Expecting the API shape described by the user. Use only `content`.
+        console.log("fetchClub response content:", res?.content)
         if (mounted) setClubs(res?.content ?? [])
       } catch (err: any) {
         console.error(err)
@@ -168,7 +230,6 @@ export default function StudentClubsPage() {
   }, [])
 
   const submitApplication = () => {
-    // validate
     if (!selectedClub || !applicationText.trim()) {
       toast({
         title: "Missing Information",
@@ -177,24 +238,57 @@ export default function StudentClubsPage() {
       })
       return
     }
-    // call backend and persist response in sessionStorage
-    const doPost = async () => {
-      try {
-        // minimal backend payload
-        const payload = { clubId: selectedClub.id, reason: applicationText.trim() }
-        const res: any = await postMemAppli(payload)
 
-        // also add to in-memory data context (so other pages in-app see it immediately)
-        try {
-          addMembershipApplication({
-            clubId: String(res.clubId ?? selectedClub.id),
-            userId: res.userId ?? auth.userId,
-            status: res.status ?? "PENDING",
-            applicationText: res.reason ?? applicationText.trim(),
-            appliedAt: res.submittedAt ?? new Date().toISOString(),
-          })
-        } catch (e) {
-          console.error("Failed to update data context with new membership application", e)
+    // Call backend API to create membership application
+    ; (async () => {
+      if (!auth.userId) {
+        toast({ title: "Not authenticated", description: "You must be signed in to apply", variant: "destructive" })
+        return
+      }
+
+      const tempId = `temp-${Date.now()}`
+      const tempApp = {
+        id: tempId,
+        clubId: selectedClub.id,
+        userId: auth.userId,
+        status: "PENDING",
+        applicationText: applicationText.trim(),
+        appliedAt: new Date().toISOString(),
+      }
+
+      // Optimistic update: add temp application to local context and mark club pending
+      addMembershipApplication(tempApp)
+      setPendingClubIds((p) => Array.from(new Set([...p, String(selectedClub.id)])))
+
+      try {
+        const serverRes: any = await postMemAppli({
+          clubId: selectedClub.id,
+          reason: applicationText.trim(),
+        })
+
+        // Normalize server response to our local shape and replace temp entry
+        if (serverRes) {
+          const normalized = {
+            id: String(serverRes.id ?? serverRes.applicationId ?? Date.now()),
+            clubId: String(serverRes.clubId ?? selectedClub.id),
+            userId: String(serverRes.userId ?? auth.userId),
+            status: serverRes.status ?? "PENDING",
+            applicationText: serverRes.reason ?? serverRes.applicationText ?? tempApp.applicationText,
+            appliedAt: serverRes.submittedAt ?? serverRes.appliedAt ?? tempApp.appliedAt,
+            // include any other fields the server returned for completeness
+            ...serverRes,
+          }
+
+          replaceMembershipApplication(tempId, normalized)
+          // Keep pending marker if server says PENDING, otherwise remove it
+          if ((normalized.status ?? "").toUpperCase() !== "PENDING") {
+            setPendingClubIds((p) => p.filter((id) => id !== String(selectedClub.id)))
+          }
+        } else {
+          // If no response body, remove temp and inform user
+          removeMembershipApplication(tempId)
+          toast({ title: "Error", description: "Server did not return created application", variant: "destructive" })
+          return
         }
 
         toast({
@@ -205,17 +299,34 @@ export default function StudentClubsPage() {
         setShowApplicationModal(false)
         setApplicationText("")
         setSelectedClub(null)
-      } catch (err: any) {
-        console.error(err)
-        toast({
-          title: "Submission Failed",
-          description: err?.response?.data?.message ?? err?.message ?? "Failed to submit application",
-          variant: "destructive",
-        })
-      }
-    }
 
-    void doPost()
+        // Refresh the page data (client-side Next.js refresh)
+        try {
+          router.refresh()
+        } catch (e) {
+          // fallback to full reload
+          window.location.reload()
+        }
+      } catch (err: any) {
+        // Rollback optimistic update
+        removeMembershipApplication(tempId)
+        // remove pending marker
+        setPendingClubIds((p) => p.filter((id) => id !== String(selectedClub.id)))
+
+        // Extract validation errors if present
+        const apiMessage = err?.response?.data?.message || err?.message || "Failed to submit application"
+        const validationErrors = err?.response?.data?.errors
+
+        if (validationErrors) {
+          // Show first validation error or aggregate
+          const firstKey = Object.keys(validationErrors)[0]
+          const firstMsg = validationErrors[firstKey]
+          toast({ title: "Validation error", description: firstMsg || apiMessage, variant: "destructive" })
+        } else {
+          toast({ title: "Error", description: apiMessage, variant: "destructive" })
+        }
+      }
+    })()
   }
 
   const columns = [
@@ -232,6 +343,14 @@ export default function StudentClubsPage() {
     {
       key: "category" as const,
       label: "Category",
+      // render: (value: string) => {
+      //   const variant = getMajorVariant(value)
+      //   return (
+      //     <Badge title={value || ""} variant={variant as any} className="max-w-[140px] truncate">
+      //       {value || "-"}
+      //     </Badge>
+      //   )
+      // },
       render: (value: string) => {
         const color = categoryColors[value] || "#E2E8F0" // fallback nếu không có
         return (
@@ -300,6 +419,8 @@ export default function StudentClubsPage() {
       label: "Actions",
       render: (_: any, club: any) => {
         const status = getClubStatus(club.id)
+        
+        // Allow members to apply to clubs (except their current club which is already filtered out)
         return (
           <Button
             size="sm"
@@ -329,7 +450,14 @@ export default function StudentClubsPage() {
         <div className="space-y-6">
           <div>
             <h1 className="text-3xl font-bold">Club Directory</h1>
-            <p className="text-muted-foreground">Discover and join student clubs</p>
+            <p className="text-muted-foreground">
+              Discover and join clubs that match your interests. 
+              {userClubIds.length > 0 && (
+                <span className="text-xs text-muted-foreground/70 ml-2">
+                  (Your club{userClubIds.length > 1 ? 's' : ''} {userClubIds.join(', ')} {userClubIds.length > 1 ? 'are' : 'is'} hidden)
+                </span>
+              )}
+            </p>
           </div>
 
           {/* Thêm cấu hình phân trang giống trang Offers:

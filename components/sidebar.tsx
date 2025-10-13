@@ -7,9 +7,10 @@ import { cn } from "@/lib/utils"
 import { usePathname, useRouter } from "next/navigation"
 import { useState } from "react"
 import { LoadingSpinner } from "@/components/loading-spinner"
+import { safeLocalStorage } from "@/lib/browser-utils"
 import {
   LayoutDashboard, Users, Calendar, Gift, Wallet, History, BarChart3,
-  Building, Home, CheckCircle, FileText, FileUser,
+  Building, Home, CheckCircle, FileText, FileUser, HandCoins,
 } from "lucide-react"
 
 interface SidebarProps {
@@ -20,27 +21,23 @@ interface SidebarProps {
 type NavItem = { href: string; label: string; icon: any; isStaff?: boolean }
 
 const navigationConfig = {
-  member: [
-    { href: "/member", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/member/clubs", label: "Clubs", icon: Users },
-    { href: "/member/myclub", label: "My Club", icon: Building },
-    { href: "/member/events", label: "Events", icon: Calendar },
-    { href: "/member/checkin", label: "Check In", icon: CheckCircle },
-    { href: "/member/gift", label: "Gift", icon: Gift },
-    { href: "/member/wallet", label: "Wallet", icon: Wallet },
-    { href: "/member/history", label: "History", icon: History },
-  ],
-  // Student role: limited view — only Clubs (per new requirement)
   student: [
+    // { href: "/student", label: "Dashboard", icon: LayoutDashboard },
     { href: "/student/clubs", label: "Clubs", icon: Users },
+    { href: "/student/myclub", label: "My Club", icon: Building },
+    { href: "/student/events", label: "Events", icon: Calendar },
+    { href: "/student/checkin", label: "Check In", icon: CheckCircle },
+    { href: "/student/gift", label: "Gift", icon: Gift },
+    { href: "/student/wallet", label: "Wallet", icon: Wallet },
     { href: "/student/history", label: "History", icon: History },
   ],
   club_leader: [
     { href: "/club-leader", label: "Dashboard", icon: LayoutDashboard },
-        { href: "/club-leader/applications", label: "Applications", icon: FileUser },
+    { href: "/club-leader/applications", label: "Applications", icon: FileUser },
     { href: "/club-leader/members", label: "Members", icon: Users },
     { href: "/club-leader/events", label: "Events", icon: Calendar },
     { href: "/club-leader/gift", label: "Gift", icon: Gift },
+    { href: "/club-leader/points", label: "Points", icon: HandCoins },
   ],
   uni_staff: [
     { href: "/uni-staff", label: "Dashboard", icon: LayoutDashboard },
@@ -55,14 +52,8 @@ const navigationConfig = {
     { href: "/admin/users", label: "Users", icon: Users },
     { href: "/admin/clubs", label: "Clubs", icon: Building },
     // { href: "/admin/attendances", label: "Attendances", icon: FileText },
-      { href: "/admin/events", label: "Events", icon: Calendar },
+    { href: "/admin/events", label: "Events", icon: Calendar },
   ],
-  // staff: [
-  //   { href: "/staff", label: "Home", icon: Home },
-  //   { href: "/staff/validate", label: "Validate", icon: CheckCircle },
-  //   { href: "/staff/history", label: "History", icon: History },
-  //   { href: "/staff/gift", label: "Gift", icon: Gift },
-  // ],
 } as const
 
 export function Sidebar({ onNavigate, open = true }: SidebarProps) {
@@ -73,19 +64,58 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
   const [loadingPath, setLoadingPath] = useState<string | null>(null)
 
   if (!auth.role || !auth.user) return null
+  
   // Default navigation per role (cast to a mutable, wide type to avoid readonly tuple issues)
   let navigation = (navigationConfig[auth.role as keyof typeof navigationConfig] || []) as unknown as NavItem[]
 
-  // If the user is a MEMBER and auth indicates they are also staff,
+  // Check clubIds in localStorage for STUDENT role
+  if (auth.role === "student") {
+    try {
+      const storedAuth = safeLocalStorage.getItem("uniclub-auth")
+      if (storedAuth) {
+        const parsedAuth = JSON.parse(storedAuth)
+        const clubIds = parsedAuth.clubIds
+        
+        // If student has no clubs (clubIds is null, undefined, or empty array), show limited navigation
+        const hasNoClubs = !clubIds || (Array.isArray(clubIds) && clubIds.length === 0)
+        
+        if (hasNoClubs) {
+          console.log("Student has no clubs, showing limited navigation")
+          navigation = [
+            { href: "/student/clubs", label: "Clubs", icon: Users },
+            { href: "/student/history", label: "History", icon: History },
+          ]
+        } else {
+          console.log("Student has clubs:", clubIds, "showing full navigation")
+          // Keep the full navigation from navigationConfig
+        }
+      } else {
+        // No auth data found, show limited navigation for safety
+        navigation = [
+          { href: "/student/clubs", label: "Clubs", icon: Users },
+          { href: "/student/history", label: "History", icon: History },
+        ]
+      }
+    } catch (error) {
+      console.warn("Failed to parse localStorage auth data:", error)
+      // If parsing fails, default to limited navigation for safety
+      navigation = [
+        { href: "/student/clubs", label: "Clubs", icon: Users },
+        { href: "/student/history", label: "History", icon: History },
+      ]
+    }
+  }
+
+  // If the user is a STUDENT and auth indicates they are also staff,
   // show additional staff functionality
-  if (auth.role === "member" && auth.staff) {
-    // Add staff-specific navigation items for members
+  if (auth.role === "student" && auth.staff) {
+    // Add staff-specific navigation items for students
     const staffItems = [
       { href: "/staff/validate", label: "Validate", icon: CheckCircle, isStaff: true },
       { href: "/staff/history", label: "Staff History", icon: History, isStaff: true },
       { href: "/staff/gift", label: "Staff Gift", icon: Gift, isStaff: true },
     ]
-    
+
     // Add staff items that don't already exist
     staffItems.forEach(staffItem => {
       const exists = navigation.some((i) => i.href === staffItem.href)
@@ -160,7 +190,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
               const policiesCount = policies.length
               const clubApplicationsCount = clubApplications.length
               const eventRequestsCount = eventRequests.length
-              
+
               return (
                 <Button
                   key={item.href}
@@ -177,7 +207,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                   disabled={isLoading}
                 >
                   {isLoading ? (
-                    <LoadingSpinner size="sm" /> 
+                    <LoadingSpinner size="sm" />
                   ) : (
                     <Icon className={cn(
                       "h-4 w-4 flex-shrink-0",

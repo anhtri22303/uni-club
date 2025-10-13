@@ -34,8 +34,24 @@ export const fetchProfile = async () => {
     console.log("Fetched profile response:", body)
 
     // If backend uses { success, message, data }
-    if (body && typeof body === "object" && "data" in body) {
-      return body.data
+    if (body && typeof body === "object" && "data" in body && "success" in body && (body as any).success) {
+      const profileData = (body as any).data
+      
+      // Transform the response to match expected format
+      return {
+        userId: profileData?.userId,
+        email: profileData?.email,
+        fullName: profileData?.fullName,
+        phone: profileData?.phone,
+        status: profileData?.status,
+        avatarUrl: profileData?.avatarUrl,
+        studentCode: profileData?.studentCode,
+        majorName: profileData?.majorName,
+        bio: profileData?.bio,
+        role: profileData?.role,
+        wallet: profileData?.wallet,
+        memberships: profileData?.memberships || []
+      }
     }
 
     // If the endpoint returns the profile object directly
@@ -82,12 +98,49 @@ export const updateUserById = async (id: string | number, data: Record<string, a
 }
 
 // New: editProfile - update current authenticated user's profile
-export const editProfile = async (data: Record<string, any>) => {
+export const editProfile = async (data: {
+  majorName?: string
+  phone?: string
+  bio?: string
+  avatarUrl?: string
+  fullName?: string
+  email?: string
+}) => {
   try {
+    console.log("Editing profile with data:", data)
     const response = await axiosInstance.put(`api/users/profile`, data)
-    return response.data as any
+    const body = response.data
+    console.log("Edit profile response:", body)
+    
+    // Return the full response for consistent handling
+    return body as any
   } catch (error) {
     console.error("Error editing profile:", error)
+    throw error
+  }
+}
+
+// New: uploadAvatar - upload avatar file directly to backend
+export const uploadAvatar = async (file: File) => {
+  try {
+    console.log("Uploading avatar file:", file.name)
+    
+    const formData = new FormData()
+    formData.append('file', file)
+    
+    // Gọi API upload avatar với multipart/form-data
+    const response = await axiosInstance.post(`api/users/profile/avatar`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      }
+    })
+    
+    const body = response.data
+    console.log("Upload avatar response:", body)
+    
+    return body as any
+  } catch (error) {
+    console.error("Error uploading avatar:", error)
     throw error
   }
 }

@@ -21,7 +21,7 @@ import { useToast } from "@/hooks/use-toast"
 // Role display formatter (produce uppercase readable labels)
 const formatRoleName = (roleId: string) => {
   const map: Record<string, string> = {
-    member: "MEMBER",
+    student: "STUDENT",
     club_leader: "CLUB LEADER",
     uni_admin: "UNIVERSITY ADMIN",
     admin: "ADMIN",
@@ -131,12 +131,12 @@ export default function AdminUsersPage() {
   }))
 
   const totalUsers = visibleUsers.length
-  const activeStudents = visibleUsers.filter((u) => (u.roleName || "").toLowerCase() === "member").length
+  const activeStudents = visibleUsers.filter((u) => (u.roleName || "").toLowerCase() === "student").length
   const clubLeaders = visibleUsers.filter((u) => (u.roleName || "").toLowerCase() === "club_leader").length
 
   // Role → color mapping
   const roleColors: Record<string, string> = {
-    member: "bg-green-100 text-green-700 border-green-300",
+    student: "bg-green-100 text-green-700 border-green-300",
     club_leader: "bg-purple-100 text-purple-700 border-purple-300",
     uni_admin: "bg-blue-100 text-blue-700 border-blue-300",
     admin: "bg-orange-100 text-orange-700 border-orange-300",

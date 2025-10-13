@@ -20,7 +20,7 @@ import QRCode from "qrcode"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 import clubs from "@/src/data/clubs.json"
-import { fetchEvent } from "@/service/eventApi"
+import { fetchEvent, getEventByClubId } from "@/service/eventApi"
 import { createEvent, getEventById } from "@/service/eventApi"
 import { safeLocalStorage } from "@/lib/browser-utils"
 
@@ -80,33 +80,37 @@ export default function ClubLeaderEventsPage() {
     let mounted = true
     const load = async () => {
       try {
-        const data: any = await fetchEvent()
+        // Only fetch events if we have a clubId
+        if (userClubId === null) {
+          setEvents([])
+          return
+        }
+
+        // Use new API to get events for specific club
+        const data: any = await getEventByClubId(userClubId)
         if (!mounted) return
         
         // API should return an array; guard defensively
-        const raw: any[] = Array.isArray(data) ? data : (data?.content ?? data?.events ?? [])
+        const raw: any[] = Array.isArray(data) ? data : []
         // Normalize shape: some APIs use `name` instead of `title`.
         const normalized = raw.map((e: any) => ({ ...e, title: e.title ?? e.name }))
         
-        // Filter events by user's clubId if available
-        let filteredByClub = normalized
-        if (userClubId !== null) {
-          filteredByClub = normalized.filter((e: any) => Number(e.clubId) === userClubId)
-        }
-        
         // Sort events by date first, then by time if same date
-        const sorted = sortEventsByDateTime(filteredByClub)
+        const sorted = sortEventsByDateTime(normalized)
         
         setEvents(sorted)
       } catch (error) {
         console.error("Failed to load events:", error)
         toast({ title: "Error fetching events", description: "Could not load events from server.", variant: "destructive" })
+        setEvents([])
       }
     }
 
-    // Only load events if we have tried to get clubId (including null case)
-    if (userClubId !== null || userClubId === null) {
+    // Load events when userClubId is available
+    if (userClubId !== null) {
       load()
+    } else {
+      setEvents([])
     }
     return () => { mounted = false }
   }, [userClubId, toast])
@@ -635,8 +639,8 @@ export default function ClubLeaderEventsPage() {
                                       if (!tokenJson?.success) throw new Error('Token mint failed');
                                       code = tokenJson.token;
                                     }
-                                    const localUrl = `http://localhost:3000/member/checkin/${encodeURIComponent(String(code))}`;
-                                    const prodUrl = `https://uniclub-fpt.vercel.app/member/checkin/${encodeURIComponent(String(code))}`;
+                                    const localUrl = `http://localhost:3000/student/checkin/${encodeURIComponent(String(code))}`;
+                                    const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${encodeURIComponent(String(code))}`;
                                     const styleVariants = [
                                       { color: { dark: '#000000', light: '#FFFFFF' }, margin: 1 },
                                       { color: { dark: '#111111', light: '#FFFFFF' }, margin: 2 },

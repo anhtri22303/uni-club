@@ -1,5 +1,4 @@
 [
-  { "id": "member", "name": "Member" },
   { "id": "student", "name": "Student" },
   { "id": "club_leader", "name": "Club Leader" },
   { "id": "uni_staff", "name": "University Staff" },

@@ -90,7 +90,7 @@ export default function MemberWalletPage() {
 
   if (currentView === "history") {
     return (
-      <ProtectedRoute allowedRoles={["member"]}>
+      <ProtectedRoute allowedRoles={["student"]}>
         <AppShell>
           <div className="min-h-screen bg-gradient-to-br from-gray-100 via-slate-100 to-blue-100">
             <div className="space-y-8 p-6">
@@ -128,7 +128,7 @@ export default function MemberWalletPage() {
   }
 
   return (
-    <ProtectedRoute allowedRoles={["member"]}>
+    <ProtectedRoute allowedRoles={["student"]}>
       <AppShell>
         <div className="min-h-screen bg-gradient-to-br from-gray-100 via-slate-100 to-blue-100">
           <div className="space-y-8 p-6">

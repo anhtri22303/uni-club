@@ -127,11 +127,11 @@ export default function MemberEventsPage() {
   }
 
   const handleEventDetail = (eventId: string) => {
-    router.push(`/member/events/${eventId}`)
+    router.push(`/student/events/${eventId}`)
   }
 
   return (
-    <ProtectedRoute allowedRoles={["member"]}>
+    <ProtectedRoute allowedRoles={["student"]}>
       <AppShell>
         <div className="space-y-6">
           <div>

@@ -54,14 +54,16 @@ export function ProtectedRoute({
     // Kích hoạt overlay
     setIsRedirecting(true);
 
-
-    // Lưu đường dẫn với safe storage
-    console.log(`ProtectedRoute: Đang lưu intendedPath: ${pathname}`);
-    safeSessionStorage.setItem('intendedPath', pathname);
-
-    // Lưu đường dẫn
-    console.log(`ProtectedRoute: Đang lưu intendedPath: ${pathname}`);
-    sessionStorage.setItem('intendedPath', pathname);
+    // Chỉ lưu intendedPath nếu đây là trang student/checkin/[code]
+    const isCheckinCodePage = /^\/student\/checkin\/[^/]+$/.test(pathname);
+    
+    if (isCheckinCodePage) {
+      // Lưu đường dẫn với safe storage
+      console.log(`ProtectedRoute: Đang lưu intendedPath cho checkin page: ${pathname}`);
+      safeSessionStorage.setItem('intendedPath', pathname);
+    } else {
+      console.log(`ProtectedRoute: Không lưu intendedPath cho trang: ${pathname}`);
+    }
 
 
     // Đặt hẹn giờ chuyển hướng

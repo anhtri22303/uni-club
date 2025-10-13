@@ -11,61 +11,123 @@ import { useData } from "@/contexts/data-context"
 import { Users, Calendar, UserCheck, Clock, TrendingUp } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { fetchProfile } from "@/service/userApi"
+import { getClubById, getClubIdFromToken } from "@/service/clubApi"
 import { useEffect, useState } from "react"
-import { fetchClub } from "@/service/clubApi"
-// Import data
-import clubs from "@/src/data/clubs.json"
+import { Skeleton } from "@/components/ui/skeleton"
 import events from "@/src/data/events.json"
 import users from "@/src/data/users.json"
 
+
+// Define a type for the club based on the Swagger definition
+interface Club {
+  id: number;
+  name: string;
+  description: string;
+  majorPolicyName: string;
+  majorName: string;
+  leaderId: number;
+  leaderName: string;
+}
+
+// Define a type for the API response
+interface ClubApiResponse {
+  success: boolean;
+  message: string;
+  data: Club;
+}
 
 export default function ClubLeaderDashboardPage() {
   const { auth } = useAuth()
   const { clubMemberships, membershipApplications } = useData()
   const router = useRouter()
   const [profile, setProfile] = useState<any>(null)
-  const [clubName, setClubName] = useState<string | null>(null)
+  const [managedClub, setManagedClub] = useState<Club | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const loadData = async () => {
+    const loadInitialData = async () => {
+      setLoading(true)
+      console.log("Bắt đầu tải dữ liệu..."); // Log 1
       try {
-        //Lấy thông tin user hiện tại
-        const user = await fetchProfile()
-        setProfile(user)
-        
+        const userProfile = await fetchProfile()
+        setProfile(userProfile)
+
+        // const authDataString = safeLocalStorage.getItem("uniclub-auth")
+        // if (authDataString) {
+        //   const authData = JSON.parse(authDataString)
+        //   const clubId = authData?.clubIds?.[0]
+        const clubId = getClubIdFromToken()
+        if (clubId) {
+          console.log("Giải mã được clubId từ JWT:", clubId)
+          const response = await getClubById(clubId)
 
 
+          console.log("Tìm thấy clubId trong localStorage:", clubId); // Log 2
+
+          if (clubId) {
+            console.log("Đang gọi API cho clubId:", clubId); // Log 3
+            const response = await getClubById(clubId) as ClubApiResponse
+
+            console.log("Đã nhận được response từ API:", response); // Log 4
+
+            if (response && response.success) {
+              console.log("API trả về success=true. Đang set managedClub:", response.data); // Log 5
+              setManagedClub(response.data)
+            } else {
+              console.error("API trả về success=false. Message:", response?.message) // Log 6
+            }
+          } else {
+            console.warn("Không tìm thấy clubId nào cho club leader.") // Log 7
+          }
+        } else {
+          console.warn("Không tìm thấy 'uniclub-auth' trong localStorage.") // Log 8
+        }
       } catch (error) {
-        console.error("Error loading profile:", error)
+        console.error("Đã có lỗi xảy ra trong useEffect:", error) // Log 9
       } finally {
         setLoading(false)
+        console.log("Hoàn tất tải dữ liệu."); // Log 10
       }
     }
 
-    loadData()
+    loadInitialData()
   }, [])
 
-
-
-  // For demo purposes, assume the club leader manages the first club
-  const managedClub = clubs[0]
-
-  const clubMembers = clubMemberships.filter((m) => m.clubId === managedClub.id && m.status === "APPROVED")
-
-  const pendingApplications = membershipApplications.filter((a) => a.clubId === managedClub.id && a.status === "PENDING")
-
-  const clubEvents = events.filter((e) => e.clubId === managedClub.id)
-
+  const clubMembers = managedClub ? clubMemberships.filter((m) => m.clubId === managedClub.id && m.status === "APPROVED") : []
+  const pendingApplications = managedClub ? membershipApplications.filter((a) => a.clubId === managedClub.id && a.status === "PENDING") : []
+  const clubEvents = managedClub ? events.filter((e) => e.clubId === String(managedClub.id)) : []
   const upcomingEvents = clubEvents.filter((event) => new Date(event.date) > new Date()).length
+  const recentApplications = managedClub
+    ? membershipApplications
+      .filter((a) => a.clubId === managedClub.id)
+      .sort((a, b) => new Date(b.appliedAt || 0).getTime() - new Date(a.appliedAt || 0).getTime())
+      .slice(0, 5)
+    : []
 
-  const recentApplications = membershipApplications
-    .filter((a) => a.clubId === managedClub.id)
-    .sort((a, b) => new Date(b.appliedAt || 0).getTime() - new Date(a.appliedAt || 0).getTime())
-    .slice(0, 5)
-
-
-
+  if (loading) {
+    return (
+      <ProtectedRoute allowedRoles={["club_leader"]}>
+        <AppShell>
+          <div className="space-y-6">
+            <div>
+              <Skeleton className="h-9 w-1/2" />
+              <Skeleton className="h-5 w-1/3 mt-2" />
+            </div>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <Skeleton className="h-32 rounded-lg" />
+              <Skeleton className="h-32 rounded-lg" />
+              <Skeleton className="h-32 rounded-lg" />
+              <Skeleton className="h-32 rounded-lg" />
+            </div>
+            <div className="grid gap-6 md:grid-cols-2">
+              <Skeleton className="h-96 rounded-lg" />
+              <Skeleton className="h-64 rounded-lg" />
+            </div>
+          </div>
+        </AppShell>
+      </ProtectedRoute>
+    )
+  }
 
   return (
     <ProtectedRoute allowedRoles={["club_leader"]}>
@@ -75,9 +137,14 @@ export default function ClubLeaderDashboardPage() {
             <h1 className="text-3xl font-bold text-balance">
               Welcome, {profile?.fullName || "Club Leader"} 👋
             </h1>
-            <p className="text-muted-foreground">Managing {managedClub.name}</p>
+            {managedClub ? (
+              <p className="text-muted-foreground">Managing {managedClub.name}</p>
+            ) : (
+              <p className="text-destructive">Could not load club information. Please check your permissions.</p>
+            )}
           </div>
 
+          {/* ... StatsCards remain the same ... */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <StatsCard
               title="Total Members"
@@ -111,6 +178,7 @@ export default function ClubLeaderDashboardPage() {
           </div>
 
           <div className="grid gap-6 md:grid-cols-2">
+            {/* ... Recent Applications card remains the same ... */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -154,13 +222,17 @@ export default function ClubLeaderDashboardPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Club Overview</CardTitle>
-                <CardDescription>{managedClub.name} statistics</CardDescription>
+                {managedClub ? (
+                  <CardDescription>{managedClub.name} statistics</CardDescription>
+                ) : (
+                  <Skeleton className="h-5 w-40 mt-1" />
+                )}
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Category:</span>
-                    <Badge variant="outline">{managedClub.category}</Badge>
+                    <span className="text-muted-foreground">Major:</span>
+                    {managedClub ? <Badge variant="outline">{managedClub.majorName}</Badge> : <Skeleton className="h-6 w-24" />}
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Total Members:</span>
@@ -179,6 +251,7 @@ export default function ClubLeaderDashboardPage() {
             </Card>
           </div>
 
+          {/* ... Quick Actions card remains the same ... */}
           <Card>
             <CardHeader>
               <CardTitle>Quick Actions</CardTitle>

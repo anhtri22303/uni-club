@@ -15,8 +15,5 @@ pnpm dev
 On production: ensure `REDIS_URL` is configured in your deployment environment.
 
 
-Member list cần get user theo id để lấy thông tin hiển thị
-University staff PUT event
-Event theo club id
-wallet Club Leader
-Staff gift sau khi login
+Login Google
+GET membership my club thêm full name và MSSV

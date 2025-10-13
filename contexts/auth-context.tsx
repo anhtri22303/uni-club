@@ -11,6 +11,7 @@ interface AuthState {
   userId: string | number | null;
   role: string | null;
   staff: boolean;
+  
   user: {
     userId: string | number;
     email: string;
@@ -54,8 +55,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (!r) return null;
           const lower = String(r).toLowerCase();
           const map: Record<string, string> = {
+            member: "student",
             student: "student",
-            member: "member",
             club_manager: "club_leader",
             "club manager": "club_leader",
             uni_admin: "uni_staff",
@@ -108,8 +109,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!r) return null;
         const lower = String(r).toLowerCase();
         const map: Record<string, string> = {
+          member: "student",
           student: "student",
-          member: "member",
           club_manager: "club_leader",
           "club manager": "club_leader",
           uni_admin: "uni_staff",
@@ -134,34 +135,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         },
       });
 
-      // ⭐ LOGIC ĐIỀU HƯỚNG MỚI, CHẮC CHẮN VÀ ĐƠN GIẢN
+      // ⭐ LOGIC ĐIỀU HƯỚNG THÔNG MINH
 
-      // 1. Luôn kiểm tra sessionStorage trước tiên
+      // 1. Kiểm tra có intendedPath được lưu từ trang checkin không (chỉ lưu cho student/checkin/[code])
 
       const intendedPath = safeSessionStorage.getItem("intendedPath");
 
       if (intendedPath) {
         console.log(
-          `AuthContext: Tìm thấy intendedPath trong sessionStorage: ${intendedPath}`
+          `AuthContext: Tìm thấy intendedPath (từ checkin page): ${intendedPath}`
         );
         // Xóa ngay sau khi đọc để lần đăng nhập sau không bị ảnh hưởng
-
         safeSessionStorage.removeItem("intendedPath");
-
-        sessionStorage.removeItem("intendedPath");
 
         router.push(intendedPath);
       } else {
-        // 2. Nếu không có, mới fallback về trang theo role
+        // 2. Không có intendedPath (người dùng đăng nhập từ trang chủ hoặc trang khác)
         const redirectMap: Record<string, string> = {
-          member: "/member",
-          student: "/student",
+          student: "/profile",
           club_leader: "/club-leader",
           uni_staff: "/uni-staff",
           admin: "/admin",
           staff: "/staff",
         };
-        const fallbackPath = redirectMap[normalizedRole || ""] || "/member";
+        const fallbackPath = redirectMap[normalizedRole || ""] || "/student";
         console.log(
           `AuthContext: Không có intendedPath, điều hướng mặc định tới: ${fallbackPath}`
         );
@@ -187,6 +184,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       "clubly-events",
       "clubly-clubs",
       "clubly-users",
+      "clubly-club-applications",
+      "clubly-policies",
+      "clubly-event-requests",
+      
       // Session Storage keys
       "intendedPath",
     ];
@@ -197,9 +198,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // --- Bước 2: Thực hiện xóa ---
       keysToRemove.forEach((key) => {
         safeLocalStorage.removeItem(key);
-        safeSessionStorage.removeItem(key); // Dùng cả hai cho chắc chắn
+        safeSessionStorage.removeItem(key);
 
-        // Xóa trực tiếp để đảm bảo không bị ảnh hưởng bởi wrapper `safe`
+        // Xóa trực tiếp để đảm bảo cleanup hoàn toàn (dù đã dùng safe wrapper)
         localStorage.removeItem(key);
         sessionStorage.removeItem(key);
       });

@@ -1,4 +1,7 @@
+
 import axiosInstance from "@/lib/axiosInstance"
+import {jwtDecode} from "jwt-decode"
+
 
 export const fetchClub = async (pageable: { page?: number; size?: number; sort?: string[] } = { page: 0, size: 10, sort: ["name"] }) => {
   try {
@@ -71,5 +74,33 @@ export const getClubById = async (id: string | number) => {
   } catch (error) {
     console.error(`Error fetching club ${id}:`, error)
     throw error
+  }
+}
+
+
+interface JwtPayload {
+  clubId?: number
+  userId?: number
+  role?: string
+  email?: string
+  exp?: number
+}
+
+export const getClubIdFromToken = (): number | null => {
+  try {
+    const authDataString = localStorage.getItem("uniclub-auth")
+    if (!authDataString) return null
+
+    const authData = JSON.parse(authDataString)
+    const token = authData?.token
+    if (!token) return null
+
+    const decoded: JwtPayload = jwtDecode(token)
+    console.log("Decoded token:", decoded)
+
+    return decoded.clubId ?? null
+  } catch (error) {
+    console.error("Lỗi khi decode JWT:", error)
+    return null
   }
 }
