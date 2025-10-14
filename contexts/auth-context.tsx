@@ -181,8 +181,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const loginWithGoogle = async (googleToken: string): Promise<boolean> => {
     try {
-      console.log("🔐 AuthContext: Starting Google login process...")
-      
       const res: LoginResponse = await loginWithGoogleToken({ token: googleToken });
       const normalizedRole = processLoginResponse(res);
 
@@ -211,14 +209,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       return true;
-    } catch (err: any) {
-      console.error("❌ Google login failed:", err);
-      
-      // Nếu backend chưa ready, show thông báo rõ ràng
-      if (err.message?.includes("Backend chưa hỗ trợ")) {
-        console.warn("⚠️ Backend chưa implement Google OAuth, cần setup backend trước");
-      }
-      
+    } catch (err) {
+      console.error("Google login failed", err);
       return false;
     }
   };
