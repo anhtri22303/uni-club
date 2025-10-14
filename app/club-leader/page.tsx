@@ -16,6 +16,7 @@ import { useEffect, useState } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
 import events from "@/src/data/events.json"
 import users from "@/src/data/users.json"
+import { ApiMembership } from "@/service/membershipApi"
 
 
 // Define a type for the club based on the Swagger definition
@@ -52,10 +53,6 @@ export default function ClubLeaderDashboardPage() {
         const userProfile = await fetchProfile()
         setProfile(userProfile)
 
-        // const authDataString = safeLocalStorage.getItem("uniclub-auth")
-        // if (authDataString) {
-        //   const authData = JSON.parse(authDataString)
-        //   const clubId = authData?.clubIds?.[0]
         const clubId = getClubIdFromToken()
         if (clubId) {
           console.log("Giải mã được clubId từ JWT:", clubId)
@@ -135,10 +132,10 @@ export default function ClubLeaderDashboardPage() {
         <div className="space-y-6">
           <div>
             <h1 className="text-3xl font-bold text-balance">
-              Welcome, {profile?.fullName || "Club Leader"} 👋
+              Hello, {profile?.fullName || "Club Leader"} 👋
             </h1>
             {managedClub ? (
-              <p className="text-muted-foreground">Managing {managedClub.name}</p>
+              <p className="text-muted-foreground">Welcome to "{managedClub.name}"</p>
             ) : (
               <p className="text-destructive">Could not load club information. Please check your permissions.</p>
             )}
