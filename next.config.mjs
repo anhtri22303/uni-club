@@ -9,6 +9,24 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  // Headers để fix Google OAuth CORS
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'unsafe-none'
+          },
+          {
+            key: 'Cross-Origin-Embedder-Policy',
+            value: 'unsafe-none'
+          }
+        ],
+      },
+    ]
+  },
   // Tối ưu cho SSR/hydration
   experimental: {
     optimizePackageImports: ["@radix-ui/react-icons"],

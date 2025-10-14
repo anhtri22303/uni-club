@@ -173,12 +173,7 @@ export default function LoginPage() {
     })
   }
 
-  const handleGoogleSignIn = () => {
-    toast({
-      title: "Google Sign-In",
-      description: "Google sign-in will be available soon!",
-    })
-  }
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center p-3 sm:p-4 overflow-hidden">
@@ -408,7 +403,6 @@ export default function LoginPage() {
               {/* Google Sign-In Button */}
               <GoogleSignInButton
                 mode={isSignUpMode ? "sign-up" : "sign-in"}
-                onClick={handleGoogleSignIn}
               />
 
               <div className="text-center pt-3 sm:pt-4 border-t border-border/50">

@@ -7,6 +7,7 @@ import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/contexts/auth-context"
 import { DataProvider } from "@/contexts/data-context"
+import { GoogleAuthProvider } from "@/components/GoogleAuthProvider"
 import { Toaster } from "@/components/ui/toaster"
 import { Suspense } from "react"
 
@@ -33,12 +34,14 @@ export default function RootLayout({
           enableSystem={false}
           disableTransitionOnChange={true}
         >
-          <AuthProvider>
-            <DataProvider>
-              <Suspense fallback={null}>{children}</Suspense>
-              <Toaster />
-            </DataProvider>
-          </AuthProvider>
+          <GoogleAuthProvider>
+            <AuthProvider>
+              <DataProvider>
+                <Suspense fallback={null}>{children}</Suspense>
+                <Toaster />
+              </DataProvider>
+            </AuthProvider>
+          </GoogleAuthProvider>
         </ThemeProvider>
         <Analytics />
       </body>

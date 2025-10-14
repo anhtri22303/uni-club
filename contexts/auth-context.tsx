@@ -3,7 +3,7 @@
 import type React from "react";
 import { createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { login as loginApi, LoginResponse } from "@/service/authApi";
+import { login as loginApi, LoginResponse, loginWithGoogleToken } from "@/service/authApi";
 import { safeSessionStorage, safeLocalStorage } from "@/lib/browser-utils";
 import { ClientOnlyWrapper } from "@/components/client-only-wrapper";
 
@@ -27,6 +27,7 @@ interface AuthContextType {
     // Bỏ redirectTo khỏi định nghĩa vì không dùng nữa, nhưng để optional cho an toàn
     redirectTo?: string
   ) => Promise<boolean>;
+  loginWithGoogle: (googleToken: string) => Promise<boolean>;
   logout: () => void;
   isAuthenticated: boolean;
   initialized: boolean;
@@ -90,6 +91,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setInitialized(true);
   }, []);
 
+  // Helper function để xử lý login response chung
+  const processLoginResponse = (res: LoginResponse) => {
+    safeLocalStorage.setItem("uniclub-auth", JSON.stringify(res));
+    safeLocalStorage.setItem("jwtToken", res.token);
+
+    localStorage.setItem("uniclub-auth", JSON.stringify(res));
+    localStorage.setItem("jwtToken", res.token);
+
+    const normalizeRole = (r?: string | null) => {
+      if (!r) return null;
+      const lower = String(r).toLowerCase();
+      const map: Record<string, string> = {
+        member: "student",
+        student: "student",
+        club_manager: "club_leader",
+        "club manager": "club_leader",
+        uni_admin: "uni_staff",
+        university_admin: "uni_staff",
+        university_staff: "uni_staff",
+        "university staff": "uni_staff",
+        admin: "admin",
+        staff: "staff",
+      };
+      return map[lower] || lower;
+    };
+    const normalizedRole = normalizeRole(res.role);
+
+    setAuth({
+      userId: res.userId,
+      role: normalizedRole,
+      staff: res.staff || false,
+      user: {
+        userId: res.userId,
+        email: res.email,
+        fullName: res.fullName,
+      },
+    });
+
+    return normalizedRole;
+  };
+
   const login = async (
     email: string,
     password: string,
@@ -98,42 +140,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   ): Promise<boolean> => {
     try {
       const res: LoginResponse = await loginApi({ email, password });
-
-      safeLocalStorage.setItem("uniclub-auth", JSON.stringify(res));
-      safeLocalStorage.setItem("jwtToken", res.token);
-
-      localStorage.setItem("uniclub-auth", JSON.stringify(res));
-      localStorage.setItem("jwtToken", res.token);
-
-      const normalizeRole = (r?: string | null) => {
-        if (!r) return null;
-        const lower = String(r).toLowerCase();
-        const map: Record<string, string> = {
-          member: "student",
-          student: "student",
-          club_manager: "club_leader",
-          "club manager": "club_leader",
-          uni_admin: "uni_staff",
-          university_admin: "uni_staff",
-          university_staff: "uni_staff",
-          "university staff": "uni_staff",
-          admin: "admin",
-          staff: "staff",
-        };
-        return map[lower] || lower;
-      };
-      const normalizedRole = normalizeRole(res.role);
-
-      setAuth({
-        userId: res.userId,
-        role: normalizedRole,
-        staff: res.staff || false,
-        user: {
-          userId: res.userId,
-          email: res.email,
-          fullName: res.fullName,
-        },
-      });
+      const normalizedRole = processLoginResponse(res);
 
       // ⭐ LOGIC ĐIỀU HƯỚNG THÔNG MINH
 
@@ -168,6 +175,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return true;
     } catch (err) {
       console.error("Login failed", err);
+      return false;
+    }
+  };
+
+  const loginWithGoogle = async (googleToken: string): Promise<boolean> => {
+    try {
+      console.log("🔐 AuthContext: Starting Google login process...")
+      
+      const res: LoginResponse = await loginWithGoogleToken({ token: googleToken });
+      const normalizedRole = processLoginResponse(res);
+
+      // ⭐ LOGIC ĐIỀU HƯỚNG THÔNG MINH (giống như login thường)
+      const intendedPath = safeSessionStorage.getItem("intendedPath");
+
+      if (intendedPath) {
+        console.log(
+          `AuthContext: Tìm thấy intendedPath (từ checkin page): ${intendedPath}`
+        );
+        safeSessionStorage.removeItem("intendedPath");
+        router.push(intendedPath);
+      } else {
+        const redirectMap: Record<string, string> = {
+          student: "/profile",
+          club_leader: "/club-leader",
+          uni_staff: "/uni-staff",
+          admin: "/admin",
+          staff: "/staff",
+        };
+        const fallbackPath = redirectMap[normalizedRole || ""] || "/student";
+        console.log(
+          `AuthContext: Google login - điều hướng mặc định tới: ${fallbackPath}`
+        );
+        router.push(fallbackPath);
+      }
+
+      return true;
+    } catch (err: any) {
+      console.error("❌ Google login failed:", err);
+      
+      // Nếu backend chưa ready, show thông báo rõ ràng
+      if (err.message?.includes("Backend chưa hỗ trợ")) {
+        console.warn("⚠️ Backend chưa implement Google OAuth, cần setup backend trước");
+      }
+      
       return false;
     }
   };
@@ -249,6 +300,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       value={{
         auth,
         login,
+        loginWithGoogle,
         logout,
         isAuthenticated,
         initialized,
