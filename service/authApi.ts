@@ -49,11 +49,24 @@ export const handleGoogleCallback = async (code: string) => {
 
 export const loginWithGoogleToken = async (credentials: { token: string }): Promise<LoginResponse> => {
   try {
+    console.log("🚀 Sending Google token to backend:", {
+      url: `${axiosInstance.defaults.baseURL}/auth/google`,
+      tokenLength: credentials.token?.length || 0,
+      tokenStart: credentials.token?.substring(0, 20) + "..."
+    })
+    
     const response = await axiosInstance.post<LoginResponse>("/auth/google", credentials)
-    console.log("Google token login success:", response.data)
+    console.log("✅ Google token login success:", response.data)
     return response.data
-  } catch (error) {
-    console.error("Error during Google token login:", error)
+  } catch (error: any) {
+    console.error("❌ Error during Google token login:", {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      url: error.config?.url,
+      method: error.config?.method
+    })
+    
     throw error
   }
 }
@@ -103,6 +116,39 @@ export const signUp = async (credentials: SignUpCredentials): Promise<SignUpResp
       console.error("Error response:", error.response.data)
     } else {
       console.error("Error during sign up:", error.message)
+    }
+    throw error
+  }
+}
+
+// Forgot Password API
+export interface ForgotPasswordRequest {
+  email: string
+}
+
+export interface ForgotPasswordResponse {
+  success: boolean
+  message: string
+  data: null
+}
+
+export const forgotPassword = async (email: string): Promise<ForgotPasswordResponse> => {
+  try {
+    const res = await axiosInstance.post<ForgotPasswordResponse>(
+      "/auth/forgot-password",
+      { email },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    )
+    return res.data
+  } catch (error: any) {
+    if (error.response) {
+      console.error("Error response:", error.response.data)
+    } else {
+      console.error("Error during forgot password:", error.message)
     }
     throw error
   }
