@@ -63,9 +63,9 @@ export const putEventStatus = async (id: string | number, status: string) => {
 }
 
 export const getEventByCode = async (code: string) => {
-	// call the endpoint used in your screenshot: /api/events/checkin/{code}
+	// call the correct endpoint: /api/events/code/{code}
 	try {
-		const response = await axiosInstance.get(`/api/events/checkin/${encodeURIComponent(code)}`)
+		const response = await axiosInstance.get(`/api/events/code/${encodeURIComponent(code)}`)
 		const resData: any = response.data
 		console.debug(`Fetched event by code ${code}:`, resData)
 		// expected response shape:
