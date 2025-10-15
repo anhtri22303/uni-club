@@ -10,7 +10,7 @@ import { LoadingSpinner } from "@/components/loading-spinner"
 import { safeLocalStorage } from "@/lib/browser-utils"
 import {
   LayoutDashboard, Users, Calendar, Gift, Wallet, History, BarChart3,
-  Building, Home, CheckCircle, FileText, FileUser, HandCoins,
+  Building, Home, CheckCircle, FileText, FileUser, HandCoins, CalendarDays,
 } from "lucide-react"
 
 interface SidebarProps {
@@ -38,6 +38,8 @@ const navigationConfig = {
     { href: "/club-leader/events", label: "Events", icon: Calendar },
     { href: "/club-leader/gift", label: "Gift", icon: Gift },
     { href: "/club-leader/points", label: "Points", icon: HandCoins },
+    { href: "/club-leader/attendances", label: "Attendances", icon: CalendarDays },
+
   ],
   uni_staff: [
     { href: "/uni-staff", label: "Dashboard", icon: LayoutDashboard },
@@ -64,7 +66,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
   const [loadingPath, setLoadingPath] = useState<string | null>(null)
 
   if (!auth.role || !auth.user) return null
-  
+
   // Default navigation per role (cast to a mutable, wide type to avoid readonly tuple issues)
   let navigation = (navigationConfig[auth.role as keyof typeof navigationConfig] || []) as unknown as NavItem[]
 
@@ -75,10 +77,10 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
       if (storedAuth) {
         const parsedAuth = JSON.parse(storedAuth)
         const clubIds = parsedAuth.clubIds
-        
+
         // If student has no clubs (clubIds is null, undefined, or empty array), show limited navigation
         const hasNoClubs = !clubIds || (Array.isArray(clubIds) && clubIds.length === 0)
-        
+
         if (hasNoClubs) {
           console.log("Student has no clubs, showing limited navigation")
           navigation = [
