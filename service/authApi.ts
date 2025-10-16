@@ -143,6 +143,7 @@ export const forgotPassword = async (email: string): Promise<ForgotPasswordRespo
         },
       }
     )
+    console.log("Forgot password response:", res.data)
     return res.data
   } catch (error: any) {
     if (error.response) {
