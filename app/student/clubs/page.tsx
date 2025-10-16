@@ -55,7 +55,7 @@ export default function MemberClubsPage() {
       if (saved) {
         const parsed = JSON.parse(saved)
         console.log("Parsed localStorage data:", parsed)
-        
+
         // Check for clubIds array first, then fallback to single clubId
         if (parsed.clubIds && Array.isArray(parsed.clubIds)) {
           const clubIdNumbers = parsed.clubIds.map((id: any) => Number(id)).filter((id: number) => !isNaN(id))
@@ -419,7 +419,7 @@ export default function MemberClubsPage() {
       label: "Actions",
       render: (_: any, club: any) => {
         const status = getClubStatus(club.id)
-        
+
         // Allow members to apply to clubs (except their current club which is already filtered out)
         return (
           <Button
@@ -451,7 +451,7 @@ export default function MemberClubsPage() {
           <div>
             <h1 className="text-3xl font-bold">Club Directory</h1>
             <p className="text-muted-foreground">
-              Discover and join clubs that match your interests. 
+              Discover and join clubs that match your interests.
               {userClubIds.length > 0 && (
                 <span className="text-xs text-muted-foreground/70 ml-2">
                   (Your club{userClubIds.length > 1 ? 's' : ''} {userClubIds.join(', ')} {userClubIds.length > 1 ? 'are' : 'is'} hidden)
@@ -464,6 +464,31 @@ export default function MemberClubsPage() {
               - initialPageSize = 6 để luôn có 2+ trang khi >6 rows
               - pageSizeOptions để người dùng đổi số dòng/trang
               Lưu ý: DataTable của bạn đã có phân trang nội bộ, nên chỉ cần truyền props này. */}
+
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold">Club Directory</h1>
+              <p className="text-muted-foreground">
+                Discover and join clubs that match your interests.
+                {userClubIds.length > 0 && (
+                  <span className="text-xs text-muted-foreground/70 ml-2">
+                    (Your club{userClubIds.length > 1 ? 's' : ''} {userClubIds.join(', ')} {userClubIds.length > 1 ? 'are' : 'is'} hidden)
+                  </span>
+                )}
+              </p>
+            </div>
+
+            {/* Nút tạo mới club */}
+            <Button
+              onClick={() => setShowApplicationModal(true)} // hoặc setShowCreateModal nếu bạn muốn modal riêng
+              variant="default"
+              className="flex items-center gap-2"
+            >
+              <UserPlus className="h-4 w-4" />
+              Create new club
+            </Button>
+          </div>
+
           <DataTable
             title="Club Directory"
             data={enhancedClubs}

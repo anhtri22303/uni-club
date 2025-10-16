@@ -31,15 +31,12 @@ interface ClubApiResponse {
   data: Club;
 }
 
-
 export default function ClubLeaderMembersPage() {
   const { clubMemberships } = useData()
   const { toast } = useToast()
-
   // State để lưu thông tin club và quản lý loading
   const [managedClub, setManagedClub] = useState<Club | null>(null)
   const [loading, setLoading] = useState(true)
-
   const [apiMembers, setApiMembers] = useState<ApiMembership[]>([])
   const [membersLoading, setMembersLoading] = useState(false)
   const [membersError, setMembersError] = useState<string | null>(null)
@@ -54,7 +51,7 @@ export default function ClubLeaderMembersPage() {
         if (!clubId) {
           throw new Error("Không tìm thấy thông tin câu lạc bộ của bạn.")
         }
-
+        console.log("Club ID từ token:", clubId)
         // 2. Lấy thông tin chi tiết của club
         const clubResponse = (await getClubById(clubId)) as ClubApiResponse
         if (clubResponse && clubResponse.success) {
@@ -64,15 +61,17 @@ export default function ClubLeaderMembersPage() {
           setMembersLoading(true)
           setMembersError(null)
           try {
-            // Giả sử API này trả về thành viên của club mà leader quản lý
-            // const memberData = await membershipApi.getClubMembers()
-            const memberData = await membershipApi.getMyClubMembers()
+            // Gọi đúng API để lấy danh sách member theo clubId
+            const memberData = await membershipApi.getMembersByClubId(clubId)
             setApiMembers(memberData)
+            console.log("Member data:", memberData)
+
           } catch (err: any) {
             setMembersError(err?.message || "Failed to load members")
           } finally {
             setMembersLoading(false)
           }
+
         } else {
           // throw new Error(clubResponse?.message || "Không thể tải thông tin câu lạc bộ.")
           throw new Error("Không thể tải thông tin câu lạc bộ.")
@@ -96,7 +95,8 @@ export default function ClubLeaderMembersPage() {
   const clubMembers = managedClub
     ? (apiMembers.length > 0 ? apiMembers : clubMemberships)
       // .filter((m: any) => String(m.clubId) === String(managedClub.id) && (m.state ? m.state === "ACTIVE" : m.status === "APPROVED"))
-      .filter((m: any) => String(m.club?.clubId ?? m.clubId) === String(managedClub.id) && (m.state ? m.state === "ACTIVE" : m.status === "APPROVED"))
+      // .filter((m: any) => String(m.clubId) === String(managedClub.id) && (m.state ? m.state === "ACTIVE" : m.status === "APPROVED"))
+      .filter((m: any) => String(m.clubId) === String(managedClub.id) && m.state === "ACTIVE")
       .map((m: any) => ({
         id: m.membershipId ?? m.id ?? `m-${m.userId}`,
         userId: String(m.userId),

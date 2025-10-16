@@ -238,8 +238,15 @@ export default function UniStaffClubsPage() {
               <h1 className="text-3xl font-bold">Club Management</h1>
               <p className="text-muted-foreground">View and manage all clubs in the university</p>
             </div>
-            <Button onClick={() => setShowAddModal(true)} variant="default" title="Add club" aria-label="Add club">
+            <Button
+              onClick={() => setShowAddModal(true)}
+              variant="default"
+              title="Create new club"
+              aria-label="Create new club"
+              className="flex items-center gap-2"
+            >
               <Plus className="h-4 w-4" />
+              Create new club
             </Button>
           </div>
 
