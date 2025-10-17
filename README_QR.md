@@ -15,5 +15,19 @@ pnpm dev
 On production: ensure `REDIS_URL` is configured in your deployment environment.
 
 
-Login Google
+Login Google / forgot, reset password lỗi
+GET events lỗi
+GET profile ko wallet sẽ lỗi
+
+admin:
+lỗi trang events
+
+uni-staff:
+lỗi POST policy
+lỗi PUT Club application status
+
+
+Student:
+lỗi POST club application
+
 GET membership my club thêm full name và MSSV

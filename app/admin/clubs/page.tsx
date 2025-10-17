@@ -31,6 +31,7 @@ type ClubApiItem = {
   id: number
   name: string
   majorName?: string
+  leaderName?: string
   description?: string
   majorPolicyName?: string
   memberCount?: number
@@ -70,49 +71,43 @@ export default function AdminClubsPage() {
 
   // Map dữ liệu API sang định dạng bảng
   const enhancedClubs = clubs.map((club) => {
-    // const memberCount = club.memberCount ?? Math.floor(Math.random() * 50) + 10 // nếu API chưa có field
-    // const eventCount = club.eventCount ?? Math.floor(Math.random() * 10)
-    // const activityScore = memberCount + eventCount
-    // const activityLevel =
-    //   activityScore > 30 ? "High" : activityScore > 15 ? "Medium" : "Low"
-
     return {
       id: String(club.id),
       name: club.name,
       category: club.majorName ?? "-",
-      description: club.description || "-",
+      leaderName: club.leaderName ?? "-",
       // members: memberCount,
       members: 0,
       policy: club.majorPolicyName ?? "-",
       // events: eventCount,
       events: 0,
-      // activityLevel,
     }
   })
+
+  // Filter động dựa trên dữ liệu thực tế
+  const uniqueCategories = Array.from(new Set(clubs.map((c) => c.majorName).filter((v): v is string => !!v)))
+  const uniqueLeaders = Array.from(new Set(clubs.map((c) => c.leaderName).filter((v): v is string => !!v)))
+  const uniquePolicies = Array.from(new Set(clubs.map((c) => c.majorPolicyName).filter((v): v is string => !!v)))
 
   const filters = [
     {
       key: "category",
       label: "Category",
       type: "select" as const,
-      options: [
-        { value: "Technology", label: "Technology" },
-        { value: "Sports", label: "Sports" },
-        { value: "Arts", label: "Arts" },
-        { value: "Academic", label: "Academic" },
-        { value: "Social", label: "Social" },
-      ],
+      options: uniqueCategories.map((cat) => ({ value: cat, label: cat })),
     },
-    // {
-    //   key: "activityLevel",
-    //   label: "Activity Level",
-    //   type: "select" as const,
-    //   options: [
-    //     { value: "High", label: "High" },
-    //     { value: "Medium", label: "Medium" },
-    //     { value: "Low", label: "Low" },
-    //   ],
-    // },
+    {
+      key: "leaderName",
+      label: "Leader",
+      type: "select" as const,
+      options: uniqueLeaders.map((l) => ({ value: l, label: l })),
+    },
+    {
+      key: "policy",
+      label: "Policy",
+      type: "select" as const,
+      options: uniquePolicies.map((p) => ({ value: p, label: p })),
+    },
   ]
 
   const columns = [
@@ -146,8 +141,8 @@ export default function AdminClubsPage() {
       },
     },
     {
-      key: "description" as const,
-      label: "Description",
+      key: "leaderName" as const,
+      label: "Leader",
       render: (value: string) => (
         <div className="text-sm text-muted-foreground max-w-[180px] truncate" title={value}>
           {value || "-"}
@@ -181,6 +176,38 @@ export default function AdminClubsPage() {
           <Calendar className="h-4 w-4" />
           {value}
         </div>
+      ),
+    },
+    {
+      key: "id" as const,
+      label: "Actions",
+      render: (id: string, club: any) => (
+        <button
+          className="p-2 rounded hover:bg-red-100"
+          title="Delete club"
+          onClick={async () => {
+            if (!window.confirm(`Are you sure you want to delete club '${club.name}'?`)) return;
+            try {
+              await (await import("@/service/clubApi")).deleteClub(club.id);
+              toast({ title: "Club Deleted", description: `Club '${club.name}' has been deleted.` });
+              // Reload danh sách club từ backend
+              try {
+                const res: any = await (await import("@/service/clubApi")).fetchClub({ page: 0, size: 20, sort: ["name"] });
+                setClubs(res?.content ?? []);
+              } catch (err) {
+                toast({ title: "Reload Error", description: "Failed to reload club list.", variant: "destructive" });
+              }
+            } catch (err) {
+              toast({
+                title: "Delete Failed",
+                description: "Cannot delete this club. Please remove all related members and events before deleting.",
+                variant: "destructive"
+              });
+            }
+          }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
       ),
     },
     // {
@@ -237,8 +264,8 @@ export default function AdminClubsPage() {
             searchKey="name"
             searchPlaceholder="Search clubs..."
             filters={filters}
-            initialPageSize={6}
-            pageSizeOptions={[6, 12, 24, 48]}
+            initialPageSize={12}
+            pageSizeOptions={[12, 24, 48]}
           />
 
           {loading && (

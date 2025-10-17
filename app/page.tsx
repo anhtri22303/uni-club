@@ -22,6 +22,7 @@ export default function LoginPage() {
   const [fullName, setFullName] = useState("")
   const [studentCode, setStudentCode] = useState("")
   const [majorName, setMajorName] = useState("")
+  const roleName = "STUDENT"
   const [confirmPassword, setConfirmPassword] = useState("")
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [showLoginError, setShowLoginError] = useState(false)
@@ -96,7 +97,7 @@ export default function LoginPage() {
           phone,
           studentCode,
           majorName,
-          roleName: "MEMBER", // hoặc cho user chọn role
+          roleName,
         })
 
         toast({
@@ -345,6 +346,21 @@ export default function LoginPage() {
                       <option value="Japanese Language">Japanese Language - Ngôn ngữ Nhật</option>
                       <option value="Korean Language">Korean Language - Ngôn ngữ Hàn</option>
                     </select>
+                  </div>
+                )}
+
+                {isSignUpMode && (
+                  <div className="space-y-2">
+                    <Label htmlFor="roleName" className="text-sm font-medium">
+                      Role
+                    </Label>
+                    <Input
+                      id="roleName"
+                      type="text"
+                      value="STUDENT"
+                      readOnly
+                      className="h-10 sm:h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-gray-100 text-gray-500 cursor-not-allowed"
+                    />
                   </div>
                 )}
 

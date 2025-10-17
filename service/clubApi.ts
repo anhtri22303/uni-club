@@ -10,7 +10,7 @@ export const fetchClub = async (pageable: { page?: number; size?: number; sort?:
       params: {
         pageable: JSON.stringify({
           page: pageable.page ?? 0,
-          size: pageable.size ?? 10,
+          size: pageable.size ?? 20,
           sort: pageable.sort ?? ["name"],
         }),
       },

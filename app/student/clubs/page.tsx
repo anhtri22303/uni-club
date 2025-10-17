@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { useAuth } from "@/contexts/auth-context"
 import { useData } from "@/contexts/data-context"
 import { useToast } from "@/hooks/use-toast"
-import { Users, UserPlus } from "lucide-react"
+import { Users, PlusIcon } from "lucide-react"
 import { fetchClub } from "@/service/clubApi"
 import { postMemAppli } from "@/service/memberApplicationApi"
 import { safeLocalStorage } from "@/lib/browser-utils"
@@ -36,6 +36,12 @@ export default function MemberClubsPage() {
   const [selectedClub, setSelectedClub] = useState<any>(null)
   const [applicationText, setApplicationText] = useState("")
   const [showApplicationModal, setShowApplicationModal] = useState(false)
+  // Create club modal state
+  const [showCreateClubModal, setShowCreateClubModal] = useState(false)
+  const [newClubName, setNewClubName] = useState("")
+  const [newDescription, setNewDescription] = useState("")
+  const [newCategory, setNewCategory] = useState("")
+  const [newProposerReason, setNewProposerReason] = useState("")
   const [clubs, setClubs] = useState<ClubApiItem[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -434,7 +440,7 @@ export default function MemberClubsPage() {
               "Applied"
             ) : (
               <>
-                <UserPlus className="h-4 w-4 mr-1" />
+                <PlusIcon className="h-4 w-4 mr-1" />
                 Apply
               </>
             )}
@@ -447,6 +453,16 @@ export default function MemberClubsPage() {
   return (
     <ProtectedRoute allowedRoles={["student"]}>
       <AppShell>
+        {/* Floating '+' button for create club */}
+        <Button
+          aria-label="Create club application"
+          size="sm"
+          variant="default"
+          className="fixed top-4 right-4 z-50 h-10 w-10 rounded-full flex items-center justify-center"
+          onClick={() => setShowCreateClubModal(true)}
+        >
+          <PlusIcon className="h-5 w-5" />
+        </Button>
         <div className="space-y-6">
           <div>
             <h1 className="text-3xl font-bold">Club Directory</h1>
@@ -458,35 +474,6 @@ export default function MemberClubsPage() {
                 </span>
               )}
             </p>
-          </div>
-
-          {/* Thêm cấu hình phân trang giống trang Offers:
-              - initialPageSize = 6 để luôn có 2+ trang khi >6 rows
-              - pageSizeOptions để người dùng đổi số dòng/trang
-              Lưu ý: DataTable của bạn đã có phân trang nội bộ, nên chỉ cần truyền props này. */}
-
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold">Club Directory</h1>
-              <p className="text-muted-foreground">
-                Discover and join clubs that match your interests.
-                {userClubIds.length > 0 && (
-                  <span className="text-xs text-muted-foreground/70 ml-2">
-                    (Your club{userClubIds.length > 1 ? 's' : ''} {userClubIds.join(', ')} {userClubIds.length > 1 ? 'are' : 'is'} hidden)
-                  </span>
-                )}
-              </p>
-            </div>
-
-            {/* Nút tạo mới club */}
-            <Button
-              onClick={() => setShowApplicationModal(true)} // hoặc setShowCreateModal nếu bạn muốn modal riêng
-              variant="default"
-              className="flex items-center gap-2"
-            >
-              <UserPlus className="h-4 w-4" />
-              Create new club
-            </Button>
           </div>
 
           <DataTable
@@ -507,6 +494,7 @@ export default function MemberClubsPage() {
             <div className="text-center text-sm text-destructive">Error: {error}</div>
           )}
 
+          {/* Modal for applying to a club (join) */}
           <Modal
             open={showApplicationModal}
             onOpenChange={setShowApplicationModal}
@@ -529,6 +517,53 @@ export default function MemberClubsPage() {
                   Cancel
                 </Button>
                 <Button onClick={submitApplication}>Submit Application</Button>
+              </div>
+            </div>
+          </Modal>
+
+          {/* Modal for creating a new club */}
+          <Modal
+            open={showCreateClubModal}
+            onOpenChange={setShowCreateClubModal}
+            title="Create Club Application"
+          >
+            <div className="space-y-3">
+              <Label>Club Name</Label>
+              <Textarea value={newClubName} onChange={e => setNewClubName(e.target.value)} placeholder="Club name" />
+              <Label>Description</Label>
+              <Textarea value={newDescription} onChange={e => setNewDescription(e.target.value)} placeholder="Description" />
+              <Label>Category</Label>
+              <Textarea value={newCategory} onChange={e => setNewCategory(e.target.value)} placeholder="Category" />
+              <Label>Proposer Reason</Label>
+              <Textarea value={newProposerReason} onChange={e => setNewProposerReason(e.target.value)} placeholder="Why do you want to create this club?" />
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => setShowCreateClubModal(false)}>Cancel</Button>
+                <Button
+                  onClick={async () => {
+                    if (!newClubName.trim() || !newDescription.trim() || !newCategory.trim() || !newProposerReason.trim()) {
+                      toast({ title: 'Missing Information', description: 'Please fill in all fields.', variant: 'destructive' });
+                      return;
+                    }
+                    try {
+                      const created = await (await import("@/service/clubApplicationAPI")).postClubApplication({
+                        clubName: newClubName,
+                        description: newDescription,
+                        category: newCategory,
+                        proposerReason: newProposerReason,
+                      });
+                      toast({ title: 'Application sent', description: `${created.clubName} submitted`, variant: 'success' });
+                      setShowCreateClubModal(false);
+                      setNewClubName("");
+                      setNewDescription("");
+                      setNewCategory("");
+                      setNewProposerReason("");
+                    } catch (err) {
+                      toast({ title: 'Error', description: 'Failed to send application', variant: 'destructive' });
+                    }
+                  }}
+                >
+                  Send
+                </Button>
               </div>
             </div>
           </Modal>

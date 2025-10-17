@@ -110,6 +110,7 @@ export const signUp = async (credentials: SignUpCredentials): Promise<SignUpResp
         },
       }
     )
+    console.log("Sign up response:", res.data)
     return res.data
   } catch (error: any) {
     if (error.response) {
