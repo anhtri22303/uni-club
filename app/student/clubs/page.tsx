@@ -17,6 +17,7 @@ import { Users, PlusIcon } from "lucide-react"
 import { fetchClub } from "@/service/clubApi"
 import { postMemAppli } from "@/service/memberApplicationApi"
 import { safeLocalStorage } from "@/lib/browser-utils"
+import { fetchMajors, Major } from "@/service/majorApi"
 
 // We'll fetch clubs from the backend and only use the `content` array.
 type ClubApiItem = {
@@ -48,6 +49,10 @@ export default function MemberClubsPage() {
   const [pendingClubIds, setPendingClubIds] = useState<string[]>([])
   const [userClubIds, setUserClubIds] = useState<number[]>([])
   const [userClubId, setUserClubId] = useState<number | null>(null) // Keep for backward compatibility
+  
+  const [majors, setMajors] = useState<Major[]>([])
+  const [selectedMajorId, setSelectedMajorId] = useState<number | "">("")
+
 
   // Get user's current memberships and applications
   const userMemberships = clubMemberships.filter((m) => m.userId === auth.userId)
@@ -82,6 +87,20 @@ export default function MemberClubsPage() {
       console.error("Failed to get clubId from localStorage:", error)
     }
   }, [])
+
+
+  useEffect(() => {
+    const loadMajors = async () => {
+      try {
+        const data = await fetchMajors()
+        setMajors(data)
+      } catch (error) {
+        console.error("Failed to load majors:", error)
+      }
+    }
+    loadMajors()
+  }, [])
+
 
   const categoryColors: Record<string, string> = {
     "Software Engineering": "#0052CC",
@@ -450,6 +469,7 @@ export default function MemberClubsPage() {
     },
   ]
 
+
   return (
     <ProtectedRoute allowedRoles={["student"]}>
       <AppShell>
@@ -458,10 +478,11 @@ export default function MemberClubsPage() {
           aria-label="Create club application"
           size="sm"
           variant="default"
-          className="fixed top-4 right-4 z-50 h-10 w-10 rounded-full flex items-center justify-center"
+          className="fixed top-4 right-4 z-50 rounded-full flex items-center justify-center"
           onClick={() => setShowCreateClubModal(true)}
         >
           <PlusIcon className="h-5 w-5" />
+          <span className="font-medium">Create new club</span>
         </Button>
         <div className="space-y-6">
           <div>
@@ -533,15 +554,34 @@ export default function MemberClubsPage() {
               <Label>Description</Label>
               <Textarea value={newDescription} onChange={e => setNewDescription(e.target.value)} placeholder="Description" />
               <Label>Category</Label>
-              <Textarea value={newCategory} onChange={e => setNewCategory(e.target.value)} placeholder="Category" />
+              {/* <Textarea value={newCategory} onChange={e => setNewCategory(e.target.value)} placeholder="Category" /> */}
+              <select
+                id="major"
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={selectedMajorId}
+                onChange={(e) => setSelectedMajorId(Number(e.target.value))}
+              >
+                <option value="">Select a major</option>
+                {majors
+                  .filter((m) => m.active)
+                  .map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
+                  ))}
+              </select>
+
               <Label>Proposer Reason</Label>
               <Textarea value={newProposerReason} onChange={e => setNewProposerReason(e.target.value)} placeholder="Why do you want to create this club?" />
               <div className="flex justify-end gap-2 pt-2">
                 <Button variant="outline" onClick={() => setShowCreateClubModal(false)}>Cancel</Button>
                 <Button
                   onClick={async () => {
-                    if (!newClubName.trim() || !newDescription.trim() || !newCategory.trim() || !newProposerReason.trim()) {
-                      toast({ title: 'Missing Information', description: 'Please fill in all fields.', variant: 'destructive' });
+                    if (!newClubName.trim() || !newDescription.trim() || !newCategory || !newProposerReason.trim()) {
+                      toast({ 
+                        title: 'Missing Information', 
+                        description: 'Please fill in all fields.', 
+                        variant: 'destructive' });
                       return;
                     }
                     try {

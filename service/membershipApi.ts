@@ -15,16 +15,6 @@ export type ApiMembership = {
 	clubName: string
 }
 
-
-// Lấy thành viên trong CLB mà leader đang quản lý
-export const getMyClubMembers = async (): Promise<ApiMembership[]> => {
-	const res = await axiosInstance.get("/api/membership/my-clubs")
-	const body: any = res.data
-	console.log("Fetched my club members:", body)
-	return body?.data || []
-}
-
-
 export const getClubMembers = async (): Promise<ApiMembership[]> => {
 	const res = await axiosInstance.get("/api/memberships/my-club")
 	// backend returns { success, message, data }
@@ -48,8 +38,6 @@ export const getMembersByClubId = async (clubId: number): Promise<ApiMembership[
 
 export default {
 	getClubMembers,
-	getMyClubMembers,
 	getMembersByClubId,
-
 }
 

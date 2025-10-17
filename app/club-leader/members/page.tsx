@@ -13,7 +13,8 @@ import { getClubById, getClubIdFromToken } from "@/service/clubApi" // Import c�
 import { useToast } from "@/hooks/use-toast"
 import { usePagination } from "@/hooks/use-pagination"
 import { Users, Trash2, ChevronLeft, ChevronRight } from "lucide-react"
-import users from "@/src/data/users.json"
+import { fetchUserById } from "@/service/userApi"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 
 // Define a type for the club (có thể đặt trong một file dùng chung)
 interface Club {
@@ -51,31 +52,50 @@ export default function ClubLeaderMembersPage() {
         if (!clubId) {
           throw new Error("Không tìm thấy thông tin câu lạc bộ của bạn.")
         }
-        console.log("Club ID từ token:", clubId)
         // 2. Lấy thông tin chi tiết của club
         const clubResponse = (await getClubById(clubId)) as ClubApiResponse
         if (clubResponse && clubResponse.success) {
           setManagedClub(clubResponse.data)
-
           // 3. Sau khi có club, tải danh sách thành viên
           setMembersLoading(true)
           setMembersError(null)
           try {
             // Gọi đúng API để lấy danh sách member theo clubId
             const memberData = await membershipApi.getMembersByClubId(clubId)
-            setApiMembers(memberData)
-            console.log("Member data:", memberData)
+            // Dùng Promise.all để fetch chi tiết từng user
+            const membersWithUserData = await Promise.all(
+              memberData.map(async (m: any) => {
+                try {
+                  const userInfo = await fetchUserById(m.userId)
+                  console.log(`User info for ${m.userId}:`, userInfo)
+                  console.log("fetchUserById raw:", userInfo)
+                  return { ...m, userInfo }
+                } catch (err) {
+                  console.warn(`Không thể lấy thông tin user ${m.userId}`, err)
+                  return { ...m, userInfo: null }
+                }
+              })
+            )
+
+
+            // setApiMembers(memberData)
+            setApiMembers(membersWithUserData)
+            console.log("MEMBER DATA:", membersWithUserData);
+            console.table(membersWithUserData.map(m => ({
+              userId: m.userId,
+              fullName: m.userInfo?.fullName,
+              email: m.userInfo?.email,
+              avatarUrl: m.userInfo?.avatarUrl
+            })))
 
           } catch (err: any) {
             setMembersError(err?.message || "Failed to load members")
           } finally {
             setMembersLoading(false)
           }
-
         } else {
           // throw new Error(clubResponse?.message || "Không thể tải thông tin câu lạc bộ.")
           throw new Error("Không thể tải thông tin câu lạc bộ.")
-
         }
       } catch (error: any) {
         setMembersError(error.message)
@@ -93,18 +113,25 @@ export default function ClubLeaderMembersPage() {
 
   // Lọc thành viên dựa trên managedClub đã được tải về
   const clubMembers = managedClub
-    ? (apiMembers.length > 0 ? apiMembers : clubMemberships)
-      // .filter((m: any) => String(m.clubId) === String(managedClub.id) && (m.state ? m.state === "ACTIVE" : m.status === "APPROVED"))
-      // .filter((m: any) => String(m.clubId) === String(managedClub.id) && (m.state ? m.state === "ACTIVE" : m.status === "APPROVED"))
+    ? apiMembers
       .filter((m: any) => String(m.clubId) === String(managedClub.id) && m.state === "ACTIVE")
-      .map((m: any) => ({
-        id: m.membershipId ?? m.id ?? `m-${m.userId}`,
-        userId: String(m.userId),
-        clubId: String(m.clubId),
-        role: m.level ? m.level : m.role ?? "MEMBER",
-        status: m.state ? (m.state === "ACTIVE" ? "APPROVED" : m.state) : m.status ?? "APPROVED",
-        joinedAt: m.joinedAt ?? null,
-      }))
+      .map((m: any) => {
+        const u = m.userInfo || {}
+        return {
+          id: m.membershipId ?? `m-${m.userId}`,
+          userId: m.userId,
+          clubId: m.clubId,
+          fullName: u.fullName ?? m.fullName ?? `User ${m.userId}`,
+          email: u.email ?? "N/A",
+          phone: u.phone ?? "N/A",
+          studentCode: u.studentCode ?? "N/A",
+          majorName: u.majorName ?? "N/A",
+          avatarUrl: u.avatarUrl ?? "/placeholder-user.jpg",
+          role: m.clubRole ?? "MEMBER",
+          status: m.state,
+          joinedAt: m.joinedDate ? new Date(m.joinedDate).toLocaleDateString() : "N/A",
+        }
+      })
     : []
 
   const {
@@ -115,18 +142,12 @@ export default function ClubLeaderMembersPage() {
   } = usePagination({ data: clubMembers, initialPageSize: 5 }) // Tăng page size lên một chút
 
   const handleDeleteMember = (membershipId: string) => {
-    const member = clubMembers.find((m: any) => m.id === membershipId)
+    const member = clubMembers.find((m) => m.id === membershipId)
     if (!member) return
-    const user = getUserDetails(member.userId)
-    toast({ title: "Member Removed", description: `${user?.fullName} has been removed from the club` })
+    toast({ title: "Member Removed", description: `${member.fullName} has been removed from the club` })
     setMembersPage(1)
   }
 
-  const getUserDetails = (userId: string) => {
-    const found = users.find((u) => u.id === userId)
-    if (found) return found
-    return { id: userId, fullName: `User ID: ${userId}`, email: "N/A" }
-  }
 
   const MinimalPager = ({ current, total, onPrev, onNext }: { current: number; total: number; onPrev: () => void; onNext: () => void }) =>
     total > 1 ? (
@@ -204,36 +225,47 @@ export default function ClubLeaderMembersPage() {
               </Card>
             ) : (
               <>
-                {paginatedMembers.map((membership) => {
-                  const user = getUserDetails(membership.userId)
-                  return (
-                    <Card key={membership.id}>
-                      <CardContent className="pt-6">
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <h3 className="font-semibold">{user?.fullName ?? membership.userId}</h3>
-                            <p className="text-sm text-muted-foreground">{user?.email ?? ""}</p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Joined: {membership.joinedAt ? new Date(membership.joinedAt).toLocaleDateString() : "Recently"}
+
+                {paginatedMembers.map((member) => (
+                  <Card key={member.id}>
+                    <CardContent className="pt-6">
+                      <div className="flex items-center justify-between">
+                        {/* Avatar + thông tin */}
+                        <div className="flex items-center gap-4">
+                          <img
+                            src={member.avatarUrl}
+                            alt={member.fullName}
+                            className="w-12 h-12 rounded-full object-cover border border-gray-700"
+                          />
+
+                          <div>
+                            <h3 className="font-semibold">{member.fullName}</h3>
+                            <p className="text-xs text-muted-foreground">Joined: {member.joinedAt}</p>
+                            <p className="text-xs text-muted-foreground">Email: {member.email}</p>
+                            <p className="text-xs text-muted-foreground">Phone: {member.phone}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {member.studentCode} • {member.majorName}
                             </p>
                           </div>
-                          <div className="flex items-center gap-3">
-                            <Badge variant="secondary">{membership.role}</Badge>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50 bg-transparent"
-                              onClick={() => handleDeleteMember(membership.id)}
-                            >
-                              <Trash2 className="h-4 w-4 mr-1" />
-                              Remove
-                            </Button>
-                          </div>
                         </div>
-                      </CardContent>
-                    </Card>
-                  )
-                })}
+
+                        {/* Role + Remove button */}
+                        <div className="flex items-center gap-3">
+                          <Badge variant="secondary">{member.role}</Badge>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50 bg-transparent"
+                            onClick={() => handleDeleteMember(member.id)}
+                          >
+                            <Trash2 className="h-4 w-4 mr-1" />
+                            Remove
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
 
                 <MinimalPager
                   current={membersPage}
