@@ -30,7 +30,7 @@ export function ChatbotWidget() {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
-      text: "Xin chào! Tôi là trợ lý AI của SCLMS. Bạn cần hỗ trợ gì?",
+      text: "Hello! I am SCLMS AI assistant. How can I help you?",
       isUser: false,
       timestamp: new Date(),
     },
@@ -214,7 +214,7 @@ export function ChatbotWidget() {
               {/* Input + Actions */}
               <div className="flex gap-2 items-center">
                 <Input
-                  placeholder="Nhập tin nhắn..."
+                  placeholder="Enter message..."
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}

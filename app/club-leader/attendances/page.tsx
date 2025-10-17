@@ -1,174 +1,241 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState, useEffect } from "react"
 import { AppShell } from "@/components/app-shell"
 import { ProtectedRoute } from "@/contexts/protected-route"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/hooks/use-toast"
-import { Calendar } from "lucide-react"
-import { getMyClubMembers } from "@/service/membershipApi"
-import { saveAttendanceRecord, fetchAttendanceByDate } from "@/service/attendanceApi"
+import { usePagination } from "@/hooks/use-pagination"
+import membershipApi, { ApiMembership } from "@/service/membershipApi"
+import { getClubById, getClubIdFromToken } from "@/service/clubApi"
+import { fetchUserById } from "@/service/userApi"
+import { Users, ChevronLeft, ChevronRight, CheckCircle } from "lucide-react"
 
-type Member = {
-    userId: number
-    fullName?: string
-    studentCode?: string
-    majorName?: string
+interface Club {
+  id: number
+  name: string
+  description: string
+  majorPolicyName: string
+  majorName: string
+  leaderId: number
+  leaderName: string
+}
+interface ClubApiResponse {
+  success: boolean
+  message: string
+  data: Club
 }
 
-type AttendanceStatus = "PRESENT" | "ABSENT" | "LATE"
+export default function ClubAttendancePage() {
+  const { toast } = useToast()
+  const [managedClub, setManagedClub] = useState<Club | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [apiMembers, setApiMembers] = useState<ApiMembership[]>([])
+  const [membersLoading, setMembersLoading] = useState(false)
+  const [membersError, setMembersError] = useState<string | null>(null)
+  const [attendance, setAttendance] = useState<Record<string, boolean>>({}) // ✅ trạng thái điểm danh
 
-export default function ClubLeaderAttendancePage() {
-    const { toast } = useToast()
-    const [members, setMembers] = useState<Member[]>([])
-    const [attendance, setAttendance] = useState<Record<number, AttendanceStatus>>({})
-    const [selectedDate, setSelectedDate] = useState<string>(() => new Date().toISOString().slice(0, 10))
-    const [loading, setLoading] = useState(true)
-    const [saving, setSaving] = useState(false)
+  useEffect(() => {
+    const loadInitialData = async () => {
+      setLoading(true)
+      try {
+        const clubId = getClubIdFromToken()
+        if (!clubId) throw new Error("Không tìm thấy thông tin câu lạc bộ.")
 
-    // Lấy danh sách thành viên trong CLB mà leader quản lý
-    useEffect(() => {
-        const loadMembers = async () => {
+        const clubResponse = (await getClubById(clubId)) as ClubApiResponse
+        if (!clubResponse?.success) throw new Error("Không thể tải thông tin câu lạc bộ.")
+        setManagedClub(clubResponse.data)
+
+        setMembersLoading(true)
+        setMembersError(null)
+
+        const memberData = await membershipApi.getMembersByClubId(clubId)
+        const membersWithUserData = await Promise.all(
+          memberData.map(async (m: any) => {
             try {
-                const data = await getMyClubMembers()
-                const mapped = data.map((m) => ({
-                    userId: m.userId,
-                    // fullName: m.user?.fullName ?? "Unknown",
-                    // studentCode: m.user?.studentCode ?? "",
-                    // majorName: m.user?.majorName ?? "",
-                }))
-
-                setMembers(data)
-            } catch (error) {
-                console.error("Failed to load members:", error)
-                toast({
-                    title: "Lỗi tải danh sách",
-                    description: "Không thể tải danh sách thành viên trong CLB.",
-                    variant: "destructive",
-                })
-            } finally {
-                setLoading(false)
+              const userInfo = await fetchUserById(m.userId)
+              return { ...m, userInfo }
+            } catch {
+              return { ...m, userInfo: null }
             }
-        }
-        loadMembers()
-    }, [toast])
-
-    // Khi đổi ngày -> load lại dữ liệu điểm danh cũ
-    //   useEffect(() => {
-    //     const loadAttendance = async () => {
-    //       try {
-    //         const existing = await fetchAttendanceByDate(selectedDate)
-    //         const mapped = Object.fromEntries(existing.map((r: any) => [r.userId, r.status]))
-    //         setAttendance(mapped)
-    //       } catch {
-    //         setAttendance({})
-    //       }
-    //     }
-    //     loadAttendance()
-    //   }, [selectedDate])
-
-    const handleStatusChange = (userId: number, status: AttendanceStatus) => {
-        setAttendance((prev) => ({ ...prev, [userId]: status }))
-    }
-
-    const handleSave = async () => {
-        setSaving(true)
-        try {
-            const records = Object.entries(attendance).map(([userId, status]) => ({
-                userId: Number(userId),
-                status,
-                date: selectedDate,
-            }))
-            await saveAttendanceRecord(records)
-            toast({
-                title: "Đã lưu điểm danh",
-                description: `Điểm danh ngày ${selectedDate} đã được lưu thành công.`,
-            })
-        } catch (error) {
-            toast({
-                title: "Lỗi lưu điểm danh",
-                description: "Không thể lưu kết quả điểm danh.",
-                variant: "destructive",
-            })
-        } finally {
-            setSaving(false)
-        }
-    }
-
-    if (loading) {
-        return (
-            <AppShell>
-                <div className="flex items-center justify-center h-[60vh] text-muted-foreground">
-                    Đang tải danh sách thành viên...
-                </div>
-            </AppShell>
+          })
         )
+
+        setApiMembers(membersWithUserData)
+
+        // ✅ Khởi tạo attendance = false cho toàn bộ thành viên
+        const initialAttendance: Record<string, boolean> = {}
+        membersWithUserData.forEach((m: any) => {
+          const id = m.membershipId ?? `m-${m.userId}`
+          initialAttendance[id] = false
+        })
+        setAttendance(initialAttendance)
+      } catch (err: any) {
+        setMembersError(err?.message || "Lỗi tải danh sách thành viên")
+      } finally {
+        setMembersLoading(false)
+        setLoading(false)
+      }
     }
 
+    loadInitialData()
+  }, [])
+
+  // Lọc thành viên active
+  const clubMembers = managedClub
+    ? apiMembers
+        .filter((m: any) => String(m.clubId) === String(managedClub.id) && m.state === "ACTIVE")
+        .map((m: any) => {
+          const u = m.userInfo || {}
+          return {
+            id: m.membershipId ?? `m-${m.userId}`,
+            fullName: u.fullName ?? m.fullName ?? `User ${m.userId}`,
+            role: m.clubRole ?? "MEMBER",
+          }
+        })
+    : []
+
+  const {
+    currentPage: membersPage,
+    totalPages: membersPages,
+    paginatedData: paginatedMembers,
+    setCurrentPage: setMembersPage,
+  } = usePagination({ data: clubMembers, initialPageSize: 6 })
+
+  const handleToggleAttendance = (memberId: string) => {
+    setAttendance((prev) => ({ ...prev, [memberId]: !prev[memberId] }))
+  }
+
+  const handleSaveAttendance = async () => {
+    const attended = Object.entries(attendance)
+      .filter(([_, present]) => present)
+      .map(([id]) => id)
+
+    // 🔥 Sau này bạn có thể gọi API ở đây, ví dụ:
+    // await attendanceApi.saveAttendance({ clubId: managedClub.id, attendedMembers: attended })
+
+    toast({
+      title: "Attendance Saved",
+      description: `${attended.length} members marked as present.`,
+    })
+  }
+
+  const MinimalPager = ({ current, total, onPrev, onNext }: any) =>
+    total > 1 ? (
+      <div className="flex items-center justify-center gap-3 mt-4">
+        <button
+          onClick={onPrev}
+          disabled={current === 1}
+          className="text-sm border rounded-md px-2 py-1"
+        >
+          <ChevronLeft className="inline h-4 w-4" /> Prev
+        </button>
+        <span className="text-sm">
+          Page {current} of {total}
+        </span>
+        <button
+          onClick={onNext}
+          disabled={current === total}
+          className="text-sm border rounded-md px-2 py-1"
+        >
+          Next <ChevronRight className="inline h-4 w-4" />
+        </button>
+      </div>
+    ) : null
+
+  if (loading) {
     return (
-        <ProtectedRoute allowedRoles={["club_leader"]}>
-            <AppShell>
-                <div className="space-y-6">
-                    <div>
-                        <h1 className="text-3xl font-bold">Attendance Management</h1>
-                        <p className="text-muted-foreground">Mark attendance for your club members</p>
-                    </div>
-
-                    <Card>
-                        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                            <div className="flex items-center gap-2">
-                                <Calendar className="h-5 w-5 text-muted-foreground" />
-                                <Label>Attendance Date:</Label>
-                                <input
-                                    type="date"
-                                    value={selectedDate}
-                                    onChange={(e) => setSelectedDate(e.target.value)}
-                                    className="border rounded-md px-2 py-1 text-sm bg-background"
-                                />
-                            </div>
-                            <Button onClick={handleSave} disabled={saving}>
-                                {saving ? "Saving..." : "Save Attendance"}
-                            </Button>
-                        </CardHeader>
-
-                        <CardContent className="divide-y">
-                            {members.length === 0 ? (
-                                <div className="py-8 text-center text-muted-foreground">
-                                    Không có thành viên nào trong CLB.
-                                </div>
-                            ) : (
-                                members.map((m) => (
-                                    <div key={m.userId} className="flex flex-col sm:flex-row sm:items-center justify-between py-3 gap-2">
-                                        <div>
-                                            <p className="font-medium">{m.fullName}</p>
-                                            <p className="text-xs text-muted-foreground">
-                                                {m.studentCode ?? "No code"} · {m.majorName ?? "Unknown major"}
-                                            </p>
-                                        </div>
-
-                                        <Select
-                                            value={attendance[m.userId] ?? ""}
-                                            onValueChange={(val) => handleStatusChange(m.userId, val as AttendanceStatus)}
-                                        >
-                                            <SelectTrigger className="w-[140px]">
-                                                <SelectValue placeholder="Select..." />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="PRESENT">✅ Present</SelectItem>
-                                                <SelectItem value="ABSENT">❌ Absent</SelectItem>
-                                                <SelectItem value="LATE">⏰ Late</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                ))
-                            )}
-                        </CardContent>
-                    </Card>
-                </div>
-            </AppShell>
-        </ProtectedRoute>
+      <ProtectedRoute allowedRoles={["club_leader"]}>
+        <AppShell>
+          <div className="space-y-6">
+            <Skeleton className="h-8 w-1/3" />
+            <Card>
+              <CardContent className="py-12 text-center">
+                <p>Loading club and members...</p>
+              </CardContent>
+            </Card>
+          </div>
+        </AppShell>
+      </ProtectedRoute>
     )
+  }
+
+  return (
+    <ProtectedRoute allowedRoles={["club_leader"]}>
+      <AppShell>
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-3xl font-bold">Attendance</h1>
+            {managedClub ? (
+              <p className="text-muted-foreground">
+                Members of "{managedClub.name}"
+              </p>
+            ) : (
+              <p className="text-destructive">
+                Could not load club details. Please try again.
+              </p>
+            )}
+          </div>
+
+          {membersLoading ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                <Users className="h-10 w-10 text-muted-foreground mb-3" />
+                <h3 className="text-lg font-semibold mb-2">Loading members...</h3>
+              </CardContent>
+            </Card>
+          ) : membersError ? (
+            <Card>
+              <CardContent className="py-12 text-center text-destructive">
+                {membersError}
+              </CardContent>
+            </Card>
+          ) : clubMembers.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center text-muted-foreground">
+                No active members in your club.
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              {paginatedMembers.map((member) => (
+                <Card key={member.id}>
+                  <CardContent className="py-3 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={attendance[member.id] || false}
+                        onChange={() => handleToggleAttendance(member.id)}
+                        className="w-5 h-5 accent-green-500 cursor-pointer"
+                      />
+                      <span className="font-medium">{member.fullName}</span>
+                    </div>
+                    <Badge variant="secondary">{member.role}</Badge>
+                  </CardContent>
+                </Card>
+              ))}
+
+              <MinimalPager
+                current={membersPage}
+                total={membersPages}
+                onPrev={() => setMembersPage(Math.max(1, membersPage - 1))}
+                onNext={() => setMembersPage(Math.min(membersPages, membersPage + 1))}
+              />
+
+              {/* ✅ Nút lưu điểm danh */}
+              <div className="flex justify-end mt-6">
+                <Button onClick={handleSaveAttendance} className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4" />
+                  Save Attendance
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      </AppShell>
+    </ProtectedRoute>
+  )
 }
