@@ -30,9 +30,9 @@ export async function getClubApplications(): Promise<ClubApplication[]> {
  * The backend in the project seems to accept clubName and description as query or body.
  * We'll send a JSON body { clubName, description } and return the created resource.
  */
-export async function postClubApplication(body: { clubName: string; description: string; category: string; proposerReason: string }) {
+export async function postClubApplication(body: { clubName: string; description: string; category: number; proposerReason: string }) {
   // The backend expects a JSON body with clubName, description, category, proposerReason
-  const resp = await axiosInstance.post<ClubApplication>(
+  const response = await axiosInstance.post<ClubApplication>(
     "/api/club-applications",
     {
       clubName: body.clubName,
@@ -42,7 +42,7 @@ export async function postClubApplication(body: { clubName: string; description:
     },
     { headers: { 'Content-Type': 'application/json' } }
   )
-  return resp.data
+  return response.data
 }
 
 /**
@@ -50,13 +50,13 @@ export async function postClubApplication(body: { clubName: string; description:
  * Body: { approve: boolean, rejectReason: string }
  */
 export async function putClubApplicationStatus(applicationId: number, approve: boolean, rejectReason: string) {
-  const resp = await axiosInstance.put<ClubApplication>(
+  const response = await axiosInstance.put<ClubApplication>(
     `/api/club-applications/${applicationId}/decide`,
     { approve, rejectReason },
     { headers: { 'Content-Type': 'application/json' } }
   )
-  console.log("ClubApplication response:", resp.data)
-  return resp.data
+  console.log("ClubApplication response:", response.data)
+  return response.data
 }
 
 export default { getClubApplications, postClubApplication, putClubApplicationStatus }

@@ -49,7 +49,7 @@ export default function MemberClubsPage() {
   const [pendingClubIds, setPendingClubIds] = useState<string[]>([])
   const [userClubIds, setUserClubIds] = useState<number[]>([])
   const [userClubId, setUserClubId] = useState<number | null>(null) // Keep for backward compatibility
-  
+
   const [majors, setMajors] = useState<Major[]>([])
   const [selectedMajorId, setSelectedMajorId] = useState<number | "">("")
 
@@ -542,63 +542,121 @@ export default function MemberClubsPage() {
             </div>
           </Modal>
 
-          {/* Modal for creating a new club */}
+          {/* Modal form application for creating a new club */}
           <Modal
             open={showCreateClubModal}
             onOpenChange={setShowCreateClubModal}
             title="Create Club Application"
           >
-            <div className="space-y-3">
-              <Label>Club Name</Label>
-              <Textarea value={newClubName} onChange={e => setNewClubName(e.target.value)} placeholder="Club name" />
-              <Label>Description</Label>
-              <Textarea value={newDescription} onChange={e => setNewDescription(e.target.value)} placeholder="Description" />
-              <Label>Category</Label>
-              {/* <Textarea value={newCategory} onChange={e => setNewCategory(e.target.value)} placeholder="Category" /> */}
-              <select
-                id="major"
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                value={selectedMajorId}
-                onChange={(e) => setSelectedMajorId(Number(e.target.value))}
-              >
-                <option value="">Select a major</option>
-                {majors
-                  .filter((m) => m.active)
-                  .map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name}
-                    </option>
-                  ))}
-              </select>
+            <div className="space-y-4">
+              {/* Club Name */}
+              <div className="space-y-2">
+                <Label htmlFor="clubName">Club Name</Label>
+                <Textarea
+                  id="clubName"
+                  value={newClubName}
+                  onChange={(e) => setNewClubName(e.target.value)}
+                  placeholder="Enter club name"
+                />
+              </div>
 
-              <Label>Proposer Reason</Label>
-              <Textarea value={newProposerReason} onChange={e => setNewProposerReason(e.target.value)} placeholder="Why do you want to create this club?" />
+              {/* Description */}
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  value={newDescription}
+                  onChange={(e) => setNewDescription(e.target.value)}
+                  placeholder="Enter description"
+                />
+              </div>
+
+              {/* Category (Major Selection) */}
+              <div className="space-y-2">
+                <Label htmlFor="category">Category (Major)</Label>
+                <select
+                  id="category"
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={selectedMajorId}
+                  onChange={(e) => setSelectedMajorId(Number(e.target.value))}
+                >
+                  <option value="">Select a major</option>
+                  {majors
+                    .filter((m) => m.active)
+                    .map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              {/* Proposer Reason */}
+              <div className="space-y-2">
+                <Label htmlFor="proposerReason">Proposer Reason</Label>
+                <Textarea
+                  id="proposerReason"
+                  value={newProposerReason}
+                  onChange={(e) => setNewProposerReason(e.target.value)}
+                  placeholder="Why do you want to create this club?"
+                />
+              </div>
+
+              {/* Buttons */}
               <div className="flex justify-end gap-2 pt-2">
-                <Button variant="outline" onClick={() => setShowCreateClubModal(false)}>Cancel</Button>
+                <Button variant="outline" onClick={() => setShowCreateClubModal(false)}>
+                  Cancel
+                </Button>
                 <Button
                   onClick={async () => {
-                    if (!newClubName.trim() || !newDescription.trim() || !newCategory || !newProposerReason.trim()) {
-                      toast({ 
-                        title: 'Missing Information', 
-                        description: 'Please fill in all fields.', 
-                        variant: 'destructive' });
-                      return;
+                    if (
+                      !newClubName.trim() ||
+                      !newDescription.trim() ||
+                      !selectedMajorId ||
+                      !newProposerReason.trim()
+                    ) {
+                      toast({
+                        title: "Missing Information",
+                        description: "Please fill in all fields.",
+                        variant: "destructive",
+                      })
+                      return
                     }
+
                     try {
-                      const created = await (await import("@/service/clubApplicationAPI")).postClubApplication({
-                        clubName: newClubName,
-                        description: newDescription,
-                        category: newCategory,
-                        proposerReason: newProposerReason,
-                      });
-                      toast({ title: 'Application sent', description: `${created.clubName} submitted`, variant: 'success' });
-                      setShowCreateClubModal(false);
-                      setNewClubName("");
-                      setNewDescription("");
-                      setNewCategory("");
-                      setNewProposerReason("");
-                    } catch (err) {
-                      toast({ title: 'Error', description: 'Failed to send application', variant: 'destructive' });
+                      const { postClubApplication } = await import("@/service/clubApplicationAPI")
+                      const payload = {
+                        clubName: newClubName.trim(),
+                        description: newDescription.trim(),
+                        category: selectedMajorId, // ✅ ID của major
+                        proposerReason: newProposerReason.trim(),
+                      }
+
+                      console.log("Submitting club application:", payload)
+                      const created = await postClubApplication(payload)
+                      console.log("API response:", created)
+
+                      toast({
+                        title: "Application Sent",
+                        description: `Your application for ${created.clubName} submitted successfully.`,
+                        variant: "success",
+                      })
+
+                      // Reset form
+                      setShowCreateClubModal(false)
+                      setNewClubName("")
+                      setNewDescription("")
+                      setSelectedMajorId("")
+                      setNewProposerReason("")
+                    } catch (err: any) {
+                      console.error("Error submitting application:", err)
+                      toast({
+                        title: "Error",
+                        description:
+                          err?.response?.data?.message ||
+                          "Failed to send application",
+                        variant: "destructive",
+                      })
                     }
                   }}
                 >
@@ -607,6 +665,8 @@ export default function MemberClubsPage() {
               </div>
             </div>
           </Modal>
+
+
         </div>
       </AppShell>
     </ProtectedRoute>

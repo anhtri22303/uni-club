@@ -87,15 +87,15 @@ export default function ClubAttendancePage() {
   // Lọc thành viên active
   const clubMembers = managedClub
     ? apiMembers
-        .filter((m: any) => String(m.clubId) === String(managedClub.id) && m.state === "ACTIVE")
-        .map((m: any) => {
-          const u = m.userInfo || {}
-          return {
-            id: m.membershipId ?? `m-${m.userId}`,
-            fullName: u.fullName ?? m.fullName ?? `User ${m.userId}`,
-            role: m.clubRole ?? "MEMBER",
-          }
-        })
+      .filter((m: any) => String(m.clubId) === String(managedClub.id) && m.state === "ACTIVE")
+      .map((m: any) => {
+        const u = m.userInfo || {}
+        return {
+          id: m.membershipId ?? `m-${m.userId}`,
+          fullName: u.fullName ?? m.fullName ?? `User ${m.userId}`,
+          role: m.clubRole ?? "MEMBER",
+        }
+      })
     : []
 
   const {
@@ -202,20 +202,61 @@ export default function ClubAttendancePage() {
           ) : (
             <>
               {paginatedMembers.map((member) => (
+                // <Card key={member.id}>
+                //   <CardContent className="py-3 flex items-center justify-between">
+                //     <div className="flex items-center gap-3">
+                //       <input
+                //         type="checkbox"
+                //         checked={attendance[member.id] || false}
+                //         onChange={() => handleToggleAttendance(member.id)}
+                //         className="w-5 h-5 accent-green-500 cursor-pointer"
+                //       />
+                //       <span className="font-medium">{member.fullName}</span>
+                //     </div>
+                //     <Badge variant="secondary">{member.role}</Badge>
+                //   </CardContent>
+                // </Card>
                 <Card key={member.id}>
                   <CardContent className="py-3 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={attendance[member.id] || false}
-                        onChange={() => handleToggleAttendance(member.id)}
-                        className="w-5 h-5 accent-green-500 cursor-pointer"
-                      />
-                      <span className="font-medium">{member.fullName}</span>
+                      <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                        {member.fullName.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="font-medium">{member.fullName}</p>
+                        <Badge variant="secondary" className="text-xs">
+                          {member.role}
+                        </Badge>
+                      </div>
                     </div>
-                    <Badge variant="secondary">{member.role}</Badge>
+
+                    <Button
+                      variant={
+                        attendance[member.id] === true
+                          ? "default"
+                          : attendance[member.id] === false
+                            ? "destructive"
+                            : "outline"
+                      }
+                      onClick={() => {
+                        setAttendance((prev) => {
+                          const current = prev[member.id]
+                          const next =
+                            current === undefined ? true : current === true ? false : undefined
+                          return { ...prev, [member.id]: next }
+                        })
+                      }}
+                      className="w-28"
+                    >
+                      {attendance[member.id] === true
+                        ? "Present"
+                        : attendance[member.id] === false
+                          ? "Absent"
+                          : "Not marked"}
+                    </Button>
                   </CardContent>
                 </Card>
+
               ))}
 
               <MinimalPager

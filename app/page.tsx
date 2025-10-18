@@ -349,7 +349,7 @@ export default function LoginPage() {
                   </div>
                 )}
 
-                {isSignUpMode && (
+                {/* {isSignUpMode && (
                   <div className="space-y-2">
                     <Label htmlFor="roleName" className="text-sm font-medium">
                       Role
@@ -362,7 +362,7 @@ export default function LoginPage() {
                       className="h-10 sm:h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-gray-100 text-gray-500 cursor-not-allowed"
                     />
                   </div>
-                )}
+                )} */}
 
                 {isSignUpMode && (
                   <div className="space-y-2">
@@ -388,7 +388,7 @@ export default function LoginPage() {
                     id="email"
                     type="email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => setEmail(e.target.value.toLowerCase())}
                     placeholder="Enter yours email"
                     className="h-10 sm:h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
                   />
