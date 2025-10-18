@@ -16,12 +16,17 @@ export const fetchEvent = async ({ page = 0, size = 10, sort = "name" } = {}) =>
     });
     const data: any = response.data;
     console.log(`✅ fetchEvent completed at ${new Date().toISOString()}:`, data);
+    
+    // Response structure: { content: [...], pageable: {...}, ... }
     // Always return the content array for event list
     if (data && Array.isArray(data.content)) return data.content;
+    
     // Fallback: if direct array
     if (Array.isArray(data)) return data;
+    
     // Fallback: if data.data.content
     if (data?.data && Array.isArray(data.data.content)) return data.data.content;
+    
     // Fallback: empty array
     return [];
   } catch (error) {
@@ -47,8 +52,8 @@ export const getEventById = async (id: string | number) => {
     const response = await axiosInstance.get(`api/events/${id}`)
     const resData: any = response.data
     console.log(`Fetched event ${id}:`, resData)
-    // Some backends wrap the payload in { success, message, data }
-    // Normalize to return the inner event object when present.
+    // Response structure: { success: true, message: "success", data: { id, clubId, name, description, type, date, time, status, locationId, locationName, checkInCode, maxCheckInCount, currentCheckInCount } }
+    // Always return the data object when present
     if (resData && resData.data) return resData.data
     return resData
   } catch (error) {

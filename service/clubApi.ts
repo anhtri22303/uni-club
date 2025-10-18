@@ -118,3 +118,27 @@ export const getClubIdFromToken = (): number | null => {
     return null;
   }
 };
+
+// New: getClubStats - get club statistics
+export const getClubStats = async () => {
+  try {
+    const response = await axiosInstance.get("api/clubs/stats")
+    const body = response.data
+    console.log("Fetched club stats response:", body)
+    
+    // If backend uses { success, message, data }
+    if (body && typeof body === "object" && "data" in body && "success" in body && (body as any).success) {
+      return (body as any).data
+    }
+    
+    // If the endpoint returns the stats object directly
+    if (body && typeof body === "object") {
+      return body
+    }
+    
+    return null
+  } catch (error) {
+    console.error("Error fetching club stats:", error)
+    throw error
+  }
+}

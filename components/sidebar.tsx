@@ -5,9 +5,11 @@ import { useData } from "@/contexts/data-context"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { usePathname, useRouter } from "next/navigation"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { LoadingSpinner } from "@/components/loading-spinner"
 import { safeLocalStorage } from "@/lib/browser-utils"
+import { getUserStats } from "@/service/userApi"
+import { getClubStats } from "@/service/clubApi"
 import {
   LayoutDashboard, Users, Calendar, Gift, Wallet, History, BarChart3,
   Building, Home, CheckCircle, FileText, FileUser, HandCoins, CalendarDays,
@@ -64,6 +66,30 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [loadingPath, setLoadingPath] = useState<string | null>(null)
+  const [userStatsTotal, setUserStatsTotal] = useState<number>(0)
+  const [clubStatsTotal, setClubStatsTotal] = useState<number>(0)
+
+  // Fetch user stats and club stats for admin role
+  useEffect(() => {
+    if (auth.role === "admin") {
+      const fetchStats = async () => {
+        try {
+          const stats = await getUserStats()
+          if (stats?.total) {
+            setUserStatsTotal(stats.total)
+          }
+          
+          const clubStats = await getClubStats()
+          if (clubStats?.totalClubs) {
+            setClubStatsTotal(clubStats.totalClubs)
+          }
+        } catch (error) {
+          console.error("Failed to fetch stats:", error)
+        }
+      }
+      fetchStats()
+    }
+  }, [auth.role])
 
   if (!auth.role || !auth.user) return null
 
@@ -187,8 +213,8 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
               const isClubRequestsItem = item.label === "Club Requests"
               const isEventRequestsItem = item.label === "Event Requests"
               const eventsCount = events.length
-              const clubsCount = clubs.length
-              const usersCount = users.length
+              const clubsCount = auth.role === "admin" ? clubStatsTotal : clubs.length
+              const usersCount = auth.role === "admin" ? userStatsTotal : users.length
               const policiesCount = policies.length
               const clubApplicationsCount = clubApplications.length
               const eventRequestsCount = eventRequests.length

@@ -548,6 +548,7 @@ export default function MemberClubsPage() {
             onOpenChange={setShowCreateClubModal}
             title="Create Club Application"
           >
+<<<<<<< Updated upstream
             <div className="space-y-4">
               {/* Club Name */}
               <div className="space-y-2">
@@ -559,6 +560,31 @@ export default function MemberClubsPage() {
                   placeholder="Enter club name"
                 />
               </div>
+=======
+            <div className="space-y-3">
+              <Label>Club Name</Label>
+              <Textarea value={newClubName} onChange={e => setNewClubName(e.target.value)} placeholder="Club name" />
+              <Label>Description</Label>
+              <Textarea value={newDescription} onChange={e => setNewDescription(e.target.value)} placeholder="Description" />
+              <Label htmlFor="major">Category</Label>
+              {/* <Textarea value={newCategory} onChange={e => setNewCategory(e.target.value)} placeholder="Category" /> */}
+              <select
+                id="major"
+                aria-label="Category"
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={selectedMajorId}
+                onChange={(e) => setSelectedMajorId(Number(e.target.value))}
+              >
+                <option value="">Select a major</option>
+                {majors
+                  .filter((m) => m.active)
+                  .map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
+                  ))}
+              </select>
+>>>>>>> Stashed changes
 
               {/* Description */}
               <div className="space-y-2">

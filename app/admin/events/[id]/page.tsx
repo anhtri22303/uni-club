@@ -25,7 +25,10 @@ interface EventDetail {
   time: string
   status: string
   locationId: number
+  locationName: string
   checkInCode: string
+  maxCheckInCount: number | null
+  currentCheckInCount: number
 }
 
 export default function AdminEventDetailPage() {
@@ -387,7 +390,7 @@ export default function AdminEventDetailPage() {
                     <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
                       <MapPin className="h-5 w-5 text-primary" />
                       <div>
-                        <div className="font-medium">Location ID: {event.locationId}</div>
+                        <div className="font-medium">{event.locationName}</div>
                         <div className="text-sm text-muted-foreground">Event Venue</div>
                       </div>
                     </div>

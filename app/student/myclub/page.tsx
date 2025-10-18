@@ -7,21 +7,42 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { DataTable } from "@/components/data-table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/hooks/use-toast"
-import { Users, Crown, Shield, User, Mail, Phone } from "lucide-react"
+import { usePagination } from "@/hooks/use-pagination"
+import { Users, Crown, Shield, User, Mail, Phone, Trash2, ChevronLeft, ChevronRight } from "lucide-react"
 import { safeLocalStorage } from "@/lib/browser-utils"
-import { getClubMemberById, type ApiMembership } from "@/service/membershipApi"
+import { getMembersByClubId, type ApiMembership } from "@/service/membershipApi"
+import { fetchUserById } from "@/service/userApi"
+import { getClubById } from "@/service/clubApi"
 
 // Import club data for club name lookup
 import clubs from "@/src/data/clubs.json"
 
+interface Club {
+  id: number
+  name: string
+  description: string
+  majorPolicyName: string
+  majorName: string
+  leaderId: number
+  leaderName: string
+}
+
+interface ClubApiResponse {
+  success: boolean
+  message: string
+  data: Club
+}
+
 export default function MyClubPage() {
   const [userClubIds, setUserClubIds] = useState<number[]>([])
   const [selectedClubId, setSelectedClubId] = useState<number | null>(null)
-  const [members, setMembers] = useState<ApiMembership[]>([])
+  const [selectedClub, setSelectedClub] = useState<Club | null>(null)
+  const [apiMembers, setApiMembers] = useState<ApiMembership[]>([])
   const [loading, setLoading] = useState(false)
+  const [membersLoading, setMembersLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const { toast } = useToast()
@@ -55,159 +76,123 @@ export default function MyClubPage() {
     }
   }, [])
 
-  // Load club members when selectedClubId changes
+  // Load club info and members when selectedClubId changes
   useEffect(() => {
     if (!selectedClubId) return
 
     let mounted = true
-    const loadMembers = async () => {
+    const loadClubData = async () => {
       setLoading(true)
+      setMembersLoading(true)
       setError(null)
       try {
-        console.log("Loading members for club:", selectedClubId)
+        console.log("Loading club data for:", selectedClubId)
         
-        const membersData = await getClubMemberById(selectedClubId)
+        // Load club details
+        const clubResponse = (await getClubById(selectedClubId)) as ClubApiResponse
+        if (clubResponse && clubResponse.success && mounted) {
+          setSelectedClub(clubResponse.data)
+        }
+        
+        // Load members
+        const membersData = await getMembersByClubId(selectedClubId)
         console.log("Loaded members:", membersData)
         
+        // Fetch user info for each member
+        const membersWithUserData = await Promise.all(
+          membersData.map(async (m: any) => {
+            try {
+              const userInfo = await fetchUserById(m.userId)
+              console.log(`User info for ${m.userId}:`, userInfo)
+              return { ...m, userInfo }
+            } catch (err) {
+              console.warn(`Cannot fetch user ${m.userId}`, err)
+              return { ...m, userInfo: null }
+            }
+          })
+        )
+        
         if (mounted) {
-          setMembers(membersData)
+          setApiMembers(membersWithUserData)
+          console.log("Members with user data:", membersWithUserData)
         }
       } catch (err: any) {
-        console.error("Failed to load club members:", err)
+        console.error("Failed to load club data:", err)
         if (mounted) {
-          setError(err?.message ?? "Failed to load club members")
+          setError(err?.message ?? "Failed to load club data")
           toast({
-            title: "Error loading members",
-            description: err?.message ?? "Could not load club members",
+            title: "Error loading club",
+            description: err?.message ?? "Could not load club information",
             variant: "destructive"
           })
         }
       } finally {
-        if (mounted) setLoading(false)
+        if (mounted) {
+          setLoading(false)
+          setMembersLoading(false)
+        }
       }
     }
 
-    loadMembers()
+    loadClubData()
     return () => { mounted = false }
   }, [selectedClubId, toast])
-
-  // Get club information for selected club
-  const currentClub = selectedClubId 
-    ? clubs.find(club => Number(club.id) === selectedClubId) 
-    : null
 
   // Get all user's clubs for dropdown
   const userClubs = userClubIds.map(clubId => 
     clubs.find(club => Number(club.id) === clubId)
   ).filter(Boolean)
 
-  // Filter members based on search term
-  const filteredMembers = members.filter((member) => {
-    const searchLower = searchTerm.toLowerCase()
-    return (
-      String(member.userId).includes(searchLower) ||
-      member.level.toLowerCase().includes(searchLower) ||
-      member.state.toLowerCase().includes(searchLower)
-    )
-  })
+  // Format members with user info
+  const clubMembers = selectedClubId
+    ? apiMembers
+        .filter((m: any) => String(m.clubId) === String(selectedClubId) && m.state === "ACTIVE")
+        .map((m: any) => {
+          const u = m.userInfo || {}
+          return {
+            id: m.membershipId ?? `m-${m.userId}`,
+            userId: m.userId,
+            clubId: m.clubId,
+            fullName: u.fullName ?? m.fullName ?? `User ${m.userId}`,
+            email: u.email ?? "N/A",
+            phone: u.phone ?? "N/A",
+            studentCode: u.studentCode ?? "N/A",
+            majorName: u.majorName ?? "N/A",
+            avatarUrl: u.avatarUrl ?? "/placeholder-user.jpg",
+            role: m.clubRole ?? "MEMBER",
+            status: m.state,
+            joinedAt: m.joinedDate ? new Date(m.joinedDate).toLocaleDateString() : "N/A",
+          }
+        })
+    : []
 
-  // DataTable columns
-  const columns = [
-    {
-      key: "userId" as const,
-      label: "User ID",
-      render: (value: number) => (
-        <div className="flex items-center gap-2">
-          <User className="h-4 w-4" />
-          <span className="font-medium">{value}</span>
-        </div>
-      ),
-    },
-    {
-      key: "level" as const,
-      label: "Level",
-      render: (value: string) => (
-        <Badge 
-          variant={value === "PREMIUM" ? "default" : value === "BASIC" ? "secondary" : "outline"}
-          className="flex items-center gap-1"
-        >
-          {value === "PREMIUM" && <Crown className="h-3 w-3" />}
-          {value}
-        </Badge>
-      ),
-    },
-    {
-      key: "state" as const,
-      label: "Status",
-      render: (value: string) => (
-        <Badge variant={value === "ACTIVE" ? "default" : "destructive"}>
-          {value}
-        </Badge>
-      ),
-    },
-    {
-      key: "staff" as const,
-      label: "Role",
-      render: (value: boolean) => (
-        <div className="flex items-center gap-1">
-          {value ? (
-            <>
-              <Shield className="h-4 w-4 text-blue-600" />
-              <span className="text-blue-600 font-medium">Staff</span>
-            </>
-          ) : (
-            <>
-              <Users className="h-4 w-4 text-gray-500" />
-              <span className="text-gray-500">Member</span>
-            </>
-          )}
-        </div>
-      ),
-    },
-    {
-      key: "membershipId" as const,
-      label: "Membership ID",
-      render: (value: number) => (
-        <span className="text-sm text-muted-foreground">#{value}</span>
-      ),
-    },
-  ]
+  // Pagination
+  const {
+    currentPage: membersPage,
+    totalPages: membersPages,
+    paginatedData: paginatedMembers,
+    setCurrentPage: setMembersPage,
+  } = usePagination({ data: clubMembers, initialPageSize: 5 })
 
-  const filters = [
-    {
-      key: "level",
-      label: "Level",
-      type: "select" as const,
-      options: [
-        { value: "BASIC", label: "Basic" },
-        { value: "PREMIUM", label: "Premium" },
-      ],
-    },
-    {
-      key: "state",
-      label: "Status", 
-      type: "select" as const,
-      options: [
-        { value: "ACTIVE", label: "Active" },
-        { value: "INACTIVE", label: "Inactive" },
-      ],
-    },
-    {
-      key: "staff",
-      label: "Role",
-      type: "select" as const,
-      options: [
-        { value: "true", label: "Staff" },
-        { value: "false", label: "Member" },
-      ],
-    },
-  ]
+  const MinimalPager = ({ current, total, onPrev, onNext }: { current: number; total: number; onPrev: () => void; onNext: () => void }) =>
+    total > 1 ? (
+      <div className="flex items-center justify-center gap-3 mt-4">
+        <Button aria-label="Previous page" variant="outline" size="sm" className="h-8 w-8 p-0" onClick={onPrev} disabled={current === 1}>
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <div className="min-w-[2rem] text-center text-sm font-medium">
+          Page {current} of {total}
+        </div>
+        <Button aria-label="Next page" variant="outline" size="sm" className="h-8 w-8 p-0" onClick={onNext} disabled={current === total}>
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+    ) : null
 
   // Stats for the header cards
-  const totalMembers = members.length
-  const activeMembers = members.filter(m => m.state === "ACTIVE").length
-  const staffMembers = members.filter(m => m.staff).length
-  const premiumMembers = members.filter(m => m.level === "PREMIUM").length
+  const totalMembers = clubMembers.length
+  const activeMembers = clubMembers.filter(m => m.status === "ACTIVE").length
+  const leaderMembers = clubMembers.filter(m => m.role === "LEADER").length
 
   return (
     <ProtectedRoute allowedRoles={["student"]}>
@@ -219,7 +204,7 @@ export default function MyClubPage() {
               <div>
                 <h1 className="text-3xl font-bold">My Club</h1>
                 <p className="text-muted-foreground">
-                  {currentClub ? `Members of ${currentClub.name}` : "Select a club to view members"}
+                  {selectedClub ? `Members of "${selectedClub.name}"` : "Select a club to view members"}
                   {selectedClubId && (
                     <span className="text-xs text-muted-foreground/70 ml-2">
                       (Club ID: {selectedClubId})
@@ -257,10 +242,10 @@ export default function MyClubPage() {
             </div>
             
             {/* Show club selector for single club too, but as info */}
-            {userClubIds.length === 1 && currentClub && (
+            {userClubIds.length === 1 && selectedClub && (
               <div className="mt-2">
                 <Badge variant="secondary" className="text-sm">
-                  Current Club: {currentClub.name} (ID: {selectedClubId})
+                  Current Club: {selectedClub.name} (ID: {selectedClubId})
                 </Badge>
               </div>
             )}
@@ -302,43 +287,51 @@ export default function MyClubPage() {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Staff Members</CardTitle>
-                <Shield className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium">Club Leaders</CardTitle>
+                <Crown className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{staffMembers}</div>
+                <div className="text-2xl font-bold">{leaderMembers}</div>
                 <p className="text-xs text-muted-foreground">
-                  {totalMembers > 0 ? Math.round((staffMembers / totalMembers) * 100) : 0}% of total
+                  {totalMembers > 0 ? Math.round((leaderMembers / totalMembers) * 100) : 0}% of total
                 </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Premium Members</CardTitle>
-                <Crown className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium">My Club</CardTitle>
+                <Shield className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{premiumMembers}</div>
+                <div className="text-lg font-bold truncate">{selectedClub?.name || "N/A"}</div>
                 <p className="text-xs text-muted-foreground">
-                  {totalMembers > 0 ? Math.round((premiumMembers / totalMembers) * 100) : 0}% of total
+                  {selectedClub?.majorName || "Loading..."}
                 </p>
               </CardContent>
             </Card>
           </div>
 
-          {/* Loading and Error States */}
-          {loading && (
-            <div className="text-center text-sm text-muted-foreground py-8">
-              Loading club members...
-            </div>
-          )}
-
-          {error && (
-            <div className="text-center text-sm text-destructive py-8">
-              Error: {error}
-            </div>
-          )}
+          {/* Members List */}
+          <div className="space-y-4">
+            {membersLoading ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                  <Users className="h-12 w-12 text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Loading members...</h3>
+                  <p className="text-muted-foreground">Please wait while we fetch the latest members</p>
+                </CardContent>
+              </Card>
+            ) : error ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                  <Users className="h-12 w-12 text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2 text-destructive">Failed to load members</h3>
+                  <p className="text-muted-foreground">{error}</p>
+                </CardContent>
+              </Card>
+            ) : null}
+          </div>
 
           {/* No Club Message */}
           {userClubIds.length === 0 && !loading && (
@@ -368,18 +361,61 @@ export default function MyClubPage() {
             </Card>
           )}
 
-          {/* Members Table */}
-          {selectedClubId && !loading && !error && (
-            <DataTable
-              title="Club Members"
-              data={filteredMembers}
-              columns={columns}
-              searchKey="userId"
-              searchPlaceholder="Search members..."
-              filters={filters}
-              initialPageSize={10}
-              pageSizeOptions={[10, 25, 50, 100]}
-            />
+          {/* Members Cards */}
+          {selectedClubId && !membersLoading && !error && (
+            <div className="space-y-4">
+              {clubMembers.length === 0 ? (
+                <Card>
+                  <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                    <Users className="h-12 w-12 text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">No Members Yet</h3>
+                    <p className="text-muted-foreground">This club currently has no active members.</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <>
+                  {paginatedMembers.map((member) => (
+                    <Card key={member.id}>
+                      <CardContent className="pt-6">
+                        <div className="flex items-center justify-between">
+                          {/* Avatar + info */}
+                          <div className="flex items-center gap-4">
+                            <img
+                              src={member.avatarUrl}
+                              alt={member.fullName}
+                              className="w-12 h-12 rounded-full object-cover border border-gray-700"
+                            />
+                            <div>
+                              <h3 className="font-semibold">{member.fullName}</h3>
+                              <p className="text-xs text-muted-foreground">Joined: {member.joinedAt}</p>
+                              <p className="text-xs text-muted-foreground">Email: {member.email}</p>
+                              <p className="text-xs text-muted-foreground">Phone: {member.phone}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {member.studentCode} • {member.majorName}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Role badge */}
+                          <div className="flex items-center gap-3">
+                            <Badge variant={member.role === "LEADER" ? "default" : "secondary"}>
+                              {member.role}
+                            </Badge>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+
+                  <MinimalPager
+                    current={membersPage}
+                    total={membersPages}
+                    onPrev={() => setMembersPage(Math.max(1, membersPage - 1))}
+                    onNext={() => setMembersPage(Math.min(membersPages, membersPage + 1))}
+                  />
+                </>
+              )}
+            </div>
           )}
         </div>
       </AppShell>
