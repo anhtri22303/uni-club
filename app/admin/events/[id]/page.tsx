@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator"
 import { ArrowLeft, Calendar, Clock, MapPin, Users, CheckCircle, AlertCircle, XCircle, Eye, QrCode, Shield } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { getEventById } from "@/service/eventApi"
+import { generateCode } from "@/service/checkinApi"
 import QRCode from "qrcode"
 import { AppShell } from "@/components/app-shell"
 import { QRModal } from "@/components/qr-modal"
@@ -165,42 +166,16 @@ export default function AdminEventDetailPage() {
     if (!event) return
 
     try {
-      // Use persistent checkInCode from event
-      let code: string | null = event.checkInCode || null
-
-      // If no persistent code, try to fetch or generate one
-      if (!code) {
-        try {
-          const serverEvent = await getEventById(String(event.id))
-          if (serverEvent?.checkInCode) {
-            code = serverEvent.checkInCode
-          }
-        } catch (e) {
-          // Fallback: generate short-lived token
-        }
-      }
-
-      // If still no code, mint a token
-      if (!code) {
-        try {
-          const tokenResp = await fetch('/api/checkin/token', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ eventId: event.id })
-          })
-          const tokenData = await tokenResp.json()
-          if (tokenData?.token) code = tokenData.token
-        } catch (e) {
-          toast({ title: 'QR Error', description: 'Could not generate check-in code', variant: 'destructive' })
-          return
-        }
-      }
-
-      // Build URLs
-      const localUrl = `http://localhost:3000/student/checkin/${encodeURIComponent(String(code))}`
-      const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${encodeURIComponent(String(code))}`
-
-      // Generate QR variants
+      // Generate fresh token using the new API
+      console.log('Generating check-in token for event:', event.id)
+      const token = await generateCode(event.id, 300) // 5 minutes TTL
+      console.log('Generated token:', token)
+      
+      // Build URLs with the new token
+      const localUrl = `http://localhost:3000/student/checkin/${encodeURIComponent(token)}`
+      const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${encodeURIComponent(token)}`
+      
+      // Generate QR code variants
       const styleVariants = [
         { color: { dark: '#000000', light: '#FFFFFF' }, margin: 1 },
         { color: { dark: '#111111', light: '#FFFFFF' }, margin: 2 },
@@ -224,9 +199,19 @@ export default function AdminEventDetailPage() {
       setVisibleIndex(0)
       setDisplayedIndex(0)
       setShowQrModal(true)
-    } catch (err) {
+      
+      toast({ 
+        title: 'QR Code Generated', 
+        description: 'Check-in QR code has been generated successfully',
+        duration: 3000 
+      })
+    } catch (err: any) {
       console.error('Failed to generate QR', err)
-      toast({ title: 'QR Error', description: 'Could not generate QR code', variant: 'destructive' })
+      toast({ 
+        title: 'QR Error', 
+        description: err?.message || 'Could not generate QR code', 
+        variant: 'destructive' 
+      })
     }
   }
 
