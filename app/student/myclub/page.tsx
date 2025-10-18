@@ -47,33 +47,38 @@ export default function MyClubPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const { toast } = useToast()
 
-  // Get user's club IDs from localStorage
+  // Get user's club IDs from localStorage and load club details
   useEffect(() => {
-    try {
-      const saved = safeLocalStorage.getItem("uniclub-auth")
-      console.log("MyClub - Raw localStorage data:", saved)
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        console.log("MyClub - Parsed localStorage data:", parsed)
-        
-        if (parsed.clubIds && Array.isArray(parsed.clubIds)) {
-          const clubIdNumbers = parsed.clubIds.map((id: any) => Number(id)).filter((id: number) => !isNaN(id))
+    const loadUserClubs = async () => {
+      try {
+        const saved = safeLocalStorage.getItem("uniclub-auth")
+        console.log("MyClub - Raw localStorage data:", saved)
+        if (saved) {
+          const parsed = JSON.parse(saved)
+          console.log("MyClub - Parsed localStorage data:", parsed)
+          
+          let clubIdNumbers: number[] = []
+          
+          if (parsed.clubIds && Array.isArray(parsed.clubIds)) {
+            clubIdNumbers = parsed.clubIds.map((id: any) => Number(id)).filter((id: number) => !isNaN(id))
+          } else if (parsed.clubId) {
+            clubIdNumbers = [Number(parsed.clubId)]
+          }
+          
           console.log("MyClub - Setting userClubIds to:", clubIdNumbers)
           setUserClubIds(clubIdNumbers)
+          
           // Set first club as default selected
           if (clubIdNumbers.length > 0) {
             setSelectedClubId(clubIdNumbers[0])
           }
-        } else if (parsed.clubId) {
-          const clubIdNumber = Number(parsed.clubId)
-          console.log("MyClub - Setting userClubIds from single clubId to:", [clubIdNumber])
-          setUserClubIds([clubIdNumber])
-          setSelectedClubId(clubIdNumber)
         }
+      } catch (error) {
+        console.error("Failed to get clubIds from localStorage:", error)
       }
-    } catch (error) {
-      console.error("Failed to get clubIds from localStorage:", error)
     }
+    
+    loadUserClubs()
   }, [])
 
   // Load club info and members when selectedClubId changes
@@ -138,10 +143,31 @@ export default function MyClubPage() {
     return () => { mounted = false }
   }, [selectedClubId, toast])
 
-  // Get all user's clubs for dropdown
-  const userClubs = userClubIds.map(clubId => 
-    clubs.find(club => Number(club.id) === clubId)
-  ).filter(Boolean)
+  // State to store fetched club details for dropdown
+  const [userClubsDetails, setUserClubsDetails] = useState<Club[]>([])
+  
+  // Load club details for dropdown when userClubIds change
+  useEffect(() => {
+    if (userClubIds.length === 0) return
+    
+    const loadClubsDetails = async () => {
+      try {
+        const clubsPromises = userClubIds.map(clubId => getClubById(clubId))
+        const clubsResponses = await Promise.all(clubsPromises)
+        
+        const validClubs = clubsResponses
+          .filter((res: any) => res?.success && res?.data)
+          .map((res: any) => res.data)
+        
+        console.log("Loaded clubs details for dropdown:", validClubs)
+        setUserClubsDetails(validClubs)
+      } catch (err) {
+        console.error("Failed to load clubs details:", err)
+      }
+    }
+    
+    loadClubsDetails()
+  }, [userClubIds])
 
   // Format members with user info
   const clubMembers = selectedClubId
@@ -225,7 +251,7 @@ export default function MyClubPage() {
                       <SelectValue placeholder="Choose a club" />
                     </SelectTrigger>
                     <SelectContent>
-                      {userClubs.map((club: any) => (
+                      {userClubsDetails.map((club) => (
                         <SelectItem key={club.id} value={String(club.id)}>
                           <div className="flex items-center gap-2">
                             <span>{club.name}</span>

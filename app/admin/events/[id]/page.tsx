@@ -197,8 +197,8 @@ export default function AdminEventDetailPage() {
       }
 
       // Build URLs
-      const localUrl = `http://localhost:3000/member/checkin/${encodeURIComponent(String(code))}`
-      const prodUrl = `https://uniclub-fpt.vercel.app/member/checkin/${encodeURIComponent(String(code))}`
+      const localUrl = `http://localhost:3000/student/checkin/${encodeURIComponent(String(code))}`
+      const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${encodeURIComponent(String(code))}`
 
       // Generate QR variants
       const styleVariants = [

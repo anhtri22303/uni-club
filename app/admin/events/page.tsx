@@ -549,8 +549,8 @@ export default function AdminEventsPage() {
                                     if (!tokenJson?.success) throw new Error('Token mint failed');
                                     code = tokenJson.token;
                                   }
-                                  const localUrl = `http://localhost:3000/member/checkin/${encodeURIComponent(String(code))}`;
-                                  const prodUrl = `https://uniclub-fpt.vercel.app/member/checkin/${encodeURIComponent(String(code))}`;
+                                  const localUrl = `http://localhost:3000/student/checkin/${encodeURIComponent(String(code))}`;
+                                  const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${encodeURIComponent(String(code))}`;
                                   const styleVariants = [
                                     { color: { dark: '#000000', light: '#FFFFFF' }, margin: 1 },
                                     { color: { dark: '#111111', light: '#FFFFFF' }, margin: 2 },
