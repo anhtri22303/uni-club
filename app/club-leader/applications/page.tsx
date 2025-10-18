@@ -191,7 +191,6 @@ export default function ClubLeaderApplicationsPage() {
       })
     }
   }
-
   const MinimalPager = ({
     current,
     total,
@@ -270,8 +269,6 @@ export default function ClubLeaderApplicationsPage() {
                 <Eye className="h-4 w-4" /> Processed ({processedApplications.length})
               </TabsTrigger>
             </TabsList>
-
-
 
             {/* Pending */}
             <TabsContent value="pending" className="space-y-4">

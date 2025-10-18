@@ -11,8 +11,9 @@ import { useToast } from "@/hooks/use-toast"
 import { usePagination } from "@/hooks/use-pagination"
 import membershipApi, { ApiMembership } from "@/service/membershipApi"
 import { getClubById, getClubIdFromToken } from "@/service/clubApi"
-import { fetchUserById } from "@/service/userApi"
+import { fetchUserById, fetchProfile } from "@/service/userApi"
 import { Users, ChevronLeft, ChevronRight, CheckCircle } from "lucide-react"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 
 interface Club {
   id: number
@@ -28,7 +29,6 @@ interface ClubApiResponse {
   message: string
   data: Club
 }
-
 export default function ClubAttendancePage() {
   const { toast } = useToast()
   const [managedClub, setManagedClub] = useState<Club | null>(null)
@@ -37,18 +37,25 @@ export default function ClubAttendancePage() {
   const [membersLoading, setMembersLoading] = useState(false)
   const [membersError, setMembersError] = useState<string | null>(null)
   const [attendance, setAttendance] = useState<Record<string, boolean>>({}) // ✅ trạng thái điểm danh
+  const today = new Date().toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  })
+  const [currentDate, setCurrentDate] = useState("")
+  const [userId, setUserId] = useState<string | number | null>(null)
+
 
   useEffect(() => {
     const loadInitialData = async () => {
       setLoading(true)
       try {
         const clubId = getClubIdFromToken()
-        if (!clubId) throw new Error("Không tìm thấy thông tin câu lạc bộ.")
+        if (!clubId) throw new Error("No club information found.")
 
         const clubResponse = (await getClubById(clubId)) as ClubApiResponse
-        if (!clubResponse?.success) throw new Error("Không thể tải thông tin câu lạc bộ.")
+        if (!clubResponse?.success) throw new Error("Unable to load club information.")
         setManagedClub(clubResponse.data)
-
         setMembersLoading(true)
         setMembersError(null)
 
@@ -63,9 +70,7 @@ export default function ClubAttendancePage() {
             }
           })
         )
-
         setApiMembers(membersWithUserData)
-
         // ✅ Khởi tạo attendance = false cho toàn bộ thành viên
         const initialAttendance: Record<string, boolean> = {}
         membersWithUserData.forEach((m: any) => {
@@ -74,25 +79,45 @@ export default function ClubAttendancePage() {
         })
         setAttendance(initialAttendance)
       } catch (err: any) {
-        setMembersError(err?.message || "Lỗi tải danh sách thành viên")
+        setMembersError(err?.message || "Error loading member list")
       } finally {
         setMembersLoading(false)
         setLoading(false)
       }
     }
+    const today = new Date()
+    const formatted = today.toLocaleDateString("en-GB", {
+      weekday: "short",
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    })
+    const loadProfile = async () => {
+      try {
+        const profile = await fetchProfile()
+        console.log("Current user profile:", profile)
+        setUserId((profile as any)?.userId) // Lưu userId
+      } catch (error) {
+        console.error("Failed to load profile:", error)
+      }
+    }
 
+    setCurrentDate(formatted)
     loadInitialData()
+    loadProfile()
   }, [])
 
   // Lọc thành viên active
   const clubMembers = managedClub
     ? apiMembers
-      .filter((m: any) => String(m.clubId) === String(managedClub.id) && m.state === "ACTIVE")
+      .filter((m: any) => String(m.clubId) === String(managedClub.id) && m.state === "ACTIVE" && m.userId !== userId)
       .map((m: any) => {
         const u = m.userInfo || {}
         return {
           id: m.membershipId ?? `m-${m.userId}`,
           fullName: u.fullName ?? m.fullName ?? `User ${m.userId}`,
+          studentCode: m.studentCode ?? "—",
+          avatarUrl: m.avatarUrl ?? null,
           role: m.clubRole ?? "MEMBER",
         }
       })
@@ -113,13 +138,11 @@ export default function ClubAttendancePage() {
     const attended = Object.entries(attendance)
       .filter(([_, present]) => present)
       .map(([id]) => id)
-
     // 🔥 Sau này bạn có thể gọi API ở đây, ví dụ:
     // await attendanceApi.saveAttendance({ clubId: managedClub.id, attendedMembers: attended })
-
     toast({
       title: "Attendance Saved",
-      description: `${attended.length} members marked as present.`,
+      description: `${attended.length} members marked as present (${today}).`,
     })
   }
 
@@ -166,9 +189,10 @@ export default function ClubAttendancePage() {
   return (
     <ProtectedRoute allowedRoles={["club_leader"]}>
       <AppShell>
-        <div className="space-y-6">
+        <div className="flex items-start justify-between mb-10">
+
           <div>
-            <h1 className="text-3xl font-bold">Attendance</h1>
+            <h1 className="text-3xl font-bold">Club Member Attendance</h1>
             {managedClub ? (
               <p className="text-muted-foreground">
                 Members of "{managedClub.name}"
@@ -179,7 +203,13 @@ export default function ClubAttendancePage() {
               </p>
             )}
           </div>
+          <div className="text-right">
+            <span className="text-sm font-medium text-muted-foreground">Attendance Date</span>
+            <div className="text-lg font-semibold text-primary">{currentDate}</div>
+          </div>
+        </div>
 
+        <div className="space-y-6">
           {membersLoading ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12 text-center">
@@ -202,57 +232,39 @@ export default function ClubAttendancePage() {
           ) : (
             <>
               {paginatedMembers.map((member) => (
-                // <Card key={member.id}>
-                //   <CardContent className="py-3 flex items-center justify-between">
-                //     <div className="flex items-center gap-3">
-                //       <input
-                //         type="checkbox"
-                //         checked={attendance[member.id] || false}
-                //         onChange={() => handleToggleAttendance(member.id)}
-                //         className="w-5 h-5 accent-green-500 cursor-pointer"
-                //       />
-                //       <span className="font-medium">{member.fullName}</span>
-                //     </div>
-                //     <Badge variant="secondary">{member.role}</Badge>
-                //   </CardContent>
-                // </Card>
                 <Card key={member.id}>
                   <CardContent className="py-3 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                      {/* <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
                         {member.fullName.charAt(0).toUpperCase()}
-                      </div>
+                      </div> */}
+                      <Avatar className="w-10 h-10">
+                        <AvatarImage
+                          src={member.avatarUrl || ""}
+                          alt={member.fullName}
+                        />
+                        <AvatarFallback>
+                          {member.fullName.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+
                       <div>
-                        <p className="font-medium">{member.fullName}</p>
+                        <p className="font-medium">{member.fullName}
+                          <span className="text-muted-foreground text-sm ml-2">
+                            ({member.studentCode})
+                          </span>
+                        </p>
                         <Badge variant="secondary" className="text-xs">
                           {member.role}
                         </Badge>
                       </div>
                     </div>
-
                     <Button
-                      variant={
-                        attendance[member.id] === true
-                          ? "default"
-                          : attendance[member.id] === false
-                            ? "destructive"
-                            : "outline"
-                      }
-                      onClick={() => {
-                        setAttendance((prev) => {
-                          const current = prev[member.id]
-                          const next =
-                            current === undefined ? true : current === true ? false : undefined
-                          return { ...prev, [member.id]: next }
-                        })
-                      }}
+                      variant={attendance[member.id] ? "default" : "destructive"}
+                      onClick={() => handleToggleAttendance(member.id)}
                       className="w-28"
                     >
-                      {attendance[member.id] === true
-                        ? "Present"
-                        : attendance[member.id] === false
-                          ? "Absent"
-                          : "Not marked"}
+                      {attendance[member.id] ? "Present" : "Absent"}
                     </Button>
                   </CardContent>
                 </Card>
@@ -277,6 +289,6 @@ export default function ClubAttendancePage() {
           )}
         </div>
       </AppShell>
-    </ProtectedRoute>
+    </ProtectedRoute >
   )
 }

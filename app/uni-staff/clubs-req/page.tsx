@@ -89,7 +89,7 @@ export default function UniStaffClubRequestsPage() {
 				const created = await postClubApplication({
 					clubName: newClubName,
 					description: newDescription,
-					category: newCategory,
+					category: parseInt(newCategory, 10),
 					proposerReason: newProposerReason,
 				});
 				toast({ title: 'Application sent', description: `${created.clubName} submitted`, variant: 'success' });

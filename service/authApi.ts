@@ -18,9 +18,18 @@ export interface LoginCredentials {
 
 // POST /auth/login -> returns token + user info
 export const login = async (credentials: LoginCredentials): Promise<LoginResponse> => {
-  const res = await axiosInstance.post<LoginResponse>("/auth/login", credentials)
-  console.log("Login response:", res.data)
-  return res.data
+  // const res = await axiosInstance.post<LoginResponse>("/auth/login", credentials)
+  // console.log("Login response:", res.data)
+  // return res.data
+  try {
+    const res = await axiosInstance.post<LoginResponse>("/auth/login", credentials)
+    console.log("Login response:", res.data)
+    return res.data
+  } catch (error: any) {
+    console.error("Login failed:", error.response?.data || error.message)
+    throw error
+  }
+
 }
 
 // Keep other helpers (OAuth) as-is for the future
@@ -54,7 +63,7 @@ export const loginWithGoogleToken = async (credentials: { token: string }): Prom
       tokenLength: credentials.token?.length || 0,
       tokenStart: credentials.token?.substring(0, 20) + "..."
     })
-    
+
     const response = await axiosInstance.post<LoginResponse>("/auth/google", credentials)
     console.log("✅ Google token login success:", response.data)
     return response.data
@@ -66,7 +75,7 @@ export const loginWithGoogleToken = async (credentials: { token: string }): Prom
       url: error.config?.url,
       method: error.config?.method
     })
-    
+
     throw error
   }
 }
@@ -79,8 +88,8 @@ export interface SignUpCredentials {
   fullName: string
   phone: string
   roleName: string
-  studentCode: string 
-  majorName: string 
+  studentCode: string
+  majorName: string
 }
 
 export interface SignUpResponse {

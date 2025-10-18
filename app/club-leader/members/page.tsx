@@ -59,35 +59,43 @@ export default function ClubLeaderMembersPage() {
           // 3. Sau khi có club, tải danh sách thành viên
           setMembersLoading(true)
           setMembersError(null)
+          // try {
+          //   // Gọi đúng API để lấy danh sách member theo clubId
+          //   const memberData = await membershipApi.getMembersByClubId(clubId)
+          //   // Dùng Promise.all để fetch chi tiết từng user
+          //   const membersWithUserData = await Promise.all(
+          //     memberData.map(async (m: any) => {
+          //       try {
+          //         const userInfo = await fetchUserById(m.userId)
+          //         console.log(`User info for ${m.userId}:`, userInfo)
+          //         console.log("fetchUserById raw:", userInfo)
+          //         return { ...m, userInfo }
+          //       } catch (err) {
+          //         console.warn(`Không thể lấy thông tin user ${m.userId}`, err)
+          //         return { ...m, userInfo: null }
+          //       }
+          //     })
+          //   )
+          //   // setApiMembers(memberData)
+          //   setApiMembers(membersWithUserData)
+          //   console.log("MEMBER DATA:", membersWithUserData);
+          //   console.table(membersWithUserData.map(m => ({
+          //     userId: m.userId,
+          //     fullName: m.userInfo?.fullName,
+          //     email: m.userInfo?.email,
+          //     avatarUrl: m.userInfo?.avatarUrl
+          //   })))
+
+          // } catch (err: any) {
+          //   setMembersError(err?.message || "Failed to load members")
+          // } finally {
+          //   setMembersLoading(false)
+          // }
           try {
-            // Gọi đúng API để lấy danh sách member theo clubId
             const memberData = await membershipApi.getMembersByClubId(clubId)
-            // Dùng Promise.all để fetch chi tiết từng user
-            const membersWithUserData = await Promise.all(
-              memberData.map(async (m: any) => {
-                try {
-                  const userInfo = await fetchUserById(m.userId)
-                  console.log(`User info for ${m.userId}:`, userInfo)
-                  console.log("fetchUserById raw:", userInfo)
-                  return { ...m, userInfo }
-                } catch (err) {
-                  console.warn(`Không thể lấy thông tin user ${m.userId}`, err)
-                  return { ...m, userInfo: null }
-                }
-              })
-            )
+            console.log("MEMBER DATA FROM API:", memberData)
 
-
-            // setApiMembers(memberData)
-            setApiMembers(membersWithUserData)
-            console.log("MEMBER DATA:", membersWithUserData);
-            console.table(membersWithUserData.map(m => ({
-              userId: m.userId,
-              fullName: m.userInfo?.fullName,
-              email: m.userInfo?.email,
-              avatarUrl: m.userInfo?.avatarUrl
-            })))
-
+            setApiMembers(memberData)
           } catch (err: any) {
             setMembersError(err?.message || "Failed to load members")
           } finally {
@@ -115,23 +123,38 @@ export default function ClubLeaderMembersPage() {
   const clubMembers = managedClub
     ? apiMembers
       .filter((m: any) => String(m.clubId) === String(managedClub.id) && m.state === "ACTIVE")
-      .map((m: any) => {
-        const u = m.userInfo || {}
-        return {
-          id: m.membershipId ?? `m-${m.userId}`,
-          userId: m.userId,
-          clubId: m.clubId,
-          fullName: u.fullName ?? m.fullName ?? `User ${m.userId}`,
-          email: u.email ?? "N/A",
-          phone: u.phone ?? "N/A",
-          studentCode: u.studentCode ?? "N/A",
-          majorName: u.majorName ?? "N/A",
-          avatarUrl: u.avatarUrl ?? "/placeholder-user.jpg",
-          role: m.clubRole ?? "MEMBER",
-          status: m.state,
-          joinedAt: m.joinedDate ? new Date(m.joinedDate).toLocaleDateString() : "N/A",
-        }
-      })
+      // .map((m: any) => {
+      //   const u = m.userInfo || {}
+      //   return {
+      //     id: m.membershipId ?? `m-${m.userId}`,
+      //     userId: m.userId,
+      //     clubId: m.clubId,
+      //     fullName: u.fullName ?? m.fullName ?? `User ${m.userId}`,
+      //     email: u.email ?? "N/A",
+      //     phone: u.phone ?? "N/A",
+      //     studentCode: u.studentCode ?? "N/A",
+      //     majorName: u.majorName ?? "N/A",
+      //     avatarUrl: u.avatarUrl ?? "/placeholder-user.jpg",
+      //     role: m.clubRole ?? "MEMBER",
+      //     status: m.state,
+      //     joinedAt: m.joinedDate ? new Date(m.joinedDate).toLocaleDateString() : "N/A",
+      //   }
+      // })
+      .map((m: any) => ({
+        id: m.membershipId ?? `m-${m.userId}`,
+        userId: m.userId,
+        clubId: m.clubId,
+        fullName: m.fullName ?? `User ${m.userId}`,
+        email: m.email ?? "N/A",
+        phone: m.phone ?? "N/A",
+        studentCode: m.studentCode ?? "N/A",
+        majorName: m.major ?? "N/A",
+        avatarUrl: m.avatarUrl ?? "/placeholder-user.jpg",
+        role: m.clubRole ?? "MEMBER",
+        status: m.state,
+        joinedAt: m.joinedDate ? new Date(m.joinedDate).toLocaleDateString() : "N/A",
+      }))
+
     : []
 
   const {
@@ -184,7 +207,6 @@ export default function ClubLeaderMembersPage() {
       </ProtectedRoute>
     )
   }
-
   return (
     <ProtectedRoute allowedRoles={["club_leader"]}>
       <AppShell>
@@ -197,7 +219,6 @@ export default function ClubLeaderMembersPage() {
               <p className="text-destructive">Could not load club details. Please try again.</p>
             )}
           </div>
-
           <div className="space-y-4">
             {membersLoading ? (
               <Card>
@@ -225,7 +246,6 @@ export default function ClubLeaderMembersPage() {
               </Card>
             ) : (
               <>
-
                 {paginatedMembers.map((member) => (
                   <Card key={member.id}>
                     <CardContent className="pt-6">
@@ -237,47 +257,44 @@ export default function ClubLeaderMembersPage() {
                             alt={member.fullName}
                             className="w-12 h-12 rounded-full object-cover border border-gray-700"
                           />
-
                           <div>
                             <h3 className="font-semibold">{member.fullName}</h3>
                             <p className="text-xs text-muted-foreground">Joined: {member.joinedAt}</p>
                             <p className="text-xs text-muted-foreground">Email: {member.email}</p>
-                            <p className="text-xs text-muted-foreground">Phone: {member.phone}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {member.studentCode} • {member.majorName}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Role + Remove button */}
-                        <div className="flex items-center gap-3">
-                          <Badge variant="secondary">{member.role}</Badge>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50 bg-transparent"
-                            onClick={() => handleDeleteMember(member.id)}
-                          >
-                            <Trash2 className="h-4 w-4 mr-1" />
-                            Remove
-                          </Button>
+                            <p className="text-xs text-muted-foreground">Student code: {member.studentCode}</p>
+                            <p className="text-xs text-muted-foreground">Major: {member.majorName}</p>
+                          
                         </div>
                       </div>
-                    </CardContent>
+                      {/* Role + Remove button */}
+                      <div className="flex items-center gap-3">
+                        <Badge variant="secondary">{member.role}</Badge>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50 bg-transparent"
+                          onClick={() => handleDeleteMember(member.id)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
                   </Card>
                 ))}
 
-                <MinimalPager
-                  current={membersPage}
-                  total={membersPages}
-                  onPrev={() => setMembersPage(Math.max(1, membersPage - 1))}
-                  onNext={() => setMembersPage(Math.min(membersPages, membersPage + 1))}
-                />
-              </>
+            <MinimalPager
+              current={membersPage}
+              total={membersPages}
+              onPrev={() => setMembersPage(Math.max(1, membersPage - 1))}
+              onNext={() => setMembersPage(Math.min(membersPages, membersPage + 1))}
+            />
+          </>
             )}
-          </div>
         </div>
-      </AppShell>
-    </ProtectedRoute>
+      </div>
+    </AppShell>
+    </ProtectedRoute >
   )
 }
