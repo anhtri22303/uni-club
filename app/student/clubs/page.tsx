@@ -576,6 +576,7 @@ export default function MemberClubsPage() {
                 <Label htmlFor="category">Category (Major)</Label>
                 <select
                   id="category"
+                  aria-label="Category (Major)"
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   value={selectedMajorId}
                   onChange={(e) => setSelectedMajorId(Number(e.target.value))}
