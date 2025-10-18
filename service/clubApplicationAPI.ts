@@ -19,42 +19,46 @@ export interface ClubApplication {
  * Returns the raw API shape defined by ClubApplication.
  */
 export async function getClubApplications(): Promise<ClubApplication[]> {
-  const resp = await axiosInstance.get<ClubApplication[]>("/api/club-applications")
-  return resp.data
+  const resp = await axiosInstance.get("/api/club-applications/all")
+  // The backend returns { success, message, data: [...] }
+  const result = resp.data as { success: boolean; message: string; data: ClubApplication[] }
+  return result.data
 }
 
-/**
- * Create a new club application by calling POST /api/club-applications.
- * The backend in the project seems to accept clubName and description as query or body.
- * We'll send a JSON body { clubName, description } and return the created resource.
- */
-export async function postClubApplication(body: { clubName: string; description: string }) {
-  // The backend expects parameters as query params (see Swagger UI). Send an
-  // empty body and provide params so the request becomes:
-  // POST /api/club-applications?clubName=...&description=...
-  const resp = await axiosInstance.post<ClubApplication>(
+export async function postClubApplication(body: {
+  clubName: string
+  description: string
+  category: number
+  proposerReason: string
+}) {
+  const response = await axiosInstance.post(
     "/api/club-applications",
-    null,
-    {
-      params: {
-        clubName: body.clubName,
-        description: body.description,
-      },
-    },
+    body,
+    { headers: { "Content-Type": "application/json" } }
   )
-  return resp.data
+
+  // Backend trả về: { success, message, data }
+  const result = response.data as {
+    success: boolean
+    message: string
+    data: ClubApplication
+  }
+
+  return result.data // ✅ Chỉ trả ra phần data thật
 }
 
-/**
- * Update application status. Endpoint: PUT /api/club-applications/{id}/status?status=...
- */
-export async function putClubApplicationStatus(applicationId: number, status: string) {
-  const resp = await axiosInstance.put<ClubApplication>(
-    `/api/club-applications/${applicationId}/status`,
-    null,
-    { params: { status } },
+export async function putClubApplicationStatus(applicationId: number, approve: boolean, rejectReason: string) {
+  const response = await axiosInstance.put<ClubApplication>(
+    `/api/club-applications/${applicationId}/decide`,
+    { approve, rejectReason },
+    { headers: { 'Content-Type': 'application/json' } }
   )
-  return resp.data
+  console.log("ClubApplication response:", response.data)
+  return response.data
 }
 
-export default { getClubApplications, postClubApplication }
+export default { 
+  getClubApplications, 
+  postClubApplication, 
+  putClubApplicationStatus 
+}

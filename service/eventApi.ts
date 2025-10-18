@@ -1,23 +1,37 @@
 import axiosInstance from "@/lib/axiosInstance"
 
-export const fetchEvent = async () => {
-  const timestamp = new Date().toISOString()
-  const stack = new Error().stack
-  console.log(`🚀 fetchEvent called at ${timestamp}`)
-  console.log(`📍 Call stack:`, stack?.split('\n').slice(1, 4).join('\n'))
-  
+export const fetchEvent = async ({ page = 0, size = 10, sort = "name" } = {}) => {
+  const timestamp = new Date().toISOString();
+  const stack = new Error().stack;
+  console.log(`🚀 fetchEvent called at ${timestamp}`);
+  console.log(`📍 Call stack:`, stack?.split('\n').slice(1, 4).join('\n'));
+
   try {
-    const response = await axiosInstance.get("api/events")
-    // If the API uses pagination, the events array may be in `response.data.content`
-    const data: any = response.data
-    console.log(`✅ fetchEvent completed at ${new Date().toISOString()}:`, data)
-    if (data && Array.isArray(data)) return data
-    if (data && Array.isArray(data.content)) return data.content
-    // Fallback to returning the raw data
-    return data
+    const response = await axiosInstance.get("api/events", {
+      params: {
+        page,
+        size,
+        sort,
+      },
+    });
+    const data: any = response.data;
+    console.log(`✅ fetchEvent completed at ${new Date().toISOString()}:`, data);
+    
+    // Response structure: { content: [...], pageable: {...}, ... }
+    // Always return the content array for event list
+    if (data && Array.isArray(data.content)) return data.content;
+    
+    // Fallback: if direct array
+    if (Array.isArray(data)) return data;
+    
+    // Fallback: if data.data.content
+    if (data?.data && Array.isArray(data.data.content)) return data.data.content;
+    
+    // Fallback: empty array
+    return [];
   } catch (error) {
-    console.error(`❌ fetchEvent error at ${new Date().toISOString()}:`, error)
-    throw error
+    console.error(`❌ fetchEvent error at ${new Date().toISOString()}:`, error);
+    throw error;
   }
 }
 
@@ -38,8 +52,8 @@ export const getEventById = async (id: string | number) => {
     const response = await axiosInstance.get(`api/events/${id}`)
     const resData: any = response.data
     console.log(`Fetched event ${id}:`, resData)
-    // Some backends wrap the payload in { success, message, data }
-    // Normalize to return the inner event object when present.
+    // Response structure: { success: true, message: "success", data: { id, clubId, name, description, type, date, time, status, locationId, locationName, checkInCode, maxCheckInCount, currentCheckInCount } }
+    // Always return the data object when present
     if (resData && resData.data) return resData.data
     return resData
   } catch (error) {
@@ -63,9 +77,9 @@ export const putEventStatus = async (id: string | number, status: string) => {
 }
 
 export const getEventByCode = async (code: string) => {
-	// call the endpoint used in your screenshot: /api/events/checkin/{code}
+	// call the correct endpoint: /api/events/code/{code}
 	try {
-		const response = await axiosInstance.get(`/api/events/checkin/${encodeURIComponent(code)}`)
+		const response = await axiosInstance.get(`/api/events/code/${encodeURIComponent(code)}`)
 		const resData: any = response.data
 		console.debug(`Fetched event by code ${code}:`, resData)
 		// expected response shape:

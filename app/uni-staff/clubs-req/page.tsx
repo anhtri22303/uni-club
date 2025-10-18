@@ -43,6 +43,8 @@ export default function UniStaffClubRequestsPage() {
 	const [isModalOpen, setIsModalOpen] = useState<boolean>(false)
 	const [newClubName, setNewClubName] = useState<string>("")
 	const [newDescription, setNewDescription] = useState<string>("")
+	const [newCategory, setNewCategory] = useState<string>("")
+	const [newProposerReason, setNewProposerReason] = useState<string>("")
 	const [activeTab, setActiveTab] = useState<string>("pending")
 	const { toast } = useToast()
 
@@ -77,42 +79,53 @@ export default function UniStaffClubRequestsPage() {
 	}, []) 
 
 	async function handleSendNewApplication() {
-		setLoading(true)
-		setError(null)
-		try {
-			const created = await postClubApplication({ clubName: newClubName, description: newDescription })
-			toast({ title: 'Application sent', description: `${created.clubName} submitted`, variant: 'success' })
-			// reload list
-			const data = await getClubApplications()
-			const mapped: UiClubRequest[] = data.map((d) => ({
-				id: `req-${d.applicationId}`,
-				applicationId: d.applicationId,
-				clubName: d.clubName,
-				category: "Unknown",
-				description: d.description,
-				requestedBy: d.submittedBy?.fullName ?? "Unknown",
-				requestedByEmail: d.submittedBy?.email ?? "",
-				requestDate: d.submittedAt,
-				status: d.status,
-			}))
-			setRequests(mapped)
-			setIsModalOpen(false)
-			setNewClubName("")
-			setNewDescription("")
-		} catch (err) {
-			console.error(err)
-			setError('Failed to create application')
-			toast({ title: 'Error', description: 'Failed to send application', variant: 'destructive' })
-		} finally {
-			setLoading(false)
-		}
+			if (!newClubName.trim() || !newDescription.trim() || !newCategory.trim() || !newProposerReason.trim()) {
+				toast({ title: 'Missing Information', description: 'Please fill in all fields.', variant: 'destructive' });
+				return;
+			}
+			setLoading(true);
+			setError(null);
+			try {
+				const created = await postClubApplication({
+					clubName: newClubName,
+					description: newDescription,
+					category: newCategory,
+					proposerReason: newProposerReason,
+				});
+				toast({ title: 'Application sent', description: `${created.clubName} submitted`, variant: 'success' });
+				// reload list
+				const data = await getClubApplications();
+					const mapped: UiClubRequest[] = data.map((d) => ({
+						id: `req-${d.applicationId}`,
+						applicationId: d.applicationId,
+						clubName: d.clubName,
+						category: (d as any).category ?? "Unknown",
+						description: d.description,
+						requestedBy: d.submittedBy?.fullName ?? "Unknown",
+						requestedByEmail: d.submittedBy?.email ?? "",
+						requestDate: d.submittedAt,
+						status: d.status,
+					}));
+				setRequests(mapped);
+				setIsModalOpen(false);
+				setNewClubName("");
+				setNewDescription("");
+				setNewCategory("");
+				setNewProposerReason("");
+			} catch (err) {
+				console.error(err);
+				setError('Failed to create application');
+				toast({ title: 'Error', description: 'Failed to send application', variant: 'destructive' });
+			} finally {
+				setLoading(false);
+			}
 	}
 
 	async function approveApplication(appId?: number) {
 		if (!appId) return
 		setLoading(true)
 		try {
-			const updated = await putClubApplicationStatus(appId, 'SUBMITTED')
+			const updated = await putClubApplicationStatus(appId, true, '')
 			// Safe behavior: refetch the whole list from backend and update UI
 			const data = await getClubApplications()
 			const mapped: UiClubRequest[] = data.map((d) => ({
@@ -140,7 +153,7 @@ export default function UniStaffClubRequestsPage() {
 		if (!appId) return
 		setLoading(true)
 		try {
-			const updated = await putClubApplicationStatus(appId, 'REJECTED')
+			const updated = await putClubApplicationStatus(appId, false, 'Rejected by staff')
 			// Safe behavior: refetch the whole list from backend and update UI
 			const data = await getClubApplications()
 			const mapped: UiClubRequest[] = data.map((d) => ({
@@ -252,18 +265,22 @@ export default function UniStaffClubRequestsPage() {
 					</div>
 
 					{/* Modal for creating new club application */}
-					<Modal open={isModalOpen} onOpenChange={setIsModalOpen} title="Create Club Application">
-						<div className="space-y-3">
-							<label className="text-sm font-medium">Club Name</label>
-							<Input value={newClubName} onChange={(e) => setNewClubName(e.target.value)} placeholder="Tri&Duc" />
-							<label className="text-sm font-medium">Description</label>
-							<Input value={newDescription} onChange={(e) => setNewDescription(e.target.value)} placeholder="Description" />
-							<div className="flex justify-end gap-2 pt-2">
-								<Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-								<Button onClick={handleSendNewApplication}>Send</Button>
-							</div>
-						</div>
-					</Modal>
+								<Modal open={isModalOpen} onOpenChange={setIsModalOpen} title="Create Club Application">
+									<div className="space-y-3">
+										<label className="text-sm font-medium">Club Name</label>
+										<Input value={newClubName} onChange={(e) => setNewClubName(e.target.value)} placeholder="Tri&Duc" />
+										<label className="text-sm font-medium">Description</label>
+										<Input value={newDescription} onChange={(e) => setNewDescription(e.target.value)} placeholder="Description" />
+										<label className="text-sm font-medium">Category</label>
+										<Input value={newCategory} onChange={(e) => setNewCategory(e.target.value)} placeholder="Category" />
+										<label className="text-sm font-medium">Proposer Reason</label>
+										<Input value={newProposerReason} onChange={(e) => setNewProposerReason(e.target.value)} placeholder="Why do you want to create this club?" />
+										<div className="flex justify-end gap-2 pt-2">
+											<Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
+											<Button onClick={handleSendNewApplication}>Send</Button>
+										</div>
+									</div>
+								</Modal>
 
 					{/* Stats Cards */}
 					<div className="grid grid-cols-1 md:grid-cols-3 gap-4">

@@ -40,18 +40,32 @@ export default function MemberCheckinByCodePage() {
           const ev = await getEventByCode(checkInCode)
           setEventData(ev)
           setTokenState({ valid: true, eventId: String(ev?.id ?? "") })
+          console.log('Event fetched successfully:', ev)
         }
-      } catch (err) {
+      } catch (err: any) {
         console.warn("Failed to fetch event by code", err)
         setEventData(null)
-        setTokenState({ valid: false, reason: "not_found" })
+        
+        // More specific error handling
+        if (err?.response?.status === 404) {
+          setTokenState({ valid: false, reason: "not_found" })
+        } else if (err?.response?.status === 500) {
+          setTokenState({ valid: false, reason: "server_error" })
+        } else {
+          setTokenState({ valid: false, reason: "unknown_error" })
+        }
       }
     })()
   }, [checkInCode])
 
-  const handleCheckin = (_event: any) => {
+  const handleCheckin = (event: any) => {
     // Notify user that the check-in action is not yet available
-    toast({ title: "Coming soon", description: "Checkin button available soon", duration: 3000 })
+    toast({ 
+      title: "Check-in Coming Soon", 
+      description: `Check-in functionality for event "${event.name}" will be updated soon.`,
+      duration: 3000 
+    })
+    console.log('Check-in attempt for event:', event)
     return
   }
 
@@ -61,11 +75,19 @@ export default function MemberCheckinByCodePage() {
         <div className="flex flex-col items-center justify-center min-h-[70vh] px-2">
           <div className="w-full max-w-md">
             <h1 className="text-3xl font-extrabold text-center mb-2 text-primary">Event Check-in</h1>
-            <p className="text-base text-center text-muted-foreground mb-6">Xác nhận tham gia sự kiện bằng mã QR</p>
+            <p className="text-base text-center text-muted-foreground mb-6">Confirm event participation with QR code</p>
 
             {tokenState && !tokenState.valid && (
               <div className="p-4 rounded-lg bg-red-50 text-red-700 text-center shadow mb-4 border border-red-200">
-                Mã QR không hợp lệ hoặc đã hết hạn.<br />Vui lòng liên hệ ban tổ chức để nhận mã mới.
+                {tokenState.reason === "not_found" && (
+                  <>QR code does not exist or has expired.<br />Please check the code again or contact the organizer.</>
+                )}
+                {tokenState.reason === "server_error" && (
+                  <>Server error. Please try again later.<br />If the error persists, please contact technical support.</>
+                )}
+                {tokenState.reason === "unknown_error" && (
+                  <>An error occurred while loading event information.<br />Please try again or contact the organizer.</>
+                )}
               </div>
             )}
 
@@ -87,23 +109,38 @@ export default function MemberCheckinByCodePage() {
                     <div className="grid grid-cols-1 gap-3 mb-6">
                       <div className="flex items-center gap-2 text-base">
                         <Calendar className="h-5 w-5 text-primary" />
-                        <span className="font-medium">{new Date(eventData.date).toLocaleDateString()} <span className="mx-1">|</span> {eventData.time}</span>
+                        <span className="font-medium">{new Date(eventData.date).toLocaleDateString('vi-VN')} <span className="mx-1">|</span> {eventData.time}</span>
                       </div>
                       <div className="flex items-center gap-2 text-base">
                         <MapPin className="h-5 w-5 text-primary" />
-                        <span className="font-medium">{eventData.locationId ? `Phòng ${eventData.locationId}` : eventData.location || 'Địa điểm sự kiện'}</span>
+                        <span className="font-medium">{eventData.locationId ? `Room ${eventData.locationId}` : eventData.location || 'Event Location'}</span>
                       </div>
                       <div className="flex items-center gap-2 text-base">
-                        <Trophy className="h-5 w-5 text-yellow-500" />
-                        <span className="font-medium">{eventData.points ?? 0} điểm thưởng</span>
+                        <Users className="h-5 w-5 text-blue-500" />
+                        <span className="font-medium">Type: {eventData.type === 'PUBLIC' ? 'Public' : 'Private'}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-base">
+                        <Badge 
+                          variant={eventData.status === 'APPROVED' ? 'default' : 'secondary'}
+                          className="flex items-center gap-1"
+                        >
+                          <span>Status: {eventData.status === 'APPROVED' ? 'Approved' : eventData.status}</span>
+                        </Badge>
                       </div>
                     </div>
                     <Button
                       size="lg"
                       className="w-full py-6 text-lg font-semibold flex items-center justify-center gap-2 bg-gradient-to-r from-primary to-blue-500 hover:from-blue-500 hover:to-primary transition"
-                      onClick={() => handleCheckin({ id: eventData.id, points: eventData.points ?? 0 })}
+                      onClick={() => handleCheckin({ 
+                        id: eventData.id, 
+                        name: eventData.name,
+                        clubId: eventData.clubId,
+                        checkInCode: eventData.checkInCode 
+                      })}
+                      disabled={eventData.status !== 'APPROVED'}
                     >
-                      <CheckCircle className="h-6 w-6 mr-2" /> Check In
+                      <CheckCircle className="h-6 w-6 mr-2" /> 
+                      {eventData.status === 'APPROVED' ? 'Check In' : 'Event Not Approved'}
                     </Button>
                   </CardContent>
                 </Card>
@@ -112,7 +149,7 @@ export default function MemberCheckinByCodePage() {
                   <CardContent>
                     <div className="flex flex-col items-center py-8">
                       <Clock className="h-8 w-8 text-muted-foreground mb-2 animate-pulse" />
-                      <p className="text-muted-foreground text-center">Đang tải thông tin sự kiện...</p>
+                      <p className="text-muted-foreground text-center">Loading event information...</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -122,7 +159,7 @@ export default function MemberCheckinByCodePage() {
                 <CardContent>
                   <div className="flex flex-col items-center py-8">
                     <Clock className="h-8 w-8 text-muted-foreground mb-2 animate-pulse" />
-                    <p className="text-muted-foreground text-center">Vui lòng quét mã QR hợp lệ để hiển thị thông tin sự kiện.</p>
+                    <p className="text-muted-foreground text-center">Please scan a valid QR code to display event information.</p>
                   </div>
                 </CardContent>
               </Card>

@@ -13,10 +13,11 @@ import { Textarea } from "@/components/ui/textarea"
 import { useAuth } from "@/contexts/auth-context"
 import { useData } from "@/contexts/data-context"
 import { useToast } from "@/hooks/use-toast"
-import { Users, UserPlus } from "lucide-react"
+import { Users, PlusIcon } from "lucide-react"
 import { fetchClub } from "@/service/clubApi"
 import { postMemAppli } from "@/service/memberApplicationApi"
 import { safeLocalStorage } from "@/lib/browser-utils"
+import { fetchMajors, Major } from "@/service/majorApi"
 
 // We'll fetch clubs from the backend and only use the `content` array.
 type ClubApiItem = {
@@ -36,12 +37,22 @@ export default function MemberClubsPage() {
   const [selectedClub, setSelectedClub] = useState<any>(null)
   const [applicationText, setApplicationText] = useState("")
   const [showApplicationModal, setShowApplicationModal] = useState(false)
+  // Create club modal state
+  const [showCreateClubModal, setShowCreateClubModal] = useState(false)
+  const [newClubName, setNewClubName] = useState("")
+  const [newDescription, setNewDescription] = useState("")
+  const [newCategory, setNewCategory] = useState("")
+  const [newProposerReason, setNewProposerReason] = useState("")
   const [clubs, setClubs] = useState<ClubApiItem[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pendingClubIds, setPendingClubIds] = useState<string[]>([])
   const [userClubIds, setUserClubIds] = useState<number[]>([])
   const [userClubId, setUserClubId] = useState<number | null>(null) // Keep for backward compatibility
+
+  const [majors, setMajors] = useState<Major[]>([])
+  const [selectedMajorId, setSelectedMajorId] = useState<number | "">("")
+
 
   // Get user's current memberships and applications
   const userMemberships = clubMemberships.filter((m) => m.userId === auth.userId)
@@ -55,7 +66,7 @@ export default function MemberClubsPage() {
       if (saved) {
         const parsed = JSON.parse(saved)
         console.log("Parsed localStorage data:", parsed)
-        
+
         // Check for clubIds array first, then fallback to single clubId
         if (parsed.clubIds && Array.isArray(parsed.clubIds)) {
           const clubIdNumbers = parsed.clubIds.map((id: any) => Number(id)).filter((id: number) => !isNaN(id))
@@ -76,6 +87,20 @@ export default function MemberClubsPage() {
       console.error("Failed to get clubId from localStorage:", error)
     }
   }, [])
+
+
+  useEffect(() => {
+    const loadMajors = async () => {
+      try {
+        const data = await fetchMajors()
+        setMajors(data)
+      } catch (error) {
+        console.error("Failed to load majors:", error)
+      }
+    }
+    loadMajors()
+  }, [])
+
 
   const categoryColors: Record<string, string> = {
     "Software Engineering": "#0052CC",
@@ -419,7 +444,7 @@ export default function MemberClubsPage() {
       label: "Actions",
       render: (_: any, club: any) => {
         const status = getClubStatus(club.id)
-        
+
         // Allow members to apply to clubs (except their current club which is already filtered out)
         return (
           <Button
@@ -434,7 +459,7 @@ export default function MemberClubsPage() {
               "Applied"
             ) : (
               <>
-                <UserPlus className="h-4 w-4 mr-1" />
+                <PlusIcon className="h-4 w-4 mr-1" />
                 Apply
               </>
             )}
@@ -444,14 +469,26 @@ export default function MemberClubsPage() {
     },
   ]
 
+
   return (
     <ProtectedRoute allowedRoles={["student"]}>
       <AppShell>
+        {/* Floating '+' button for create club */}
+        <Button
+          aria-label="Create club application"
+          size="sm"
+          variant="default"
+          className="fixed top-4 right-4 z-50 rounded-full flex items-center justify-center"
+          onClick={() => setShowCreateClubModal(true)}
+        >
+          <PlusIcon className="h-5 w-5" />
+          <span className="font-medium">Create new club</span>
+        </Button>
         <div className="space-y-6">
           <div>
             <h1 className="text-3xl font-bold">Club Directory</h1>
             <p className="text-muted-foreground">
-              Discover and join clubs that match your interests. 
+              Discover and join clubs that match your interests.
               {userClubIds.length > 0 && (
                 <span className="text-xs text-muted-foreground/70 ml-2">
                   (Your club{userClubIds.length > 1 ? 's' : ''} {userClubIds.join(', ')} {userClubIds.length > 1 ? 'are' : 'is'} hidden)
@@ -460,10 +497,6 @@ export default function MemberClubsPage() {
             </p>
           </div>
 
-          {/* Thêm cấu hình phân trang giống trang Offers:
-              - initialPageSize = 6 để luôn có 2+ trang khi >6 rows
-              - pageSizeOptions để người dùng đổi số dòng/trang
-              Lưu ý: DataTable của bạn đã có phân trang nội bộ, nên chỉ cần truyền props này. */}
           <DataTable
             title="Club Directory"
             data={enhancedClubs}
@@ -482,6 +515,7 @@ export default function MemberClubsPage() {
             <div className="text-center text-sm text-destructive">Error: {error}</div>
           )}
 
+          {/* Modal for applying to a club (join) */}
           <Modal
             open={showApplicationModal}
             onOpenChange={setShowApplicationModal}
@@ -507,6 +541,133 @@ export default function MemberClubsPage() {
               </div>
             </div>
           </Modal>
+
+          {/* Modal form application for creating a new club */}
+          <Modal
+            open={showCreateClubModal}
+            onOpenChange={setShowCreateClubModal}
+            title="Create Club Application"
+          >
+            <div className="space-y-4">
+              {/* Club Name */}
+              <div className="space-y-2">
+                <Label htmlFor="clubName">Club Name</Label>
+                <Textarea
+                  id="clubName"
+                  value={newClubName}
+                  onChange={(e) => setNewClubName(e.target.value)}
+                  placeholder="Enter club name"
+                />
+              </div>
+
+              {/* Description */}
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  value={newDescription}
+                  onChange={(e) => setNewDescription(e.target.value)}
+                  placeholder="Enter description"
+                />
+              </div>
+
+              {/* Category (Major Selection) */}
+              <div className="space-y-2">
+                <Label htmlFor="category">Category (Major)</Label>
+                <select
+                  id="category"
+                  aria-label="Category (Major)"
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={selectedMajorId}
+                  onChange={(e) => setSelectedMajorId(Number(e.target.value))}
+                >
+                  <option value="">Select a major</option>
+                  {majors
+                    .filter((m) => m.active)
+                    .map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              {/* Proposer Reason */}
+              <div className="space-y-2">
+                <Label htmlFor="proposerReason">Proposer Reason</Label>
+                <Textarea
+                  id="proposerReason"
+                  value={newProposerReason}
+                  onChange={(e) => setNewProposerReason(e.target.value)}
+                  placeholder="Why do you want to create this club?"
+                />
+              </div>
+
+              {/* Buttons */}
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => setShowCreateClubModal(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={async () => {
+                    if (
+                      !newClubName.trim() ||
+                      !newDescription.trim() ||
+                      !selectedMajorId ||
+                      !newProposerReason.trim()
+                    ) {
+                      toast({
+                        title: "Missing Information",
+                        description: "Please fill in all fields.",
+                        variant: "destructive",
+                      })
+                      return
+                    }
+
+                    try {
+                      const { postClubApplication } = await import("@/service/clubApplicationAPI")
+                      const payload = {
+                        clubName: newClubName.trim(),
+                        description: newDescription.trim(),
+                        category: selectedMajorId, // ✅ ID của major
+                        proposerReason: newProposerReason.trim(),
+                      }
+
+                      console.log("Submitting club application:", payload)
+                      const created = await postClubApplication(payload)
+                      console.log("API response:", created)
+
+                      toast({
+                        title: "Application Sent",
+                        description: `Your application for ${created.clubName} submitted successfully.`,
+                        variant: "success",
+                      })
+
+                      // Reset form
+                      setShowCreateClubModal(false)
+                      setNewClubName("")
+                      setNewDescription("")
+                      setSelectedMajorId("")
+                      setNewProposerReason("")
+                    } catch (err: any) {
+                      console.error("Error submitting application:", err)
+                      toast({
+                        title: "Error",
+                        description:
+                          err?.response?.data?.message ||
+                          "Failed to send application",
+                        variant: "destructive",
+                      })
+                    }
+                  }}
+                >
+                  Send
+                </Button>
+              </div>
+            </div>
+          </Modal>
+
+
         </div>
       </AppShell>
     </ProtectedRoute>

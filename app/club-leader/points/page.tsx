@@ -202,29 +202,29 @@ export default function ClubLeaderRewardDistributionPage() {
         <div className="space-y-6">
           <div>
             <h1 className="text-3xl font-bold flex items-center gap-3">
-              <Award className="h-8 w-8 text-yellow-500" /> Phân phát Điểm Thưởng
+              <Award className="h-8 w-8 text-yellow-500" /> Reward Point Distribution
             </h1>
-            <p className="text-muted-foreground">Phân phát điểm thưởng từ quỹ câu lạc bộ cho thành viên {managedClub.name}.</p>
+            <p className="text-muted-foreground">Distribute bonus points from club funds to members {managedClub.name}.</p>
           </div>
 
           <Card>
             <CardHeader>
-              <CardTitle>Cài đặt Phân phát Điểm</CardTitle>
+              <CardTitle>Set up the Point Distribution Index</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="reward-amount">Số Điểm Thưởng (mỗi thành viên)</Label>
+                <Label htmlFor="reward-amount">Number of Bonus Points (per member)</Label>
                 <Input
                   id="reward-amount"
                   type="number"
-                  placeholder="Nhập số điểm..."
+                  placeholder="Enter bonus points..."
                   value={rewardAmount}
                   onChange={handleRewardAmountChange}
                   disabled={isDistributing}
                   min="1"
                 />
               </div>
-              <p className="text-sm text-muted-foreground">Tổng số thành viên sẽ nhận thưởng: **{clubMembers.length}**</p>
+              <p className="text-sm text-muted-foreground">Total number of members who will receive the bonus points: {clubMembers.length}</p>
             </CardContent>
             <CardFooter>
                 <Button 
@@ -232,10 +232,10 @@ export default function ClubLeaderRewardDistributionPage() {
                     disabled={isDistributing || rewardAmount === '' || rewardAmount <= 0}
                     className="w-full"
                 >
-                    {isDistributing ? "Đang phân phát..." : (
+                    {isDistributing ? "In the process of distribution..." : (
                         <>
                             <Send className="mr-2 h-4 w-4" />
-                            Phân phát {rewardAmount || 0} Điểm
+                            Distribution {rewardAmount || 0} point
                         </>
                     )}
                 </Button>
@@ -245,22 +245,22 @@ export default function ClubLeaderRewardDistributionPage() {
           <Separator />
           
           {/* === Danh sách Thành viên === */}
-          <h2 className="text-2xl font-semibold">Danh sách Thành viên ({clubMembers.length})</h2>
+          <h2 className="text-2xl font-semibold">List of Members ({clubMembers.length})</h2>
 
           <div className="space-y-4">
             {membersLoading ? (
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12 text-center">
                   <Users className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Đang tải thành viên...</h3>
-                  <p className="text-muted-foreground">Vui lòng chờ chúng tôi tìm nạp danh sách.</p>
+                  <h3 className="text-lg font-semibold mb-2">Loading member list...</h3>
+                  <p className="text-muted-foreground">Please wait for the system to fetch the list.</p>
                 </CardContent>
               </Card>
             ) : membersError ? (
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12 text-center">
                   <Users className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Lỗi tải thành viên</h3>
+                  <h3 className="text-lg font-semibold mb-2">Error loading member list</h3>
                   <p className="text-muted-foreground">{membersError}</p>
                 </CardContent>
               </Card>
@@ -268,8 +268,8 @@ export default function ClubLeaderRewardDistributionPage() {
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12 text-center">
                   <Users className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Chưa có thành viên</h3>
-                  <p className="text-muted-foreground">Hãy duyệt đơn đăng ký để thêm thành viên.</p>
+                  <h3 className="text-lg font-semibold mb-2">No members yet</h3>
+                  <p className="text-muted-foreground">Please review the application to add members.</p>
                 </CardContent>
               </Card>
             ) : (
@@ -284,7 +284,7 @@ export default function ClubLeaderRewardDistributionPage() {
                             <h3 className="font-semibold">{user?.fullName ?? membership.userId}</h3>
                             <p className="text-sm text-muted-foreground">{user?.email ?? ""}</p>
                             <p className="text-xs text-muted-foreground mt-1">
-                              Tham gia: {membership.joinedAt ? new Date(membership.joinedAt).toLocaleDateString() : "Gần đây"}
+                              Joined: {membership.joinedAt ? new Date(membership.joinedAt).toLocaleDateString() : "recently"}
                             </p>
                           </div>
                           <div className="flex items-center gap-3">

@@ -147,7 +147,7 @@ export function UserProfileWidget() {
         <div className={`rounded-lg p-0 overflow-hidden shadow-sm ${pointsStyle.cardClassName}`}>
           <div className="p-3 flex items-center justify-between">
             <div>
-              <p className={`text-xs font-medium transition-colors duration-300 ${pointsStyle.subtitleColorClassName}`}>Điểm Tích Lũy</p>
+              <p className={`text-xs font-medium transition-colors duration-300 ${pointsStyle.subtitleColorClassName}`}>Accumulated Points</p>
               <p className={`text-2xl font-bold transition-colors duration-300 ${pointsStyle.textColorClassName}`}>{userPoints.toLocaleString()}</p>
             </div>
             <div className={`p-2 rounded-full transition-colors duration-300 ${pointsStyle.iconBgClassName}`}>

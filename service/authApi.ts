@@ -47,13 +47,26 @@ export const handleGoogleCallback = async (code: string) => {
   }
 }
 
-export const loginWithGoogleToken = async (credentials: { token: string }) => {
+export const loginWithGoogleToken = async (credentials: { token: string }): Promise<LoginResponse> => {
   try {
-    const response = await axiosInstance.post("/auth/login/token/google", credentials)
-    console.log("Google token login success")
+    console.log("🚀 Sending Google token to backend:", {
+      url: `${axiosInstance.defaults.baseURL}/auth/google`,
+      tokenLength: credentials.token?.length || 0,
+      tokenStart: credentials.token?.substring(0, 20) + "..."
+    })
+    
+    const response = await axiosInstance.post<LoginResponse>("/auth/google", credentials)
+    console.log("✅ Google token login success:", response.data)
     return response.data
-  } catch (error) {
-    console.error("Error during Google token login:", error)
+  } catch (error: any) {
+    console.error("❌ Error during Google token login:", {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      url: error.config?.url,
+      method: error.config?.method
+    })
+    
     throw error
   }
 }
@@ -80,7 +93,7 @@ export interface SignUpResponse {
 
 export const signUp = async (credentials: SignUpCredentials): Promise<SignUpResponse> => {
   try {
-    const res = await axios.post<SignUpResponse>(
+    const res = await axiosInstance.post<SignUpResponse>(
       "/auth/register",
       {
         email: credentials.email,
@@ -97,6 +110,7 @@ export const signUp = async (credentials: SignUpCredentials): Promise<SignUpResp
         },
       }
     )
+    console.log("Sign up response:", res.data)
     return res.data
   } catch (error: any) {
     if (error.response) {
@@ -107,3 +121,38 @@ export const signUp = async (credentials: SignUpCredentials): Promise<SignUpResp
     throw error
   }
 }
+
+// Forgot Password API
+export interface ForgotPasswordRequest {
+  email: string
+}
+
+export interface ForgotPasswordResponse {
+  success: boolean
+  message: string
+  data: null
+}
+
+export const forgotPassword = async (email: string): Promise<ForgotPasswordResponse> => {
+  try {
+    const res = await axiosInstance.post<ForgotPasswordResponse>(
+      "/auth/forgot-password",
+      { email },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    )
+    console.log("Forgot password response:", res.data)
+    return res.data
+  } catch (error: any) {
+    if (error.response) {
+      console.error("Error response:", error.response.data)
+    } else {
+      console.error("Error during forgot password:", error.message)
+    }
+    throw error
+  }
+}
+

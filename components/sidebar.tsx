@@ -5,12 +5,14 @@ import { useData } from "@/contexts/data-context"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { usePathname, useRouter } from "next/navigation"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { LoadingSpinner } from "@/components/loading-spinner"
 import { safeLocalStorage } from "@/lib/browser-utils"
+import { getUserStats } from "@/service/userApi"
+import { getClubStats } from "@/service/clubApi"
 import {
   LayoutDashboard, Users, Calendar, Gift, Wallet, History, BarChart3,
-  Building, Home, CheckCircle, FileText, FileUser, HandCoins,
+  Building, Home, CheckCircle, FileText, FileUser, HandCoins, CalendarDays,
 } from "lucide-react"
 
 interface SidebarProps {
@@ -38,6 +40,8 @@ const navigationConfig = {
     { href: "/club-leader/events", label: "Events", icon: Calendar },
     { href: "/club-leader/gift", label: "Gift", icon: Gift },
     { href: "/club-leader/points", label: "Points", icon: HandCoins },
+    { href: "/club-leader/attendances", label: "Attendances", icon: CalendarDays },
+
   ],
   uni_staff: [
     { href: "/uni-staff", label: "Dashboard", icon: LayoutDashboard },
@@ -62,9 +66,33 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [loadingPath, setLoadingPath] = useState<string | null>(null)
+  const [userStatsTotal, setUserStatsTotal] = useState<number>(0)
+  const [clubStatsTotal, setClubStatsTotal] = useState<number>(0)
+
+  // Fetch user stats and club stats for admin role
+  useEffect(() => {
+    if (auth.role === "admin") {
+      const fetchStats = async () => {
+        try {
+          const stats = await getUserStats()
+          if (stats?.total) {
+            setUserStatsTotal(stats.total)
+          }
+          
+          const clubStats = await getClubStats()
+          if (clubStats?.totalClubs) {
+            setClubStatsTotal(clubStats.totalClubs)
+          }
+        } catch (error) {
+          console.error("Failed to fetch stats:", error)
+        }
+      }
+      fetchStats()
+    }
+  }, [auth.role])
 
   if (!auth.role || !auth.user) return null
-  
+
   // Default navigation per role (cast to a mutable, wide type to avoid readonly tuple issues)
   let navigation = (navigationConfig[auth.role as keyof typeof navigationConfig] || []) as unknown as NavItem[]
 
@@ -75,10 +103,10 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
       if (storedAuth) {
         const parsedAuth = JSON.parse(storedAuth)
         const clubIds = parsedAuth.clubIds
-        
+
         // If student has no clubs (clubIds is null, undefined, or empty array), show limited navigation
         const hasNoClubs = !clubIds || (Array.isArray(clubIds) && clubIds.length === 0)
-        
+
         if (hasNoClubs) {
           console.log("Student has no clubs, showing limited navigation")
           navigation = [
@@ -185,8 +213,8 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
               const isClubRequestsItem = item.label === "Club Requests"
               const isEventRequestsItem = item.label === "Event Requests"
               const eventsCount = events.length
-              const clubsCount = clubs.length
-              const usersCount = users.length
+              const clubsCount = auth.role === "admin" ? clubStatsTotal : clubs.length
+              const usersCount = auth.role === "admin" ? userStatsTotal : users.length
               const policiesCount = policies.length
               const clubApplicationsCount = clubApplications.length
               const eventRequestsCount = eventRequests.length

@@ -1,6 +1,6 @@
 "use client"
 
-import { signUp } from "@/service/authApi"
+import { signUp, forgotPassword } from "@/service/authApi"
 import type React from "react"
 import { useState } from "react"
 import { useAuth } from "@/contexts/auth-context"
@@ -22,8 +22,11 @@ export default function LoginPage() {
   const [fullName, setFullName] = useState("")
   const [studentCode, setStudentCode] = useState("")
   const [majorName, setMajorName] = useState("")
+  const roleName = "STUDENT"
   const [confirmPassword, setConfirmPassword] = useState("")
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [showLoginError, setShowLoginError] = useState(false)
+  const [isLoadingForgotPassword, setIsLoadingForgotPassword] = useState(false)
   const { login } = useAuth()
   const { toast } = useToast()
   const searchParams = useSearchParams()
@@ -94,7 +97,7 @@ export default function LoginPage() {
           phone,
           studentCode,
           majorName,
-          roleName: "MEMBER", // hoặc cho user chọn role
+          roleName,
         })
 
         toast({
@@ -138,11 +141,13 @@ export default function LoginPage() {
     const success = await login(email, password, next)
 
     if (success) {
+      setShowLoginError(false) // Reset error state on success
       toast({
         title: "Login Successful",
         description: "Redirecting...",
       })
     } else {
+      setShowLoginError(true) // Show forgot password option
       toast({
         title: "Login Failed",
         description: "Invalid credentials or server error",
@@ -163,7 +168,49 @@ export default function LoginPage() {
       setStudentCode("")
       setMajorName("")
       setConfirmPassword("")
+      setShowLoginError(false) // Reset error state when switching modes
     }, 250)
+  }
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      toast({
+        title: "Email Required",
+        description: "Please enter your email address first",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (!/^\S+@\S+\.\S+$/.test(email)) {
+      toast({
+        title: "Invalid Email",
+        description: "Please enter a valid email address",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsLoadingForgotPassword(true)
+    
+    try {
+      const response = await forgotPassword(email)
+      if (response.success) {
+        toast({
+          title: "Password Reset Email Sent",
+          description: response.message,
+        })
+        setShowLoginError(false) // Hide forgot password button after success
+      }
+    } catch (error: any) {
+      toast({
+        title: "Failed to Send Reset Email",
+        description: error.response?.data?.message || "Something went wrong",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoadingForgotPassword(false)
+    }
   }
 
   const handleDownloadApp = () => {
@@ -173,12 +220,7 @@ export default function LoginPage() {
     })
   }
 
-  const handleGoogleSignIn = () => {
-    toast({
-      title: "Google Sign-In",
-      description: "Google sign-in will be available soon!",
-    })
-  }
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center p-3 sm:p-4 overflow-hidden">
@@ -307,6 +349,21 @@ export default function LoginPage() {
                   </div>
                 )}
 
+                {/* {isSignUpMode && (
+                  <div className="space-y-2">
+                    <Label htmlFor="roleName" className="text-sm font-medium">
+                      Role
+                    </Label>
+                    <Input
+                      id="roleName"
+                      type="text"
+                      value="STUDENT"
+                      readOnly
+                      className="h-10 sm:h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-gray-100 text-gray-500 cursor-not-allowed"
+                    />
+                  </div>
+                )} */}
+
                 {isSignUpMode && (
                   <div className="space-y-2">
                     <Label htmlFor="phone" className="text-sm font-medium">
@@ -331,7 +388,7 @@ export default function LoginPage() {
                     id="email"
                     type="email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => setEmail(e.target.value.toLowerCase())}
                     placeholder="Enter yours email"
                     className="h-10 sm:h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
                   />
@@ -403,12 +460,32 @@ export default function LoginPage() {
                     </>
                   )}
                 </Button>
+
+                {/* Forgot Password Button - Only show after login error in sign-in mode */}
+                {!isSignUpMode && showLoginError && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleForgotPassword}
+                    disabled={isLoadingForgotPassword}
+                    className="w-full h-9 text-sm transition-all duration-200 border-primary/20 hover:bg-primary/5"
+                  >
+                    {isLoadingForgotPassword ? (
+                      <>
+                        <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full mr-2" />
+                        Sending...
+                      </>
+                    ) : (
+                      "Forgot Password?"
+                    )}
+                  </Button>
+                )}
               </form>
 
               {/* Google Sign-In Button */}
               <GoogleSignInButton
                 mode={isSignUpMode ? "sign-up" : "sign-in"}
-                onClick={handleGoogleSignIn}
               />
 
               <div className="text-center pt-3 sm:pt-4 border-t border-border/50">

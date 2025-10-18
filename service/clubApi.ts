@@ -10,7 +10,7 @@ export const fetchClub = async (pageable: { page?: number; size?: number; sort?:
       params: {
         pageable: JSON.stringify({
           page: pageable.page ?? 0,
-          size: pageable.size ?? 10,
+          size: pageable.size ?? 20,
           sort: pageable.sort ?? ["name"],
         }),
       },
@@ -88,19 +88,57 @@ interface JwtPayload {
 
 export const getClubIdFromToken = (): number | null => {
   try {
-    const authDataString = localStorage.getItem("uniclub-auth")
-    if (!authDataString) return null
+    const authDataString = localStorage.getItem("uniclub-auth");
+    if (!authDataString) {
+      console.warn("Không tìm thấy dữ liệu 'uniclub-auth' trong localStorage.");
+      return null;
+    }
 
-    const authData = JSON.parse(authDataString)
-    const token = authData?.token
-    if (!token) return null
+    const authData = JSON.parse(authDataString);
 
-    const decoded: JwtPayload = jwtDecode(token)
-    console.log("Decoded token:", decoded)
+    // Cách 1: Ưu tiên lấy clubId trực tiếp từ đối tượng đã lưu
+    if (authData.clubId) {
+      console.log("Đã lấy clubId trực tiếp từ localStorage:", authData.clubId);
+      return authData.clubId;
+    }
 
-    return decoded.clubId ?? null
+    // Cách 2: Phương án dự phòng, giải mã token nếu clubId không có sẵn
+    const token = authData?.token;
+    if (token) {
+      const decoded: JwtPayload = jwtDecode(token);
+      console.log("Đã giải mã JWT. Payload:", decoded);
+      return decoded.clubId ?? null;
+    }
+
+    console.warn("Không tìm thấy clubId nào trong localStorage hoặc token.");
+    return null;
+
   } catch (error) {
-    console.error("Lỗi khi decode JWT:", error)
+    console.error("Lỗi khi xử lý dữ liệu từ localStorage:", error);
+    return null;
+  }
+};
+
+// New: getClubStats - get club statistics
+export const getClubStats = async () => {
+  try {
+    const response = await axiosInstance.get("api/clubs/stats")
+    const body = response.data
+    console.log("Fetched club stats response:", body)
+    
+    // If backend uses { success, message, data }
+    if (body && typeof body === "object" && "data" in body && "success" in body && (body as any).success) {
+      return (body as any).data
+    }
+    
+    // If the endpoint returns the stats object directly
+    if (body && typeof body === "object") {
+      return body
+    }
+    
     return null
+  } catch (error) {
+    console.error("Error fetching club stats:", error)
+    throw error
   }
 }

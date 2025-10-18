@@ -155,3 +155,27 @@ export const deleteUserById = async (id: string | number) => {
     throw error
   }
 }
+
+// New: getUserStats - get user statistics
+export const getUserStats = async () => {
+  try {
+    const response = await axiosInstance.get("api/users/stats")
+    const body = response.data
+    console.log("Fetched user stats response:", body)
+    
+    // If backend uses { success, message, data }
+    if (body && typeof body === "object" && "data" in body && "success" in body && (body as any).success) {
+      return (body as any).data
+    }
+    
+    // If the endpoint returns the stats object directly
+    if (body && typeof body === "object") {
+      return body
+    }
+    
+    return null
+  } catch (error) {
+    console.error("Error fetching user stats:", error)
+    throw error
+  }
+}
