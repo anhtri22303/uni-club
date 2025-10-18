@@ -22,6 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import clubs from "@/src/data/clubs.json"
 import { fetchEvent } from "@/service/eventApi"
 import { createEvent, getEventById } from "@/service/eventApi"
+import { generateCode } from "@/service/checkinApi"
 
 export default function AdminEventsPage() {
   const router = useRouter()
@@ -528,29 +529,16 @@ export default function AdminEventsPage() {
                               onClick={async () => {
                                 setSelectedEvent(event);
                                 try {
-                                  let code: string | null = null;
-                                  try {
-                                    const serverEvent = await getEventById(String(event.id));
-                                    if (serverEvent) {
-                                      if (!serverEvent.checkInCode) {
-                                        toast({ title: 'No check-in code', description: 'This event has not been assigned a persistent check-in code. Please contact the organizer.', variant: 'destructive' });
-                                        return;
-                                      }
-                                      code = String(serverEvent.checkInCode);
-                                    }
-                                  } catch (e) {}
-                                  if (!code) {
-                                    const tokenResp = await fetch('/api/checkin/token', {
-                                      method: 'POST',
-                                      headers: { 'Content-Type': 'application/json' },
-                                      body: JSON.stringify({ eventId: String(event.id) }),
-                                    });
-                                    const tokenJson = await tokenResp.json();
-                                    if (!tokenJson?.success) throw new Error('Token mint failed');
-                                    code = tokenJson.token;
-                                  }
-                                  const localUrl = `http://localhost:3000/student/checkin/${encodeURIComponent(String(code))}`;
-                                  const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${encodeURIComponent(String(code))}`;
+                                  // Generate fresh token using the new API
+                                  console.log('Generating check-in token for event:', event.id);
+                                  const token = await generateCode(event.id, 300); // 5 minutes TTL
+                                  console.log('Generated token:', token);
+                                  
+                                  // Build URLs with the new token
+                                  const localUrl = `http://localhost:3000/student/checkin/${encodeURIComponent(token)}`;
+                                  const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${encodeURIComponent(token)}`;
+                                  
+                                  // Generate QR code variants
                                   const styleVariants = [
                                     { color: { dark: '#000000', light: '#FFFFFF' }, margin: 1 },
                                     { color: { dark: '#111111', light: '#FFFFFF' }, margin: 2 },
@@ -568,14 +556,25 @@ export default function AdminEventsPage() {
                                     Promise.all(localVariantsPromises),
                                     Promise.all(prodVariantsPromises),
                                   ]);
+                                  
                                   setQrRotations({ local: localVariants, prod: prodVariants });
                                   setQrLinks({ local: localUrl, prod: prodUrl });
                                   setVisibleIndex(0);
                                   setDisplayedIndex(0);
                                   setShowQrModal(true);
-                                } catch (err) {
+                                  
+                                  toast({ 
+                                    title: 'QR Code Generated', 
+                                    description: 'Check-in QR code has been generated successfully',
+                                    duration: 3000 
+                                  });
+                                } catch (err: any) {
                                   console.error('Failed to generate QR', err);
-                                  toast({ title: 'QR Error', description: 'Could not generate QR code', variant: 'destructive' });
+                                  toast({ 
+                                    title: 'QR Error', 
+                                    description: err?.message || 'Could not generate QR code', 
+                                    variant: 'destructive' 
+                                  });
                                 }
                               }}
                             >
