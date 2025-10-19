@@ -11,7 +11,21 @@ interface MemberCountApiResponse {
   message: string;
   data: MemberCountData;
 }
+interface Club {
+  id: number;
+  name: string;
+  description: string;
+  majorName: string;
+  leaderId: number;
+  leaderName: string;
+}
 
+// Định nghĩa cấu trúc cho toàn bộ response từ API getClubById
+interface ClubApiResponse {
+  success: boolean;
+  message: string;
+  data: Club | null; // Cho phép data là null trong trường hợp lỗi
+}
 export const fetchClub = async (pageable: { page?: number; size?: number; sort?: string[] } = { page: 0, size: 10, sort: ["name"] }) => {
   try {
     // The API expects a `pageable` query parameter (object). We stringify it to match the backend contract.
@@ -75,17 +89,30 @@ export const deleteClub = async (id: string | number) => {
   }
 }
 
-export const getClubById = async (id: string | number) => {
+// export const getClubById = async (id: string | number) => {
+//   try {
+//     const response = await axiosInstance.get(`/api/clubs/${id}`)
+//     console.log(`Fetched club by id ${id}:`, response.data)
+//     return response.data
+//   } catch (error) {
+//     console.error(`Error fetching club ${id}:`, error)
+//     throw error
+//   }
+// }
+export const getClubById = async (clubId: string | number): Promise<ClubApiResponse> => { // <-- THAY ĐỔI QUAN TRỌNG
   try {
-    const response = await axiosInstance.get(`/api/clubs/${id}`)
-    console.log(`Fetched club by id ${id}:`, response.data)
-    return response.data
-  } catch (error) {
-    console.error(`Error fetching club ${id}:`, error)
-    throw error
+    const response = await axiosInstance.get(`/api/clubs/${clubId}`);
+    return response.data as ClubApiResponse; // Trả về dữ liệu từ API
+  } catch (error: any) {
+    console.error(`Lỗi khi lấy thông tin club ID ${clubId}:`, error);
+    // Trả về một object lỗi có cấu trúc tương tự để component xử lý
+    return {
+      success: false,
+      message: error.response?.data?.message || "Không thể tải dữ liệu câu lạc bộ",
+      data: null
+    };
   }
-}
-
+};
 
 interface JwtPayload {
   clubId?: number
@@ -151,18 +178,6 @@ export const getClubStats = async () => {
     throw error
   }
 }
-
-// export const getClubMemberCount = async (id: string | number) => {
-//   try {
-//     const response = await axiosInstance.get(`/api/clubs/${id}/member-count`)
-//     // Dựa theo ảnh swagger, số lượng thành viên nằm trong response.data.data.activeMemberCount
-//     return response.data?.data?.activeMemberCount ?? 0
-//   } catch (error) {
-//     console.error(`Error fetching member count for club ${id}:`, error)
-//     return 0 // Trả về 0 nếu có lỗi để không làm hỏng giao diện
-//   }
-// }
-
 export const getClubMemberCount = async (id: string | number) => {
   try {
     const response = await axiosInstance.get<MemberCountApiResponse>(`/api/clubs/${id}/member-count`);

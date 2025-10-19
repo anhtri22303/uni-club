@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast"
 import { usePagination } from "@/hooks/use-pagination"
 import { UserCheck, Eye, ChevronLeft, ChevronRight, CheckCircle, XCircle } from "lucide-react"
 import { fetchAllMemberApplications, approveMemberApplication, rejectMemberApplication, getMemberApplyByClubId } from "@/service/memberApplicationApi"
-
+import { getClubIdFromToken, getClubById } from "@/service/clubApi" // <-- Thêm dòng này
 type MemberApplication = {
   applicationId: number
   clubId: number
@@ -33,7 +33,22 @@ type MemberApplication = {
   // client-side only note when reviewer rejects:
   reviewNote?: string
 }
-
+// Định nghĩa cấu trúc của một object Club
+interface Club {
+  id: number;
+  name: string;
+  // Thêm các trường khác nếu cần
+  description: string;
+  majorName: string;
+  leaderId: number;
+  leaderName: string;
+}
+// Định nghĩa cấu trúc cho toàn bộ response từ API getClubById
+interface ClubApiResponse {
+  success: boolean;
+  message: string;
+  data: Club;
+}
 export default function ClubLeaderApplicationsPage() {
   const { toast } = useToast()
   const [applications, setApplications] = useState<MemberApplication[]>([])
@@ -49,46 +64,43 @@ export default function ClubLeaderApplicationsPage() {
   const [managedClubId, setManagedClubId] = useState<number | null>(null)
   const [managedClubName, setManagedClubName] = useState<string | null>(null)
 
-  // Lấy clubId từ localStorage một lần khi mount (an toàn SSR)
-  useEffect(() => {
-    if (typeof window === "undefined") return
-    const raw = localStorage.getItem("uniclub-auth")
-    if (!raw) {
-      setManagedClubId(null)
-      return
-    }
-    try {
-      const parsed = JSON.parse(raw)
-      // chấp nhận clubId là number hoặc string -> ép về number
-      const cid = parsed?.clubId ?? parsed?.club_id
-      const name = parsed?.clubName ?? parsed?.club_name ?? null
-      const normalized = typeof cid === "string" ? parseInt(cid, 10) : cid
-      setManagedClubId(Number.isFinite(normalized) ? normalized : null)
-      setManagedClubName(typeof name === "string" ? name : null)
-    } catch (e) {
-      console.error("Failed to parse uniclub-auth:", e)
-      setManagedClubId(null)
-    }
-  }, [])
 
-  // Fetch dữ liệu application theo clubId
+  // THÊM useEffect MỚI NÀY VÀO
   useEffect(() => {
-    const load = async () => {
+    const loadInitialData = async () => {
+      setLoading(true)
       try {
-        // Only fetch applications if we have a clubId
-        if (managedClubId === null) {
-          setApplications([])
-          return
-        }
+        // 1. Dùng hàm getClubIdFromToken() để lấy ID
+        const clubId = getClubIdFromToken()
 
-        // Use new API to get applications for specific club
-        const data = await getMemberApplyByClubId(managedClubId)
-        setApplications(data as MemberApplication[])
+        if (clubId) {
+          setManagedClubId(clubId)
+
+          // 2. Gọi API để lấy thông tin CLB (lấy tên) và danh sách đơn
+          // Dùng Promise.all để thực hiện đồng thời, tăng hiệu suất
+          const [clubResponse, applicationsData] = await Promise.all([
+            getClubById(clubId),
+            getMemberApplyByClubId(clubId)
+          ])
+
+          // 3. Cập nhật state với dữ liệu nhận được
+          // if (clubResponse?.success) {
+          //   setManagedClubName(clubResponse.data.name)
+          // }
+          if (clubResponse?.success && clubResponse.data) {
+            setManagedClubName(clubResponse.data.name) // <-- Hết lỗi
+          }
+          setApplications(applicationsData as MemberApplication[])
+
+        } else {
+          console.warn("Không tìm thấy clubId nào cho club leader.")
+          setApplications([]) // Đảm bảo danh sách rỗng nếu không có ID
+        }
       } catch (error) {
-        console.error("Failed to load applications:", error)
+        console.error("Lỗi khi tải dữ liệu trang đơn xin gia nhập:", error)
         toast({
-          title: "Error loading applications",
-          description: "Không thể tải danh sách đơn xin gia nhập.",
+          title: "Error loading data",
+          description: "Không thể tải dữ liệu cần thiết.",
           variant: "destructive",
         })
         setApplications([])
@@ -97,14 +109,8 @@ export default function ClubLeaderApplicationsPage() {
       }
     }
 
-    // Load applications when managedClubId is available
-    if (managedClubId !== null) {
-      load()
-    } else {
-      setApplications([])
-      setLoading(false)
-    }
-  }, [managedClubId, toast])
+    loadInitialData()
+  }, [toast]) // Chỉ phụ thuộc vào toast
 
   // Applications are already filtered by clubId from API, so use them directly
   const clubApplications = applications
@@ -118,14 +124,14 @@ export default function ClubLeaderApplicationsPage() {
     totalPages: pendingPages,
     paginatedData: paginatedPending,
     setCurrentPage: setPendingPage,
-  } = usePagination({ data: pendingApplications, initialPageSize: 3 })
+  } = usePagination({ data: pendingApplications, initialPageSize: 8 })
 
   const {
     currentPage: reviewedPage,
     totalPages: reviewedPages,
     paginatedData: paginatedReviewed,
     setCurrentPage: setReviewedPage,
-  } = usePagination({ data: processedApplications, initialPageSize: 3 })
+  } = usePagination({ data: processedApplications, initialPageSize: 8 })
 
   const handleViewApplication = (application: MemberApplication) => {
     setSelectedApplication(application)
@@ -138,8 +144,8 @@ export default function ClubLeaderApplicationsPage() {
     try {
       await approveMemberApplication(app.applicationId)
       toast({
-        title: "Đã duyệt đơn",
-        description: `Đơn của ${app.applicantName} đã được duyệt.`,
+        title: "Application approved",
+        description: `${app.applicantName}'s application has been approved.`,
       })
       setApplications((list) =>
         list.map((application) =>
@@ -150,8 +156,8 @@ export default function ClubLeaderApplicationsPage() {
       )
     } catch (error) {
       toast({
-        title: "Lỗi duyệt đơn",
-        description: "Không thể duyệt đơn này.",
+        title: "Error in application approval",
+        description: "This application cannot be approved.",
         variant: "destructive",
       })
     } finally {
@@ -168,8 +174,8 @@ export default function ClubLeaderApplicationsPage() {
     try {
       await rejectMemberApplication(app.applicationId, reason)
       toast({
-        title: "Đã từ chối đơn",
-        description: `Đơn của ${app.applicantName} đã bị từ chối.`,
+        title: "Application rejected",
+        description: `${app.applicantName}'s application was rejected.`,
       })
       setApplications((list) =>
         list.map((application) =>
@@ -180,8 +186,8 @@ export default function ClubLeaderApplicationsPage() {
       )
     } catch (error) {
       toast({
-        title: "Lỗi từ chối đơn",
-        description: "Không thể từ chối đơn này.",
+        title: "Application rejection error",
+        description: "This application cannot be refused.",
         variant: "destructive",
       })
     } finally {
@@ -220,7 +226,7 @@ export default function ClubLeaderApplicationsPage() {
     return (
       <AppShell>
         <div className="flex items-center justify-center h-[60vh] text-muted-foreground">
-          Đang đọc thông tin câu lạc bộ...
+          Reading club information...
         </div>
       </AppShell>
     )
@@ -244,7 +250,7 @@ export default function ClubLeaderApplicationsPage() {
             <h1 className="text-3xl font-bold">Membership Applications</h1>
             <p className="text-muted-foreground">
               Review and manage new applications
-              {managedClubName ? ` for ${managedClubName}` : ` for club #${managedClubId}`}
+              {managedClubName ? ` for "${managedClubName}` : ` for club #"${managedClubId}`}"
             </p>
           </div>
 
@@ -298,8 +304,8 @@ export default function ClubLeaderApplicationsPage() {
                             )
                           )
                           toast({
-                            title: "Đã từ chối tất cả",
-                            description: `${pendingApplications.length} đơn đã bị từ chối.`,
+                            title: "Rejected all",
+                            description: `${pendingApplications.length} application has been rejected.`,
                           })
                           setApplications((list) =>
                             list.map((app) =>
@@ -310,8 +316,8 @@ export default function ClubLeaderApplicationsPage() {
                           )
                         } catch (error) {
                           toast({
-                            title: "Lỗi từ chối đơn",
-                            description: "Không thể từ chối một số đơn.",
+                            title: "Application rejection error",
+                            description: "Some applications cannot be rejected..",
                             variant: "destructive",
                           })
                         } finally {
@@ -327,7 +333,7 @@ export default function ClubLeaderApplicationsPage() {
                       disabled={bulkProcessing}
                       onClick={async () => {
                         const confirmApprove = window.confirm(
-                          `Bạn có chắc muốn duyệt tất cả ${pendingApplications.length} đơn xin gia nhập?`
+                          `Are you sure you want to browse all ${pendingApplications.length} applications?`
                         )
                         if (!confirmApprove) return
 
@@ -337,8 +343,8 @@ export default function ClubLeaderApplicationsPage() {
                             pendingApplications.map(app => approveMemberApplication(app.applicationId))
                           )
                           toast({
-                            title: "Đã duyệt tất cả",
-                            description: `${pendingApplications.length} đơn đã được duyệt.`,
+                            title: "All approved",
+                            description: `${pendingApplications.length} application has been approved.`,
                           })
                           setApplications((list) =>
                             list.map((app) =>
@@ -349,8 +355,8 @@ export default function ClubLeaderApplicationsPage() {
                           )
                         } catch (error) {
                           toast({
-                            title: "Lỗi duyệt đơn",
-                            description: "Không thể duyệt một số đơn.",
+                            title: "Error in application approval",
+                            description: "Some applications cannot be approved..",
                             variant: "destructive",
                           })
                         } finally {
@@ -512,7 +518,11 @@ export default function ClubLeaderApplicationsPage() {
                   <Label>Applicant</Label>
                   <div className="p-3 bg-muted rounded">
                     <p className="font-medium">{selectedApplication.applicantName}</p>
-                    {selectedApplication.studentCode && <p className="text-sm text-muted-foreground">Student Code: {selectedApplication.studentCode}</p>}
+                    {selectedApplication.studentCode && (
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Student Code: {selectedApplication.studentCode}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -546,8 +556,8 @@ export default function ClubLeaderApplicationsPage() {
                       try {
                         await rejectMemberApplication(selectedApplication.applicationId, reviewNote)
                         toast({
-                          title: "Đã từ chối đơn",
-                          description: `Đơn của ${selectedApplication.applicantName} đã bị từ chối.`,
+                          title: "Application rejected",
+                          description: `${selectedApplication.applicantName}'s application was rejected.`,
                         })
                         setShowApplicationModal(false)
                         setApplications((list) =>
@@ -559,8 +569,8 @@ export default function ClubLeaderApplicationsPage() {
                         )
                       } catch (error) {
                         toast({
-                          title: "Lỗi từ chối đơn",
-                          description: "Không thể từ chối đơn này.",
+                          title: "Application rejection error",
+                          description: "This application cannot be refused.",
                           variant: "destructive",
                         })
                       }
@@ -573,8 +583,8 @@ export default function ClubLeaderApplicationsPage() {
                       try {
                         await approveMemberApplication(selectedApplication.applicationId)
                         toast({
-                          title: "Đã duyệt đơn",
-                          description: `Đơn của ${selectedApplication.applicantName} đã được duyệt.`,
+                          title: "Application approved",
+                          description: `${selectedApplication.applicantName}'s application has been approved.`,
                         })
                         setShowApplicationModal(false)
                         setApplications((list) =>
@@ -586,8 +596,8 @@ export default function ClubLeaderApplicationsPage() {
                         )
                       } catch (error) {
                         toast({
-                          title: "Lỗi duyệt đơn",
-                          description: "Không thể duyệt đơn này.",
+                          title: "Error in application approval",
+                          description: "This application cannot be approved.",
                           variant: "destructive",
                         })
                       }
