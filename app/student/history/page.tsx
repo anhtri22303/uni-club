@@ -9,9 +9,10 @@ import { Pagination } from "@/components/pagination"
 import { usePagination } from "@/hooks/use-pagination"
 import { useAuth } from "@/contexts/auth-context"
 import { useData } from "@/contexts/data-context"
-import { History, UserPlus, Gift, CheckCircle } from "lucide-react"
+import { History, UserPlus, Gift, CheckCircle, Users, Building2 } from "lucide-react"
 import { useEffect, useState } from "react"
-import { getMemberApplications } from "@/service/memberApplicationApi"
+import { getMyMemApply } from "@/service/memberApplicationApi"
+import { getMyClubApply } from "@/service/clubApplicationAPI"
 
 // Removed static `src/data` imports — use empty fallbacks. Prefer remote `clubName` from activity data when available.
 const clubs: any[] = []
@@ -23,6 +24,8 @@ export default function MemberHistoryPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [remoteApplications, setRemoteApplications] = useState<any[]>([])
+  const [clubApplications, setClubApplications] = useState<any[]>([])
+  const [activeTab, setActiveTab] = useState<"member" | "club">("member")
 
   // Load any session-saved applications (from recent POSTs)
 
@@ -30,27 +33,27 @@ export default function MemberHistoryPage() {
   const userApplications = membershipApplications.filter((a) => a.userId === auth.userId)
   const userVouchers = vouchers.filter((v) => v.userId === auth.userId)
 
-  // Combine and sort activities by date
-  const activities = [
+  // Member applications activities
+  const memberActivities = [
     // local context apps
     ...userApplications.map((app) => ({
       type: "application" as const,
       date: app.appliedAt || new Date().toISOString(),
       data: app,
     })),
-    // remote apps fetched from backend (filter applied below)
+    // remote apps fetched from backend using /api/member-applications/my
     ...remoteApplications.map((app) => ({
       type: "application" as const,
-      date: app.submittedAt || app.appliedAt || new Date().toISOString(),
+      date: app.createdAt || app.submittedAt || app.appliedAt || new Date().toISOString(),
       data: {
         applicationId: app.applicationId,
-        userId: app.userId,
+        userId: app.applicantId,
         clubId: String(app.clubId),
-        clubName: app.clubName || app.club?.name || app.clubName,
+        clubName: app.clubName,
         status: app.status,
-        reviewedBy: app.reviewedBy ?? null,
-        reason: app.reason,
-        submittedAt: app.submittedAt,
+        reviewedBy: app.handledByName ?? null,
+        reason: app.reason || app.message,
+        submittedAt: app.createdAt,
       },
     })),
     ...userVouchers.map((voucher) => ({
@@ -60,47 +63,89 @@ export default function MemberHistoryPage() {
     })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
+  // Club applications activities
+  const clubActivitiesData = clubApplications.map((app) => ({
+    type: "clubApplication" as const,
+    date: app.submittedAt || new Date().toISOString(),
+    data: {
+      applicationId: app.applicationId,
+      clubName: app.clubName,
+      description: app.description,
+      category: app.category,
+      status: app.status,
+      reviewedBy: app.reviewedBy?.fullName ?? null,
+      rejectReason: app.rejectReason,
+      submittedAt: app.submittedAt,
+      reviewedAt: app.reviewedAt,
+    },
+  })).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+
+  // Switch activities based on active tab
+  const activities = activeTab === "member" ? memberActivities : clubActivitiesData
+
   // dedupe by applicationId (when available), otherwise by clubId+userId+date
   const activitiesToDisplay = (() => {
-    const out: typeof activities = []
+    const out: any[] = []
     const seen = new Set<string>()
     for (const act of activities) {
-      if (act.type !== "application") {
+      if (act.type === "redemption" || act.type === "clubApplication") {
         out.push(act)
         continue
       }
-      const app = act.data
-      const key = app.applicationId ? `id:${app.applicationId}` : `cu:${app.clubId}:${app.userId}:${app.submittedAt || app.appliedAt || act.date}`
-      if (seen.has(key)) continue
-      seen.add(key)
+      if (act.type === "application") {
+        const app = act.data
+        const key = app.applicationId ? `id:${app.applicationId}` : `cu:${app.clubId}:${app.userId}:${app.submittedAt || app.appliedAt || act.date}`
+        if (seen.has(key)) continue
+        seen.add(key)
+      }
       out.push(act)
     }
     return out
   })()
 
-  // Fetch remote applications for this user
+  // Fetch remote member applications for this user using new API
   useEffect(() => {
     let mounted = true
     const load = async () => {
       setLoading(true)
       setError(null)
       try {
-        const res: any = await getMemberApplications()
+        const res: any = await getMyMemApply()
         if (!mounted) return
-        // determine current userId from localStorage 'uniclub-auth'
-        let stored: any = null
-        try {
-          stored = JSON.parse(localStorage.getItem("uniclub-auth") ?? "null")
-        } catch (e) {
-          console.warn("Failed parse stored auth", e)
-        }
-        const currentUserId = stored?.userId ?? stored?.user?.userId ?? auth.userId
-        const filtered = Array.isArray(res) ? res.filter((r: any) => String(r.userId) === String(currentUserId)) : []
-        setRemoteApplications(filtered)
+        
+        // API returns array of applications directly after unwrapping
+        const applications = Array.isArray(res) ? res : []
+        setRemoteApplications(applications)
       } catch (err: any) {
         console.error(err)
         if (!mounted) return
         setError(err?.message ?? "Failed to fetch member applications")
+      } finally {
+        if (mounted) setLoading(false)
+      }
+    }
+    load()
+    return () => {
+      mounted = false
+    }
+  }, [auth.userId])
+
+  // Fetch club applications for this user
+  useEffect(() => {
+    let mounted = true
+    const load = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const res: any = await getMyClubApply()
+        if (!mounted) return
+        
+        const applications = Array.isArray(res) ? res : []
+        setClubApplications(applications)
+      } catch (err: any) {
+        console.error(err)
+        if (!mounted) return
+        setError(err?.message ?? "Failed to fetch club applications")
       } finally {
         if (mounted) setLoading(false)
       }
@@ -121,7 +166,7 @@ export default function MemberHistoryPage() {
     setPageSize,
   } = usePagination({
     data: activitiesToDisplay,
-    initialPageSize: 6, // ↓ để hiện phân trang khi > 6 activity
+    initialPageSize: 4, // ↓ để hiện phân trang khi > 4 activity
   })
 
   const getClubName = (clubId: string) => {
@@ -177,15 +222,77 @@ export default function MemberHistoryPage() {
             <p className="text-muted-foreground">Track your club applications and voucher redemptions</p>
           </div>
 
+          {/* Tab Navigation */}
+          <div className="flex gap-2 border-b">
+            <button
+              onClick={() => setActiveTab("member")}
+              className={`px-4 py-2 font-medium transition-colors relative ${
+                activeTab === "member"
+                  ? "text-blue-600 dark:text-blue-400"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Member Applications
+                {remoteApplications.length > 0 && (
+                  <Badge variant="secondary" className="ml-1">
+                    {remoteApplications.length}
+                  </Badge>
+                )}
+              </div>
+              {activeTab === "member" && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400" />
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab("club")}
+              className={`px-4 py-2 font-medium transition-colors relative ${
+                activeTab === "club"
+                  ? "text-blue-600 dark:text-blue-400"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Building2 className="h-4 w-4" />
+                Club Applications
+                {clubApplications.length > 0 && (
+                  <Badge variant="secondary" className="ml-1">
+                    {clubApplications.length}
+                  </Badge>
+                )}
+              </div>
+              {activeTab === "club" && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400" />
+              )}
+            </button>
+          </div>
+
           <div className="space-y-4">
-            {paginatedActivities.map((activity, index) => (
-              <Card key={index}>
-                <CardContent className="pt-6">
+            {paginatedActivities.map((activity, index) => {
+              // Determine border color based on status
+              const getBorderColor = () => {
+                if (activity.type === "redemption") return "border-l-purple-500"
+                
+                const status = activity.data.status
+                if (status === "APPROVED") return "border-l-green-500"
+                if (status === "PENDING") return "border-l-yellow-500"
+                if (status === "REJECTED") return "border-l-red-500"
+                return "border-l-gray-300"
+              }
+
+              return (
+                <Card key={index} className={`border-l-4 ${getBorderColor()} transition-all hover:shadow-md`}>
+                  <CardContent className="pt-6">
                   <div className="flex items-start gap-4">
                     <div className="flex-shrink-0">
                       {activity.type === "application" ? (
                         <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
                           <UserPlus className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                        </div>
+                      ) : activity.type === "clubApplication" ? (
+                        <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900 rounded-full flex items-center justify-center">
+                          <Building2 className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                         </div>
                       ) : (
                         <div className="w-10 h-10 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center">
@@ -199,9 +306,19 @@ export default function MemberHistoryPage() {
                         <div>
                           {activity.type === "application" ? (
                             <>
-                              <h3 className="font-medium">Club Application</h3>
+                              <h3 className="font-medium">Member Application</h3>
                               <p className="text-sm text-muted-foreground">
                                 Applied to {activity.data.clubName || getClubName(activity.data.clubId) || "Unknown Club"}
+                              </p>
+                            </>
+                          ) : activity.type === "clubApplication" ? (
+                            <>
+                              <h3 className="font-medium">Club Creation Application</h3>
+                              <p className="text-sm text-muted-foreground">
+                                Applied to create: {activity.data.clubName}
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Category: {activity.data.category}
                               </p>
                             </>
                           ) : (
@@ -215,7 +332,7 @@ export default function MemberHistoryPage() {
                         </div>
 
                         <div className="flex items-center gap-2">
-                          {activity.type === "application" && (
+                          {(activity.type === "application" || activity.type === "clubApplication") && (
                             <Badge
                               variant={
                                 activity.data.status === "APPROVED"
@@ -245,7 +362,18 @@ export default function MemberHistoryPage() {
                       </div>
 
                       <div className="mt-2">
-                        <p className="text-sm text-muted-foreground">{activity.data.reason}</p>
+                        {activity.type === "clubApplication" ? (
+                          <>
+                            <p className="text-sm text-muted-foreground">{activity.data.description}</p>
+                            {activity.data.rejectReason && (
+                              <p className="text-sm text-red-600 dark:text-red-400 mt-1">
+                                Reject reason: {activity.data.rejectReason}
+                              </p>
+                            )}
+                          </>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">{activity.data.reason}</p>
+                        )}
                         {activity.data.reviewedBy && (
                           <p className="text-xs text-muted-foreground mt-1">Reviewed by: {activity.data.reviewedBy}</p>
                         )}
@@ -264,7 +392,8 @@ export default function MemberHistoryPage() {
                   </div>
                 </CardContent>
               </Card>
-            ))}
+              )
+            })}
           </div>
 
           {/* Luôn render; Pagination tự ẩn khi chỉ có 1 trang */}
@@ -278,7 +407,7 @@ export default function MemberHistoryPage() {
               setPageSize(size)
               setCurrentPage(1) // reset về trang 1 khi đổi số dòng/trang
             }}
-            pageSizeOptions={[6, 12, 24, 48]}
+            pageSizeOptions={[4, 12, 24, 48]}
           />
         </div>
       </AppShell>

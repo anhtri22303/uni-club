@@ -19,29 +19,32 @@ export interface CheckinResponse {
 export interface GenerateCodeResponse {
   success: boolean
   message: string
-  data?: string // The generated token
+  data?: {
+    token: string
+    qrUrl: string
+  }
 }
 
 /**
- * POST /api/attendance/generate/{eventId}?ttlSeconds=300
+ * GET /api/attendance/qr-token/{eventId}
  * Generate a check-in token for an event
+ * Returns: { token: string, qrUrl: string }
  */
-export const generateCode = async (eventId: number, ttlSeconds: number = 300): Promise<string> => {
+export const generateCode = async (eventId: number): Promise<{ token: string; qrUrl: string }> => {
   try {
-    const response = await axiosInstance.post(
-      `/api/attendance/generate/${eventId}`,
-      null,
-      {
-        params: { ttlSeconds }
-      }
+    const response = await axiosInstance.get(
+      `/api/attendance/qr-token/${eventId}`
     )
     console.log("Generate code response:", response.data)
     
-    // Backend returns token as plain string
-    const token = response.data as string
+    // Backend returns { token: string, qrUrl: string }
+    const data = response.data as { token: string; qrUrl: string }
     
-    if (token && typeof token === 'string') {
-      return token
+    if (data && data.token && data.qrUrl) {
+      return {
+        token: data.token,
+        qrUrl: data.qrUrl
+      }
     }
     
     throw new Error("Failed to generate code - invalid response")
