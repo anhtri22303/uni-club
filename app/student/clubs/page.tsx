@@ -14,11 +14,10 @@ import { useAuth } from "@/contexts/auth-context"
 import { useData } from "@/contexts/data-context"
 import { useToast } from "@/hooks/use-toast"
 import { Users, PlusIcon } from "lucide-react"
-import { fetchClub } from "@/service/clubApi"
+import { fetchClub, getClubMemberCount } from "@/service/clubApi"
 import { postMemAppli } from "@/service/memberApplicationApi"
 import { safeLocalStorage } from "@/lib/browser-utils"
 import { fetchMajors, Major } from "@/service/majorApi"
-
 // We'll fetch clubs from the backend and only use the `content` array.
 type ClubApiItem = {
   id: number
@@ -49,10 +48,10 @@ export default function MemberClubsPage() {
   const [pendingClubIds, setPendingClubIds] = useState<string[]>([])
   const [userClubIds, setUserClubIds] = useState<number[]>([])
   const [userClubId, setUserClubId] = useState<number | null>(null) // Keep for backward compatibility
-
   const [majors, setMajors] = useState<Major[]>([])
   const [selectedMajorId, setSelectedMajorId] = useState<number | "">("")
 
+  const [memberCounts, setMemberCounts] = useState<Record<string, number>>({}) // Thêm state mới này
 
   // Get user's current memberships and applications
   const userMemberships = clubMemberships.filter((m) => m.userId === auth.userId)
@@ -146,7 +145,8 @@ export default function MemberClubsPage() {
       name: club.name,
       category: club.majorName ?? (club as any).major?.name ?? (club as any).major?.majorName ?? "",
       description: club.description,
-      members: 0,
+      // members: 0,
+      members: memberCounts[String(club.id)] ?? 0, // ✅ THAY ĐỔI DÒNG NÀY
       founded: 0,
       location: "",
       policy: club.majorPolicyName ?? "",
@@ -230,6 +230,29 @@ export default function MemberClubsPage() {
     setShowApplicationModal(true)
   }
 
+  // useEffect(() => {
+  //   let mounted = true
+  //   const load = async () => {
+  //     setLoading(true)
+  //     setError(null)
+  //     try {
+  //       const res: any = await fetchClub({ page: 0, size: 10, sort: ["name"] })
+  //       // Expecting the API shape described by the user. Use only `content`.
+  //       console.log("fetchClub response content:", res?.content)
+  //       if (mounted) setClubs(res?.content ?? [])
+  //     } catch (err: any) {
+  //       console.error(err)
+  //       if (mounted) setError(err?.message ?? "Failed to load clubs")
+  //     } finally {
+  //       if (mounted) setLoading(false)
+  //     }
+  //   }
+
+  //   load()
+  //   return () => {
+  //     mounted = false
+  //   }
+  // }, [])
   useEffect(() => {
     let mounted = true
     const load = async () => {
@@ -237,9 +260,33 @@ export default function MemberClubsPage() {
       setError(null)
       try {
         const res: any = await fetchClub({ page: 0, size: 10, sort: ["name"] })
-        // Expecting the API shape described by the user. Use only `content`.
-        console.log("fetchClub response content:", res?.content)
-        if (mounted) setClubs(res?.content ?? [])
+        const fetchedClubs = res?.content ?? []
+
+        if (mounted) {
+          setClubs(fetchedClubs)
+
+          // ✅ BẮT ĐẦU THAY ĐỔI: Fetch member counts sau khi có danh sách clubs
+          if (fetchedClubs.length > 0) {
+            // Tạo một mảng các promise gọi API lấy member count
+            const countPromises = fetchedClubs.map((club: ClubApiItem) =>
+              getClubMemberCount(club.id)
+            )
+
+            // Chờ tất cả các promise hoàn thành
+            const counts = await Promise.all(countPromises)
+
+            // Tạo một object để map clubId với member count tương ứng
+            const countsMap: Record<string, number> = {}
+            fetchedClubs.forEach((club: ClubApiItem, index: number) => {
+              countsMap[String(club.id)] = counts[index]
+            })
+
+            // Cập nhật state memberCounts
+            if (mounted) {
+              setMemberCounts(countsMap)
+            }
+          }
+        }
       } catch (err: any) {
         console.error(err)
         if (mounted) setError(err?.message ?? "Failed to load clubs")
@@ -253,6 +300,7 @@ export default function MemberClubsPage() {
       mounted = false
     }
   }, [])
+
 
   const submitApplication = () => {
     if (!selectedClub || !applicationText.trim()) {
@@ -288,7 +336,7 @@ export default function MemberClubsPage() {
       try {
         const serverRes: any = await postMemAppli({
           clubId: selectedClub.id,
-          reason: applicationText.trim(),
+          message: applicationText.trim(),
         })
 
         // Normalize server response to our local shape and replace temp entry
@@ -318,7 +366,8 @@ export default function MemberClubsPage() {
 
         toast({
           title: "Application Submitted",
-          description: `Your application to ${selectedClub.name} has been submitted successfully`,
+          // description: `Your application to ${selectedClub.name} has been submitted successfully`,
+          description: `Successfully applied to ${serverRes.clubName || selectedClub.name}. Status: ${serverRes.status}`,
         })
 
         setShowApplicationModal(false)
@@ -444,7 +493,6 @@ export default function MemberClubsPage() {
       label: "Actions",
       render: (_: any, club: any) => {
         const status = getClubStatus(club.id)
-
         // Allow members to apply to clubs (except their current club which is already filtered out)
         return (
           <Button
@@ -468,7 +516,6 @@ export default function MemberClubsPage() {
       },
     },
   ]
-
 
   return (
     <ProtectedRoute allowedRoles={["student"]}>
@@ -666,8 +713,6 @@ export default function MemberClubsPage() {
               </div>
             </div>
           </Modal>
-
-
         </div>
       </AppShell>
     </ProtectedRoute>

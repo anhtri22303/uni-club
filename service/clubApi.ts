@@ -2,6 +2,15 @@
 import axiosInstance from "@/lib/axiosInstance"
 import {jwtDecode} from "jwt-decode"
 
+interface MemberCountData {
+  clubId: number;
+  activeMemberCount: number;
+}
+interface MemberCountApiResponse {
+  success: boolean;
+  message: string;
+  data: MemberCountData;
+}
 
 export const fetchClub = async (pageable: { page?: number; size?: number; sort?: string[] } = { page: 0, size: 10, sort: ["name"] }) => {
   try {
@@ -140,5 +149,27 @@ export const getClubStats = async () => {
   } catch (error) {
     console.error("Error fetching club stats:", error)
     throw error
+  }
+}
+
+// export const getClubMemberCount = async (id: string | number) => {
+//   try {
+//     const response = await axiosInstance.get(`/api/clubs/${id}/member-count`)
+//     // Dựa theo ảnh swagger, số lượng thành viên nằm trong response.data.data.activeMemberCount
+//     return response.data?.data?.activeMemberCount ?? 0
+//   } catch (error) {
+//     console.error(`Error fetching member count for club ${id}:`, error)
+//     return 0 // Trả về 0 nếu có lỗi để không làm hỏng giao diện
+//   }
+// }
+
+export const getClubMemberCount = async (id: string | number) => {
+  try {
+    const response = await axiosInstance.get<MemberCountApiResponse>(`/api/clubs/${id}/member-count`);
+    // Dựa theo ảnh swagger, số lượng thành viên nằm trong response.data.data.activeMemberCount
+    return response.data?.data?.activeMemberCount ?? 0
+  } catch (error) {
+    console.error(`Error fetching member count for club ${id}:`, error)
+    return 0 // Trả về 0 nếu có lỗi để không làm hỏng giao diện
   }
 }

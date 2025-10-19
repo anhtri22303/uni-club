@@ -1,17 +1,36 @@
 import axiosInstance from "@/lib/axiosInstance"
 
 // The backend accepts minimal payload: { clubId, reason }
-export const postMemAppli = async (payload: { clubId: number | string; reason: string }) => {
+export const postMemAppli = async (payload: { clubId: number | string; message: string }) => {
   try {
-    const response = await axiosInstance.post("/api/member-applications", payload)
-    console.log("Posted membership application:", response.data)
-    return response.data
+    const response = await axiosInstance.post("/api/member-applications", {
+      clubId: Number(payload.clubId),
+      message: payload.message,
+    })
+
+    console.log("✅ Posted member application:", response.data)
+    return response.data as {
+      applicationId: number
+      clubId: number
+      clubName: string
+      applicantId: number
+      applicantName: string
+      applicantEmail: string
+      status: string
+      message: string
+      reason: string
+      handledById: number
+      handledByName: string
+      createdAt: string
+      updatedAt: string
+      studentCode: string
+    }
   } catch (error: any) {
-    console.error("Error posting membership application:", error)
-    // rethrow the axios error so caller can inspect response.data for validation errors
+    console.error("Error posting member application:", error.response?.data || error.message)
     throw error
   }
 }
+
 
 // Fetch all member applications (GET /api/member-applications)
 export const getMemberApplications = async () => {
