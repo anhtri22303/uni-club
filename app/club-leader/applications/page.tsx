@@ -17,18 +17,19 @@ import { fetchAllMemberApplications, approveMemberApplication, rejectMemberAppli
 
 type MemberApplication = {
   applicationId: number
-  userId: number
-  userName: string
   clubId: number
   clubName: string
+  applicantId: number      // <- Sửa từ userId
+  applicantName: string    // <- Sửa từ userName
+  applicantEmail: string   // <- Thêm trường này từ API
   status: "PENDING" | "APPROVED" | "REJECTED"
-  reason?: string | null
-  reviewedBy?: string | null
-  submittedAt: string
-  updatedAt?: string | null
+  message: string          // <- Đây là lời nhắn của người nộp đơn
+  reason?: string | null     // <- Đây là lý do duyệt/từ chối của leader
+  handledById?: number | null
+  handledByName?: string | null // <- Sửa từ reviewedBy
+  createdAt: string        // <- Sửa từ submittedAt
+  updatedAt: string
   studentCode?: string | null
-  majorName?: string | null
-  bio?: string | null
   // client-side only note when reviewer rejects:
   reviewNote?: string
 }
@@ -138,7 +139,7 @@ export default function ClubLeaderApplicationsPage() {
       await approveMemberApplication(app.applicationId)
       toast({
         title: "Đã duyệt đơn",
-        description: `Đơn của ${app.userName} đã được duyệt.`,
+        description: `Đơn của ${app.applicantName} đã được duyệt.`,
       })
       setApplications((list) =>
         list.map((application) =>
@@ -168,7 +169,7 @@ export default function ClubLeaderApplicationsPage() {
       await rejectMemberApplication(app.applicationId, reason)
       toast({
         title: "Đã từ chối đơn",
-        description: `Đơn của ${app.userName} đã bị từ chối.`,
+        description: `Đơn của ${app.applicantName} đã bị từ chối.`,
       })
       setApplications((list) =>
         list.map((application) =>
@@ -288,11 +289,11 @@ export default function ClubLeaderApplicationsPage() {
                           `Bạn có chắc muốn từ chối tất cả ${pendingApplications.length} đơn xin gia nhập?`
                         )
                         if (!confirmReject) return
-                        
+
                         setBulkProcessing(true)
                         try {
                           await Promise.all(
-                            pendingApplications.map(app => 
+                            pendingApplications.map(app =>
                               rejectMemberApplication(app.applicationId, "Bulk rejected by club leader")
                             )
                           )
@@ -329,7 +330,7 @@ export default function ClubLeaderApplicationsPage() {
                           `Bạn có chắc muốn duyệt tất cả ${pendingApplications.length} đơn xin gia nhập?`
                         )
                         if (!confirmApprove) return
-                        
+
                         setBulkProcessing(true)
                         try {
                           await Promise.all(
@@ -363,7 +364,7 @@ export default function ClubLeaderApplicationsPage() {
                   </div>
                 </div>
               )}
-              
+
               {pendingApplications.length === 0 ? (
                 <Card>
                   <CardContent className="flex flex-col items-center justify-center py-12 text-center">
@@ -379,23 +380,31 @@ export default function ClubLeaderApplicationsPage() {
                       <CardContent className="pt-6">
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <h3 className="font-semibold">{app.userName}</h3>
+                            <h3 className="font-semibold">{app.applicantName}</h3>
+                            {/* <p className="text-xs text-muted-foreground mt-1">
+                              Submitted: {new Date(app.createdAt).toLocaleDateString()}
+                            </p> */}
+                            {app.studentCode && (
+                              <p className="text-sm text-muted-foreground">
+                                Student Code: {app.studentCode}
+                              </p>
+                            )}
                             <p className="text-xs text-muted-foreground mt-1">
-                              Submitted: {new Date(app.submittedAt).toLocaleDateString()}
+                              Submitted: {new Date(app.createdAt).toLocaleDateString()}
                             </p>
-                            {app.reason && <p className="text-sm mt-2 p-2 bg-muted rounded">"{app.reason}"</p>}
+                            {app.message && <p className="text-sm mt-2 p-2 bg-muted rounded">"{app.message}"</p>}
                           </div>
                           <div className="flex gap-2 ml-4">
-                            <Button 
-                              size="sm" 
-                              variant="outline" 
+                            <Button
+                              size="sm"
+                              variant="outline"
                               onClick={() => handleViewApplication(app)}
                               title="View details"
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
-                            <Button 
-                              size="sm" 
+                            <Button
+                              size="sm"
                               variant="destructive"
                               onClick={() => handleReject(app)}
                               disabled={processingIds.has(app.applicationId)}
@@ -403,7 +412,7 @@ export default function ClubLeaderApplicationsPage() {
                             >
                               <XCircle className="h-4 w-4" />
                             </Button>
-                            <Button 
+                            <Button
                               size="sm"
                               onClick={() => handleApprove(app)}
                               disabled={processingIds.has(app.applicationId)}
@@ -443,18 +452,23 @@ export default function ClubLeaderApplicationsPage() {
                       <CardContent className="pt-6">
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <h3 className="font-semibold">{app.userName}</h3>
+                            <h3 className="font-semibold">{app.applicantName}</h3>
+                            {app.studentCode && (
+                              <p className="text-sm text-muted-foreground">
+                                Student Code: {app.studentCode}
+                              </p>
+                            )}
                             <p className="text-xs text-muted-foreground mt-1">
                               Reviewed: {app.updatedAt ? new Date(app.updatedAt).toLocaleDateString() : "Recently"}
                             </p>
                             {app.reason && (
                               <p className="text-sm mt-2 p-2 bg-muted rounded">
-                                <span className="font-medium text-red-600">Application message:</span> "{app.reason}"
+                                <span className="font-medium text-red-600">Application message:</span> "{app.message}"
                               </p>
                             )}
-                            {app.reviewNote && (
+                            {app.reason && (
                               <p className="text-sm mt-2 p-2 bg-muted rounded">
-                                <span className="font-medium text-red-600">Review note:</span> "{app.reviewNote}"
+                                <span className="font-medium text-red-600">Review note:</span> "{app.reason}"
                               </p>
                             )}
                           </div>
@@ -489,7 +503,7 @@ export default function ClubLeaderApplicationsPage() {
             open={showApplicationModal}
             onOpenChange={setShowApplicationModal}
             title="Review Application"
-            description={selectedApplication ? `Application from ${selectedApplication.userName}` : ""}
+            description={selectedApplication ? `Application from ${selectedApplication.applicantName}` : ""}
             showCloseButton={false}
           >
             {selectedApplication && (
@@ -497,15 +511,16 @@ export default function ClubLeaderApplicationsPage() {
                 <div className="space-y-2">
                   <Label>Applicant</Label>
                   <div className="p-3 bg-muted rounded">
-                    <p className="font-medium">{selectedApplication.userName}</p>
+                    <p className="font-medium">{selectedApplication.applicantName}</p>
+                    {selectedApplication.studentCode && <p className="text-sm text-muted-foreground">Student Code: {selectedApplication.studentCode}</p>}
                   </div>
                 </div>
 
-                {selectedApplication.reason && (
+                {selectedApplication.message && (
                   <div className="space-y-2">
                     <Label>Application Message</Label>
                     <div className="p-3 bg-muted rounded">
-                      <p className="text-sm">{selectedApplication.reason}</p>
+                      <p className="text-sm">{selectedApplication.message}</p>
                     </div>
                   </div>
                 )}
@@ -532,7 +547,7 @@ export default function ClubLeaderApplicationsPage() {
                         await rejectMemberApplication(selectedApplication.applicationId, reviewNote)
                         toast({
                           title: "Đã từ chối đơn",
-                          description: `Đơn của ${selectedApplication.userName} đã bị từ chối.`,
+                          description: `Đơn của ${selectedApplication.applicantName} đã bị từ chối.`,
                         })
                         setShowApplicationModal(false)
                         setApplications((list) =>
@@ -559,7 +574,7 @@ export default function ClubLeaderApplicationsPage() {
                         await approveMemberApplication(selectedApplication.applicationId)
                         toast({
                           title: "Đã duyệt đơn",
-                          description: `Đơn của ${selectedApplication.userName} đã được duyệt.`,
+                          description: `Đơn của ${selectedApplication.applicantName} đã được duyệt.`,
                         })
                         setShowApplicationModal(false)
                         setApplications((list) =>
