@@ -26,6 +26,29 @@ export const getMemberApplications = async () => {
   }
 }
 
+// LẤY DANH SÁCH ĐƠN XIN GIA NHẬP CỦA MÌNH (GET /api/member-applications/my)
+export const getMyMemApply = async () => {
+  try {
+    const response = await axiosInstance.get<{
+      success: boolean
+      message: string
+      data: any[]
+    }>("/api/member-applications/my")
+    console.log("✅ My member applications:", response.data)
+    
+    // Response structure: { success, message, data }
+    if (response.data?.success && response.data?.data) {
+      return response.data.data
+    }
+    
+    // Fallback to direct data if no wrapper
+    return response.data
+  } catch (error: any) {
+    console.error("❌ Error fetching my member applications:", error.response?.data || error.message)
+    throw error
+  }
+}
+
 // LẤY DANH SÁCH TẤT CẢ ĐƠN XIN GIA NHẬP
 export const fetchAllMemberApplications = async () => {
   try {

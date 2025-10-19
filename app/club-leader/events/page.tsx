@@ -131,7 +131,30 @@ export default function ClubLeaderEventsPage() {
       return
     }
     setCountdown(Math.floor(ROTATION_INTERVAL_MS / 1000))
-    const rotId = setInterval(() => {
+    const rotId = setInterval(async () => {
+      // Generate new QR code when rotating
+      if (selectedEvent?.id) {
+        try {
+          const { token, qrUrl } = await generateCode(selectedEvent.id)
+          console.log('Rotating QR - Generated new token:', token)
+          
+          const styleVariants = [
+            { color: { dark: '#000000', light: '#FFFFFF' }, margin: 1 },
+            { color: { dark: '#111111', light: '#FFFFFF' }, margin: 2 },
+            { color: { dark: '#222222', light: '#FFFFFF' }, margin: 0 },
+          ]
+          const qrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
+            const opts = styleVariants[i % styleVariants.length]
+            return QRCode.toDataURL(qrUrl, opts as any)
+          })
+          const qrVariants = await Promise.all(qrVariantsPromises)
+          
+          setQrRotations({ local: qrVariants, prod: qrVariants })
+          setQrLinks({ local: qrUrl, prod: qrUrl })
+        } catch (err) {
+          console.error('Failed to rotate QR:', err)
+        }
+      }
       setVisibleIndex((i) => i + 1)
       setCountdown(Math.floor(ROTATION_INTERVAL_MS / 1000))
     }, ROTATION_INTERVAL_MS)
@@ -142,7 +165,7 @@ export default function ClubLeaderEventsPage() {
       clearInterval(rotId)
       clearInterval(cntId)
     }
-  }, [showQrModal])
+  }, [showQrModal, selectedEvent])
 
   useEffect(() => {
     if (!showQrModal) return
@@ -598,36 +621,27 @@ export default function ClubLeaderEventsPage() {
                                 onClick={async () => {
                                   setSelectedEvent(event);
                                   try {
-                                    // Generate fresh token using the new API
+                                    // Generate fresh token and qrUrl using the new API
                                     console.log('Generating check-in token for event:', event.id);
-                                    const token = await generateCode(event.id, 300); // 5 minutes TTL
+                                    const { token, qrUrl } = await generateCode(event.id);
                                     console.log('Generated token:', token);
+                                    console.log('Generated qrUrl:', qrUrl);
                                     
-                                    // Build URLs with the new token
-                                    const localUrl = `http://localhost:3000/student/checkin/${encodeURIComponent(token)}`;
-                                    const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${encodeURIComponent(token)}`;
-                                    
-                                    // Generate QR code variants
+                                    // Generate QR code variants using the qrUrl from backend
                                     const styleVariants = [
                                       { color: { dark: '#000000', light: '#FFFFFF' }, margin: 1 },
                                       { color: { dark: '#111111', light: '#FFFFFF' }, margin: 2 },
                                       { color: { dark: '#222222', light: '#FFFFFF' }, margin: 0 },
                                     ];
-                                    const localVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
+                                    const qrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
                                       const opts = styleVariants[i % styleVariants.length];
-                                      return QRCode.toDataURL(localUrl, opts as any);
+                                      return QRCode.toDataURL(qrUrl, opts as any);
                                     });
-                                    const prodVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
-                                      const opts = styleVariants[i % styleVariants.length];
-                                      return QRCode.toDataURL(prodUrl, opts as any);
-                                    });
-                                    const [localVariants, prodVariants] = await Promise.all([
-                                      Promise.all(localVariantsPromises),
-                                      Promise.all(prodVariantsPromises),
-                                    ]);
+                                    const qrVariants = await Promise.all(qrVariantsPromises);
                                     
-                                    setQrRotations({ local: localVariants, prod: prodVariants });
-                                    setQrLinks({ local: localUrl, prod: prodUrl });
+                                    // Use the same qrUrl for both local and prod since backend provides the final URL
+                                    setQrRotations({ local: qrVariants, prod: qrVariants });
+                                    setQrLinks({ local: qrUrl, prod: qrUrl });
                                     setVisibleIndex(0);
                                     setDisplayedIndex(0);
                                     setShowQrModal(true);

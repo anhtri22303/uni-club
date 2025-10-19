@@ -57,8 +57,34 @@ export async function putClubApplicationStatus(applicationId: number, approve: b
   return response.data
 }
 
+/**
+ * LẤY DANH SÁCH ĐƠN XIN TẠO CLB CỦA MÌNH (GET /api/club-applications/my)
+ */
+export async function getMyClubApply(): Promise<ClubApplication[]> {
+  try {
+    const response = await axiosInstance.get<{
+      success: boolean
+      message: string
+      data: ClubApplication[]
+    }>("/api/club-applications/my")
+    console.log("✅ My club applications:", response.data)
+    
+    // Response structure: { success, message, data }
+    if (response.data?.success && response.data?.data) {
+      return response.data.data
+    }
+    
+    // Fallback to direct data if no wrapper
+    return Array.isArray(response.data) ? response.data : []
+  } catch (error: any) {
+    console.error("❌ Error fetching my club applications:", error.response?.data || error.message)
+    throw error
+  }
+}
+
 export default { 
   getClubApplications, 
   postClubApplication, 
-  putClubApplicationStatus 
+  putClubApplicationStatus,
+  getMyClubApply
 }

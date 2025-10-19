@@ -13,6 +13,9 @@ export type ApiMembership = {
 	fullName: string
 	studentCode: string
 	clubName: string
+	email?: string
+	avatarUrl?: string
+	major?: string
 }
 
 export const getClubMembers = async (): Promise<ApiMembership[]> => {
