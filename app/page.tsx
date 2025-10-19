@@ -38,6 +38,7 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    const normalizedEmail = email.trim().toLowerCase();
 
     if (isSignUpMode) {
       // Validate từng trường
@@ -45,37 +46,48 @@ export default function LoginPage() {
         toast({ title: "Missing Full Name", description: "Please enter your full name.", variant: "destructive" });
         return;
       }
+      // Mã số sinh viên: 2 chữ cái đầu (in hoa), 6 số liền kề
       if (!studentCode) {
         toast({ title: "Missing Student ID", description: "Please enter your student ID.", variant: "destructive" });
         return;
       }
-      // Mã số sinh viên: 2 chữ cái đầu (in hoa), 6 số liền kề
       if (!/^[A-Z]{2}\d{6}$/.test(studentCode)) {
         toast({ title: "Invalid Student ID", description: "Student ID must start with 2 letters followed by 6 digits (e.g. SE123456).", variant: "destructive" });
         return;
       }
+      // chuyên ngành
       if (!majorName) {
         toast({ title: "Missing Major", description: "Please enter your major name.", variant: "destructive" });
         return;
       }
-      if (!email) {
+      // Email hợp lệ
+      // if (!email) {
+      //   toast({ title: "Missing Email", description: "Please enter your email.", variant: "destructive" });
+      //   return;
+      // }
+      // if (!/^\S+@\S+\.\S+$/.test(email)) {
+      //   toast({ title: "Invalid Email", description: "Please enter a valid email address.", variant: "destructive" });
+      //   return;
+      // }
+      // Validate dùng normalizedEmail thay vì email
+      if (!normalizedEmail) {
         toast({ title: "Missing Email", description: "Please enter your email.", variant: "destructive" });
         return;
       }
-      // Email hợp lệ
-      if (!/^\S+@\S+\.\S+$/.test(email)) {
+      if (!/^\S+@\S+\.\S+$/.test(normalizedEmail)) {
         toast({ title: "Invalid Email", description: "Please enter a valid email address.", variant: "destructive" });
         return;
       }
+      // Số điện thoại; chỉ cho phép số, đúng 10 số
       if (!phone) {
         toast({ title: "Missing Phone", description: "Please enter your phone number.", variant: "destructive" });
         return;
       }
-      // Số điện thoại: chỉ cho phép số, đúng 10 số
       if (!/^\d{10}$/.test(phone)) {
         toast({ title: "Invalid Phone Number", description: "Phone number must be exactly 10 digits.", variant: "destructive" });
         return;
       }
+      // Mật khẩu và xác nhận mật khẩu
       if (!password) {
         toast({ title: "Missing Password", description: "Please enter your password.", variant: "destructive" });
         return;
@@ -138,6 +150,7 @@ export default function LoginPage() {
     // Thêm decode để đảm bảo path đúng (ví dụ: %2F thành /)
     const nextRaw = searchParams.get('next')
     const next = nextRaw ? decodeURIComponent(nextRaw) : undefined
+    // const success = await login(email, password, next)
     const success = await login(email, password, next)
 
     if (success) {
@@ -192,9 +205,11 @@ export default function LoginPage() {
     }
 
     setIsLoadingForgotPassword(true)
-    
+
     try {
-      const response = await forgotPassword(email)
+      const normalizedEmail = email.trim().toLowerCase()
+      // const response = await forgotPassword(email)
+      const response = await forgotPassword(normalizedEmail);
       if (response.success) {
         toast({
           title: "Password Reset Email Sent",
@@ -388,7 +403,8 @@ export default function LoginPage() {
                     id="email"
                     type="email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value.toLowerCase())}
+                    // onChange={(e) => setEmail(e.target.value.toLowerCase())}
+                    onChange={(e) => setEmail(e.target.value)}
                     placeholder="Enter yours email"
                     className="h-10 sm:h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
                   />

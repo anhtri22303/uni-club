@@ -78,6 +78,8 @@ export function UserProfileWidget() {
   const { sidebarCollapsed, sidebarOpen } = useSidebarContext()
   const [userPoints, setUserPoints] = useState<number>(0)
   const [avatarUrl, setAvatarUrl] = useState<string>("")
+  const [userName, setUserName] = useState<string>("")
+  const [userEmail, setUserEmail] = useState<string>("")
 
   if (!auth.role || !auth.user) return null
 
@@ -92,6 +94,8 @@ export function UserProfileWidget() {
           console.debug("UserProfileWidget.fetchProfile ->", profileData)
           if (!mounted) return
           setAvatarUrl(profileData?.avatarUrl || "")
+          setUserName(profileData?.fullName || auth.user?.fullName || "User")
+          setUserEmail(profileData?.email || auth.user?.email || "")
         } catch (profileErr) {
           console.error("Failed to load profile in UserProfileWidget:", profileErr)
           console.log("Role:", auth.role, "Will fallback to initials for avatar")
@@ -123,17 +127,12 @@ export function UserProfileWidget() {
     .join("")
     .toUpperCase()
 
-  const handleProfile = () => {
-    router.push("/profile")
-  }
-
+  const handleProfile = () => { router.push("/profile") }
   // Ẩn khi sidebar đang collapsed (desktop) hoặc đang mở Sheet (mobile)
   const isHidden = sidebarCollapsed || sidebarOpen
-
   const shouldShowPoints = auth.role === "student" || auth.role === "club_leader"
   const tierInfo = getTierInfo(userPoints, auth.role)
   const TierIcon = tierInfo.icon
-
   const pointsStyle = getPointsCardStyle(userPoints)
 
   return (
@@ -156,17 +155,18 @@ export function UserProfileWidget() {
           </div>
         </div>
       )}
-
+      {/* hiển thị thông tin user lấy từ API */}
       <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
         <Avatar className="h-10 w-10">
-          <AvatarImage src={avatarUrl || "/placeholder-user.jpg"} alt={auth.user?.fullName || "User"} />
+          <AvatarImage src={avatarUrl || "/placeholder-user.jpg"} alt={userName || "User"} />
           <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
             {userInitials}
           </AvatarFallback>
         </Avatar>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-foreground truncate">{auth.user?.fullName || "User"}</p>
-          <p className="text-xs text-muted-foreground truncate">{auth.user?.email || ""}</p>
+          <p className="text-sm font-semibold text-foreground truncate">{userName || "User"}</p>
+          <p className="text-xs text-muted-foreground truncate">{userEmail || "-"}</p>
+
         </div>
       </div>
 
