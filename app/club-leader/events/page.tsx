@@ -35,7 +35,8 @@ export default function ClubLeaderEventsPage() {
 
   // Add fullscreen and environment states
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const [activeEnvironment, setActiveEnvironment] = useState<'local' | 'prod'>('prod')
+  // support 'mobile' environment for deep-link QR
+  const [activeEnvironment, setActiveEnvironment] = useState<'local' | 'prod' | 'mobile'>('prod')
 
   // Get clubId from localStorage
   useEffect(() => {
@@ -93,9 +94,9 @@ export default function ClubLeaderEventsPage() {
   const [showEditModal, setShowEditModal] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<any>(null)
   const [showQrModal, setShowQrModal] = useState(false)
-  const [qrDataUrls, setQrDataUrls] = useState<{ local?: string; prod?: string }>({})
-  const [qrLinks, setQrLinks] = useState<{ local?: string; prod?: string }>({})
-  const [qrRotations, setQrRotations] = useState<{ local: string[]; prod: string[] }>({ local: [], prod: [] })
+  const [qrDataUrls, setQrDataUrls] = useState<{ local?: string; prod?: string; mobile?: string }>({})
+  const [qrLinks, setQrLinks] = useState<{ local?: string; prod?: string; mobile?: string }>({})
+  const [qrRotations, setQrRotations] = useState<{ local: string[]; prod: string[]; mobile?: string[] }>({ local: [], prod: [] })
   const [visibleIndex, setVisibleIndex] = useState(0)
   const [displayedIndex, setDisplayedIndex] = useState(0)
   const [isFading, setIsFading] = useState(false)
@@ -111,30 +112,46 @@ export default function ClubLeaderEventsPage() {
       return
     }
     setCountdown(Math.floor(ROTATION_INTERVAL_MS / 1000))
-    const rotId = setInterval(async () => {
-      // Generate new QR code when rotating
-      if (selectedEvent?.id) {
-        try {
-          const { token, qrUrl } = await generateCode(selectedEvent.id)
-          console.log('Rotating QR - Generated new token:', token)
-          
-          const styleVariants = [
-            { color: { dark: '#000000', light: '#FFFFFF' }, margin: 1 },
-            { color: { dark: '#111111', light: '#FFFFFF' }, margin: 2 },
-            { color: { dark: '#222222', light: '#FFFFFF' }, margin: 0 },
-          ]
-          const qrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
-            const opts = styleVariants[i % styleVariants.length]
-            return QRCode.toDataURL(qrUrl, opts as any)
-          })
-          const qrVariants = await Promise.all(qrVariantsPromises)
-          
-          setQrRotations({ local: qrVariants, prod: qrVariants })
-          setQrLinks({ local: qrUrl, prod: qrUrl })
-        } catch (err) {
-          console.error('Failed to rotate QR:', err)
-        }
+    // helper to generate and set QR variants (used immediately and on interval)
+    const generateAndSet = async () => {
+      if (!selectedEvent?.id) return
+      try {
+        const { token, qrUrl } = await generateCode(selectedEvent.id)
+        console.log('Generated QR token:', token)
+
+        const styleVariants = [
+          { color: { dark: '#000000', light: '#FFFFFF' }, margin: 1 },
+          { color: { dark: '#111111', light: '#FFFFFF' }, margin: 2 },
+          { color: { dark: '#222222', light: '#FFFFFF' }, margin: 0 },
+        ]
+
+        // Generate DataURL variants for the qrUrl
+        const qrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
+          const opts = styleVariants[i % styleVariants.length]
+          return QRCode.toDataURL(qrUrl, opts as any)
+        })
+        const qrVariants = await Promise.all(qrVariantsPromises)
+
+        // Build mobile deep link and its QR variants
+        const mobileLink = `exp://192.168.1.50:8081/--/student/checkin/${token}`
+        const mobileVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
+          const opts = styleVariants[i % styleVariants.length]
+          return QRCode.toDataURL(mobileLink, opts as any)
+        })
+        const mobileVariants = await Promise.all(mobileVariantsPromises)
+
+        setQrRotations({ local: qrVariants, prod: qrVariants, mobile: mobileVariants })
+        setQrLinks({ local: qrUrl, prod: qrUrl, mobile: mobileLink })
+      } catch (err) {
+        console.error('Failed to generate QR:', err)
       }
+    }
+
+    // generate once immediately so modal shows a QR without waiting for the first interval
+    generateAndSet()
+
+    const rotId = setInterval(() => {
+      generateAndSet()
       setVisibleIndex((i) => i + 1)
       setCountdown(Math.floor(ROTATION_INTERVAL_MS / 1000))
     }, ROTATION_INTERVAL_MS)
@@ -301,19 +318,31 @@ export default function ClubLeaderEventsPage() {
   const handleUpdate = () => { /* same as source */ }
 
   // Helper functions for QR actions
-  const handleDownloadQR = (environment: 'local' | 'prod') => {
+  const handleDownloadQR = (environment: 'local' | 'prod' | 'mobile') => {
     try {
-      const qrDataUrl = environment === 'local' 
-        ? qrRotations.local[displayedIndex % qrRotations.local.length]
-        : qrRotations.prod[displayedIndex % qrRotations.prod.length]
-      
+      let qrDataUrl: string | undefined
+      if (environment === 'local') {
+        qrDataUrl = qrRotations.local[displayedIndex % (qrRotations.local.length || 1)]
+      } else if (environment === 'prod') {
+        qrDataUrl = qrRotations.prod[displayedIndex % (qrRotations.prod.length || 1)]
+      } else {
+        // mobile: construct an on-the-fly QR image using public QR API (fallback)
+        const token = selectedEvent?.checkInCode || ''
+        if (!token) {
+          toast({ title: 'No token', description: 'Mobile token not available', variant: 'destructive' })
+          return
+        }
+        const mobileLink = `exp://192.168.1.50:8081/--/student/checkin/${token}`
+        qrDataUrl = `https://api.qrserver.com/v1/create-qr-code/?size=640x640&data=${encodeURIComponent(mobileLink)}`
+      }
+
       if (!qrDataUrl) return
 
       const link = document.createElement('a')
       link.download = `qr-code-${selectedEvent?.name?.replace(/[^a-zA-Z0-9]/g, '-')}-${environment}.png`
       link.href = qrDataUrl
       link.click()
-      
+
       toast({ 
         title: 'Downloaded', 
         description: `QR code downloaded for ${environment} environment` 
@@ -323,9 +352,21 @@ export default function ClubLeaderEventsPage() {
     }
   }
 
-  const handleCopyLink = async (environment: 'local' | 'prod') => {
+  const handleCopyLink = async (environment: 'local' | 'prod' | 'mobile') => {
     try {
-      const link = environment === 'local' ? qrLinks.local : qrLinks.prod
+      let link: string | undefined
+      if (environment === 'local') link = qrLinks.local
+      else if (environment === 'prod') link = qrLinks.prod
+      else {
+        // mobile deep link uses checkInCode
+        const token = selectedEvent?.checkInCode || ''
+        if (!token) {
+          toast({ title: 'No token', description: 'Mobile token not available', variant: 'destructive' })
+          return
+        }
+        link = `exp://192.168.1.50:8081/--/student/checkin/${token}`
+      }
+
       if (!link) return
       
       await navigator.clipboard.writeText(link)

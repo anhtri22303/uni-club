@@ -15,15 +15,21 @@ import { GoogleSignInButton } from "@/components/GoogleSignInButton"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
+  const [emailError, setEmailError] = useState("")
   const [password, setPassword] = useState("")
+  const [passwordError, setPasswordError] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [isSignUpMode, setIsSignUpMode] = useState(false)
   const [isAnimating, setIsAnimating] = useState(false)
   const [fullName, setFullName] = useState("")
+  const [fullNameError, setFullNameError] = useState("")
   const [studentCode, setStudentCode] = useState("")
+  const [studentCodeError, setStudentCodeError] = useState("")
   const [majorName, setMajorName] = useState("")
+  const [majorNameError, setMajorNameError] = useState("")
   const roleName = "STUDENT"
   const [confirmPassword, setConfirmPassword] = useState("")
+  const [confirmPasswordError, setConfirmPasswordError] = useState("")
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [showLoginError, setShowLoginError] = useState(false)
   const [isLoadingForgotPassword, setIsLoadingForgotPassword] = useState(false)
@@ -32,6 +38,69 @@ export default function LoginPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const [phone, setPhone] = useState("")
+  const [phoneError, setPhoneError] = useState("")
+  const [btnPosition, setBtnPosition] = useState("")
+  const positions = ["shift-left", "shift-right", "shift-top", "shift-bottom"]
+  function shiftButton() {
+    const currentIndex = positions.indexOf(btnPosition)
+    const nextPosition = positions[(currentIndex + 1) % positions.length]
+    setBtnPosition(nextPosition)
+  }
+  function validateEmail(val: string) {
+    if (!val.trim()) {
+      setEmailError("Please enter your email."); shiftButton(); return false;
+    }
+    if (!/^\S+@\S+\.\S+$/.test(val.trim().toLowerCase())) {
+      setEmailError("Please enter a valid email address."); shiftButton(); return false;
+    }
+    setEmailError(""); return true;
+  }
+  function validatePassword(val: string) {
+    if (!val.trim()) {
+      setPasswordError("Please enter your password."); shiftButton(); return false;
+    }
+    setPasswordError(""); return true;
+  }
+  function validateFullName(val: string) {
+    if (!val.trim()) {
+      setFullNameError("Please enter your full name."); shiftButton(); return false;
+    }
+    setFullNameError(""); return true;
+  }
+  function validateStudentCode(val: string) {
+    if (!val.trim()) {
+      setStudentCodeError("Please enter your student ID."); shiftButton(); return false;
+    }
+    if (!/^[A-Z]{2}\d{6}$/.test(val)) {
+      setStudentCodeError("Student ID must start with 2 letters followed by 6 digits (e.g. SE123456).")
+      shiftButton(); return false;
+    }
+    setStudentCodeError(""); return true;
+  }
+  function validateMajorName(val: string) {
+    if (!val.trim()) {
+      setMajorNameError("Please enter your major name."); shiftButton(); return false;
+    }
+    setMajorNameError(""); return true;
+  }
+  function validatePhone(val: string) {
+    if (!val.trim()) {
+      setPhoneError("Please enter your phone number."); shiftButton(); return false;
+    }
+    if (!/^\d{10}$/.test(val)) {
+      setPhoneError("Phone number must be exactly 10 digits."); shiftButton(); return false;
+    }
+    setPhoneError(""); return true;
+  }
+  function validateConfirmPassword(val: string) {
+    if (!val.trim()) {
+      setConfirmPasswordError("Please confirm your password."); shiftButton(); return false;
+    }
+    if (val !== password) {
+      setConfirmPasswordError("Passwords do not match."); shiftButton(); return false;
+    }
+    setConfirmPasswordError(""); return true;
+  }
 
   // nextParam này chỉ dùng cho mục đích hiển thị trên UI
   const nextParamForDisplay = searchParams.get('next')
@@ -310,9 +379,11 @@ export default function LoginPage() {
                       type="text"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
+                      onBlur={(e) => validateFullName(e.target.value)}
                       placeholder="Enter your full name"
                       className="h-10 sm:h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
                     />
+                    {fullNameError && <div className="text-xs text-red-500 mt-1">{fullNameError}</div>}
                   </div>
                 )}
 
@@ -326,10 +397,12 @@ export default function LoginPage() {
                       type="text"
                       value={studentCode}
                       onChange={(e) => setStudentCode(e.target.value.toUpperCase())}
+                      onBlur={(e) => validateStudentCode(e.target.value)}
                       placeholder="Enter your student ID (e.g. SE123456)"
                       className="h-10 sm:h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
                       maxLength={8}
                     />
+                    {studentCodeError && <div className="text-xs text-red-500 mt-1">{studentCodeError}</div>}
                   </div>
                 )}
 
@@ -343,6 +416,7 @@ export default function LoginPage() {
                       aria-label="Select your major"
                       value={majorName}
                       onChange={e => setMajorName(e.target.value)}
+                      onBlur={e => validateMajorName(e.target.value)}
                       className="h-10 sm:h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                       required
                     >
@@ -361,6 +435,7 @@ export default function LoginPage() {
                       <option value="Japanese Language">Japanese Language - Ngôn ngữ Nhật</option>
                       <option value="Korean Language">Korean Language - Ngôn ngữ Hàn</option>
                     </select>
+                    {majorNameError && <div className="text-xs text-red-500 mt-1">{majorNameError}</div>}
                   </div>
                 )}
 
@@ -389,9 +464,11 @@ export default function LoginPage() {
                       type="text"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
+                      onBlur={(e) => validatePhone(e.target.value)}
                       placeholder="Enter your phone number"
                       className="h-10 sm:h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
                     />
+                    {phoneError && <div className="text-xs text-red-500 mt-1">{phoneError}</div>}
                   </div>
                 )}
 
@@ -403,11 +480,12 @@ export default function LoginPage() {
                     id="email"
                     type="email"
                     value={email}
-                    // onChange={(e) => setEmail(e.target.value.toLowerCase())}
                     onChange={(e) => setEmail(e.target.value)}
+                    onBlur={(e) => validateEmail(e.target.value)}
                     placeholder="Enter yours email"
                     className="h-10 sm:h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
                   />
+                  {emailError && <div className="text-xs text-red-500 mt-1">{emailError}</div>}
                 </div>
 
                 <div className="space-y-2">
@@ -420,6 +498,7 @@ export default function LoginPage() {
                       type={showPassword ? "text" : "password"}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
+                      onBlur={(e) => validatePassword(e.target.value)}
                       placeholder="Enter your password"
                       className="h-10 sm:h-11 pr-10 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
                     />
@@ -432,6 +511,7 @@ export default function LoginPage() {
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
+                  {passwordError && <div className="text-xs text-red-500 mt-1">{passwordError}</div>}
                 </div>
 
                 {isSignUpMode && (
@@ -445,6 +525,7 @@ export default function LoginPage() {
                         type={showConfirmPassword ? "text" : "password"}
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
+                        onBlur={(e) => validateConfirmPassword(e.target.value)}
                         placeholder="Confirm your password"
                         className="h-10 sm:h-11 pr-10 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
                       />
@@ -457,12 +538,15 @@ export default function LoginPage() {
                         {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
                     </div>
+                    {confirmPasswordError && <div className="text-xs text-red-500 mt-1">{confirmPasswordError}</div>}
                   </div>
                 )}
 
                 <Button
                   type="submit"
-                  className="w-full h-10 sm:h-11 font-medium transition-all duration-200 hover:shadow-lg"
+                  className={`w-full h-10 sm:h-11 font-medium transition-all duration-200 hover:shadow-lg ${btnPosition}`}
+                  id="login-btn"
+                  disabled={!!emailError || !!passwordError || (isSignUpMode && (!!fullNameError || !!studentCodeError || !!majorNameError || !!phoneError || !!confirmPasswordError))}
                 >
                   {isSignUpMode ? (
                     <>
