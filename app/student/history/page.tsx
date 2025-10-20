@@ -11,8 +11,7 @@ import { useAuth } from "@/contexts/auth-context"
 import { useData } from "@/contexts/data-context"
 import { History, UserPlus, Gift, CheckCircle, Users, Building2 } from "lucide-react"
 import { useEffect, useState } from "react"
-import { getMyMemApply } from "@/service/memberApplicationApi"
-import { getMyClubApply } from "@/service/clubApplicationAPI"
+import { useMyMemberApplications, useMyClubApplications } from "@/hooks/use-query-hooks"
 
 // Removed static `src/data` imports — use empty fallbacks. Prefer remote `clubName` from activity data when available.
 const clubs: any[] = []
@@ -21,13 +20,14 @@ const offers: any[] = []
 export default function MemberHistoryPage() {
   const { auth } = useAuth()
   const { membershipApplications, vouchers } = useData()
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [remoteApplications, setRemoteApplications] = useState<any[]>([])
-  const [clubApplications, setClubApplications] = useState<any[]>([])
   const [activeTab, setActiveTab] = useState<"member" | "club">("member")
 
-  // Load any session-saved applications (from recent POSTs)
+  // Use React Query hooks
+  const { data: remoteApplications = [], isLoading: memberAppsLoading } = useMyMemberApplications()
+  const { data: clubApplications = [], isLoading: clubAppsLoading } = useMyClubApplications()
+  
+  const loading = memberAppsLoading || clubAppsLoading
+  const error = null
 
   // Get user's activity history
   const userApplications = membershipApplications.filter((a) => a.userId === auth.userId)
@@ -42,7 +42,7 @@ export default function MemberHistoryPage() {
       data: app,
     })),
     // remote apps fetched from backend using /api/member-applications/my
-    ...remoteApplications.map((app) => ({
+    ...(Array.isArray(remoteApplications) ? remoteApplications : []).map((app: any) => ({
       type: "application" as const,
       date: app.createdAt || app.submittedAt || app.appliedAt || new Date().toISOString(),
       data: {
@@ -64,7 +64,7 @@ export default function MemberHistoryPage() {
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
   // Club applications activities
-  const clubActivitiesData = clubApplications.map((app) => ({
+  const clubActivitiesData = (Array.isArray(clubApplications) ? clubApplications : []).map((app: any) => ({
     type: "clubApplication" as const,
     date: app.submittedAt || new Date().toISOString(),
     data: {
@@ -102,59 +102,6 @@ export default function MemberHistoryPage() {
     }
     return out
   })()
-
-  // Fetch remote member applications for this user using new API
-  useEffect(() => {
-    let mounted = true
-    const load = async () => {
-      setLoading(true)
-      setError(null)
-      try {
-        const res: any = await getMyMemApply()
-        if (!mounted) return
-        
-        // API returns array of applications directly after unwrapping
-        const applications = Array.isArray(res) ? res : []
-        setRemoteApplications(applications)
-      } catch (err: any) {
-        console.error(err)
-        if (!mounted) return
-        setError(err?.message ?? "Failed to fetch member applications")
-      } finally {
-        if (mounted) setLoading(false)
-      }
-    }
-    load()
-    return () => {
-      mounted = false
-    }
-  }, [auth.userId])
-
-  // Fetch club applications for this user
-  useEffect(() => {
-    let mounted = true
-    const load = async () => {
-      setLoading(true)
-      setError(null)
-      try {
-        const res: any = await getMyClubApply()
-        if (!mounted) return
-        
-        const applications = Array.isArray(res) ? res : []
-        setClubApplications(applications)
-      } catch (err: any) {
-        console.error(err)
-        if (!mounted) return
-        setError(err?.message ?? "Failed to fetch club applications")
-      } finally {
-        if (mounted) setLoading(false)
-      }
-    }
-    load()
-    return () => {
-      mounted = false
-    }
-  }, [auth.userId])
 
   const {
     currentPage,
@@ -235,9 +182,9 @@ export default function MemberHistoryPage() {
               <div className="flex items-center gap-2">
                 <Users className="h-4 w-4" />
                 Member Applications
-                {remoteApplications.length > 0 && (
+                {(Array.isArray(remoteApplications) ? remoteApplications.length : 0) > 0 && (
                   <Badge variant="secondary" className="ml-1">
-                    {remoteApplications.length}
+                    {Array.isArray(remoteApplications) ? remoteApplications.length : 0}
                   </Badge>
                 )}
               </div>

@@ -24,8 +24,9 @@ import {
 } from "lucide-react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { safeLocalStorage } from "@/lib/browser-utils"
-import { getMembersByClubId, type ApiMembership } from "@/service/membershipApi"
+import { type ApiMembership } from "@/service/membershipApi"
 import { getClubById } from "@/service/clubApi"
+import { useClub, useClubMembers } from "@/hooks/use-query-hooks"
 
 interface Club {
   id: number
@@ -46,17 +47,17 @@ interface ClubApiResponse {
 export default function MyClubPage() {
   const [userClubIds, setUserClubIds] = useState<number[]>([])
   const [selectedClubId, setSelectedClubId] = useState<number | null>(null)
-  const [selectedClub, setSelectedClub] = useState<Club | null>(null)
-  const [apiMembers, setApiMembers] = useState<ApiMembership[]>([])
-  const [loading, setLoading] = useState(false)
-  const [membersLoading, setMembersLoading] = useState(false)
-  const [membersError, setMembersError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [activeFilters, setActiveFilters] = useState<Record<string, any>>({})
   const [showFilters, setShowFilters] = useState(false)
   const { toast } = useToast()
 
-  // Get user's club IDs from localStorage and load club details
+  // ✅ REACT QUERY: Load club and members data
+  const { data: selectedClub, isLoading: loading } = useClub(selectedClubId || 0, !!selectedClubId)
+  const { data: apiMembers = [], isLoading: membersLoading, error: membersQueryError } = useClubMembers(selectedClubId || 0, !!selectedClubId)
+  const membersError = membersQueryError ? String(membersQueryError) : null
+
+  // Get user's club IDs from localStorage
   useEffect(() => {
     const loadUserClubs = async () => {
       try {
@@ -90,52 +91,7 @@ export default function MyClubPage() {
     loadUserClubs()
   }, [])
 
-  // Load club info and members when selectedClubId changes
-  useEffect(() => {
-    if (!selectedClubId) return
-
-    let mounted = true
-    const loadClubData = async () => {
-      setLoading(true)
-      setMembersLoading(true)
-      setMembersError(null)
-      try {
-        console.log("Loading club data for:", selectedClubId)
-        
-        // Load club details
-        const clubResponse = (await getClubById(selectedClubId)) as ClubApiResponse
-        if (clubResponse && clubResponse.success && mounted) {
-          setSelectedClub(clubResponse.data)
-        }
-        
-        // Load members
-        const membersData = await getMembersByClubId(selectedClubId)
-        console.log("Loaded members:", membersData)
-        
-        if (mounted) {
-          setApiMembers(membersData)
-        }
-      } catch (err: any) {
-        console.error("Failed to load club data:", err)
-        if (mounted) {
-          setMembersError(err?.message ?? "Failed to load club data")
-          toast({
-            title: "Error loading club",
-            description: err?.message ?? "Could not load club information",
-            variant: "destructive"
-          })
-        }
-      } finally {
-        if (mounted) {
-          setLoading(false)
-          setMembersLoading(false)
-        }
-      }
-    }
-
-    loadClubData()
-    return () => { mounted = false }
-  }, [selectedClubId, toast])
+  // ✅ REMOVED: useEffect for loading club and members - React Query handles this automatically
 
   // State to store fetched club details for dropdown
   const [userClubsDetails, setUserClubsDetails] = useState<Club[]>([])

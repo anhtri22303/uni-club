@@ -8,10 +8,10 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { ArrowLeft, Calendar, Clock, MapPin, Users, Eye, XCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { getEventById } from "@/service/eventApi"
 import { AppShell } from "@/components/app-shell"
 import { ProtectedRoute } from "@/contexts/protected-route"
 import { LoadingSkeleton } from "@/components/loading-skeleton"
+import { useEvent } from "@/hooks/use-query-hooks"
 
 interface EventDetail {
   id: number
@@ -28,31 +28,9 @@ export default function EventDetailPage() {
   const router = useRouter()
   const params = useParams()
   const { toast } = useToast()
-  const [event, setEvent] = useState<EventDetail | null>(null)
-  const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    const loadEventDetail = async () => {
-      if (!params.id) return
-
-      try {
-        setLoading(true)
-        const data = await getEventById(params.id as string)
-        setEvent(data)
-      } catch (error) {
-        console.error("Failed to load event detail:", error)
-        toast({
-          title: "Error",
-          description: "Failed to load event details",
-          variant: "destructive"
-        })
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadEventDetail()
-  }, [params.id, toast])
+  // Use React Query hook
+  const { data: event, isLoading: loading } = useEvent(params.id as string, !!params.id)
 
   const getTypeBadge = (type: string) => {
     return (

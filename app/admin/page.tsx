@@ -6,7 +6,7 @@ import { StatsCard } from "@/components/stats-card"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useData } from "@/contexts/data-context"
 import { Gift, TrendingUp, CheckCircle, Clock, Users as UsersIcon, UserCheck, UserX, Shield, Building2, UserPlus, UsersRound } from "lucide-react"
-import { fetchEvent } from "@/service/eventApi"
+import { useEvents } from "@/hooks/use-query-hooks"
 import { getClubStats } from "@/service/clubApi"
 import { getUserStats } from "@/service/userApi"
 import { useEffect, useState } from "react"
@@ -17,18 +17,17 @@ const redemptions: any[] = []
 const users: any[] = []
 
 export default function PartnerDashboard() {
-  const { vouchers, events, clubs, users, updateEvents, updateClubs, updateUsers } = useData()
+  const { vouchers, clubs, users: contextUsers, updateClubs, updateUsers } = useData()
   const [userStats, setUserStats] = useState<any>(null)
   const [clubStats, setClubStats] = useState<any>(null)
 
-  // Fetch events, club stats and user stats when component mounts
+  // ✅ REACT QUERY: Load events
+  const { data: events = [] } = useEvents()
+
+  // Fetch club stats and user stats when component mounts
   useEffect(() => {
     const loadData = async () => {
       try {
-        // Fetch events
-        const eventData = await fetchEvent()
-        updateEvents(eventData || [])
-        
         // Fetch club stats
         const clubStatsData = await getClubStats()
         setClubStats(clubStatsData)
@@ -41,7 +40,7 @@ export default function PartnerDashboard() {
       }
     }
     loadData()
-  }, [updateEvents])
+  }, [])
 
   // For demo purposes, assume this admin manages CoffeeLab offers
   const partnerName = "CoffeeLab"
