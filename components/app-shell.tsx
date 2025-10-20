@@ -8,7 +8,6 @@ import { Sheet, SheetContent } from "@/components/ui/sheet"
 import { Sidebar } from "@/components/sidebar"
 import { UserProfileWidget } from "@/components/user-profile-widget"
 import { ChatbotWidget } from "@/components/chatbot-widget"
-import { PageLoading } from "@/components/page-loading"
 import { Menu, PanelLeftOpen, PanelLeftClose } from "lucide-react"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
@@ -42,9 +41,6 @@ export function AppShell({ children }: AppShellProps) {
   // Desktop: collapsed state
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
-  // Page loading overlay when route changes
-  const [isPageLoading, setIsPageLoading] = useState(false)
-
   // Persist desktop collapsed state
   useEffect(() => {
     const saved = localStorage.getItem("sidebarCollapsed")
@@ -53,13 +49,6 @@ export function AppShell({ children }: AppShellProps) {
   useEffect(() => {
     localStorage.setItem("sidebarCollapsed", String(sidebarCollapsed))
   }, [sidebarCollapsed])
-
-  // Route change fake loader (you có thể thay bằng router events nếu dùng next/navigation events)
-  useEffect(() => {
-    setIsPageLoading(true)
-    const t = setTimeout(() => setIsPageLoading(false), 500)
-    return () => clearTimeout(t)
-  }, [pathname])
 
   if (!auth.user) return null
 
@@ -122,11 +111,6 @@ export function AppShell({ children }: AppShellProps) {
 
           {/* ===================== MAIN CONTENT ===================== */}
           <main className="flex-1 overflow-hidden relative">
-            {isPageLoading && (
-              <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-40 flex items-center justify-center">
-                <PageLoading />
-              </div>
-            )}
             {/* Padding top để tránh nút nổi chồng lên nội dung trên mobile */}
             <div className="h-full p-3 sm:p-4 md:p-6 pt-16 md:pt-6">{children}</div>
           </main>

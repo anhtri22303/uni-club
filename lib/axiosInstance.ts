@@ -2,8 +2,7 @@ import axios from "axios"
 
 
 const axiosInstance = axios.create({
-  // baseURL: "http://localhost:8080",
-  baseURL: "https://uniclub-qyn9a.ondigitalocean.app/",
+  baseURL: process.env.NEXT_PUBLIC_API_URL || "https://uniclub-qyn9a.ondigitalocean.app/",
   timeout: 10000, // Thay thế bằng thời gian timeout mong muốn (ms)
 })
 
