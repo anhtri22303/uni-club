@@ -10,6 +10,15 @@ import { getProduct } from "@/service/productApi"
 import { getWallet } from "@/service/walletApi"
 import { fetchPolicies, fetchPolicyById } from "@/service/policyApi"
 import { fetchAttendanceByDate } from "@/service/attendanceApi"
+import { 
+  getMemberApplyByClubId, 
+  getMyMemApply, 
+  fetchAllMemberApplications 
+} from "@/service/memberApplicationApi"
+import { 
+  getClubApplications, 
+  getMyClubApply 
+} from "@/service/clubApplicationAPI"
 
 // ============================================
 // QUERY KEYS - Centralized for consistency
@@ -48,6 +57,17 @@ export const queryKeys = {
   policies: ["policies"] as const,
   policiesList: () => [...queryKeys.policies, "list"] as const,
   policyDetail: (id: number) => [...queryKeys.policies, "detail", id] as const,
+
+  // Member Applications
+  memberApplications: ["member-applications"] as const,
+  memberApplicationsList: () => [...queryKeys.memberApplications, "list"] as const,
+  memberApplicationsByClub: (clubId: number) => [...queryKeys.memberApplications, "club", clubId] as const,
+  myMemberApplications: () => [...queryKeys.memberApplications, "my"] as const,
+
+  // Club Applications
+  clubApplications: ["club-applications"] as const,
+  clubApplicationsList: () => [...queryKeys.clubApplications, "list"] as const,
+  myClubApplications: () => [...queryKeys.clubApplications, "my"] as const,
   
   // Attendances
   attendances: ["attendances"] as const,
@@ -446,5 +466,88 @@ export function useEvent(eventId: string | number, enabled = true) {
     },
     enabled: !!eventId && enabled,
     staleTime: 3 * 60 * 1000,
+  })
+}
+
+// ============================================
+// MEMBER APPLICATIONS QUERIES
+// ============================================
+
+/**
+ * Hook to fetch all member applications
+ */
+export function useMemberApplications(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.memberApplicationsList(),
+    queryFn: async () => {
+      const applications = await fetchAllMemberApplications()
+      return applications
+    },
+    enabled,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+  })
+}
+
+/**
+ * Hook to fetch member applications by club ID
+ */
+export function useMemberApplicationsByClub(clubId: number, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.memberApplicationsByClub(clubId),
+    queryFn: async () => {
+      const applications = await getMemberApplyByClubId(clubId)
+      return applications
+    },
+    enabled: !!clubId && enabled,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+  })
+}
+
+/**
+ * Hook to fetch current user's member applications
+ */
+export function useMyMemberApplications(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.myMemberApplications(),
+    queryFn: async () => {
+      const applications = await getMyMemApply()
+      return applications
+    },
+    enabled,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+  })
+}
+
+// ============================================
+// CLUB APPLICATIONS QUERIES
+// ============================================
+
+/**
+ * Hook to fetch all club applications (uni-staff)
+ */
+export function useClubApplications(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.clubApplicationsList(),
+    queryFn: async () => {
+      const applications = await getClubApplications()
+      return applications
+    },
+    enabled,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+  })
+}
+
+/**
+ * Hook to fetch current user's club applications
+ */
+export function useMyClubApplications(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.myClubApplications(),
+    queryFn: async () => {
+      const applications = await getMyClubApply()
+      return applications
+    },
+    enabled,
+    staleTime: 2 * 60 * 1000, // 2 minutes
   })
 }

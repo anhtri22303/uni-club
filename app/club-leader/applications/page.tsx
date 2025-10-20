@@ -12,9 +12,12 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { usePagination } from "@/hooks/use-pagination"
+import { useMemberApplicationsByClub } from "@/hooks/use-query-hooks"
+import { useQueryClient } from "@tanstack/react-query"
+import { Skeleton } from "@/components/ui/skeleton"
 import { UserCheck, Eye, ChevronLeft, ChevronRight, CheckCircle, XCircle } from "lucide-react"
-import { fetchAllMemberApplications, approveMemberApplication, rejectMemberApplication, getMemberApplyByClubId } from "@/service/memberApplicationApi"
-import { getClubIdFromToken, getClubById } from "@/service/clubApi" // <-- Thêm dòng này
+import { approveMemberApplication, rejectMemberApplication } from "@/service/memberApplicationApi"
+import { getClubIdFromToken, getClubById } from "@/service/clubApi"
 type MemberApplication = {
   applicationId: number
   clubId: number
@@ -51,8 +54,7 @@ interface ClubApiResponse {
 }
 export default function ClubLeaderApplicationsPage() {
   const { toast } = useToast()
-  const [applications, setApplications] = useState<MemberApplication[]>([])
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
   const [processingIds, setProcessingIds] = useState<Set<number>>(new Set())
   const [bulkProcessing, setBulkProcessing] = useState(false)
 
@@ -64,59 +66,36 @@ export default function ClubLeaderApplicationsPage() {
   const [managedClubId, setManagedClubId] = useState<number | null>(null)
   const [managedClubName, setManagedClubName] = useState<string | null>(null)
 
+  // ✅ USE REACT QUERY for member applications
+  const { data: applications = [], isLoading: loading } = useMemberApplicationsByClub(
+    managedClubId || 0,
+    !!managedClubId
+  )
 
-  // THÊM useEffect MỚI NÀY VÀO
+  // Get club info when managedClubId is available
   useEffect(() => {
-    const loadInitialData = async () => {
-      setLoading(true)
-      try {
-        // 1. Dùng hàm getClubIdFromToken() để lấy ID
-        const clubId = getClubIdFromToken()
-
-        if (clubId) {
-          setManagedClubId(clubId)
-
-          // 2. Gọi API để lấy thông tin CLB (lấy tên) và danh sách đơn
-          // Dùng Promise.all để thực hiện đồng thời, tăng hiệu suất
-          const [clubResponse, applicationsData] = await Promise.all([
-            getClubById(clubId),
-            getMemberApplyByClubId(clubId)
-          ])
-
-          // 3. Cập nhật state với dữ liệu nhận được
-          // if (clubResponse?.success) {
-          //   setManagedClubName(clubResponse.data.name)
-          // }
+    const loadClubInfo = async () => {
+      const clubId = getClubIdFromToken()
+      if (clubId) {
+        setManagedClubId(clubId)
+        try {
+          const clubResponse = await getClubById(clubId)
           if (clubResponse?.success && clubResponse.data) {
-            setManagedClubName(clubResponse.data.name) // <-- Hết lỗi
+            setManagedClubName(clubResponse.data.name)
           }
-          setApplications(applicationsData as MemberApplication[])
-
-        } else {
-          console.warn("Không tìm thấy clubId nào cho club leader.")
-          setApplications([]) // Đảm bảo danh sách rỗng nếu không có ID
+        } catch (error) {
+          console.error("Error loading club info:", error)
         }
-      } catch (error) {
-        console.error("Lỗi khi tải dữ liệu trang đơn xin gia nhập:", error)
-        toast({
-          title: "Error loading data",
-          description: "Không thể tải dữ liệu cần thiết.",
-          variant: "destructive",
-        })
-        setApplications([])
-      } finally {
-        setLoading(false)
       }
     }
-
-    loadInitialData()
-  }, [toast]) // Chỉ phụ thuộc vào toast
+    loadClubInfo()
+  }, [])
 
   // Applications are already filtered by clubId from API, so use them directly
   const clubApplications = applications
 
-  const pendingApplications = clubApplications.filter((a) => a.status === "PENDING")
-  const processedApplications = clubApplications.filter((a) => a.status !== "PENDING")
+  const pendingApplications = clubApplications.filter((a: any) => a.status === "PENDING")
+  const processedApplications = clubApplications.filter((a: any) => a.status !== "PENDING")
 
   // Phân trang (pagination hooks MUST run on every render)
   const {
@@ -147,13 +126,8 @@ export default function ClubLeaderApplicationsPage() {
         title: "Application approved",
         description: `${app.applicantName}'s application has been approved.`,
       })
-      setApplications((list) =>
-        list.map((application) =>
-          application.applicationId === app.applicationId
-            ? { ...application, status: "APPROVED" as const }
-            : application
-        )
-      )
+      // ✅ Refetch with React Query
+      queryClient.invalidateQueries({ queryKey: ["member-applications", "club", managedClubId] })
     } catch (error) {
       toast({
         title: "Error in application approval",
@@ -177,13 +151,8 @@ export default function ClubLeaderApplicationsPage() {
         title: "Application rejected",
         description: `${app.applicantName}'s application was rejected.`,
       })
-      setApplications((list) =>
-        list.map((application) =>
-          application.applicationId === app.applicationId
-            ? { ...application, status: "REJECTED" as const }
-            : application
-        )
-      )
+      // ✅ Refetch with React Query
+      queryClient.invalidateQueries({ queryKey: ["member-applications", "club", managedClubId] })
     } catch (error) {
       toast({
         title: "Application rejection error",
@@ -299,7 +268,7 @@ export default function ClubLeaderApplicationsPage() {
                         setBulkProcessing(true)
                         try {
                           await Promise.all(
-                            pendingApplications.map(app =>
+                            pendingApplications.map((app: any) =>
                               rejectMemberApplication(app.applicationId, "Bulk rejected by club leader")
                             )
                           )
@@ -307,13 +276,8 @@ export default function ClubLeaderApplicationsPage() {
                             title: "Rejected all",
                             description: `${pendingApplications.length} application has been rejected.`,
                           })
-                          setApplications((list) =>
-                            list.map((app) =>
-                              pendingApplications.find(pending => pending.applicationId === app.applicationId)
-                                ? { ...app, status: "REJECTED" as const }
-                                : app
-                            )
-                          )
+                          // ✅ Refetch with React Query
+                          queryClient.invalidateQueries({ queryKey: ["member-applications", "club", managedClubId] })
                         } catch (error) {
                           toast({
                             title: "Application rejection error",
@@ -340,19 +304,14 @@ export default function ClubLeaderApplicationsPage() {
                         setBulkProcessing(true)
                         try {
                           await Promise.all(
-                            pendingApplications.map(app => approveMemberApplication(app.applicationId))
+                            pendingApplications.map((app: any) => approveMemberApplication(app.applicationId))
                           )
                           toast({
                             title: "All approved",
                             description: `${pendingApplications.length} application has been approved.`,
                           })
-                          setApplications((list) =>
-                            list.map((app) =>
-                              pendingApplications.find(pending => pending.applicationId === app.applicationId)
-                                ? { ...app, status: "APPROVED" as const }
-                                : app
-                            )
-                          )
+                          // ✅ Refetch with React Query
+                          queryClient.invalidateQueries({ queryKey: ["member-applications", "club", managedClubId] })
                         } catch (error) {
                           toast({
                             title: "Error in application approval",
@@ -381,7 +340,7 @@ export default function ClubLeaderApplicationsPage() {
                 </Card>
               ) : (
                 <>
-                  {paginatedPending.map((app) => (
+                  {paginatedPending.map((app: any) => (
                     <Card key={app.applicationId}>
                       <CardContent className="pt-6">
                         <div className="flex items-start justify-between">
@@ -453,7 +412,7 @@ export default function ClubLeaderApplicationsPage() {
                 </Card>
               ) : (
                 <>
-                  {paginatedReviewed.map((app) => (
+                  {paginatedReviewed.map((app: any) => (
                     <Card key={app.applicationId}>
                       <CardContent className="pt-6">
                         <div className="flex items-start justify-between">
@@ -560,13 +519,8 @@ export default function ClubLeaderApplicationsPage() {
                           description: `${selectedApplication.applicantName}'s application was rejected.`,
                         })
                         setShowApplicationModal(false)
-                        setApplications((list) =>
-                          list.map((app) =>
-                            app.applicationId === selectedApplication.applicationId
-                              ? { ...app, status: "REJECTED", reviewNote }
-                              : app
-                          )
-                        )
+                        // ✅ Refetch with React Query
+                        queryClient.invalidateQueries({ queryKey: ["member-applications", "club", managedClubId] })
                       } catch (error) {
                         toast({
                           title: "Application rejection error",
@@ -587,13 +541,8 @@ export default function ClubLeaderApplicationsPage() {
                           description: `${selectedApplication.applicantName}'s application has been approved.`,
                         })
                         setShowApplicationModal(false)
-                        setApplications((list) =>
-                          list.map((app) =>
-                            app.applicationId === selectedApplication.applicationId
-                              ? { ...app, status: "APPROVED", reviewNote: undefined }
-                              : app
-                          )
-                        )
+                        // ✅ Refetch with React Query
+                        queryClient.invalidateQueries({ queryKey: ["member-applications", "club", managedClubId] })
                       } catch (error) {
                         toast({
                           title: "Error in application approval",

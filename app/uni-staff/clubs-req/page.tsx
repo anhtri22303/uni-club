@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { AppShell } from "@/components/app-shell"
 import { ProtectedRoute } from "@/contexts/protected-route"
 import { Badge } from "@/components/ui/badge"
@@ -11,10 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Building, Users, Calendar, Search, CheckCircle, XCircle, Clock, Eye, Plus } from "lucide-react"
 import Link from "next/link"
-import { getClubApplications, ClubApplication, putClubApplicationStatus } from "@/service/clubApplicationAPI"
-import { postClubApplication } from "@/service/clubApplicationAPI"
+import { putClubApplicationStatus, postClubApplication } from "@/service/clubApplicationAPI"
 import { Modal } from "@/components/modal"
 import { useToast } from "@/hooks/use-toast"
+import { useClubApplications } from "@/hooks/use-query-hooks"
+import { useQueryClient } from "@tanstack/react-query"
 
 // We'll fetch real club application data from the backend and map it to the
 // UI data shape used previously.
@@ -37,9 +38,6 @@ type UiClubRequest = {
 export default function UniStaffClubRequestsPage() {
 	const [searchTerm, setSearchTerm] = useState("")
 	const [categoryFilter, setCategoryFilter] = useState<string>("all")
-	const [requests, setRequests] = useState<UiClubRequest[]>([])
-	const [loading, setLoading] = useState<boolean>(false)
-	const [error, setError] = useState<string | null>(null)
 	const [isModalOpen, setIsModalOpen] = useState<boolean>(false)
 	const [newClubName, setNewClubName] = useState<string>("")
 	const [newDescription, setNewDescription] = useState<string>("")
@@ -47,78 +45,51 @@ export default function UniStaffClubRequestsPage() {
 	const [newProposerReason, setNewProposerReason] = useState<string>("")
 	const [activeTab, setActiveTab] = useState<string>("pending")
 	const { toast } = useToast()
+	const queryClient = useQueryClient()
 
-	useEffect(() => {
-		let mounted = true
-		setLoading(true)
-		getClubApplications()
-			.then((data: ClubApplication[]) => {
-				if (!mounted) return
-				// Map API shape to UI shape. The API doesn't include category, expectedMembers, etc.
-				const mapped: UiClubRequest[] = data.map((d) => ({
-					id: `req-${d.applicationId}`,
-					clubName: d.clubName,
-					category: "Unknown",
-					description: d.description,
-					requestedBy: d.submittedBy?.fullName ?? "Unknown",
-					requestedByEmail: d.submittedBy?.email ?? "",
-					requestDate: d.submittedAt,
-					status: d.status,
-				}))
-				setRequests(mapped)
-			})
-			.catch((err) => {
-				console.error(err)
-				setError("Failed to load club applications")
-			})
-			.finally(() => mounted && setLoading(false))
+	// Use React Query hook to fetch club applications
+	const { data: applications = [], isLoading: loading, error } = useClubApplications()
 
-		return () => {
-			mounted = false
-		}
-	}, []) 
+	// Map API shape to UI shape
+	const requests: UiClubRequest[] = applications.map((d: any) => ({
+		id: `req-${d.applicationId}`,
+		applicationId: d.applicationId,
+		clubName: d.clubName,
+		category: (d as any).category ?? "Unknown",
+		description: d.description,
+		requestedBy: d.submittedBy?.fullName ?? "Unknown",
+		requestedByEmail: d.submittedBy?.email ?? "",
+		requestDate: d.submittedAt,
+		status: d.status,
+	})) 
 
 	async function handleSendNewApplication() {
-			if (!newClubName.trim() || !newDescription.trim() || !newCategory.trim() || !newProposerReason.trim()) {
-				toast({ title: 'Missing Information', description: 'Please fill in all fields.', variant: 'destructive' });
-				return;
-			}
-			setLoading(true);
-			setError(null);
-			try {
-				const created = await postClubApplication({
-					clubName: newClubName,
-					description: newDescription,
-					category: parseInt(newCategory, 10),
-					proposerReason: newProposerReason,
-				});
-				toast({ title: 'Application sent', description: `${created.clubName} submitted`, variant: 'success' });
-				// reload list
-				const data = await getClubApplications();
-					const mapped: UiClubRequest[] = data.map((d) => ({
-						id: `req-${d.applicationId}`,
-						applicationId: d.applicationId,
-						clubName: d.clubName,
-						category: (d as any).category ?? "Unknown",
-						description: d.description,
-						requestedBy: d.submittedBy?.fullName ?? "Unknown",
-						requestedByEmail: d.submittedBy?.email ?? "",
-						requestDate: d.submittedAt,
-						status: d.status,
-					}));
-				setRequests(mapped);
-				setIsModalOpen(false);
-				setNewClubName("");
-				setNewDescription("");
-				setNewCategory("");
-				setNewProposerReason("");
-			} catch (err) {
-				console.error(err);
-				setError('Failed to create application');
-				toast({ title: 'Error', description: 'Failed to send application', variant: 'destructive' });
-			} finally {
-				setLoading(false);
-			}
+		if (!newClubName.trim() || !newDescription.trim() || !newCategory.trim() || !newProposerReason.trim()) {
+			toast({ title: 'Missing Information', description: 'Please fill in all fields.', variant: 'destructive' });
+			return;
+		}
+		try {
+			const created = await postClubApplication({
+				clubName: newClubName,
+				description: newDescription,
+				category: parseInt(newCategory, 10),
+				proposerReason: newProposerReason,
+			});
+			toast({ title: 'Application sent', description: `${created.clubName} submitted`, variant: 'success' });
+			
+			// Invalidate cache to refetch updated list
+			queryClient.invalidateQueries({ queryKey: ["club-applications"] });
+			
+			// Reset form
+			setIsModalOpen(false);
+			setNewClubName("");
+			setNewDescription("");
+			setNewCategory("");
+			setNewProposerReason("");
+		} catch (err) {
+			console.error(err);
+			toast({ title: 'Error', description: 'Failed to send application', variant: 'destructive' });
+		}
 	}
 
 	// async function approveApplication(appId?: number) {
@@ -405,7 +376,7 @@ export default function UniStaffClubRequestsPage() {
 							) : error ? (
 								<Card>
 									<CardContent className="py-8 text-center text-destructive">
-										{error}
+										{String(error)}
 									</CardContent>
 								</Card>
 							) : pendingRequests.length === 0 ? (
@@ -487,7 +458,7 @@ export default function UniStaffClubRequestsPage() {
 							) : error ? (
 								<Card>
 									<CardContent className="py-8 text-center text-destructive">
-										{error}
+										{String(error)}
 									</CardContent>
 								</Card>
 							) : processedRequests.length === 0 ? (
