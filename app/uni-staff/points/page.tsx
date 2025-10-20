@@ -11,26 +11,24 @@ import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { useToast } from "@/hooks/use-toast"
 import { usePagination } from "@/hooks/use-pagination"
-import { Users, ShieldCheck, ChevronLeft, ChevronRight, Send } from "lucide-react"
+import { Users, ShieldCheck, ChevronLeft, ChevronRight, Send, UserCircle } from "lucide-react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
-
 // ✨ --- IMPORT API THẬT --- ✨
-import { getAllClubs } from "@/service/clubApi" 
+import { fetchClub } from "@/service/clubApi"
 import { distributePointsToClubs } from "@/service/walletApi"
 
-// Định nghĩa một kiểu dữ liệu cơ bản cho Club để tăng type-safety
-// Bạn nên export interface `Club` từ file clubApi.ts và import ở đây để dùng chung
+// Định nghĩa một kiểu dữ liệu cơ bản cho Club
 interface Club {
-  id: number | string;
-  name: string;
-  logoUrl?: string | null;
-  memberCount?: number;
-  state?: 'ACTIVE' | 'INACTIVE';
+    id: number | string;
+    name: string;
+    logoUrl?: string | null;
+    memberCount?: number;
+    leaderName?: string | null;
 }
 
 export default function UniversityStaffRewardPage() {
     const { toast } = useToast()
-    const [allClubs, setAllClubs] = useState<Club[]>([]) // Sử dụng type Club
+    const [allClubs, setAllClubs] = useState<Club[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
 
@@ -41,19 +39,25 @@ export default function UniversityStaffRewardPage() {
     // Tải danh sách tất cả các CLB khi component được mount bằng API thật
     useEffect(() => {
         const loadClubs = async () => {
-            setLoading(true)
+            setLoading(true);
             try {
-                // ✨ SỬ DỤNG API THẬT ✨
-                const clubsData = await getAllClubs() 
-                setAllClubs(clubsData) // Hàm getAllClubs đã lọc sẵn các CLB 'ACTIVE'
+                // response bây giờ sẽ có dạng { content: [...] }
+                const response = await fetchClub({ page: 0, size: 1000, sort: ["name"] });
+
+                // ✨ THAY ĐỔI QUAN TRỌNG: Truy cập trực tiếp vào response.content ✨
+                if (response && response.content) {
+                    setAllClubs(response.content);
+                } else {
+                    setAllClubs([]);
+                }
             } catch (err: any) {
-                setError(err.message || "Error loading club list")
+                setError(err.message || "Error loading club list");
             } finally {
-                setLoading(false)
+                setLoading(false);
             }
-        }
-        loadClubs()
-    }, [])
+        };
+        loadClubs();
+    }, []);
 
     // Khởi tạo trạng thái "chọn" cho mỗi CLB khi danh sách được tải
     useEffect(() => {
@@ -86,7 +90,7 @@ export default function UniversityStaffRewardPage() {
         totalPages,
         paginatedData: paginatedClubs,
         setCurrentPage,
-    } = usePagination({ data: allClubs, initialPageSize: 5 })
+    } = usePagination({ data: allClubs, initialPageSize: 8 })
 
     const handleDistributeRewards = async () => {
         if (rewardAmount === '' || rewardAmount <= 0) {
@@ -103,11 +107,8 @@ export default function UniversityStaffRewardPage() {
 
         setIsDistributing(true)
         try {
-            // ✨ SỬ DỤNG API THẬT ✨
-            // Lưu ý thứ tự tham số: (clubIds, points)
             const result = await distributePointsToClubs(selectedClubIds, rewardAmount as number)
-            
-            // Giả định backend trả về một object có thuộc tính success
+
             if (result.success) {
                 toast({
                     title: "Success",
@@ -131,7 +132,7 @@ export default function UniversityStaffRewardPage() {
             setIsDistributing(false)
         }
     }
-    
+
     const MinimalPager = ({ current, total, onPrev, onNext }: { current: number; total: number; onPrev: () => void; onNext: () => void }) =>
         total > 1 ? (
             <div className="flex items-center justify-center gap-3 mt-4">
@@ -145,7 +146,6 @@ export default function UniversityStaffRewardPage() {
             </div>
         ) : null
 
-    // Giao diện (JSX) giữ nguyên không đổi
     return (
         <ProtectedRoute allowedRoles={["uni_staff"]}>
             <AppShell>
@@ -197,7 +197,7 @@ export default function UniversityStaffRewardPage() {
                     <Separator />
 
                     <h2 className="text-2xl font-semibold">Club List ({allClubs.length})</h2>
-                    
+
                     <div className="space-y-4">
                         {loading ? (
                             <p>Loading clubs...</p>
@@ -212,9 +212,8 @@ export default function UniversityStaffRewardPage() {
                                     return (
                                         <Card
                                             key={club.id}
-                                            className={`transition-all duration-200 border-2 ${
-                                                isSelected ? "border-primary/70 bg-primary/5" : "border-transparent hover:border-muted"
-                                            }`}
+                                            className={`transition-all duration-200 border-2 ${isSelected ? "border-primary/70 bg-primary/5" : "border-transparent hover:border-muted"
+                                                }`}
                                         >
                                             <CardContent className="py-3 flex items-center justify-between">
                                                 <div className="flex items-center gap-4">
@@ -224,21 +223,22 @@ export default function UniversityStaffRewardPage() {
                                                     </Avatar>
                                                     <div>
                                                         <p className="font-semibold text-lg">{club.name}</p>
-                                                        <Badge variant="outline">
-                                                            <Users className="mr-1.5 h-3 w-3" />
-                                                            {club.memberCount} Members
-                                                        </Badge>
+                                                        {/* {club.memberCount !== undefined && (
+                                                            <Badge variant="outline">
+                                                                <Users className="mr-1.5 h-3 w-3" />
+                                                                {club.memberCount} Members
+                                                            </Badge>
+                                                        )} */}
+                                                        {club.leaderName && (
+                                                            <p className="text-sm text-muted-foreground flex items-center">
+                                                                <UserCircle className="mr-1.5 h-4 w-4" />
+                                                                {club.leaderName}
+                                                            </p>
+                                                        )}
                                                     </div>
                                                 </div>
 
                                                 <div className="flex items-center gap-4">
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        className={isSelected ? "border-primary text-primary" : ""}
-                                                    >
-                                                        + {rewardAmount || 0} pts
-                                                    </Button>
                                                     <input
                                                         type="checkbox"
                                                         checked={isSelected}
@@ -246,6 +246,13 @@ export default function UniversityStaffRewardPage() {
                                                         className="w-5 h-5 accent-primary cursor-pointer"
                                                         style={{ transform: "scale(1.2)" }}
                                                     />
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className={isSelected ? "border-primary text-primary" : ""}
+                                                    >
+                                                        + {rewardAmount || 0} pts
+                                                    </Button>
                                                 </div>
                                             </CardContent>
                                         </Card>
