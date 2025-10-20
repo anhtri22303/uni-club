@@ -7,9 +7,6 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { usePagination } from "@/hooks/use-pagination"
 import { useData } from "@/contexts/data-context"
-import { fetchPolicies } from "@/service/policyApi"
-import { fetchEvent } from "@/service/eventApi"
-import { fetchClub } from "@/service/clubApi"
 import { getClubApplications } from "@/service/clubApplicationAPI"
 import { useEffect } from "react"
 import {
@@ -27,48 +24,41 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react"
+import { useEvents, useClubs, usePolicies } from "@/hooks/use-query-hooks"
 
 // Import data
 import users from "@/src/data/users.json"
 import redemptions from "@/src/data/redemptions.json"
 
 export default function UniStaffReportsPage() {
-  const { clubMemberships, membershipApplications, vouchers, events, clubs, policies, clubApplications, eventRequests, updateEvents, updateClubs, updatePolicies, updateClubApplications, updateEventRequests } = useData()
+  const { clubMemberships, membershipApplications, vouchers, clubApplications, eventRequests, updateClubApplications, updateEventRequests } = useData()
 
-  // Fetch data when component mounts
+  // Use React Query hooks
+  const { data: apiEvents = [] } = useEvents()
+  const { data: apiClubs = [] } = useClubs()
+  const { data: apiPolicies = [] } = usePolicies()
+
+  // Normalize data for context
+  const events = apiEvents
+  const clubs = Array.isArray(apiClubs) ? apiClubs : []
+  const policies = apiPolicies
+
+  // Fetch club applications when component mounts
   useEffect(() => {
-    const loadData = async () => {
+    const loadClubApplications = async () => {
       try {
-        // Fetch events
-        const eventData = await fetchEvent()
-        updateEvents(eventData || [])
-        
-        // Fetch clubs
-        const clubData: any = await fetchClub()
-        if (clubData && Array.isArray(clubData)) {
-          updateClubs(clubData)
-        } else if (clubData && clubData.content && Array.isArray(clubData.content)) {
-          updateClubs(clubData.content)
-        } else {
-          updateClubs([])
-        }
-
-        // Fetch policies
-        const policyData = await fetchPolicies()
-        updatePolicies(policyData || [])
-
-        // Fetch club applications
         const clubAppData = await getClubApplications()
         updateClubApplications(clubAppData || [])
-
-        // Sử dụng cùng dữ liệu events cho eventRequests (tránh gọi API hai lần)
-        updateEventRequests(eventData || [])
+        // Use events data for eventRequests
+        updateEventRequests(apiEvents || [])
       } catch (error) {
-        console.error("Failed to fetch data:", error)
+        console.error("Failed to fetch club applications:", error)
       }
     }
-    loadData()
-  }, []) // Loại bỏ dependencies để tránh infinite loop
+    if (apiEvents.length > 0) {
+      loadClubApplications()
+    }
+  }, [apiEvents, updateClubApplications, updateEventRequests])
 
   const usersByRole = users.reduce(
     (acc, user) => {

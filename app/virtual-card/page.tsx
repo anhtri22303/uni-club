@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Download, Share2, Loader2 } from "lucide-react"
-import { fetchProfile } from "@/service/userApi"
+import { useProfile } from "@/hooks/use-query-hooks"
 import QRCode from 'qrcode'
 
 interface SafeProfileData {
@@ -71,22 +71,21 @@ export default function VirtualCardPage() {
   const router = useRouter()
   const cardRef = useRef<HTMLDivElement>(null)
   
+  // Use React Query hook
+  const { data: profile, isLoading: loading, error: fetchError } = useProfile()
+  
   const [profileData, setProfileData] = useState<SafeProfileData | null>(null)
   const [completeProfileData, setCompleteProfileData] = useState<CompleteProfileData | null>(null)
   const [qrCodeUrl, setQrCodeUrl] = useState<string>("")
-  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Load profile data and generate QR code
+  // Generate QR code when profile data changes
   useEffect(() => {
-    const loadProfileAndGenerateQR = async () => {
+    const generateQR = async () => {
+      if (!profile) return
+      
       try {
-        setLoading(true)
-        console.log('Starting profile load...')
-        
-        // Fetch profile data
-        const profile = await fetchProfile()
-        console.log('Raw profile data:', profile)
+        console.log('Starting QR code generation with profile:', profile)
         
         if (!profile) {
           throw new Error('No profile data received')
@@ -310,15 +309,13 @@ export default function VirtualCardPage() {
         console.log('QR code generated successfully')
         setQrCodeUrl(qrUrl)
       } catch (err) {
-        console.error("Error loading profile or generating QR:", err)
+        console.error("Error generating QR:", err)
         setError(err instanceof Error ? err.message : "Failed to load card data")
-      } finally {
-        setLoading(false)
       }
     }
 
-    loadProfileAndGenerateQR()
-  }, [])
+    generateQR()
+  }, [profile])
 
   const handleDownloadCard = async () => {
     if (!cardRef.current) return

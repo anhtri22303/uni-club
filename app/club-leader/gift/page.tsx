@@ -25,8 +25,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Gift, Package, Calendar, Clock, CheckCircle, XCircle, Plus, ChevronLeft, ChevronRight } from "lucide-react"
 import { usePagination } from "@/hooks/use-pagination"
 
-import { useEffect, useState } from "react"
-import { getProduct, addProduct, Product } from "@/service/productApi"
+import { useState } from "react"
+import { addProduct, Product } from "@/service/productApi"
+import { useProducts } from "@/hooks/use-query-hooks"
+import { useQueryClient } from "@tanstack/react-query"
+import { queryKeys } from "@/hooks/use-query-hooks"
 
 // ---- Compact status badge overlay ----
 const StatusBadge = ({ status }: { status: string }) => {
@@ -55,28 +58,16 @@ const MinimalPager = ({ current, total, onPrev, onNext }: { current: number, tot
   ) : null
 
 export default function ClubLeaderGiftPage() {
-  const [products, setProducts] = useState<Product[]>([])
-  const [loading, setLoading] = useState(false)
+  const queryClient = useQueryClient()
+  const { toast } = require("@/hooks/use-toast")
+
+  // ✅ REACT QUERY: Load products
+  const { data: products = [], isLoading: loading } = useProducts({ page: 0, size: 20, sort: "name" })
+
   const [searchTerm, setSearchTerm] = useState("")
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState<Product>({ clubId: 6, name: "", description: "", pricePoints: 0, stockQuantity: 0 })
   const [submitting, setSubmitting] = useState(false)
-  const { toast } = require("@/hooks/use-toast")
-
-  useEffect(() => {
-    async function fetchProducts() {
-      setLoading(true)
-      try {
-        const data = await getProduct({ page: 0, size: 20 })
-        setProducts(data)
-      } catch (err) {
-        setProducts([])
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchProducts()
-  }, [])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -94,9 +85,8 @@ export default function ClubLeaderGiftPage() {
         toast({ title: "Product created", description: "Product added successfully!", variant: "success" })
         setOpen(false)
         setForm({ clubId: 6, name: "", description: "", pricePoints: 0, stockQuantity: 0 })
-        // reload products
-        const data = await getProduct({ page: 0, size: 20 })
-        setProducts(data)
+        // ✅ REACT QUERY: Invalidate cache to refetch products
+        queryClient.invalidateQueries({ queryKey: queryKeys.productsList({ page: 0, size: 20, sort: "name" }) })
       } else {
         toast({ title: "Error", description: res.message || "Failed to create product", variant: "destructive" })
       }

@@ -7,8 +7,8 @@ import { CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { fetchPolicies, Policy, deletePolicyById, updatePolicyById, createPolicy } from "@/service/policyApi"
-import { useEffect, useMemo, useState } from "react"
+import { Policy, deletePolicyById, updatePolicyById, createPolicy } from "@/service/policyApi"
+import { useMemo, useState, useEffect } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -16,15 +16,21 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { FileText, Search, Eye, Trash, Plus } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
+import { usePolicies } from "@/hooks/use-query-hooks"
+import { useQueryClient } from "@tanstack/react-query"
+import { queryKeys } from "@/hooks/use-query-hooks"
 
 export default function UniStaffPoliciesPage() {
-  const [policies, setPolicies] = useState<Policy[]>([])
-  const [loading, setLoading] = useState(false)
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+  const router = useRouter()
+
+  // ✅ REACT QUERY: Load policies
+  const { data: policies = [], isLoading: loading } = usePolicies()
+
   const [query, setQuery] = useState("")
   const [selected, setSelected] = useState<Policy | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
-  const { toast } = useToast()
-  const router = useRouter()
 
   // edit form state for policy detail modal
   const [editPolicyName, setEditPolicyName] = useState("")
@@ -46,34 +52,7 @@ export default function UniStaffPoliciesPage() {
   const [createRewardMultiplier, setCreateRewardMultiplier] = useState<number | undefined>(undefined)
   const [creating, setCreating] = useState(false)
 
-  const reloadPolicies = async () => {
-    setLoading(true)
-    try {
-      const data = await fetchPolicies()
-      setPolicies(data)
-    } catch (err) {
-      console.error("Failed to reload policies", err)
-      toast({ title: 'Lỗi', description: 'Không thể tải lại policies.' })
-    } finally {
-      setLoading(false)
-    }
-  }
-  useEffect(() => {
-    let mounted = true
-    setLoading(true)
-    fetchPolicies()
-      .then((data) => {
-        if (!mounted) return
-        setPolicies(data)
-      })
-      .catch((err) => {
-        console.error("Failed to load policies", err)
-      })
-      .finally(() => mounted && setLoading(false))
-    return () => {
-      mounted = false
-    }
-  }, [])
+  // ✅ REMOVED: reloadPolicies and useEffect - React Query handles data fetching
 
   const filtered = useMemo(() => {
     if (!query) return policies
@@ -129,8 +108,8 @@ export default function UniStaffPoliciesPage() {
         // update local selected so modal reflects saved values
         const updated = (res && res.data) ? res.data : { ...selected, ...payload }
         setSelected(updated as Policy)
-        // refresh list in background
-        reloadPolicies().catch(() => {})
+        // ✅ REACT QUERY: Invalidate cache to refetch policies
+        queryClient.invalidateQueries({ queryKey: queryKeys.policiesList() })
       } else {
         toast({ title: 'Thất bại', description: (res && res.message) || 'Cập nhật policy thất bại.' })
       }
@@ -236,7 +215,8 @@ export default function UniStaffPoliciesPage() {
                                       if (res && (res.success === true || res.deleted)) {
                                         toast({ title: res.message || 'Đã xóa', description: '' })
                                         if (selected?.id === p.id) setDialogOpen(false)
-                                        await reloadPolicies()
+                                        // ✅ REACT QUERY: Invalidate cache to refetch policies
+                                        queryClient.invalidateQueries({ queryKey: queryKeys.policiesList() })
                                         try { router.refresh() } catch (e) { /* ignore */ }
                                       } else {
                                         toast({ title: 'Thất bại', description: (res && res.message) || 'Xóa policy thất bại.' })
@@ -385,8 +365,8 @@ export default function UniStaffPoliciesPage() {
                       if (res && (res.success || res.data || res.status === 201)) {
                         toast({ title: res.message || 'Created', description: '' })
                         setCreateOpen(false)
-                        // reload list
-                        await reloadPolicies()
+                        // ✅ REACT QUERY: Invalidate cache to refetch policies
+                        queryClient.invalidateQueries({ queryKey: queryKeys.policiesList() })
                       } else {
                         toast({ title: 'Thất bại', description: (res && res.message) || 'Tạo policy thất bại.' })
                       }
