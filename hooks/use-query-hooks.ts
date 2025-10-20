@@ -2,10 +2,14 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { fetchClub, getClubById, getClubMemberCount } from "@/service/clubApi"
-import { fetchEvent } from "@/service/eventApi"
-import { fetchUser, fetchUserById } from "@/service/userApi"
+import { fetchEvent, getEventById } from "@/service/eventApi"
+import { fetchUser, fetchUserById, fetchProfile } from "@/service/userApi"
 import { getMembersByClubId } from "@/service/membershipApi"
 import { fetchMajors } from "@/service/majorApi"
+import { getProduct } from "@/service/productApi"
+import { getWallet } from "@/service/walletApi"
+import { fetchPolicies, fetchPolicyById } from "@/service/policyApi"
+import { fetchAttendanceByDate } from "@/service/attendanceApi"
 
 // ============================================
 // QUERY KEYS - Centralized for consistency
@@ -31,6 +35,26 @@ export const queryKeys = {
   // Majors
   majors: ["majors"] as const,
   majorsList: () => [...queryKeys.majors, "list"] as const,
+
+  // Products
+  products: ["products"] as const,
+  productsList: (params?: any) => [...queryKeys.products, "list", params] as const,
+  
+  // Wallet
+  wallet: ["wallet"] as const,
+  walletDetail: (userId?: string | number) => [...queryKeys.wallet, "detail", userId] as const,
+  
+  // Policies
+  policies: ["policies"] as const,
+  policiesList: () => [...queryKeys.policies, "list"] as const,
+  policyDetail: (id: number) => [...queryKeys.policies, "detail", id] as const,
+  
+  // Attendances
+  attendances: ["attendances"] as const,
+  attendancesByDate: (date: string) => [...queryKeys.attendances, "date", date] as const,
+  
+  // Profile
+  profile: ["profile"] as const,
 }
 
 // ============================================
@@ -297,4 +321,130 @@ export function usePrefetchClub() {
       staleTime: 5 * 60 * 1000,
     })
   }
+}
+
+// ============================================
+// PRODUCTS QUERIES
+// ============================================
+
+/**
+ * Hook to fetch products with pagination
+ */
+export function useProducts(params = { page: 0, size: 10, sort: "name" }) {
+  return useQuery({
+    queryKey: queryKeys.productsList(params),
+    queryFn: async () => {
+      const products = await getProduct(params)
+      return products
+    },
+    staleTime: 3 * 60 * 1000, // 3 minutes
+  })
+}
+
+// ============================================
+// WALLET QUERIES
+// ============================================
+
+/**
+ * Hook to fetch current user's wallet
+ */
+export function useWallet() {
+  return useQuery({
+    queryKey: queryKeys.walletDetail(),
+    queryFn: async () => {
+      const wallet = await getWallet()
+      return wallet
+    },
+    staleTime: 2 * 60 * 1000, // 2 minutes (wallet data changes frequently)
+  })
+}
+
+// ============================================
+// POLICIES QUERIES
+// ============================================
+
+/**
+ * Hook to fetch all policies
+ */
+export function usePolicies() {
+  return useQuery({
+    queryKey: queryKeys.policiesList(),
+    queryFn: async () => {
+      const policies = await fetchPolicies()
+      return policies
+    },
+    staleTime: 10 * 60 * 1000, // 10 minutes (policies rarely change)
+  })
+}
+
+/**
+ * Hook to fetch single policy by ID
+ */
+export function usePolicy(policyId: number, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.policyDetail(policyId),
+    queryFn: async () => {
+      const policy = await fetchPolicyById(policyId)
+      return policy
+    },
+    enabled: !!policyId && enabled,
+    staleTime: 10 * 60 * 1000,
+  })
+}
+
+// ============================================
+// ATTENDANCES QUERIES
+// ============================================
+
+/**
+ * Hook to fetch attendances by date
+ */
+export function useAttendancesByDate(date: string, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.attendancesByDate(date),
+    queryFn: async () => {
+      const attendances = await fetchAttendanceByDate(date)
+      return attendances
+    },
+    enabled: !!date && enabled,
+    staleTime: 1 * 60 * 1000, // 1 minute (attendance data is time-sensitive)
+  })
+}
+
+// ============================================
+// PROFILE QUERIES
+// ============================================
+
+/**
+ * Hook to fetch current user's profile
+ */
+export function useProfile(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.profile,
+    queryFn: async () => {
+      const profile = await fetchProfile()
+      return profile
+    },
+    enabled,
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+// ============================================
+// EVENT DETAIL QUERY
+// ============================================
+
+/**
+ * Hook to fetch single event by ID
+ */
+export function useEvent(eventId: string | number, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.eventDetail(Number(eventId)),
+    queryFn: async () => {
+      const event = await getEventById(eventId)
+      return event
+    },
+    enabled: !!eventId && enabled,
+    staleTime: 3 * 60 * 1000,
+  })
 }

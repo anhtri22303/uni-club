@@ -10,10 +10,12 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useData } from "@/contexts/data-context"
-import membershipApi, { type ApiMembership } from "@/service/membershipApi"
+import { type ApiMembership } from "@/service/membershipApi"
 import { getClubById, getClubIdFromToken } from "@/service/clubApi"
 import { useToast } from "@/hooks/use-toast"
 import { usePagination } from "@/hooks/use-pagination"
+import { useClub, useClubMembers } from "@/hooks/use-query-hooks"
+import { useQueryClient } from "@tanstack/react-query"
 import {
   Users,
   Trash2,
@@ -47,86 +49,17 @@ interface ClubApiResponse {
 export default function ClubLeaderMembersPage() {
   const { clubMemberships } = useData()
   const { toast } = useToast()
-  // State để lưu thông tin club và quản lý loading
-  const [managedClub, setManagedClub] = useState<Club | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [apiMembers, setApiMembers] = useState<ApiMembership[]>([])
-  const [membersLoading, setMembersLoading] = useState(false)
-  const [membersError, setMembersError] = useState<string | null>(null)
+  const queryClient = useQueryClient()
+  const [clubId] = useState(() => getClubIdFromToken())
 
-  // useEffect để lấy thông tin club và thành viên
-  useEffect(() => {
-    const loadInitialData = async () => {
-      setLoading(true)
-      try {
-        // 1. Lấy clubId từ token
-        const clubId = getClubIdFromToken()
-        if (!clubId) {
-          throw new Error("Không tìm thấy thông tin câu lạc bộ của bạn.")
-        }
-        // 2. Lấy thông tin chi tiết của club
-        const clubResponse = (await getClubById(clubId)) as ClubApiResponse
-        if (clubResponse && clubResponse.success) {
-          setManagedClub(clubResponse.data)
-          // 3. Sau khi có club, tải danh sách thành viên
-          setMembersLoading(true)
-          setMembersError(null)
-          // try {
-          //   // Gọi đúng API để lấy danh sách member theo clubId
-          //   const memberData = await membershipApi.getMembersByClubId(clubId)
-          //   // Dùng Promise.all để fetch chi tiết từng user
-          //   const membersWithUserData = await Promise.all(
-          //     memberData.map(async (m: any) => {
-          //       try {
-          //         const userInfo = await fetchUserById(m.userId)
-          //         console.log(`User info for ${m.userId}:`, userInfo)
-          //         console.log("fetchUserById raw:", userInfo)
-          //         return { ...m, userInfo }
-          //       } catch (err) {
-          //         console.warn(`Không thể lấy thông tin user ${m.userId}`, err)
-          //         return { ...m, userInfo: null }
-          //       }
-          //     })
-          //   )
-          //   // setApiMembers(memberData)
-          //   setApiMembers(membersWithUserData)
-          //   console.log("MEMBER DATA:", membersWithUserData);
-          //   console.table(membersWithUserData.map(m => ({
-          //     userId: m.userId,
-          //     fullName: m.userInfo?.fullName,
-          //     email: m.userInfo?.email,
-          //     avatarUrl: m.userInfo?.avatarUrl
-          //   })))
+  // ✅ USE REACT QUERY for club and members
+  const { data: managedClub, isLoading: loading } = useClub(clubId || 0, !!clubId)
+  const { data: apiMembers = [], isLoading: membersLoading, error: membersQueryError } = useClubMembers(
+    clubId || 0,
+    !!clubId
+  )
+  const membersError = membersQueryError ? String(membersQueryError) : null
 
-          // } catch (err: any) {
-          //   setMembersError(err?.message || "Failed to load members")
-          // } finally {
-          //   setMembersLoading(false)
-          // }
-          try {
-            const memberData = await membershipApi.getMembersByClubId(clubId)
-            console.log("MEMBER DATA FROM API:", memberData)
-
-            setApiMembers(memberData)
-          } catch (err: any) {
-            setMembersError(err?.message || "Failed to load members")
-          } finally {
-            setMembersLoading(false)
-          }
-        } else {
-          // throw new Error(clubResponse?.message || "Không thể tải thông tin câu lạc bộ.")
-          throw new Error("Không thể tải thông tin câu lạc bộ.")
-        }
-      } catch (error: any) {
-        setMembersError(error.message)
-        console.error("Lỗi khi tải dữ liệu:", error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadInitialData()
-  }, [])
   console.log("CLUB ĐỂ LỌC (managedClub):", managedClub)
   console.log("DANH SÁCH MEMBER TỪ API (apiMembers):", apiMembers)
 

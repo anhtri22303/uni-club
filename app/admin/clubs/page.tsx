@@ -1,13 +1,14 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { AppShell } from "@/components/app-shell"
 import { ProtectedRoute } from "@/contexts/protected-route"
 import { DataTable } from "@/components/data-table"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
+import { useClubs } from "@/hooks/use-query-hooks"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Users, Calendar, TrendingUp } from "lucide-react"
-import { fetchClub } from "@/service/clubApi"
 
 // Bảng màu theo ngành học
 const categoryColors: Record<string, string> = {
@@ -41,36 +42,17 @@ type ClubApiItem = {
 
 export default function AdminClubsPage() {
   const { toast } = useToast()
-  const [clubs, setClubs] = useState<ClubApiItem[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    let mounted = true
-    const load = async () => {
-      setLoading(true)
-      setError(null)
-      try {
-        const res: any = await fetchClub({ page: 0, size: 20, sort: ["name"] })
-        if (mounted) {
-          setClubs(res?.content ?? [])
-        }
-      } catch (err: any) {
-        console.error(err)
-        if (mounted) setError(err?.message ?? "Failed to load clubs")
-      } finally {
-        if (mounted) setLoading(false)
-      }
-    }
-
-    load()
-    return () => {
-      mounted = false
-    }
-  }, [])
+  // ✅ USE REACT QUERY for clubs
+  const { data: clubs = [], isLoading: loading, error: queryError } = useClubs({
+    page: 0,
+    size: 20,
+    sort: ["name"]
+  })
+  const error = queryError ? String(queryError) : null
 
   // Map dữ liệu API sang định dạng bảng
-  const enhancedClubs = clubs.map((club) => {
+  const enhancedClubs = clubs.map((club: any) => {
     return {
       id: String(club.id),
       name: club.name,
@@ -85,22 +67,22 @@ export default function AdminClubsPage() {
   })
 
   // Filter động dựa trên dữ liệu thực tế
-  const uniqueCategories = Array.from(new Set(clubs.map((c) => c.majorName).filter((v): v is string => !!v)))
-  const uniqueLeaders = Array.from(new Set(clubs.map((c) => c.leaderName).filter((v): v is string => !!v)))
-  const uniquePolicies = Array.from(new Set(clubs.map((c) => c.majorPolicyName).filter((v): v is string => !!v)))
+  const uniqueCategories: string[] = Array.from(new Set(clubs.map((c: any) => c.majorName).filter((v: any): v is string => !!v)))
+  const uniqueLeaders: string[] = Array.from(new Set(clubs.map((c: any) => c.leaderName).filter((v: any): v is string => !!v)))
+  const uniquePolicies: string[] = Array.from(new Set(clubs.map((c: any) => c.majorPolicyName).filter((v: any): v is string => !!v)))
 
   const filters = [
     {
       key: "category",
       label: "Category",
       type: "select" as const,
-      options: uniqueCategories.map((cat) => ({ value: cat, label: cat })),
+      options: uniqueCategories.map((cat: string) => ({ value: cat, label: cat })),
     },
     {
       key: "leaderName",
       label: "Leader",
       type: "select" as const,
-      options: uniqueLeaders.map((l) => ({ value: l, label: l })),
+      options: uniqueLeaders.map((l: string) => ({ value: l, label: l })),
     },
     {
       key: "policy",
@@ -190,13 +172,7 @@ export default function AdminClubsPage() {
             try {
               await (await import("@/service/clubApi")).deleteClub(club.id);
               toast({ title: "Club Deleted", description: `Club '${club.name}' has been deleted.` });
-              // Reload danh sách club từ backend
-              try {
-                const res: any = await (await import("@/service/clubApi")).fetchClub({ page: 0, size: 20, sort: ["name"] });
-                setClubs(res?.content ?? []);
-              } catch (err) {
-                toast({ title: "Reload Error", description: "Failed to reload club list.", variant: "destructive" });
-              }
+              // No need to manually reload - React Query will auto-refetch
             } catch (err) {
               toast({
                 title: "Delete Failed",

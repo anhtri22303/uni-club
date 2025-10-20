@@ -10,8 +10,8 @@ import { useAuth } from "@/contexts/auth-context"
 import { useData } from "@/contexts/data-context"
 import { Users, Calendar, UserCheck, Clock, TrendingUp } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { fetchProfile } from "@/service/userApi"
-import { getClubById, getClubIdFromToken } from "@/service/clubApi"
+import { useProfile, useClub } from "@/hooks/use-query-hooks"
+import { getClubIdFromToken } from "@/service/clubApi"
 import { useEffect, useState } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
 import events from "@/src/data/events.json"
@@ -41,54 +41,24 @@ export default function ClubLeaderDashboardPage() {
   const { auth } = useAuth()
   const { clubMemberships, membershipApplications } = useData()
   const router = useRouter()
-  const [profile, setProfile] = useState<any>(null)
-  const [managedClub, setManagedClub] = useState<Club | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [clubId, setClubId] = useState<number | null>(null)
 
+  // Get clubId from token
   useEffect(() => {
-    const loadInitialData = async () => {
-      setLoading(true)
-      console.log("Bắt đầu tải dữ liệu..."); // Log 1
-      try {
-        const userProfile = await fetchProfile()
-        setProfile(userProfile)
-
-        const clubId = getClubIdFromToken()
-        if (clubId) {
-          console.log("Giải mã được clubId từ JWT:", clubId)
-          const response = await getClubById(clubId)
-
-
-          console.log("Tìm thấy clubId trong localStorage:", clubId); // Log 2
-
-          if (clubId) {
-            console.log("Đang gọi API cho clubId:", clubId); // Log 3
-            const response = await getClubById(clubId) as ClubApiResponse
-
-            console.log("Đã nhận được response từ API:", response); // Log 4
-
-            if (response && response.success) {
-              console.log("API trả về success=true. Đang set managedClub:", response.data); // Log 5
-              setManagedClub(response.data)
-            } else {
-              console.error("API trả về success=false. Message:", response?.message) // Log 6
-            }
-          } else {
-            console.warn("Không tìm thấy clubId nào cho club leader.") // Log 7
-          }
-        } else {
-          console.warn("Không tìm thấy 'uniclub-auth' trong localStorage.") // Log 8
-        }
-      } catch (error) {
-        console.error("Đã có lỗi xảy ra trong useEffect:", error) // Log 9
-      } finally {
-        setLoading(false)
-        console.log("Hoàn tất tải dữ liệu."); // Log 10
-      }
+    const id = getClubIdFromToken()
+    if (id) {
+      setClubId(id)
     }
-
-    loadInitialData()
   }, [])
+
+  // ✅ USE REACT QUERY for profile and club
+  const { data: profile, isLoading: profileLoading } = useProfile()
+  const { data: managedClub, isLoading: clubLoading } = useClub(clubId || 0, !!clubId)
+
+  const loading = profileLoading || clubLoading
+
+  // Type assertion for profile to fix TypeScript error
+  const typedProfile = profile as any
 
   const clubMembers = managedClub ? clubMemberships.filter((m) => m.clubId === managedClub.id && m.status === "APPROVED") : []
   const pendingApplications = managedClub ? membershipApplications.filter((a) => a.clubId === managedClub.id && a.status === "PENDING") : []
@@ -132,7 +102,7 @@ export default function ClubLeaderDashboardPage() {
         <div className="space-y-6">
           <div>
             <h1 className="text-3xl font-bold text-balance">
-              Hello, {profile?.fullName || "Club Leader"} 👋
+              Hello, {typedProfile?.fullName || "Club Leader"} 👋
             </h1>
             {managedClub ? (
               <p className="text-muted-foreground">Welcome to "{managedClub.name}"</p>

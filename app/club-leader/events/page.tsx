@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { AppShell } from "@/components/app-shell"
 import { ProtectedRoute } from "@/contexts/protected-route"
@@ -14,26 +14,48 @@ import { Modal } from "@/components/modal"
 import { QRModal } from "@/components/qr-modal"
 import { useToast } from "@/hooks/use-toast"
 import { usePagination } from "@/hooks/use-pagination"
+import { useClubEvents } from "@/hooks/use-query-hooks"
+import { useQueryClient } from "@tanstack/react-query"
 import { Calendar, Plus, Edit, MapPin, Trophy, ChevronLeft, ChevronRight, Filter, X, Eye } from "lucide-react"
 import { QrCode } from "lucide-react"
 import QRCode from "qrcode"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Skeleton } from "@/components/ui/skeleton"
 
 import clubs from "@/src/data/clubs.json"
-import { fetchEvent, getEventByClubId } from "@/service/eventApi"
 import { createEvent, getEventById } from "@/service/eventApi"
 import { generateCode } from "@/service/checkinApi"
 import { safeLocalStorage } from "@/lib/browser-utils"
 
 export default function ClubLeaderEventsPage() {
   const router = useRouter()
-  const [events, setEvents] = useState<any[]>([])
-  const [userClubId, setUserClubId] = useState<number | null>(null)
   const { toast } = useToast()
+  const queryClient = useQueryClient()
+  const [userClubId, setUserClubId] = useState<number | null>(null)
 
   // Add fullscreen and environment states
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [activeEnvironment, setActiveEnvironment] = useState<'local' | 'prod'>('prod')
+
+  // Get clubId from localStorage
+  useEffect(() => {
+    try {
+      const saved = safeLocalStorage.getItem("uniclub-auth")
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (parsed.clubId) {
+          setUserClubId(Number(parsed.clubId))
+        }
+      }
+    } catch (error) {
+      console.error("Failed to get clubId from localStorage:", error)
+    }
+  }, [])
+
+  // ✅ USE REACT QUERY for events
+  const { data: rawEvents = [], isLoading: eventsLoading } = useClubEvents(
+    userClubId ? [userClubId] : []
+  )
 
   // Helper function to sort events by date and time (newest to oldest)
   const sortEventsByDateTime = (eventList: any[]) => {
@@ -61,53 +83,11 @@ export default function ClubLeaderEventsPage() {
     })
   }
 
-  // Get clubId from localStorage
-  useEffect(() => {
-    try {
-      const saved = safeLocalStorage.getItem("uniclub-auth")
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        if (parsed.clubId) {
-          setUserClubId(Number(parsed.clubId))
-        }
-      }
-    } catch (error) {
-      console.error("Failed to get clubId from localStorage:", error)
-    }
-  }, [])
-
-  useEffect(() => {
-    let mounted = true
-    const load = async () => {
-      try {
-        // Club leader only sees their club's events
-        if (userClubId === null) {
-          setEvents([])
-          return
-        }
-
-        const data: any = await getEventByClubId(userClubId)
-        if (!mounted) return
-        const raw: any[] = Array.isArray(data) ? data : []
-        const normalized = raw.map((e: any) => ({ ...e, title: e.title ?? e.name }))
-        
-        // Sort events by date first, then by time if same date
-        const sorted = sortEventsByDateTime(normalized)
-        
-        setEvents(sorted)
-      } catch (error) {
-        console.error("Failed to load events:", error)
-        toast({ title: "Error fetching events", description: "Could not load events from server.", variant: "destructive" })
-      }
-    }
-    
-    if (userClubId !== null) {
-      load()
-    } else {
-      setEvents([])
-    }
-    return () => { mounted = false }
-  }, [userClubId, toast])
+  // Process and sort events
+  const events = useMemo(() => {
+    const normalized = rawEvents.map((e: any) => ({ ...e, title: e.title ?? e.name }))
+    return sortEventsByDateTime(normalized)
+  }, [rawEvents])
 
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
