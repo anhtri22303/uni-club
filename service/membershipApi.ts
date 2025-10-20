@@ -1,6 +1,9 @@
 import axiosInstance from "@/lib/axiosInstance"
 
-
+export type ApiClub = {
+  id: number;
+  name: string;
+}
 export type ApiMembership = {
 	membershipId: number
 	userId: number
