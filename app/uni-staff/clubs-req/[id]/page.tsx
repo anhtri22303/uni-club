@@ -6,18 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import {
-  Building,
-  Users,
-  Calendar,
-  Mail,
-  GraduationCap,
-  FileText,
-  CheckCircle,
-  XCircle,
-  ArrowLeft,
-  Clock,
-} from "lucide-react"
+import { Building, Users, Calendar, Mail, GraduationCap, FileText, CheckCircle, XCircle, ArrowLeft, Clock } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import { getClubApplications, ClubApplication } from "@/service/clubApplicationAPI"
@@ -159,19 +148,6 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
               </Link>
               <h1 className="text-3xl font-bold">{request.clubName}</h1>
               <p className="text-muted-foreground">Club Registration Request Details</p>
-            </div>
-            <div className="flex items-center gap-2">
-              {getStatusBadge(request.status)}
-              {request.status === "PENDING" && (
-                <div className="flex gap-2">
-                  <Button variant="default" size="sm" className="h-8 w-8 p-0">
-                    <CheckCircle className="h-4 w-4" />
-                  </Button>
-                  <Button variant="destructive" size="sm" className="h-8 w-8 p-0">
-                    <XCircle className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
             </div>
           </div>
 

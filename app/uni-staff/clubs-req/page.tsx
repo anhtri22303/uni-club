@@ -121,61 +121,61 @@ export default function UniStaffClubRequestsPage() {
 			}
 	}
 
-	async function approveApplication(appId?: number) {
-		if (!appId) return
-		setLoading(true)
-		try {
-			const updated = await putClubApplicationStatus(appId, true, '')
-			// Safe behavior: refetch the whole list from backend and update UI
-			const data = await getClubApplications()
-			const mapped: UiClubRequest[] = data.map((d) => ({
-				id: `req-${d.applicationId}`,
-				applicationId: d.applicationId,
-				clubName: d.clubName,
-				category: "Unknown",
-				description: d.description,
-				requestedBy: d.submittedBy?.fullName ?? "Unknown",
-				requestedByEmail: d.submittedBy?.email ?? "",
-				requestDate: d.submittedAt,
-				status: d.status,
-			}))
-			setRequests(mapped)
-			toast({ title: 'Application submitted', description: `Application ${updated.applicationId} set to ${updated.status}`, variant: 'success' })
-		} catch (err) {
-			console.error(err)
-			toast({ title: 'Error', description: 'Failed to update status', variant: 'destructive' })
-		} finally {
-			setLoading(false)
-		}
-	}
+	// async function approveApplication(appId?: number) {
+	// 	if (!appId) return
+	// 	setLoading(true)
+	// 	try {
+	// 		const updated = await putClubApplicationStatus(appId, true, '')
+	// 		// Safe behavior: refetch the whole list from backend and update UI
+	// 		const data = await getClubApplications()
+	// 		const mapped: UiClubRequest[] = data.map((d) => ({
+	// 			id: `req-${d.applicationId}`,
+	// 			applicationId: d.applicationId,
+	// 			clubName: d.clubName,
+	// 			category: "Unknown",
+	// 			description: d.description,
+	// 			requestedBy: d.submittedBy?.fullName ?? "Unknown",
+	// 			requestedByEmail: d.submittedBy?.email ?? "",
+	// 			requestDate: d.submittedAt,
+	// 			status: d.status,
+	// 		}))
+	// 		setRequests(mapped)
+	// 		toast({ title: 'Application submitted', description: `Application ${updated.applicationId} set to ${updated.status}`, variant: 'success' })
+	// 	} catch (err) {
+	// 		console.error(err)
+	// 		toast({ title: 'Error', description: 'Failed to update status', variant: 'destructive' })
+	// 	} finally {
+	// 		setLoading(false)
+	// 	}
+	// }
 
-	async function rejectApplication(appId?: number) {
-		if (!appId) return
-		setLoading(true)
-		try {
-			const updated = await putClubApplicationStatus(appId, false, 'Rejected by staff')
-			// Safe behavior: refetch the whole list from backend and update UI
-			const data = await getClubApplications()
-			const mapped: UiClubRequest[] = data.map((d) => ({
-				id: `req-${d.applicationId}`,
-				applicationId: d.applicationId,
-				clubName: d.clubName,
-				category: "Unknown",
-				description: d.description,
-				requestedBy: d.submittedBy?.fullName ?? "Unknown",
-				requestedByEmail: d.submittedBy?.email ?? "",
-				requestDate: d.submittedAt,
-				status: d.status,
-			}))
-			setRequests(mapped)
-			toast({ title: 'Application rejected', description: `Application ${updated.applicationId} set to ${updated.status}`, variant: 'destructive' })
-		} catch (err) {
-			console.error(err)
-			toast({ title: 'Error', description: 'Failed to update status', variant: 'destructive' })
-		} finally {
-			setLoading(false)
-		}
-	}
+	// async function rejectApplication(appId?: number) {
+	// 	if (!appId) return
+	// 	setLoading(true)
+	// 	try {
+	// 		const updated = await putClubApplicationStatus(appId, false, 'Rejected by staff')
+	// 		// Safe behavior: refetch the whole list from backend and update UI
+	// 		const data = await getClubApplications()
+	// 		const mapped: UiClubRequest[] = data.map((d) => ({
+	// 			id: `req-${d.applicationId}`,
+	// 			applicationId: d.applicationId,
+	// 			clubName: d.clubName,
+	// 			category: "Unknown",
+	// 			description: d.description,
+	// 			requestedBy: d.submittedBy?.fullName ?? "Unknown",
+	// 			requestedByEmail: d.submittedBy?.email ?? "",
+	// 			requestDate: d.submittedAt,
+	// 			status: d.status,
+	// 		}))
+	// 		setRequests(mapped)
+	// 		toast({ title: 'Application rejected', description: `Application ${updated.applicationId} set to ${updated.status}`, variant: 'destructive' })
+	// 	} catch (err) {
+	// 		console.error(err)
+	// 		toast({ title: 'Error', description: 'Failed to update status', variant: 'destructive' })
+	// 	} finally {
+	// 		setLoading(false)
+	// 	}
+	// }
 
 	const getFilteredRequests = (tabType: "pending" | "processed") => {
 		return requests.filter((req) => {
@@ -459,28 +459,7 @@ export default function UniStaffClubRequestsPage() {
 													</div>
 
 													<div className="flex items-center gap-2 ml-4">
-														<Button
-															size="sm"
-															variant="default"
-															className="h-8 w-8 p-0"
-															onClick={(e) => {
-																e.preventDefault()
-																approveApplication(request.applicationId)
-															}}
-														>
-															<CheckCircle className="h-4 w-4" />
-														</Button>
-														<Button
-															size="sm"
-															variant="destructive"
-															className="h-8 w-8 p-0"
-															onClick={(e) => {
-																e.preventDefault()
-																rejectApplication(request.applicationId)
-															}}
-														>
-															<XCircle className="h-4 w-4" />
-														</Button>
+													
 														<Button
 															size="sm"
 															variant="outline"

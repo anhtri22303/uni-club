@@ -13,7 +13,14 @@ export interface ClubApplication {
   submittedAt: string
   reviewedAt?: string | null
 }
-
+export interface ProcessApplicationBody {
+  approve: boolean;
+  rejectReason?: string;
+  internalNote?: string;
+  viceLeaderEmail?: string;
+  viceLeaderFullName?: string;
+  viceLeaderStudentCode?: string;
+}
 /**
  * Fetches club applications from the backend.
  * Returns the raw API shape defined by ClubApplication.
@@ -81,10 +88,34 @@ export async function getMyClubApply(): Promise<ClubApplication[]> {
     throw error
   }
 }
+export async function processClubApplication(
+  applicationId: number,
+  body: ProcessApplicationBody
+): Promise<ClubApplication> {
+  const response = await axiosInstance.put(
+    `/api/club-applications/${applicationId}/approve`,
+    body,
+    { headers: { "Content-Type": "application/json" } }
+  )
 
+  // API trả về cấu trúc { success, message, data }
+  const result = response.data as {
+    success: boolean
+    message: string
+    data: ClubApplication
+  }
+
+  if (!result.success) {
+    throw new Error(result.message || "Failed to process application")
+  }
+
+  console.log("✅ Application processed successfully:", result.data)
+  return result.data
+}
 export default { 
   getClubApplications, 
   postClubApplication, 
   putClubApplicationStatus,
-  getMyClubApply
+  getMyClubApply,
+  processClubApplication
 }
