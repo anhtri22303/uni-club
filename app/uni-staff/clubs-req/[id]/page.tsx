@@ -8,13 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Building, Users, Calendar, Mail, GraduationCap, FileText, CheckCircle, XCircle, ArrowLeft, Clock } from "lucide-react"
 import Link from "next/link"
-<<<<<<< Updated upstream
-import { useEffect, useState } from "react"
-import { getClubApplications, ClubApplication, processClubApplication, ProcessApplicationBody } from "@/service/clubApplicationAPI"
-=======
+import { processClubApplication, ProcessApplicationBody } from "@/service/clubApplicationAPI"
+import { useState } from "react"
 import { useClubApplications } from "@/hooks/use-query-hooks"
-
->>>>>>> Stashed changes
+import { useQueryClient } from "@tanstack/react-query"
 interface ClubRequestDetailPageProps {
   params: {
     id: string
@@ -37,15 +34,10 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
     status: string
   }
 
-<<<<<<< Updated upstream
-  const [request, setRequest] = useState<UiDetail | null>(null)
-  const [loading, setLoading] = useState<boolean>(true)
-  const [error, setError] = useState<string | null>(null)
-  const [isProcessing, setIsProcessing] = useState<boolean>(false)
-=======
   // Use React Query hook to fetch all club applications
   const { data: applications = [], isLoading: loading, error } = useClubApplications()
->>>>>>> Stashed changes
+  const [isProcessing, setIsProcessing] = useState<boolean>(false)
+  const queryClient = useQueryClient()
 
   // Filter client-side to find the specific application by ID
   // params.id might be 'req-<id>' or numeric string. Support both.
@@ -69,26 +61,21 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
   // 👇 3. Hàm xử lý khi nhấn nút "Approve"
   const handleApprove = async () => {
     if (!request) return
-
-    // TODO: Dữ liệu này cần được lấy từ một form/modal thay vì hardcode
-    // Hiện tại đang dùng dữ liệu giả để ví dụ
     const viceLeaderData = {
       viceLeaderEmail: "vleader@example.com",
       viceLeaderFullName: "Vice Leader Name",
       viceLeaderStudentCode: "SE123457",
       internalNote: "Approved by Uni Staff."
     }
-
     const body: ProcessApplicationBody = {
       approve: true,
       ...viceLeaderData
     }
-
     setIsProcessing(true)
     try {
-      const updatedApplication = await processClubApplication(request.applicationId, body)
-      // Cập nhật lại trạng thái trên UI
-      setRequest(prev => prev ? { ...prev, status: updatedApplication.status } : null)
+      await processClubApplication(request.applicationId, body)
+      // Invalidate cache to refetch updated status
+      queryClient.invalidateQueries({ queryKey: ["club-applications"] })
       alert("Application approved successfully!")
     } catch (error) {
       console.error("Failed to approve application:", error)
@@ -101,25 +88,18 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
   // 👇 4. Hàm xử lý khi nhấn nút "Reject"
   const handleReject = async () => {
     if (!request) return
-
-    // Hỏi lý do từ chối, bạn có thể thay thế bằng một modal/dialog đẹp hơn
     const reason = prompt("Please enter the reason for rejection:")
-    if (!reason) {
-      // Người dùng nhấn cancel
-      return
-    }
-
+    if (!reason) return
     const body: ProcessApplicationBody = {
       approve: false,
       rejectReason: reason,
       internalNote: "Rejected by Uni Staff."
     }
-
     setIsProcessing(true)
     try {
-      const updatedApplication = await processClubApplication(request.applicationId, body)
-      // Cập nhật lại trạng thái trên UI
-      setRequest(prev => prev ? { ...prev, status: updatedApplication.status } : null)
+      await processClubApplication(request.applicationId, body)
+      // Invalidate cache to refetch updated status
+      queryClient.invalidateQueries({ queryKey: ["club-applications"] })
       alert("Application rejected successfully!")
     } catch (error) {
       console.error("Failed to reject application:", error)
