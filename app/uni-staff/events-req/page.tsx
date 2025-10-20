@@ -13,10 +13,9 @@ import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { putEventStatus } from "@/service/eventApi"
 import { fetchLocation } from "@/service/locationApi"
+import { fetchClub } from "@/service/clubApi"
 import Link from "next/link"
-import { useEvents, useClubs } from "@/hooks/use-query-hooks"
-import { useQueryClient } from "@tanstack/react-query"
-import { queryKeys } from "@/hooks/use-query-hooks"
+import { fetchEvent } from "@/service/eventApi"
 
 // events will be fetched from the API. The API returns a paginated object
 // and the UI should display only the `content` array.
@@ -27,45 +26,14 @@ export default function UniStaffEventRequestsPage() {
 	const [categoryFilter, setCategoryFilter] = useState<string>("all")
 	const [typeFilter, setTypeFilter] = useState<string>("all")
 
+	const [events, setEvents] = useState<any[]>([])
 	const [locations, setLocations] = useState<any[]>([])
+	const [clubs, setClubs] = useState<any[]>([])
+	const [loading, setLoading] = useState<boolean>(false)
 	const [error, setError] = useState<string | null>(null)
 
 	const { toast } = useToast()
-	const queryClient = useQueryClient()
 	const [processingId, setProcessingId] = useState<number | string | null>(null)
-
-	// Use React Query hooks
-	const { data: apiEvents = [], isLoading: loading } = useEvents()
-	const { data: apiClubs = [] } = useClubs()
-
-	// Set local events and clubs state
-	const events = apiEvents
-	const clubs = Array.isArray(apiClubs) ? apiClubs : []
-
-	// Fetch locations (not migrated yet)
-	useEffect(() => {
-		let mounted = true
-		const loadLocations = async () => {
-			try {
-				const locationsRes = await fetchLocation()
-				const locationsContent = (locationsRes as any) && Array.isArray((locationsRes as any).content) 
-					? (locationsRes as any).content 
-					: Array.isArray(locationsRes) ? locationsRes : []
-				
-				if (mounted) {
-					setLocations(locationsContent)
-				}
-			} catch (err: any) {
-				console.error("❌ Error loading locations:", err)
-				if (mounted) setError(err?.message || "Failed to fetch locations")
-			}
-		}
-
-		loadLocations()
-		return () => {
-			mounted = false
-		}
-	}, [])
 
 	const getLocationById = (id: string | number | undefined) => {
 		if (id === undefined || id === null) return null
@@ -75,8 +43,54 @@ export default function UniStaffEventRequestsPage() {
 	const getLocationCapacity = (id: string | number | undefined) => {
 		const loc: any = getLocationById(id)
 		if (!loc) return null
+		// common field names: capacity, maxCapacity, seatingCapacity
 		return loc.capacity ?? loc.maxCapacity ?? loc.seatingCapacity ?? null
 	}
+
+	useEffect(() => {
+		let mounted = true
+		const load = async () => {
+			setLoading(true)
+			try {
+				console.log("🔄 Starting to fetch data for events-req page...")
+				// fetch events, locations and clubs in parallel
+				const [eventsRes, locationsRes, clubsRes] = await Promise.all([
+					fetchEvent(), 
+					fetchLocation(), 
+					fetchClub()
+				])
+				
+				console.log("✅ Received API responses:", { eventsRes, locationsRes, clubsRes })
+				
+				const eventsContent = (eventsRes as any) && Array.isArray((eventsRes as any).content) 
+					? (eventsRes as any).content 
+					: Array.isArray(eventsRes) ? eventsRes : []
+				const locationsContent = (locationsRes as any) && Array.isArray((locationsRes as any).content) 
+					? (locationsRes as any).content 
+					: Array.isArray(locationsRes) ? locationsRes : []
+				const clubsContent = (clubsRes as any) && Array.isArray((clubsRes as any).content) 
+					? (clubsRes as any).content 
+					: Array.isArray(clubsRes) ? clubsRes : []
+				
+				if (mounted) {
+					console.log("📝 Setting state with data:", { eventsContent, locationsContent, clubsContent })
+					setEvents(eventsContent)
+					setLocations(locationsContent)
+					setClubs(clubsContent)
+				}
+			} catch (err: any) {
+				console.error("❌ Error in events-req page:", err)
+				if (mounted) setError(err?.message || "Failed to fetch events or locations")
+			} finally {
+				if (mounted) setLoading(false)
+			}
+		}
+
+		load()
+		return () => {
+			mounted = false
+		}
+	}, [])
 
 	// Filter events based on API shape: { id, clubId, name, description, type, date, time, locationId, status }
 	const filteredRequests = events.filter((evt) => {
@@ -358,8 +372,8 @@ export default function UniStaffEventRequestsPage() {
 																setProcessingId(request.id)
 																try {
 																	await putEventStatus(request.id, "APPROVED")
-																	// Invalidate events cache to refetch
-																	queryClient.invalidateQueries({ queryKey: queryKeys.eventsList() })
+																	// optimistic update in local state
+																	setEvents(prev => prev.map(ev => ev.id === request.id ? { ...ev, status: "APPROVED" } : ev))
 																	toast({ title: 'Approved', description: `Event ${request.name || request.id} approved.` })
 																} catch (err: any) {
 																	console.error('Approve failed', err)
@@ -376,8 +390,7 @@ export default function UniStaffEventRequestsPage() {
 																setProcessingId(request.id)
 																try {
 																	await putEventStatus(request.id, "REJECTED")
-																	// Invalidate events cache to refetch
-																	queryClient.invalidateQueries({ queryKey: queryKeys.eventsList() })
+																	setEvents(prev => prev.map(ev => ev.id === request.id ? { ...ev, status: "REJECTED" } : ev))
 																	toast({ title: 'Rejected', description: `Event ${request.name || request.id} rejected.` })
 																} catch (err: any) {
 																	console.error('Reject failed', err)

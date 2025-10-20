@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { AppShell } from "@/components/app-shell"
 import { ProtectedRoute } from "@/contexts/protected-route"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -8,20 +8,39 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { WalletHistory } from "@/components/wallet-history"
 import { TopupModal } from "@/components/topup-modal"
-import { useWallet, useProfile } from "@/hooks/use-query-hooks"
+import { useAuth } from "@/contexts/auth-context"
+import { getWallet } from "@/service/walletApi"
 import { ShoppingBag, ArrowLeft, Wallet, CreditCard, History, Sparkles, TrendingUp, Shield } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 export default function MemberWalletPage() {
-  // ✅ USE REACT QUERY HOOKS
-  const { data: walletData, isLoading: walletLoading } = useWallet()
-  const { data: profile } = useProfile()
-  const userBalance = Number(walletData?.points ?? 0)
-  
+  const { auth } = useAuth()
+  const [userBalance, setUserBalance] = useState<number>(0)
   const { toast } = useToast()
   const [currentView, setCurrentView] = useState<"shop" | "history">("shop")
   const [isTopupModalOpen, setIsTopupModalOpen] = useState(false)
   const [selectedAmountVND, setSelectedAmountVND] = useState<number | null>(null)
+
+  // load wallet balance from API
+  useEffect(() => {
+    let mounted = true
+    const load = async () => {
+      try {
+        const data: any = await getWallet()
+        console.debug("MemberWalletPage.getWallet ->", data)
+        if (!mounted) return
+        const pts = Number(data?.points ?? data?.balance ?? 0)
+        setUserBalance(pts)
+        console.debug("MemberWalletPage setUserBalance ->", pts)
+      } catch (err) {
+        console.error("Failed to load wallet", err)
+      }
+    }
+    load()
+    return () => {
+      mounted = false
+    }
+  }, [auth?.userId])
 
   // Tỷ giá: 10,000 VND = 100 points => 1 point = 100 VND
   const VND_PER_POINT = 100
@@ -130,15 +149,15 @@ export default function MemberWalletPage() {
                   <div className="flex items-center gap-4">
                     <div className="h-16 w-16 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center border border-white/20">
                       <span className="text-2xl font-bold text-white">
-                        {((profile as any)?.fullName?.charAt(0) || "U").toUpperCase()}
+                        {(auth?.user?.fullName?.charAt(0) || "U").toUpperCase()}
                       </span>
                     </div>
                     <div>
                       <h2 className="text-xl md:text-2xl font-bold text-white">
-                        {(profile as any)?.fullName || "UniClub Member"}
+                        {auth?.user?.fullName || "UniClub Member"}
                       </h2>
                       <Badge className="bg-white/15 text-white border-0 mt-1">
-                        {(profile as any)?.email || "UniClub Member"}
+                        {auth?.user?.email || "UniClub Member"}
                       </Badge>
                     </div>
                   </div>

@@ -18,23 +18,48 @@ import { Calendar, Plus, Edit, MapPin, Trophy, ChevronLeft, ChevronRight, Filter
 import { QrCode } from "lucide-react"
 import QRCode from "qrcode"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+
+import clubs from "@/src/data/clubs.json"
+import { fetchEvent, getEventByClubId } from "@/service/eventApi"
 import { createEvent, getEventById } from "@/service/eventApi"
 import { generateCode } from "@/service/checkinApi"
 import { safeLocalStorage } from "@/lib/browser-utils"
-import { useClubEvents } from "@/hooks/use-query-hooks"
-import { useQueryClient } from "@tanstack/react-query"
-import { queryKeys } from "@/hooks/use-query-hooks"
 
 export default function ClubLeaderEventsPage() {
   const router = useRouter()
-  const { toast } = useToast()
-  const queryClient = useQueryClient()
-  
+  const [events, setEvents] = useState<any[]>([])
   const [userClubId, setUserClubId] = useState<number | null>(null)
+  const { toast } = useToast()
 
   // Add fullscreen and environment states
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [activeEnvironment, setActiveEnvironment] = useState<'local' | 'prod'>('prod')
+
+  // Helper function to sort events by date and time (newest to oldest)
+  const sortEventsByDateTime = (eventList: any[]) => {
+    return eventList.sort((a: any, b: any) => {
+      // Parse dates for comparison
+      const dateA = new Date(a.date || '1970-01-01')
+      const dateB = new Date(b.date || '1970-01-01')
+      
+      // Compare dates first (newest first)
+      if (dateA.getTime() !== dateB.getTime()) {
+        return dateB.getTime() - dateA.getTime()
+      }
+      
+      // If dates are equal, compare times (latest time first)
+      const timeA = a.time || '00:00'
+      const timeB = b.time || '00:00'
+      
+      // Convert time strings to comparable format (HH:MM to minutes)
+      const parseTime = (timeStr: string) => {
+        const [hours, minutes] = timeStr.split(':').map(Number)
+        return (hours || 0) * 60 + (minutes || 0)
+      }
+      
+      return parseTime(timeB) - parseTime(timeA)
+    })
+  }
 
   // Get clubId from localStorage
   useEffect(() => {
@@ -51,32 +76,38 @@ export default function ClubLeaderEventsPage() {
     }
   }, [])
 
-  // Use React Query hook to fetch events
-  const { data: apiEvents = [], isLoading: loading } = useClubEvents(userClubId ? [userClubId] : [])
-  
-  // Sort events by date and time
-  const sortEventsByDateTime = (eventList: any[]) => {
-    return eventList.sort((a: any, b: any) => {
-      const dateA = new Date(a.date || '1970-01-01')
-      const dateB = new Date(b.date || '1970-01-01')
-      
-      if (dateA.getTime() !== dateB.getTime()) {
-        return dateB.getTime() - dateA.getTime()
-      }
-      
-      const timeA = a.time || '00:00'
-      const timeB = b.time || '00:00'
-      
-      const parseTime = (timeStr: string) => {
-        const [hours, minutes] = timeStr.split(':').map(Number)
-        return (hours || 0) * 60 + (minutes || 0)
-      }
-      
-      return parseTime(timeB) - parseTime(timeA)
-    })
-  }
+  useEffect(() => {
+    let mounted = true
+    const load = async () => {
+      try {
+        // Club leader only sees their club's events
+        if (userClubId === null) {
+          setEvents([])
+          return
+        }
 
-  const events = sortEventsByDateTime([...apiEvents])
+        const data: any = await getEventByClubId(userClubId)
+        if (!mounted) return
+        const raw: any[] = Array.isArray(data) ? data : []
+        const normalized = raw.map((e: any) => ({ ...e, title: e.title ?? e.name }))
+        
+        // Sort events by date first, then by time if same date
+        const sorted = sortEventsByDateTime(normalized)
+        
+        setEvents(sorted)
+      } catch (error) {
+        console.error("Failed to load events:", error)
+        toast({ title: "Error fetching events", description: "Could not load events from server.", variant: "destructive" })
+      }
+    }
+    
+    if (userClubId !== null) {
+      load()
+    } else {
+      setEvents([])
+    }
+    return () => { mounted = false }
+  }, [userClubId, toast])
 
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
@@ -146,8 +177,13 @@ export default function ClubLeaderEventsPage() {
     return () => clearTimeout(t)
   }, [visibleIndex, showQrModal])
 
+  // Find managed club based on userClubId or fallback to first club
+  const managedClub = userClubId 
+    ? clubs.find(club => Number(club.id) === userClubId) || clubs[0] 
+    : clubs[0]
+
   const [formData, setFormData] = useState({
-    clubId: userClubId || 0,
+    clubId: userClubId || managedClub.id,
     name: "",
     description: "",
     type: "PUBLIC",
@@ -233,7 +269,7 @@ export default function ClubLeaderEventsPage() {
 
   const hasActiveFilters = Object.values(activeFilters).some((v) => v && v !== "all") || Boolean(searchTerm)
 
-  const resetForm = () => setFormData({ clubId: userClubId || 0, name: "", description: "", type: "PUBLIC", date: "", time: "13:30", locationId: 0 })
+  const resetForm = () => setFormData({ clubId: userClubId || managedClub.id, name: "", description: "", type: "PUBLIC", date: "", time: "13:30", locationId: 0 })
 
   const handleCreate = async () => {
     // validate required
@@ -257,9 +293,9 @@ export default function ClubLeaderEventsPage() {
       const res: any = await createEvent(payload)
       if (res && res.success) {
         toast({ title: "Event Created", description: res.message || "Event created successfully" })
+        // close modal and reload to refresh data from API
         setShowCreateModal(false)
-        // Invalidate events cache to refetch
-        queryClient.invalidateQueries({ queryKey: queryKeys.eventsList() })
+        window.location.reload()
       } else {
         toast({ title: "Create failed", description: res?.message || "Could not create event", variant: "destructive" })
       }
@@ -272,7 +308,7 @@ export default function ClubLeaderEventsPage() {
   const handleEdit = (event: any) => {
     setSelectedEvent(event)
     setFormData({
-      clubId: event.clubId ?? userClubId ?? 0,
+      clubId: event.clubId ?? userClubId ?? managedClub.id,
       name: event.name ?? event.title ?? "",
       description: event.description ?? "",
       type: event.type ?? "PUBLIC",
@@ -353,7 +389,7 @@ export default function ClubLeaderEventsPage() {
             <div>
               <h1 className="text-3xl font-bold">Events</h1>
               <p className="text-muted-foreground">
-                Manage Club events
+                Manage {managedClub ? managedClub.name : 'Club'} events
                 {userClubId && <span className="text-xs text-muted-foreground/70 ml-2">(Club ID: {userClubId})</span>}
               </p>
             </div>
@@ -423,7 +459,9 @@ export default function ClubLeaderEventsPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All</SelectItem>
-                        <SelectItem value={String(userClubId)}>My Club</SelectItem>
+                        {clubs.map((c: any) => (
+                          <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>

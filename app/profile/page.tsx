@@ -12,8 +12,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
-import { useQueryClient } from "@tanstack/react-query"
-import { useProfile, queryKeys } from "@/hooks/use-query-hooks"
 import {
   User,
   Mail,
@@ -37,7 +35,7 @@ import {
   AlertCircle,
   Camera,
 } from "lucide-react"
-import { editProfile, uploadAvatar } from "@/service/userApi"
+import { editProfile, fetchProfile, uploadAvatar } from "@/service/userApi"
 import { AvatarCropModal } from "@/components/avatar-crop-modal"
 
 // Types for profile data
@@ -63,33 +61,15 @@ export default function ProfilePage() {
   const { auth } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
-  const queryClient = useQueryClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Use React Query hook for profile data
-  const { data: profileFromAPI, isLoading: loading, error: fetchError } = useProfile()
-
-  // State management for profile editing (local editable copy)
-  const [profileData, setProfileData] = useState<ProfileData | null>(null)
-  const [saving, setSaving] = useState(false)
-
-  // Sync profileFromAPI to local editable state
-  useEffect(() => {
-    if (profileFromAPI) {
-      const profile = profileFromAPI as any
-      const data: ProfileData = {
-        fullName: profile?.fullName || profile?.full_name || profile?.name || auth.user?.fullName || "",
-        email: profile?.email || auth.user?.email || "",
-        phone: profile?.phone || profile?.mobile || "",
-        majorName: profile?.majorName ?? profile?.major_name ?? "",
-        studentCode: profile?.studentCode ?? profile?.student_code ?? "",
-        bio: profile?.bio ?? "",
-        avatarUrl: profile?.avatarUrl ?? "",
-        userPoints: Number(profile?.wallet?.balancePoints ?? 0),
-      }
-      setProfileData(data)
-    }
-  }, [profileFromAPI, auth.user])
+  // State management for profile data
+  const [profileState, setProfileState] = useState<ProfileState>({
+    data: null,
+    loading: true,
+    error: null,
+    saving: false,
+  })
 
   // State for temporary avatar preview (before saving)
   const [previewAvatarUrl, setPreviewAvatarUrl] = useState<string>("")
@@ -129,15 +109,72 @@ export default function ProfilePage() {
     return map[String(roleId).toLowerCase()] || String(roleId).replace(/_/g, " ").toUpperCase()
   }
 
-  // Handle profile update (không bao gồm avatar)
-  const handleSave = async () => {
-    if (!profileData) return
+  // Load profile data from API
+  const loadProfile = async () => {
+    if (!auth.userId) {
+      setProfileState(prev => ({
+        ...prev,
+        loading: false,
+        error: "User not authenticated"
+      }))
+      return
+    }
 
     try {
-      setSaving(true)
+      setProfileState(prev => ({ ...prev, loading: true, error: null }))
+      
+      const profile = await fetchProfile() as any
+      
+      if (!profile) {
+        throw new Error("Profile not found")
+      }
+
+      const profileData: ProfileData = {
+        fullName: profile?.fullName || profile?.full_name || profile?.name || auth.user?.fullName || "",
+        email: profile?.email || auth.user?.email || "",
+        phone: profile?.phone || profile?.mobile || "",
+        majorName: profile?.majorName ?? profile?.major_name ?? "",
+        studentCode: profile?.studentCode ?? profile?.student_code ?? "",
+        bio: profile?.bio ?? "",
+        avatarUrl: profile?.avatarUrl ?? "",
+        userPoints: Number(profile?.wallet?.balancePoints ?? 0),
+      }
+
+      setProfileState({
+        data: profileData,
+        loading: false,
+        error: null,
+        saving: false,
+      })
+      
+      // Clear file selection when profile loads
+      setSelectedFile(null)
+      setPreviewAvatarUrl("")
+
+    } catch (err) {
+      console.error("Failed to load profile:", err)
+      setProfileState(prev => ({
+        ...prev,
+        loading: false,
+        error: err instanceof Error ? err.message : "Failed to load profile"
+      }))
+    }
+  }
+
+  // Load profile when component mounts or auth.userId changes
+  useEffect(() => {
+    loadProfile()
+  }, [auth.userId])
+
+  // Handle profile update (không bao gồm avatar)
+  const handleSave = async () => {
+    if (!profileState.data) return
+
+    try {
+      setProfileState(prev => ({ ...prev, saving: true }))
 
       // Chỉ cập nhật thông tin profile (không bao gồm avatar)
-      const { fullName, email, phone, majorName, bio } = profileData
+      const { fullName, email, phone, majorName, bio } = profileState.data
       const payload: Record<string, any> = { 
         email, 
         fullName, 
@@ -153,8 +190,8 @@ export default function ProfilePage() {
           title: "Update Successful",
           description: "Your profile information has been saved.",
         })
-        // Invalidate profile cache to refetch
-        queryClient.invalidateQueries({ queryKey: queryKeys.profile })
+        // Reload profile data after successful update
+        await loadProfile()
       } else {
         throw new Error(res?.message || "Unable to update profile")
       }
@@ -165,15 +202,18 @@ export default function ProfilePage() {
         description: err instanceof Error ? err.message : "An error occurred while updating profile" 
       })
     } finally {
-      setSaving(false)
+      setProfileState(prev => ({ ...prev, saving: false }))
     }
   }
 
   // Update profile data handlers
   const updateProfileData = (field: keyof ProfileData, value: string | number) => {
-    if (!profileData) return
+    if (!profileState.data) return
     
-    setProfileData(prev => prev ? { ...prev, [field]: value } : null)
+    setProfileState(prev => ({
+      ...prev,
+      data: prev.data ? { ...prev.data, [field]: value } : null
+    }))
   }
 
   // Handle avatar click to open file picker
@@ -211,8 +251,8 @@ export default function ProfilePage() {
           description: "Your profile picture has been changed.",
         })
 
-        // Invalidate profile cache to refetch updated avatar
-        queryClient.invalidateQueries({ queryKey: queryKeys.profile })
+        // Reload profile data to get updated avatar
+        await loadProfile()
       } else {
         throw new Error(avatarRes?.message || "Unable to update avatar")
       }
@@ -264,10 +304,10 @@ export default function ProfilePage() {
 
   // Reset preview when component mounts or profile loads
   useEffect(() => {
-    if (profileData?.avatarUrl && !previewAvatarUrl) {
-      setPreviewAvatarUrl(profileData.avatarUrl)
+    if (profileState.data?.avatarUrl && !previewAvatarUrl) {
+      setPreviewAvatarUrl(profileState.data.avatarUrl)
     }
-  }, [profileData?.avatarUrl, previewAvatarUrl])
+  }, [profileState.data?.avatarUrl, previewAvatarUrl])
 
   // Handle crop complete - convert blob to file and set for upload
   const handleCropComplete = (croppedBlob: Blob) => {
@@ -309,7 +349,7 @@ export default function ProfilePage() {
   }
 
   // Show loading state
-  if (loading) {
+  if (profileState.loading) {
     return (
       <ProtectedRoute allowedRoles={["student", "club_leader", "uni_staff", "admin", "staff"]}>
         <AppShell>
@@ -330,7 +370,7 @@ export default function ProfilePage() {
   }
 
   // Show error state
-  if (fetchError) {
+  if (profileState.error) {
     return (
       <ProtectedRoute allowedRoles={["student", "club_leader", "uni_staff", "admin", "staff"]}>
         <AppShell>
@@ -340,9 +380,9 @@ export default function ProfilePage() {
                 <AlertCircle className="h-12 w-12 text-red-500" />
                 <div className="text-center space-y-2">
                   <h3 className="text-lg font-semibold">Unable to Load Profile</h3>
-                  <p className="text-sm text-muted-foreground">{fetchError instanceof Error ? fetchError.message : 'Failed to load profile'}</p>
+                  <p className="text-sm text-muted-foreground">{profileState.error}</p>
                 </div>
-                <Button onClick={() => window.location.reload()} className="w-full">
+                <Button onClick={loadProfile} className="w-full">
                   Try Again
                 </Button>
               </CardContent>
@@ -354,7 +394,7 @@ export default function ProfilePage() {
   }
 
   // Return early if no profile data
-  if (!profileData) {
+  if (!profileState.data) {
     return (
       <ProtectedRoute allowedRoles={["student", "club_leader", "uni_staff", "admin", "staff"]}>
         <AppShell>
@@ -372,7 +412,7 @@ export default function ProfilePage() {
   }
 
   // Destructure profile data for easier access
-  const { fullName, email, phone, majorName, studentCode, bio, avatarUrl, userPoints } = profileData
+  const { fullName, email, phone, majorName, studentCode, bio, avatarUrl, userPoints } = profileState.data
   
   // --- HÀM ĐÃ CẬP NHẬT: Thêm logic trả về lớp animation ---
   const getPointsCardStyle = (points: number) => {
@@ -534,13 +574,13 @@ export default function ProfilePage() {
                           className="min-h-[80px]" 
                         />
                       </div>
-                      <Button onClick={handleSave} disabled={saving} className="w-fit">
-                        {saving ? (
+                      <Button onClick={handleSave} disabled={profileState.saving} className="w-fit">
+                        {profileState.saving ? (
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                         ) : (
                           <Save className="h-4 w-4 mr-2" />
                         )}
-                        {saving ? "Saving..." : "Save Changes"}
+                        {profileState.saving ? "Saving..." : "Save Changes"}
                       </Button>
                     </CardContent>
                   </Card>
@@ -777,15 +817,15 @@ export default function ProfilePage() {
 
                     <Button 
                       onClick={handleSave} 
-                      disabled={saving} 
+                      disabled={profileState.saving} 
                       className="w-fit bg-primary hover:bg-primary/90"
                     >
-                      {saving ? (
+                      {profileState.saving ? (
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                       ) : (
                         <Save className="h-4 w-4 mr-2" />
                       )}
-                      {saving ? "Saving..." : "Save Changes"}
+                      {profileState.saving ? "Saving..." : "Save Changes"}
                     </Button>
                   </CardContent>
                 </Card>

@@ -1,13 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { AppShell } from "@/components/app-shell"
 import { ProtectedRoute } from "@/contexts/protected-route"
 import { DataTable } from "@/components/data-table"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { Users, Calendar, TrendingUp } from "lucide-react"
-import { useClubs } from "@/hooks/use-query-hooks"
+import { fetchClub } from "@/service/clubApi"
 
 // Bảng màu theo ngành học
 const categoryColors: Record<string, string> = {
@@ -41,11 +41,33 @@ type ClubApiItem = {
 
 export default function AdminClubsPage() {
   const { toast } = useToast()
-  
-  // ✅ USE REACT QUERY HOOK
-  const { data: clubsData, isLoading: loading, error: queryError } = useClubs({ page: 0, size: 20, sort: ["name"] })
-  const clubs: ClubApiItem[] = clubsData || []
-  const error = queryError ? String(queryError) : null
+  const [clubs, setClubs] = useState<ClubApiItem[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let mounted = true
+    const load = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const res: any = await fetchClub({ page: 0, size: 20, sort: ["name"] })
+        if (mounted) {
+          setClubs(res?.content ?? [])
+        }
+      } catch (err: any) {
+        console.error(err)
+        if (mounted) setError(err?.message ?? "Failed to load clubs")
+      } finally {
+        if (mounted) setLoading(false)
+      }
+    }
+
+    load()
+    return () => {
+      mounted = false
+    }
+  }, [])
 
   // Map dữ liệu API sang định dạng bảng
   const enhancedClubs = clubs.map((club) => {
@@ -168,11 +190,13 @@ export default function AdminClubsPage() {
             try {
               await (await import("@/service/clubApi")).deleteClub(club.id);
               toast({ title: "Club Deleted", description: `Club '${club.name}' has been deleted.` });
-              // ✅ REACT QUERY: Invalidate cache to refetch clubs
-              const { useQueryClient } = await import("@tanstack/react-query");
-              const { queryKeys } = await import("@/hooks/use-query-hooks");
-              // Note: This is a workaround - ideally move delete logic to a mutation hook
-              window.location.reload(); // Temporary solution
+              // Reload danh sách club từ backend
+              try {
+                const res: any = await (await import("@/service/clubApi")).fetchClub({ page: 0, size: 20, sort: ["name"] });
+                setClubs(res?.content ?? []);
+              } catch (err) {
+                toast({ title: "Reload Error", description: "Failed to reload club list.", variant: "destructive" });
+              }
             } catch (err) {
               toast({
                 title: "Delete Failed",

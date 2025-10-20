@@ -4,10 +4,13 @@ import { useEffect, useState } from "react"
 import { AppShell } from "@/components/app-shell"
 import { ProtectedRoute } from "@/contexts/protected-route"
 import { Badge } from "@/components/ui/badge"
+// Remove Button import (no add club modal)
 import { DataTable } from "@/components/data-table"
 import { useToast } from "@/hooks/use-toast"
 import { Users, Trash, Plus } from "lucide-react"
-import { useClubs } from "@/hooks/use-query-hooks"
+import { fetchClub } from "@/service/clubApi"
+// Thêm import useRef nếu cần
+// Remove useRef import (not needed)
 
 type ClubApiItem = {
   id: number
@@ -37,12 +40,35 @@ const categoryColors: Record<string, string> = {
 
 export default function UniStaffClubsPage() {
   const { toast } = useToast()
-  
-  // Use React Query hook
-  const { data: apiClubs = [], isLoading: loading, error } = useClubs({ page: 0, size: 10, sort: ["name"] })
+  const [clubs, setClubs] = useState<ClubApiItem[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  // Remove add club modal and related states
+
+  // Fetch club list
+  useEffect(() => {
+    let mounted = true
+    const load = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const res: any = await fetchClub({ page: 0, size: 10, sort: ["name"] })
+        if (mounted) setClubs(res?.content ?? [])
+      } catch (err: any) {
+        console.error(err)
+        if (mounted) setError(err?.message ?? "Failed to load clubs")
+      } finally {
+        if (mounted) setLoading(false)
+      }
+    }
+    load()
+    return () => {
+      mounted = false
+    }
+  }, [])
 
   // Map API data to match admin/clubs
-  const enhancedClubs = apiClubs.map((club: any) => ({
+  const enhancedClubs = clubs.map((club) => ({
     id: String(club.id),
     name: club.name,
     category: club.majorName ?? "-",
@@ -58,7 +84,13 @@ export default function UniStaffClubsPage() {
     try {
       await (await import("@/service/clubApi")).deleteClub(id);
       toast({ title: "Club Deleted", description: `Club '${name}' has been deleted.` });
-      // Note: React Query will auto-refetch after mutation
+      // Reload club list
+      try {
+        const res: any = await fetchClub({ page: 0, size: 10, sort: ["name"] });
+        setClubs(res?.content ?? []);
+      } catch (err) {
+        toast({ title: "Reload Error", description: "Failed to reload club list.", variant: "destructive" });
+      }
     } catch (err) {
       toast({
         title: "Delete Failed",
@@ -69,28 +101,28 @@ export default function UniStaffClubsPage() {
   }
 
   // Dynamic filters based on actual data (like admin/clubs)
-  const uniqueCategories = Array.from(new Set(apiClubs.map((c: any) => c.majorName).filter((v: any): v is string => !!v)));
-  const uniqueLeaders = Array.from(new Set(apiClubs.map((c: any) => c.leaderName).filter((v: any): v is string => !!v)));
-  const uniquePolicies = Array.from(new Set(apiClubs.map((c: any) => c.majorPolicyName).filter((v: any): v is string => !!v)));
+  const uniqueCategories = Array.from(new Set(clubs.map((c) => c.majorName).filter((v): v is string => !!v)));
+  const uniqueLeaders = Array.from(new Set(clubs.map((c) => c.leaderName).filter((v): v is string => !!v)));
+  const uniquePolicies = Array.from(new Set(clubs.map((c) => c.majorPolicyName).filter((v): v is string => !!v)));
 
   const filters = [
     {
       key: "category",
       label: "Category",
       type: "select" as const,
-      options: uniqueCategories.map((cat) => ({ value: String(cat), label: String(cat) })),
+      options: uniqueCategories.map((cat) => ({ value: cat, label: cat })),
     },
     {
       key: "leaderName",
       label: "Leader",
       type: "select" as const,
-      options: uniqueLeaders.map((l) => ({ value: String(l), label: String(l) })),
+      options: uniqueLeaders.map((l) => ({ value: l, label: l })),
     },
     {
       key: "policy",
       label: "Policy",
       type: "select" as const,
-      options: uniquePolicies.map((p) => ({ value: String(p), label: String(p) })),
+      options: uniquePolicies.map((p) => ({ value: p, label: p })),
     },
   ];
 
@@ -200,7 +232,7 @@ export default function UniStaffClubsPage() {
           )}
           {error && (
             <div className="text-center text-sm text-destructive">
-              Error: {(error as any)?.message || "Failed to load clubs"}
+              Error: {error}
             </div>
           )}
         </div>

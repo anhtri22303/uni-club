@@ -10,11 +10,10 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/hooks/use-toast"
 import { usePagination } from "@/hooks/use-pagination"
 import membershipApi, { ApiMembership } from "@/service/membershipApi"
-import { getClubIdFromToken } from "@/service/clubApi"
+import { getClubById, getClubIdFromToken } from "@/service/clubApi"
 import { fetchUserById, fetchProfile } from "@/service/userApi"
 import { Users, ChevronLeft, ChevronRight, CheckCircle } from "lucide-react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
-import { useClub, useClubMembers } from "@/hooks/use-query-hooks"
 
 interface Club {
   id: number
@@ -32,8 +31,12 @@ interface ClubApiResponse {
 }
 export default function ClubAttendancePage() {
   const { toast } = useToast()
-  const [clubId, setClubId] = useState<number | null>(null)
-  const [attendance, setAttendance] = useState<Record<string, boolean>>({})
+  const [managedClub, setManagedClub] = useState<Club | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [apiMembers, setApiMembers] = useState<ApiMembership[]>([])
+  const [membersLoading, setMembersLoading] = useState(false)
+  const [membersError, setMembersError] = useState<string | null>(null)
+  const [attendance, setAttendance] = useState<Record<string, boolean>>({}) // ✅ trạng thái điểm danh
   const today = new Date().toLocaleDateString("vi-VN", {
     day: "2-digit",
     month: "2-digit",
@@ -42,30 +45,46 @@ export default function ClubAttendancePage() {
   const [currentDate, setCurrentDate] = useState("")
   const [userId, setUserId] = useState<string | number | null>(null)
 
-  // Get clubId from token on mount
-  useEffect(() => {
-    const id = getClubIdFromToken()
-    setClubId(id)
-  }, [])
 
-  // Use React Query hooks
-  const { data: managedClub, isLoading: loading } = useClub(clubId || 0, !!clubId)
-  const { data: apiMembers = [], isLoading: membersLoading, error: membersError } = useClubMembers(clubId || 0, !!clubId)
-
-  // Initialize attendance when members are loaded
   useEffect(() => {
-    if (apiMembers.length > 0) {
-      const initialAttendance: Record<string, boolean> = {}
-      apiMembers.forEach((m: any) => {
-        const id = m.membershipId ?? `m-${m.userId}`
-        initialAttendance[id] = false
-      })
-      setAttendance(initialAttendance)
+    const loadInitialData = async () => {
+      setLoading(true)
+      try {
+        const clubId = getClubIdFromToken()
+        if (!clubId) throw new Error("No club information found.")
+
+        const clubResponse = (await getClubById(clubId)) as ClubApiResponse
+        if (!clubResponse?.success) throw new Error("Unable to load club information.")
+        setManagedClub(clubResponse.data)
+        setMembersLoading(true)
+        setMembersError(null)
+
+        const memberData = await membershipApi.getMembersByClubId(clubId)
+        const membersWithUserData = await Promise.all(
+          memberData.map(async (m: any) => {
+            try {
+              const userInfo = await fetchUserById(m.userId)
+              return { ...m, userInfo }
+            } catch {
+              return { ...m, userInfo: null }
+            }
+          })
+        )
+        setApiMembers(membersWithUserData)
+        // ✅ Khởi tạo attendance = false cho toàn bộ thành viên
+        const initialAttendance: Record<string, boolean> = {}
+        membersWithUserData.forEach((m: any) => {
+          const id = m.membershipId ?? `m-${m.userId}`
+          initialAttendance[id] = false
+        })
+        setAttendance(initialAttendance)
+      } catch (err: any) {
+        setMembersError(err?.message || "Error loading member list")
+      } finally {
+        setMembersLoading(false)
+        setLoading(false)
+      }
     }
-  }, [apiMembers])
-
-  // Set current date
-  useEffect(() => {
     const today = new Date()
     const formatted = today.toLocaleDateString("en-GB", {
       weekday: "short",
@@ -73,20 +92,18 @@ export default function ClubAttendancePage() {
       month: "short",
       year: "numeric",
     })
-    setCurrentDate(formatted)
-  }, [])
-
-  // Load user profile
-  useEffect(() => {
     const loadProfile = async () => {
       try {
         const profile = await fetchProfile()
         console.log("Current user profile:", profile)
-        setUserId((profile as any)?.userId)
+        setUserId((profile as any)?.userId) // Lưu userId
       } catch (error) {
         console.error("Failed to load profile:", error)
       }
     }
+
+    setCurrentDate(formatted)
+    loadInitialData()
     loadProfile()
   }, [])
 
@@ -203,7 +220,7 @@ export default function ClubAttendancePage() {
           ) : membersError ? (
             <Card>
               <CardContent className="py-12 text-center text-destructive">
-                {(membersError as any)?.message || "Error loading members"}
+                {membersError}
               </CardContent>
             </Card>
           ) : clubMembers.length === 0 ? (

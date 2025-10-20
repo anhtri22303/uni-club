@@ -2,15 +2,10 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { fetchClub, getClubById, getClubMemberCount } from "@/service/clubApi"
-import { fetchEvent, getEventById } from "@/service/eventApi"
-import { fetchUser, fetchUserById, fetchProfile } from "@/service/userApi"
+import { fetchEvent } from "@/service/eventApi"
+import { fetchUser, fetchUserById } from "@/service/userApi"
 import { getMembersByClubId } from "@/service/membershipApi"
 import { fetchMajors } from "@/service/majorApi"
-import { getProduct } from "@/service/productApi"
-import { getWallet } from "@/service/walletApi"
-import { fetchPolicies } from "@/service/policyApi"
-import { getMemberApplyByClubId, getMyMemApply } from "@/service/memberApplicationApi"
-import { getMyClubApply } from "@/service/clubApplicationAPI"
 
 // ============================================
 // QUERY KEYS - Centralized for consistency
@@ -36,32 +31,6 @@ export const queryKeys = {
   // Majors
   majors: ["majors"] as const,
   majorsList: () => [...queryKeys.majors, "list"] as const,
-
-  // Products
-  products: ["products"] as const,
-  productsList: (params?: any) => [...queryKeys.products, "list", params] as const,
-
-  // Wallet
-  wallet: ["wallet"] as const,
-  walletDetail: () => [...queryKeys.wallet, "detail"] as const,
-
-  // Policies
-  policies: ["policies"] as const,
-  policiesList: () => [...queryKeys.policies, "list"] as const,
-
-  // Profile
-  profile: ["profile"] as const,
-  profileDetail: () => [...queryKeys.profile, "detail"] as const,
-
-  // Member Applications
-  memberApplications: ["member-applications"] as const,
-  memberApplicationsList: (clubId?: number) => 
-    clubId ? [...queryKeys.memberApplications, "club", clubId] as const : [...queryKeys.memberApplications, "list"] as const,
-  myMemberApplications: () => [...queryKeys.memberApplications, "my"] as const,
-  
-  // Club Applications
-  clubApplications: ["club-applications"] as const,
-  myClubApplications: () => [...queryKeys.clubApplications, "my"] as const,
 }
 
 // ============================================
@@ -179,22 +148,6 @@ export function useEvents() {
 }
 
 /**
- * Hook to fetch single event by ID
- * @param eventId - Event ID
- */
-export function useEvent(eventId: number | string, enabled = true) {
-  return useQuery({
-    queryKey: queryKeys.eventDetail(Number(eventId)),
-    queryFn: async () => {
-      const event = await getEventById(eventId)
-      return event
-    },
-    enabled: !!eventId && enabled,
-    staleTime: 3 * 60 * 1000,
-  })
-}
-
-/**
  * Hook to fetch events filtered by club IDs
  * @param clubIds - Array of club IDs to filter by
  */
@@ -266,131 +219,6 @@ export function useMajors() {
       return majors
     },
     staleTime: 30 * 60 * 1000, // 30 minutes (rarely changes)
-  })
-}
-
-// ============================================
-// PRODUCTS QUERIES
-// ============================================
-
-/**
- * Hook to fetch list of products with pagination
- * @param params - Pagination parameters (page, size, sort)
- */
-export function useProducts(params = { page: 0, size: 10, sort: "name" }) {
-  return useQuery({
-    queryKey: queryKeys.productsList(params),
-    queryFn: async () => {
-      const products = await getProduct(params)
-      return products
-    },
-    staleTime: 3 * 60 * 1000, // 3 minutes
-  })
-}
-
-// ============================================
-// WALLET QUERIES
-// ============================================
-
-/**
- * Hook to fetch user's wallet information
- */
-export function useWallet() {
-  return useQuery({
-    queryKey: queryKeys.walletDetail(),
-    queryFn: async () => {
-      const wallet = await getWallet()
-      return wallet
-    },
-    staleTime: 2 * 60 * 1000, // 2 minutes (wallet changes frequently)
-  })
-}
-
-// ============================================
-// POLICIES QUERIES
-// ============================================
-
-/**
- * Hook to fetch all university policies
- */
-export function usePolicies() {
-  return useQuery({
-    queryKey: queryKeys.policiesList(),
-    queryFn: async () => {
-      const policies = await fetchPolicies()
-      return policies
-    },
-    staleTime: 10 * 60 * 1000, // 10 minutes (policies change rarely)
-  })
-}
-
-// ============================================
-// PROFILE QUERIES
-// ============================================
-
-/**
- * Hook to fetch current user's profile
- */
-export function useProfile(enabled = true) {
-  return useQuery({
-    queryKey: queryKeys.profileDetail(),
-    queryFn: async () => {
-      const profile = await fetchProfile()
-      return profile
-    },
-    enabled,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  })
-}
-
-// ============================================
-// MEMBER APPLICATIONS QUERIES
-// ============================================
-
-/**
- * Hook to fetch member applications by club ID
- * @param clubId - Club ID to filter applications
- */
-export function useMemberApplications(clubId?: number, enabled = true) {
-  return useQuery({
-    queryKey: queryKeys.memberApplicationsList(clubId),
-    queryFn: async () => {
-      if (!clubId) return []
-      const applications = await getMemberApplyByClubId(clubId)
-      return applications
-    },
-    enabled: !!clubId && enabled,
-    staleTime: 2 * 60 * 1000, // 2 minutes (applications change frequently)
-  })
-}
-
-/**
- * Hook to fetch current user's member applications
- */
-export function useMyMemberApplications(enabled = true) {
-  return useQuery({
-    queryKey: queryKeys.myMemberApplications(),
-    queryFn: async () => {
-      const applications = await getMyMemApply()
-      return applications
-    },
-    enabled,
-    staleTime: 2 * 60 * 1000,
-  })
-}
-
-/**
- * Hook to fetch current user's club applications
- */
-export function useMyClubApplications(enabled = true) {
-  return useQuery({
-    queryKey: queryKeys.myClubApplications(),
-    queryFn: async () => {
-      const applications = await getMyClubApply()
-      return applications
-    },
-    enabled,
-    staleTime: 2 * 60 * 1000,
   })
 }
 

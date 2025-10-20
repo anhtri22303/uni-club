@@ -20,33 +20,36 @@ import QRCode from "qrcode"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 import clubs from "@/src/data/clubs.json"
-import { useEvents } from "@/hooks/use-query-hooks"
+import { fetchEvent } from "@/service/eventApi"
 import { createEvent, getEventById } from "@/service/eventApi"
 import { generateCode } from "@/service/checkinApi"
-import { useQueryClient } from "@tanstack/react-query"
-import { queryKeys } from "@/hooks/use-query-hooks"
 
 export default function AdminEventsPage() {
   const router = useRouter()
-  const queryClient = useQueryClient()
+  const [events, setEvents] = useState<any[]>([])
   const { toast } = useToast()
 
-  // ✅ REACT QUERY: Load events
-  const { data: eventsData = [], isLoading: eventsLoading } = useEvents()
-  
+  // Add fullscreen and environment states
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [activeEnvironment, setActiveEnvironment] = useState<'local' | 'prod'>('prod')
+
   // Helper function to sort events by date and time (newest to oldest)
   const sortEventsByDateTime = (eventList: any[]) => {
     return eventList.sort((a: any, b: any) => {
+      // Parse dates for comparison
       const dateA = new Date(a.date || '1970-01-01')
       const dateB = new Date(b.date || '1970-01-01')
       
+      // Compare dates first (newest first)
       if (dateA.getTime() !== dateB.getTime()) {
         return dateB.getTime() - dateA.getTime()
       }
       
+      // If dates are equal, compare times (latest time first)
       const timeA = a.time || '00:00'
       const timeB = b.time || '00:00'
       
+      // Convert time strings to comparable format (HH:MM to minutes)
       const parseTime = (timeStr: string) => {
         const [hours, minutes] = timeStr.split(':').map(Number)
         return (hours || 0) * 60 + (minutes || 0)
@@ -56,14 +59,27 @@ export default function AdminEventsPage() {
     })
   }
 
-  // Sort events from React Query
-  const events = sortEventsByDateTime([...eventsData])
-
-  // Add fullscreen and environment states
-  const [isFullscreen, setIsFullscreen] = useState(false)
-  const [activeEnvironment, setActiveEnvironment] = useState<'local' | 'prod'>('prod')
-
-  // ✅ REMOVED: Duplicate sortEventsByDateTime and useEffect - React Query handles data fetching
+  useEffect(() => {
+    let mounted = true
+    const load = async () => {
+      try {
+        const data: any = await fetchEvent()
+        if (!mounted) return
+        const raw: any[] = Array.isArray(data) ? data : (data?.events ?? [])
+        const normalized = raw.map((e: any) => ({ ...e, title: e.title ?? e.name }))
+        
+        // Sort events by date first, then by time if same date
+        const sorted = sortEventsByDateTime(normalized)
+        
+        setEvents(sorted)
+      } catch (error) {
+        console.error("Failed to load events:", error)
+        toast({ title: "Error fetching events", description: "Could not load events from server.", variant: "destructive" })
+      }
+    }
+    load()
+    return () => { mounted = false }
+  }, [])
 
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
