@@ -297,47 +297,55 @@ export default function ClubLeaderRewardDistributionPage() {
               </Card>
             ) : (
               <>
-                {paginatedMembers.map((member) => (
-                  <Card key={member.id}>
-                    <CardContent className="py-3 flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        {/* <input
-                          type="checkbox"
-                          checked={selectedMembers[member.id] || false}
-                          onChange={() => handleToggleSelect(member.id)}
-                          className="w-4 h-4 accent-blue-600 cursor-pointer"
-                        /> */}
-                        <Avatar className="w-10 h-10">
-                          <AvatarImage src={member.avatarUrl || ""} alt={member.fullName} />
-                          <AvatarFallback>{member.fullName.charAt(0).toUpperCase()}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium">{member.fullName}
-                            <span className="text-muted-foreground text-sm ml-2">
-                              ({member.studentCode})
-                            </span>
-                          </p>
-                          <Badge variant="secondary" className="text-xs">{member.role}</Badge>
+                {paginatedMembers.map((member) => {
+                  const isSelected = selectedMembers[member.id] || false
+
+                  return (
+                    <Card
+                      key={member.id}
+                      className={`transition-all duration-200 border-2 ${isSelected
+                          ? "border-primary/70 bg-primary/5 shadow-sm"
+                          : "border-transparent hover:border-muted"
+                        }`}
+                    >
+                      <CardContent className="py-3 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="w-10 h-10">
+                            <AvatarImage src={member.avatarUrl || ""} alt={member.fullName} />
+                            <AvatarFallback>{member.fullName.charAt(0).toUpperCase()}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium">
+                              {member.fullName}
+                              <span className="text-muted-foreground text-sm ml-2">
+                                ({member.studentCode})
+                              </span>
+                            </p>
+                            <Badge variant="secondary" className="text-xs">{member.role}</Badge>
+                          </div>
                         </div>
-                      </div>
-                      {/* <Button variant="outline" size="sm">
-                        + {rewardAmount || 0} pts
-                      </Button> */}
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="checkbox"
-                          checked={selectedMembers[member.id] || false}
-                          onChange={() => handleToggleSelect(member.id)}
-                          className="w-5 h-5 accent-primary cursor-pointer transition-all duration-150"
-                          style={{ transform: "scale(1.2)" }}
-                        />
-                        <Button variant="outline" size="sm">
-                          + {rewardAmount || 0} pts
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleToggleSelect(member.id)}
+                            className="w-5 h-5 accent-primary cursor-pointer transition-all duration-150"
+                            style={{ transform: "scale(1.2)" }}
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className={isSelected ? "border-primary text-primary" : ""}
+                          >
+                            + {rewardAmount || 0} pts
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )
+                })}
+
                 <MinimalPager
                   current={membersPage}
                   total={membersPages}

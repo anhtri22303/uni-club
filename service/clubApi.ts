@@ -1,7 +1,23 @@
 
 import axiosInstance from "@/lib/axiosInstance"
-import {jwtDecode} from "jwt-decode"
+import { jwtDecode } from "jwt-decode"
 
+interface PageableQuery {
+  page: number
+  size: number
+  sort: string[]
+}
+interface ClubListResponse {
+  success: boolean
+  message: string
+  data: {
+    content: Club[]
+    totalElements?: number
+    totalPages?: number
+    size?: number
+    number?: number
+  }
+}
 interface MemberCountData {
   clubId: number;
   activeMemberCount: number;
@@ -11,42 +27,72 @@ interface MemberCountApiResponse {
   message: string;
   data: MemberCountData;
 }
+// interface Club {
+//   id: number
+//   name: string
+//   description: string
+//   majorPolicyName?: string
+//   majorName: string
+//   leaderId: number
+//   leaderName: string
+//   memberCount?: number
+// }
 interface Club {
-  id: number;
-  name: string;
-  description: string;
-  majorName: string;
-  leaderId: number;
-  leaderName: string;
+  id: number
+  name: string
+  description: string
+  logoUrl?: string // Thêm logoUrl để hiển thị trong danh sách
+  majorPolicyName?: string
+  majorName: string
+  leaderId: number
+  leaderName: string
+  memberCount?: number
+  state?: 'ACTIVE' | 'INACTIVE' // Thêm state để lọc CLB
 }
-
 // Định nghĩa cấu trúc cho toàn bộ response từ API getClubById
 interface ClubApiResponse {
   success: boolean;
   message: string;
   data: Club | null; // Cho phép data là null trong trường hợp lỗi
 }
-export const fetchClub = async (pageable: { page?: number; size?: number; sort?: string[] } = { page: 0, size: 10, sort: ["name"] }) => {
+
+export const fetchClub = async (
+  pageable: PageableQuery = { page: 0, size: 10, sort: ["name"] }
+): Promise<ClubListResponse> => {
   try {
-    // The API expects a `pageable` query parameter (object). We stringify it to match the backend contract.
-    const response = await axiosInstance.get("api/clubs", {
+    const response = await axiosInstance.get("/api/clubs", {
       params: {
-        pageable: JSON.stringify({
-          page: pageable.page ?? 0,
-          size: pageable.size ?? 20,
-          sort: pageable.sort ?? ["name"],
-        }),
+        pageable: JSON.stringify(pageable),
       },
     })
-
-    console.log("Fetched clubs:", response.data)
-    return response.data
+    return response.data as ClubListResponse
   } catch (error) {
     console.error("Error fetching clubs:", error)
     throw error
   }
 }
 
+export const getAllClubs = async (): Promise<Club[]> => {
+  try {
+    // Gọi API để lấy tất cả các club, có thể backend hỗ trợ size lớn
+    // Hoặc có một endpoint riêng như /api/clubs/all
+    const response = await axiosInstance.get("/api/clubs", {
+      params: {
+        pageable: JSON.stringify({ page: 0, size: 1000, sort: ["name"] }), // Lấy một lượng lớn để coi như "tất cả"
+      },
+    })
+
+    const body = response.data as ClubListResponse;
+    if (body.success && body.data.content) {
+      // Giả định backend trả về cả CLB active và inactive, ta lọc ở frontend
+      return body.data.content.filter(club => club.state === 'ACTIVE');
+    }
+    return [];
+  } catch (error) {
+    console.error("Error fetching all clubs:", error)
+    throw error
+  }
+}
 // Tạo club mới (POST)
 export const createClub = async (clubData: { name: string; description: string; majorPolicyId?: number; majorName?: string }) => {
   try {
@@ -89,16 +135,6 @@ export const deleteClub = async (id: string | number) => {
   }
 }
 
-// export const getClubById = async (id: string | number) => {
-//   try {
-//     const response = await axiosInstance.get(`/api/clubs/${id}`)
-//     console.log(`Fetched club by id ${id}:`, response.data)
-//     return response.data
-//   } catch (error) {
-//     console.error(`Error fetching club ${id}:`, error)
-//     throw error
-//   }
-// }
 export const getClubById = async (clubId: string | number): Promise<ClubApiResponse> => { // <-- THAY ĐỔI QUAN TRỌNG
   try {
     const response = await axiosInstance.get(`/api/clubs/${clubId}`);
@@ -161,17 +197,17 @@ export const getClubStats = async () => {
     const response = await axiosInstance.get("api/clubs/stats")
     const body = response.data
     console.log("Fetched club stats response:", body)
-    
+
     // If backend uses { success, message, data }
     if (body && typeof body === "object" && "data" in body && "success" in body && (body as any).success) {
       return (body as any).data
     }
-    
+
     // If the endpoint returns the stats object directly
     if (body && typeof body === "object") {
       return body
     }
-    
+
     return null
   } catch (error) {
     console.error("Error fetching club stats:", error)
