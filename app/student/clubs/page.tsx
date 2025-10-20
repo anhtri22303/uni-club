@@ -18,6 +18,7 @@ import { fetchClub, getClubMemberCount } from "@/service/clubApi"
 import { postMemAppli } from "@/service/memberApplicationApi"
 import { safeLocalStorage } from "@/lib/browser-utils"
 import { fetchMajors, Major } from "@/service/majorApi"
+import { useClubs, useClubMemberCounts } from "@/hooks/use-query-hooks"
 // We'll fetch clubs from the backend and only use the `content` array.
 type ClubApiItem = {
   id: number
@@ -42,16 +43,19 @@ export default function MemberClubsPage() {
   const [newDescription, setNewDescription] = useState("")
   const [newCategory, setNewCategory] = useState("")
   const [newProposerReason, setNewProposerReason] = useState("")
-  const [clubs, setClubs] = useState<ClubApiItem[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  
+  // ✅ USE REACT QUERY instead of manual state
+  const { data: clubs = [], isLoading: loading, error: queryError } = useClubs({ page: 0, size: 10, sort: ["name"] })
+  const clubIds = clubs.map((club: ClubApiItem) => club.id)
+  const { data: memberCounts = {} } = useClubMemberCounts(clubIds)
+  
+  const error = queryError ? (queryError as any)?.message ?? "Failed to load clubs" : null
+  
   const [pendingClubIds, setPendingClubIds] = useState<string[]>([])
   const [userClubIds, setUserClubIds] = useState<number[]>([])
   const [userClubId, setUserClubId] = useState<number | null>(null) // Keep for backward compatibility
   const [majors, setMajors] = useState<Major[]>([])
   const [selectedMajorId, setSelectedMajorId] = useState<number | "">("")
-
-  const [memberCounts, setMemberCounts] = useState<Record<string, number>>({}) // Thêm state mới này
 
   // Get user's current memberships and applications
   const userMemberships = clubMemberships.filter((m) => m.userId === auth.userId)
@@ -131,7 +135,7 @@ export default function MemberClubsPage() {
   // Map API items to table rows and filter out user's current clubs
   console.log("Total clubs before filter:", clubs.length, "userClubIds:", userClubIds)
   const enhancedClubs = clubs
-    .filter((club) => {
+    .filter((club: ClubApiItem) => {
       // Hide clubs that user is already a member of
       const clubIdNumber = Number(club.id)
       if (userClubIds.length > 0 && userClubIds.includes(clubIdNumber)) {
@@ -140,13 +144,13 @@ export default function MemberClubsPage() {
       }
       return true
     })
-    .map((club) => ({
+    .map((club: ClubApiItem) => ({
       id: String(club.id),
       name: club.name,
       category: club.majorName ?? (club as any).major?.name ?? (club as any).major?.majorName ?? "",
       description: club.description,
       // members: 0,
-      members: memberCounts[String(club.id)] ?? 0, // ✅ THAY ĐỔI DÒNG NÀY
+      members: (memberCounts as any)[String(club.id)] ?? 0, // ✅ THAY ĐỔI DÒNG NÀY
       founded: 0,
       location: "",
       policy: club.majorPolicyName ?? "",
@@ -230,54 +234,7 @@ export default function MemberClubsPage() {
     setShowApplicationModal(true)
   }
 
-  useEffect(() => {
-    let mounted = true
-    const load = async () => {
-      setLoading(true)
-      setError(null)
-      try {
-        const res: any = await fetchClub({ page: 0, size: 10, sort: ["name"] })
-        const fetchedClubs = res?.content ?? []
-
-        if (mounted) {
-          setClubs(fetchedClubs)
-
-          // ✅ BẮT ĐẦU THAY ĐỔI: Fetch member counts sau khi có danh sách clubs
-          if (fetchedClubs.length > 0) {
-            // Tạo một mảng các promise gọi API lấy member count
-            const countPromises = fetchedClubs.map((club: ClubApiItem) =>
-              getClubMemberCount(club.id)
-            )
-
-            // Chờ tất cả các promise hoàn thành
-            const counts = await Promise.all(countPromises)
-
-            // Tạo một object để map clubId với member count tương ứng
-            const countsMap: Record<string, number> = {}
-            fetchedClubs.forEach((club: ClubApiItem, index: number) => {
-              countsMap[String(club.id)] = counts[index]
-            })
-
-            // Cập nhật state memberCounts
-            if (mounted) {
-              setMemberCounts(countsMap)
-            }
-          }
-        }
-      } catch (err: any) {
-        console.error(err)
-        if (mounted) setError(err?.message ?? "Failed to load clubs")
-      } finally {
-        if (mounted) setLoading(false)
-      }
-    }
-
-    load()
-    return () => {
-      mounted = false
-    }
-  }, [])
-
+  // ✅ REMOVED: useEffect for fetching clubs - now using React Query hooks above
 
   const submitApplication = () => {
     if (!selectedClub || !applicationText.trim()) {

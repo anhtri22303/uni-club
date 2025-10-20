@@ -10,6 +10,7 @@ import { LoadingSpinner } from "@/components/loading-spinner"
 import { safeLocalStorage } from "@/lib/browser-utils"
 import { getUserStats } from "@/service/userApi"
 import { getClubStats } from "@/service/clubApi"
+import { usePrefetchClubs, usePrefetchEvents, usePrefetchUsers } from "@/hooks/use-query-hooks"
 import {
   LayoutDashboard, Users, Calendar, Gift, Wallet, History, BarChart3,
   Building, Home, CheckCircle, FileText, FileUser, HandCoins, CalendarDays,
@@ -68,6 +69,11 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
   const [loadingPath, setLoadingPath] = useState<string | null>(null)
   const [userStatsTotal, setUserStatsTotal] = useState<number>(0)
   const [clubStatsTotal, setClubStatsTotal] = useState<number>(0)
+
+  // Prefetch hooks for instant navigation
+  const prefetchClubs = usePrefetchClubs()
+  const prefetchEvents = usePrefetchEvents()
+  const prefetchUsers = usePrefetchUsers()
 
   // Fetch user stats and club stats for admin role
   useEffect(() => {
@@ -153,13 +159,25 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
     })
   }
 
-  const handleNavigation = async (href: string) => {
+  const handleNavigation = (href: string) => {
     if (pathname === href) return
     setLoadingPath(href)
-    await new Promise((r) => setTimeout(r, 300))
     router.push(href)
     onNavigate?.()
-    setTimeout(() => setLoadingPath(null), 100)
+    // Clear loading state after a short delay to show visual feedback
+    setTimeout(() => setLoadingPath(null), 150)
+  }
+
+  // Prefetch data on hover for instant navigation
+  const handleMouseEnter = (href: string) => {
+    // Determine which data to prefetch based on route
+    if (href.includes("/clubs")) {
+      prefetchClubs()
+    } else if (href.includes("/events")) {
+      prefetchEvents()
+    } else if (href.includes("/users")) {
+      prefetchUsers()
+    }
   }
 
   return (
@@ -232,6 +250,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                     isStaffItem && isActive && "bg-muted text-muted-foreground"
                   )}
                   onClick={() => handleNavigation(item.href)}
+                  onMouseEnter={() => handleMouseEnter(item.href)}
                   disabled={isLoading}
                 >
                   {isLoading ? (

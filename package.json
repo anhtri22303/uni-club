@@ -40,6 +40,8 @@
     "@react-oauth/google": "^0.12.2",
     "@remix-run/react": "latest",
     "@sveltejs/kit": "latest",
+    "@tanstack/react-query": "^5.90.5",
+    "@tanstack/react-query-devtools": "^5.90.2",
     "@types/qrcode": "^1.5.5",
     "@upstash/redis": "^1.19.0",
     "@vercel/analytics": "latest",
