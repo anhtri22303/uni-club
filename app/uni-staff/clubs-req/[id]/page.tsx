@@ -9,8 +9,7 @@ import { Separator } from "@/components/ui/separator"
 import { Building, Users, Calendar, Mail, GraduationCap, FileText, CheckCircle, XCircle, ArrowLeft, Clock } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useState } from "react"
-import { getClubApplications, ClubApplication } from "@/service/clubApplicationAPI"
-
+import { getClubApplications, ClubApplication, processClubApplication, ProcessApplicationBody } from "@/service/clubApplicationAPI"
 interface ClubRequestDetailPageProps {
   params: {
     id: string
@@ -36,6 +35,7 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
   const [request, setRequest] = useState<UiDetail | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
+  const [isProcessing, setIsProcessing] = useState<boolean>(false)
 
   useEffect(() => {
     let mounted = true
@@ -76,6 +76,70 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
     }
   }, [params.id])
 
+  // 👇 3. Hàm xử lý khi nhấn nút "Approve"
+  const handleApprove = async () => {
+    if (!request) return
+
+    // TODO: Dữ liệu này cần được lấy từ một form/modal thay vì hardcode
+    // Hiện tại đang dùng dữ liệu giả để ví dụ
+    const viceLeaderData = {
+      viceLeaderEmail: "vleader@example.com",
+      viceLeaderFullName: "Vice Leader Name",
+      viceLeaderStudentCode: "SE123457",
+      internalNote: "Approved by Uni Staff."
+    }
+
+    const body: ProcessApplicationBody = {
+      approve: true,
+      ...viceLeaderData
+    }
+
+    setIsProcessing(true)
+    try {
+      const updatedApplication = await processClubApplication(request.applicationId, body)
+      // Cập nhật lại trạng thái trên UI
+      setRequest(prev => prev ? { ...prev, status: updatedApplication.status } : null)
+      alert("Application approved successfully!")
+    } catch (error) {
+      console.error("Failed to approve application:", error)
+      alert(`Error: ${(error as Error).message}`)
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  // 👇 4. Hàm xử lý khi nhấn nút "Reject"
+  const handleReject = async () => {
+    if (!request) return
+
+    // Hỏi lý do từ chối, bạn có thể thay thế bằng một modal/dialog đẹp hơn
+    const reason = prompt("Please enter the reason for rejection:")
+    if (!reason) {
+      // Người dùng nhấn cancel
+      return
+    }
+
+    const body: ProcessApplicationBody = {
+      approve: false,
+      rejectReason: reason,
+      internalNote: "Rejected by Uni Staff."
+    }
+
+    setIsProcessing(true)
+    try {
+      const updatedApplication = await processClubApplication(request.applicationId, body)
+      // Cập nhật lại trạng thái trên UI
+      setRequest(prev => prev ? { ...prev, status: updatedApplication.status } : null)
+      alert("Application rejected successfully!")
+    } catch (error) {
+      console.error("Failed to reject application:", error)
+      alert(`Error: ${(error as Error).message}`)
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+
   if (loading) {
     return (
       <ProtectedRoute allowedRoles={["uni_staff"]}>
@@ -105,6 +169,7 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
     )
   }
 
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "PENDING":
@@ -114,11 +179,18 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
             Pending
           </Badge>
         )
-      case "SUBMITTED":
+      // case "SUBMITTED":
+      //   return (
+      //     <Badge variant="default" className="bg-green-100 text-green-700 border-green-300">
+      //       <CheckCircle className="h-3 w-3 mr-1" />
+      //       Submitted
+      //     </Badge>
+      //   )
+      case "APPROVED":
         return (
           <Badge variant="default" className="bg-green-100 text-green-700 border-green-300">
             <CheckCircle className="h-3 w-3 mr-1" />
-            Submitted
+            Approved
           </Badge>
         )
       case "REJECTED":
@@ -257,21 +329,46 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
                     <CardTitle className="text-lg">Actions</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <Button className="w-full" variant="default">
+                    {/* <Button className="w-full" variant="default">
                       <CheckCircle className="h-4 w-4 mr-2" />
                       Submit Request
+                    </Button> */}
+                    <Button
+                      className="w-full"
+                      variant="default"
+                      onClick={handleApprove}
+                      disabled={isProcessing}
+                    >
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      {isProcessing ? "Approving..." : "Approve Request"}
                     </Button>
-                    <Button className="w-full" variant="destructive">
+
+                    {/* <Button className="w-full" variant="destructive">
                       <XCircle className="h-4 w-4 mr-2" />
                       Reject Request
+                    </Button> */}
+                    <Button
+                      className="w-full"
+                      variant="destructive"
+                      onClick={handleReject}
+                      disabled={isProcessing}
+                    >
+                      <XCircle className="h-4 w-4 mr-2" />
+                      {isProcessing ? "Rejecting..." : "Reject Request"}
                     </Button>
-                    <Button className="w-full bg-transparent" variant="outline">
+
+                    <Button 
+                      className="w-full bg-transparent" 
+                      variant="outline"
+                      disabled={isProcessing}
+                      onClick={() => window.location.href = `mailto:${request.requestedByEmail}`}
+                    >
                       <Mail className="h-4 w-4 mr-2" />
                       Contact Requester
                     </Button>
                   </CardContent>
                 </Card>
-              )}
+              ) }
             </div>
           </div>
         </div>
