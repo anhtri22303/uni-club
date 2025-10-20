@@ -230,29 +230,6 @@ export default function MemberClubsPage() {
     setShowApplicationModal(true)
   }
 
-  // useEffect(() => {
-  //   let mounted = true
-  //   const load = async () => {
-  //     setLoading(true)
-  //     setError(null)
-  //     try {
-  //       const res: any = await fetchClub({ page: 0, size: 10, sort: ["name"] })
-  //       // Expecting the API shape described by the user. Use only `content`.
-  //       console.log("fetchClub response content:", res?.content)
-  //       if (mounted) setClubs(res?.content ?? [])
-  //     } catch (err: any) {
-  //       console.error(err)
-  //       if (mounted) setError(err?.message ?? "Failed to load clubs")
-  //     } finally {
-  //       if (mounted) setLoading(false)
-  //     }
-  //   }
-
-  //   load()
-  //   return () => {
-  //     mounted = false
-  //   }
-  // }, [])
   useEffect(() => {
     let mounted = true
     const load = async () => {
@@ -551,8 +528,8 @@ export default function MemberClubsPage() {
             searchKey="name"
             searchPlaceholder="Search clubs..."
             filters={filters}
-            initialPageSize={6}
-            pageSizeOptions={[6, 12, 24, 48]}
+            initialPageSize={8}
+            pageSizeOptions={[8, 20, 50]}
           />
           {loading && (
             <div className="text-center text-sm text-muted-foreground">Loading clubs...</div>

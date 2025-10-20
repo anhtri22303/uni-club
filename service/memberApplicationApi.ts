@@ -7,7 +7,6 @@ export const postMemAppli = async (payload: { clubId: number | string; message: 
       clubId: Number(payload.clubId),
       message: payload.message,
     })
-
     console.log("✅ Posted member application:", response.data)
     return response.data as {
       applicationId: number
@@ -30,8 +29,6 @@ export const postMemAppli = async (payload: { clubId: number | string; message: 
     throw error
   }
 }
-
-
 // Fetch all member applications (GET /api/member-applications)
 export const getMemberApplications = async () => {
   try {
@@ -44,7 +41,6 @@ export const getMemberApplications = async () => {
     throw error
   }
 }
-
 // LẤY DANH SÁCH ĐƠN XIN GIA NHẬP CỦA MÌNH (GET /api/member-applications/my)
 export const getMyMemApply = async () => {
   try {
@@ -67,7 +63,6 @@ export const getMyMemApply = async () => {
     throw error
   }
 }
-
 // LẤY DANH SÁCH TẤT CẢ ĐƠN XIN GIA NHẬP
 export const fetchAllMemberApplications = async () => {
   try {
@@ -79,7 +74,6 @@ export const fetchAllMemberApplications = async () => {
     throw error
   }
 }
-
 // DUYỆT ĐƠN XIN GIA NHẬP (APPROVE)
 export const approveMemberApplication = async (applicationId: number | string) => {
   try {
@@ -94,7 +88,6 @@ export const approveMemberApplication = async (applicationId: number | string) =
     throw error
   }
 }
-
 // TỪ CHỐI ĐƠN XIN GIA NHẬP (REJECT)
 export const rejectMemberApplication = async (
   applicationId: number | string,
@@ -112,8 +105,6 @@ export const rejectMemberApplication = async (
     throw error
   }
 }
-
-
 // XOÁ ĐƠN XIN GIA NHẬP (nếu cần)
 export const deleteMemberApplication = async (applicationId: number | string) => {
   try {
@@ -125,23 +116,18 @@ export const deleteMemberApplication = async (applicationId: number | string) =>
     throw error
   }
 }
-
 // LẤY DANH SÁCH ĐƠN XIN GIA NHẬP THEO CLUB ID
 export const getMemberApplyByClubId = async (clubId: string | number) => {
   try {
     const response = await axiosInstance.get(`/api/member-applications/club/${clubId}`)
     const resData: any = response.data
     console.log(`✅ Fetched member applications for club ${clubId}:`, resData)
-    
     // If response is direct array of applications
     if (Array.isArray(resData)) return resData
-    
     // If response has wrapper structure like { success, data, message }
     if (resData?.data && Array.isArray(resData.data)) return resData.data
-    
     // If response has content property (pagination)
     if (resData?.content && Array.isArray(resData.content)) return resData.content
-    
     // Fallback to empty array if no applications found
     return []
   } catch (error: any) {

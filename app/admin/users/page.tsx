@@ -41,6 +41,7 @@ interface UserRecord {
   majorName?: string | null
   studentCode?: string | null
   status?: string
+  avatarUrl?: string
 }
 
 type EnhancedUser = UserRecord & {
@@ -163,7 +164,9 @@ export default function AdminUsersPage() {
           phone: u.phone ?? null,
           roleName: u.roleName?.toLowerCase() || (u.defaultRole ?? "unknown").toLowerCase(),
           majorName: u.majorName || "",
+          studentCode: u.studentCode || null,
           status: u.status,
+          avatarUrl: u.avatarUrl || "",
         }))
         // Sort by roleName, then majorName, then fullName
         mapped.sort((a, b) => {
@@ -201,7 +204,10 @@ export default function AdminUsersPage() {
         email: u.email,
         phone: u.phone ?? null,
         roleName: u.roleName?.toLowerCase() || (u.defaultRole ?? "unknown").toLowerCase(),
+        majorName: u.majorName || "",
+        studentCode: u.studentCode || null,
         status: u.status,
+        avatarUrl: u.avatarUrl || "",
       }))
       setUsers(mapped)
       setError(null)
@@ -282,13 +288,21 @@ export default function AdminUsersPage() {
       label: "User Information",
       render: (value: EnhancedUser["fullName"], user: EnhancedUser): JSX.Element => (
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-semibold text-sm">
-            {value
-              .split(" ")
-              .map((n) => n[0])
-              .join("")
-              .toUpperCase()}
-          </div>
+          {user.avatarUrl ? (
+            <img 
+              src={user.avatarUrl} 
+              alt={value}
+              className="w-10 h-10 rounded-full object-cover border-2 border-primary/20"
+            />
+          ) : (
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-semibold text-sm">
+              {value
+                .split(" ")
+                .map((n) => n[0])
+                .join("")
+                .toUpperCase()}
+            </div>
+          )}
           <div>
             <div className="font-semibold text-foreground">{value}</div>
             <div className="text-sm text-muted-foreground flex items-center gap-1">
