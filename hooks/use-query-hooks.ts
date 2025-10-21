@@ -156,7 +156,8 @@ export function useClubMemberCounts(clubIds: number[]) {
         clubIds.map(async (id) => {
           try {
             const count = await getClubMemberCount(id)
-            return { clubId: id, count }
+            const numericCount = typeof count === 'number' ? count : count.activeMemberCount
+            return { clubId: id, count: numericCount }
           } catch {
             return { clubId: id, count: 0 }
           }
