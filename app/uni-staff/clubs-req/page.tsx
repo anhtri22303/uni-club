@@ -48,7 +48,7 @@ export default function UniStaffClubRequestsPage() {
 	// Pagination states
 	const [pendingPage, setPendingPage] = useState(0)
 	const [processedPage, setProcessedPage] = useState(0)
-	const [pageSize, setPageSize] = useState(3)
+	const [pageSize, setPageSize] = useState(5)
 	
 	const { toast } = useToast()
 	const queryClient = useQueryClient()
@@ -78,7 +78,7 @@ export default function UniStaffClubRequestsPage() {
 			const created = await postClubApplication({
 				clubName: newClubName,
 				description: newDescription,
-				category: parseInt(newCategory, 10),
+				majorId: parseInt(newCategory, 10),
 				proposerReason: newProposerReason,
 			});
 			toast({ title: 'Application sent', description: `${created.clubName} submitted`, variant: 'success' });

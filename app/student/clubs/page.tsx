@@ -43,16 +43,16 @@ export default function MemberClubsPage() {
   const [showCreateClubModal, setShowCreateClubModal] = useState(false)
   const [newClubName, setNewClubName] = useState("")
   const [newDescription, setNewDescription] = useState("")
-  const [newCategory, setNewCategory] = useState("")
+  const [newMajor, setNewMajor] = useState("")
   const [newProposerReason, setNewProposerReason] = useState("")
-  
+
   // ✅ USE REACT QUERY instead of manual state
   const { data: clubs = [], isLoading: loading, error: queryError } = useClubs({ page: 0, size: 10, sort: ["name"] })
   const clubIds = clubs.map((club: ClubApiItem) => club.id)
   const { data: memberCounts = {} } = useClubMemberCounts(clubIds)
-  
+
   const error = queryError ? (queryError as any)?.message ?? "Failed to load clubs" : null
-  
+
   const [clubsWithData, setClubsWithData] = useState<ClubApiItem[]>([])
   const [pendingClubIds, setPendingClubIds] = useState<string[]>([])
   const [userClubIds, setUserClubIds] = useState<number[]>([])
@@ -64,7 +64,7 @@ export default function MemberClubsPage() {
   useEffect(() => {
     const fetchClubData = async () => {
       if (clubs.length === 0) return
-      
+
       const clubsWithMemberCount = await Promise.all(
         clubs.map(async (club: ClubApiItem) => {
           const clubData = await getClubMemberCount(club.id)
@@ -75,10 +75,10 @@ export default function MemberClubsPage() {
           }
         })
       )
-      
+
       setClubsWithData(clubsWithMemberCount)
     }
-    
+
     fetchClubData()
   }, [clubs])
 
@@ -130,7 +130,7 @@ export default function MemberClubsPage() {
   }, [])
 
 
-  const categoryColors: Record<string, string> = {
+  const majorColors: Record<string, string> = {
     "Software Engineering": "#0052CC",
     "Artificial Intelligence": "#6A00FF",
     "Information Assurance": "#243447",
@@ -169,19 +169,37 @@ export default function MemberClubsPage() {
       }
       return true
     })
-    .map((club: ClubApiItem) => ({
-      id: String(club.id),
-      name: club.name,
-      category: club.majorName ?? (club as any).major?.name ?? (club as any).major?.majorName ?? "",
-      description: club.description,
-      members: club.memberCount ?? 0,
-      events: club.approvedEvents ?? 0,
-      founded: 0,
-      location: "",
-      policy: club.majorPolicyName ?? "",
-      status: getClubStatus(String(club.id)),
-      actions: undefined,
-    }))
+
+    .map((club: ClubApiItem) => {
+      // 1. Thử lấy tên major trực tiếp (logic cũ)
+      let majorName = club.majorName ?? (club as any).major?.name ?? (club as any).major?.majorName
+
+      // 2. Nếu không có tên, thử tìm bằng ID
+      if (!majorName && majors.length > 0) {
+        // Giả sử API trả về 'majorId' hoặc 'major' (dưới dạng ID hoặc object {id: ...})
+        const clubMajorId = (club as any).majorId ?? (club as any).major?.id ?? (club as any).major
+
+        if (clubMajorId) {
+          const majorFromList = majors.find(m => m.id === Number(clubMajorId))
+          if (majorFromList) {
+            majorName = majorFromList.name // Đã tìm thấy tên từ danh sách majors
+          }
+        }
+      }
+      return {
+        id: String(club.id),
+        name: club.name,
+        major: majorName ?? "", // Sử dụng tên đã được tìm thấy
+        description: club.description,
+        members: club.memberCount ?? 0,
+        events: club.approvedEvents ?? 0,
+        founded: 0,
+        location: "",
+        policy: club.majorPolicyName ?? "",
+        status: getClubStatus(String(club.id)),
+        actions: undefined,
+      }
+    })
   console.log("Enhanced clubs after filter:", enhancedClubs.length)
 
   const getMajorVariant = (major?: string) => {
@@ -197,8 +215,8 @@ export default function MemberClubsPage() {
 
   const filters = [
     {
-      key: "category",
-      label: "Category",
+      key: "major",
+      label: "Major",
       type: "select" as const,
       options: [
         { value: "Technology", label: "Technology" },
@@ -369,13 +387,13 @@ export default function MemberClubsPage() {
       render: (value: string, club: any) => (
         <div>
           <div className="font-medium">{value}</div>
-          <div className="text-sm text-muted-foreground">{club.category}</div>
+          <div className="text-sm text-muted-foreground">{club.major}</div>
         </div>
       ),
     },
     {
-      key: "category" as const,
-      label: "Category",
+      key: "major" as const,
+      label: "Major",
       // render: (value: string) => {
       //   const variant = getMajorVariant(value)
       //   return (
@@ -385,7 +403,7 @@ export default function MemberClubsPage() {
       //   )
       // },
       render: (value: string) => {
-        const color = categoryColors[value] || "#E2E8F0" // fallback nếu không có
+        const color = majorColors[value] || "#E2E8F0" // fallback nếu không có
         return (
           <Badge
             variant="secondary"
@@ -587,12 +605,12 @@ export default function MemberClubsPage() {
                 />
               </div>
 
-              {/* Category (Major Selection) */}
+              {/*Major Selection */}
               <div className="space-y-2">
-                <Label htmlFor="category">Category (Major)</Label>
+                <Label htmlFor="major">Major</Label>
                 <select
-                  id="category"
-                  aria-label="Category (Major)"
+                  id="major"
+                  aria-label="Major"
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   value={selectedMajorId}
                   onChange={(e) => setSelectedMajorId(Number(e.target.value))}
@@ -645,7 +663,7 @@ export default function MemberClubsPage() {
                       const payload = {
                         clubName: newClubName.trim(),
                         description: newDescription.trim(),
-                        category: selectedMajorId, // ✅ ID của major
+                        majorId: selectedMajorId, // ✅ ID của major
                         proposerReason: newProposerReason.trim(),
                       }
 

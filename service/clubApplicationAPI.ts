@@ -35,7 +35,7 @@ export async function getClubApplications(): Promise<ClubApplication[]> {
 export async function postClubApplication(body: {
   clubName: string
   description: string
-  category: number
+  majorId: number
   proposerReason: string
 }) {
   const response = await axiosInstance.post(

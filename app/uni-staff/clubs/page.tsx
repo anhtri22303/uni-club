@@ -24,7 +24,7 @@ type ClubApiItem = {
   approvedEvents?: number
 }
 // Bảng màu theo ngành học
-const categoryColors: Record<string, string> = {
+const majorColors: Record<string, string> = {
   "Software Engineering": "#0052CC",
   "Artificial Intelligence": "#6A00FF",
   "Information Assurance": "#243447",
@@ -87,7 +87,7 @@ export default function UniStaffClubsPage() {
   const enhancedClubs = clubs.map((club) => ({
     id: String(club.id),
     name: club.name,
-    category: club.majorName ?? "-",
+    major: club.majorName ?? "-",
     leaderName: club.leaderName ?? "-",
     members: club.memberCount ?? 0,
     events: club.approvedEvents ?? 0,
@@ -131,7 +131,7 @@ export default function UniStaffClubsPage() {
 
   const filters = [
     {
-      key: "category",
+      key: "major",
       label: "Major Name",
       type: "select" as const,
       options: uniqueCategories.map((cat) => ({ value: cat, label: cat })),
@@ -155,10 +155,10 @@ export default function UniStaffClubsPage() {
       ),
     },
     {
-      key: "category" as const,
+      key: "major" as const,
       label: "Major Name",
       render: (value: string) => {
-        const color = categoryColors[value] || "#E2E8F0"
+        const color = majorColors[value] || "#E2E8F0"
         return (
           <Badge
             variant="secondary"

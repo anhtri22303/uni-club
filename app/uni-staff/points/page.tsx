@@ -243,8 +243,9 @@ export default function UniversityStaffRewardPage() {
                                                         type="checkbox"
                                                         checked={isSelected}
                                                         onChange={() => handleToggleSelectClub(club.id)}
-                                                        className="w-5 h-5 accent-primary cursor-pointer"
-                                                        style={{ transform: "scale(1.2)" }}
+                                                        className="w-5 h-5 accent-primary cursor-pointer scale-125"
+                                                        aria-label={`Select ${club.name}`}
+                                                        title={`Select ${club.name}`}
                                                     />
                                                     <Button
                                                         variant="outline"
