@@ -2,7 +2,7 @@
 
 import { signUp, forgotPassword } from "@/service/authApi"
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useAuth } from "@/contexts/auth-context"
 import { useSearchParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast"
 import { ArrowRight, UserPlus, Smartphone, Eye, EyeOff } from "lucide-react"
 import { GoogleSignInButton } from "@/components/GoogleSignInButton"
+import Image from "next/image"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -41,6 +42,39 @@ export default function LoginPage() {
   const [phoneError, setPhoneError] = useState("")
   const [btnPosition, setBtnPosition] = useState("")
   const positions = ["shift-left", "shift-right", "shift-top", "shift-bottom"]
+  
+  // 3D and animation states
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
+  const [logoHover, setLogoHover] = useState(false)
+  const [floatingIcons, setFloatingIcons] = useState<Array<{ id: number; icon: string; x: number; y: number; rotation: number; scale: number; delay: number }>>([])
+  const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 })
+
+  // Initialize floating university-themed icons
+  useEffect(() => {
+    const universityIcons = ['📚', '🎓', '✏️', '📖', '🎒', '🏫', '🔬', '🎨', '🎭', '⚽', '🎵', '💡', '🌟', '🏆', '📝']
+    const newIcons = Array.from({ length: 20 }, (_, i) => ({
+      id: i,
+      icon: universityIcons[Math.floor(Math.random() * universityIcons.length)],
+      x: Math.random() * 100,
+      y: Math.random() * 100,
+      rotation: Math.random() * 360,
+      scale: 0.6 + Math.random() * 0.6,
+      delay: Math.random() * 8,
+    }))
+    setFloatingIcons(newIcons)
+
+    const handleMouseMove = (e: MouseEvent) => {
+      setMousePosition({
+        x: (e.clientX / window.innerWidth - 0.5) * 2,
+        y: (e.clientY / window.innerHeight - 0.5) * 2,
+      })
+      setCursorPosition({ x: e.clientX, y: e.clientY })
+    }
+
+    window.addEventListener("mousemove", handleMouseMove)
+    return () => window.removeEventListener("mousemove", handleMouseMove)
+  }, [])
+
   function shiftButton() {
     const currentIndex = positions.indexOf(btnPosition)
     const nextPosition = positions[(currentIndex + 1) % positions.length]
@@ -294,51 +328,131 @@ export default function LoginPage() {
 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center p-3 sm:p-4 overflow-hidden">
-      <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-4 sm:gap-8 relative">
-        {/* LEFT: Only big logo */}
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-emerald-50 dark:from-slate-900 dark:via-blue-950 dark:to-slate-900 flex items-center justify-center p-3 sm:p-4 overflow-hidden relative">
+      {/* Floating university-themed icons background */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {floatingIcons.map((item) => (
+          <div
+            key={item.id}
+            className="absolute text-4xl sm:text-5xl md:text-6xl animate-float-uni opacity-20 dark:opacity-10"
+            style={{
+              left: `${item.x}%`,
+              top: `${item.y}%`,
+              transform: `perspective(1000px) rotateX(${item.rotation}deg) rotateY(${item.rotation}deg) scale(${item.scale})`,
+              animationDelay: `${item.delay}s`,
+              filter: 'drop-shadow(0 10px 20px rgba(0,0,0,0.2))',
+            }}
+          >
+            {item.icon}
+          </div>
+        ))}
+      </div>
+
+      {/* Animated gradient orbs */}
+      <div className="absolute top-20 left-20 w-96 h-96 bg-gradient-to-br from-blue-400/20 to-cyan-500/20 rounded-full blur-3xl animate-pulse-uni"></div>
+      <div className="absolute bottom-20 right-20 w-[500px] h-[500px] bg-gradient-to-br from-emerald-400/15 to-cyan-500/15 rounded-full blur-3xl animate-pulse-uni-slow"></div>
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-gradient-to-br from-blue-500/10 to-emerald-500/10 rounded-full blur-3xl animate-rotate-uni"></div>
+
+      <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-4 sm:gap-8 relative z-10">
+        {/* LEFT: 3D Animated Logo Panel */}
         <div
           className={`swap-smooth ${isAnimating ? (isSignUpMode ? "slide-out-left" : "slide-in-left") : ""} ${isSignUpMode ? "lg:order-2" : "lg:order-1"}`}
         >
-          <Card className="w-full h-full bg-transparent border-0 shadow-none flex items-center justify-center">
-            <CardContent className="flex flex-col items-center justify-center h-full p-0">
-              <div className="p-4 sm:p-6 lg:p-8 bg-white rounded-2xl border border-white shadow-lg flex items-center justify-center">
-                <img
-                  src="/images/Logo.png"
-                  alt="UniClub Logo"
-                  className="w-[180px] h-[180px] sm:w-[220px] sm:h-[220px] lg:w-[260px] lg:h-[260px] object-contain"
-                />
+          <Card className="w-full h-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-2 border-blue-200/50 dark:border-blue-500/30 shadow-2xl flex items-center justify-center overflow-hidden relative">
+            {/* Decorative corner elements */}
+            <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-blue-500/20 to-transparent rounded-br-full"></div>
+            <div className="absolute bottom-0 right-0 w-32 h-32 bg-gradient-to-tl from-cyan-500/20 to-transparent rounded-tl-full"></div>
+            
+            <CardContent className="flex flex-col items-center justify-center h-full p-6 sm:p-8 lg:p-12 relative z-10">
+              {/* 3D Interactive Logo */}
+              <div 
+                className="relative group cursor-pointer"
+                onMouseEnter={() => setLogoHover(true)}
+                onMouseLeave={() => setLogoHover(false)}
+                style={{
+                  transform: `perspective(1500px) rotateX(${mousePosition.y * 10}deg) rotateY(${mousePosition.x * 10}deg) scale(${logoHover ? 1.1 : 1})`,
+                  transition: "transform 0.3s ease-out",
+                }}
+              >
+                {/* Glow effect behind logo */}
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-500 via-cyan-500 to-emerald-500 rounded-3xl blur-2xl opacity-30 group-hover:opacity-50 transition-opacity duration-300 scale-110"></div>
+                
+                <div className="relative p-6 sm:p-8 lg:p-10 bg-white dark:bg-slate-800 rounded-3xl border-4 border-white dark:border-slate-700 shadow-2xl">
+                  <Image
+                    src="/images/Logo.png"
+                    alt="UniClub Logo"
+                    width={260}
+                    height={260}
+                    className="w-[180px] h-[180px] sm:w-[220px] sm:h-[220px] lg:w-[260px] lg:h-[260px] object-contain animate-logo-float"
+                    priority
+                  />
+                  
+                  {/* Animated rings around logo */}
+                  <div className="absolute inset-0 rounded-3xl border-2 border-blue-500/30 animate-ping-slow"></div>
+                  <div className="absolute inset-0 rounded-3xl border-2 border-cyan-500/30 animate-ping-slower"></div>
+                </div>
+
+                {/* Floating university elements around logo */}
+                <div className="absolute -top-6 -right-6 text-4xl animate-bounce-gentle">🎓</div>
+                <div className="absolute -bottom-6 -left-6 text-4xl animate-bounce-gentle" style={{ animationDelay: "0.5s" }}>📚</div>
+                <div className="absolute -top-6 -left-6 text-3xl animate-spin-gentle">✨</div>
+                <div className="absolute -bottom-6 -right-6 text-3xl animate-spin-gentle" style={{ animationDelay: "1s" }}>🌟</div>
               </div>
+
+              {/* University tagline */}
+              <div className="mt-8 text-center space-y-2 animate-fade-in-up">
+                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black bg-gradient-to-r from-blue-600 via-cyan-500 to-emerald-500 bg-clip-text text-transparent">
+                  UniClub
+                </h2>
+                <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 font-medium">
+                  Where Students Connect & Thrive 🚀
+                </p>
+              </div>
+
               <Button
                 variant="secondary"
                 size="sm"
                 onClick={handleDownloadApp}
-                className="mt-6 bg-primary text-primary-foreground hover:bg-primary/90 border-0 text-xs sm:text-sm h-9 px-4 shadow-md"
+                className="mt-8 bg-gradient-to-r from-blue-600 via-cyan-500 to-emerald-500 hover:from-blue-700 hover:via-cyan-600 hover:to-emerald-600 text-white border-0 text-xs sm:text-sm h-10 px-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 font-bold"
               >
                 <Smartphone className="h-4 w-4 mr-2" />
-                Download App
+                Download Mobile App
               </Button>
             </CardContent>
           </Card>
         </div>
 
-        {/* RIGHT: Form panel — animation + có thể giữ nền hoặc làm trong suốt nếu muốn */}
+        {/* RIGHT: Enhanced Form Panel with 3D Effects */}
         <div
           className={`swap-smooth ${isAnimating ? (isSignUpMode ? "slide-out-right" : "slide-in-right") : ""} ${isSignUpMode ? "lg:order-1" : "lg:order-2"}`}
         >
-          {/* Nếu muốn cũng trong suốt: đổi bg-card/95 ... thành bg-transparent backdrop-blur-0 shadow-none */}
-          <Card className="w-full shadow-xl border-0 bg-card/95 backdrop-blur-sm relative">
-            {/* Nút đổi theme ở góc trái trên */}
+          <Card className="w-full shadow-2xl border-2 border-blue-200/50 dark:border-blue-500/30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl relative overflow-hidden">
+            {/* Animated gradient border effect */}
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-cyan-500/10 to-emerald-500/10 pointer-events-none"></div>
+            
+            {/* Decorative elements */}
+            <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-cyan-500/10 to-transparent rounded-bl-full"></div>
+            <div className="absolute bottom-0 left-0 w-40 h-40 bg-gradient-to-tr from-blue-500/10 to-transparent rounded-tr-full"></div>
+
+            {/* Theme toggle button */}
             <div className="absolute left-3 top-3 z-10">
               {/* @ts-ignore-next-line */}
               {require("@/components/theme-toggle").ThemeToggle()}
             </div>
-            <CardHeader className="text-center space-y-2 pb-4 sm:pb-6 px-4 sm:px-6">
-              <CardTitle className="text-xl sm:text-2xl font-bold text-primary">
-                {isSignUpMode ? "Create Account" : "Welcome Back"}
+
+            <CardHeader className="text-center space-y-3 pb-4 sm:pb-6 px-4 sm:px-6 relative z-10">
+              {/* Animated header icon */}
+              <div className="flex justify-center mb-2">
+                <div className="text-5xl sm:text-6xl animate-bounce-gentle">
+                  {isSignUpMode ? "🎓" : "👋"}
+                </div>
+              </div>
+              
+              <CardTitle className="text-2xl sm:text-3xl font-black bg-gradient-to-r from-blue-600 via-cyan-500 to-emerald-500 bg-clip-text text-transparent animate-fade-in-up">
+                {isSignUpMode ? "Join UniClub!" : "Welcome Back!"}
               </CardTitle>
-              <CardDescription className="text-sm sm:text-base">
-                {isSignUpMode ? "Join UniClub and start your journey" : "Sign in to your UniClub account"}
+              <CardDescription className="text-sm sm:text-base text-slate-600 dark:text-slate-300 font-medium animate-fade-in-up" style={{ animationDelay: "0.1s" }}>
+                {isSignUpMode ? "Start your amazing university journey 🚀" : "Continue your university adventure ✨"}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 sm:space-y-6 px-4 sm:px-6">
@@ -516,21 +630,26 @@ export default function LoginPage() {
 
                 <Button
                   type="submit"
-                  className={`w-full h-10 sm:h-11 font-medium transition-all duration-200 hover:shadow-lg ${btnPosition}`}
+                  className={`w-full h-11 sm:h-12 font-bold text-base transition-all duration-300 hover:shadow-2xl bg-gradient-to-r from-blue-600 via-cyan-500 to-emerald-500 hover:from-blue-700 hover:via-cyan-600 hover:to-emerald-600 text-white border-0 hover:scale-105 relative overflow-hidden group ${btnPosition}`}
                   id="login-btn"
                   disabled={!!emailError || !!passwordError || (isSignUpMode && (!!fullNameError || !!studentCodeError || !!majorNameError || !!phoneError || !!confirmPasswordError))}
                 >
-                  {isSignUpMode ? (
-                    <>
-                      Sign Up
-                      <UserPlus className="ml-2 h-4 w-4" />
-                    </>
-                  ) : (
-                    <>
-                      Sign In
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </>
-                  )}
+                  {/* Animated shimmer effect */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000"></div>
+                  
+                  <span className="relative flex items-center justify-center">
+                    {isSignUpMode ? (
+                      <>
+                        Create Account
+                        <UserPlus className="ml-2 h-5 w-5" />
+                      </>
+                    ) : (
+                      <>
+                        Sign In Now
+                        <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                      </>
+                    )}
+                  </span>
                 </Button>
 
                 {/* Forgot Password Button - Only show after login error in sign-in mode */}
@@ -560,18 +679,159 @@ export default function LoginPage() {
                 mode={isSignUpMode ? "sign-up" : "sign-in"}
               />
 
-              <div className="text-center pt-3 sm:pt-4 border-t border-border/50">
+              {/* Toggle mode section with gradient border */}
+              <div className="relative text-center pt-4 sm:pt-6 mt-4 sm:mt-6">
+                {/* Gradient border line */}
+                <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-blue-500 to-transparent"></div>
+                
                 <button
                   onClick={toggleMode}
-                  className="text-sm text-primary hover:text-accent transition-colors duration-200 underline underline-offset-4 hover:underline-offset-2"
+                  className="group relative inline-flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-blue-50 via-cyan-50 to-emerald-50 dark:from-blue-950/50 dark:via-cyan-950/50 dark:to-emerald-950/50 hover:shadow-lg transition-all duration-300 hover:scale-105 border-2 border-transparent hover:border-blue-200 dark:hover:border-blue-500/50"
                 >
-                  {isSignUpMode ? "Already have an account? Sign In" : "Don't have an account? Sign Up"}
+                  <span className="text-sm sm:text-base font-bold bg-gradient-to-r from-blue-600 via-cyan-500 to-emerald-500 bg-clip-text text-transparent">
+                    {isSignUpMode ? "Already have an account? Sign In" : "Don't have an account? Sign Up"}
+                  </span>
+                  <span className="text-2xl group-hover:translate-x-2 transition-transform duration-300">✨</span>
                 </button>
               </div>
             </CardContent>
           </Card>
         </div>
       </div>
+
+      {/* Custom CSS Animations */}
+      <style jsx>{`
+        @keyframes float-uni {
+          0%, 100% { 
+            transform: perspective(1000px) translateY(0px) translateZ(0px) rotateX(0deg) rotateY(0deg);
+          }
+          25% { 
+            transform: perspective(1000px) translateY(-40px) translateZ(60px) rotateX(20deg) rotateY(20deg);
+          }
+          50% { 
+            transform: perspective(1000px) translateY(-60px) translateZ(120px) rotateX(0deg) rotateY(40deg);
+          }
+          75% { 
+            transform: perspective(1000px) translateY(-40px) translateZ(60px) rotateX(-20deg) rotateY(20deg);
+          }
+        }
+
+        @keyframes pulse-uni {
+          0%, 100% { opacity: 0.2; transform: scale(1); }
+          50% { opacity: 0.3; transform: scale(1.1); }
+        }
+
+        @keyframes pulse-uni-slow {
+          0%, 100% { opacity: 0.15; transform: scale(1); }
+          50% { opacity: 0.25; transform: scale(1.15); }
+        }
+
+        @keyframes rotate-uni {
+          0% { transform: translate(-50%, -50%) rotate(0deg); }
+          100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        @keyframes logo-float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-10px); }
+        }
+
+        @keyframes bounce-gentle {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-20px); }
+        }
+
+        @keyframes spin-gentle {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+
+        @keyframes ping-slow {
+          0% { transform: scale(1); opacity: 0.5; }
+          100% { transform: scale(1.3); opacity: 0; }
+        }
+
+        @keyframes ping-slower {
+          0% { transform: scale(1); opacity: 0.4; }
+          100% { transform: scale(1.5); opacity: 0; }
+        }
+
+        @keyframes fade-in-up {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .animate-float-uni {
+          animation: float-uni 10s ease-in-out infinite;
+        }
+
+        .animate-pulse-uni {
+          animation: pulse-uni 4s ease-in-out infinite;
+        }
+
+        .animate-pulse-uni-slow {
+          animation: pulse-uni-slow 6s ease-in-out infinite;
+        }
+
+        .animate-rotate-uni {
+          animation: rotate-uni 40s linear infinite;
+        }
+
+        .animate-logo-float {
+          animation: logo-float 3s ease-in-out infinite;
+        }
+
+        .animate-bounce-gentle {
+          animation: bounce-gentle 3s ease-in-out infinite;
+        }
+
+        .animate-spin-gentle {
+          animation: spin-gentle 8s linear infinite;
+        }
+
+        .animate-ping-slow {
+          animation: ping-slow 3s cubic-bezier(0, 0, 0.2, 1) infinite;
+        }
+
+        .animate-ping-slower {
+          animation: ping-slower 4s cubic-bezier(0, 0, 0.2, 1) infinite;
+        }
+
+        .animate-fade-in-up {
+          animation: fade-in-up 0.6s ease-out forwards;
+        }
+
+        /* Smooth transitions for mode switching */
+        .swap-smooth {
+          transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        .slide-out-left {
+          opacity: 0;
+          transform: translateX(-100px) scale(0.9);
+        }
+
+        .slide-in-left {
+          opacity: 0;
+          transform: translateX(100px) scale(0.9);
+        }
+
+        .slide-out-right {
+          opacity: 0;
+          transform: translateX(100px) scale(0.9);
+        }
+
+        .slide-in-right {
+          opacity: 0;
+          transform: translateX(-100px) scale(0.9);
+        }
+      `}</style>
     </div>
   )
 }
