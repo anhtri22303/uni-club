@@ -129,16 +129,6 @@ export default function LoginPage() {
         toast({ title: "Missing Major", description: "Please enter your major name.", variant: "destructive" });
         return;
       }
-      // Email hợp lệ
-      // if (!email) {
-      //   toast({ title: "Missing Email", description: "Please enter your email.", variant: "destructive" });
-      //   return;
-      // }
-      // if (!/^\S+@\S+\.\S+$/.test(email)) {
-      //   toast({ title: "Invalid Email", description: "Please enter a valid email address.", variant: "destructive" });
-      //   return;
-      // }
-      // Validate dùng normalizedEmail thay vì email
       if (!normalizedEmail) {
         toast({ title: "Missing Email", description: "Please enter your email.", variant: "destructive" });
         return;
@@ -214,9 +204,6 @@ export default function LoginPage() {
       return
     }
 
-    // ⭐ SỬA LỖI TẠI ĐÂY: Lấy giá trị 'next' ngay trước khi gọi login
-    // để đảm bảo luôn có giá trị mới nhất, tránh lỗi stale state.
-    // Thêm decode để đảm bảo path đúng (ví dụ: %2F thành /)
     const nextRaw = searchParams.get('next')
     const next = nextRaw ? decodeURIComponent(nextRaw) : undefined
     // const success = await login(email, password, next)
@@ -438,21 +425,6 @@ export default function LoginPage() {
                     {majorNameError && <div className="text-xs text-red-500 mt-1">{majorNameError}</div>}
                   </div>
                 )}
-
-                {/* {isSignUpMode && (
-                  <div className="space-y-2">
-                    <Label htmlFor="roleName" className="text-sm font-medium">
-                      Role
-                    </Label>
-                    <Input
-                      id="roleName"
-                      type="text"
-                      value="STUDENT"
-                      readOnly
-                      className="h-10 sm:h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-gray-100 text-gray-500 cursor-not-allowed"
-                    />
-                  </div>
-                )} */}
 
                 {isSignUpMode && (
                   <div className="space-y-2">

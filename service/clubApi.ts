@@ -10,6 +10,7 @@ interface PageableQuery {
 interface MemberCountData {
   clubId: number;
   activeMemberCount: number;
+  approvedEvents: number;
 }
 interface MemberCountApiResponse {
   success: boolean;
@@ -177,10 +178,14 @@ export const getClubStats = async () => {
 export const getClubMemberCount = async (id: string | number) => {
   try {
     const response = await axiosInstance.get<MemberCountApiResponse>(`/api/clubs/${id}/member-count`);
-    // Dựa theo ảnh swagger, số lượng thành viên nằm trong response.data.data.activeMemberCount
-    return response.data?.data?.activeMemberCount ?? 0
+    // Trả về cả activeMemberCount và approvedEvents
+    console.log(`Fetched member count for club ${id}:`, response.data);
+    return {
+      activeMemberCount: response.data?.data?.activeMemberCount ?? 0,
+      approvedEvents: response.data?.data?.approvedEvents ?? 0
+    }
   } catch (error) {
     console.error(`Error fetching member count for club ${id}:`, error)
-    return 0 // Trả về 0 nếu có lỗi để không làm hỏng giao diện
+    return { activeMemberCount: 0, approvedEvents: 0 } // Trả về object với giá trị mặc định
   }
 }

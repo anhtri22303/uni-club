@@ -144,7 +144,7 @@ export interface ForgotPasswordResponse {
 
 export const forgotPassword = async (email: string): Promise<ForgotPasswordResponse> => {
   try {
-    const res = await axiosInstance.post<ForgotPasswordResponse>(
+    const res = await axiosInstance.post(
       "/auth/forgot-password",
       { email },
       {
@@ -154,14 +154,110 @@ export const forgotPassword = async (email: string): Promise<ForgotPasswordRespo
       }
     )
     console.log("Forgot password response:", res.data)
-    return res.data
-  } catch (error: any) {
-    if (error.response) {
-      console.error("Error response:", error.response.data)
-    } else {
-      console.error("Error during forgot password:", error.message)
+    
+    // Handle both wrapped and direct response formats
+    if (res.data && typeof res.data === 'object') {
+      // If response is wrapped in standard format { success, message, data }
+      if ('success' in res.data && 'message' in res.data) {
+        return res.data as ForgotPasswordResponse
+      }
+      // If response is direct message string or other format
+      return {
+        success: true,
+        message: (res.data as any).message || "Password reset email sent successfully",
+        data: null
+      }
     }
-    throw error
+    
+    // Fallback for unexpected response format
+    return {
+      success: true,
+      message: "Password reset email sent successfully",
+      data: null
+    }
+  } catch (error: any) {
+    console.error("Forgot password error:", {
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message
+    })
+    
+    // Re-throw with formatted error
+    if (error.response?.data) {
+      throw error
+    }
+    
+    throw new Error("Failed to send password reset email")
+  }
+}
+
+// Reset Password API
+export interface ResetPasswordRequest {
+  email: string
+  token: string
+  newPassword: string
+}
+
+export interface ResetPasswordResponse {
+  success: boolean
+  message: string
+  data: null
+}
+
+export const resetPassword = async (
+  email: string,
+  token: string,
+  newPassword: string
+): Promise<ResetPasswordResponse> => {
+  try {
+    const res = await axiosInstance.post(
+      "/auth/reset-password",
+      {
+        email,
+        token,
+        newPassword
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    )
+    console.log("Reset password response:", res.data)
+    
+    // Handle both wrapped and direct response formats
+    if (res.data && typeof res.data === 'object') {
+      // If response is wrapped in standard format { success, message, data }
+      if ('success' in res.data && 'message' in res.data) {
+        return res.data as ResetPasswordResponse
+      }
+      // If response is direct message string or other format
+      return {
+        success: true,
+        message: (res.data as any).message || "Your password has been successfully reset.",
+        data: null
+      }
+    }
+    
+    // Fallback for unexpected response format
+    return {
+      success: true,
+      message: "Your password has been successfully reset.",
+      data: null
+    }
+  } catch (error: any) {
+    console.error("Reset password error:", {
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message
+    })
+    
+    // Re-throw with formatted error
+    if (error.response?.data) {
+      throw error
+    }
+    
+    throw new Error("Failed to reset password")
   }
 }
 
