@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { DataTable } from "@/components/data-table"
 import { useToast } from "@/hooks/use-toast"
 import { Users, Trash, Plus } from "lucide-react"
-import { fetchClub } from "@/service/clubApi"
+import { fetchClub, getClubMemberCount } from "@/service/clubApi"
 // Thêm import useRef nếu cần
 // Remove useRef import (not needed)
 
@@ -20,6 +20,8 @@ type ClubApiItem = {
   majorName?: string
   major?: { name?: string }
   leaderName?: string
+  memberCount?: number
+  approvedEvents?: number
 }
 // Bảng màu theo ngành học
 const categoryColors: Record<string, string> = {
@@ -53,7 +55,21 @@ export default function UniStaffClubsPage() {
       setError(null)
       try {
         const res: any = await fetchClub({ page: 0, size: 10, sort: ["name"] })
-        if (mounted) setClubs(res?.content ?? [])
+        const clubList = res?.content ?? []
+        
+        // Fetch member count for each club
+        const clubsWithMemberCount = await Promise.all(
+          clubList.map(async (club: ClubApiItem) => {
+            const clubData = await getClubMemberCount(club.id)
+            return { 
+              ...club, 
+              memberCount: clubData.activeMemberCount,
+              approvedEvents: clubData.approvedEvents
+            }
+          })
+        )
+        
+        if (mounted) setClubs(clubsWithMemberCount)
       } catch (err: any) {
         console.error(err)
         if (mounted) setError(err?.message ?? "Failed to load clubs")
@@ -73,9 +89,8 @@ export default function UniStaffClubsPage() {
     name: club.name,
     category: club.majorName ?? "-",
     leaderName: club.leaderName ?? "-",
-    members: 0,
-    policy: club.majorPolicyName ?? "-",
-    events: 0,
+    members: club.memberCount ?? 0,
+    events: club.approvedEvents ?? 0,
   }))
 
   // Delete logic matches admin/clubs
@@ -87,7 +102,17 @@ export default function UniStaffClubsPage() {
       // Reload club list
       try {
         const res: any = await fetchClub({ page: 0, size: 10, sort: ["name"] });
-        setClubs(res?.content ?? []);
+        const clubList = res?.content ?? []
+        
+        // Fetch member count for each club
+        const clubsWithMemberCount = await Promise.all(
+          clubList.map(async (club: ClubApiItem) => {
+            const memberCount = await getClubMemberCount(club.id)
+            return { ...club, memberCount }
+          })
+        )
+        
+        setClubs(clubsWithMemberCount);
       } catch (err) {
         toast({ title: "Reload Error", description: "Failed to reload club list.", variant: "destructive" });
       }
@@ -103,12 +128,11 @@ export default function UniStaffClubsPage() {
   // Dynamic filters based on actual data (like admin/clubs)
   const uniqueCategories = Array.from(new Set(clubs.map((c) => c.majorName).filter((v): v is string => !!v)));
   const uniqueLeaders = Array.from(new Set(clubs.map((c) => c.leaderName).filter((v): v is string => !!v)));
-  const uniquePolicies = Array.from(new Set(clubs.map((c) => c.majorPolicyName).filter((v): v is string => !!v)));
 
   const filters = [
     {
       key: "category",
-      label: "Category",
+      label: "Major Name",
       type: "select" as const,
       options: uniqueCategories.map((cat) => ({ value: cat, label: cat })),
     },
@@ -117,12 +141,6 @@ export default function UniStaffClubsPage() {
       label: "Leader",
       type: "select" as const,
       options: uniqueLeaders.map((l) => ({ value: l, label: l })),
-    },
-    {
-      key: "policy",
-      label: "Policy",
-      type: "select" as const,
-      options: uniquePolicies.map((p) => ({ value: p, label: p })),
     },
   ];
 
@@ -138,7 +156,7 @@ export default function UniStaffClubsPage() {
     },
     {
       key: "category" as const,
-      label: "Category",
+      label: "Major Name",
       render: (value: string) => {
         const color = categoryColors[value] || "#E2E8F0"
         return (
@@ -169,15 +187,6 @@ export default function UniStaffClubsPage() {
           <Users className="h-4 w-4" />
           {value}
         </div>
-      ),
-    },
-    {
-      key: "policy" as const,
-      label: "Major Policy",
-      render: (value: string) => (
-        <Badge title={value || ""} variant={"outline"} className="truncate max-w-[200px]">
-          {value || "-"}
-        </Badge>
       ),
     },
     {
