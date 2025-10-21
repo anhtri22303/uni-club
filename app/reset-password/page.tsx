@@ -49,10 +49,6 @@ function ResetPasswordForm() {
       setPasswordError("Please enter your new password.")
       return false
     }
-    if (pwd.length < 6) {
-      setPasswordError("Password must be at least 6 characters long.")
-      return false
-    }
     setPasswordError("")
     return true
   }
