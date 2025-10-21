@@ -16,10 +16,6 @@ export interface ClubApplication {
 export interface ProcessApplicationBody {
   approve: boolean;
   rejectReason?: string;
-  internalNote?: string;
-  viceLeaderEmail?: string;
-  viceLeaderFullName?: string;
-  viceLeaderStudentCode?: string;
 }
 /**
  * Fetches club applications from the backend.
