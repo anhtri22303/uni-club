@@ -74,17 +74,17 @@ export async function getMyClubApply(): Promise<ClubApplication[]> {
       message: string
       data: ClubApplication[]
     }>("/api/club-applications/my")
-    console.log("✅ My club applications:", response.data)
-    
+    console.log("My club applications:", response.data)
+
     // Response structure: { success, message, data }
     if (response.data?.success && response.data?.data) {
       return response.data.data
     }
-    
+
     // Fallback to direct data if no wrapper
     return Array.isArray(response.data) ? response.data : []
   } catch (error: any) {
-    console.error("❌ Error fetching my club applications:", error.response?.data || error.message)
+    console.error("Error fetching my club applications:", error.response?.data || error.message)
     throw error
   }
 }
@@ -109,13 +109,38 @@ export async function processClubApplication(
     throw new Error(result.message || "Failed to process application")
   }
 
-  console.log("✅ Application processed successfully:", result.data)
+  console.log("Application processed successfully:", result.data)
   return result.data
 }
-export default { 
-  getClubApplications, 
-  postClubApplication, 
+
+export async function finalizeClubApplication(
+  applicationId: number
+): Promise<string> {
+  const response = await axiosInstance.put(
+    `/api/club-applications/${applicationId}/finalize`,
+    {}, // Swagger ghi rõ Request body là rỗng {}
+    { headers: { "Content-Type": "application/json" } }
+  );
+
+  // API trả về cấu trúc: { success, message, data: "string" }
+  const result = response.data as {
+    success: boolean;
+    message: string;
+    data: string; // Chú ý: data là string, không phải object ClubApplication
+  };
+
+  if (!result.success) {
+    throw new Error(result.message || "Failed to finalize application");
+  }
+
+  console.log("Application finalized successfully:", result.data);
+  return result.data; // Trả về data là một string
+}
+export default {
+  getClubApplications,
+  postClubApplication,
   putClubApplicationStatus,
   getMyClubApply,
-  processClubApplication
+  processClubApplication,
+  finalizeClubApplication
 }
