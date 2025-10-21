@@ -78,7 +78,13 @@ export function AppShell({ children }: AppShellProps) {
           </div>
 
           {/* ===================== DESKTOP TOGGLE (luôn hiển thị) ===================== */}
-          <div className="hidden md:block fixed top-4 left-4 z-50">
+          <div
+            className={cn(
+              "hidden md:block fixed top-4 z-50 transition-all duration-300 ease-out",
+              // Vị trí động: bên phải sidebar khi mở, góc trái khi đóng
+              sidebarCollapsed ? "left-4" : "left-[calc(1rem+16rem+0.5rem)]" // 1rem=left-4, 16rem=w-64
+            )}
+          >
             <Button
               variant="outline"
               size="icon"
@@ -93,35 +99,44 @@ export function AppShell({ children }: AppShellProps) {
           {/* ===================== DESKTOP SIDEBAR ===================== */}
           <div
             className={cn(
-              "hidden md:flex md:flex-col md:relative transition-[width] duration-300 ease-out",
-              sidebarCollapsed ? "md:w-0" : "md:w-64"
+              "hidden md:flex md:flex-col md:fixed md:top-4 md:left-4 z-40 bg-background",
+              "md:h-auto", // THAY ĐỔI 2: Chiều cao tự động co giãn theo nội dung
+              "rounded-2xl border shadow-lg overflow-hidden",
+              "transition-[width] duration-300 ease-out",
+              sidebarCollapsed ? "md:w-0 border-none" : "md:w-64"
             )}
           >
-            {/* Dùng wrapper để trượt nội dung sidebar, không unmount */}
             <div
               className={cn(
-                "absolute md:static inset-y-0 left-0 overflow-hidden transition-transform duration-300 ease-out",
+                "transition-transform duration-300 ease-out",
                 sidebarCollapsed ? "-translate-x-full" : "translate-x-0",
                 "w-64"
               )}
             >
-              <Sidebar onNavigate={() => { /* không đóng desktop khi navigate */ }} />
+              {/* THAY ĐỔI 3: Bỏ wrapper và padding-top để logo lên sát cạnh trên */}
+              <Sidebar onNavigate={() => {}} />
             </div>
           </div>
 
           {/* ===================== MAIN CONTENT ===================== */}
-          <main className="flex-1 overflow-hidden relative">
-            {/* Padding top để tránh nút nổi chồng lên nội dung trên mobile */}
+          <main
+            className={cn(
+              "flex-1 overflow-hidden transition-[padding-left] duration-300 ease-out",
+              sidebarCollapsed ? "md:pl-20" : "md:pl-72" // Padding được giữ nguyên để có khoảng trống hợp lý
+            )}
+          >
+            {/* Giữ pt-16 cho mobile để nội dung không bị nút toggle che, bỏ pt cho desktop */}
             <div className="h-full p-3 sm:p-4 md:p-6 pt-16 md:pt-6">{children}</div>
           </main>
         </div>
+
 
         {/* ===================== MOBILE DRAWER ===================== */}
         <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
           <SheetContent
             side="left"
             className="p-0 w-72"
-            // Khi click bên trong sidebar để điều hướng -> đóng sheet
+          // Khi click bên trong sidebar để điều hướng -> đóng sheet
           >
             <Sidebar onNavigate={() => setSidebarOpen(false)} />
           </SheetContent>
