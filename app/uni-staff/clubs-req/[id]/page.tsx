@@ -6,22 +6,12 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import {
-  Building,
-  Users,
-  Calendar,
-  Mail,
-  GraduationCap,
-  FileText,
-  CheckCircle,
-  XCircle,
-  ArrowLeft,
-  Clock,
-} from "lucide-react"
+import { Building, Users, Calendar, Mail, GraduationCap, FileText, CheckCircle, XCircle, ArrowLeft, Clock } from "lucide-react"
 import Link from "next/link"
-import { useEffect, useState } from "react"
-import { getClubApplications, ClubApplication } from "@/service/clubApplicationAPI"
-
+import { processClubApplication, ProcessApplicationBody } from "@/service/clubApplicationAPI"
+import { useState } from "react"
+import { useClubApplications } from "@/hooks/use-query-hooks"
+import { useQueryClient } from "@tanstack/react-query"
 interface ClubRequestDetailPageProps {
   params: {
     id: string
@@ -44,48 +34,81 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
     status: string
   }
 
-  const [request, setRequest] = useState<UiDetail | null>(null)
-  const [loading, setLoading] = useState<boolean>(true)
-  const [error, setError] = useState<string | null>(null)
+  // Use React Query hook to fetch all club applications
+  const { data: applications = [], isLoading: loading, error } = useClubApplications()
+  const [isProcessing, setIsProcessing] = useState<boolean>(false)
+  const queryClient = useQueryClient()
 
-  useEffect(() => {
-    let mounted = true
-    setLoading(true)
-    getClubApplications()
-      .then((data: ClubApplication[]) => {
-        if (!mounted) return
-        // params.id might be 'req-<id>' or numeric string. Support both.
-        const found = data.find((d) => `req-${d.applicationId}` === params.id || String(d.applicationId) === params.id)
-        if (!found) {
-          setRequest(null)
-        } else {
-          const mapped: UiDetail = {
-            applicationId: found.applicationId,
-            id: `req-${found.applicationId}`,
-            clubName: found.clubName,
-            category: (found as any).category ?? "Unknown",
-            description: found.description,
-            faculty: (found as any).faculty ?? "-",
-            expectedMembers: (found as any).expectedMembers ?? null,
-            reason: (found as any).reason ?? found.description,
-            requestedBy: found.submittedBy?.fullName ?? "Unknown",
-            requestedByEmail: found.submittedBy?.email ?? "",
-            requestDate: found.submittedAt ?? "",
-            status: found.status,
-          }
-          setRequest(mapped)
-        }
-      })
-      .catch((err) => {
-        console.error(err)
-        setError("Failed to load application")
-      })
-      .finally(() => mounted && setLoading(false))
+  // Filter client-side to find the specific application by ID
+  // params.id might be 'req-<id>' or numeric string. Support both.
+  const found = applications.find((d: any) => `req-${d.applicationId}` === params.id || String(d.applicationId) === params.id)
+  
+  const request: UiDetail | null = found ? {
+    applicationId: found.applicationId,
+    id: `req-${found.applicationId}`,
+    clubName: found.clubName,
+    category: (found as any).category ?? "Unknown",
+    description: found.description,
+    faculty: (found as any).faculty ?? "-",
+    expectedMembers: (found as any).expectedMembers ?? null,
+    reason: (found as any).reason ?? found.description,
+    requestedBy: found.submittedBy?.fullName ?? "Unknown",
+    requestedByEmail: found.submittedBy?.email ?? "",
+    requestDate: found.submittedAt ?? "",
+    status: found.status,
+  } : null
 
-    return () => {
-      mounted = false
+  // 👇 3. Hàm xử lý khi nhấn nút "Approve"
+  const handleApprove = async () => {
+    if (!request) return
+    const viceLeaderData = {
+      viceLeaderEmail: "vleader@example.com",
+      viceLeaderFullName: "Vice Leader Name",
+      viceLeaderStudentCode: "SE123457",
+      internalNote: "Approved by Uni Staff."
     }
-  }, [params.id])
+    const body: ProcessApplicationBody = {
+      approve: true,
+      ...viceLeaderData
+    }
+    setIsProcessing(true)
+    try {
+      await processClubApplication(request.applicationId, body)
+      // Invalidate cache to refetch updated status
+      queryClient.invalidateQueries({ queryKey: ["club-applications"] })
+      alert("Application approved successfully!")
+    } catch (error) {
+      console.error("Failed to approve application:", error)
+      alert(`Error: ${(error as Error).message}`)
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  // 👇 4. Hàm xử lý khi nhấn nút "Reject"
+  const handleReject = async () => {
+    if (!request) return
+    const reason = prompt("Please enter the reason for rejection:")
+    if (!reason) return
+    const body: ProcessApplicationBody = {
+      approve: false,
+      rejectReason: reason,
+      internalNote: "Rejected by Uni Staff."
+    }
+    setIsProcessing(true)
+    try {
+      await processClubApplication(request.applicationId, body)
+      // Invalidate cache to refetch updated status
+      queryClient.invalidateQueries({ queryKey: ["club-applications"] })
+      alert("Application rejected successfully!")
+    } catch (error) {
+      console.error("Failed to reject application:", error)
+      alert(`Error: ${(error as Error).message}`)
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
 
   if (loading) {
     return (
@@ -103,7 +126,9 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
         <AppShell>
           <div className="text-center py-8">
             <h1 className="text-2xl font-bold mb-2">Club Request Not Found</h1>
-            <p className="text-muted-foreground mb-4">The requested club request could not be found.</p>
+            <p className="text-muted-foreground mb-4">
+              {error ? String(error) : "The requested club request could not be found."}
+            </p>
             <Link href="/uni-staff/clubs-req">
               <Button>
                 <ArrowLeft className="h-4 w-4 mr-2" />
@@ -116,6 +141,7 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
     )
   }
 
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "PENDING":
@@ -125,11 +151,18 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
             Pending
           </Badge>
         )
-      case "SUBMITTED":
+      // case "SUBMITTED":
+      //   return (
+      //     <Badge variant="default" className="bg-green-100 text-green-700 border-green-300">
+      //       <CheckCircle className="h-3 w-3 mr-1" />
+      //       Submitted
+      //     </Badge>
+      //   )
+      case "APPROVED":
         return (
           <Badge variant="default" className="bg-green-100 text-green-700 border-green-300">
             <CheckCircle className="h-3 w-3 mr-1" />
-            Submitted
+            Approved
           </Badge>
         )
       case "REJECTED":
@@ -159,19 +192,6 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
               </Link>
               <h1 className="text-3xl font-bold">{request.clubName}</h1>
               <p className="text-muted-foreground">Club Registration Request Details</p>
-            </div>
-            <div className="flex items-center gap-2">
-              {getStatusBadge(request.status)}
-              {request.status === "PENDING" && (
-                <div className="flex gap-2">
-                  <Button variant="default" size="sm" className="h-8 w-8 p-0">
-                    <CheckCircle className="h-4 w-4" />
-                  </Button>
-                  <Button variant="destructive" size="sm" className="h-8 w-8 p-0">
-                    <XCircle className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
             </div>
           </div>
 
@@ -281,21 +301,46 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
                     <CardTitle className="text-lg">Actions</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <Button className="w-full" variant="default">
+                    {/* <Button className="w-full" variant="default">
                       <CheckCircle className="h-4 w-4 mr-2" />
                       Submit Request
+                    </Button> */}
+                    <Button
+                      className="w-full"
+                      variant="default"
+                      onClick={handleApprove}
+                      disabled={isProcessing}
+                    >
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      {isProcessing ? "Approving..." : "Approve Request"}
                     </Button>
-                    <Button className="w-full" variant="destructive">
+
+                    {/* <Button className="w-full" variant="destructive">
                       <XCircle className="h-4 w-4 mr-2" />
                       Reject Request
+                    </Button> */}
+                    <Button
+                      className="w-full"
+                      variant="destructive"
+                      onClick={handleReject}
+                      disabled={isProcessing}
+                    >
+                      <XCircle className="h-4 w-4 mr-2" />
+                      {isProcessing ? "Rejecting..." : "Reject Request"}
                     </Button>
-                    <Button className="w-full bg-transparent" variant="outline">
+
+                    <Button 
+                      className="w-full bg-transparent" 
+                      variant="outline"
+                      disabled={isProcessing}
+                      onClick={() => window.location.href = `mailto:${request.requestedByEmail}`}
+                    >
                       <Mail className="h-4 w-4 mr-2" />
                       Contact Requester
                     </Button>
                   </CardContent>
                 </Card>
-              )}
+              ) }
             </div>
           </div>
         </div>

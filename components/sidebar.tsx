@@ -40,7 +40,7 @@ const navigationConfig = {
     { href: "/club-leader/members", label: "Members", icon: Users },
     { href: "/club-leader/events", label: "Events", icon: Calendar },
     { href: "/club-leader/gift", label: "Gift", icon: Gift },
-    { href: "/club-leader/points", label: "Points", icon: HandCoins },
+    { href: "/club-leader/points", label: "Points Club", icon: HandCoins },
     { href: "/club-leader/attendances", label: "Attendances", icon: CalendarDays },
 
   ],
@@ -50,6 +50,7 @@ const navigationConfig = {
     { href: "/uni-staff/policies", label: "Policies", icon: FileText },
     { href: "/uni-staff/clubs-req", label: "Club Requests", icon: FileText },
     { href: "/uni-staff/events-req", label: "Event Requests", icon: Calendar },
+    { href: "/uni-staff/points", label: "Points Staff", icon: HandCoins },
     // { href: "/uni-staff/reports", label: "Reports", icon: BarChart3 },
   ],
   admin: [
@@ -84,7 +85,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
           if (stats?.total) {
             setUserStatsTotal(stats.total)
           }
-          
+
           const clubStats = await getClubStats()
           if (clubStats?.totalClubs) {
             setClubStatsTotal(clubStats.totalClubs)

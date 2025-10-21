@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { AppShell } from "@/components/app-shell"
 import { ProtectedRoute } from "@/contexts/protected-route"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,7 +9,9 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Gift, Package, ChevronLeft, ChevronRight } from "lucide-react"
 import { usePagination } from "@/hooks/use-pagination"
-import { getProduct, Product } from "@/service/productApi"
+import { useProducts } from "@/hooks/use-query-hooks"
+import { Product } from "@/service/productApi"
+import { Skeleton } from "@/components/ui/skeleton"
 
 // ========== Minimal Pager ==========
 const MinimalPager = ({
@@ -51,25 +53,10 @@ const MinimalPager = ({
 
 // ========== COMPONENT ==========
 export default function MemberGiftPage() {
-	const [products, setProducts] = useState<Product[]>([])
-	const [loading, setLoading] = useState(false)
 	const [searchTerm, setSearchTerm] = useState("")
 
-	useEffect(() => {
-		async function fetchProducts() {
-			setLoading(true)
-			try {
-				const data = await getProduct({ page: 0, size: 50 })
-				setProducts(data)
-			} catch (err) {
-				console.error("Failed to load products:", err)
-				setProducts([])
-			} finally {
-				setLoading(false)
-			}
-		}
-		fetchProducts()
-	}, [])
+	// ✅ USE REACT QUERY for products
+	const { data: products = [], isLoading: loading } = useProducts({ page: 0, size: 50, sort: "name" })
 
 	const filteredProducts = products.filter(
 		(p) =>

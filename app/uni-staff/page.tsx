@@ -7,9 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { usePagination } from "@/hooks/use-pagination"
 import { useData } from "@/contexts/data-context"
-import { fetchPolicies } from "@/service/policyApi"
-import { fetchEvent } from "@/service/eventApi"
-import { fetchClub } from "@/service/clubApi"
+import { usePolicies, useEvents, useClubs } from "@/hooks/use-query-hooks"
 import { getClubApplications } from "@/service/clubApplicationAPI"
 import { useEffect } from "react"
 import {
@@ -33,42 +31,31 @@ import users from "@/src/data/users.json"
 import redemptions from "@/src/data/redemptions.json"
 
 export default function UniStaffReportsPage() {
-  const { clubMemberships, membershipApplications, vouchers, events, clubs, policies, clubApplications, eventRequests, updateEvents, updateClubs, updatePolicies, updateClubApplications, updateEventRequests } = useData()
+  const { clubMemberships, membershipApplications, vouchers, clubApplications, eventRequests, updateClubApplications, updateEventRequests } = useData()
 
-  // Fetch data when component mounts
+  // ✅ USE REACT QUERY for events, clubs, and policies
+  const { data: events = [], isLoading: eventsLoading } = useEvents()
+  const { data: clubs = [], isLoading: clubsLoading } = useClubs()
+  const { data: policies = [], isLoading: policiesLoading } = usePolicies()
+
+  // Fetch club applications when component mounts
   useEffect(() => {
     const loadData = async () => {
       try {
-        // Fetch events
-        const eventData = await fetchEvent()
-        updateEvents(eventData || [])
-        
-        // Fetch clubs
-        const clubData: any = await fetchClub()
-        if (clubData && Array.isArray(clubData)) {
-          updateClubs(clubData)
-        } else if (clubData && clubData.content && Array.isArray(clubData.content)) {
-          updateClubs(clubData.content)
-        } else {
-          updateClubs([])
-        }
-
-        // Fetch policies
-        const policyData = await fetchPolicies()
-        updatePolicies(policyData || [])
-
         // Fetch club applications
         const clubAppData = await getClubApplications()
         updateClubApplications(clubAppData || [])
 
-        // Sử dụng cùng dữ liệu events cho eventRequests (tránh gọi API hai lần)
-        updateEventRequests(eventData || [])
+        // Use events for eventRequests to avoid calling API twice
+        updateEventRequests(events || [])
       } catch (error) {
         console.error("Failed to fetch data:", error)
       }
     }
-    loadData()
-  }, []) // Loại bỏ dependencies để tránh infinite loop
+    if (events.length > 0) {
+      loadData()
+    }
+  }, [events])
 
   const usersByRole = users.reduce(
     (acc, user) => {
@@ -290,7 +277,7 @@ export default function UniStaffReportsPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {paginatedClubs.map((club, index) => {
+                  {paginatedClubs.map((club: any, index: number) => {
                     const absoluteIndex = (currentPage - 1) * pageSize + index
                     return (
                       <div

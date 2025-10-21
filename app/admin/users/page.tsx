@@ -11,13 +11,16 @@ import { Mail, Shield, Users, Plus, Star, Activity, Edit, Trash, Filter, X } fro
 import React from "react"
 
 // API
-import { fetchUser, fetchUserById, updateUserById } from "@/service/userApi"
-import { useEffect, useState } from "react"
+import { useUsers } from "@/hooks/use-query-hooks"
+import { fetchUserById, updateUserById } from "@/service/userApi"
+import { useState } from "react"
 import { Modal } from "@/components/modal"
 import { Input } from "@/components/ui/input"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
+import { Skeleton } from "@/components/ui/skeleton"
+import { useQueryClient } from "@tanstack/react-query"
 
 // Role display formatter (produce uppercase readable labels)
 const formatRoleName = (roleId: string) => {
@@ -51,17 +54,39 @@ type EnhancedUser = UserRecord & {
 
 export default function AdminUsersPage() {
   const { clubMemberships } = useData()
+  const { toast } = useToast()
+  const queryClient = useQueryClient()
+
+  // ✅ USE REACT QUERY for users
+  const { data: usersData = [], isLoading: loading, error: queryError } = useUsers()
 
   const getUserMembershipCount = (userId: string | number) =>
     clubMemberships.filter((m) => m.userId === userId && m.status === "APPROVED").length
 
   const getRoleName = (roleId: string) => formatRoleName(roleId)
 
-  // Local state for users fetched from the API
-  const [users, setUsers] = useState<UserRecord[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const { toast } = useToast()
+  // Map API data to UserRecord shape
+  const users: UserRecord[] = (usersData || []).map((u: any) => ({
+    id: u.id,
+    fullName: u.fullName || u.name || "",
+    email: u.email,
+    phone: u.phone ?? null,
+    roleName: u.roleName?.toLowerCase() || (u.defaultRole ?? "unknown").toLowerCase(),
+    majorName: u.majorName || "",
+    studentCode: u.studentCode || null,
+    status: u.status,
+    avatarUrl: u.avatarUrl || "",
+  })).sort((a: any, b: any) => {
+    if (a.roleName < b.roleName) return -1;
+    if (a.roleName > b.roleName) return 1;
+    if (a.majorName < b.majorName) return -1;
+    if (a.majorName > b.majorName) return 1;
+    if (a.fullName < b.fullName) return -1;
+    if (a.fullName > b.fullName) return 1;
+    return 0;
+  })
+
+  const error = queryError ? String(queryError) : null
 
   // Modal / edit user state
   const [editingUserId, setEditingUserId] = useState<number | string | null>(null)
@@ -150,73 +175,9 @@ export default function AdminUsersPage() {
       }
     }
 
-  useEffect(() => {
-    let mounted = true
-    setLoading(true)
-    fetchUser()
-      .then((data) => {
-        if (!mounted) return
-        // Map API response fields to our UserRecord shape
-        const mapped = (data || []).map((u: any) => ({
-          id: u.id,
-          fullName: u.fullName || u.name || "",
-          email: u.email,
-          phone: u.phone ?? null,
-          roleName: u.roleName?.toLowerCase() || (u.defaultRole ?? "unknown").toLowerCase(),
-          majorName: u.majorName || "",
-          studentCode: u.studentCode || null,
-          status: u.status,
-          avatarUrl: u.avatarUrl || "",
-        }))
-        // Sort by roleName, then majorName, then fullName
-        mapped.sort((a, b) => {
-          if (a.roleName < b.roleName) return -1;
-          if (a.roleName > b.roleName) return 1;
-          if (a.majorName < b.majorName) return -1;
-          if (a.majorName > b.majorName) return 1;
-          if (a.fullName < b.fullName) return -1;
-          if (a.fullName > b.fullName) return 1;
-          return 0;
-        });
-        setUsers(mapped)
-        setError(null)
-      })
-      .catch((err) => {
-        console.error("Failed to fetch users for admin page:", err)
-        setError(String(err))
-      })
-      .finally(() => {
-        if (mounted) setLoading(false)
-      })
-    return () => {
-      mounted = false
-    }
-  }, [])
-
-  // helper to reload users
-  const reloadUsers = async () => {
-    setLoading(true)
-    try {
-      const data = await fetchUser()
-      const mapped = (data || []).map((u: any) => ({
-        id: u.id,
-        fullName: u.fullName || u.name || "",
-        email: u.email,
-        phone: u.phone ?? null,
-        roleName: u.roleName?.toLowerCase() || (u.defaultRole ?? "unknown").toLowerCase(),
-        majorName: u.majorName || "",
-        studentCode: u.studentCode || null,
-        status: u.status,
-        avatarUrl: u.avatarUrl || "",
-      }))
-      setUsers(mapped)
-      setError(null)
-    } catch (err) {
-      console.error("Failed to reload users:", err)
-      setError(String(err))
-    } finally {
-      setLoading(false)
-    }
+  // ✅ helper to reload users with React Query
+  const reloadUsers = () => {
+    queryClient.invalidateQueries({ queryKey: ["users"] })
   }
 
   // --- Filter UI giống admin/events ---

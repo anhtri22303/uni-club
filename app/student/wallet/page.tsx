@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo } from "react"
 import { AppShell } from "@/components/app-shell"
 import { ProtectedRoute } from "@/contexts/protected-route"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,38 +9,21 @@ import { Button } from "@/components/ui/button"
 import { WalletHistory } from "@/components/wallet-history"
 import { TopupModal } from "@/components/topup-modal"
 import { useAuth } from "@/contexts/auth-context"
-import { getWallet } from "@/service/walletApi"
+import { useWallet } from "@/hooks/use-query-hooks"
 import { ShoppingBag, ArrowLeft, Wallet, CreditCard, History, Sparkles, TrendingUp, Shield } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { Skeleton } from "@/components/ui/skeleton"
 
 export default function MemberWalletPage() {
   const { auth } = useAuth()
-  const [userBalance, setUserBalance] = useState<number>(0)
   const { toast } = useToast()
   const [currentView, setCurrentView] = useState<"shop" | "history">("shop")
   const [isTopupModalOpen, setIsTopupModalOpen] = useState(false)
   const [selectedAmountVND, setSelectedAmountVND] = useState<number | null>(null)
 
-  // load wallet balance from API
-  useEffect(() => {
-    let mounted = true
-    const load = async () => {
-      try {
-        const data: any = await getWallet()
-        console.debug("MemberWalletPage.getWallet ->", data)
-        if (!mounted) return
-        const pts = Number(data?.points ?? data?.balance ?? 0)
-        setUserBalance(pts)
-        console.debug("MemberWalletPage setUserBalance ->", pts)
-      } catch (err) {
-        console.error("Failed to load wallet", err)
-      }
-    }
-    load()
-    return () => {
-      mounted = false
-    }
-  }, [auth?.userId])
+  // ✅ USE REACT QUERY for wallet
+  const { data: walletData, isLoading: walletLoading } = useWallet()
+  const userBalance = Number(walletData?.points ?? walletData?.balance ?? 0)
 
   // Tỷ giá: 10,000 VND = 100 points => 1 point = 100 VND
   const VND_PER_POINT = 100

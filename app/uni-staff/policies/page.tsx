@@ -7,8 +7,8 @@ import { CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { fetchPolicies, Policy, deletePolicyById, updatePolicyById, createPolicy } from "@/service/policyApi"
-import { useEffect, useMemo, useState } from "react"
+import { Policy, deletePolicyById, updatePolicyById, createPolicy } from "@/service/policyApi"
+import { useMemo, useState } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -16,15 +16,20 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { FileText, Search, Eye, Trash, Plus } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
+import { usePolicies } from "@/hooks/use-query-hooks"
+import { useQueryClient } from "@tanstack/react-query"
+import { Skeleton } from "@/components/ui/skeleton"
 
 export default function UniStaffPoliciesPage() {
-  const [policies, setPolicies] = useState<Policy[]>([])
-  const [loading, setLoading] = useState(false)
   const [query, setQuery] = useState("")
   const [selected, setSelected] = useState<Policy | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const { toast } = useToast()
   const router = useRouter()
+  const queryClient = useQueryClient()
+
+  // ✅ USE REACT QUERY for policies
+  const { data: policies = [], isLoading: loading } = usePolicies()
 
   // edit form state for policy detail modal
   const [editPolicyName, setEditPolicyName] = useState("")
@@ -46,34 +51,9 @@ export default function UniStaffPoliciesPage() {
   const [createRewardMultiplier, setCreateRewardMultiplier] = useState<number | undefined>(undefined)
   const [creating, setCreating] = useState(false)
 
-  const reloadPolicies = async () => {
-    setLoading(true)
-    try {
-      const data = await fetchPolicies()
-      setPolicies(data)
-    } catch (err) {
-      console.error("Failed to reload policies", err)
-      toast({ title: 'Lỗi', description: 'Không thể tải lại policies.' })
-    } finally {
-      setLoading(false)
-    }
+  const reloadPolicies = () => {
+    queryClient.invalidateQueries({ queryKey: ["policies"] })
   }
-  useEffect(() => {
-    let mounted = true
-    setLoading(true)
-    fetchPolicies()
-      .then((data) => {
-        if (!mounted) return
-        setPolicies(data)
-      })
-      .catch((err) => {
-        console.error("Failed to load policies", err)
-      })
-      .finally(() => mounted && setLoading(false))
-    return () => {
-      mounted = false
-    }
-  }, [])
 
   const filtered = useMemo(() => {
     if (!query) return policies
@@ -85,11 +65,11 @@ export default function UniStaffPoliciesPage() {
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState(10)
 
-  // Ensure page is clamped when filtered data or pageSize change
-  useEffect(() => {
-    const lastPage = Math.max(0, Math.ceil(filtered.length / pageSize) - 1)
-    if (page > lastPage) setPage(lastPage)
-  }, [filtered.length, pageSize])
+  // Ensure page is clamped when filtered data or pageSize change - auto-adjust on data change
+  const lastPage = Math.max(0, Math.ceil(filtered.length / pageSize) - 1)
+  if (page > lastPage && filtered.length > 0) {
+    setPage(lastPage)
+  }
 
   const paginated = useMemo(() => {
     const start = page * pageSize
@@ -129,8 +109,8 @@ export default function UniStaffPoliciesPage() {
         // update local selected so modal reflects saved values
         const updated = (res && res.data) ? res.data : { ...selected, ...payload }
         setSelected(updated as Policy)
-        // refresh list in background
-        reloadPolicies().catch(() => {})
+        // refresh list with React Query
+        reloadPolicies()
       } else {
         toast({ title: 'Thất bại', description: (res && res.message) || 'Cập nhật policy thất bại.' })
       }

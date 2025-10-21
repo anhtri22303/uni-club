@@ -13,17 +13,14 @@ import { Calendar, Users, Trophy } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import { safeLocalStorage } from "@/lib/browser-utils"
-import { fetchEvent } from "@/service/eventApi"
+import { useClubEvents, useClubs } from "@/hooks/use-query-hooks"
 
 // Import data
-import events from "@/src/data/events.json"
 import clubs from "@/src/data/clubs.json"
 
 export default function MemberEventsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [userClubIds, setUserClubIds] = useState<number[]>([])
-  const [apiEvents, setApiEvents] = useState<any[]>([])
-  const [loading, setLoading] = useState(false)
   const router = useRouter()
 
   // Get user's club IDs from localStorage
@@ -50,58 +47,14 @@ export default function MemberEventsPage() {
     }
   }, [])
 
-  // Load events from API
-  useEffect(() => {
-    if (userClubIds.length === 0) return // Don't load until we have club IDs
-
-    let mounted = true
-    const load = async () => {
-      setLoading(true)
-      try {
-        const data: any = await fetchEvent()
-        if (!mounted) return
-        
-        // API should return an array; guard defensively
-        const raw: any[] = Array.isArray(data) ? data : (data?.content ?? data?.events ?? [])
-        // Normalize shape: some APIs use `name` instead of `title`.
-        const normalized = raw.map((e: any) => ({ ...e, title: e.title ?? e.name }))
-        
-        console.log("Events page - All events from API:", normalized.length)
-        console.log("Events page - User club IDs:", userClubIds)
-        
-        // Filter events by user's clubIds
-        const userEvents = normalized.filter((event: any) => {
-          const eventClubId = Number(event.clubId)
-          const isUserEvent = userClubIds.includes(eventClubId)
-          if (isUserEvent) {
-            console.log(`Including event "${event.title}" from club ${eventClubId}`)
-          }
-          return isUserEvent
-        })
-        
-        console.log("Events page - Filtered events for user:", userEvents.length)
-        setApiEvents(userEvents)
-      } catch (error) {
-        console.error("Failed to load events:", error)
-        // Fallback to local data filtered by user's clubs
-        const fallbackEvents = events.filter((event) => userClubIds.includes(Number(event.clubId)))
-        setApiEvents(fallbackEvents)
-      } finally {
-        if (mounted) setLoading(false)
-      }
-    }
-
-    load()
-    return () => { mounted = false }
-  }, [userClubIds])
-
-  // Use API events if available, otherwise fallback to local data
-  const eventsData = apiEvents.length > 0 ? apiEvents : 
-    events.filter((event) => userClubIds.length === 0 || userClubIds.includes(Number(event.clubId)))
+  // ✅ USE REACT QUERY - automatically filters by clubIds
+  const { data: eventsData = [], isLoading: loading } = useClubEvents(userClubIds)
+  const { data: clubsData = [] } = useClubs()
 
   const filteredEvents = eventsData.filter(
     (event) =>
       (event.title || event.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      clubsData.find((c: any) => c.id === event.clubId)?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       clubs.find((c) => c.id === event.clubId)?.name.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
