@@ -14,6 +14,7 @@ import { usePrefetchClubs, usePrefetchEvents, usePrefetchUsers } from "@/hooks/u
 import {
   LayoutDashboard, Users, Calendar, Gift, Wallet, History, BarChart3,
   Building, Home, CheckCircle, FileText, FileUser, HandCoins, CalendarDays,
+  CreditCard,
 } from "lucide-react"
 
 interface SidebarProps {
@@ -42,6 +43,7 @@ const navigationConfig = {
     { href: "/club-leader/gift", label: "Gift", icon: Gift },
     { href: "/club-leader/points", label: "Points Club", icon: HandCoins },
     { href: "/club-leader/attendances", label: "Attendances", icon: CalendarDays },
+    { href: "/club-leader/card", label: "Card", icon: CreditCard },
 
   ],
   uni_staff: [
@@ -184,14 +186,19 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
   return (
     <>
       {/* Overlay for mobile when open */}
-      <div
-        className={cn(
-          "fixed inset-0 z-30 bg-black/40 transition-opacity md:hidden",
-          open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none",
-        )}
-        aria-hidden={!open}
-        onClick={() => onNavigate?.()}
-      />
+      {open && (
+        <div
+          className="fixed inset-0 z-30 bg-black/40 transition-opacity md:hidden opacity-100 pointer-events-auto"
+          aria-hidden="false"
+          onClick={() => onNavigate?.()}
+        />
+      )}
+      {!open && (
+        <div
+          className="fixed inset-0 z-30 bg-black/40 transition-opacity md:hidden opacity-0 pointer-events-none"
+          aria-hidden="true"
+        />
+      )}
 
       {/* Sidebar: translate-x to hide/show instead of unmounting */}
       <aside
