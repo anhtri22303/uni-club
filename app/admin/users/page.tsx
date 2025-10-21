@@ -299,20 +299,7 @@ export default function AdminUsersPage() {
         )
       },
     },
-     {
-      key: "status" as const,
-      label: "Status",
-      render: (status: EnhancedUser["status"]): JSX.Element => {
-        let color = "bg-gray-100 text-gray-700 border-gray-300"
-        if (status?.toLowerCase() === "active") color = "bg-green-100 text-green-700 border-green-300"
-        if (status?.toLowerCase() === "inactive") color = "bg-red-100 text-red-700 border-red-300"
-        return (
-          <Badge className={`text-xs px-2 py-0.5 border ${color}`}>{status || "-"}</Badge>
-        )
-      },
-    },
     {
-    
       key: "phone" as const,
       label: "Phone",
       render: (phone: EnhancedUser["phone"]): JSX.Element => (
