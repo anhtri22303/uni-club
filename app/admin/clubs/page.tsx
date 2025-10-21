@@ -1,12 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { AppShell } from "@/components/app-shell"
 import { ProtectedRoute } from "@/contexts/protected-route"
 import { DataTable } from "@/components/data-table"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { useClubs } from "@/hooks/use-query-hooks"
+import { getClubMemberCount } from "@/service/clubApi"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Users, Calendar, TrendingUp } from "lucide-react"
 
@@ -36,7 +37,7 @@ type ClubApiItem = {
   description?: string
   majorPolicyName?: string
   memberCount?: number
-  eventCount?: number
+  approvedEvents?: number
   // activityLevel?: "High" | "Medium" | "Low"
 }
 
@@ -50,26 +51,48 @@ export default function AdminClubsPage() {
     sort: ["name"]
   })
   const error = queryError ? String(queryError) : null
+  
+  const [clubsWithData, setClubsWithData] = useState<ClubApiItem[]>([])
+
+  // Fetch member count and approved events for each club
+  useEffect(() => {
+    const fetchClubData = async () => {
+      if (clubs.length === 0) return
+      
+      const clubsWithMemberCount = await Promise.all(
+        clubs.map(async (club: any) => {
+          const clubData = await getClubMemberCount(club.id)
+          return {
+            ...club,
+            memberCount: clubData.activeMemberCount,
+            approvedEvents: clubData.approvedEvents
+          }
+        })
+      )
+      
+      setClubsWithData(clubsWithMemberCount)
+    }
+    
+    fetchClubData()
+  }, [clubs])
 
   // Map dữ liệu API sang định dạng bảng
-  const enhancedClubs = clubs.map((club: any) => {
+  const enhancedClubs = clubsWithData.map((club: any) => {
     return {
       id: String(club.id),
       name: club.name,
       category: club.majorName ?? "-",
       leaderName: club.leaderName ?? "-",
-      // members: memberCount,
-      members: 0,
+      members: club.memberCount ?? 0,
       policy: club.majorPolicyName ?? "-",
-      // events: eventCount,
-      events: 0,
+      events: club.approvedEvents ?? 0,
     }
   })
 
   // Filter động dựa trên dữ liệu thực tế
-  const uniqueCategories: string[] = Array.from(new Set(clubs.map((c: any) => c.majorName).filter((v: any): v is string => !!v)))
-  const uniqueLeaders: string[] = Array.from(new Set(clubs.map((c: any) => c.leaderName).filter((v: any): v is string => !!v)))
-  const uniquePolicies: string[] = Array.from(new Set(clubs.map((c: any) => c.majorPolicyName).filter((v: any): v is string => !!v)))
+  const uniqueCategories: string[] = Array.from(new Set(clubsWithData.map((c: any) => c.majorName).filter((v: any): v is string => !!v)))
+  const uniqueLeaders: string[] = Array.from(new Set(clubsWithData.map((c: any) => c.leaderName).filter((v: any): v is string => !!v)))
+  const uniquePolicies: string[] = Array.from(new Set(clubsWithData.map((c: any) => c.majorPolicyName).filter((v: any): v is string => !!v)))
 
   const filters = [
     {

@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { useAuth } from "@/contexts/auth-context"
 import { useData } from "@/contexts/data-context"
 import { useToast } from "@/hooks/use-toast"
-import { Users, PlusIcon } from "lucide-react"
+import { Users, PlusIcon, Calendar } from "lucide-react"
 import { fetchClub, getClubMemberCount } from "@/service/clubApi"
 import { postMemAppli } from "@/service/memberApplicationApi"
 import { safeLocalStorage } from "@/lib/browser-utils"
@@ -27,6 +27,8 @@ type ClubApiItem = {
   majorPolicyName?: string
   majorName?: string
   major?: { name?: string; majorName?: string }
+  memberCount?: number
+  approvedEvents?: number
 }
 
 export default function MemberClubsPage() {
@@ -51,11 +53,34 @@ export default function MemberClubsPage() {
   
   const error = queryError ? (queryError as any)?.message ?? "Failed to load clubs" : null
   
+  const [clubsWithData, setClubsWithData] = useState<ClubApiItem[]>([])
   const [pendingClubIds, setPendingClubIds] = useState<string[]>([])
   const [userClubIds, setUserClubIds] = useState<number[]>([])
   const [userClubId, setUserClubId] = useState<number | null>(null) // Keep for backward compatibility
   const [majors, setMajors] = useState<Major[]>([])
   const [selectedMajorId, setSelectedMajorId] = useState<number | "">("")
+
+  // Fetch member count and approved events for each club
+  useEffect(() => {
+    const fetchClubData = async () => {
+      if (clubs.length === 0) return
+      
+      const clubsWithMemberCount = await Promise.all(
+        clubs.map(async (club: ClubApiItem) => {
+          const clubData = await getClubMemberCount(club.id)
+          return {
+            ...club,
+            memberCount: clubData.activeMemberCount,
+            approvedEvents: clubData.approvedEvents
+          }
+        })
+      )
+      
+      setClubsWithData(clubsWithMemberCount)
+    }
+    
+    fetchClubData()
+  }, [clubs])
 
   // Get user's current memberships and applications
   const userMemberships = clubMemberships.filter((m) => m.userId === auth.userId)
@@ -133,8 +158,8 @@ export default function MemberClubsPage() {
   }
 
   // Map API items to table rows and filter out user's current clubs
-  console.log("Total clubs before filter:", clubs.length, "userClubIds:", userClubIds)
-  const enhancedClubs = clubs
+  console.log("Total clubs before filter:", clubsWithData.length, "userClubIds:", userClubIds)
+  const enhancedClubs = clubsWithData
     .filter((club: ClubApiItem) => {
       // Hide clubs that user is already a member of
       const clubIdNumber = Number(club.id)
@@ -149,8 +174,8 @@ export default function MemberClubsPage() {
       name: club.name,
       category: club.majorName ?? (club as any).major?.name ?? (club as any).major?.majorName ?? "",
       description: club.description,
-      // members: 0,
-      members: (memberCounts as any)[String(club.id)] ?? 0, // ✅ THAY ĐỔI DÒNG NÀY
+      members: club.memberCount ?? 0,
+      events: club.approvedEvents ?? 0,
       founded: 0,
       location: "",
       policy: club.majorPolicyName ?? "",
@@ -394,6 +419,16 @@ export default function MemberClubsPage() {
         <div className="flex items-center gap-1">
           <Users className="h-4 w-4" />
           {value}
+        </div>
+      ),
+    },
+    {
+      key: "events" as const,
+      label: "Events",
+      render: (value: number) => (
+        <div className="flex items-center gap-1">
+          <Calendar className="h-4 w-4" />
+          {value ?? 0}
         </div>
       ),
     },
