@@ -25,6 +25,7 @@ interface Club {
   name: string
   description: string
   majorPolicyName?: string
+  majorId: number
   majorName: string
   leaderId: number
   leaderName: string
