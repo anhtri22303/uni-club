@@ -27,6 +27,7 @@ export interface ProcessApplicationBody {
   rejectReason?: string;
 }
 export interface CreateClubAccountBody {
+  applicationId: number;
   clubId: number;
   leaderFullName: string;
   leaderEmail: string;

@@ -162,50 +162,6 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
       setIsProcessing(false)
     }
   }
-  // ✅ CẬP NHẬT: Hàm xử lý tạo tài khoản CLB
-  // const handleCreateClubAccount = async () => {
-  //   if (!request) return;
-  //   // ✅ HIỂN THỊ ID TRONG CONSOLE ĐỂ KIỂM TRA
-  //   console.log("Submitting with clubId:", request.applicationId);
-  //   // Simple validation
-  //   for (const key in accountForm) {
-  //     if (!accountForm[key as keyof typeof accountForm]) {
-  //       toast({
-  //         title: "Validation Error",
-  //         description: `Field '${key}' cannot be empty.`,
-  //         variant: "destructive"
-  //       })
-  //       return;
-  //     }
-  //   }
-
-  //   const body: CreateClubAccountBody = {
-  //     clubId: request.applicationId,
-  //     ...accountForm
-  //   }
-
-  //   setIsCreatingAccount(true);
-  //   try {
-  //     await createClubAccount(body);
-  //     queryClient.invalidateQueries({ queryKey: ["club-applications"] });
-  //     toast({
-  //       title: "Success",
-  //       description: `Account for ${request.clubName} created successfully!`,
-  //       variant: "success",
-  //     });
-  //     setCreateAccountModalOpen(false); // Close modal on success
-  //   } catch (error) {
-  //     console.error("Failed to create club account:", error);
-  //     toast({
-  //       title: "Error",
-  //       description: (error as Error).message || "Failed to create club account",
-  //       variant: "destructive",
-  //     });
-  //   } finally {
-  //     setIsCreatingAccount(false);
-  //   }
-  // }
-  // ✅ BƯỚC 2: CẬP NHẬT TOÀN BỘ HÀM NÀY
   const handleCreateClubAccount = async () => {
     if (!request) return;
 
@@ -247,6 +203,7 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
       console.log(`Found a match! Using clubId: ${correctClubId} for application: ${request.applicationId}`);
 
       const body: CreateClubAccountBody = {
+        applicationId: request.applicationId,
         clubId: correctClubId,
         ...accountForm
       };
@@ -254,7 +211,7 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
       console.log("--- Sending Request to create-club-accounts ---");
       console.log("Payload:", body);
       console.log("-------------------------------------------------");
-      
+
       // 5. Gọi API tạo tài khoản như cũ
       await createClubAccount(body);
       queryClient.invalidateQueries({ queryKey: ["club-applications"] });

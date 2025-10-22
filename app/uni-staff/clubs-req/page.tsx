@@ -16,9 +16,6 @@ import { useToast } from "@/hooks/use-toast"
 import { useClubApplications } from "@/hooks/use-query-hooks"
 import { useQueryClient } from "@tanstack/react-query"
 
-// We'll fetch real club application data from the backend and map it to the
-// UI data shape used previously.
-
 type UiClubRequest = {
 	id: string
 	applicationId?: number
@@ -30,8 +27,14 @@ type UiClubRequest = {
 	requestDate: string
 	status: string
 	expectedMembers?: number
-	faculty?: string
-	reason?: string
+	vision?: string
+	proposerReason?: string
+	reviewedBy?: {
+		fullName: string
+		email: string
+	} | null
+	rejectReason?: string | null
+	reviewedAt?: string | null
 }
 
 export default function UniStaffClubRequestsPage() {
@@ -46,14 +49,13 @@ export default function UniStaffClubRequestsPage() {
 	// Pagination states
 	const [pendingPage, setPendingPage] = useState(0)
 	const [processedPage, setProcessedPage] = useState(0)
-	const [pageSize, setPageSize] = useState(5)
+	const [inProgressPage, setInProgressPage] = useState(0)
+	const [pageSize, setPageSize] = useState(10)
 
 	const { toast } = useToast()
 	const queryClient = useQueryClient()
-
 	// Use React Query hook to fetch club applications
 	const { data: applications = [], isLoading: loading, error } = useClubApplications()
-
 	// Map API shape to UI shape
 	const requests: UiClubRequest[] = applications.map((d: any) => ({
 		id: `req-${d.applicationId}`,
@@ -61,10 +63,11 @@ export default function UniStaffClubRequestsPage() {
 		clubName: d.clubName,
 		major: d.majorName ?? "Unknown",
 		description: d.description,
-		requestedBy: d.submittedBy?.fullName ?? "Unknown",
+		requestedBy: d.proposer?.fullName ?? "Unknown",
 		requestedByEmail: d.submittedBy?.email ?? "",
 		requestDate: d.submittedAt,
 		status: d.status,
+		expectedMembers: d.expectedMembers,
 	}))
 
 	async function handleSendNewApplication() {
@@ -98,7 +101,7 @@ export default function UniStaffClubRequestsPage() {
 		}
 	}
 
-	const getFilteredRequests = (tabType: "pending" | "processed") => {
+	const getFilteredRequests = (tabType: "pending" | "in_progress" | "processed") => {
 		return requests.filter((req) => {
 			const matchSearch =
 				req.clubName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -106,7 +109,9 @@ export default function UniStaffClubRequestsPage() {
 				req.major.toLowerCase().includes(searchTerm.toLowerCase())
 			let matchStatus = false
 			if (tabType === "pending") {
-				matchStatus = req.status === "PENDING" || req.status === "APPROVED"
+				matchStatus = req.status === "PENDING"
+			} else if (tabType === "in_progress") {
+				matchStatus = req.status === "APPROVED"
 			} else {
 				matchStatus = req.status === "COMPLETED" || req.status === "REJECTED"
 			}
@@ -116,16 +121,22 @@ export default function UniStaffClubRequestsPage() {
 	}
 
 	const pendingRequests = getFilteredRequests("pending")
+	const inProgressRequests = getFilteredRequests("in_progress")
 	const processedRequests = getFilteredRequests("processed")
-
 	// Auto-adjust page when filtered data changes
 	const [prevPendingLength, setPrevPendingLength] = useState(0)
+	const [prevInProgressLength, setPrevInProgressLength] = useState(0)
 	const [prevProcessedLength, setPrevProcessedLength] = useState(0)
 
 	if (pendingRequests.length !== prevPendingLength) {
 		setPrevPendingLength(pendingRequests.length)
 		const lastPendingPage = Math.max(0, Math.ceil(pendingRequests.length / pageSize) - 1)
 		if (pendingPage > lastPendingPage) setPendingPage(lastPendingPage)
+	}
+	if (inProgressRequests.length !== prevInProgressLength) {
+		setPrevInProgressLength(inProgressRequests.length)
+		const lastInProgressPage = Math.max(0, Math.ceil(inProgressRequests.length / pageSize) - 1)
+		if (inProgressPage > lastInProgressPage) setInProgressPage(lastInProgressPage)
 	}
 
 	if (processedRequests.length !== prevProcessedLength) {
@@ -138,6 +149,11 @@ export default function UniStaffClubRequestsPage() {
 	const paginatedPending = (() => {
 		const start = pendingPage * pageSize
 		return pendingRequests.slice(start, start + pageSize)
+	})()
+
+	const paginatedInProgress = (() => {
+		const start = inProgressPage * pageSize
+		return inProgressRequests.slice(start, start + pageSize)
 	})()
 
 	const paginatedProcessed = (() => {
@@ -288,7 +304,7 @@ export default function UniStaffClubRequestsPage() {
 							</CardContent>
 						</Card>
 
-						{/* ✅ THẺ MỚI CHO COMPLETED */}
+						{/* THẺ MỚI CHO COMPLETED */}
 						<Card className="border-0 shadow-md bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900">
 							<CardHeader className="pb-1 px-4 pt-3">
 								<CardTitle className="text-xs font-medium text-blue-700 dark:text-blue-300">
@@ -350,13 +366,18 @@ export default function UniStaffClubRequestsPage() {
 
 					{/* Tabs */}
 					<Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-						<TabsList className="grid w-full grid-cols-2">
+						{/* <TabsList className="grid w-full grid-cols-2"> */}
+						<TabsList className="grid w-full grid-cols-3 gap-3">
 							<TabsTrigger value="pending" className="flex items-center gap-2">
 								<Clock className="h-4 w-4" />
 								Pending ({pendingRequests.length})
 							</TabsTrigger>
-							<TabsTrigger value="processed" className="flex items-center gap-2">
+							<TabsTrigger value="in_progress" className="flex items-center gap-2">
 								<CheckCircle className="h-4 w-4" />
+								In progress ({inProgressRequests.length})
+							</TabsTrigger>
+							<TabsTrigger value="processed" className="flex items-center gap-2">
+								<CheckCheck className="h-4 w-4" />
 								Processed ({processedRequests.length})
 							</TabsTrigger>
 						</TabsList>
@@ -396,14 +417,17 @@ export default function UniStaffClubRequestsPage() {
 																<h3 className="font-semibold text-lg">
 																	{request.clubName}
 																</h3>
-																<Badge variant="outline">
+																<Badge
+																	variant="outline"
+																	className="bg-gray-50 text-gray-600 border-gray-300 dark:bg-gray-900 dark:text-gray-400 dark:border-gray-700"
+																>
 																	{request.major}
 																</Badge>
 																{getStatusBadge(request.status)}
 															</div>
 
 															<p className="text-muted-foreground mb-3 line-clamp-2">
-																{request.description}
+																Description:  {request.description}
 															</p>
 
 															<div className="flex items-center gap-6 text-sm text-muted-foreground">
@@ -453,7 +477,113 @@ export default function UniStaffClubRequestsPage() {
 											<div className="px-2 text-sm">Page {pendingRequests.length === 0 ? 0 : pendingPage + 1} / {Math.max(1, Math.ceil(pendingRequests.length / pageSize))}</div>
 											<Button size="sm" variant="outline" onClick={() => setPendingPage(p => Math.min(p + 1, Math.max(0, Math.ceil(pendingRequests.length / pageSize) - 1)))} disabled={(pendingPage + 1) * pageSize >= pendingRequests.length}>Next</Button>
 											<Button size="sm" variant="outline" onClick={() => setPendingPage(Math.max(0, Math.ceil(pendingRequests.length / pageSize) - 1))} disabled={(pendingPage + 1) * pageSize >= pendingRequests.length}>Last</Button>
-											<select aria-label="Items per page" className="ml-2 rounded border px-2 py-1 text-sm" value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPendingPage(0); setProcessedPage(0) }}>
+											<select aria-label="Items per page" className="ml-2 rounded border px-2 py-1 text-sm" value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPendingPage(0); setProcessedPage(0); setProcessedPage(0) }}>
+												<option value={3}>3</option>
+												<option value={6}>6</option>
+												<option value={12}>12</option>
+											</select>
+										</div>
+									</div>
+								</>
+							)}
+						</TabsContent>
+
+						<TabsContent value="in_progress" className="space-y-4 mt-6">
+							{loading ? (
+								<Card>
+									<CardContent className="py-8 text-center text-muted-foreground">
+										Đang tải đơn đăng ký câu lạc bộ...
+									</CardContent>
+								</Card>
+							) : error ? (
+								<Card>
+									<CardContent className="py-8 text-center text-destructive">
+										{String(error)}
+									</CardContent>
+								</Card>
+							) : inProgressRequests.length === 0 ? (
+								<Card>
+									<CardContent className="py-8 text-center text-muted-foreground">
+										Không tìm thấy đơn đăng ký nào đang xử lý
+									</CardContent>
+								</Card>
+							) : (
+								<>
+									{paginatedInProgress.map((request) => (
+										<Card
+											key={request.id}
+											className="hover:shadow-md transition-shadow cursor-pointer"
+										>
+											<Link href={`/uni-staff/clubs-req/${request.id}`}>
+												<CardContent className="p-6">
+													<div className="flex items-start justify-between">
+														<div className="flex-1">
+															<div className="flex items-center gap-3 mb-2">
+																<Building className="h-5 w-5 text-muted-foreground" />
+																<h3 className="font-semibold text-lg">
+																	{request.clubName}
+																</h3>
+																<Badge
+																	variant="outline"
+																	className="bg-gray-50 text-gray-600 border-gray-300 dark:bg-gray-900 dark:text-gray-400 dark:border-gray-700"
+																>
+																	{request.major}
+																</Badge>
+																{getStatusBadge(request.status)}
+															</div>
+
+															<p className="text-muted-foreground mb-3 line-clamp-2">
+																Description:  {request.description}
+															</p>
+
+															<div className="flex items-center gap-6 text-sm text-muted-foreground">
+																<div className="flex items-center gap-1">
+																	<Users className="h-4 w-4" />
+																	<span>{request.expectedMembers ?? "-"} members</span>
+																</div>
+																<div className="flex items-center gap-1">
+																	<Calendar className="h-4 w-4" />
+																	<span>
+																		{new Date(
+																			request.requestDate
+																		).toLocaleDateString()}
+																	</span>
+																</div>
+																<div>
+																	<span>by {request.requestedBy}</span>
+																</div>
+															</div>
+														</div>
+
+														<div className="flex items-center gap-2 ml-4">
+
+															<Button
+																size="sm"
+																variant="outline"
+																className="h-8 bg-transparent"
+															>
+																<Eye className="h-3 w-3 mr-1" />
+																View Details
+															</Button>
+														</div>
+													</div>
+												</CardContent>
+											</Link>
+										</Card>
+									))}
+
+									{/* Điều khiển phân trang cho Đang xử lý */}
+									<div className="flex items-center justify-between mt-4">
+										<div className="text-sm text-muted-foreground">
+											Hiển thị {inProgressRequests.length === 0 ? 0 : inProgressPage * pageSize + 1} đến {Math.min((inProgressPage + 1) * pageSize, inProgressRequests.length)} trên {inProgressRequests.length} đơn
+										</div>
+										<div className="flex items-center gap-2">
+											<Button size="sm" variant="outline" onClick={() => setInProgressPage(0)} disabled={inProgressPage === 0}>Đầu</Button>
+											<Button size="sm" variant="outline" onClick={() => setInProgressPage(p => Math.max(0, p - 1))} disabled={inProgressPage === 0}>Trước</Button>
+											<div className="px-2 text-sm">Trang {inProgressRequests.length === 0 ? 0 : inProgressPage + 1} / {Math.max(1, Math.ceil(inProgressRequests.length / pageSize))}</div>
+											<Button size="sm" variant="outline" onClick={() => setInProgressPage(p => Math.min(p + 1, Math.max(0, Math.ceil(inProgressRequests.length / pageSize) - 1)))} disabled={(inProgressPage + 1) * pageSize >= inProgressRequests.length}>Sau</Button>
+											<Button size="sm" variant="outline" onClick={() => setInProgressPage(Math.max(0, Math.ceil(inProgressRequests.length / pageSize) - 1))} disabled={(inProgressPage + 1) * pageSize >= inProgressRequests.length}>Cuối</Button>
+											<select aria-label="Số mục mỗi trang" className="ml-2 rounded border px-2 py-1 text-sm" value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPendingPage(0); setProcessedPage(0); setInProgressPage(0) }}>
 												<option value={3}>3</option>
 												<option value={6}>6</option>
 												<option value={12}>12</option>
