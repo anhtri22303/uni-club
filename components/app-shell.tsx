@@ -80,9 +80,7 @@ export function AppShell({ children }: AppShellProps) {
           {/* ===================== DESKTOP TOGGLE (luôn hiển thị) ===================== */}
           <div
             className={cn(
-              "hidden md:block fixed top-4 z-50 transition-all duration-300 ease-out",
-              // Vị trí động: bên phải sidebar khi mở, góc trái khi đóng
-              sidebarCollapsed ? "left-4" : "left-[calc(1rem+16rem+0.5rem)]" // 1rem=left-4, 16rem=w-64
+              "hidden md:block fixed top-11 left-10 z-50 transition-all duration-300 ease-out",
             )}
           >
             <Button

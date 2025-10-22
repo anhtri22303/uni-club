@@ -216,7 +216,8 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
             <img
               src="/images/Logo.png"
               alt="UniClub Logo"
-              className="h-16 w-auto object-contain drop-shadow"
+              // className="h-16 w-auto object-contain drop-shadow"
+              className="h-16 w-16 object-cover drop-shadow border-1 border-primary rounded" // <-- THAY ĐỔI Ở ĐÂY
             />
           </div>
           {/* Nút đổi theme sát mép phải */}
