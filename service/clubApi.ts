@@ -48,6 +48,7 @@ export const fetchClub = async (
         pageable: JSON.stringify(pageable),
       },
     })
+    console.log("Fetched clubs response:", response.data)
     return response.data as ClubListResponse
   } catch (error) {
     console.error("Error fetching clubs:", error)

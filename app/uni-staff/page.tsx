@@ -9,34 +9,39 @@ import { usePagination } from "@/hooks/use-pagination"
 import { useData } from "@/contexts/data-context"
 import { usePolicies, useEvents, useClubs } from "@/hooks/use-query-hooks"
 import { getClubApplications } from "@/service/clubApplicationAPI"
-import { useEffect } from "react"
+import { getClubMemberCount } from "@/service/clubApi"
+import { useEffect, useState, useMemo } from "react"
 import {
-  PieChart,
-  Users,
   Calendar,
   Building,
   Download,
   Filter,
   ArrowUpRight,
   Activity,
-  Target,
-  Award,
-  Zap,
   ChevronLeft,
   ChevronRight,
+  Clock,
+  FileText,
 } from "lucide-react"
-
-// Import data
-import users from "@/src/data/users.json"
-import redemptions from "@/src/data/redemptions.json"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export default function UniStaffReportsPage() {
-  const { clubMemberships, membershipApplications, vouchers, clubApplications, eventRequests, updateClubApplications, updateEventRequests } = useData()
+  const { clubApplications, eventRequests, updateClubApplications, updateEventRequests } = useData()
 
   // ✅ USE REACT QUERY for events, clubs, and policies
   const { data: events = [], isLoading: eventsLoading } = useEvents()
   const { data: clubs = [], isLoading: clubsLoading } = useClubs()
-  const { data: policies = [], isLoading: policiesLoading } = usePolicies()
+  const { data: policies = [] } = usePolicies()
+
+  // State management - Event filters
+  const [eventStatusFilter, setEventStatusFilter] = useState<string>("PENDING")
+  const [eventTypeFilter, setEventTypeFilter] = useState<string>("ALL")
+
+  // State management - Club Application filter
+  const [clubAppStatusFilter, setClubAppStatusFilter] = useState<string>("PENDING")
+
+  // State management - Clubs with member count
+  const [clubsWithMemberCount, setClubsWithMemberCount] = useState<any[]>([])
 
   // Fetch club applications when component mounts
   useEffect(() => {
@@ -57,80 +62,119 @@ export default function UniStaffReportsPage() {
     }
   }, [events])
 
-  const usersByRole = users.reduce(
-    (acc, user) => {
-      user.roles.forEach((role) => {
-        acc[role] = (acc[role] || 0) + 1
-      })
-      return acc
-    },
-    {} as Record<string, number>,
-  )
+  // Fetch member count for each club
+  useEffect(() => {
+    const fetchMemberCounts = async () => {
+      if (clubs.length === 0) return
 
-  const clubsByCategory = clubs.reduce(
-    (acc: Record<string, number>, club: any) => {
-      acc[club.category] = (acc[club.category] || 0) + 1
-      return acc
-    },
-    {} as Record<string, number>,
-  )
+      const clubsWithCounts = await Promise.all(
+        clubs.map(async (club: any) => {
+          try {
+            const { activeMemberCount } = await getClubMemberCount(club.id)
+            return { ...club, memberCount: activeMemberCount }
+          } catch (error) {
+            console.error(`Error fetching member count for club ${club.id}:`, error)
+            return { ...club, memberCount: 0 }
+          }
+        })
+      )
 
-  const membershipsByStatus = membershipApplications.reduce(
-    (acc, app) => {
-      acc[app.status] = (acc[app.status] || 0) + 1
-      return acc
-    },
-    {} as Record<string, number>,
-  )
+      // Sort by member count (high to low)
+      const sortedClubs = clubsWithCounts.sort((a, b) => (b.memberCount || 0) - (a.memberCount || 0))
+      setClubsWithMemberCount(sortedClubs)
+    }
 
-  const eventsByMonth = events.reduce(
-    (acc: Record<string, number>, event: any) => {
-      const month = new Date(event.date).toLocaleDateString("en-US", { month: "short", year: "numeric" })
-      acc[month] = (acc[month] || 0) + 1
-      return acc
-    },
-    {} as Record<string, number>,
-  )
+    fetchMemberCounts()
+  }, [clubs])
 
-  const voucherStats = {
-    total: vouchers.length + redemptions.length,
-    used: vouchers.filter((v) => v.used).length + redemptions.length,
-    active: vouchers.filter((v) => !v.used).length,
-  }
-
-  const clubPerformance = clubs
-    .map((club: any) => {
-      const members = clubMemberships.filter((m: any) => m.clubId === club.id && m.status === "APPROVED").length
-      const clubEvents = events.filter((e: any) => e.clubId === club.id).length
-      const score = members * 2 + clubEvents
-      return { ...club, members, events: clubEvents, score }
-    })
-    .sort((a: any, b: any) => b.score - a.score)
-
-  const totalUsers = users.length
   const totalClubs = clubs.length
-  const totalEvents = events.length
   const totalPolicies = policies.length
   const totalClubApplications = clubApplications.length
   const totalEventRequests = eventRequests.length
-  const engagementRate = totalUsers
-    ? Math.round((clubMemberships.filter((m) => m.status === "APPROVED").length / totalUsers) * 100)
-    : 0
-  const approvalRate = membershipApplications.length
-    ? Math.round((membershipApplications.filter((a) => a.status === "APPROVED").length / membershipApplications.length) * 100)
-    : 0
-  const eventsPerClub = totalClubs ? (totalEvents / totalClubs).toFixed(1) : "0.0"
 
+  // Filter club applications by status and sort by latest submittedAt
+  const filteredClubApplications = useMemo(() => {
+    const filtered = clubApplications.filter((app: any) => {
+      if (clubAppStatusFilter !== "ALL" && app.status !== clubAppStatusFilter) {
+        return false
+      }
+      return true
+    })
+    
+    // Sort by submittedAt in descending order (latest first)
+    return filtered.sort((a: any, b: any) => {
+      const dateA = new Date(a.submittedAt).getTime()
+      const dateB = new Date(b.submittedAt).getTime()
+      return dateB - dateA
+    })
+  }, [clubApplications, clubAppStatusFilter])
+
+  // Filter and check non-expired events
+  const filteredEvents = useMemo(() => {
+    const now = new Date()
+    
+    return events.filter((event: any) => {
+      // Check status filter
+      if (eventStatusFilter !== "ALL" && event.status !== eventStatusFilter) {
+        return false
+      }
+
+      // Check type filter
+      if (eventTypeFilter !== "ALL" && event.type !== eventTypeFilter) {
+        return false
+      }
+
+      // Check if event is not expired (date + endTime)
+      try {
+        const eventDate = new Date(event.date)
+        
+        // If there's an endTime, combine date and endTime for evaluation
+        if (event.endTime) {
+          const [hours, minutes] = event.endTime.split(':')
+          eventDate.setHours(parseInt(hours), parseInt(minutes))
+        }
+        
+        // Event must be in the future or today
+        return eventDate >= now || 
+               (eventDate.toDateString() === now.toDateString())
+      } catch (error) {
+        console.error("Error parsing event date:", error)
+        return false
+      }
+    })
+  }, [events, eventStatusFilter, eventTypeFilter])
+
+  // Pagination for Club Applications
   const {
-    currentPage,
-    pageSize,
-    totalPages,
-    totalItems,
-    paginatedData: paginatedClubs,
-    setCurrentPage,
+    currentPage: clubAppsCurrentPage,
+    totalPages: clubAppsTotalPages,
+    paginatedData: paginatedClubAppsList,
+    setCurrentPage: setClubAppsCurrentPage,
   } = usePagination({
-    data: clubPerformance,
-    initialPageSize: 3,
+    data: filteredClubApplications,
+    initialPageSize: 5,
+  })
+
+  // Pagination for Clubs List
+  const {
+    currentPage: clubsCurrentPage,
+    totalPages: clubsTotalPages,
+    paginatedData: paginatedClubsList,
+    setCurrentPage: setClubsCurrentPage,
+  } = usePagination({
+    data: clubsWithMemberCount,
+    initialPageSize: 5,
+  })
+
+  // Pagination for Event Requests
+  const {
+    currentPage: eventsCurrentPage,
+    totalPages: eventsTotalPages,
+    paginatedData: paginatedEventsList,
+    setCurrentPage: setEventsCurrentPage,
+  } = usePagination({
+    data: filteredEvents,
+    initialPageSize: 5,
   })
 
   const statusDotClass: Record<string, string> = {
@@ -139,8 +183,14 @@ export default function UniStaffReportsPage() {
     REJECTED: "bg-red-500",
   }
 
-  const goPrev = () => setCurrentPage(Math.max(1, currentPage - 1))
-  const goNext = () => setCurrentPage(Math.min(totalPages, currentPage + 1))
+  const goClubAppsPrev = () => setClubAppsCurrentPage(Math.max(1, clubAppsCurrentPage - 1))
+  const goClubAppsNext = () => setClubAppsCurrentPage(Math.min(clubAppsTotalPages, clubAppsCurrentPage + 1))
+
+  const goClubsPrev = () => setClubsCurrentPage(Math.max(1, clubsCurrentPage - 1))
+  const goClubsNext = () => setClubsCurrentPage(Math.min(clubsTotalPages, clubsCurrentPage + 1))
+  
+  const goEventsPrev = () => setEventsCurrentPage(Math.max(1, eventsCurrentPage - 1))
+  const goEventsNext = () => setEventsCurrentPage(Math.min(eventsTotalPages, eventsCurrentPage + 1))
 
   return (
     <ProtectedRoute allowedRoles={["uni_staff"]}>
@@ -229,253 +279,318 @@ export default function UniStaffReportsPage() {
             </Card>
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-3">
-            <Card className="lg:col-span-1">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <div className="p-2 bg-primary/10 rounded-lg">
-                    <Users className="h-5 w-5 text-primary" />
-                  </div>
-                  User Distribution
-                </CardTitle>
-                <CardDescription>Breakdown by user roles</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {Object.entries(usersByRole).map(([role, count]) => {
-                    const percentage = totalUsers ? Math.round((count / totalUsers) * 100) : 0
-                    return (
-                      <div key={role} className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="capitalize font-medium">{role.replace("_", " ")}</span>
-                          <span className="text-muted-foreground">
-                            {count} ({percentage}%)
-                          </span>
-                        </div>
-                        <div className="w-full bg-muted rounded-full h-2">
-                          <div
-                            className="bg-gradient-to-r from-primary to-secondary h-2 rounded-full transition-all duration-500"
-                            style={{ width: `${Math.min(percentage, 100)}%` }}
-                          />
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="lg:col-span-2">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <div className="p-2 bg-secondary/10 rounded-lg">
-                    <Award className="h-5 w-5 text-secondary" />
-                  </div>
-                  Top Performing Clubs
-                </CardTitle>
-                <CardDescription>Ranked by member count and event activity</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {paginatedClubs.map((club: any, index: number) => {
-                    const absoluteIndex = (currentPage - 1) * pageSize + index
-                    return (
-                      <div
-                        key={club.id}
-                        className="flex items-center justify-between p-4 border rounded-xl hover:bg-muted/50 transition-colors"
-                      >
-                        <div className="flex items-center gap-4">
-                          <div
-                            className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white ${
-                              absoluteIndex === 0
-                                ? "bg-gradient-to-r from-yellow-400 to-yellow-600"
-                                : absoluteIndex === 1
-                                ? "bg-gradient-to-r from-gray-400 to-gray-600"
-                                : absoluteIndex === 2
-                                ? "bg-gradient-to-r from-orange-400 to-orange-600"
-                                : "bg-gradient-to-r from-primary to-secondary"
-                            }`}
-                          >
-                            #{absoluteIndex + 1}
-                          </div>
-                          <div>
-                            <p className="font-semibold">{club.name}</p>
-                            <p className="text-sm text-muted-foreground">{club.category}</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="flex items-center gap-4">
-                            <div className="text-center">
-                              <p className="text-lg font-bold text-primary">{club.members}</p>
-                              <p className="text-xs text-muted-foreground">Members</p>
-                            </div>
-                            <div className="text-center">
-                              <p className="text-lg font-bold text-secondary">{club.events}</p>
-                              <p className="text-xs text-muted-foreground">Events</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-
-                {totalPages > 1 && (
-                  <div className="mt-4 flex items-center justify-center gap-3">
-                    <Button
-                      aria-label="Previous page"
-                      variant="outline"
-                      size="sm"
-                      className="h-8 w-8 p-0"
-                      onClick={goPrev}
-                      disabled={currentPage === 1}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-
-                    <div className="min-w-[2rem] text-center text-sm font-medium">{currentPage}</div>
-
-                    <Button
-                      aria-label="Next page"
-                      variant="outline"
-                      size="sm"
-                      className="h-8 w-8 p-0"
-                      onClick={goNext}
-                      disabled={currentPage === totalPages}
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
+          {/* First Row: Club Applications and Event Requests side by side */}
           <div className="grid gap-6 lg:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <div className="p-2 bg-green-500/10 rounded-lg">
-                    <Target className="h-5 w-5 text-green-600" />
-                  </div>
-                  Membership Analytics
-                </CardTitle>
-                <CardDescription>Application status breakdown</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {Object.entries(membershipsByStatus).map(([status, count]) => {
-                    const totalApps = membershipApplications.length || 1
-                    const countNumber = typeof count === "number" ? count : Number(count)
-                    const percentage = Math.round((countNumber / totalApps) * 100)
-                    const dotClass = statusDotClass[status] || "bg-muted-foreground"
-                    return (
-                      <div key={status} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-3 h-3 rounded-full ${dotClass}`} />
-                          <span className="capitalize font-medium">{status.toLowerCase()}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge
-                            variant={
-                              status === "APPROVED" ? "default" : status === "PENDING" ? "secondary" : "destructive"
-                            }
-                          >
-                            {String(count)}
-                          </Badge>
-                          <span className="text-sm text-muted-foreground">({percentage}%)</span>
-                        </div>
-                      </div>
-                    )
-                  })}
+            {/* Club Applications List (with status filter) */}
+            <Card className="border-2">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2 text-xl">
+                    <div className="p-1.5 bg-green-500 rounded-lg">
+                      <FileText className="h-5 w-5 text-white" />
+                    </div>
+                    Club Applications
+                  </CardTitle>
+                  <CardDescription className="text-xs">Sorted by latest submission date</CardDescription>
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <div className="p-2 bg-purple-500/10 rounded-lg">
-                    <Zap className="h-5 w-5 text-purple-600" />
-                  </div>
-                  Event Activity Timeline
-                </CardTitle>
-                <CardDescription>Monthly event creation trends</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {Object.entries(eventsByMonth).map(([month, count]) => {
-                    const maxCount = Math.max(...Object.values(eventsByMonth).map(v => Number(v)), 1)
-                    const countNum = Number(count)
-                    const percentage = (countNum / maxCount) * 100
-                    return (
-                      <div key={month} className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="font-medium">{month}</span>
-                          <span className="text-muted-foreground">{countNum} events</span>
-                        </div>
-                        <div className="w-full bg-muted rounded-full h-3">
-                          <div
-                            className="bg-gradient-to-r from-purple-500 to-purple-600 h-3 rounded-full transition-all duration-700"
-                            style={{ width: `${Math.min(percentage, 100)}%` }}
-                          />
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card className="bg-gradient-to-r from-primary/5 to-secondary/5 border-primary/20">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-xl">
-                <div className="p-2 bg-primary rounded-lg">
-                  <PieChart className="h-6 w-6 text-white" />
-                </div>
-                Key Performance Indicators
-              </CardTitle>
-              <CardDescription>Critical metrics for system performance</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-8 md:grid-cols-3">
-                <div className="text-center space-y-2">
-                  <div className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
-                    {engagementRate}%
-                  </div>
-                  <div className="text-sm font-medium text-muted-foreground">User Engagement Rate</div>
-                  <div className="text-xs text-muted-foreground">Users with active memberships</div>
-                  <div className="flex items-center justify-center text-xs text-green-600">
-                    <ArrowUpRight className="h-3 w-3 mr-1" />
-                    +5% vs last month
-                  </div>
-                </div>
-
-                <div className="text-center space-y-2">
-                  <div className="text-4xl font-bold bg-gradient-to-r from-green-600 to-green-800 bg-clip-text text-transparent">
-                    {approvalRate}%
-                  </div>
-                  <div className="text-sm font-medium text-muted-foreground">Approval Rate</div>
-                  <div className="text-xs text-muted-foreground">Applications approved</div>
-                  <div className="flex items-center justify-center text-xs text-green-600">
-                    <ArrowUpRight className="h-3 w-3 mr-1" />
-                    +2% vs last month
-                  </div>
-                </div>
-
-                <div className="text-center space-y-2">
-                  <div className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-purple-800 bg-clip-text text-transparent">
-                    {eventsPerClub}
-                  </div>
-                  <div className="text-sm font-medium text-muted-foreground">Events per Club</div>
-                  <div className="text-xs text-muted-foreground">Average activity level</div>
-                  <div className="flex items-center justify-center text-xs text-green-600">
-                    <ArrowUpRight className="h-3 w-3 mr-1" />
-                    +0.3 vs last month
-                  </div>
+                <div className="flex items-center gap-2">
+                  <Filter className="h-3 w-3 text-muted-foreground" />
+                  <Select value={clubAppStatusFilter} onValueChange={setClubAppStatusFilter}>
+                    <SelectTrigger className="w-[110px] h-8 text-xs">
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL">All Status</SelectItem>
+                      <SelectItem value="PENDING">Pending</SelectItem>
+                      <SelectItem value="APPROVED">Approved</SelectItem>
+                      <SelectItem value="REJECTED">Rejected</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {paginatedClubAppsList.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">No club applications found</div>
+                ) : (
+                  paginatedClubAppsList.map((app: any) => {
+                    const submittedDate = new Date(app.submittedAt)
+                    const formattedDate = submittedDate.toLocaleDateString("en-US")
+                    const statusClass = statusDotClass[app.status] || "bg-gray-500"
+                    
+                    return (
+                      <div
+                        key={app.applicationId}
+                        className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <div className={`w-3 h-3 rounded-full flex-shrink-0 ${statusClass}`} />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-base truncate">{app.clubName}</p>
+                            <div className="flex flex-col gap-0.5 text-xs text-muted-foreground mt-1">
+                              <span className="truncate">Proposer: {app.submittedBy?.fullName || app.proposer?.fullName || "Unknown"}</span>
+                              <span className="truncate">Major: {app.majorName || "Not specified"}</span>
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {formattedDate}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 flex-shrink-0">
+                          <Badge
+                            variant={
+                              app.status === "APPROVED"
+                                ? "default"
+                                : app.status === "PENDING"
+                                ? "secondary"
+                                : "destructive"
+                            }
+                            className="text-xs"
+                          >
+                            {app.status === "PENDING" ? "Pending" : app.status === "APPROVED" ? "Approved" : "Rejected"}
+                          </Badge>
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+
+              {clubAppsTotalPages > 1 && (
+                <div className="mt-4 flex items-center justify-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={goClubAppsPrev}
+                    disabled={clubAppsCurrentPage === 1}
+                    className="h-8 text-xs"
+                  >
+                    <ChevronLeft className="h-3 w-3 mr-1" />
+                    Previous
+                  </Button>
+                  <span className="text-xs font-medium">
+                    Page {clubAppsCurrentPage} / {clubAppsTotalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={goClubAppsNext}
+                    disabled={clubAppsCurrentPage === clubAppsTotalPages}
+                    className="h-8 text-xs"
+                  >
+                    Next
+                    <ChevronRight className="h-3 w-3 ml-1" />
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Event Requests List (with filters) */}
+          <Card className="border-2">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2 text-xl">
+                    <div className="p-1.5 bg-purple-500 rounded-lg">
+                      <Calendar className="h-5 w-5 text-white" />
+                    </div>
+                    Event Requests List
+                  </CardTitle>
+                  <CardDescription className="text-xs">Filter upcoming events (non-expired)</CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Filter className="h-3 w-3 text-muted-foreground" />
+                  <Select value={eventStatusFilter} onValueChange={setEventStatusFilter}>
+                    <SelectTrigger className="w-[110px] h-8 text-xs">
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL">All Status</SelectItem>
+                      <SelectItem value="PENDING">Pending</SelectItem>
+                      <SelectItem value="APPROVED">Approved</SelectItem>
+                      <SelectItem value="REJECTED">Rejected</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={eventTypeFilter} onValueChange={setEventTypeFilter}>
+                    <SelectTrigger className="w-[110px] h-8 text-xs">
+                      <SelectValue placeholder="Type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL">All Types</SelectItem>
+                      <SelectItem value="WORKSHOP">Workshop</SelectItem>
+                      <SelectItem value="SEMINAR">Seminar</SelectItem>
+                      <SelectItem value="SOCIAL">Social</SelectItem>
+                      <SelectItem value="COMPETITION">Competition</SelectItem>
+                      <SelectItem value="OTHER">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {eventsLoading ? (
+                  <div className="text-center py-8 text-muted-foreground">Loading...</div>
+                ) : paginatedEventsList.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">No events found matching criteria</div>
+                ) : (
+                  paginatedEventsList.map((event: any) => {
+                    const eventDate = new Date(event.date)
+                    const formattedDate = eventDate.toLocaleDateString("en-US")
+                    const statusClass = statusDotClass[event.status] || "bg-gray-500"
+                    
+                    return (
+                      <div
+                        key={event.id}
+                        className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <div className={`w-3 h-3 rounded-full flex-shrink-0 ${statusClass}`} />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-base truncate">{event.name}</p>
+                            <div className="flex flex-col gap-0.5 text-xs text-muted-foreground mt-1">
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {formattedDate} {event.time || ""}
+                                {event.endTime && <span>- {event.endTime}</span>}
+                              </span>
+                              <span className="truncate">{event.locationName || "Location not specified"}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 flex-shrink-0">
+                          <div className="text-right">
+                            <Badge
+                              variant={
+                                event.status === "APPROVED"
+                                  ? "default"
+                                  : event.status === "PENDING"
+                                  ? "secondary"
+                                  : "destructive"
+                              }
+                              className="text-xs"
+                            >
+                              {event.status === "PENDING" ? "Pending" : event.status === "APPROVED" ? "Approved" : "Rejected"}
+                            </Badge>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {event.type || "N/A"}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+
+              {eventsTotalPages > 1 && (
+                <div className="mt-4 flex items-center justify-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={goEventsPrev}
+                    disabled={eventsCurrentPage === 1}
+                    className="h-8 text-xs"
+                  >
+                    <ChevronLeft className="h-3 w-3 mr-1" />
+                    Previous
+                  </Button>
+                  <span className="text-xs font-medium">
+                    Page {eventsCurrentPage} / {eventsTotalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={goEventsNext}
+                    disabled={eventsCurrentPage === eventsTotalPages}
+                    className="h-8 text-xs"
+                  >
+                    Next
+                    <ChevronRight className="h-3 w-3 ml-1" />
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          </div>
+
+          {/* Second Row: All Clubs List (full width) */}
+          <Card className="border-2">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-xl">
+                <div className="p-1.5 bg-blue-500 rounded-lg">
+                  <Building className="h-5 w-5 text-white" />
+                </div>
+                All Clubs List
+              </CardTitle>
+              <CardDescription className="text-xs">Sorted by member count (high to low)</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {clubsLoading ? (
+                  <div className="text-center py-8 text-muted-foreground">Loading...</div>
+                ) : paginatedClubsList.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">No clubs found</div>
+                ) : (
+                  paginatedClubsList.map((club: any, index: number) => (
+                    <div
+                      key={club.id}
+                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-3 flex-1">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
+                          {club.name?.charAt(0) || "C"}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-base truncate">{club.name}</p>
+                          <div className="flex flex-col gap-0.5 text-xs text-muted-foreground">
+                            <span className="truncate">Leader: {club.leaderName || "Not assigned"}</span>
+                            <span className="truncate">Major: {club.majorName || "Not assigned"}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 flex-shrink-0">
+                        <div className="text-center">
+                          <p className="text-xl font-bold text-blue-600">{club.memberCount || 0}</p>
+                          <p className="text-xs text-muted-foreground">Members</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {clubsTotalPages > 1 && (
+                <div className="mt-4 flex items-center justify-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={goClubsPrev}
+                    disabled={clubsCurrentPage === 1}
+                    className="h-8 text-xs"
+                  >
+                    <ChevronLeft className="h-3 w-3 mr-1" />
+                    Previous
+                  </Button>
+                  <span className="text-xs font-medium">
+                    Page {clubsCurrentPage} / {clubsTotalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={goClubsNext}
+                    disabled={clubsCurrentPage === clubsTotalPages}
+                    className="h-8 text-xs"
+                  >
+                    Next
+                    <ChevronRight className="h-3 w-3 ml-1" />
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
