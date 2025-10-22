@@ -1,6 +1,42 @@
 import axiosInstance from "@/lib/axiosInstance"
 
-export const fetchEvent = async ({ page = 0, size = 50, sort = "name" } = {}) => {
+export interface Event {
+  id: number
+  name: string
+  description: string
+  type: "PUBLIC" | "PRIVATE" | string
+  date: string
+  startTime: string
+  endTime: string
+  status: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED" | string
+  checkInCode: string
+  locationName: string
+  maxCheckInCount: number
+  currentCheckInCount: number
+  hostClub: {
+    id: number
+    name: string
+  }
+  // Legacy fields for backward compatibility
+  clubId?: number
+  clubName?: string
+  time?: string
+  locationId?: number
+}
+
+export interface CreateEventPayload {
+  name: string
+  description: string
+  type: "PUBLIC" | "PRIVATE"
+  date: string
+  startTime: string
+  endTime: string
+  locationName: string
+  maxCheckInCount: number
+  clubId?: number
+}
+
+export const fetchEvent = async ({ page = 0, size = 50, sort = "name" } = {}): Promise<Event[]> => {
   const timestamp = new Date().toISOString();
   const stack = new Error().stack;
   console.log(`🚀 fetchEvent called at ${timestamp}`);
@@ -35,11 +71,13 @@ export const fetchEvent = async ({ page = 0, size = 50, sort = "name" } = {}) =>
   }
 }
 
-export const createEvent = async (payload: any) => {
+export const createEvent = async (payload: CreateEventPayload): Promise<Event> => {
   try {
     const response = await axiosInstance.post("api/events", payload)
     const data: any = response.data
     console.log("Create event response:", data)
+    // Response structure: { success: true, message: "success", data: {...event} }
+    if (data?.data) return data.data
     return data
   } catch (error) {
     console.error("Error creating event:", error)
@@ -47,12 +85,12 @@ export const createEvent = async (payload: any) => {
   }
 }
 
-export const getEventById = async (id: string | number) => {
+export const getEventById = async (id: string | number): Promise<Event> => {
   try {
     const response = await axiosInstance.get(`api/events/${id}`)
     const resData: any = response.data
     console.log(`Fetched event ${id}:`, resData)
-    // Response structure: { success: true, message: "success", data: { id, clubId, name, description, type, date, time, status, locationId, locationName, checkInCode, maxCheckInCount, currentCheckInCount } }
+    // Response structure: { success: true, message: "success", data: { id, name, description, type, date, startTime, endTime, status, locationName, checkInCode, maxCheckInCount, currentCheckInCount, hostClub: { id, name } } }
     // Always return the data object when present
     if (resData && resData.data) return resData.data
     return resData
@@ -62,12 +100,12 @@ export const getEventById = async (id: string | number) => {
   }
 }
 
-export const putEventStatus = async (id: string | number, status: string) => {
+export const putEventStatus = async (id: string | number, status: string): Promise<Event> => {
   try {
     const response = await axiosInstance.put(`api/events/${id}/status`, { status })
     const data: any = response.data
     console.log(`Updated event ${id} status -> ${status}:`, data)
-    // normalize
+    // Response structure: { success: true, message: "success", data: {...event} }
     if (data && data.data) return data.data
     return data
   } catch (error) {
@@ -76,16 +114,15 @@ export const putEventStatus = async (id: string | number, status: string) => {
   }
 }
 
-export const getEventByCode = async (code: string) => {
+export const getEventByCode = async (code: string): Promise<Event> => {
 	// call the correct endpoint: /api/events/code/{code}
 	try {
 		const response = await axiosInstance.get(`/api/events/code/${encodeURIComponent(code)}`)
 		const resData: any = response.data
 		console.debug(`Fetched event by code ${code}:`, resData)
-		// expected response shape:
-		// { success: true, message: null, data: { ...event fields... } }
+		// Expected response shape: { success: true, message: null, data: {...event} }
 		if (resData?.success && resData?.data) return resData.data
-		// fallback: if API returns raw event object
+		// Fallback: if API returns raw event object
 		if (resData && typeof resData === "object" && (resData.id || resData.name)) return resData
 		throw new Error(resData?.message || "Event not found")
 	} catch (err) {
@@ -94,7 +131,7 @@ export const getEventByCode = async (code: string) => {
 	}
 }
 
-export const getEventByClubId = async (clubId: string | number) => {
+export const getEventByClubId = async (clubId: string | number): Promise<Event[]> => {
 	try {
 		const response = await axiosInstance.get(`/api/events/club/${clubId}`)
 		const resData: any = response.data
@@ -113,6 +150,30 @@ export const getEventByClubId = async (clubId: string | number) => {
 		return []
 	} catch (error) {
 		console.error(`Error fetching events for club ${clubId}:`, error)
+		throw error
+	}
+}
+
+export const updateEvent = async (id: string | number, payload: Partial<CreateEventPayload>): Promise<Event> => {
+	try {
+		const response = await axiosInstance.put(`api/events/${id}`, payload)
+		const data: any = response.data
+		console.log(`Updated event ${id}:`, data)
+		// Response structure: { success: true, message: "success", data: {...event} }
+		if (data?.data) return data.data
+		return data
+	} catch (error) {
+		console.error(`Error updating event ${id}:`, error)
+		throw error
+	}
+}
+
+export const deleteEvent = async (id: string | number): Promise<void> => {
+	try {
+		await axiosInstance.delete(`api/events/${id}`)
+		console.log(`Deleted event ${id}`)
+	} catch (error) {
+		console.error(`Error deleting event ${id}:`, error)
 		throw error
 	}
 }

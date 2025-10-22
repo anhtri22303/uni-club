@@ -186,7 +186,14 @@ export function useEvents() {
     queryFn: async () => {
       const data: any = await fetchEvent()
       const raw: any[] = Array.isArray(data) ? data : (data?.content ?? data?.events ?? [])
-      return raw.map((e: any) => ({ ...e, title: e.title ?? e.name }))
+      // Normalize events - ensure backward compatibility with legacy 'title' field
+      return raw.map((e: any) => ({ 
+        ...e, 
+        title: e.name || e.title,
+        // Add legacy fields for backward compatibility
+        clubId: e.hostClub?.id || e.clubId,
+        clubName: e.hostClub?.name || e.clubName,
+      }))
     },
     staleTime: 3 * 60 * 1000, // 3 minutes (events change frequently)
   })
@@ -202,11 +209,10 @@ export function useClubEvents(clubIds: number[]) {
     queryFn: async () => {
       const data: any = await fetchEvent()
       const raw: any[] = Array.isArray(data) ? data : (data?.content ?? data?.events ?? [])
-      const normalized = raw.map((e: any) => ({ ...e, title: e.title ?? e.name }))
       
-      // Filter by clubIds
-      return normalized.filter((event: any) => {
-        const eventClubId = Number(event.clubId)
+      // Filter by clubIds - support both new (hostClub) and legacy (clubId) formats
+      return raw.filter((event: any) => {
+        const eventClubId = Number(event.hostClub?.id || event.clubId)
         return clubIds.includes(eventClubId)
       })
     },

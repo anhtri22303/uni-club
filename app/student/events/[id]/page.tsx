@@ -15,13 +15,25 @@ import { LoadingSkeleton } from "@/components/loading-skeleton"
 
 interface EventDetail {
   id: number
-  clubId: number
   name: string
   description: string
   type: string
   date: string
-  time: string
-  locationId: number
+  startTime: string
+  endTime: string
+  status: string
+  checkInCode: string
+  locationName: string
+  maxCheckInCount: number
+  currentCheckInCount: number
+  hostClub: {
+    id: number
+    name: string
+  }
+  // Legacy fields for backward compatibility
+  clubId?: number
+  time?: string
+  locationId?: number
 }
 
 export default function EventDetailPage() {
@@ -179,8 +191,8 @@ export default function EventDetailPage() {
                     <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
                       <Clock className="h-5 w-5 text-primary" />
                       <div>
-                        <div className="font-medium">{formatTime(event.time)}</div>
-                        <div className="text-sm text-muted-foreground">Start Time</div>
+                        <div className="font-medium">{event.startTime} - {event.endTime}</div>
+                        <div className="text-sm text-muted-foreground">Event Duration</div>
                       </div>
                     </div>
                   </div>
@@ -193,17 +205,38 @@ export default function EventDetailPage() {
                     <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
                       <MapPin className="h-5 w-5 text-primary" />
                       <div>
-                        <div className="font-medium">Location ID: {event.locationId}</div>
+                        <div className="font-medium">{event.locationName}</div>
                         <div className="text-sm text-muted-foreground">Event Venue</div>
                       </div>
                     </div>
                     <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
                       <Users className="h-5 w-5 text-primary" />
                       <div>
-                        <div className="font-medium">Club ID: {event.clubId}</div>
+                        <div className="font-medium">{event.hostClub.name}</div>
                         <div className="text-sm text-muted-foreground">Organizing Club</div>
                       </div>
                     </div>
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Check-in Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Check-in Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-4 bg-muted/50 rounded-lg">
+                    <div className="text-sm text-muted-foreground">Check-in Code</div>
+                    <div className="font-mono font-semibold text-lg">{event.checkInCode}</div>
+                  </div>
+                  <div className="p-4 bg-muted/50 rounded-lg">
+                    <div className="text-sm text-muted-foreground">Max Capacity</div>
+                    <div className="font-semibold text-lg">{event.maxCheckInCount} people</div>
+                  </div>
+                  <div className="p-4 bg-muted/50 rounded-lg">
+                    <div className="text-sm text-muted-foreground">Current Check-ins</div>
+                    <div className="font-semibold text-lg">{event.currentCheckInCount} / {event.maxCheckInCount}</div>
                   </div>
                 </div>
               </div>

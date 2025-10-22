@@ -12,9 +12,10 @@ interface StatsCardProps {
     label: string
   }
   variant?: "default" | "primary" | "success" | "warning" | "info"
+  onClick?: () => void
 }
 
-export function StatsCard({ title, value, description, icon: Icon, trend, variant = "default" }: StatsCardProps) {
+export function StatsCard({ title, value, description, icon: Icon, trend, variant = "default", onClick }: StatsCardProps) {
   const gradientClasses = {
     default: "bg-gradient-to-br from-slate-50 to-blue-50 border-slate-200",
     primary: "bg-gradient-to-br from-violet-50 to-purple-50 border-violet-200",
@@ -40,7 +41,10 @@ export function StatsCard({ title, value, description, icon: Icon, trend, varian
   }
 
   return (
-    <Card className={`stats-card-hover relative overflow-hidden ${gradientClasses[variant]} border-2`}>
+    <Card 
+      className={`stats-card-hover relative overflow-hidden ${gradientClasses[variant]} border-2 transition-all ${onClick ? 'cursor-pointer hover:scale-105 hover:shadow-lg' : ''}`}
+      onClick={onClick}
+    >
       <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent" />
 
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">

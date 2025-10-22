@@ -481,13 +481,15 @@ export default function ClubLeaderMembersPage() {
 
                         {/* Right: Actions */}
                         <div className="flex flex-col items-end gap-2">
-                          <Button
-                            size="sm"
-                            className="rounded-lg bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 transition-all duration-200 border border-red-200"
-                            onClick={() => handleDeleteMember(member.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {member.role !== "LEADER" && member.role !== "VICE_LEADER" && (
+                            <Button
+                              size="sm"
+                              className="rounded-lg bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 transition-all duration-200 border border-red-200"
+                              onClick={() => handleDeleteMember(member.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </CardContent>

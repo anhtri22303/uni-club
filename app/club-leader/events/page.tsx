@@ -58,6 +58,36 @@ export default function ClubLeaderEventsPage() {
     userClubId ? [userClubId] : []
   )
 
+  // Helper function to check if event is active (APPROVED and within date/time range)
+  const isEventActive = (event: any) => {
+    // Must be APPROVED
+    if (event.status !== "APPROVED") return false
+    
+    // Check if date and endTime are present
+    if (!event.date || !event.endTime) return false
+    
+    try {
+      // Get current date/time
+      const now = new Date()
+      
+      // Parse event date (format: YYYY-MM-DD)
+      const eventDate = new Date(event.date)
+      
+      // Parse endTime (format: HH:MM:SS or HH:MM)
+      const [hours, minutes] = event.endTime.split(':').map(Number)
+      
+      // Create event end datetime
+      const eventEndDateTime = new Date(eventDate)
+      eventEndDateTime.setHours(hours, minutes, 0, 0)
+      
+      // Event is active if current time is before or equal to end time
+      return now <= eventEndDateTime
+    } catch (error) {
+      console.error('Error checking event active status:', error)
+      return false
+    }
+  }
+
   // Helper function to sort events by date and time (newest to oldest)
   const sortEventsByDateTime = (eventList: any[]) => {
     return eventList.sort((a: any, b: any) => {
@@ -70,14 +100,17 @@ export default function ClubLeaderEventsPage() {
         return dateB.getTime() - dateA.getTime()
       }
       
-      // If dates are equal, compare times (latest time first)
-      const timeA = a.time || '00:00'
-      const timeB = b.time || '00:00'
+      // If dates are equal, compare times (latest startTime first)
+      // Support both new (startTime) and legacy (time) formats
+      const timeA = a.startTime || a.time || '00:00'
+      const timeB = b.startTime || b.time || '00:00'
       
-      // Convert time strings to comparable format (HH:MM to minutes)
+      // Convert time strings to comparable format (HH:MM:SS or HH:MM to minutes)
       const parseTime = (timeStr: string) => {
-        const [hours, minutes] = timeStr.split(':').map(Number)
-        return (hours || 0) * 60 + (minutes || 0)
+        const parts = timeStr.split(':').map(Number)
+        const hours = parts[0] || 0
+        const minutes = parts[1] || 0
+        return hours * 60 + minutes
       }
       
       return parseTime(timeB) - parseTime(timeA)
@@ -86,7 +119,12 @@ export default function ClubLeaderEventsPage() {
 
   // Process and sort events
   const events = useMemo(() => {
-    const normalized = rawEvents.map((e: any) => ({ ...e, title: e.title ?? e.name }))
+    // Normalize events with both new and legacy field support
+    const normalized = rawEvents.map((e: any) => ({ 
+      ...e, 
+      title: e.name || e.title,
+      time: e.startTime || e.time, // Map startTime to time for legacy compatibility
+    }))
     return sortEventsByDateTime(normalized)
   }, [rawEvents])
 
@@ -185,8 +223,10 @@ export default function ClubLeaderEventsPage() {
     description: "",
     type: "PUBLIC",
     date: "",
-    time: "13:30",
-    locationId: 0,
+    startTime: "09:00:00",
+    endTime: "11:00:00",
+    locationName: "",
+    maxCheckInCount: 100,
   })
 
   // Update formData clubId when userClubId changes
@@ -266,52 +306,57 @@ export default function ClubLeaderEventsPage() {
 
   const hasActiveFilters = Object.values(activeFilters).some((v) => v && v !== "all") || Boolean(searchTerm)
 
-  const resetForm = () => setFormData({ clubId: userClubId || managedClub.id, name: "", description: "", type: "PUBLIC", date: "", time: "13:30", locationId: 0 })
+  const resetForm = () => setFormData({ clubId: userClubId || managedClub.id, name: "", description: "", type: "PUBLIC", date: "", startTime: "09:00:00", endTime: "11:00:00", locationName: "", maxCheckInCount: 100 })
 
   const handleCreate = async () => {
     // validate required
-    if (!formData.name || !formData.date) {
+    if (!formData.name || !formData.date || !formData.startTime || !formData.endTime) {
       toast({ title: "Missing Information", description: "Please fill in all required fields", variant: "destructive" })
       return
     }
 
     try {
-      const clubId = String(formData.clubId).match(/^\d+$/) ? Number(formData.clubId) : formData.clubId
+      const clubId = Number(formData.clubId)
       const payload = {
         clubId,
         name: formData.name,
         description: formData.description,
-        type: formData.type,
+        type: formData.type as "PUBLIC" | "PRIVATE",
         date: formData.date,
-        time: formData.time,
-        locationId: formData.locationId,
+        startTime: formData.startTime,
+        endTime: formData.endTime,
+        locationName: formData.locationName,
+        maxCheckInCount: formData.maxCheckInCount,
       }
 
       const res: any = await createEvent(payload)
-      if (res && res.success) {
-        toast({ title: "Event Created", description: res.message || "Event created successfully" })
-        // close modal and reload to refresh data from API
-        setShowCreateModal(false)
-        window.location.reload()
-      } else {
-        toast({ title: "Create failed", description: res?.message || "Could not create event", variant: "destructive" })
-      }
-    } catch (error) {
+      toast({ title: "Event Created", description: "Event created successfully" })
+      // Invalidate query to refresh events
+      queryClient.invalidateQueries({ queryKey: ["events"] })
+      setShowCreateModal(false)
+      resetForm()
+    } catch (error: any) {
       console.error(error)
-      toast({ title: "Error", description: "Failed to create event", variant: "destructive" })
+      toast({ 
+        title: "Error", 
+        description: error?.response?.data?.message || "Failed to create event", 
+        variant: "destructive" 
+      })
     }
   }
 
   const handleEdit = (event: any) => {
     setSelectedEvent(event)
     setFormData({
-      clubId: event.clubId ?? userClubId ?? managedClub.id,
+      clubId: event.hostClub?.id ?? event.clubId ?? userClubId ?? managedClub.id,
       name: event.name ?? event.title ?? "",
       description: event.description ?? "",
       type: event.type ?? "PUBLIC",
       date: event.date ?? "",
-      time: event.time ?? "13:30",
-      locationId: event.locationId ?? 0,
+      startTime: event.startTime ?? event.time ?? "09:00:00",
+      endTime: event.endTime ?? "11:00:00",
+      locationName: event.locationName ?? "",
+      maxCheckInCount: event.maxCheckInCount ?? 100,
     })
     setShowEditModal(true)
   }
@@ -632,8 +677,8 @@ export default function ClubLeaderEventsPage() {
                               Edit Event
                             </Button>
                           </div>
-                          {/* QR Code Section - Only show if APPROVED */}
-                          {event.status === "APPROVED" && (
+                          {/* QR Code Section - Only show if APPROVED and event is still active */}
+                          {isEventActive(event) && (
                             <div className="mt-3 pt-3 border-t border-muted">
                               <Button
                                 variant="default"
@@ -648,21 +693,37 @@ export default function ClubLeaderEventsPage() {
                                     console.log('Generated token:', token);
                                     console.log('Generated qrUrl:', qrUrl);
                                     
-                                    // Generate QR code variants using the qrUrl from backend
+                                    // Create URLs with token (path parameter format)
+                                    const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${token}`;
+                                    const localUrl = `http://localhost:3000/student/checkin/${token}`;
+                                    
+                                    console.log('Production URL:', prodUrl);
+                                    console.log('Development URL:', localUrl);
+                                    
+                                    // Generate QR code variants
                                     const styleVariants = [
                                       { color: { dark: '#000000', light: '#FFFFFF' }, margin: 1 },
                                       { color: { dark: '#111111', light: '#FFFFFF' }, margin: 2 },
                                       { color: { dark: '#222222', light: '#FFFFFF' }, margin: 0 },
                                     ];
-                                    const qrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
-                                      const opts = styleVariants[i % styleVariants.length];
-                                      return QRCode.toDataURL(qrUrl, opts as any);
-                                    });
-                                    const qrVariants = await Promise.all(qrVariantsPromises);
                                     
-                                    // Use the same qrUrl for both local and prod since backend provides the final URL
-                                    setQrRotations({ local: qrVariants, prod: qrVariants });
-                                    setQrLinks({ local: qrUrl, prod: qrUrl });
+                                    // Generate QR variants for local environment
+                                    const localQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
+                                      const opts = styleVariants[i % styleVariants.length];
+                                      return QRCode.toDataURL(localUrl, opts as any);
+                                    });
+                                    const localQrVariants = await Promise.all(localQrVariantsPromises);
+                                    
+                                    // Generate QR variants for production environment
+                                    const prodQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
+                                      const opts = styleVariants[i % styleVariants.length];
+                                      return QRCode.toDataURL(prodUrl, opts as any);
+                                    });
+                                    const prodQrVariants = await Promise.all(prodQrVariantsPromises);
+                                    
+                                    // Set different URLs for local and production
+                                    setQrRotations({ local: localQrVariants, prod: prodQrVariants });
+                                    setQrLinks({ local: localUrl, prod: prodUrl });
                                     setVisibleIndex(0);
                                     setDisplayedIndex(0);
                                     setShowQrModal(true);
@@ -754,24 +815,34 @@ export default function ClubLeaderEventsPage() {
                 />
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="date">Date *</Label>
+                <Input
+                  id="date"
+                  type="date"
+                  value={formData.date}
+                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                />
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="date">Date *</Label>
+                  <Label htmlFor="startTime">Start Time *</Label>
                   <Input
-                    id="date"
-                    type="date"
-                    value={formData.date}
-                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                    id="startTime"
+                    type="time"
+                    value={formData.startTime.substring(0, 5)}
+                    onChange={(e) => setFormData({ ...formData, startTime: e.target.value + ":00" })}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="time">Time</Label>
+                  <Label htmlFor="endTime">End Time *</Label>
                   <Input
-                    id="time"
+                    id="endTime"
                     type="time"
-                    value={formData.time}
-                    onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                    value={formData.endTime.substring(0, 5)}
+                    onChange={(e) => setFormData({ ...formData, endTime: e.target.value + ":00" })}
                   />
                 </div>
               </div>
@@ -779,22 +850,39 @@ export default function ClubLeaderEventsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="type">Type</Label>
-                  <Input
-                    id="type"
+                  <Select
                     value={formData.type}
-                    onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                  />
+                    onValueChange={(value) => setFormData({ ...formData, type: value })}
+                  >
+                    <SelectTrigger id="type">
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PUBLIC">Public</SelectItem>
+                      <SelectItem value="PRIVATE">Private</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="locationId">Location ID</Label>
+                  <Label htmlFor="maxCheckInCount">Max Check-ins</Label>
                   <Input
-                    id="locationId"
+                    id="maxCheckInCount"
                     type="number"
-                    value={formData.locationId}
-                    onChange={(e) => setFormData({ ...formData, locationId: Number.parseInt(e.target.value) || 0 })}
+                    value={formData.maxCheckInCount}
+                    onChange={(e) => setFormData({ ...formData, maxCheckInCount: Number.parseInt(e.target.value) || 100 })}
                   />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="locationName">Location Name</Label>
+                <Input
+                  id="locationName"
+                  value={formData.locationName}
+                  onChange={(e) => setFormData({ ...formData, locationName: e.target.value })}
+                  placeholder="Enter location name"
+                />
               </div>
 
               <div className="flex gap-2 justify-end">
@@ -817,15 +905,23 @@ export default function ClubLeaderEventsPage() {
                 <Label htmlFor="edit-description">Description</Label>
                 <Textarea id="edit-description" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows={3} />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-date">Date *</Label>
+                <Input id="edit-date" type="date" value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} />
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-date">Date *</Label>
-                  <Input id="edit-date" type="date" value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} />
+                  <Label htmlFor="edit-startTime">Start Time *</Label>
+                  <Input id="edit-startTime" type="time" value={formData.startTime.substring(0, 5)} onChange={(e) => setFormData({ ...formData, startTime: e.target.value + ":00" })} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-time">Time</Label>
-                  <Input id="edit-time" type="time" value={formData.time} onChange={(e) => setFormData({ ...formData, time: e.target.value })} />
+                  <Label htmlFor="edit-endTime">End Time *</Label>
+                  <Input id="edit-endTime" type="time" value={formData.endTime.substring(0, 5)} onChange={(e) => setFormData({ ...formData, endTime: e.target.value + ":00" })} />
                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-locationName">Location Name</Label>
+                <Input id="edit-locationName" value={formData.locationName} onChange={(e) => setFormData({ ...formData, locationName: e.target.value })} placeholder="Enter location name" />
               </div>
               <div className="flex gap-2 justify-end">
                 <Button variant="outline" onClick={() => setShowEditModal(false)}>Cancel</Button>

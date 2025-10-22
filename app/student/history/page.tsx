@@ -133,38 +133,6 @@ export default function MemberHistoryPage() {
     return offers.find((o) => o.id === offerId)?.title || "Unknown Offer"
   }
 
-  if (activitiesToDisplay.length === 0) {
-    // show loading / error / empty states
-    return (
-      <ProtectedRoute allowedRoles={["student", "member"]}>
-        <AppShell>
-          <div className="space-y-6">
-            <div>
-              <h1 className="text-3xl font-bold">Activity History</h1>
-              <p className="text-muted-foreground">Track your club applications and voucher redemptions</p>
-            </div>
-
-            {loading ? (
-              <div className="text-center text-sm text-muted-foreground">Loading applications...</div>
-            ) : error ? (
-              <div className="text-center text-sm text-destructive">Error: {String(error)}</div>
-            ) : (
-              <EmptyState
-                icon={History}
-                title="No activity yet"
-                description="Your club applications and voucher redemptions will appear here"
-                action={{
-                  label: "Browse Clubs",
-                  onClick: () => (window.location.href = "/student/clubs"),
-                }}
-              />
-            )}
-          </div>
-        </AppShell>
-      </ProtectedRoute>
-    )
-  }
-
   return (
       <ProtectedRoute allowedRoles={["student", "member"]}>
       <AppShell>
@@ -220,7 +188,27 @@ export default function MemberHistoryPage() {
             </button>
           </div>
 
-          <div className="space-y-4">
+          {/* Loading State */}
+          {loading ? (
+            <div className="text-center text-sm text-muted-foreground py-8">Loading applications...</div>
+          ) : error ? (
+            <div className="text-center text-sm text-destructive py-8">Error: {String(error)}</div>
+          ) : activitiesToDisplay.length === 0 ? (
+            <EmptyState
+              icon={History}
+              title="No activity yet"
+              description={
+                activeTab === "member"
+                  ? "Your member applications and voucher redemptions will appear here"
+                  : "Your club creation applications will appear here"
+              }
+              action={{
+                label: activeTab === "member" ? "Browse Clubs" : "Create Club",
+                onClick: () => (window.location.href = activeTab === "member" ? "/student/clubs" : "/student/clubs"),
+              }}
+            />
+          ) : (
+            <div className="space-y-4">
             {paginatedActivities.map((activity, index) => {
               // Determine border color based on status
               const getBorderColor = () => {
@@ -228,6 +216,7 @@ export default function MemberHistoryPage() {
                 
                 const status = activity.data.status
                 if (status === "APPROVED") return "border-l-green-500"
+                if (status === "COMPLETE") return "border-l-blue-500"
                 if (status === "PENDING") return "border-l-yellow-500"
                 if (status === "REJECTED") return "border-l-red-500"
                 return "border-l-gray-300"
@@ -289,6 +278,8 @@ export default function MemberHistoryPage() {
                               variant={
                                 activity.data.status === "APPROVED"
                                   ? "default"
+                                  : activity.data.status === "COMPLETE"
+                                  ? "default"
                                   : activity.data.status === "PENDING"
                                   ? "secondary"
                                   : "destructive"
@@ -296,6 +287,8 @@ export default function MemberHistoryPage() {
                               className={
                                 activity.data.status === "APPROVED"
                                   ? "bg-green-100 text-green-800 border-green-300 hover:bg-green-100"
+                                  : activity.data.status === "COMPLETE"
+                                  ? "bg-blue-100 text-blue-800 border-blue-300 hover:bg-blue-100"
                                   : activity.data.status === "PENDING"
                                   ? "bg-yellow-100 text-yellow-800 border-yellow-300 hover:bg-yellow-100"
                                   : "bg-red-100 text-red-800 border-red-300 hover:bg-red-100"
@@ -346,21 +339,24 @@ export default function MemberHistoryPage() {
               </Card>
               )
             })}
-          </div>
+            </div>
+          )}
 
-          {/* Luôn render; Pagination tự ẩn khi chỉ có 1 trang */}
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            pageSize={pageSize}
-            totalItems={totalItems}
-            onPageChange={setCurrentPage}
-            onPageSizeChange={(size) => {
-              setPageSize(size)
-              setCurrentPage(1) // reset về trang 1 khi đổi số dòng/trang
-            }}
-            pageSizeOptions={[4, 12, 24, 48]}
-          />
+          {/* Pagination - only show when there's data */}
+          {!loading && !error && activitiesToDisplay.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              totalItems={totalItems}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size)
+                setCurrentPage(1) // reset về trang 1 khi đổi số dòng/trang
+              }}
+              pageSizeOptions={[4, 12, 24, 48]}
+            />
+          )}
         </div>
       </AppShell>
     </ProtectedRoute>

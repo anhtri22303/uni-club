@@ -2,25 +2,29 @@ import axiosInstance from "@/lib/axiosInstance"
 
 export interface ClubApplication {
   applicationId: number
-  clubId?: number | null;
+  clubId?: number | null
   clubName: string
   description: string
-  submittedBy: {
-    fullName: string
-    email: string
-  }
-  reviewedBy?: any
-  status: string
-  submittedAt: string
-  reviewedAt?: string | null
+  majorId?: number
   majorName?: string
   vision?: string
   proposerReason?: string
-  rejectReason?: string
   proposer?: {
     fullName: string
     email: string
   }
+  submittedBy?: {
+    fullName: string
+    email: string
+  }
+  reviewedBy?: {
+    fullName: string
+    email: string
+  } | null
+  status: string
+  rejectReason?: string | null
+  submittedAt: string
+  reviewedAt?: string | null
 }
 export interface ProcessApplicationBody {
   approve: boolean;
