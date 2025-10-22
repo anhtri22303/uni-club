@@ -59,6 +59,7 @@ export default function MemberClubsPage() {
   const [userClubId, setUserClubId] = useState<number | null>(null) // Keep for backward compatibility
   const [majors, setMajors] = useState<Major[]>([])
   const [selectedMajorId, setSelectedMajorId] = useState<number | "">("")
+  const [newVision, setNewVision] = useState("")
 
   // Fetch member count and approved events for each club
   useEffect(() => {
@@ -605,7 +606,18 @@ export default function MemberClubsPage() {
                 />
               </div>
 
-              {/*Major Selection */}
+              {/* Vision */}
+              <div className="space-y-2">
+                <Label htmlFor="vision">Vision</Label>
+                <Textarea
+                  id="vision"
+                  value={newVision}
+                  onChange={(e) => setNewVision(e.target.value)}
+                  placeholder="Enter the club's vision"
+                />
+              </div>
+
+              {/* Major Selection */}
               <div className="space-y-2">
                 <Label htmlFor="major">Major</Label>
                 <select
@@ -648,6 +660,7 @@ export default function MemberClubsPage() {
                       !newClubName.trim() ||
                       !newDescription.trim() ||
                       !selectedMajorId ||
+                      !newVision.trim() ||
                       !newProposerReason.trim()
                     ) {
                       toast({
@@ -664,6 +677,7 @@ export default function MemberClubsPage() {
                         clubName: newClubName.trim(),
                         description: newDescription.trim(),
                         majorId: selectedMajorId, // ✅ ID của major
+                        vision: newVision.trim(),
                         proposerReason: newProposerReason.trim(),
                       }
 
@@ -682,6 +696,7 @@ export default function MemberClubsPage() {
                       setNewClubName("")
                       setNewDescription("")
                       setSelectedMajorId("")
+                      setNewVision("")
                       setNewProposerReason("")
                     } catch (err: any) {
                       console.error("Error submitting application:", err)

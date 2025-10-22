@@ -2,6 +2,7 @@ import axiosInstance from "@/lib/axiosInstance"
 
 export interface ClubApplication {
   applicationId: number
+  clubId?: number | null;
   clubName: string
   description: string
   submittedBy: {
@@ -12,10 +13,26 @@ export interface ClubApplication {
   status: string
   submittedAt: string
   reviewedAt?: string | null
+  majorName?: string
+  vision?: string
+  proposerReason?: string
+  rejectReason?: string
+  proposer?: {
+    fullName: string
+    email: string
+  }
 }
 export interface ProcessApplicationBody {
   approve: boolean;
   rejectReason?: string;
+}
+export interface CreateClubAccountBody {
+  clubId: number;
+  leaderFullName: string;
+  leaderEmail: string;
+  viceFullName: string;
+  viceEmail: string;
+  defaultPassword: string;
 }
 /**
  * Fetches club applications from the backend.
@@ -32,6 +49,7 @@ export async function postClubApplication(body: {
   clubName: string
   description: string
   majorId: number
+  vision: string
   proposerReason: string
 }) {
   const response = await axiosInstance.post(
@@ -109,34 +127,43 @@ export async function processClubApplication(
   return result.data
 }
 
-export async function finalizeClubApplication(
-  applicationId: number
+/**
+ * ✅ NEW: Tạo tài khoản cho CLB từ một đơn đã được duyệt (POST /api/club-applications/create-club-accounts)
+ * @param body Dữ liệu tài khoản Leader, Vice-Leader và mật khẩu
+ * @returns Trả về một chuỗi string thông báo từ backend
+ */
+export async function createClubAccount(
+  body: CreateClubAccountBody
 ): Promise<string> {
-  const response = await axiosInstance.put(
-    `/api/club-applications/${applicationId}/finalize`,
-    {}, // Swagger ghi rõ Request body là rỗng {}
+  const response = await axiosInstance.post(
+    `/api/club-applications/create-club-accounts`,
+    body,
     { headers: { "Content-Type": "application/json" } }
   );
 
-  // API trả về cấu trúc: { success, message, data: "string" }
+  // API trả về: { success, message, data: "string" }
   const result = response.data as {
     success: boolean;
     message: string;
-    data: string; // Chú ý: data là string, không phải object ClubApplication
+    data: string;
   };
 
   if (!result.success) {
-    throw new Error(result.message || "Failed to finalize application");
+    throw new Error(result.message || "Failed to create club account");
   }
 
-  console.log("Application finalized successfully:", result.data);
-  return result.data; // Trả về data là một string
+  console.log("✅ Club account created successfully:", result.data);
+  return result.data;
 }
+
+
+
+
 export default {
   getClubApplications,
   postClubApplication,
   putClubApplicationStatus,
   getMyClubApply,
   processClubApplication,
-  finalizeClubApplication
+  createClubAccount
 }
