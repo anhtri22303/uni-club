@@ -8,9 +8,15 @@ import { Sheet, SheetContent } from "@/components/ui/sheet"
 import { Sidebar } from "@/components/sidebar"
 import { UserProfileWidget } from "@/components/user-profile-widget"
 import { ChatbotWidget } from "@/components/chatbot-widget"
-import { Menu, PanelLeftOpen, PanelLeftClose } from "lucide-react"
+import { Menu, PanelLeftOpen, PanelLeftClose, AlertTriangle, X } from "lucide-react"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { useToast } from "@/hooks/use-toast"
+import { forgotPassword } from "@/service/authApi"
 
 interface AppShellProps {
   children: React.ReactNode
@@ -32,14 +38,21 @@ export const useSidebarContext = () => {
 }
 
 export function AppShell({ children }: AppShellProps) {
-  const { auth } = useAuth()
+  const { auth, logout } = useAuth()
   const pathname = usePathname()
+  const { toast } = useToast()
 
   // Mobile: drawer open
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   // Desktop: collapsed state
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+
+  // Password reset banner and modal states
+  const [showPasswordResetBanner, setShowPasswordResetBanner] = useState(false)
+  const [showPasswordResetModal, setShowPasswordResetModal] = useState(false)
+  const [resetEmail, setResetEmail] = useState("")
+  const [isLoadingPasswordReset, setIsLoadingPasswordReset] = useState(false)
 
   // Persist desktop collapsed state
   useEffect(() => {
@@ -49,6 +62,72 @@ export function AppShell({ children }: AppShellProps) {
   useEffect(() => {
     localStorage.setItem("sidebarCollapsed", String(sidebarCollapsed))
   }, [sidebarCollapsed])
+
+  // Check if password reset is required
+  useEffect(() => {
+    const requireReset = sessionStorage.getItem("requirePasswordReset")
+    const email = sessionStorage.getItem("resetEmail")
+    
+    if (requireReset === "true" && email) {
+      setResetEmail(email)
+      setShowPasswordResetBanner(true)
+      // Don't clear the flags here - keep them until user dismisses or resets password
+    }
+  }, [])
+
+  // Handle password reset
+  const handlePasswordReset = async () => {
+    if (!resetEmail) {
+      toast({
+        title: "Error",
+        description: "Email is required",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsLoadingPasswordReset(true)
+
+    try {
+      const response = await forgotPassword(resetEmail)
+      
+      toast({
+        title: "Password Reset Email Sent",
+        description: response.message || "Please check your email for the password reset link",
+      })
+
+      // Clear session storage flags and close modal
+      sessionStorage.removeItem("requirePasswordReset")
+      sessionStorage.removeItem("resetEmail")
+      setShowPasswordResetModal(false)
+      setShowPasswordResetBanner(false)
+      
+      // Wait a moment for the toast to show, then logout
+      setTimeout(() => {
+        logout()
+      }, 1500)
+    } catch (error: any) {
+      toast({
+        title: "Failed to Send Reset Email",
+        description: error.response?.data?.message || "Something went wrong",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoadingPasswordReset(false)
+    }
+  }
+
+  const handleBannerClick = () => {
+    setShowPasswordResetModal(true)
+  }
+
+  const handleCloseBanner = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setShowPasswordResetBanner(false)
+    // Clear session storage when user dismisses the banner
+    sessionStorage.removeItem("requirePasswordReset")
+    sessionStorage.removeItem("resetEmail")
+  }
 
   if (!auth.user) return null
 
@@ -124,7 +203,34 @@ export function AppShell({ children }: AppShellProps) {
             )}
           >
             {/* Giữ pt-16 cho mobile để nội dung không bị nút toggle che, bỏ pt cho desktop */}
-            <div className="h-full p-3 sm:p-4 md:p-6 pt-16 md:pt-6">{children}</div>
+            <div className="h-full p-3 sm:p-4 md:p-6 pt-16 md:pt-6">
+              {/* Password Reset Banner - Shows on all pages */}
+              {showPasswordResetBanner && (
+                <Alert
+                  className="mb-6 border-yellow-500/50 bg-yellow-50 dark:bg-yellow-900/20 cursor-pointer hover:bg-yellow-100 dark:hover:bg-yellow-900/30 transition-colors relative"
+                  onClick={handleBannerClick}
+                >
+                  <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-500" />
+                  <div className="flex-1">
+                    <AlertTitle className="text-yellow-800 dark:text-yellow-300 font-bold">
+                      Security Warning: Default Password Detected
+                    </AlertTitle>
+                    <AlertDescription className="text-yellow-700 dark:text-yellow-400">
+                      You are using a default password. Click here to reset your password for better security.
+                    </AlertDescription>
+                  </div>
+                  <button
+                    onClick={handleCloseBanner}
+                    className="absolute top-3 right-3 text-yellow-600 dark:text-yellow-500 hover:text-yellow-800 dark:hover:text-yellow-300 transition-colors"
+                    aria-label="Dismiss banner"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </Alert>
+              )}
+
+              {children}
+            </div>
           </main>
         </div>
 
@@ -143,6 +249,67 @@ export function AppShell({ children }: AppShellProps) {
         {/* Widgets luôn nằm cuối để không che nút toggle */}
         <UserProfileWidget />
         <ChatbotWidget />
+
+        {/* Password Reset Modal */}
+        <Dialog open={showPasswordResetModal} onOpenChange={setShowPasswordResetModal}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-full bg-yellow-100 dark:bg-yellow-900/20 flex items-center justify-center">
+                  <AlertTriangle className="h-6 w-6 text-yellow-600 dark:text-yellow-500" />
+                </div>
+                <div>
+                  <DialogTitle className="text-xl">Password Reset Required</DialogTitle>
+                  <DialogDescription className="mt-1">
+                    You are using a default password. Please reset your password for security.
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="reset-email">Email Address</Label>
+                <Input
+                  id="reset-email"
+                  type="email"
+                  value={resetEmail}
+                  onChange={(e) => setResetEmail(e.target.value)}
+                  placeholder="Enter your email"
+                  className="w-full"
+                  disabled
+                />
+                <p className="text-xs text-muted-foreground">
+                  We'll send a password reset link to this email address.
+                </p>
+              </div>
+            </div>
+            <DialogFooter className="flex-col sm:flex-row gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowPasswordResetModal(false)}
+                className="w-full sm:w-auto"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handlePasswordReset}
+                disabled={isLoadingPasswordReset || !resetEmail}
+                className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
+              >
+                {isLoadingPasswordReset ? (
+                  <>
+                    <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2" />
+                    Sending...
+                  </>
+                ) : (
+                  "Send Reset Link"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </SidebarContext.Provider>
   )

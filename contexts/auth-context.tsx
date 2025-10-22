@@ -118,6 +118,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
     const normalizedRole = normalizeRole(res.role);
 
+    // Save role for password reset check
+    if (normalizedRole) {
+      localStorage.setItem("userRole", normalizedRole.toUpperCase());
+    }
+
     setAuth({
       userId: res.userId,
       role: normalizedRole,
@@ -223,6 +228,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Local Storage keys
       "uniclub-auth",
       "jwtToken",
+      "userRole",
       "clubly-membership-applications",
       "clubly-events",
       "clubly-clubs",
@@ -233,6 +239,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       // Session Storage keys
       "intendedPath",
+      "requirePasswordReset",
+      "resetEmail",
     ];
 
     console.log("Logout: Bắt đầu quá trình dọn dẹp storage...");

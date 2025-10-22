@@ -84,8 +84,9 @@ export const queryKeys = {
 /**
  * Hook to fetch list of clubs with pagination
  * @param params - Pagination parameters (page, size, sort)
+ * ✅ OPTIMIZED: Increased default size to reduce pagination requests
  */
-export function useClubs(params = { page: 0, size: 20, sort: ["name"] }) {
+export function useClubs(params = { page: 0, size: 100, sort: ["name"] }) {
   return useQuery({
     queryKey: queryKeys.clubsList(params),
     queryFn: async () => {
@@ -93,6 +94,7 @@ export function useClubs(params = { page: 0, size: 20, sort: ["name"] }) {
       return res?.content ?? []
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 1,
   })
 }
 
@@ -147,29 +149,45 @@ export function useClubMemberCount(clubId: number, enabled = true) {
 /**
  * Hook to prefetch multiple club member counts
  * Useful for lists where we need counts for many clubs
+ * ✅ OPTIMIZED: Returns both activeMemberCount and approvedEvents
  */
 export function useClubMemberCounts(clubIds: number[]) {
   return useQuery({
     queryKey: ["clubs", "member-counts", clubIds],
     queryFn: async () => {
+      // Fetch all counts in parallel for better performance
       const counts = await Promise.all(
         clubIds.map(async (id) => {
           try {
-            const count = await getClubMemberCount(id)
-            const numericCount = typeof count === 'number' ? count : count.activeMemberCount
-            return { clubId: id, count: numericCount }
-          } catch {
-            return { clubId: id, count: 0 }
+            const countData = await getClubMemberCount(id)
+            return { 
+              clubId: id, 
+              activeMemberCount: countData.activeMemberCount ?? 0,
+              approvedEvents: countData.approvedEvents ?? 0
+            }
+          } catch (error) {
+            console.error(`Failed to fetch member count for club ${id}:`, error)
+            return { 
+              clubId: id, 
+              activeMemberCount: 0,
+              approvedEvents: 0
+            }
           }
         })
       )
-      return counts.reduce((acc, { clubId, count }) => {
-        acc[clubId] = count
+      // Convert array to object for easy lookup
+      return counts.reduce((acc, data) => {
+        acc[data.clubId] = {
+          activeMemberCount: data.activeMemberCount,
+          approvedEvents: data.approvedEvents
+        }
         return acc
-      }, {} as Record<number, number>)
+      }, {} as Record<number, { activeMemberCount: number; approvedEvents: number }>)
     },
     enabled: clubIds.length > 0,
     staleTime: 5 * 60 * 1000,
+    // Don't show errors for member counts - just use 0 as fallback
+    retry: 1,
   })
 }
 
@@ -186,7 +204,14 @@ export function useEvents() {
     queryFn: async () => {
       const data: any = await fetchEvent()
       const raw: any[] = Array.isArray(data) ? data : (data?.content ?? data?.events ?? [])
-      return raw.map((e: any) => ({ ...e, title: e.title ?? e.name }))
+      // Normalize events - ensure backward compatibility with legacy 'title' field
+      return raw.map((e: any) => ({ 
+        ...e, 
+        title: e.name || e.title,
+        // Add legacy fields for backward compatibility
+        clubId: e.hostClub?.id || e.clubId,
+        clubName: e.hostClub?.name || e.clubName,
+      }))
     },
     staleTime: 3 * 60 * 1000, // 3 minutes (events change frequently)
   })
@@ -202,11 +227,10 @@ export function useClubEvents(clubIds: number[]) {
     queryFn: async () => {
       const data: any = await fetchEvent()
       const raw: any[] = Array.isArray(data) ? data : (data?.content ?? data?.events ?? [])
-      const normalized = raw.map((e: any) => ({ ...e, title: e.title ?? e.name }))
       
-      // Filter by clubIds
-      return normalized.filter((event: any) => {
-        const eventClubId = Number(event.clubId)
+      // Filter by clubIds - support both new (hostClub) and legacy (clubId) formats
+      return raw.filter((event: any) => {
+        const eventClubId = Number(event.hostClub?.id || event.clubId)
         return clubIds.includes(eventClubId)
       })
     },
@@ -586,7 +610,10 @@ export function useMyMemberApplications(enabled = true) {
     queryKey: queryKeys.myMemberApplications(),
     queryFn: async () => {
       const applications = await getMyMemApply()
-      return applications
+      // Ensure we always return an array
+      if (Array.isArray(applications)) return applications
+      if (applications?.data && Array.isArray(applications.data)) return applications.data
+      return []
     },
     enabled,
     staleTime: 2 * 60 * 1000, // 2 minutes

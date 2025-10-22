@@ -241,10 +241,18 @@ export default function LoginPage() {
     const nextRaw = searchParams.get('next')
     const next = nextRaw ? decodeURIComponent(nextRaw) : undefined
     // const success = await login(email, password, next)
-    const success = await login(email, password, next)
+    const success = await login(normalizedEmail, password, next)
 
     if (success) {
       setShowLoginError(false) // Reset error state on success
+      
+      // Check if CLUB_LEADER logged in with default password "123"
+      const userRole = localStorage.getItem("userRole")
+      if (userRole === "CLUB_LEADER" && password === "123") {
+        sessionStorage.setItem("requirePasswordReset", "true")
+        sessionStorage.setItem("resetEmail", normalizedEmail)
+      }
+      
       toast({
         title: "Login Successful",
         description: "Redirecting...",

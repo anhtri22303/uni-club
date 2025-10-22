@@ -25,6 +25,8 @@ interface EventDetail {
   type: string
   date: string
   time: string
+  startTime?: string
+  endTime?: string
   status: string
   locationId: number
   checkInCode: string
@@ -92,19 +94,32 @@ export default function EventDetailPage() {
           const { token, qrUrl } = await generateCode(event.id)
           console.log('Rotating QR - Generated new token:', token)
           
+          // Create URLs with token (path parameter format)
+          const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${token}`
+          const localUrl = `http://localhost:3000/student/checkin/${token}`
+          
           const styleVariants = [
             { color: { dark: '#000000', light: '#FFFFFF' }, margin: 1 },
             { color: { dark: '#111111', light: '#FFFFFF' }, margin: 2 },
             { color: { dark: '#222222', light: '#FFFFFF' }, margin: 0 },
           ]
-          const qrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
-            const opts = styleVariants[i % styleVariants.length]
-            return QRCode.toDataURL(qrUrl, opts as any)
-          })
-          const qrVariants = await Promise.all(qrVariantsPromises)
           
-          setQrRotations({ local: qrVariants, prod: qrVariants })
-          setQrLinks({ local: qrUrl, prod: qrUrl })
+          // Generate QR variants for local
+          const localQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
+            const opts = styleVariants[i % styleVariants.length]
+            return QRCode.toDataURL(localUrl, opts as any)
+          })
+          const localQrVariants = await Promise.all(localQrVariantsPromises)
+          
+          // Generate QR variants for production
+          const prodQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
+            const opts = styleVariants[i % styleVariants.length]
+            return QRCode.toDataURL(prodUrl, opts as any)
+          })
+          const prodQrVariants = await Promise.all(prodQrVariantsPromises)
+          
+          setQrRotations({ local: localQrVariants, prod: prodQrVariants })
+          setQrLinks({ local: localUrl, prod: prodUrl })
         } catch (err) {
           console.error('Failed to rotate QR:', err)
         }
@@ -183,6 +198,38 @@ export default function EventDetailPage() {
     return timeString
   }
 
+  // Check if the event is currently active (within date and time range)
+  const isEventActive = () => {
+    if (!event) return false
+    
+    // Must be APPROVED
+    if (event.status !== "APPROVED") return false
+    
+    // Check if date and endTime are present
+    if (!event.date || !event.endTime) return false
+    
+    try {
+      // Get current date/time
+      const now = new Date()
+      
+      // Parse event date (format: YYYY-MM-DD)
+      const eventDate = new Date(event.date)
+      
+      // Parse endTime (format: HH:MM:SS or HH:MM)
+      const [hours, minutes] = event.endTime.split(':').map(Number)
+      
+      // Create event end datetime
+      const eventEndDateTime = new Date(eventDate)
+      eventEndDateTime.setHours(hours, minutes, 0, 0)
+      
+      // Event is active if current time is before or equal to end time
+      return now <= eventEndDateTime
+    } catch (error) {
+      console.error('Error checking event active status:', error)
+      return false
+    }
+  }
+
   const handleGenerateQR = async () => {
     if (!event) return
 
@@ -193,23 +240,35 @@ export default function EventDetailPage() {
       console.log('Generated token:', token)
       console.log('Generated qrUrl:', qrUrl)
       
-      // Generate QR code variants using the qrUrl from backend
+      // Create URLs with token (path parameter format)
+      const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${token}`
+      const localUrl = `http://localhost:3000/student/checkin/${token}`
+      
+      console.log('Production URL:', prodUrl)
+      console.log('Development URL:', localUrl)
+      
+      // Generate QR code variants
       const styleVariants = [
         { color: { dark: '#000000', light: '#FFFFFF' }, margin: 1 },
         { color: { dark: '#111111', light: '#FFFFFF' }, margin: 2 },
         { color: { dark: '#222222', light: '#FFFFFF' }, margin: 0 },
       ]
 
-      // Generate variants for both environments using the same qrUrl
-      const qrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => 
-        QRCode.toDataURL(qrUrl, styleVariants[i % styleVariants.length])
+      // Generate QR variants for local environment
+      const localQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => 
+        QRCode.toDataURL(localUrl, styleVariants[i % styleVariants.length])
       )
+      const localQrVariants = await Promise.all(localQrVariantsPromises)
 
-      const qrVariants = await Promise.all(qrVariantsPromises)
+      // Generate QR variants for production environment
+      const prodQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => 
+        QRCode.toDataURL(prodUrl, styleVariants[i % styleVariants.length])
+      )
+      const prodQrVariants = await Promise.all(prodQrVariantsPromises)
 
-      // Use the same qrUrl for both local and prod since backend provides the final URL
-      setQrRotations({ local: qrVariants, prod: qrVariants })
-      setQrLinks({ local: qrUrl, prod: qrUrl })
+      // Set different URLs for local and production
+      setQrRotations({ local: localQrVariants, prod: prodQrVariants })
+      setQrLinks({ local: localUrl, prod: prodUrl })
       setVisibleIndex(0)
       setDisplayedIndex(0)
       setShowQrModal(true)
@@ -426,8 +485,8 @@ export default function EventDetailPage() {
                     </div>
                   </div>
                   
-                  {/* QR Code Generation Button - Only show if APPROVED */}
-                  {event.status === "APPROVED" && (
+                  {/* QR Code Generation Button - Only show if APPROVED and event is still active */}
+                  {isEventActive() && (
                     <div className="border-t border-blue-200 pt-4">
                       <div className="flex items-center justify-between">
                         <div>
@@ -445,15 +504,18 @@ export default function EventDetailPage() {
                     </div>
                   )}
                   
-                  {/* Status message for non-approved events */}
-                  {event.status !== "APPROVED" && (
+                  {/* Status message for non-active events */}
+                  {!isEventActive() && (
                     <div className="border-t border-blue-200 pt-4">
                       <div className="flex items-center gap-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
                         <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0" />
                         <div>
                           <div className="font-medium text-yellow-800">QR Code Unavailable</div>
                           <div className="text-sm text-yellow-700">
-                            QR codes are only available for approved events. Current status: {event.status}
+                            {event.status !== "APPROVED" 
+                              ? `QR codes are only available for approved events. Current status: ${event.status}`
+                              : "This event has ended or is missing date/time information. QR codes are no longer available."
+                            }
                           </div>
                         </div>
                       </div>

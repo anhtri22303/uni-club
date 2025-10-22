@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { AppShell } from "@/components/app-shell"
 import { ProtectedRoute } from "@/contexts/protected-route"
@@ -13,12 +13,14 @@ import { Textarea } from "@/components/ui/textarea"
 import { useAuth } from "@/contexts/auth-context"
 import { useData } from "@/contexts/data-context"
 import { useToast } from "@/hooks/use-toast"
-import { Users, PlusIcon, Calendar } from "lucide-react"
+import { Users, PlusIcon, Calendar, Loader2 } from "lucide-react"
+import { Loading } from "@/components/ui/loading"
 import { fetchClub, getClubMemberCount } from "@/service/clubApi"
 import { postMemAppli } from "@/service/memberApplicationApi"
 import { safeLocalStorage } from "@/lib/browser-utils"
 import { fetchMajors, Major } from "@/service/majorApi"
-import { useClubs, useClubMemberCounts } from "@/hooks/use-query-hooks"
+import { useClubs, useClubMemberCounts, useMyMemberApplications, queryKeys } from "@/hooks/use-query-hooks"
+import { useQueryClient } from "@tanstack/react-query"
 // We'll fetch clubs from the backend and only use the `content` array.
 type ClubApiItem = {
   id: number
@@ -33,12 +35,14 @@ type ClubApiItem = {
 
 export default function MemberClubsPage() {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const { auth } = useAuth()
   const { clubMemberships, membershipApplications, addMembershipApplication, removeMembershipApplication, replaceMembershipApplication } = useData()
   const { toast } = useToast()
   const [selectedClub, setSelectedClub] = useState<any>(null)
   const [applicationText, setApplicationText] = useState("")
   const [showApplicationModal, setShowApplicationModal] = useState(false)
+  const [isSubmittingApplication, setIsSubmittingApplication] = useState(false)
   // Create club modal state
   const [showCreateClubModal, setShowCreateClubModal] = useState(false)
   const [newClubName, setNewClubName] = useState("")
@@ -47,13 +51,23 @@ export default function MemberClubsPage() {
   const [newProposerReason, setNewProposerReason] = useState("")
 
   // ✅ USE REACT QUERY instead of manual state
-  const { data: clubs = [], isLoading: loading, error: queryError } = useClubs({ page: 0, size: 10, sort: ["name"] })
+  const { data: clubs = [], isLoading: loading, error: queryError } = useClubs({ page: 0, size: 100, sort: ["name"] })
   const clubIds = clubs.map((club: ClubApiItem) => club.id)
-  const { data: memberCounts = {} } = useClubMemberCounts(clubIds)
+  const { data: memberCounts = {}, isLoading: memberCountsLoading } = useClubMemberCounts(clubIds)
+  
+  // ✅ Fetch user's existing applications
+  const { data: myApplications = [], isLoading: applicationsLoading } = useMyMemberApplications()
+  
+  // Debug: Log applications when they load
+  useEffect(() => {
+    if (myApplications.length > 0) {
+      console.log("📋 Loaded user applications:", myApplications)
+      console.log("📋 Pending applications:", myApplications.filter((app: any) => app.status === "PENDING"))
+    }
+  }, [myApplications])
 
   const error = queryError ? (queryError as any)?.message ?? "Failed to load clubs" : null
 
-  const [clubsWithData, setClubsWithData] = useState<ClubApiItem[]>([])
   const [pendingClubIds, setPendingClubIds] = useState<string[]>([])
   const [userClubIds, setUserClubIds] = useState<number[]>([])
   const [userClubId, setUserClubId] = useState<number | null>(null) // Keep for backward compatibility
@@ -61,27 +75,19 @@ export default function MemberClubsPage() {
   const [selectedMajorId, setSelectedMajorId] = useState<number | "">("")
   const [newVision, setNewVision] = useState("")
 
-  // Fetch member count and approved events for each club
-  useEffect(() => {
-    const fetchClubData = async () => {
-      if (clubs.length === 0) return
-
-      const clubsWithMemberCount = await Promise.all(
-        clubs.map(async (club: ClubApiItem) => {
-          const clubData = await getClubMemberCount(club.id)
-          return {
-            ...club,
-            memberCount: clubData.activeMemberCount,
-            approvedEvents: clubData.approvedEvents
-          }
-        })
-      )
-
-      setClubsWithData(clubsWithMemberCount)
-    }
-
-    fetchClubData()
-  }, [clubs])
+  // ✅ OPTIMIZED: Combine clubs with member counts using useMemo (no extra API calls)
+  const clubsWithData = useMemo(() => {
+    if (clubs.length === 0) return []
+    
+    return clubs.map((club: ClubApiItem) => {
+      const countData = memberCounts[club.id]
+      return {
+        ...club,
+        memberCount: countData?.activeMemberCount ?? 0,
+        approvedEvents: countData?.approvedEvents ?? 0
+      }
+    })
+  }, [clubs, memberCounts])
 
   // Get user's current memberships and applications
   const userMemberships = clubMemberships.filter((m) => m.userId === auth.userId)
@@ -149,11 +155,25 @@ export default function MemberClubsPage() {
   const getClubStatus = (clubId: string) => {
     // If we have a local pending marker for this club, show pending immediately
     if (pendingClubIds.includes(clubId)) return "pending"
+    
+    // Check memberships from context
     const membership = userMemberships.find((m) => m.clubId === clubId)
     if (membership?.status === "APPROVED") return "member"
 
+    // Check applications from context (local state)
     const application = userApplications.find((a) => a.clubId === clubId)
     if (application?.status === "PENDING") return "pending"
+
+    // ✅ Check applications from API (server state)
+    const apiApplication = myApplications.find((app: any) => {
+      const appClubId = String(app.clubId)
+      const matches = appClubId === clubId && app.status === "PENDING"
+      if (matches) {
+        console.log(`Found pending application for club ${clubId}:`, app)
+      }
+      return matches
+    })
+    if (apiApplication) return "pending"
 
     return "none"
   }
@@ -297,6 +317,8 @@ export default function MemberClubsPage() {
         return
       }
 
+      setIsSubmittingApplication(true)
+
       const tempId = `temp-${Date.now()}`
       const tempApp = {
         id: tempId,
@@ -351,6 +373,11 @@ export default function MemberClubsPage() {
         setShowApplicationModal(false)
         setApplicationText("")
         setSelectedClub(null)
+        setIsSubmittingApplication(false)
+
+        // ✅ Invalidate React Query cache to refetch applications
+        queryClient.invalidateQueries({ queryKey: queryKeys.myMemberApplications() })
+        queryClient.invalidateQueries({ queryKey: queryKeys.clubs })
 
         // Refresh the page data (client-side Next.js refresh)
         try {
@@ -377,6 +404,8 @@ export default function MemberClubsPage() {
         } else {
           toast({ title: "Error", description: apiMessage, variant: "destructive" })
         }
+        
+        setIsSubmittingApplication(false)
       }
     })()
   }
@@ -481,15 +510,21 @@ export default function MemberClubsPage() {
       label: "Actions",
       render: (_: any, club: any) => {
         const status = getClubStatus(club.id)
+        const isProcessing = isSubmittingApplication && selectedClub?.id === club.id
         // Allow members to apply to clubs (except their current club which is already filtered out)
         return (
           <Button
             size="sm"
             variant={status === "none" ? "default" : "outline"}
-            disabled={status !== "none"}
+            disabled={status !== "none" || isProcessing}
             onClick={() => handleApply(club)}
           >
-            {status === "member" ? (
+            {isProcessing ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                Applying...
+              </>
+            ) : status === "member" ? (
               "Joined"
             ) : status === "pending" ? (
               "Applied"
@@ -532,18 +567,24 @@ export default function MemberClubsPage() {
             </p>
           </div>
 
-          <DataTable
-            title="Club Directory"
-            data={enhancedClubs}
-            columns={columns}
-            searchKey="name"
-            searchPlaceholder="Search clubs..."
-            filters={filters}
-            initialPageSize={8}
-            pageSizeOptions={[8, 20, 50]}
-          />
-          {loading && (
-            <div className="text-center text-sm text-muted-foreground">Loading clubs...</div>
+          {(loading || memberCountsLoading || applicationsLoading) ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <Loading 
+                size="lg" 
+                text={loading ? "Loading clubs..." : applicationsLoading ? "Loading applications..." : "Loading member counts..."}
+              />
+            </div>
+          ) : (
+            <DataTable
+              title="Club Directory"
+              data={enhancedClubs}
+              columns={columns}
+              searchKey="name"
+              searchPlaceholder="Search clubs..."
+              filters={filters}
+              initialPageSize={8}
+              pageSizeOptions={[8, 20, 50]}
+            />
           )}
 
           {error && (
@@ -557,24 +598,37 @@ export default function MemberClubsPage() {
             title={`Apply to ${selectedClub?.name}`}
             description="Tell us why you want to join this club"
           >
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="application">Why do you want to join?</Label>
-                <Textarea
-                  id="application"
-                  placeholder="Share your interests and what you hope to gain from joining this club..."
-                  value={applicationText}
-                  onChange={(e) => setApplicationText(e.target.value)}
-                  rows={4}
-                />
+            {isSubmittingApplication ? (
+              <div className="py-8">
+                <Loading size="lg" text="Submitting your application..." />
               </div>
-              <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={() => setShowApplicationModal(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={submitApplication}>Submit Application</Button>
+            ) : (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="application">Why do you want to join?</Label>
+                  <Textarea
+                    id="application"
+                    placeholder="Share your interests and what you hope to gain from joining this club..."
+                    value={applicationText}
+                    onChange={(e) => setApplicationText(e.target.value)}
+                    rows={4}
+                  />
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowApplicationModal(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={submitApplication}
+                  >
+                    Submit Application
+                  </Button>
+                </div>
               </div>
-            </div>
+            )}
           </Modal>
 
           {/* Modal form application for creating a new club */}

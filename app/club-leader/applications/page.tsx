@@ -15,7 +15,9 @@ import { usePagination } from "@/hooks/use-pagination"
 import { useMemberApplicationsByClub } from "@/hooks/use-query-hooks"
 import { useQueryClient } from "@tanstack/react-query"
 import { Skeleton } from "@/components/ui/skeleton"
-import { UserCheck, Eye, ChevronLeft, ChevronRight, CheckCircle, XCircle } from "lucide-react"
+import { UserCheck, Eye, ChevronLeft, ChevronRight, CheckCircle, XCircle, Loader2, Filter, X } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { approveMemberApplication, rejectMemberApplication } from "@/service/memberApplicationApi"
 import { getClubIdFromToken, getClubById } from "@/service/clubApi"
 type MemberApplication = {
@@ -66,6 +68,11 @@ export default function ClubLeaderApplicationsPage() {
   const [managedClubId, setManagedClubId] = useState<number | null>(null)
   const [managedClubName, setManagedClubName] = useState<string | null>(null)
 
+  // Filter states
+  const [searchTerm, setSearchTerm] = useState("")
+  const [activeFilters, setActiveFilters] = useState<Record<string, any>>({})
+  const [showFilters, setShowFilters] = useState(false)
+
   // ✅ USE REACT QUERY for member applications
   const { data: applications = [], isLoading: loading } = useMemberApplicationsByClub(
     managedClubId || 0,
@@ -94,8 +101,66 @@ export default function ClubLeaderApplicationsPage() {
   // Applications are already filtered by clubId from API, so use them directly
   const clubApplications = applications
 
-  const pendingApplications = clubApplications.filter((a: any) => a.status === "PENDING")
-  const processedApplications = clubApplications.filter((a: any) => a.status !== "PENDING")
+  // Apply filters to applications
+  const applyFilters = (apps: any[], isPending: boolean) => {
+    return apps.filter((app: any) => {
+      // Search by name, email, or student code
+      if (searchTerm) {
+        const searchLower = searchTerm.toLowerCase()
+        const matchName = app.applicantName?.toLowerCase().includes(searchLower)
+        const matchEmail = app.applicantEmail?.toLowerCase().includes(searchLower)
+        const matchStudentCode = app.studentCode?.toLowerCase().includes(searchLower)
+        if (!matchName && !matchEmail && !matchStudentCode) return false
+      }
+
+      // Filter by submission date (month and year)
+      const submissionMonthFilter = activeFilters["submissionMonth"]
+      if (submissionMonthFilter && submissionMonthFilter !== "all") {
+        if (app.createdAt) {
+          const appDate = new Date(app.createdAt)
+          const filterDate = new Date(submissionMonthFilter)
+          if (appDate.getMonth() !== filterDate.getMonth() || appDate.getFullYear() !== filterDate.getFullYear()) {
+            return false
+          }
+        }
+      }
+
+      // For processed applications, filter by status
+      if (!isPending) {
+        const statusFilter = activeFilters["status"]
+        if (statusFilter && statusFilter !== "all") {
+          if (app.status !== statusFilter) return false
+        }
+      }
+
+      return true
+    })
+  }
+
+  const allPendingApplications = clubApplications.filter((a: any) => a.status === "PENDING")
+  const allProcessedApplications = clubApplications.filter((a: any) => a.status !== "PENDING")
+
+  const pendingApplications = applyFilters(allPendingApplications, true)
+  const processedApplications = applyFilters(allProcessedApplications, false)
+
+  // Get unique values for filters
+  // (uniqueHandlers removed)
+
+  // Filter handlers
+  const handleFilterChange = (filterKey: string, value: any) => {
+    setActiveFilters((prev) => ({ ...prev, [filterKey]: value }))
+    setPendingPage(1)
+    setReviewedPage(1)
+  }
+
+  const clearFilters = () => {
+    setActiveFilters({})
+    setSearchTerm("")
+    setPendingPage(1)
+    setReviewedPage(1)
+  }
+
+  const hasActiveFilters = Object.values(activeFilters).some((v) => v && v !== "all") || Boolean(searchTerm)
 
   // Phân trang (pagination hooks MUST run on every render)
   const {
@@ -223,6 +288,89 @@ export default function ClubLeaderApplicationsPage() {
             </p>
           </div>
 
+          {/* Filter Section */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="flex-1 relative">
+                <Input
+                  placeholder="Search by applicant name, email, or student code..."
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value)
+                    setPendingPage(1)
+                    setReviewedPage(1)
+                  }}
+                  className="pl-4 pr-4 py-2.5 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                />
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowFilters(!showFilters)}
+                className="flex items-center gap-2 rounded-lg border-slate-200 hover:bg-slate-50 transition-colors"
+              >
+                <Filter className="h-4 w-4" />
+                Filters
+                {hasActiveFilters && (
+                  <Badge className="ml-1 h-5 w-5 p-0 text-xs bg-blue-500 hover:bg-blue-600 text-white rounded-full flex items-center justify-center">
+                    {Object.values(activeFilters).filter((v) => v && v !== "all").length + (searchTerm ? 1 : 0)}
+                  </Badge>
+                )}
+              </Button>
+            </div>
+
+            {showFilters && (
+              <div className="space-y-4 p-6 border border-slate-200 rounded-xl bg-gradient-to-br from-slate-50 to-white">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-semibold text-slate-900">Advanced Filters</h4>
+                  {hasActiveFilters && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={clearFilters}
+                      className="h-auto p-1 text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-200/50 transition-colors"
+                    >
+                      <X className="h-3 w-3 mr-1" />
+                      Clear all
+                    </Button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Submission Date Filter */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Submission Month</label>
+                    <Input
+                      type="month"
+                      value={activeFilters["submissionMonth"] || ""}
+                      onChange={(e) => handleFilterChange("submissionMonth", e.target.value)}
+                      className="h-9 text-sm rounded-lg border-slate-200 bg-white hover:border-slate-300 transition-colors"
+                    />
+                  </div>
+
+                  {/* Status Filter (for processed tab) */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Status</label>
+                    <Select
+                      value={activeFilters["status"] || "all"}
+                      onValueChange={(v) => handleFilterChange("status", v)}
+                    >
+                      <SelectTrigger className="h-9 text-sm rounded-lg border-slate-200 bg-white hover:border-slate-300 transition-colors">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Statuses</SelectItem>
+                        <SelectItem value="APPROVED">Approved</SelectItem>
+                        <SelectItem value="REJECTED">Rejected</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
           <Tabs defaultValue="pending" className="w-full">
             <TabsList className="grid w-full grid-cols-2 bg-muted rounded-lg p-1">
               <TabsTrigger
@@ -248,11 +396,30 @@ export default function ClubLeaderApplicationsPage() {
 
             {/* Pending */}
             <TabsContent value="pending" className="space-y-4">
+              {/* Filter Summary */}
+              {hasActiveFilters && allPendingApplications.length > 0 && (
+                <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="text-sm text-blue-700">
+                    Showing {pendingApplications.length} of {allPendingApplications.length} pending application{allPendingApplications.length > 1 ? 's' : ''}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearFilters}
+                    className="h-auto p-1 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-100 transition-colors"
+                  >
+                    <X className="h-3 w-3 mr-1" />
+                    Clear filters
+                  </Button>
+                </div>
+              )}
+
               {/* Bulk Actions */}
               {pendingApplications.length > 0 && (
                 <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
                   <div className="text-sm text-muted-foreground">
                     {pendingApplications.length} pending application{pendingApplications.length > 1 ? 's' : ''}
+                    {hasActiveFilters && ` (filtered)`}
                   </div>
                   <div className="flex gap-2">
                     <Button
@@ -333,9 +500,28 @@ export default function ClubLeaderApplicationsPage() {
               {pendingApplications.length === 0 ? (
                 <Card>
                   <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                    <UserCheck className="h-12 w-12 text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">No Pending Applications</h3>
-                    <p className="text-muted-foreground">All applications have been reviewed</p>
+                    {hasActiveFilters ? (
+                      <>
+                        <Filter className="h-12 w-12 text-muted-foreground mb-4" />
+                        <h3 className="text-lg font-semibold mb-2">No Applications Found</h3>
+                        <p className="text-muted-foreground mb-4">No pending applications match your current filters.</p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={clearFilters}
+                          className="rounded-lg border-slate-200 hover:bg-slate-50"
+                        >
+                          <X className="h-4 w-4 mr-2" />
+                          Clear Filters
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <UserCheck className="h-12 w-12 text-muted-foreground mb-4" />
+                        <h3 className="text-lg font-semibold mb-2">No Pending Applications</h3>
+                        <p className="text-muted-foreground">All applications have been reviewed</p>
+                      </>
+                    )}
                   </CardContent>
                 </Card>
               ) : (
@@ -375,7 +561,11 @@ export default function ClubLeaderApplicationsPage() {
                               disabled={processingIds.has(app.applicationId)}
                               title="Reject application"
                             >
-                              <XCircle className="h-4 w-4" />
+                              {processingIds.has(app.applicationId) ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <XCircle className="h-4 w-4" />
+                              )}
                             </Button>
                             <Button
                               size="sm"
@@ -383,7 +573,11 @@ export default function ClubLeaderApplicationsPage() {
                               disabled={processingIds.has(app.applicationId)}
                               title="Approve application"
                             >
-                              <CheckCircle className="h-4 w-4" />
+                              {processingIds.has(app.applicationId) ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <CheckCircle className="h-4 w-4" />
+                              )}
                             </Button>
                           </div>
                         </div>
@@ -402,12 +596,49 @@ export default function ClubLeaderApplicationsPage() {
 
             {/* Reviewed */}
             <TabsContent value="reviewed" className="space-y-4">
+              {/* Filter Summary */}
+              {hasActiveFilters && allProcessedApplications.length > 0 && (
+                <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="text-sm text-blue-700">
+                    Showing {processedApplications.length} of {allProcessedApplications.length} processed application{allProcessedApplications.length > 1 ? 's' : ''}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearFilters}
+                    className="h-auto p-1 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-100 transition-colors"
+                  >
+                    <X className="h-3 w-3 mr-1" />
+                    Clear filters
+                  </Button>
+                </div>
+              )}
+
               {processedApplications.length === 0 ? (
                 <Card>
                   <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                    <Eye className="h-12 w-12 text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">No Processed Applications</h3>
-                    <p className="text-muted-foreground">Applications you've processed will appear here</p>
+                    {hasActiveFilters ? (
+                      <>
+                        <Filter className="h-12 w-12 text-muted-foreground mb-4" />
+                        <h3 className="text-lg font-semibold mb-2">No Applications Found</h3>
+                        <p className="text-muted-foreground mb-4">No processed applications match your current filters.</p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={clearFilters}
+                          className="rounded-lg border-slate-200 hover:bg-slate-50"
+                        >
+                          <X className="h-4 w-4 mr-2" />
+                          Clear Filters
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="h-12 w-12 text-muted-foreground mb-4" />
+                        <h3 className="text-lg font-semibold mb-2">No Processed Applications</h3>
+                        <p className="text-muted-foreground">Applications you've processed will appear here</p>
+                      </>
+                    )}
                   </CardContent>
                 </Card>
               ) : (
@@ -506,12 +737,19 @@ export default function ClubLeaderApplicationsPage() {
                 </div>
 
                 <div className="flex gap-2 justify-end">
-                  <Button variant="outline" onClick={() => setShowApplicationModal(false)}>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowApplicationModal(false)}
+                    disabled={selectedApplication && processingIds.has(selectedApplication.applicationId)}
+                  >
                     Cancel
                   </Button>
                   <Button
                     variant="destructive"
+                    disabled={selectedApplication && processingIds.has(selectedApplication.applicationId)}
                     onClick={async () => {
+                      if (!selectedApplication) return
+                      setProcessingIds(prev => new Set([...prev, selectedApplication.applicationId]))
                       try {
                         await rejectMemberApplication(selectedApplication.applicationId, reviewNote)
                         toast({
@@ -527,13 +765,30 @@ export default function ClubLeaderApplicationsPage() {
                           description: "This application cannot be refused.",
                           variant: "destructive",
                         })
+                      } finally {
+                        setProcessingIds(prev => {
+                          const newSet = new Set(prev)
+                          newSet.delete(selectedApplication.applicationId)
+                          return newSet
+                        })
                       }
                     }}
                   >
-                    <XCircle className="h-4 w-4 mr-1" /> Reject
+                    {selectedApplication && processingIds.has(selectedApplication.applicationId) ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-1 animate-spin" /> Rejecting...
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="h-4 w-4 mr-1" /> Reject
+                      </>
+                    )}
                   </Button>
                   <Button
+                    disabled={selectedApplication && processingIds.has(selectedApplication.applicationId)}
                     onClick={async () => {
+                      if (!selectedApplication) return
+                      setProcessingIds(prev => new Set([...prev, selectedApplication.applicationId]))
                       try {
                         await approveMemberApplication(selectedApplication.applicationId)
                         toast({
@@ -549,10 +804,24 @@ export default function ClubLeaderApplicationsPage() {
                           description: "This application cannot be approved.",
                           variant: "destructive",
                         })
+                      } finally {
+                        setProcessingIds(prev => {
+                          const newSet = new Set(prev)
+                          newSet.delete(selectedApplication.applicationId)
+                          return newSet
+                        })
                       }
                     }}
                   >
-                    <CheckCircle className="h-4 w-4 mr-1" /> Approve
+                    {selectedApplication && processingIds.has(selectedApplication.applicationId) ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-1 animate-spin" /> Approving...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="h-4 w-4 mr-1" /> Approve
+                      </>
+                    )}
                   </Button>
                 </div>
               </div>

@@ -94,19 +94,32 @@ export default function AdminEventDetailPage() {
           const { token, qrUrl } = await generateCode(event.id)
           console.log('Rotating QR - Generated new token:', token)
           
+          // Create URLs with token (path parameter format)
+          const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${token}`
+          const localUrl = `http://localhost:3000/student/checkin/${token}`
+          
           const styleVariants = [
             { color: { dark: '#000000', light: '#FFFFFF' }, margin: 1 },
             { color: { dark: '#111111', light: '#FFFFFF' }, margin: 2 },
             { color: { dark: '#222222', light: '#FFFFFF' }, margin: 0 },
           ]
-          const qrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
-            const opts = styleVariants[i % styleVariants.length]
-            return QRCode.toDataURL(qrUrl, opts as any)
-          })
-          const qrVariants = await Promise.all(qrVariantsPromises)
           
-          setQrRotations({ local: qrVariants, prod: qrVariants })
-          setQrLinks({ local: qrUrl, prod: qrUrl })
+          // Generate QR variants for local
+          const localQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
+            const opts = styleVariants[i % styleVariants.length]
+            return QRCode.toDataURL(localUrl, opts as any)
+          })
+          const localQrVariants = await Promise.all(localQrVariantsPromises)
+          
+          // Generate QR variants for production
+          const prodQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
+            const opts = styleVariants[i % styleVariants.length]
+            return QRCode.toDataURL(prodUrl, opts as any)
+          })
+          const prodQrVariants = await Promise.all(prodQrVariantsPromises)
+          
+          setQrRotations({ local: localQrVariants, prod: prodQrVariants })
+          setQrLinks({ local: localUrl, prod: prodUrl })
         } catch (err) {
           console.error('Failed to rotate QR:', err)
         }
@@ -195,23 +208,35 @@ export default function AdminEventDetailPage() {
       console.log('Generated token:', token)
       console.log('Generated qrUrl:', qrUrl)
       
-      // Generate QR code variants using the qrUrl from backend
+      // Create URLs with token (path parameter format)
+      const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${token}`
+      const localUrl = `http://localhost:3000/student/checkin/${token}`
+      
+      console.log('Production URL:', prodUrl)
+      console.log('Development URL:', localUrl)
+      
+      // Generate QR code variants
       const styleVariants = [
         { color: { dark: '#000000', light: '#FFFFFF' }, margin: 1 },
         { color: { dark: '#111111', light: '#FFFFFF' }, margin: 2 },
         { color: { dark: '#222222', light: '#FFFFFF' }, margin: 0 },
       ]
 
-      // Generate variants for both environments using the same qrUrl
-      const qrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => 
-        QRCode.toDataURL(qrUrl, styleVariants[i % styleVariants.length])
+      // Generate QR variants for local environment
+      const localQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => 
+        QRCode.toDataURL(localUrl, styleVariants[i % styleVariants.length])
       )
+      const localQrVariants = await Promise.all(localQrVariantsPromises)
 
-      const qrVariants = await Promise.all(qrVariantsPromises)
+      // Generate QR variants for production environment
+      const prodQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => 
+        QRCode.toDataURL(prodUrl, styleVariants[i % styleVariants.length])
+      )
+      const prodQrVariants = await Promise.all(prodQrVariantsPromises)
 
-      // Use the same qrUrl for both local and prod since backend provides the final URL
-      setQrRotations({ local: qrVariants, prod: qrVariants })
-      setQrLinks({ local: qrUrl, prod: qrUrl })
+      // Set different URLs for local and production
+      setQrRotations({ local: localQrVariants, prod: prodQrVariants })
+      setQrLinks({ local: localUrl, prod: prodUrl })
       setVisibleIndex(0)
       setDisplayedIndex(0)
       setShowQrModal(true)

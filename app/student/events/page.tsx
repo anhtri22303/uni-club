@@ -53,9 +53,10 @@ export default function MemberEventsPage() {
 
   const filteredEvents = eventsData.filter(
     (event) =>
-      (event.title || event.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      clubsData.find((c: any) => c.id === event.clubId)?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      clubs.find((c) => c.id === event.clubId)?.name.toLowerCase().includes(searchTerm.toLowerCase()),
+      (event.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (event.hostClub?.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      clubsData.find((c: any) => c.id === event.hostClub?.id)?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      clubs.find((c) => c.id === event.hostClub?.id)?.name.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
   const {
@@ -134,7 +135,6 @@ export default function MemberEventsPage() {
               </div>
             ) : (
               paginatedEvents.map((event) => {
-                const club = clubs.find((c) => c.id === event.clubId)
                 const status = getEventStatus(event.date)
 
                 return (
@@ -142,21 +142,29 @@ export default function MemberEventsPage() {
                     <CardHeader>
                       <div className="flex items-start justify-between">
                         <div>
-                          <CardTitle className="text-lg">{event.title}</CardTitle>
+                          <CardTitle className="text-lg">{event.name}</CardTitle>
                           <CardDescription className="flex items-center gap-1 mt-1">
                             <Users className="h-3 w-3" />
-                            {club?.name}
+                            {event.hostClub?.name || "Unknown Club"}
                           </CardDescription>
                         </div>
                         <Badge
-                          variant={status === "past" ? "secondary" : status === "upcoming" ? "default" : "outline"}
+                          variant={
+                            event.status === "APPROVED" 
+                              ? status === "past" ? "secondary" : status === "upcoming" ? "default" : "outline"
+                              : "destructive"
+                          }
                         >
-                          {status === "past" ? "Past" : status === "upcoming" ? "Soon" : "Future"}
+                          {event.status === "APPROVED" 
+                            ? (status === "past" ? "Past" : status === "upcoming" ? "Soon" : "Future")
+                            : event.status}
                         </Badge>
                       </div>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-3">
+                        <p className="text-sm text-muted-foreground line-clamp-2">{event.description}</p>
+                        
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Calendar className="h-4 w-4" />
                           {new Date(event.date).toLocaleDateString("en-US", {
@@ -169,16 +177,16 @@ export default function MemberEventsPage() {
 
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Trophy className="h-4 w-4" />
-                          {event.points} loyalty points
+                          {event.startTime} - {event.endTime}
                         </div>
 
                         <Button
                           className="w-full"
-                          variant={status === "past" ? "outline" : "default"}
-                          disabled={status === "past"}
+                          variant={status === "past" || event.status !== "APPROVED" ? "outline" : "default"}
+                          disabled={status === "past" || event.status !== "APPROVED"}
                           onClick={() => handleEventDetail(event.id)}
                         >
-                          {status === "past" ? "Event Ended" : "Detail"}
+                          {status === "past" ? "Event Ended" : event.status !== "APPROVED" ? event.status : "Detail"}
                         </Button>
                       </div>
                     </CardContent>

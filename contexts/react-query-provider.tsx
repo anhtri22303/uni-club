@@ -15,14 +15,14 @@ export function ReactQueryProvider({ children }: { children: ReactNode }) {
             staleTime: 5 * 60 * 1000,
             // Keep unused data in cache for 10 minutes
             gcTime: 10 * 60 * 1000,
-            // Retry failed requests
+            // Only retry once on failure
             retry: 1,
-            // Refetch on window focus for fresh data
-            refetchOnWindowFocus: true,
-            // Refetch on reconnect
-            refetchOnReconnect: true,
-            // Refetch on mount if data is stale
-            refetchOnMount: true,
+            // Don't refetch on window focus (causes unnecessary API calls)
+            refetchOnWindowFocus: false,
+            // Don't refetch on reconnect (use manual refetch if needed)
+            refetchOnReconnect: false,
+            // Only refetch on mount if data is stale (not every time)
+            refetchOnMount: "stale",
           },
           mutations: {
             // Retry mutations once on failure

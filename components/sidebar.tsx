@@ -72,11 +72,37 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
   const [loadingPath, setLoadingPath] = useState<string | null>(null)
   const [userStatsTotal, setUserStatsTotal] = useState<number>(0)
   const [clubStatsTotal, setClubStatsTotal] = useState<number>(0)
+  const [hasClubs, setHasClubs] = useState<boolean>(false)
 
   // Prefetch hooks for instant navigation
   const prefetchClubs = usePrefetchClubs()
   const prefetchEvents = usePrefetchEvents()
   const prefetchUsers = usePrefetchUsers()
+
+  // Check clubIds for STUDENT role on every component mount/auth change
+  useEffect(() => {
+    if (auth.role === "student") {
+      try {
+        const storedAuth = safeLocalStorage.getItem("uniclub-auth")
+        if (storedAuth) {
+          const parsedAuth = JSON.parse(storedAuth)
+          const clubIds = parsedAuth.clubIds
+          
+          // Check if student has clubs
+          const studentHasClubs = clubIds && Array.isArray(clubIds) && clubIds.length > 0
+          setHasClubs(studentHasClubs)
+          
+          console.log("Sidebar check - Student clubIds:", clubIds, "hasClubs:", studentHasClubs)
+        } else {
+          setHasClubs(false)
+          console.log("Sidebar check - No auth data found, hasClubs: false")
+        }
+      } catch (error) {
+        console.warn("Failed to parse localStorage auth data:", error)
+        setHasClubs(false)
+      }
+    }
+  }, [auth.role, pathname]) // Re-check on route changes
 
   // Fetch user stats and club stats for admin role
   useEffect(() => {
@@ -105,41 +131,19 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
   // Default navigation per role (cast to a mutable, wide type to avoid readonly tuple issues)
   let navigation = (navigationConfig[auth.role as keyof typeof navigationConfig] || []) as unknown as NavItem[]
 
-  // Check clubIds in localStorage for STUDENT role
+  // For STUDENT role, show limited or full navigation based on hasClubs state
   if (auth.role === "student") {
-    try {
-      const storedAuth = safeLocalStorage.getItem("uniclub-auth")
-      if (storedAuth) {
-        const parsedAuth = JSON.parse(storedAuth)
-        const clubIds = parsedAuth.clubIds
-
-        // If student has no clubs (clubIds is null, undefined, or empty array), show limited navigation
-        const hasNoClubs = !clubIds || (Array.isArray(clubIds) && clubIds.length === 0)
-
-        if (hasNoClubs) {
-          console.log("Student has no clubs, showing limited navigation")
-          navigation = [
-            { href: "/student/clubs", label: "Clubs", icon: Users },
-            { href: "/student/history", label: "History", icon: History },
-          ]
-        } else {
-          console.log("Student has clubs:", clubIds, "showing full navigation")
-          // Keep the full navigation from navigationConfig
-        }
-      } else {
-        // No auth data found, show limited navigation for safety
-        navigation = [
-          { href: "/student/clubs", label: "Clubs", icon: Users },
-          { href: "/student/history", label: "History", icon: History },
-        ]
-      }
-    } catch (error) {
-      console.warn("Failed to parse localStorage auth data:", error)
-      // If parsing fails, default to limited navigation for safety
+    if (!hasClubs) {
+      // Student has no clubs - show limited navigation
+      console.log("Student has no clubs, showing limited navigation")
       navigation = [
         { href: "/student/clubs", label: "Clubs", icon: Users },
         { href: "/student/history", label: "History", icon: History },
       ]
+    } else {
+      // Student has clubs - show full navigation from config
+      console.log("Student has clubs, showing full navigation")
+      // Keep the full navigation from navigationConfig
     }
   }
 
