@@ -7,11 +7,10 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Building, Users, Calendar, Search, CheckCircle, XCircle, Clock, Eye, Plus } from "lucide-react"
+import { Building, Users, Calendar, Search, CheckCircle, XCircle, Clock, Eye, Plus, CheckCheck } from "lucide-react"
 import Link from "next/link"
-import { putClubApplicationStatus, postClubApplication } from "@/service/clubApplicationAPI"
+import { postClubApplication } from "@/service/clubApplicationAPI"
 import { Modal } from "@/components/modal"
 import { useToast } from "@/hooks/use-toast"
 import { useClubApplications } from "@/hooks/use-query-hooks"
@@ -24,7 +23,7 @@ type UiClubRequest = {
 	id: string
 	applicationId?: number
 	clubName: string
-	category: string
+	major: string
 	description: string
 	requestedBy: string
 	requestedByEmail: string
@@ -37,19 +36,18 @@ type UiClubRequest = {
 
 export default function UniStaffClubRequestsPage() {
 	const [searchTerm, setSearchTerm] = useState("")
-	const [categoryFilter, setCategoryFilter] = useState<string>("all")
 	const [isModalOpen, setIsModalOpen] = useState<boolean>(false)
 	const [newClubName, setNewClubName] = useState<string>("")
 	const [newDescription, setNewDescription] = useState<string>("")
-	const [newCategory, setNewCategory] = useState<string>("")
+	const [newMajor, setNewMajor] = useState<string>("")
 	const [newProposerReason, setNewProposerReason] = useState<string>("")
 	const [activeTab, setActiveTab] = useState<string>("pending")
-	
+	const [newVision, setNewVision] = useState<string>("")
 	// Pagination states
 	const [pendingPage, setPendingPage] = useState(0)
 	const [processedPage, setProcessedPage] = useState(0)
 	const [pageSize, setPageSize] = useState(5)
-	
+
 	const { toast } = useToast()
 	const queryClient = useQueryClient()
 
@@ -61,16 +59,16 @@ export default function UniStaffClubRequestsPage() {
 		id: `req-${d.applicationId}`,
 		applicationId: d.applicationId,
 		clubName: d.clubName,
-		category: (d as any).category ?? "Unknown",
+		major: d.majorName ?? "Unknown",
 		description: d.description,
 		requestedBy: d.submittedBy?.fullName ?? "Unknown",
 		requestedByEmail: d.submittedBy?.email ?? "",
 		requestDate: d.submittedAt,
 		status: d.status,
-	})) 
+	}))
 
 	async function handleSendNewApplication() {
-		if (!newClubName.trim() || !newDescription.trim() || !newCategory.trim() || !newProposerReason.trim()) {
+		if (!newClubName.trim() || !newDescription.trim() || !newMajor.trim() || !newProposerReason.trim() || !newVision.trim()) {
 			toast({ title: 'Missing Information', description: 'Please fill in all fields.', variant: 'destructive' });
 			return;
 		}
@@ -78,19 +76,21 @@ export default function UniStaffClubRequestsPage() {
 			const created = await postClubApplication({
 				clubName: newClubName,
 				description: newDescription,
-				majorId: parseInt(newCategory, 10),
+				vision: newVision,
+				majorId: parseInt(newMajor, 10),
 				proposerReason: newProposerReason,
 			});
 			toast({ title: 'Application sent', description: `${created.clubName} submitted`, variant: 'success' });
-			
+
 			// Invalidate cache to refetch updated list
 			queryClient.invalidateQueries({ queryKey: ["club-applications"] });
-			
+
 			// Reset form
 			setIsModalOpen(false);
 			setNewClubName("");
 			setNewDescription("");
-			setNewCategory("");
+			setNewVision("");
+			setNewMajor("");
 			setNewProposerReason("");
 		} catch (err) {
 			console.error(err);
@@ -98,79 +98,20 @@ export default function UniStaffClubRequestsPage() {
 		}
 	}
 
-	// async function approveApplication(appId?: number) {
-	// 	if (!appId) return
-	// 	setLoading(true)
-	// 	try {
-	// 		const updated = await putClubApplicationStatus(appId, true, '')
-	// 		// Safe behavior: refetch the whole list from backend and update UI
-	// 		const data = await getClubApplications()
-	// 		const mapped: UiClubRequest[] = data.map((d) => ({
-	// 			id: `req-${d.applicationId}`,
-	// 			applicationId: d.applicationId,
-	// 			clubName: d.clubName,
-	// 			category: "Unknown",
-	// 			description: d.description,
-	// 			requestedBy: d.submittedBy?.fullName ?? "Unknown",
-	// 			requestedByEmail: d.submittedBy?.email ?? "",
-	// 			requestDate: d.submittedAt,
-	// 			status: d.status,
-	// 		}))
-	// 		setRequests(mapped)
-	// 		toast({ title: 'Application submitted', description: `Application ${updated.applicationId} set to ${updated.status}`, variant: 'success' })
-	// 	} catch (err) {
-	// 		console.error(err)
-	// 		toast({ title: 'Error', description: 'Failed to update status', variant: 'destructive' })
-	// 	} finally {
-	// 		setLoading(false)
-	// 	}
-	// }
-
-	// async function rejectApplication(appId?: number) {
-	// 	if (!appId) return
-	// 	setLoading(true)
-	// 	try {
-	// 		const updated = await putClubApplicationStatus(appId, false, 'Rejected by staff')
-	// 		// Safe behavior: refetch the whole list from backend and update UI
-	// 		const data = await getClubApplications()
-	// 		const mapped: UiClubRequest[] = data.map((d) => ({
-	// 			id: `req-${d.applicationId}`,
-	// 			applicationId: d.applicationId,
-	// 			clubName: d.clubName,
-	// 			category: "Unknown",
-	// 			description: d.description,
-	// 			requestedBy: d.submittedBy?.fullName ?? "Unknown",
-	// 			requestedByEmail: d.submittedBy?.email ?? "",
-	// 			requestDate: d.submittedAt,
-	// 			status: d.status,
-	// 		}))
-	// 		setRequests(mapped)
-	// 		toast({ title: 'Application rejected', description: `Application ${updated.applicationId} set to ${updated.status}`, variant: 'destructive' })
-	// 	} catch (err) {
-	// 		console.error(err)
-	// 		toast({ title: 'Error', description: 'Failed to update status', variant: 'destructive' })
-	// 	} finally {
-	// 		setLoading(false)
-	// 	}
-	// }
-
 	const getFilteredRequests = (tabType: "pending" | "processed") => {
 		return requests.filter((req) => {
 			const matchSearch =
 				req.clubName.toLowerCase().includes(searchTerm.toLowerCase()) ||
 				req.requestedBy.toLowerCase().includes(searchTerm.toLowerCase()) ||
-				req.category.toLowerCase().includes(searchTerm.toLowerCase())
-
-			const matchCategory = categoryFilter === "all" ? true : req.category === categoryFilter
-
+				req.major.toLowerCase().includes(searchTerm.toLowerCase())
 			let matchStatus = false
 			if (tabType === "pending") {
-				matchStatus = req.status === "PENDING"
+				matchStatus = req.status === "PENDING" || req.status === "APPROVED"
 			} else {
-				matchStatus = req.status === "SUBMITTED" || req.status === "REJECTED"
+				matchStatus = req.status === "COMPLETED" || req.status === "REJECTED"
 			}
 
-			return matchSearch && matchStatus && matchCategory
+			return matchSearch && matchStatus
 		})
 	}
 
@@ -216,14 +157,14 @@ export default function UniStaffClubRequestsPage() {
 						Pending
 					</Badge>
 				)
-			case "SUBMITTED":
+			case "APPROVED":
 				return (
 					<Badge
 						variant="default"
 						className="bg-green-100 text-green-700 border-green-300"
 					>
 						<CheckCircle className="h-3 w-3 mr-1" />
-						Submitted
+						Approved
 					</Badge>
 				)
 			case "REJECTED":
@@ -236,14 +177,25 @@ export default function UniStaffClubRequestsPage() {
 						Rejected
 					</Badge>
 				)
+			case "COMPLETED":
+				return (
+					<Badge
+						variant="outline"
+						className="bg-blue-50 text-blue-700 border-blue-300"
+					>
+						<CheckCheck className="h-3 w-3 mr-1" />
+						Completed
+					</Badge>
+				)
 			default:
 				return <Badge variant="outline">{status}</Badge>
 		}
 	}
 
 	const pendingCount = requests.filter((req) => req.status === "PENDING").length
-	const approvedCount = requests.filter((req) => req.status === "SUBMITTED").length
+	const approvedCount = requests.filter((req) => req.status === "APPROVED").length
 	const rejectedCount = requests.filter((req) => req.status === "REJECTED").length
+	const completedCount = requests.filter((req) => req.status === "COMPLETED").length
 
 	return (
 		<ProtectedRoute allowedRoles={["uni_staff"]}>
@@ -269,25 +221,27 @@ export default function UniStaffClubRequestsPage() {
 					</div>
 
 					{/* Modal for creating new club application */}
-								<Modal open={isModalOpen} onOpenChange={setIsModalOpen} title="Create Club Application">
-									<div className="space-y-3">
-										<label className="text-sm font-medium">Club Name</label>
-										<Input value={newClubName} onChange={(e) => setNewClubName(e.target.value)} placeholder="Tri&Duc" />
-										<label className="text-sm font-medium">Description</label>
-										<Input value={newDescription} onChange={(e) => setNewDescription(e.target.value)} placeholder="Description" />
-										<label className="text-sm font-medium">Category</label>
-										<Input value={newCategory} onChange={(e) => setNewCategory(e.target.value)} placeholder="Category" />
-										<label className="text-sm font-medium">Proposer Reason</label>
-										<Input value={newProposerReason} onChange={(e) => setNewProposerReason(e.target.value)} placeholder="Why do you want to create this club?" />
-										<div className="flex justify-end gap-2 pt-2">
-											<Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-											<Button onClick={handleSendNewApplication}>Send</Button>
-										</div>
-									</div>
-								</Modal>
+					<Modal open={isModalOpen} onOpenChange={setIsModalOpen} title="Create Club Application">
+						<div className="space-y-3">
+							<label className="text-sm font-medium">Club Name</label>
+							<Input value={newClubName} onChange={(e) => setNewClubName(e.target.value)} placeholder="Tri&Duc" />
+							<label className="text-sm font-medium">Description</label>
+							<Input value={newDescription} onChange={(e) => setNewDescription(e.target.value)} placeholder="Description" />
+							<label className="text-sm font-medium">Vision</label>
+							<Input value={newVision} onChange={(e) => setNewVision(e.target.value)} placeholder="Club's vision" />
+							<label className="text-sm font-medium">Major</label>
+							<Input value={newMajor} onChange={(e) => setNewMajor(e.target.value)} placeholder="Major" />
+							<label className="text-sm font-medium">Proposer Reason</label>
+							<Input value={newProposerReason} onChange={(e) => setNewProposerReason(e.target.value)} placeholder="Why do you want to create this club?" />
+							<div className="flex justify-end gap-2 pt-2">
+								<Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
+								<Button onClick={handleSendNewApplication}>Send</Button>
+							</div>
+						</div>
+					</Modal>
 
 					{/* Stats Cards */}
-					<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+					<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
 						<Card className="border-0 shadow-md bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-950 dark:to-yellow-900">
 							<CardHeader className="pb-1 px-4 pt-3">
 								<CardTitle className="text-xs font-medium text-yellow-700 dark:text-yellow-300">
@@ -314,7 +268,7 @@ export default function UniStaffClubRequestsPage() {
 						<Card className="border-0 shadow-md bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900">
 							<CardHeader className="pb-1 px-4 pt-3">
 								<CardTitle className="text-xs font-medium text-green-700 dark:text-green-300">
-									Submitted
+									Approved
 								</CardTitle>
 							</CardHeader>
 							<CardContent className="pb-3 px-4">
@@ -327,7 +281,31 @@ export default function UniStaffClubRequestsPage() {
 											{approvedCount}
 										</div>
 										<p className="text-xs text-green-600 dark:text-green-400">
-											Successfully submitted
+											Awaiting account creation
+										</p>
+									</div>
+								</div>
+							</CardContent>
+						</Card>
+
+						{/* ✅ THẺ MỚI CHO COMPLETED */}
+						<Card className="border-0 shadow-md bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900">
+							<CardHeader className="pb-1 px-4 pt-3">
+								<CardTitle className="text-xs font-medium text-blue-700 dark:text-blue-300">
+									Completed
+								</CardTitle>
+							</CardHeader>
+							<CardContent className="pb-3 px-4">
+								<div className="flex items-center gap-2">
+									<div className="p-1.5 bg-blue-500 rounded-md">
+										<CheckCheck className="h-4 w-4 text-white" />
+									</div>
+									<div>
+										<div className="text-lg font-bold text-blue-900 dark:text-blue-100">
+											{completedCount}
+										</div>
+										<p className="text-xs text-blue-600 dark:text-blue-400">
+											Successfully processed
 										</p>
 									</div>
 								</div>
@@ -350,7 +328,7 @@ export default function UniStaffClubRequestsPage() {
 											{rejectedCount}
 										</div>
 										<p className="text-xs text-red-600 dark:text-red-400">
-											Not submitted
+											Not eligible
 										</p>
 									</div>
 								</div>
@@ -367,22 +345,6 @@ export default function UniStaffClubRequestsPage() {
 								value={searchTerm}
 								onChange={(e) => setSearchTerm(e.target.value)}
 							/>
-						</div>
-
-						<div className="flex items-center gap-3">
-							<Select value={categoryFilter} onValueChange={setCategoryFilter}>
-								<SelectTrigger className="w-40">
-									<SelectValue placeholder="All Categories" />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value="all">All Categories</SelectItem>
-									<SelectItem value="Technology">Technology</SelectItem>
-									<SelectItem value="Social">Social</SelectItem>
-									<SelectItem value="Arts">Arts</SelectItem>
-									<SelectItem value="Academic">Academic</SelectItem>
-									<SelectItem value="Sports">Sports</SelectItem>
-								</SelectContent>
-							</Select>
 						</div>
 					</div>
 
@@ -435,7 +397,7 @@ export default function UniStaffClubRequestsPage() {
 																	{request.clubName}
 																</h3>
 																<Badge variant="outline">
-																	{request.category}
+																	{request.major}
 																</Badge>
 																{getStatusBadge(request.status)}
 															</div>
@@ -464,7 +426,7 @@ export default function UniStaffClubRequestsPage() {
 														</div>
 
 														<div className="flex items-center gap-2 ml-4">
-														
+
 															<Button
 																size="sm"
 																variant="outline"
@@ -538,7 +500,7 @@ export default function UniStaffClubRequestsPage() {
 																	{request.clubName}
 																</h3>
 																<Badge variant="outline">
-																	{request.category}
+																	{request.major}
 																</Badge>
 																{getStatusBadge(request.status)}
 															</div>

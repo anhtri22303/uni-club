@@ -18,7 +18,8 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
-import { Input } from "@/components/ui/input" // ✅ CẬP NHẬT: Import Input
+import { Input } from "@/components/ui/input"
+import { fetchClub } from "@/service/clubApi"
 
 interface ClubRequestDetailPageProps {
   params: {
@@ -162,29 +163,99 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
     }
   }
   // ✅ CẬP NHẬT: Hàm xử lý tạo tài khoản CLB
+  // const handleCreateClubAccount = async () => {
+  //   if (!request) return;
+  //   // ✅ HIỂN THỊ ID TRONG CONSOLE ĐỂ KIỂM TRA
+  //   console.log("Submitting with clubId:", request.applicationId);
+  //   // Simple validation
+  //   for (const key in accountForm) {
+  //     if (!accountForm[key as keyof typeof accountForm]) {
+  //       toast({
+  //         title: "Validation Error",
+  //         description: `Field '${key}' cannot be empty.`,
+  //         variant: "destructive"
+  //       })
+  //       return;
+  //     }
+  //   }
+
+  //   const body: CreateClubAccountBody = {
+  //     clubId: request.applicationId,
+  //     ...accountForm
+  //   }
+
+  //   setIsCreatingAccount(true);
+  //   try {
+  //     await createClubAccount(body);
+  //     queryClient.invalidateQueries({ queryKey: ["club-applications"] });
+  //     toast({
+  //       title: "Success",
+  //       description: `Account for ${request.clubName} created successfully!`,
+  //       variant: "success",
+  //     });
+  //     setCreateAccountModalOpen(false); // Close modal on success
+  //   } catch (error) {
+  //     console.error("Failed to create club account:", error);
+  //     toast({
+  //       title: "Error",
+  //       description: (error as Error).message || "Failed to create club account",
+  //       variant: "destructive",
+  //     });
+  //   } finally {
+  //     setIsCreatingAccount(false);
+  //   }
+  // }
+  // ✅ BƯỚC 2: CẬP NHẬT TOÀN BỘ HÀM NÀY
   const handleCreateClubAccount = async () => {
     if (!request) return;
-    // ✅ HIỂN THỊ ID TRONG CONSOLE ĐỂ KIỂM TRA
-    console.log("Submitting with clubId:", request.applicationId);
-    // Simple validation
+
+    // Validate form first
     for (const key in accountForm) {
       if (!accountForm[key as keyof typeof accountForm]) {
         toast({
           title: "Validation Error",
-          description: `Field '${key}' cannot be empty.`,
+          description: `Field '${key.replace(/([A-Z])/g, ' $1').trim()}' cannot be empty.`,
           variant: "destructive"
         })
         return;
       }
     }
 
-    const body: CreateClubAccountBody = {
-      clubId: request.applicationId,
-      ...accountForm
-    }
-
     setIsCreatingAccount(true);
     try {
+      // 1. Fetch danh sách tất cả các club
+      toast({ title: "Processing...", description: "Finding the newly approved club..." });
+      // Fetch một lượng lớn để đảm bảo club mới nằm trong danh sách
+      const clubListResponse = await fetchClub({ page: 0, size: 9999, sort: ["name"] });
+      const allClubs = clubListResponse.content;
+
+      // 2. Tìm club trong danh sách bằng cách so sánh tên
+      const foundClub = allClubs.find(club => club.name === request.clubName);
+
+      // 3. Xử lý trường hợp không tìm thấy
+      if (!foundClub) {
+        toast({
+          title: "Club Not Found",
+          description: "Could not find the corresponding club. It might not have been created yet. Please wait a moment and try again.",
+          variant: "destructive",
+        });
+        return; // Dừng thực thi
+      }
+
+      // 4. Nếu tìm thấy, sử dụng clubId chính xác
+      const correctClubId = foundClub.id;
+      console.log(`Found a match! Using clubId: ${correctClubId} for application: ${request.applicationId}`);
+
+      const body: CreateClubAccountBody = {
+        clubId: correctClubId,
+        ...accountForm
+      };
+      // ✅ LOG TOÀN BỘ DỮ LIỆU SẮP GỬI ĐI
+      console.log("--- Sending Request to create-club-accounts ---");
+      console.log("Payload:", body);
+      console.log("-------------------------------------------------");
+      
+      // 5. Gọi API tạo tài khoản như cũ
       await createClubAccount(body);
       queryClient.invalidateQueries({ queryKey: ["club-applications"] });
       toast({
@@ -192,12 +263,12 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
         description: `Account for ${request.clubName} created successfully!`,
         variant: "success",
       });
-      setCreateAccountModalOpen(false); // Close modal on success
+      setCreateAccountModalOpen(false);
+
     } catch (error) {
-      console.error("Failed to create club account:", error);
       toast({
         title: "Error",
-        description: (error as Error).message || "Failed to create club account",
+        description: (error as Error).message || "An unexpected error occurred while creating the account.",
         variant: "destructive",
       });
     } finally {
