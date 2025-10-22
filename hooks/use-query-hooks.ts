@@ -226,7 +226,9 @@ export function useUsers() {
   return useQuery({
     queryKey: queryKeys.usersList(),
     queryFn: async () => {
+      console.log("🔵 useUsers: Starting to fetch users...")
       const users = await fetchUser()
+      console.log("🟢 useUsers: Received users:", users)
       return users
     },
     staleTime: 5 * 60 * 1000,
@@ -445,6 +447,78 @@ export function useProfile(enabled = true) {
     queryFn: async () => {
       const profile = await fetchProfile()
       return profile
+    },
+    enabled,
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+// ============================================
+// LOCATIONS QUERIES
+// ============================================
+
+/**
+ * Hook to fetch all locations with pagination
+ */
+export function useLocations(params = { page: 0, size: 10, sort: ["name"] }, enabled = true) {
+  return useQuery({
+    queryKey: ["locations", "list", params],
+    queryFn: async () => {
+      const { fetchLocation } = await import("@/service/locationApi")
+      const locations = await fetchLocation(params)
+      return locations
+    },
+    enabled,
+    staleTime: 10 * 60 * 1000, // 10 minutes (locations rarely change)
+  })
+}
+
+/**
+ * Hook to fetch single location by ID
+ */
+export function useLocation(locationId: string | number, enabled = true) {
+  return useQuery({
+    queryKey: ["locations", "detail", locationId],
+    queryFn: async () => {
+      const { getLocationById } = await import("@/service/locationApi")
+      const location = await getLocationById(locationId)
+      return location
+    },
+    enabled: !!locationId && enabled,
+    staleTime: 10 * 60 * 1000,
+  })
+}
+
+// ============================================
+// STATISTICS QUERIES
+// ============================================
+
+/**
+ * Hook to fetch club statistics
+ */
+export function useClubStats(enabled = true) {
+  return useQuery({
+    queryKey: ["clubs", "stats"],
+    queryFn: async () => {
+      const { getClubStats } = await import("@/service/clubApi")
+      const stats = await getClubStats()
+      return stats
+    },
+    enabled,
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+/**
+ * Hook to fetch user statistics
+ */
+export function useUserStats(enabled = true) {
+  return useQuery({
+    queryKey: ["users", "stats"],
+    queryFn: async () => {
+      const { getUserStats } = await import("@/service/userApi")
+      const stats = await getUserStats()
+      return stats
     },
     enabled,
     staleTime: 5 * 60 * 1000,

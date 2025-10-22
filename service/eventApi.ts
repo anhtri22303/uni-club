@@ -1,6 +1,6 @@
 import axiosInstance from "@/lib/axiosInstance"
 
-export const fetchEvent = async ({ page = 0, size = 10, sort = "name" } = {}) => {
+export const fetchEvent = async ({ page = 0, size = 50, sort = "name" } = {}) => {
   const timestamp = new Date().toISOString();
   const stack = new Error().stack;
   console.log(`🚀 fetchEvent called at ${timestamp}`);

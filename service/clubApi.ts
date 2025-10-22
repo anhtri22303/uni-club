@@ -40,7 +40,7 @@ interface ClubApiResponse {
 }
 
 export const fetchClub = async (
-  pageable: PageableQuery = { page: 0, size: 10, sort: ["name"] }
+  pageable: PageableQuery = { page: 0, size: 50, sort: ["name"] }
 ): Promise<ClubListResponse> => {
   try {
     const response = await axiosInstance.get("/api/clubs", {

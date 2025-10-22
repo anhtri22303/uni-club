@@ -246,6 +246,9 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
               const clubApplicationsCount = clubApplications.length
               const eventRequestsCount = eventRequests.length
 
+              // Don't show badges for admin role
+              const showBadges = auth.role !== "admin"
+
               return (
                 <Button
                   key={item.href}
@@ -276,32 +279,32 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                       Staff
                     </span>
                   )}
-                  {isEventsItem && eventsCount > 0 && (
+                  {showBadges && isEventsItem && eventsCount > 0 && (
                     <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
                       {eventsCount}
                     </span>
                   )}
-                  {isClubsItem && clubsCount > 0 && (
+                  {showBadges && isClubsItem && clubsCount > 0 && (
                     <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
                       {clubsCount}
                     </span>
                   )}
-                  {isUsersItem && usersCount > 0 && (
+                  {showBadges && isUsersItem && usersCount > 0 && (
                     <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
                       {usersCount}
                     </span>
                   )}
-                  {isPoliciesItem && policiesCount > 0 && (
+                  {showBadges && isPoliciesItem && policiesCount > 0 && (
                     <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
                       {policiesCount}
                     </span>
                   )}
-                  {isClubRequestsItem && clubApplicationsCount > 0 && (
+                  {showBadges && isClubRequestsItem && clubApplicationsCount > 0 && (
                     <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
                       {clubApplicationsCount}
                     </span>
                   )}
-                  {isEventRequestsItem && eventRequestsCount > 0 && (
+                  {showBadges && isEventRequestsItem && eventRequestsCount > 0 && (
                     <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
                       {eventRequestsCount}
                     </span>
