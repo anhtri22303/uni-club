@@ -26,12 +26,21 @@ import clubs from "@/src/data/clubs.json"
 import { createEvent, getEventById } from "@/service/eventApi"
 import { generateCode } from "@/service/checkinApi"
 import { safeLocalStorage } from "@/lib/browser-utils"
+import { fetchLocation } from "@/service/locationApi"
+import { fetchClub } from "@/service/clubApi"
+import { Checkbox } from "@/components/ui/checkbox"
 
 export default function ClubLeaderEventsPage() {
   const router = useRouter()
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const [userClubId, setUserClubId] = useState<number | null>(null)
+  const [locations, setLocations] = useState<any[]>([])
+  const [locationsLoading, setLocationsLoading] = useState(false)
+  const [selectedLocationId, setSelectedLocationId] = useState<string>("")
+  const [allClubs, setAllClubs] = useState<any[]>([])
+  const [clubsLoading, setClubsLoading] = useState(false)
+  const [selectedCoHostClubIds, setSelectedCoHostClubIds] = useState<number[]>([])
 
   // Add fullscreen and environment states
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -51,6 +60,51 @@ export default function ClubLeaderEventsPage() {
     } catch (error) {
       console.error("Failed to get clubId from localStorage:", error)
     }
+  }, [])
+
+  // Fetch locations on mount
+  useEffect(() => {
+    const loadLocations = async () => {
+      setLocationsLoading(true)
+      try {
+        const data = await fetchLocation({ page: 0, size: 100, sort: ["name"] }) as any
+        // Handle both paginated response and direct array
+        const locationList = data?.content || data || []
+        setLocations(locationList)
+      } catch (error) {
+        console.error("Failed to fetch locations:", error)
+        toast({ 
+          title: "Error", 
+          description: "Failed to load locations", 
+          variant: "destructive" 
+        })
+      } finally {
+        setLocationsLoading(false)
+      }
+    }
+    loadLocations()
+  }, [])
+
+  // Fetch clubs on mount
+  useEffect(() => {
+    const loadClubs = async () => {
+      setClubsLoading(true)
+      try {
+        const data = await fetchClub({ page: 0, size: 100, sort: ["name"] })
+        const clubList = data?.content || []
+        setAllClubs(clubList)
+      } catch (error) {
+        console.error("Failed to fetch clubs:", error)
+        toast({ 
+          title: "Error", 
+          description: "Failed to load clubs", 
+          variant: "destructive" 
+        })
+      } finally {
+        setClubsLoading(false)
+      }
+    }
+    loadClubs()
   }, [])
 
   // ✅ USE REACT QUERY for events
@@ -225,7 +279,7 @@ export default function ClubLeaderEventsPage() {
     date: "",
     startTime: "09:00:00",
     endTime: "11:00:00",
-    locationName: "",
+    locationId: 0,
     maxCheckInCount: 100,
   })
 
@@ -306,27 +360,36 @@ export default function ClubLeaderEventsPage() {
 
   const hasActiveFilters = Object.values(activeFilters).some((v) => v && v !== "all") || Boolean(searchTerm)
 
-  const resetForm = () => setFormData({ clubId: userClubId || managedClub.id, name: "", description: "", type: "PUBLIC", date: "", startTime: "09:00:00", endTime: "11:00:00", locationName: "", maxCheckInCount: 100 })
+  const resetForm = () => {
+    setFormData({ clubId: userClubId || managedClub.id, name: "", description: "", type: "PUBLIC", date: "", startTime: "09:00:00", endTime: "11:00:00", locationId: 0, maxCheckInCount: 100 })
+    setSelectedLocationId("")
+    setSelectedCoHostClubIds([])
+  }
 
   const handleCreate = async () => {
     // validate required
-    if (!formData.name || !formData.date || !formData.startTime || !formData.endTime) {
-      toast({ title: "Missing Information", description: "Please fill in all required fields", variant: "destructive" })
+    if (!formData.name || !formData.date || !formData.startTime || !formData.endTime || !formData.locationId) {
+      toast({ title: "Missing Information", description: "Please fill in all required fields including location", variant: "destructive" })
       return
     }
 
     try {
-      const clubId = Number(formData.clubId)
-      const payload = {
-        clubId,
+      const hostClubId = Number(formData.clubId)
+      const payload: any = {
+        hostClubId,
         name: formData.name,
         description: formData.description,
         type: formData.type as "PUBLIC" | "PRIVATE",
         date: formData.date,
         startTime: formData.startTime,
         endTime: formData.endTime,
-        locationName: formData.locationName,
+        locationId: formData.locationId,
         maxCheckInCount: formData.maxCheckInCount,
+      }
+
+      // Add coHostClubIds if any are selected
+      if (selectedCoHostClubIds.length > 0) {
+        payload.coHostClubIds = selectedCoHostClubIds
       }
 
       const res: any = await createEvent(payload)
@@ -355,9 +418,13 @@ export default function ClubLeaderEventsPage() {
       date: event.date ?? "",
       startTime: event.startTime ?? event.time ?? "09:00:00",
       endTime: event.endTime ?? "11:00:00",
-      locationName: event.locationName ?? "",
+      locationId: event.locationId ?? 0,
       maxCheckInCount: event.maxCheckInCount ?? 100,
     })
+    // Set the selected location dropdown value
+    if (event.locationId) {
+      setSelectedLocationId(String(event.locationId))
+    }
     setShowEditModal(true)
   }
   const handleUpdate = () => { /* same as source */ }
@@ -865,24 +932,88 @@ export default function ClubLeaderEventsPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="maxCheckInCount">Max Check-ins</Label>
+                  <Label htmlFor="maxCheckInCount">Max Check-ins {selectedLocationId && "(Auto-filled from location)"}</Label>
                   <Input
                     id="maxCheckInCount"
                     type="number"
                     value={formData.maxCheckInCount}
                     onChange={(e) => setFormData({ ...formData, maxCheckInCount: Number.parseInt(e.target.value) || 100 })}
+                    className={selectedLocationId ? "bg-muted border-blue-300" : ""}
+                    placeholder="Select location first"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="locationName">Location Name</Label>
-                <Input
-                  id="locationName"
-                  value={formData.locationName}
-                  onChange={(e) => setFormData({ ...formData, locationName: e.target.value })}
-                  placeholder="Enter location name"
-                />
+                <Label htmlFor="locationName">Location *</Label>
+                <Select
+                  value={selectedLocationId}
+                  onValueChange={(value) => {
+                    setSelectedLocationId(value)
+                    const location = locations.find(loc => String(loc.id) === value)
+                    if (location) {
+                      setFormData({ 
+                        ...formData, 
+                        locationId: Number(location.id),
+                        maxCheckInCount: location.capacity || 100
+                      })
+                    }
+                  }}
+                  disabled={locationsLoading}
+                >
+                  <SelectTrigger id="locationName">
+                    <SelectValue placeholder={locationsLoading ? "Loading locations..." : "Select a location"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {locations.map((location) => (
+                      <SelectItem key={location.id} value={String(location.id)}>
+                        {location.name} {location.capacity && `(Capacity: ${location.capacity})`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Co-Host Clubs (Optional)</Label>
+                <div className="border rounded-md p-3 max-h-48 overflow-y-auto bg-muted/30">
+                  {clubsLoading ? (
+                    <p className="text-sm text-muted-foreground">Loading clubs...</p>
+                  ) : allClubs.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No clubs available</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {allClubs
+                        .filter(club => club.id !== userClubId) // Exclude host club
+                        .map((club) => (
+                          <div key={club.id} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`club-${club.id}`}
+                              checked={selectedCoHostClubIds.includes(club.id)}
+                              onCheckedChange={(checked: boolean) => {
+                                if (checked) {
+                                  setSelectedCoHostClubIds([...selectedCoHostClubIds, club.id])
+                                } else {
+                                  setSelectedCoHostClubIds(selectedCoHostClubIds.filter(id => id !== club.id))
+                                }
+                              }}
+                            />
+                            <label
+                              htmlFor={`club-${club.id}`}
+                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                            >
+                              {club.name}
+                            </label>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+                {selectedCoHostClubIds.length > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    {selectedCoHostClubIds.length} club{selectedCoHostClubIds.length > 1 ? 's' : ''} selected
+                  </p>
+                )}
               </div>
 
               <div className="flex gap-2 justify-end">
@@ -920,8 +1051,33 @@ export default function ClubLeaderEventsPage() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-locationName">Location Name</Label>
-                <Input id="edit-locationName" value={formData.locationName} onChange={(e) => setFormData({ ...formData, locationName: e.target.value })} placeholder="Enter location name" />
+                <Label htmlFor="edit-locationName">Location *</Label>
+                <Select
+                  value={selectedLocationId}
+                  onValueChange={(value) => {
+                    setSelectedLocationId(value)
+                    const location = locations.find(loc => String(loc.id) === value)
+                    if (location) {
+                      setFormData({ 
+                        ...formData, 
+                        locationId: Number(location.id),
+                        maxCheckInCount: location.capacity || 100
+                      })
+                    }
+                  }}
+                  disabled={locationsLoading}
+                >
+                  <SelectTrigger id="edit-locationName">
+                    <SelectValue placeholder={locationsLoading ? "Loading locations..." : "Select a location"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {locations.map((location) => (
+                      <SelectItem key={location.id} value={String(location.id)}>
+                        {location.name} {location.capacity && `(Capacity: ${location.capacity})`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="flex gap-2 justify-end">
                 <Button variant="outline" onClick={() => setShowEditModal(false)}>Cancel</Button>

@@ -31,9 +31,10 @@ export interface CreateEventPayload {
   date: string
   startTime: string
   endTime: string
-  locationName: string
+  locationId: number
   maxCheckInCount: number
-  clubId?: number
+  hostClubId: number
+  coHostClubIds?: number[]
 }
 
 export const fetchEvent = async ({ page = 0, size = 50, sort = "name" } = {}): Promise<Event[]> => {

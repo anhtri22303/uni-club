@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/contexts/auth-context"
 import { useData } from "@/contexts/data-context"
-import { Users, Calendar, UserCheck, Clock, TrendingUp, AlertTriangle } from "lucide-react"
+import { Users, Calendar, UserCheck, Clock, TrendingUp } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useProfile, useClub } from "@/hooks/use-query-hooks"
 import { getClubIdFromToken } from "@/service/clubApi"
@@ -17,11 +17,6 @@ import { Skeleton } from "@/components/ui/skeleton"
 import events from "@/src/data/events.json"
 import users from "@/src/data/users.json"
 import { ApiMembership } from "@/service/membershipApi"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { useToast } from "@/hooks/use-toast"
-import { forgotPassword } from "@/service/authApi"
 
 
 // Define a type for the club based on the Swagger definition
@@ -43,14 +38,10 @@ interface ClubApiResponse {
 }
 
 export default function ClubLeaderDashboardPage() {
-  const { auth, logout } = useAuth()
+  const { auth } = useAuth()
   const { clubMemberships, membershipApplications } = useData()
   const router = useRouter()
-  const { toast } = useToast()
   const [clubId, setClubId] = useState<number | null>(null)
-  const [showPasswordResetModal, setShowPasswordResetModal] = useState(false)
-  const [resetEmail, setResetEmail] = useState("")
-  const [isLoadingPasswordReset, setIsLoadingPasswordReset] = useState(false)
 
   // Get clubId from token
   useEffect(() => {
@@ -60,64 +51,11 @@ export default function ClubLeaderDashboardPage() {
     }
   }, [])
 
-  // Check if password reset is required
-  useEffect(() => {
-    const requireReset = sessionStorage.getItem("requirePasswordReset")
-    const email = sessionStorage.getItem("resetEmail")
-    
-    if (requireReset === "true" && email) {
-      setResetEmail(email)
-      setShowPasswordResetModal(true)
-      // Clear the flags immediately to prevent showing again on refresh
-      sessionStorage.removeItem("requirePasswordReset")
-      sessionStorage.removeItem("resetEmail")
-    }
-  }, [])
-
   // ✅ USE REACT QUERY for profile and club
   const { data: profile, isLoading: profileLoading } = useProfile()
   const { data: managedClub, isLoading: clubLoading } = useClub(clubId || 0, !!clubId)
 
   const loading = profileLoading || clubLoading
-
-  // Handle password reset
-  const handlePasswordReset = async () => {
-    if (!resetEmail) {
-      toast({
-        title: "Error",
-        description: "Email is required",
-        variant: "destructive",
-      })
-      return
-    }
-
-    setIsLoadingPasswordReset(true)
-
-    try {
-      const response = await forgotPassword(resetEmail)
-      
-      toast({
-        title: "Password Reset Email Sent",
-        description: response.message || "Please check your email for the password reset link",
-      })
-
-      // Close modal and logout
-      setShowPasswordResetModal(false)
-      
-      // Wait a moment for the toast to show, then logout
-      setTimeout(() => {
-        logout()
-      }, 1500)
-    } catch (error: any) {
-      toast({
-        title: "Failed to Send Reset Email",
-        description: error.response?.data?.message || "Something went wrong",
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoadingPasswordReset(false)
-    }
-  }
 
   // Type assertion for profile to fix TypeScript error
   const typedProfile = profile as any
@@ -161,62 +99,6 @@ export default function ClubLeaderDashboardPage() {
   return (
     <ProtectedRoute allowedRoles={["club_leader"]}>
       <AppShell>
-        {/* Password Reset Modal */}
-        <Dialog open={showPasswordResetModal} onOpenChange={(open) => {
-          // Prevent closing the modal by clicking outside or pressing escape
-          if (!open) return
-        }}>
-          <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
-            <DialogHeader>
-              <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-full bg-yellow-100 dark:bg-yellow-900/20 flex items-center justify-center">
-                  <AlertTriangle className="h-6 w-6 text-yellow-600 dark:text-yellow-500" />
-                </div>
-                <div>
-                  <DialogTitle className="text-xl">Password Reset Required</DialogTitle>
-                  <DialogDescription className="mt-1">
-                    You are using a default password. Please reset your password for security.
-                  </DialogDescription>
-                </div>
-              </div>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="reset-email">Email Address</Label>
-                <Input
-                  id="reset-email"
-                  type="email"
-                  value={resetEmail}
-                  onChange={(e) => setResetEmail(e.target.value)}
-                  placeholder="Enter your email"
-                  className="w-full"
-                  disabled
-                />
-                <p className="text-xs text-muted-foreground">
-                  We'll send a password reset link to this email address.
-                </p>
-              </div>
-            </div>
-            <DialogFooter className="flex-col sm:flex-row gap-2">
-              <Button
-                type="button"
-                onClick={handlePasswordReset}
-                disabled={isLoadingPasswordReset || !resetEmail}
-                className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
-              >
-                {isLoadingPasswordReset ? (
-                  <>
-                    <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2" />
-                    Sending...
-                  </>
-                ) : (
-                  "Send Reset Link"
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
         <div className="space-y-6">
           <div>
             <h1 className="text-3xl font-bold text-balance">
