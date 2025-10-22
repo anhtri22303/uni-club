@@ -9,7 +9,7 @@ export interface Product {
 	stockQuantity: number;
 }
 
-export async function getProduct({ page = 0, size = 10, sort = "name" } = {}): Promise<Product[]> {
+export async function getProduct({ page = 0, size = 50, sort = "name" } = {}): Promise<Product[]> {
 	const res = await axiosInstance.get("/api/products", {
 		params: { page, size, sort },
 	});

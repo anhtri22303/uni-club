@@ -1,27 +1,51 @@
 import axiosInstance from "@/lib/axiosInstance"
 
+// Type for the new API wrapper structure
+type ApiResponse<T> = {
+  success: boolean
+  message: string
+  data: T
+}
+
+type PaginatedResponse<T> = {
+  content: T[]
+  totalElements?: number
+  totalPages?: number
+  size?: number
+  number?: number
+}
 
 export const fetchUser = async () => {
   try {
+    console.log("🚀 fetchUser: Starting API call to api/users")
     const response = await axiosInstance.get("api/users")
-    const body = response.data
-    console.log("Fetched users response:", body)
+    const body = response.data as ApiResponse<PaginatedResponse<any>> | PaginatedResponse<any> | any[]
+    console.log("✅ fetchUser: Received response:", body)
+    console.log("✅ fetchUser: Response status:", response.status)
 
-    // If backend returns a paginated wrapper, return the `content` array.
+    // ✅ NEW API STRUCTURE: { success, message, data: { content: [...] } }
+    if (body && typeof body === "object" && "success" in body && body.success && "data" in body && body.data && Array.isArray(body.data.content)) {
+      console.log("✅ fetchUser: Returning body.data.content (array of", body.data.content.length, "users)")
+      return body.data.content
+    }
+
+    // LEGACY: If backend returns a paginated wrapper directly, return the `content` array.
     if (body && typeof body === "object" && "content" in body && Array.isArray(body.content)) {
-      console.log("fetchUser returning body.content (array)")
+      console.log("⚠️ fetchUser: Using legacy format - returning body.content")
       return body.content
     }
 
     // If the API already returns an array of users, return it directly.
     if (Array.isArray(body)) {
+      console.log("⚠️ fetchUser: Returning direct array")
       return body
     }
 
+    console.warn("⚠️ fetchUser: Unknown response format, returning empty array")
     // Fallback: return empty array to simplify caller logic
     return []
   } catch (error) {
-    console.error("Error fetching users:", error)
+    console.error("❌ fetchUser: Error fetching users:", error)
     throw error
   }
 }

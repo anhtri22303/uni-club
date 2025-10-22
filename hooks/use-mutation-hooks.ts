@@ -304,3 +304,588 @@ export function useManualCacheUpdate() {
     },
   }
 }
+
+// ============================================
+// CLUB MUTATIONS
+// ============================================
+
+/**
+ * Hook to create a new club
+ */
+export function useCreateClubMutation() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async (clubData: { name: string; description: string; majorPolicyId?: number; majorName?: string }) => {
+      const { createClub } = await import("@/service/clubApi")
+      return await createClub(clubData)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.clubs })
+      toast({ title: "Success", description: "Club created successfully" })
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error?.response?.data?.message || "Failed to create club",
+        variant: "destructive" 
+      })
+    },
+  })
+}
+
+/**
+ * Hook to update a club
+ */
+export function useUpdateClubMutation() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string | number; data: any }) => {
+      const { updateClub } = await import("@/service/clubApi")
+      return await updateClub(id, data)
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.clubs })
+      queryClient.invalidateQueries({ queryKey: queryKeys.clubDetail(Number(variables.id)) })
+      toast({ title: "Success", description: "Club updated successfully" })
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error?.response?.data?.message || "Failed to update club",
+        variant: "destructive" 
+      })
+    },
+  })
+}
+
+/**
+ * Hook to delete a club
+ */
+export function useDeleteClubMutation() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async (id: string | number) => {
+      const { deleteClub } = await import("@/service/clubApi")
+      return await deleteClub(id)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.clubs })
+      toast({ title: "Success", description: "Club deleted successfully" })
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error?.response?.data?.message || "Failed to delete club",
+        variant: "destructive" 
+      })
+    },
+  })
+}
+
+// ============================================
+// USER MUTATIONS
+// ============================================
+
+/**
+ * Hook to update user profile
+ */
+export function useUpdateProfileMutation() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async (data: any) => {
+      const { editProfile } = await import("@/service/userApi")
+      return await editProfile(data)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.profile })
+      toast({ title: "Success", description: "Profile updated successfully" })
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error?.response?.data?.message || "Failed to update profile",
+        variant: "destructive" 
+      })
+    },
+  })
+}
+
+/**
+ * Hook to upload avatar
+ */
+export function useUploadAvatarMutation() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async (file: File) => {
+      const { uploadAvatar } = await import("@/service/userApi")
+      return await uploadAvatar(file)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.profile })
+      toast({ title: "Success", description: "Avatar uploaded successfully" })
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error?.response?.data?.message || "Failed to upload avatar",
+        variant: "destructive" 
+      })
+    },
+  })
+}
+
+/**
+ * Hook to update user by ID (admin)
+ */
+export function useUpdateUserMutation() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string | number; data: any }) => {
+      const { updateUserById } = await import("@/service/userApi")
+      return await updateUserById(id, data)
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.users })
+      queryClient.invalidateQueries({ queryKey: queryKeys.userDetail(variables.id) })
+      toast({ title: "Success", description: "User updated successfully" })
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error?.response?.data?.message || "Failed to update user",
+        variant: "destructive" 
+      })
+    },
+  })
+}
+
+/**
+ * Hook to delete user by ID (admin)
+ */
+export function useDeleteUserMutation() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async (id: string | number) => {
+      const { deleteUserById } = await import("@/service/userApi")
+      return await deleteUserById(id)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.users })
+      toast({ title: "Success", description: "User deleted successfully" })
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error?.response?.data?.message || "Failed to delete user",
+        variant: "destructive" 
+      })
+    },
+  })
+}
+
+// ============================================
+// POLICY MUTATIONS
+// ============================================
+
+/**
+ * Hook to create a policy
+ */
+export function useCreatePolicyMutation() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async (data: any) => {
+      const { createPolicy } = await import("@/service/policyApi")
+      return await createPolicy(data)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.policies })
+      toast({ title: "Success", description: "Policy created successfully" })
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error?.response?.data?.message || "Failed to create policy",
+        variant: "destructive" 
+      })
+    },
+  })
+}
+
+/**
+ * Hook to update a policy
+ */
+export function useUpdatePolicyMutation() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: any }) => {
+      const { updatePolicyById } = await import("@/service/policyApi")
+      return await updatePolicyById(id, data)
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.policies })
+      queryClient.invalidateQueries({ queryKey: queryKeys.policyDetail(variables.id) })
+      toast({ title: "Success", description: "Policy updated successfully" })
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error?.response?.data?.message || "Failed to update policy",
+        variant: "destructive" 
+      })
+    },
+  })
+}
+
+/**
+ * Hook to delete a policy
+ */
+export function useDeletePolicyMutation() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const { deletePolicyById } = await import("@/service/policyApi")
+      return await deletePolicyById(id)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.policies })
+      toast({ title: "Success", description: "Policy deleted successfully" })
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error?.response?.data?.message || "Failed to delete policy",
+        variant: "destructive" 
+      })
+    },
+  })
+}
+
+// ============================================
+// PRODUCT MUTATIONS
+// ============================================
+
+/**
+ * Hook to create a product
+ */
+export function useCreateProductMutation() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async (data: any) => {
+      const { addProduct } = await import("@/service/productApi")
+      return await addProduct(data)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.products })
+      toast({ title: "Success", description: "Product created successfully" })
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error?.response?.data?.message || "Failed to create product",
+        variant: "destructive" 
+      })
+    },
+  })
+}
+
+// ============================================
+// WALLET MUTATIONS
+// ============================================
+
+/**
+ * Hook to reward points to member
+ */
+export function useRewardPointsMutation() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async ({ membershipId, points, reason }: { membershipId: string | number; points: number; reason?: string }) => {
+      const { rewardPointsToMember } = await import("@/service/walletApi")
+      return await rewardPointsToMember(membershipId, points, reason)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.wallet })
+      toast({ title: "Success", description: "Points rewarded successfully" })
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error?.response?.data?.message || "Failed to reward points",
+        variant: "destructive" 
+      })
+    },
+  })
+}
+
+/**
+ * Hook to distribute points to clubs
+ */
+export function useDistributePointsMutation() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async ({ clubIds, points, reason }: { clubIds: (string | number)[]; points: number; reason?: string }) => {
+      const { distributePointsToClubs } = await import("@/service/walletApi")
+      return await distributePointsToClubs(clubIds, points, reason)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.wallet })
+      queryClient.invalidateQueries({ queryKey: queryKeys.clubs })
+      toast({ title: "Success", description: "Points distributed successfully" })
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error?.response?.data?.message || "Failed to distribute points",
+        variant: "destructive" 
+      })
+    },
+  })
+}
+
+// ============================================
+// MEMBER APPLICATION MUTATIONS
+// ============================================
+
+/**
+ * Hook to approve member application
+ */
+export function useApproveMemberApplicationMutation() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async (applicationId: number | string) => {
+      const { approveMemberApplication } = await import("@/service/memberApplicationApi")
+      return await approveMemberApplication(applicationId)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.memberApplications })
+      queryClient.invalidateQueries({ queryKey: queryKeys.clubs })
+      toast({ title: "Success", description: "Application approved successfully" })
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error?.response?.data?.message || "Failed to approve application",
+        variant: "destructive" 
+      })
+    },
+  })
+}
+
+/**
+ * Hook to reject member application
+ */
+export function useRejectMemberApplicationMutation() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async ({ applicationId, reason }: { applicationId: number | string; reason: string }) => {
+      const { rejectMemberApplication } = await import("@/service/memberApplicationApi")
+      return await rejectMemberApplication(applicationId, reason)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.memberApplications })
+      toast({ title: "Success", description: "Application rejected successfully" })
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error?.response?.data?.message || "Failed to reject application",
+        variant: "destructive" 
+      })
+    },
+  })
+}
+
+/**
+ * Hook to delete member application
+ */
+export function useDeleteMemberApplicationMutation() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async (applicationId: number | string) => {
+      const { deleteMemberApplication } = await import("@/service/memberApplicationApi")
+      return await deleteMemberApplication(applicationId)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.memberApplications })
+      toast({ title: "Success", description: "Application deleted successfully" })
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error?.response?.data?.message || "Failed to delete application",
+        variant: "destructive" 
+      })
+    },
+  })
+}
+
+// ============================================
+// CLUB APPLICATION MUTATIONS
+// ============================================
+
+/**
+ * Hook to create club application
+ */
+export function useCreateClubApplicationMutation() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async (data: { clubName: string; description: string; majorId: number; proposerReason: string }) => {
+      const { postClubApplication } = await import("@/service/clubApplicationAPI")
+      return await postClubApplication(data)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.clubApplications })
+      toast({ title: "Success", description: "Club application submitted successfully" })
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error?.response?.data?.message || "Failed to submit club application",
+        variant: "destructive" 
+      })
+    },
+  })
+}
+
+/**
+ * Hook to process club application (approve/reject)
+ */
+export function useProcessClubApplicationMutation() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async ({ applicationId, approve, rejectReason }: { applicationId: number; approve: boolean; rejectReason?: string }) => {
+      const { processClubApplication } = await import("@/service/clubApplicationAPI")
+      return await processClubApplication(applicationId, { approve, rejectReason })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.clubApplications })
+      toast({ title: "Success", description: "Club application processed successfully" })
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error?.response?.data?.message || "Failed to process club application",
+        variant: "destructive" 
+      })
+    },
+  })
+}
+
+/**
+ * Hook to finalize club application
+ */
+export function useFinalizeClubApplicationMutation() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async (applicationId: number) => {
+      const { finalizeClubApplication } = await import("@/service/clubApplicationAPI")
+      return await finalizeClubApplication(applicationId)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.clubApplications })
+      queryClient.invalidateQueries({ queryKey: queryKeys.clubs })
+      toast({ title: "Success", description: "Club application finalized successfully" })
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error?.response?.data?.message || "Failed to finalize club application",
+        variant: "destructive" 
+      })
+    },
+  })
+}
+
+// ============================================
+// ATTENDANCE MUTATIONS
+// ============================================
+
+/**
+ * Hook to save attendance record
+ */
+export function useSaveAttendanceMutation() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async (records: any[]) => {
+      const { saveAttendanceRecord } = await import("@/service/attendanceApi")
+      return await saveAttendanceRecord(records)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.attendances })
+      toast({ title: "Success", description: "Attendance saved successfully" })
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error?.response?.data?.message || "Failed to save attendance",
+        variant: "destructive" 
+      })
+    },
+  })
+}
+
+/**
+ * Hook to check in to event
+ */
+export function useCheckinMutation() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async (token: string) => {
+      const { checkin } = await import("@/service/checkinApi")
+      return await checkin(token)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.attendances })
+      queryClient.invalidateQueries({ queryKey: queryKeys.wallet })
+      toast({ title: "Success", description: "Checked in successfully" })
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error?.message || "Failed to check in",
+        variant: "destructive" 
+      })
+    },
+  })
+}

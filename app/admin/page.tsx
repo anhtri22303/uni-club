@@ -4,22 +4,24 @@ import { AppShell } from "@/components/app-shell"
 import { ProtectedRoute } from "@/contexts/protected-route"
 import { StatsCard } from "@/components/stats-card"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { useData } from "@/contexts/data-context"
-import { Gift, TrendingUp, CheckCircle, Clock, Users as UsersIcon, UserCheck, UserX, Shield, Building2, UserPlus, UsersRound } from "lucide-react"
+import { Gift, TrendingUp, CheckCircle, Clock, Users as UsersIcon, UserCheck, UserX, Shield, Building2, UserPlus, UsersRound, Calendar, MapPin, Eye, ChevronLeft, ChevronRight } from "lucide-react"
 import { useEvents } from "@/hooks/use-query-hooks"
 import { getClubStats } from "@/service/clubApi"
 import { getUserStats } from "@/service/userApi"
-import { useEffect, useState } from "react"
-
-// Removed static `src/data` imports — use empty fallbacks. Replace with real data from API/context later.
-const offers: any[] = []
-const redemptions: any[] = []
-const users: any[] = []
+import { useEffect, useState, useMemo } from "react"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useRouter } from "next/navigation"
 
 export default function PartnerDashboard() {
-  const { vouchers } = useData()
+  const router = useRouter()
   const [userStats, setUserStats] = useState<any>(null)
   const [clubStats, setClubStats] = useState<any>(null)
+  const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [approvalFilter, setApprovalFilter] = useState<string>("all")
+  const [currentPage, setCurrentPage] = useState(1)
+  const ITEMS_PER_PAGE = 5
 
   // ✅ USE REACT QUERY for events
   const { data: events = [], isLoading: eventsLoading } = useEvents()
@@ -42,19 +44,6 @@ export default function PartnerDashboard() {
     loadData()
   }, [])
 
-  // For demo purposes, assume this admin manages CoffeeLab offers
-  const partnerName = "CoffeeLab"
-  const partnerOffers = offers.filter((o) => o.partner === partnerName)
-  const partnerRedemptions = redemptions.filter((r) => {
-    const offer = offers.find((o) => o.id === r.offerId)
-    return offer?.partner === partnerName
-  })
-
-  const partnerVouchers = vouchers.filter((v) => {
-    const offer = offers.find((o) => o.id === v.offerId)
-    return offer?.partner === partnerName
-  })
-
   const totalClubs = clubStats?.totalClubs || 0
   const totalMembers = clubStats?.totalMembers || 0
   const activeMembers = clubStats?.activeMembers || 0
@@ -62,14 +51,68 @@ export default function PartnerDashboard() {
   const totalUsers = userStats?.total || 0
   const activeUsers = userStats?.active || 0
   const inactiveUsers = userStats?.inactive || 0
-  const totalRedemptions = partnerRedemptions.length + partnerVouchers.length
-  const activeVouchers = partnerVouchers.filter((v) => !v.used).length
 
-  // Recent activity (combine redemptions and vouchers)
-  const recentActivity = [
-    ...partnerRedemptions.map((r) => ({ ...r, type: "historical" })),
-    ...partnerVouchers.filter((v) => v.used).map((v) => ({ ...v, type: "recent" })),
-  ].slice(0, 5)
+  // Helper to get event status based on date and time
+  const getEventStatus = (eventDate: string, eventTime: string) => {
+    if (!eventDate) return "Finished"
+    const now = new Date()
+    const [hour = "00", minute = "00"] = (eventTime || "00:00").split(":")
+    const event = new Date(eventDate)
+    event.setHours(Number(hour), Number(minute), 0, 0)
+
+    const EVENT_DURATION_MS = 2 * 60 * 60 * 1000
+    const start = event.getTime()
+    const end = start + EVENT_DURATION_MS
+
+    if (now.getTime() < start) {
+      if (start - now.getTime() < 7 * 24 * 60 * 60 * 1000) return "Soon"
+      return "Future"
+    }
+    if (now.getTime() >= start && now.getTime() <= end) return "Now"
+    return "Finished"
+  }
+
+  // Event statistics
+  const eventStats = useMemo(() => {
+    const approved = events.filter((e: any) => e.status === "APPROVED").length
+    const pending = events.filter((e: any) => e.status === "PENDING").length
+    const rejected = events.filter((e: any) => e.status === "REJECTED").length
+    const now = events.filter((e: any) => getEventStatus(e.date, e.time) === "Now").length
+    const soon = events.filter((e: any) => getEventStatus(e.date, e.time) === "Soon").length
+    const finished = events.filter((e: any) => getEventStatus(e.date, e.time) === "Finished").length
+    
+    return { approved, pending, rejected, now, soon, finished }
+  }, [events])
+
+  // Filtered events based on status and approval
+  const filteredEvents = useMemo(() => {
+    return events.filter((event: any) => {
+      const status = getEventStatus(event.date, event.time)
+      const matchesStatus = statusFilter === "all" || status.toLowerCase() === statusFilter.toLowerCase()
+      const matchesApproval = approvalFilter === "all" || event.status === approvalFilter
+      return matchesStatus && matchesApproval
+    })
+  }, [events, statusFilter, approvalFilter])
+
+  // Sort events by date (newest first)
+  const sortedEvents = useMemo(() => {
+    return [...filteredEvents].sort((a: any, b: any) => {
+      const dateA = new Date(a.date || '1970-01-01').getTime()
+      const dateB = new Date(b.date || '1970-01-01').getTime()
+      return dateB - dateA
+    })
+  }, [filteredEvents])
+
+  // Calculate pagination
+  const totalPages = Math.ceil(sortedEvents.length / ITEMS_PER_PAGE)
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
+  const endIndex = startIndex + ITEMS_PER_PAGE
+  const paginatedEvents = sortedEvents.slice(startIndex, endIndex)
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [statusFilter, approvalFilter])
 
   return (
     <ProtectedRoute allowedRoles={["admin"]}>
@@ -77,7 +120,6 @@ export default function PartnerDashboard() {
         <div className="space-y-6">
           <div>
             <h1 className="text-3xl font-bold text-balance">Admin Dashboard</h1>
-            <p className="text-muted-foreground">Managing {partnerName} offers and redemptions</p>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -104,10 +146,10 @@ export default function PartnerDashboard() {
               variant="info"
             />
             <StatsCard
-              title="Active Vouchers"
-              value={activeVouchers}
-              description="Pending redemption"
-              icon={Clock}
+              title="Total Members"
+              value={totalMembers}
+              description="Club members"
+              icon={UsersIcon}
               variant="warning"
             />
           </div>
@@ -302,106 +344,236 @@ export default function PartnerDashboard() {
               </CardContent>
             </Card>
 
-            {/* Offer Performance */}
-            <Card>
+            {/* Event Statistics Overview */}
+            <Card className="md:col-span-2">
               <CardHeader>
-                <CardTitle>Offer Performance</CardTitle>
-                <CardDescription>Your most popular offers</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {partnerOffers.map((offer) => {
-                    const offerRedemptions = [
-                      ...partnerRedemptions.filter((r) => r.offerId === offer.id),
-                      ...partnerVouchers.filter((v) => v.offerId === offer.id),
-                    ]
-                    return (
-                      <div key={offer.id} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div>
-                          <p className="font-medium">{offer.title}</p>
-                          <p className="text-sm text-muted-foreground">{offer.costPoints} points</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-medium">{offerRedemptions.length} redemptions</p>
-                          <p className="text-xs text-muted-foreground">
-                            {partnerOffers.length > 0 ? Math.round(offerRedemptions.length / partnerOffers.length) : 0}{" "}
-                            avg
-                          </p>
-                        </div>
-                      </div>
-                    )
-                  })}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Event Statistics Overview</CardTitle>
+                    <CardDescription>All events status and filters</CardDescription>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => router.push("/admin/events")}
+                  >
+                    View All Events
+                  </Button>
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Recent Activity */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent Activity</CardTitle>
-                <CardDescription>Latest voucher redemptions</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {recentActivity.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-4">No recent activity</p>
+                {/* Event Stats Cards */}
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6 mb-6">
+                  {/* Total Events */}
+                  <div className="flex flex-col items-center justify-center p-4 border rounded-lg bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900">
+                    <Calendar className="h-8 w-8 text-purple-600 dark:text-purple-400 mb-2" />
+                    <div className="text-3xl font-bold text-purple-700 dark:text-purple-300">{totalEvents}</div>
+                    <div className="text-xs text-purple-600 dark:text-purple-400 font-medium mt-1">Total</div>
+                  </div>
+
+                  {/* Approved */}
+                  <div className="flex flex-col items-center justify-center p-4 border rounded-lg bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900">
+                    <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400 mb-2" />
+                    <div className="text-3xl font-bold text-green-700 dark:text-green-300">{eventStats.approved}</div>
+                    <div className="text-xs text-green-600 dark:text-green-400 font-medium mt-1">Approved</div>
+                  </div>
+
+                  {/* Pending */}
+                  <div className="flex flex-col items-center justify-center p-4 border rounded-lg bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-950 dark:to-yellow-900">
+                    <Clock className="h-8 w-8 text-yellow-600 dark:text-yellow-400 mb-2" />
+                    <div className="text-3xl font-bold text-yellow-700 dark:text-yellow-300">{eventStats.pending}</div>
+                    <div className="text-xs text-yellow-600 dark:text-yellow-400 font-medium mt-1">Pending</div>
+                  </div>
+
+                  {/* Now */}
+                  <div className="flex flex-col items-center justify-center p-4 border rounded-lg bg-gradient-to-br from-red-50 to-red-100 dark:from-red-950 dark:to-red-900">
+                    <TrendingUp className="h-8 w-8 text-red-600 dark:text-red-400 mb-2" />
+                    <div className="text-3xl font-bold text-red-700 dark:text-red-300">{eventStats.now}</div>
+                    <div className="text-xs text-red-600 dark:text-red-400 font-medium mt-1">Now</div>
+                  </div>
+
+                  {/* Soon */}
+                  <div className="flex flex-col items-center justify-center p-4 border rounded-lg bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900">
+                    <Calendar className="h-8 w-8 text-blue-600 dark:text-blue-400 mb-2" />
+                    <div className="text-3xl font-bold text-blue-700 dark:text-blue-300">{eventStats.soon}</div>
+                    <div className="text-xs text-blue-600 dark:text-blue-400 font-medium mt-1">Soon</div>
+                  </div>
+
+                  {/* Finished */}
+                  <div className="flex flex-col items-center justify-center p-4 border rounded-lg bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-gray-900">
+                    <CheckCircle className="h-8 w-8 text-gray-600 dark:text-gray-400 mb-2" />
+                    <div className="text-3xl font-bold text-gray-700 dark:text-gray-300">{eventStats.finished}</div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400 font-medium mt-1">Finished</div>
+                  </div>
+                </div>
+
+                {/* Filters */}
+                <div className="flex gap-3 mb-4">
+                  <div className="flex-1">
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Status Filter</label>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Status</SelectItem>
+                        <SelectItem value="now">Now</SelectItem>
+                        <SelectItem value="soon">Soon</SelectItem>
+                        <SelectItem value="finished">Finished</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Approval Filter</label>
+                    <Select value={approvalFilter} onValueChange={setApprovalFilter}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Approval</SelectItem>
+                        <SelectItem value="APPROVED">Approved</SelectItem>
+                        <SelectItem value="PENDING">Pending</SelectItem>
+                        <SelectItem value="REJECTED">Rejected</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {(statusFilter !== "all" || approvalFilter !== "all") && (
+                    <div className="flex items-end">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setStatusFilter("all")
+                          setApprovalFilter("all")
+                        }}
+                        className="h-9"
+                      >
+                        Clear
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Recent Events List */}
+                <div className="space-y-2">
+                  <div className="text-sm font-semibold mb-3 flex items-center justify-between">
+                    <span>Recent Events ({filteredEvents.length})</span>
+                    {filteredEvents.length > ITEMS_PER_PAGE && (
+                      <span className="text-xs text-muted-foreground">
+                        Page {currentPage} of {totalPages} ({startIndex + 1}-{Math.min(endIndex, sortedEvents.length)} of {filteredEvents.length})
+                      </span>
+                    )}
+                  </div>
+                  {eventsLoading ? (
+                    <div className="text-center py-8 text-muted-foreground">Loading events...</div>
+                  ) : paginatedEvents.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">No events found</div>
                   ) : (
-                    recentActivity.map((activity, index) => {
-                      const user = users.find((u) => u.id === activity.userId)
-                      const offer = offers.find((o) => o.id === activity.offerId)
+                    paginatedEvents.map((event: any) => {
+                      const status = getEventStatus(event.date, event.time)
                       return (
-                        <div key={index} className="flex items-start gap-3">
-                          <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium">
-                              {user?.fullName || "Unknown User"} redeemed {offer?.title || "Unknown Offer"}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {activity.date || activity.redeemedAt
-                                ? new Date(activity.date || activity.redeemedAt).toLocaleDateString()
-                                : "Recently"}
-                            </p>
+                        <div
+                          key={event.id}
+                          className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+                          onClick={() => router.push(`/admin/events/${event.id}`)}
+                        >
+                          <div className="flex-1 min-w-0 mr-4">
+                            <div className="flex items-center gap-2 mb-1">
+                              <p className="font-medium text-sm truncate">{event.name || event.title}</p>
+                              <Badge
+                                variant={
+                                  status === "Finished"
+                                    ? "secondary"
+                                    : status === "Soon"
+                                    ? "default"
+                                    : status === "Now"
+                                    ? "destructive"
+                                    : "outline"
+                                }
+                                className="text-xs"
+                              >
+                                {status}
+                              </Badge>
+                              {event.status === "APPROVED" && (
+                                <Badge variant="default" className="text-xs">Approved</Badge>
+                              )}
+                              {event.status === "PENDING" && (
+                                <Badge variant="outline" className="text-xs">Pending</Badge>
+                              )}
+                              {event.status === "REJECTED" && (
+                                <Badge variant="destructive" className="text-xs">Rejected</Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                              <div className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                {new Date(event.date).toLocaleDateString("en-US", {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
+                                })}
+                              </div>
+                              {event.locationName && (
+                                <div className="flex items-center gap-1">
+                                  <MapPin className="h-3 w-3" />
+                                  {event.locationName}
+                                </div>
+                              )}
+                            </div>
                           </div>
+                          <Button variant="ghost" size="sm" className="flex-shrink-0">
+                            <Eye className="h-4 w-4" />
+                          </Button>
                         </div>
                       )
                     })
                   )}
                 </div>
+
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between pt-4 border-t">
+                    <div className="text-xs text-muted-foreground">
+                      Showing {startIndex + 1}-{Math.min(endIndex, sortedEvents.length)} of {filteredEvents.length} events
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                        disabled={currentPage === 1}
+                        className="h-8 w-8 p-0"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                          <Button
+                            key={page}
+                            variant={currentPage === page ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setCurrentPage(page)}
+                            className="h-8 w-8 p-0"
+                          >
+                            {page}
+                          </Button>
+                        ))}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                        disabled={currentPage === totalPages}
+                        className="h-8 w-8 p-0"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
-
-          {/* Summary Stats */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Performance Summary</CardTitle>
-              <CardDescription>Key metrics for {partnerName}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-4">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-primary">{totalClubs}</div>
-                  <div className="text-sm text-muted-foreground">Total Clubs</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600">{totalRedemptions}</div>
-                  <div className="text-sm text-muted-foreground">Total Redemptions</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600">
-                    {totalEvents}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Total Events</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-orange-600">
-                    {totalUsers}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Total Users</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </AppShell>
     </ProtectedRoute>

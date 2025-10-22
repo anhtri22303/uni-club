@@ -59,6 +59,10 @@ export default function AdminUsersPage() {
 
   // ✅ USE REACT QUERY for users
   const { data: usersData = [], isLoading: loading, error: queryError } = useUsers()
+  
+  console.log("📊 AdminUsersPage - usersData:", usersData)
+  console.log("📊 AdminUsersPage - isLoading:", loading)
+  console.log("📊 AdminUsersPage - error:", queryError)
 
   const getUserMembershipCount = (userId: string | number) =>
     clubMemberships.filter((m) => m.userId === userId && m.status === "APPROVED").length
@@ -66,17 +70,23 @@ export default function AdminUsersPage() {
   const getRoleName = (roleId: string) => formatRoleName(roleId)
 
   // Map API data to UserRecord shape
-  const users: UserRecord[] = (usersData || []).map((u: any) => ({
-    id: u.id,
-    fullName: u.fullName || u.name || "",
-    email: u.email,
-    phone: u.phone ?? null,
-    roleName: u.roleName?.toLowerCase() || (u.defaultRole ?? "unknown").toLowerCase(),
-    majorName: u.majorName || "",
-    studentCode: u.studentCode || null,
-    status: u.status,
-    avatarUrl: u.avatarUrl || "",
-  })).sort((a: any, b: any) => {
+  const users: UserRecord[] = (usersData || []).map((u: any) => {
+    // Log first user to verify mapping
+    if (usersData.indexOf(u) === 0) {
+      console.log("📋 First user object from API:", u)
+    }
+    return {
+      id: u.id,
+      fullName: u.fullName || u.name || "",
+      email: u.email,
+      phone: u.phone ?? null,
+      roleName: u.roleName?.toLowerCase() || (u.defaultRole ?? "unknown").toLowerCase(),
+      majorName: u.majorName || "",
+      studentCode: u.studentCode || null,
+      status: u.status,
+      avatarUrl: u.avatarUrl || "",
+    }
+  }).sort((a: any, b: any) => {
     if (a.roleName < b.roleName) return -1;
     if (a.roleName > b.roleName) return 1;
     if (a.majorName < b.majorName) return -1;
@@ -85,6 +95,8 @@ export default function AdminUsersPage() {
     if (a.fullName > b.fullName) return 1;
     return 0;
   })
+  
+  console.log("📋 Mapped users (total:", users.length, "):", users.slice(0, 2))
 
   const error = queryError ? String(queryError) : null
 

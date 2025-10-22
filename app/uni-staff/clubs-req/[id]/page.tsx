@@ -6,9 +6,9 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { Building, Users, Calendar, Mail, GraduationCap, FileText, CheckCircle, XCircle, ArrowLeft, Clock, ShieldCheck } from "lucide-react"
+import { Building, Calendar, Mail, FileText, CheckCircle, XCircle, ArrowLeft, Clock, ShieldCheck, Eye, EyeOff } from "lucide-react"
 import Link from "next/link"
-import { processClubApplication, ProcessApplicationBody, finalizeClubApplication } from "@/service/clubApplicationAPI"
+import { processClubApplication, ProcessApplicationBody, createClubAccount, CreateClubAccountBody } from "@/service/clubApplicationAPI"
 import { useState } from "react"
 import { useClubApplications } from "@/hooks/use-query-hooks"
 import { useQueryClient } from "@tanstack/react-query"
@@ -17,6 +17,9 @@ import {
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
+import { useToast } from "@/hooks/use-toast"
+import { Input } from "@/components/ui/input"
+import { fetchClub } from "@/service/clubApi"
 
 interface ClubRequestDetailPageProps {
   params: {
@@ -29,45 +32,65 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
     applicationId: number
     id: string
     clubName: string
-    category: string
     description: string
-    faculty?: string
-    expectedMembers?: number | null
-    reason?: string
+    majorName: string // THAY THẾ category/faculty
+    vision: string // MỚI
+    proposerReason: string // THAY THẾ reason
     requestedBy: string
     requestedByEmail: string
     requestDate: string
     status: string
+    rejectReason?: string | null // MỚI
   }
 
   // Use React Query hook to fetch all club applications
   const { data: applications = [], isLoading: loading, error } = useClubApplications()
   const [isProcessing, setIsProcessing] = useState<boolean>(false)
   const queryClient = useQueryClient()
+  const { toast } = useToast()
   // Filter client-side to find the specific application by ID
-  // params.id might be 'req-<id>' or numeric string. Support both.
   const found = applications.find((d: any) => `req-${d.applicationId}` === params.id || String(d.applicationId) === params.id)
-  // NEW: State để quản lý modal từ chối
-  const [isRejectModalOpen, setIsRejectModalOpen] = useState<boolean>(false)
+  // STATE
   const [rejectionReason, setRejectionReason] = useState<string>("")
   const [isFinalizing, setIsFinalizing] = useState<boolean>(false) // NEW: For Finalize action
-  const [isFinalizeModalOpen, setIsFinalizeModalOpen] = useState<boolean>(false)
+  const [isCreatingAccount, setIsCreatingAccount] = useState<boolean>(false) // Create Account
+  // MODALS
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState<boolean>(false)
+  // const [isFinalizeModalOpen, setIsFinalizeModalOpen] = useState<boolean>(false)
+  const [isCreateAccountModalOpen, setCreateAccountModalOpen] = useState<boolean>(false)
+  // show password state
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+
+
+  const [accountForm, setAccountForm] = useState({
+    leaderFullName: "",
+    leaderEmail: "",
+    viceFullName: "",
+    viceEmail: "",
+    defaultPassword: "",
+  })
 
   const request: UiDetail | null = found ? {
     applicationId: found.applicationId,
     id: `req-${found.applicationId}`,
     clubName: found.clubName,
-    category: (found as any).category ?? "Unknown",
     description: found.description,
-    faculty: (found as any).faculty ?? "-",
-    expectedMembers: (found as any).expectedMembers ?? null,
-    reason: (found as any).reason ?? found.description,
-    requestedBy: found.submittedBy?.fullName ?? "Unknown",
-    requestedByEmail: found.submittedBy?.email ?? "",
+    majorName: (found as any).majorName ?? "Unknown", // SỬ DỤNG majorName
+    vision: (found as any).vision ?? "N/A", // SỬ DỤNG vision
+    proposerReason: (found as any).proposerReason ?? "N/A", // SỬ DỤNG proposerReason
+    // Swagger dùng 'proposer', code cũ dùng 'submittedBy'. Ưu tiên 'proposer'
+    requestedBy: (found as any).proposer?.fullName ?? found.submittedBy?.fullName ?? "Unknown",
+    requestedByEmail: (found as any).proposer?.email ?? found.submittedBy?.email ?? "",
     requestDate: found.submittedAt ?? "",
     status: found.status,
+    rejectReason: (found as any).rejectReason ?? null, // SỬ DỤNG rejectReason
   } : null
 
+  // Function to handle input change for the account creation form
+  const handleAccountFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { id, value } = e.target
+    setAccountForm(prev => ({ ...prev, [id]: value }))
+  }
   // 👇 3. Hàm xử lý khi nhấn nút "Approve"
   const handleApprove = async () => {
     if (!request) return;
@@ -84,10 +107,18 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
       // và cập nhật trạng thái mới trên giao diện.
       queryClient.invalidateQueries({ queryKey: ["club-applications"] });
 
-      alert("Application approved successfully!");
+      toast({
+        title: "Success",
+        description: "Application approved successfully!",
+        variant: "success",
+      })
     } catch (error) {
       console.error("Failed to approve application:", error);
-      alert(`Error: ${(error as Error).message}`);
+      toast({
+        title: "Error",
+        description: (error as Error).message || "Failed to approve application",
+        variant: "destructive",
+      })
     } finally {
       setIsProcessing(false);
     }
@@ -97,32 +128,110 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
   const handleReject = async () => {
     if (!request) return
     if (!rejectionReason.trim()) {
-      alert("Please enter a reason for rejection.")
+      toast({
+        title: "Validation Error",
+        description: "Please enter a reason for rejection.",
+        variant: "destructive",
+      })
       return
     }
-
     const body: ProcessApplicationBody = {
       approve: false,
-      rejectReason: rejectionReason,
-      internalNote: "Rejected by Uni Staff."
+      rejectReason: rejectionReason.trim(),
     }
     setIsProcessing(true)
     try {
       await processClubApplication(request.applicationId, body)
       queryClient.invalidateQueries({ queryKey: ["club-applications"] })
-      alert("Application rejected successfully!")
+      toast({
+        title: "Success",
+        description: "Application rejected successfully!",
+        variant: "success",
+      })
       // Đóng modal và reset state sau khi thành công
       setIsRejectModalOpen(false)
       setRejectionReason("")
     } catch (error) {
       console.error("Failed to reject application:", error)
-      alert(`Error: ${(error as Error).message}`)
+      toast({
+        title: "Error",
+        description: (error as Error).message || "Failed to reject application",
+        variant: "destructive",
+      })
     } finally {
       setIsProcessing(false)
     }
   }
+  const handleCreateClubAccount = async () => {
+    if (!request) return;
 
+    // Validate form first
+    for (const key in accountForm) {
+      if (!accountForm[key as keyof typeof accountForm]) {
+        toast({
+          title: "Validation Error",
+          description: `Field '${key.replace(/([A-Z])/g, ' $1').trim()}' cannot be empty.`,
+          variant: "destructive"
+        })
+        return;
+      }
+    }
 
+    setIsCreatingAccount(true);
+    try {
+      // 1. Fetch danh sách tất cả các club
+      toast({ title: "Processing...", description: "Finding the newly approved club..." });
+      // Fetch một lượng lớn để đảm bảo club mới nằm trong danh sách
+      const clubListResponse = await fetchClub({ page: 0, size: 9999, sort: ["name"] });
+      const allClubs = clubListResponse.content;
+
+      // 2. Tìm club trong danh sách bằng cách so sánh tên
+      const foundClub = allClubs.find(club => club.name === request.clubName);
+
+      // 3. Xử lý trường hợp không tìm thấy
+      if (!foundClub) {
+        toast({
+          title: "Club Not Found",
+          description: "Could not find the corresponding club. It might not have been created yet. Please wait a moment and try again.",
+          variant: "destructive",
+        });
+        return; // Dừng thực thi
+      }
+
+      // 4. Nếu tìm thấy, sử dụng clubId chính xác
+      const correctClubId = foundClub.id;
+      console.log(`Found a match! Using clubId: ${correctClubId} for application: ${request.applicationId}`);
+
+      const body: CreateClubAccountBody = {
+        applicationId: request.applicationId,
+        clubId: correctClubId,
+        ...accountForm
+      };
+      // ✅ LOG TOÀN BỘ DỮ LIỆU SẮP GỬI ĐI
+      console.log("--- Sending Request to create-club-accounts ---");
+      console.log("Payload:", body);
+      console.log("-------------------------------------------------");
+
+      // 5. Gọi API tạo tài khoản như cũ
+      await createClubAccount(body);
+      queryClient.invalidateQueries({ queryKey: ["club-applications"] });
+      toast({
+        title: "Success",
+        description: `Account for ${request.clubName} created successfully!`,
+        variant: "success",
+      });
+      setCreateAccountModalOpen(false);
+
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: (error as Error).message || "An unexpected error occurred while creating the account.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreatingAccount(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -153,23 +262,6 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
         </AppShell>
       </ProtectedRoute>
     )
-  }
-  // NEW: Handler for finalizing the application
-  const handleFinalize = async () => {
-    if (!request) return
-
-    setIsFinalizing(true)
-    try {
-      await finalizeClubApplication(request.applicationId)
-      queryClient.invalidateQueries({ queryKey: ["club-applications"] })
-      alert("Club account created and application finalized successfully!")
-      setIsFinalizeModalOpen(false)
-    } catch (error) {
-      console.error("Failed to finalize application:", error)
-      alert(`Error: ${(error as Error).message}`)
-    } finally {
-      setIsFinalizing(false)
-    }
   }
 
   if (loading) {
@@ -217,6 +309,13 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
           <Badge variant="default" className="bg-green-100 text-green-700 border-green-300">
             <CheckCircle className="h-3 w-3 mr-1" />
             Approved
+          </Badge>
+        )
+      case "COMPLETE":
+        return (
+          <Badge variant="default" className="bg-blue-100 text-blue-800 border-blue-300">
+            <ShieldCheck className="h-3 w-3 mr-1" />
+            Complete
           </Badge>
         )
       case "REJECTED":
@@ -268,7 +367,7 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Category</label>
                     <div className="mt-1">
-                      <Badge variant="outline">{request.category}</Badge>
+                      <Badge variant="outline">{request.majorName}</Badge>
                     </div>
                   </div>
 
@@ -277,21 +376,16 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
                     <p className="mt-1">{request.description}</p>
                   </div>
 
+                  {/* ✅ CẬP NHẬT: Thêm 'Vision' */}
                   <div>
-                    <label className="text-sm font-medium text-muted-foreground">Faculty</label>
-                    <div className="flex items-center gap-2 mt-1">
-                      <GraduationCap className="h-4 w-4 text-muted-foreground" />
-                      <span>{request.faculty}</span>
+                    <label className="text-sm font-medium text-muted-foreground">Vision</label>
+                    <div className="flex items-start gap-2 mt-1">
+                      <Eye className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1" />
+                      <p className="mt-0">{request.vision}</p>
                     </div>
                   </div>
 
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Expected Members</label>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Users className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-semibold">{request.expectedMembers} members</span>
-                    </div>
-                  </div>
+
                 </CardContent>
               </Card>
 
@@ -299,11 +393,11 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <FileText className="h-5 w-5" />
-                    Purpose & Reason
+                    Proposer Reason
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="leading-relaxed">{request.reason}</p>
+                  <p className="leading-relaxed">{request.proposerReason}</p>
                 </CardContent>
               </Card>
             </div>
@@ -346,6 +440,16 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
                     <label className="text-sm font-medium text-muted-foreground">Current Status</label>
                     <div className="mt-2">{getStatusBadge(request.status)}</div>
                   </div>
+                  {/* ✅ CẬP NHẬT: Hiển thị lý do từ chối nếu có */}
+                  {request.status === "REJECTED" && request.rejectReason && (
+                    <>
+                      <Separator />
+                      <div>
+                        <label className="text-sm font-medium text-destructive">Rejection Reason</label>
+                        <p className="mt-1 text-sm text-red-700">{request.rejectReason}</p>
+                      </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
 
@@ -424,25 +528,61 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
                 <Card>
                   <CardHeader><CardTitle className="text-lg">Next Step</CardTitle></CardHeader>
                   <CardContent>
-                    <Dialog open={isFinalizeModalOpen} onOpenChange={setIsFinalizeModalOpen}>
+                    <Dialog open={isCreateAccountModalOpen} onOpenChange={setCreateAccountModalOpen}>
                       <DialogTrigger asChild>
-                        <Button className="w-full" variant="default" disabled={isFinalizing}>
-                          <ShieldCheck className="h-4 w-4 mr-2" />
-                          Create club account
-                        </Button>
+                        <Button className="w-full" variant="default" disabled={isCreatingAccount}><ShieldCheck className="h-4 w-4 mr-2" />Create Club Account</Button>
                       </DialogTrigger>
-                      <DialogContent>
+                      <DialogContent className="sm:max-w-lg">
                         <DialogHeader>
-                          <DialogTitle>Confirm Account Creation</DialogTitle>
-                          <DialogDescription>
-                            This will create an official account for <strong>{request.clubName}</strong> and finalize the application process. This action cannot be undone.
-                          </DialogDescription>
+                          <DialogTitle>Create Account for "{request.clubName}"</DialogTitle>
+                          <DialogDescription>Enter the details for the club's leadership and a default password.</DialogDescription>
                         </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                          <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="leaderFullName" className="text-right">Leader Name</Label>
+                            <Input id="leaderFullName" value={accountForm.leaderFullName} onChange={handleAccountFormChange} className="col-span-3 bg-white border border-slate-300" />
+                          </div>
+                          <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="leaderEmail" className="text-right">Leader Email</Label>
+                            <Input id="leaderEmail" type="email" value={accountForm.leaderEmail} onChange={handleAccountFormChange} className="col-span-3 bg-white border border-slate-300" />
+                          </div>
+                          <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="viceFullName" className="text-right">Vice Name</Label>
+                            <Input id="viceFullName" value={accountForm.viceFullName} onChange={handleAccountFormChange} className="col-span-3 bg-white border border-slate-300" />
+                          </div>
+                          <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="viceEmail" className="text-right">Vice Email</Label>
+                            <Input id="viceEmail" type="email" value={accountForm.viceEmail} onChange={handleAccountFormChange} className="col-span-3 bg-white border border-slate-300" />
+                          </div>
+                          {/* ✅ CẬP NHẬT: Ô nhập mật khẩu với nút xem/ẩn */}
+                          <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="defaultPassword" className="text-right">Password</Label>
+                            <div className="relative col-span-3">
+                              <Input
+                                id="defaultPassword"
+                                type={showPassword ? "text" : "password"}
+                                value={accountForm.defaultPassword}
+                                onChange={handleAccountFormChange}
+                                className="bg-white border border-slate-300 pr-10" // Thêm padding-right
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700"
+                                aria-label={showPassword ? "Hide password" : "Show password"}
+                              >
+                                {showPassword ? (
+                                  <EyeOff className="h-5 w-5" />
+                                ) : (
+                                  <Eye className="h-5 w-5" />
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
                         <DialogFooter>
-                          <Button variant="outline" onClick={() => setIsFinalizeModalOpen(false)} disabled={isFinalizing}>Cancel</Button>
-                          <Button onClick={handleFinalize} disabled={isFinalizing}>
-                            {isFinalizing ? "Creating..." : "Confirm & Create Account"}
-                          </Button>
+                          <Button variant="outline" onClick={() => setCreateAccountModalOpen(false)} disabled={isCreatingAccount}>Cancel</Button>
+                          <Button onClick={handleCreateClubAccount} disabled={isCreatingAccount}>{isCreatingAccount ? "Creating..." : "Confirm & Create"}</Button>
                         </DialogFooter>
                       </DialogContent>
                     </Dialog>
