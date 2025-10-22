@@ -113,7 +113,7 @@ export default function UniStaffClubRequestsPage() {
 			} else if (tabType === "in_progress") {
 				matchStatus = req.status === "APPROVED"
 			} else {
-				matchStatus = req.status === "COMPLETED" || req.status === "REJECTED"
+				matchStatus = req.status === "COMPLETE" || req.status === "REJECTED"
 			}
 
 			return matchSearch && matchStatus
@@ -193,14 +193,14 @@ export default function UniStaffClubRequestsPage() {
 						Rejected
 					</Badge>
 				)
-			case "COMPLETED":
+			case "COMPLETE":
 				return (
 					<Badge
 						variant="outline"
 						className="bg-blue-50 text-blue-700 border-blue-300"
 					>
 						<CheckCheck className="h-3 w-3 mr-1" />
-						Completed
+						Complete
 					</Badge>
 				)
 			default:
@@ -211,7 +211,7 @@ export default function UniStaffClubRequestsPage() {
 	const pendingCount = requests.filter((req) => req.status === "PENDING").length
 	const approvedCount = requests.filter((req) => req.status === "APPROVED").length
 	const rejectedCount = requests.filter((req) => req.status === "REJECTED").length
-	const completedCount = requests.filter((req) => req.status === "COMPLETED").length
+	const completedCount = requests.filter((req) => req.status === "COMPLETE").length
 
 	return (
 		<ProtectedRoute allowedRoles={["uni_staff"]}>
@@ -304,11 +304,11 @@ export default function UniStaffClubRequestsPage() {
 							</CardContent>
 						</Card>
 
-						{/* THẺ MỚI CHO COMPLETED */}
+						{/* THẺ MỚI CHO COMPLETE */}
 						<Card className="border-0 shadow-md bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900">
 							<CardHeader className="pb-1 px-4 pt-3">
 								<CardTitle className="text-xs font-medium text-blue-700 dark:text-blue-300">
-									Completed
+									Complete
 								</CardTitle>
 							</CardHeader>
 							<CardContent className="pb-3 px-4">
@@ -504,7 +504,7 @@ export default function UniStaffClubRequestsPage() {
 							) : inProgressRequests.length === 0 ? (
 								<Card>
 									<CardContent className="py-8 text-center text-muted-foreground">
-										Không tìm thấy đơn đăng ký nào đang xử lý
+										No pending applications found
 									</CardContent>
 								</Card>
 							) : (

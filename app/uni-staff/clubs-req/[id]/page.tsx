@@ -311,11 +311,11 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
             Approved
           </Badge>
         )
-      case "COMPLETED":
+      case "COMPLETE":
         return (
           <Badge variant="default" className="bg-blue-100 text-blue-800 border-blue-300">
             <ShieldCheck className="h-3 w-3 mr-1" />
-            Completed
+            Complete
           </Badge>
         )
       case "REJECTED":
