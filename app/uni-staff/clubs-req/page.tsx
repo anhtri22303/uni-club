@@ -492,7 +492,7 @@ export default function UniStaffClubRequestsPage() {
 							{loading ? (
 								<Card>
 									<CardContent className="py-8 text-center text-muted-foreground">
-										Đang tải đơn đăng ký câu lạc bộ...
+										Loading club registration form...
 									</CardContent>
 								</Card>
 							) : error ? (
