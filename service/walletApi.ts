@@ -5,6 +5,16 @@ export type ApiWallet = {
   [key: string]: any; // Cho phép các thuộc tính khác từ backend
 };
 
+export type ApiClubWallet = {
+  walletId: number;
+  balancePoints: number;
+  ownerType: string;
+  clubId: number;
+  clubName: string;
+  userId: number | null;
+  userFullName: string | null;
+};
+
 export const getWallet = async (): Promise<ApiWallet> => {
   try {
     const res = await axiosInstance.get("/api/wallets/me")
@@ -72,8 +82,20 @@ export const distributePointsToClubs = async (
   }
 }
 
+export const getClubWallet = async (clubId: string | number): Promise<ApiClubWallet> => {
+  try {
+    const res = await axiosInstance.get(`/api/wallets/club/${clubId}`)
+    console.log("getClubWallet:", res.data)
+    return res.data as ApiClubWallet
+  } catch (err) {
+    console.error(`Failed to get club wallet for clubId ${clubId}`, err)
+    throw err
+  }
+}
+
 export default {
   getWallet,
   rewardPointsToMember,
-  distributePointsToClubs
+  distributePointsToClubs,
+  getClubWallet
 }

@@ -13,11 +13,12 @@ import { useData } from "@/contexts/data-context"
 import membershipApi, { ApiMembership } from "@/service/membershipApi"
 import { useToast } from "@/hooks/use-toast"
 import { usePagination } from "@/hooks/use-pagination"
-import { Users, Award, ChevronLeft, ChevronRight, Send, Filter, X } from "lucide-react"
+import { Users, Award, ChevronLeft, ChevronRight, Send, Filter, X, Wallet } from "lucide-react"
 import { getClubById, getClubIdFromToken } from "@/service/clubApi"
 import { fetchUserById, fetchProfile } from "@/service/userApi"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { getClubWallet, ApiClubWallet } from "@/service/walletApi"
 
 interface ClubMember {
   id: string;
@@ -47,6 +48,8 @@ export default function ClubLeaderRewardDistributionPage() {
   const [managedClub, setManagedClub] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [userId, setUserId] = useState<string | number | null>(null)
+  const [clubWallet, setClubWallet] = useState<ApiClubWallet | null>(null)
+  const [walletLoading, setWalletLoading] = useState(false)
   // === State và Logic tải dữ liệu thành viên (Tái sử dụng) ===
   const [apiMembers, setApiMembers] = useState<ApiMembership[] | null>(null)
   const [membersLoading, setMembersLoading] = useState(false)
@@ -67,6 +70,17 @@ export default function ClubLeaderRewardDistributionPage() {
 
         const clubResponse = await getClubById(clubId)
         setManagedClub(clubResponse.data)
+
+        // Load club wallet
+        setWalletLoading(true)
+        try {
+          const walletData = await getClubWallet(clubId)
+          setClubWallet(walletData)
+        } catch (walletErr) {
+          console.error("Failed to load club wallet:", walletErr)
+        } finally {
+          setWalletLoading(false)
+        }
 
         const memberData = await membershipApi.getMembersByClubId(clubId)
         const membersWithUserData = await Promise.all(
@@ -293,6 +307,37 @@ export default function ClubLeaderRewardDistributionPage() {
             </h1>
             <p className="text-muted-foreground">Distribute bonus points from club funds to members of "<span className="font-semibold text-primary">{managedClub?.name}</span>"</p>
           </div>
+
+          {/* Club Wallet Balance Card */}
+          <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
+            <CardContent className="py-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="h-14 w-14 rounded-full bg-blue-500 flex items-center justify-center">
+                    <Wallet className="h-7 w-7 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Club Balance</p>
+                    {walletLoading ? (
+                      <p className="text-3xl font-bold text-blue-600">Loading...</p>
+                    ) : clubWallet ? (
+                      <p className="text-3xl font-bold text-blue-600">
+                        {clubWallet.balancePoints.toLocaleString()} pts
+                      </p>
+                    ) : (
+                      <p className="text-3xl font-bold text-gray-400">N/A</p>
+                    )}
+                  </div>
+                </div>
+                {clubWallet && (
+                  <div className="text-right">
+                    <p className="text-xs text-muted-foreground">Wallet ID</p>
+                    <p className="text-sm font-medium text-gray-700">#{clubWallet.walletId}</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader>
