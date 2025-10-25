@@ -464,17 +464,27 @@ export default function ClubLeaderEventsPage() {
 
   const handleCopyLink = async (environment: 'local' | 'prod' | 'mobile') => {
     try {
+      // Generate fresh token for all environments
+      if (!selectedEvent?.id) {
+        toast({ title: 'No event', description: 'Event not available', variant: 'destructive' })
+        return
+      }
+
       let link: string | undefined
-      if (environment === 'local') link = qrLinks.local
-      else if (environment === 'prod') link = qrLinks.prod
-      else {
-        // mobile deep link uses checkInCode
-        const token = selectedEvent?.checkInCode || ''
-        if (!token) {
-          toast({ title: 'No token', description: 'Mobile token not available', variant: 'destructive' })
-          return
+      try {
+        const { token } = await generateCode(selectedEvent.id)
+        
+        if (environment === 'local') {
+          link = `http://localhost:3000/student/checkin/${token}`
+        } else if (environment === 'prod') {
+          link = `https://uniclub-fpt.vercel.app/student/checkin/${token}`
+        } else {
+          // mobile deep link
+          link = `exp://192.168.1.50:8081/--/student/checkin/${token}`
         }
-        link = `exp://192.168.1.50:8081/--/student/checkin/${token}`
+      } catch (err) {
+        toast({ title: 'Error', description: 'Could not generate link', variant: 'destructive' })
+        return
       }
 
       if (!link) return
