@@ -47,6 +47,33 @@ export default function UniStaffEventRequestsPage() {
 		return loc.capacity ?? loc.maxCapacity ?? loc.seatingCapacity ?? null
 	}
 
+	// Helper function to check if event has expired (past endTime)
+	const isEventExpired = (event: any) => {
+		// Check if date and endTime are present
+		if (!event.date || !event.endTime) return false
+
+		try {
+			// Get current date/time in Vietnam timezone (UTC+7)
+			const now = new Date()
+			const vnTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }))
+
+			// Parse event date (format: YYYY-MM-DD)
+			const [year, month, day] = event.date.split('-').map(Number)
+			
+			// Parse endTime (format: HH:MM:SS or HH:MM)
+			const [hours, minutes] = event.endTime.split(':').map(Number)
+
+			// Create event end datetime in Vietnam timezone
+			const eventEndDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0)
+
+			// Event is expired if current VN time is past the end time
+			return vnTime > eventEndDateTime
+		} catch (error) {
+			console.error('Error checking event expiration:', error)
+			return false
+		}
+	}
+
 	useEffect(() => {
 		let mounted = true
 		const load = async () => {
@@ -124,7 +151,16 @@ export default function UniStaffEventRequestsPage() {
 			return filteredRequests.slice(start, start + pageSize)
 		})()
 
-	const getStatusBadge = (status: string) => {
+	const getStatusBadge = (status: string, isExpired: boolean = false) => {
+		// Override with Expired badge if expired - gray color to override approval status
+		if (isExpired) {
+			return (
+				<Badge variant="secondary" className="bg-gray-400 text-white">
+					Expired
+				</Badge>
+			)
+		}
+
 		switch (status) {
 			case "PENDING":
 				return (
@@ -306,8 +342,10 @@ export default function UniStaffEventRequestsPage() {
 								<CardContent className="py-8 text-center text-muted-foreground">No events found</CardContent>
 							</Card>
 						) : (
-							paginated.map((request) => (
-								<Card key={request.id} className="hover:shadow-md transition-shadow cursor-pointer">
+							paginated.map((request) => {
+								const expired = isEventExpired(request)
+								return (
+								<Card key={request.id} className={`hover:shadow-md transition-shadow cursor-pointer ${expired ? 'border-2 border-gray-400 dark:border-gray-600 opacity-60' : ''}`}>
 									<Link href={`/uni-staff/events-req/${request.id}`}>
 										<CardContent className="p-6">
 											<div className="flex items-start justify-between">
@@ -317,7 +355,7 @@ export default function UniStaffEventRequestsPage() {
 														<h3 className="font-semibold text-lg">{request.name || request.eventName}</h3>
 														{renderTypeBadge(request.type || request.eventType)}
 														{/* category not provided by API example */}
-														{getStatusBadge(request.status || request.type)}
+														{getStatusBadge(request.status || request.type, expired)}
 													</div>
 
 													<p className="text-muted-foreground mb-3 line-clamp-2">{request.description}</p>
@@ -364,7 +402,7 @@ export default function UniStaffEventRequestsPage() {
 												</div>
 
 												<div className="flex items-center gap-2 ml-4">
-													{request.status === "PENDING" && (
+													{request.status === "PENDING" && !expired && (
 														<>
 															<Button size="sm" variant="default" className="h-8 w-8 p-0" onClick={async (e) => {
 																e.preventDefault()
@@ -412,7 +450,8 @@ export default function UniStaffEventRequestsPage() {
 										</CardContent>
 									</Link>
 								</Card>
-							))
+								)
+							})
 						)}
 						</div>
 

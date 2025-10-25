@@ -52,7 +52,7 @@ export const fetchEvent = async ({ page = 0, size = 50, sort = "name" } = {}): P
       },
     });
     const data: any = response.data;
-    console.log(`✅ fetchEvent completed at ${new Date().toISOString()}:`, data);
+    console.log(`fetchEvent at ${new Date().toISOString()}:`, data);
     
     // Response structure: { content: [...], pageable: {...}, ... }
     // Always return the content array for event list
