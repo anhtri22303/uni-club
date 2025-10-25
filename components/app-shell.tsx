@@ -16,7 +16,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
-import { forceResetPassword } from "@/service/authApi"
+import { forceResetPassword } from "@/service/userApi"
+import { ChangePasswordModal } from "@/components/change-password"
 
 interface AppShellProps {
   children: React.ReactNode
@@ -51,6 +52,7 @@ export function AppShell({ children }: AppShellProps) {
   // Password reset banner and modal states
   const [showPasswordResetBanner, setShowPasswordResetBanner] = useState(false)
   const [showPasswordResetModal, setShowPasswordResetModal] = useState(false)
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false)
   const [resetEmail, setResetEmail] = useState("")
   const [resetUserId, setResetUserId] = useState<string | null>(null)
   const [newPassword, setNewPassword] = useState("")
@@ -103,14 +105,14 @@ export function AppShell({ children }: AppShellProps) {
       return
     }
 
-    if (newPassword.length < 6) {
-      toast({
-        title: "Error",
-        description: "Password must be at least 6 characters long",
-        variant: "destructive",
-      })
-      return
-    }
+    // if (newPassword.length < 6) {
+    //   toast({
+    //     title: "Error",
+    //     description: "Password must be at least 6 characters long",
+    //     variant: "destructive",
+    //   })
+    //   return
+    // }
 
     if (newPassword !== confirmPassword) {
       toast({
@@ -156,7 +158,14 @@ export function AppShell({ children }: AppShellProps) {
   }
 
   const handleBannerClick = () => {
-    setShowPasswordResetModal(true)
+    // Check if user is CLUB_LEADER to show change password modal
+    const userRole = auth.role
+    if (userRole === "CLUB_LEADER" || userRole === "club_leader") {
+      setShowChangePasswordModal(true)
+    } else {
+      // For other roles (admin-forced reset), use the force reset modal
+      setShowPasswordResetModal(true)
+    }
   }
 
   const handleCloseBanner = (e: React.MouseEvent) => {
@@ -166,6 +175,14 @@ export function AppShell({ children }: AppShellProps) {
     sessionStorage.removeItem("requirePasswordReset")
     sessionStorage.removeItem("resetEmail")
     sessionStorage.removeItem("resetUserId")
+  }
+
+  const handleChangePasswordClose = (open: boolean) => {
+    setShowChangePasswordModal(open)
+    if (!open) {
+      // When change password modal closes, also hide the banner
+      setShowPasswordResetBanner(false)
+    }
   }
 
   if (!auth.user) return null
@@ -328,7 +345,7 @@ export function AppShell({ children }: AppShellProps) {
                     type={showPassword ? "text" : "password"}
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Enter new password (min 6 characters)"
+                    placeholder="Enter new password"
                     className="w-full pr-10"
                   />
                   <button
@@ -391,6 +408,12 @@ export function AppShell({ children }: AppShellProps) {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Change Password Modal (for CLUB_LEADER) */}
+        <ChangePasswordModal 
+          open={showChangePasswordModal} 
+          onOpenChange={handleChangePasswordClose}
+        />
       </div>
     </SidebarContext.Provider>
   )

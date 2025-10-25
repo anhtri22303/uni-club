@@ -261,47 +261,47 @@ export const resetPassword = async (
   }
 }
 
-// Force Reset Password API (for admin/system forced password resets)
-export interface ForceResetPasswordRequest {
-  userId: number | string
+// Change Password API (for CLUB_LEADER when clicking banner)
+export interface ChangePasswordRequest {
+  oldPassword: string
   newPassword: string
 }
 
-export interface ForceResetPasswordResponse {
+export interface ChangePasswordResponse {
   success: boolean
   message: string
   data: null
 }
 
-export const forceResetPassword = async (
-  userId: number | string,
+export const changePassword = async (
+  oldPassword: string,
   newPassword: string
-): Promise<ForceResetPasswordResponse> => {
+): Promise<ChangePasswordResponse> => {
   try {
-    const res = await axiosInstance.put(
-      `/api/users/${userId}/force-reset-password`,
-      null,
+    const res = await axiosInstance.post(
+      "/auth/change-password",
       {
-        params: {
-          newPassword
-        },
+        oldPassword,
+        newPassword
+      },
+      {
         headers: {
           "Content-Type": "application/json",
         },
       }
     )
-    console.log("Force reset password response:", res.data)
+    console.log("Change password response:", res.data)
     
     // Handle both wrapped and direct response formats
     if (res.data && typeof res.data === 'object') {
       // If response is wrapped in standard format { success, message, data }
       if ('success' in res.data && 'message' in res.data) {
-        return res.data as ForceResetPasswordResponse
+        return res.data as ChangePasswordResponse
       }
       // If response is direct message string or other format
       return {
         success: true,
-        message: (res.data as any).message || "Password has been successfully reset.",
+        message: (res.data as any).message || "Password changed successfully. Please re-login.",
         data: null
       }
     }
@@ -309,11 +309,11 @@ export const forceResetPassword = async (
     // Fallback for unexpected response format
     return {
       success: true,
-      message: "Password has been successfully reset.",
+      message: "Password changed successfully. Please re-login.",
       data: null
     }
   } catch (error: any) {
-    console.error("Force reset password error:", {
+    console.error("Change password error:", {
       status: error.response?.status,
       data: error.response?.data,
       message: error.message
@@ -324,7 +324,6 @@ export const forceResetPassword = async (
       throw error
     }
     
-    throw new Error("Failed to force reset password")
+    throw new Error("Failed to change password")
   }
 }
-

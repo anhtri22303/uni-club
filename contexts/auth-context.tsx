@@ -16,6 +16,7 @@ interface AuthState {
     userId: string | number;
     email: string;
     fullName: string;
+    role: string;
   } | null;
 }
 
@@ -70,14 +71,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return map[lower] || lower;
         };
 
+        const normalizedRole = normalizeRole(parsed.role);
         setAuth({
           userId: parsed.userId,
-          role: normalizeRole(parsed.role),
+          role: normalizedRole,
           staff: (parsed as any).staff || false,
           user: {
             userId: parsed.userId,
             email: parsed.email,
             fullName: parsed.fullName,
+            role: normalizedRole || "",
           },
         });
 
@@ -131,6 +134,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         userId: res.userId,
         email: res.email,
         fullName: res.fullName,
+        role: normalizedRole || "",
       },
     });
 
