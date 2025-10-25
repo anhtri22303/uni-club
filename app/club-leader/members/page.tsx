@@ -16,18 +16,7 @@ import { useToast } from "@/hooks/use-toast"
 import { usePagination } from "@/hooks/use-pagination"
 import { useClub, useClubMembers } from "@/hooks/use-query-hooks"
 import { useQueryClient } from "@tanstack/react-query"
-import {
-  Users,
-  Trash2,
-  ChevronLeft,
-  ChevronRight,
-  Mail,
-  GraduationCap,
-  Calendar,
-  UserCircle,
-  Filter,
-  X,
-} from "lucide-react"
+import { Users, Trash2, ChevronLeft, ChevronRight, Mail, GraduationCap, Calendar, UserCircle, Filter, X,} from "lucide-react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 
 // Define a type for the club (có thể đặt trong một file dùng chung)

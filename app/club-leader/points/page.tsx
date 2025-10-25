@@ -291,7 +291,7 @@ export default function ClubLeaderRewardDistributionPage() {
             <h1 className="text-3xl font-bold flex items-center gap-3">
               <Award className="h-8 w-8 text-yellow-500" /> Reward Point Distribution
             </h1>
-            <p className="text-muted-foreground">Distribute bonus points from club funds to members of "{managedClub?.name}".</p>
+            <p className="text-muted-foreground">Distribute bonus points from club funds to members of "<span className="font-semibold text-primary">{managedClub?.name}</span>"</p>
           </div>
 
           <Card>
@@ -426,7 +426,6 @@ export default function ClubLeaderRewardDistributionPage() {
           </div>
 
           {/* === Danh sách Thành viên === */}
-          {/* <h2 className="text-2xl font-semibold">List of Members ({clubMembers.length})</h2> */}
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-semibold">
               List of Members ({filteredMembers.length})

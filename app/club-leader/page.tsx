@@ -105,7 +105,7 @@ export default function ClubLeaderDashboardPage() {
               Hello, {typedProfile?.fullName || "Club Leader"} 👋
             </h1>
             {managedClub ? (
-              <p className="text-muted-foreground">Welcome to "{managedClub.name}"</p>
+              <p className="text-muted-foreground">Welcome to "<span className="font-semibold text-primary">{managedClub.name}</span>"</p>
             ) : (
               <p className="text-destructive">Could not load club information. Please check your permissions.</p>
             )}

@@ -14,27 +14,25 @@ import { Modal } from "@/components/modal"
 import { QRModal } from "@/components/qr-modal"
 import { useToast } from "@/hooks/use-toast"
 import { usePagination } from "@/hooks/use-pagination"
-import { useClubEvents } from "@/hooks/use-query-hooks"
+import { useClubEvents, useClub } from "@/hooks/use-query-hooks"
 import { useQueryClient } from "@tanstack/react-query"
 import { Calendar, Plus, Edit, MapPin, Trophy, ChevronLeft, ChevronRight, Filter, X, Eye } from "lucide-react"
 import { QrCode } from "lucide-react"
 import QRCode from "qrcode"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
-
-import clubs from "@/src/data/clubs.json"
 import { createEvent, getEventById } from "@/service/eventApi"
 import { generateCode } from "@/service/checkinApi"
 import { safeLocalStorage } from "@/lib/browser-utils"
 import { fetchLocation } from "@/service/locationApi"
-import { fetchClub } from "@/service/clubApi"
+import { fetchClub, getClubIdFromToken } from "@/service/clubApi"
 import { Checkbox } from "@/components/ui/checkbox"
 
 export default function ClubLeaderEventsPage() {
   const router = useRouter()
   const { toast } = useToast()
   const queryClient = useQueryClient()
-  const [userClubId, setUserClubId] = useState<number | null>(null)
+  const [userClubId, setUserClubId] = useState<number | null>(() => getClubIdFromToken()) // Gọi hàm trực tiếp
   const [locations, setLocations] = useState<any[]>([])
   const [locationsLoading, setLocationsLoading] = useState(false)
   const [selectedLocationId, setSelectedLocationId] = useState<string>("")
@@ -47,21 +45,6 @@ export default function ClubLeaderEventsPage() {
   // support 'mobile' environment for deep-link QR
   const [activeEnvironment, setActiveEnvironment] = useState<'local' | 'prod' | 'mobile'>('prod')
 
-  // Get clubId from localStorage
-  useEffect(() => {
-    try {
-      const saved = safeLocalStorage.getItem("uniclub-auth")
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        if (parsed.clubId) {
-          setUserClubId(Number(parsed.clubId))
-        }
-      }
-    } catch (error) {
-      console.error("Failed to get clubId from localStorage:", error)
-    }
-  }, [])
-
   // Fetch locations on mount
   useEffect(() => {
     const loadLocations = async () => {
@@ -73,10 +56,10 @@ export default function ClubLeaderEventsPage() {
         setLocations(locationList)
       } catch (error) {
         console.error("Failed to fetch locations:", error)
-        toast({ 
-          title: "Error", 
-          description: "Failed to load locations", 
-          variant: "destructive" 
+        toast({
+          title: "Error",
+          description: "Failed to load locations",
+          variant: "destructive"
         })
       } finally {
         setLocationsLoading(false)
@@ -95,10 +78,10 @@ export default function ClubLeaderEventsPage() {
         setAllClubs(clubList)
       } catch (error) {
         console.error("Failed to fetch clubs:", error)
-        toast({ 
-          title: "Error", 
-          description: "Failed to load clubs", 
-          variant: "destructive" 
+        toast({
+          title: "Error",
+          description: "Failed to load clubs",
+          variant: "destructive"
         })
       } finally {
         setClubsLoading(false)
@@ -112,28 +95,30 @@ export default function ClubLeaderEventsPage() {
     userClubId ? [userClubId] : []
   )
 
+  const { data: managedClub, isLoading: clubLoading } = useClub(userClubId || 0, !!userClubId)
+
   // Helper function to check if event is active (APPROVED and within date/time range)
   const isEventActive = (event: any) => {
     // Must be APPROVED
     if (event.status !== "APPROVED") return false
-    
+
     // Check if date and endTime are present
     if (!event.date || !event.endTime) return false
-    
+
     try {
       // Get current date/time
       const now = new Date()
-      
+
       // Parse event date (format: YYYY-MM-DD)
       const eventDate = new Date(event.date)
-      
+
       // Parse endTime (format: HH:MM:SS or HH:MM)
       const [hours, minutes] = event.endTime.split(':').map(Number)
-      
+
       // Create event end datetime
       const eventEndDateTime = new Date(eventDate)
       eventEndDateTime.setHours(hours, minutes, 0, 0)
-      
+
       // Event is active if current time is before or equal to end time
       return now <= eventEndDateTime
     } catch (error) {
@@ -148,17 +133,17 @@ export default function ClubLeaderEventsPage() {
       // Parse dates for comparison
       const dateA = new Date(a.date || '1970-01-01')
       const dateB = new Date(b.date || '1970-01-01')
-      
+
       // Compare dates first (newest first)
       if (dateA.getTime() !== dateB.getTime()) {
         return dateB.getTime() - dateA.getTime()
       }
-      
+
       // If dates are equal, compare times (latest startTime first)
       // Support both new (startTime) and legacy (time) formats
       const timeA = a.startTime || a.time || '00:00'
       const timeB = b.startTime || b.time || '00:00'
-      
+
       // Convert time strings to comparable format (HH:MM:SS or HH:MM to minutes)
       const parseTime = (timeStr: string) => {
         const parts = timeStr.split(':').map(Number)
@@ -166,7 +151,7 @@ export default function ClubLeaderEventsPage() {
         const minutes = parts[1] || 0
         return hours * 60 + minutes
       }
-      
+
       return parseTime(timeB) - parseTime(timeA)
     })
   }
@@ -174,8 +159,8 @@ export default function ClubLeaderEventsPage() {
   // Process and sort events
   const events = useMemo(() => {
     // Normalize events with both new and legacy field support
-    const normalized = rawEvents.map((e: any) => ({ 
-      ...e, 
+    const normalized = rawEvents.map((e: any) => ({
+      ...e,
       title: e.name || e.title,
       time: e.startTime || e.time, // Map startTime to time for legacy compatibility
     }))
@@ -265,11 +250,6 @@ export default function ClubLeaderEventsPage() {
     }, 300)
     return () => clearTimeout(t)
   }, [visibleIndex, showQrModal])
-
-  // Find managed club based on userClubId or fallback to first club
-  const managedClub = userClubId 
-    ? clubs.find(club => Number(club.id) === userClubId) || clubs[0] 
-    : clubs[0]
 
   const [formData, setFormData] = useState({
     clubId: userClubId || managedClub.id,
@@ -400,10 +380,10 @@ export default function ClubLeaderEventsPage() {
       resetForm()
     } catch (error: any) {
       console.error(error)
-      toast({ 
-        title: "Error", 
-        description: error?.response?.data?.message || "Failed to create event", 
-        variant: "destructive" 
+      toast({
+        title: "Error",
+        description: error?.response?.data?.message || "Failed to create event",
+        variant: "destructive"
       })
     }
   }
@@ -455,9 +435,9 @@ export default function ClubLeaderEventsPage() {
       link.href = qrDataUrl
       link.click()
 
-      toast({ 
-        title: 'Downloaded', 
-        description: `QR code downloaded for ${environment} environment` 
+      toast({
+        title: 'Downloaded',
+        description: `QR code downloaded for ${environment} environment`
       })
     } catch (err) {
       toast({ title: 'Download failed', description: 'Could not download QR code' })
@@ -480,11 +460,11 @@ export default function ClubLeaderEventsPage() {
       }
 
       if (!link) return
-      
+
       await navigator.clipboard.writeText(link)
-      toast({ 
-        title: 'Copied', 
-        description: `${environment.charAt(0).toUpperCase() + environment.slice(1)} link copied to clipboard` 
+      toast({
+        title: 'Copied',
+        description: `${environment.charAt(0).toUpperCase() + environment.slice(1)} link copied to clipboard`
       })
     } catch {
       toast({ title: 'Copy failed', description: 'Could not copy link to clipboard' })
@@ -521,9 +501,19 @@ export default function ClubLeaderEventsPage() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold">Events</h1>
-              <p className="text-muted-foreground">
+              {/* <p className="text-muted-foreground">
                 Manage {managedClub ? managedClub.name : 'Club'} events
                 {userClubId && <span className="text-xs text-muted-foreground/70 ml-2">(Club ID: {userClubId})</span>}
+              </p> */}
+              <p className="text-muted-foreground h-5">
+                {clubLoading ? (
+                  <Skeleton className="h-4 w-48" />
+                ) : (
+                  <span>
+                    Event management for "{managedClub ? <span className="font-semibold text-primary">{managedClub.name}</span> : 'Club'}"
+                  </span>
+                )}
+                {/* {userClubId && <span className="text-xs text-muted-foreground/70 ml-2">(Club ID: {userClubId})</span>} */}
               </p>
             </div>
             <Button onClick={() => setShowCreateModal(true)}>
@@ -592,7 +582,7 @@ export default function ClubLeaderEventsPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All</SelectItem>
-                        {clubs.map((c: any) => (
+                        {allClubs.map((c: any) => (
                           <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
                         ))}
                       </SelectContent>
@@ -667,7 +657,7 @@ export default function ClubLeaderEventsPage() {
                           <div className="flex-1">
                             <CardTitle className="text-lg">{event.title}</CardTitle>
                             {event.description && (
-                              <CardDescription 
+                              <CardDescription
                                 className="mt-1 text-sm leading-5 max-h-[3.75rem] overflow-hidden"
                                 style={{
                                   display: '-webkit-box',
@@ -685,10 +675,10 @@ export default function ClubLeaderEventsPage() {
                               status === "Finished"
                                 ? "secondary"
                                 : status === "Soon"
-                                ? "default"
-                                : status === "Now"
-                                ? "destructive"
-                                : "outline"
+                                  ? "default"
+                                  : status === "Now"
+                                    ? "destructive"
+                                    : "outline"
                             }
                           >
                             {status}
@@ -759,53 +749,53 @@ export default function ClubLeaderEventsPage() {
                                     const { token, qrUrl } = await generateCode(event.id);
                                     console.log('Generated token:', token);
                                     console.log('Generated qrUrl:', qrUrl);
-                                    
+
                                     // Create URLs with token (path parameter format)
                                     const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${token}`;
                                     const localUrl = `http://localhost:3000/student/checkin/${token}`;
-                                    
+
                                     console.log('Production URL:', prodUrl);
                                     console.log('Development URL:', localUrl);
-                                    
+
                                     // Generate QR code variants
                                     const styleVariants = [
                                       { color: { dark: '#000000', light: '#FFFFFF' }, margin: 1 },
                                       { color: { dark: '#111111', light: '#FFFFFF' }, margin: 2 },
                                       { color: { dark: '#222222', light: '#FFFFFF' }, margin: 0 },
                                     ];
-                                    
+
                                     // Generate QR variants for local environment
                                     const localQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
                                       const opts = styleVariants[i % styleVariants.length];
                                       return QRCode.toDataURL(localUrl, opts as any);
                                     });
                                     const localQrVariants = await Promise.all(localQrVariantsPromises);
-                                    
+
                                     // Generate QR variants for production environment
                                     const prodQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
                                       const opts = styleVariants[i % styleVariants.length];
                                       return QRCode.toDataURL(prodUrl, opts as any);
                                     });
                                     const prodQrVariants = await Promise.all(prodQrVariantsPromises);
-                                    
+
                                     // Set different URLs for local and production
                                     setQrRotations({ local: localQrVariants, prod: prodQrVariants });
                                     setQrLinks({ local: localUrl, prod: prodUrl });
                                     setVisibleIndex(0);
                                     setDisplayedIndex(0);
                                     setShowQrModal(true);
-                                    
-                                    toast({ 
-                                      title: 'QR Code Generated', 
+
+                                    toast({
+                                      title: 'QR Code Generated',
                                       description: 'Check-in QR code has been generated successfully',
-                                      duration: 3000 
+                                      duration: 3000
                                     });
                                   } catch (err: any) {
                                     console.error('Failed to generate QR', err);
-                                    toast({ 
-                                      title: 'QR Error', 
-                                      description: err?.message || 'Could not generate QR code', 
-                                      variant: 'destructive' 
+                                    toast({
+                                      title: 'QR Error',
+                                      description: err?.message || 'Could not generate QR code',
+                                      variant: 'destructive'
                                     });
                                   }
                                 }}
@@ -952,8 +942,8 @@ export default function ClubLeaderEventsPage() {
                     setSelectedLocationId(value)
                     const location = locations.find(loc => String(loc.id) === value)
                     if (location) {
-                      setFormData({ 
-                        ...formData, 
+                      setFormData({
+                        ...formData,
                         locationId: Number(location.id),
                         maxCheckInCount: location.capacity || 100
                       })
@@ -1058,8 +1048,8 @@ export default function ClubLeaderEventsPage() {
                     setSelectedLocationId(value)
                     const location = locations.find(loc => String(loc.id) === value)
                     if (location) {
-                      setFormData({ 
-                        ...formData, 
+                      setFormData({
+                        ...formData,
                         locationId: Number(location.id),
                         maxCheckInCount: location.capacity || 100
                       })

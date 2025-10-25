@@ -283,8 +283,13 @@ export default function ClubLeaderApplicationsPage() {
           <div>
             <h1 className="text-3xl font-bold">Membership Applications</h1>
             <p className="text-muted-foreground">
-              Review and manage new applications
-              {managedClubName ? ` for "${managedClubName}` : ` for club #"${managedClubId}`}"
+              Review and manage new applications for "
+              {/* {managedClubName ? ` for "${managedClubName}` : ` for club #"${managedClubId}`}" */}
+              <span className="font-semibold text-primary">
+                {/* Đặt logic điều kiện vào đây */}
+                {managedClubName ? `${managedClubName}` : `#${managedClubId}`}
+              </span>
+              "
             </p>
           </div>
 
@@ -737,8 +742,8 @@ export default function ClubLeaderApplicationsPage() {
                 </div>
 
                 <div className="flex gap-2 justify-end">
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     onClick={() => setShowApplicationModal(false)}
                     disabled={selectedApplication && processingIds.has(selectedApplication.applicationId)}
                   >

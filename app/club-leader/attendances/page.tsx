@@ -237,7 +237,7 @@ export default function ClubAttendancePage() {
             <h1 className="text-3xl font-bold">Club Member Attendance</h1>
             {managedClub ? (
               <p className="text-muted-foreground">
-                Members of "{managedClub.name}"
+                Members of "<span className="font-semibold text-primary">{managedClub.name}</span>"
               </p>
             ) : (
               <p className="text-destructive">
