@@ -431,16 +431,14 @@ export default function UniStaffClubRequestsPage() {
 															</p>
 
 															<div className="flex items-center gap-6 text-sm text-muted-foreground">
-																<div className="flex items-center gap-1">
+																{/* <div className="flex items-center gap-1">
 																	<Users className="h-4 w-4" />
 																	<span>{request.expectedMembers ?? "-"} members</span>
-																</div>
+																</div> */}
 																<div className="flex items-center gap-1">
 																	<Calendar className="h-4 w-4" />
 																	<span>
-																		{new Date(
-																			request.requestDate
-																		).toLocaleDateString()}
+																		Submitted day: {new Date(request.requestDate).toLocaleDateString()}
 																	</span>
 																</div>
 																<div>

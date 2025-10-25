@@ -537,16 +537,13 @@ export default function ClubLeaderApplicationsPage() {
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <h3 className="font-semibold">{app.applicantName}</h3>
-                            {/* <p className="text-xs text-muted-foreground mt-1">
-                              Submitted: {new Date(app.createdAt).toLocaleDateString()}
-                            </p> */}
                             {app.studentCode && (
                               <p className="text-sm text-muted-foreground">
                                 Student Code: {app.studentCode}
                               </p>
                             )}
                             <p className="text-xs text-muted-foreground mt-1">
-                              Submitted: {new Date(app.createdAt).toLocaleDateString()}
+                              Submitted day: {new Date(app.createdAt).toLocaleDateString()}
                             </p>
                             {app.message && <p className="text-sm mt-2 p-2 bg-muted rounded">"{app.message}"</p>}
                           </div>
@@ -660,7 +657,7 @@ export default function ClubLeaderApplicationsPage() {
                               </p>
                             )}
                             <p className="text-xs text-muted-foreground mt-1">
-                              Reviewed: {app.updatedAt ? new Date(app.updatedAt).toLocaleDateString() : "Recently"}
+                              Reviewed day: {app.updatedAt ? new Date(app.updatedAt).toLocaleDateString() : "Recently"}
                             </p>
                             {app.reason && (
                               <p className="text-sm mt-2 p-2 bg-muted rounded">
