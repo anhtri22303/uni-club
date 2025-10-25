@@ -14,7 +14,7 @@ import { Modal } from "@/components/modal"
 import { QRModal } from "@/components/qr-modal"
 import { useToast } from "@/hooks/use-toast"
 import { usePagination } from "@/hooks/use-pagination"
-import { Calendar, Plus, Edit, MapPin, Trophy, ChevronLeft, ChevronRight, Filter, X, Eye } from "lucide-react"
+import { Calendar, Plus, MapPin, Trophy, ChevronLeft, ChevronRight, Filter, X, Eye } from "lucide-react"
 import { QrCode } from "lucide-react"
 import QRCode from "qrcode"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -36,6 +36,33 @@ export default function AdminEventsPage() {
   const [isFullscreen, setIsFullscreen] = useState(false)
   // support 'mobile' environment for deep-link QR
   const [activeEnvironment, setActiveEnvironment] = useState<'local' | 'prod' | 'mobile'>('prod')
+
+  // Helper function to check if event has expired (past endTime)
+  const isEventExpired = (event: any) => {
+    // Check if date and endTime are present
+    if (!event.date || !event.endTime) return false
+
+    try {
+      // Get current date/time in Vietnam timezone (UTC+7)
+      const now = new Date()
+      const vnTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }))
+
+      // Parse event date (format: YYYY-MM-DD)
+      const [year, month, day] = event.date.split('-').map(Number)
+      
+      // Parse endTime (format: HH:MM:SS or HH:MM)
+      const [hours, minutes] = event.endTime.split(':').map(Number)
+
+      // Create event end datetime in Vietnam timezone
+      const eventEndDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0)
+
+      // Event is expired if current VN time is past the end time
+      return vnTime > eventEndDateTime
+    } catch (error) {
+      console.error('Error checking event expiration:', error)
+      return false
+    }
+  }
 
   // Helper function to sort events by date and time (newest to oldest)
   const sortEventsByDateTime = (eventList: any[]) => {
@@ -100,10 +127,8 @@ export default function AdminEventsPage() {
   }, [rawEvents])
 
   const [showCreateModal, setShowCreateModal] = useState(false)
-  const [showEditModal, setShowEditModal] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<any>(null)
   const [showQrModal, setShowQrModal] = useState(false)
-  const [qrDataUrls, setQrDataUrls] = useState<{ local?: string; prod?: string; mobile?: string }>({})
   const [qrLinks, setQrLinks] = useState<{ local?: string; prod?: string; mobile?: string }>({})
   const [qrRotations, setQrRotations] = useState<{ local: string[]; prod: string[]; mobile?: string[] }>({ local: [], prod: [] })
   const [visibleIndex, setVisibleIndex] = useState(0)
@@ -292,22 +317,6 @@ export default function AdminEventsPage() {
     }
   }
 
-  const handleEdit = (event: any) => {
-    setSelectedEvent(event)
-    setFormData({
-      clubId: event.hostClub?.id ?? event.clubId ?? managedClub.id,
-      name: event.name ?? event.title ?? "",
-      description: event.description ?? "",
-      type: event.type ?? "PUBLIC",
-      date: event.date ?? "",
-      startTime: event.startTime ?? event.time ?? "09:00:00",
-      endTime: event.endTime ?? "11:00:00",
-      locationName: event.locationName ?? "",
-      maxCheckInCount: event.maxCheckInCount ?? 100,
-    })
-    setShowEditModal(true)
-  }
-  const handleUpdate = () => { /* same as source */ }
 
   // Helper functions for QR actions
   const handleDownloadQR = (environment: 'local' | 'prod' | 'mobile') => {
@@ -346,17 +355,27 @@ export default function AdminEventsPage() {
 
   const handleCopyLink = async (environment: 'local' | 'prod' | 'mobile') => {
     try {
+      // Generate fresh token for all environments
+      if (!selectedEvent?.id) {
+        toast({ title: 'No event', description: 'Event not available', variant: 'destructive' })
+        return
+      }
+
       let link: string | undefined
-      if (environment === 'local') link = qrLinks.local
-      else if (environment === 'prod') link = qrLinks.prod
-      else {
-        // mobile deep link uses checkInCode
-        const token = selectedEvent?.checkInCode || ''
-        if (!token) {
-          toast({ title: 'No token', description: 'Mobile token not available', variant: 'destructive' })
-          return
+      try {
+        const { token } = await generateCode(selectedEvent.id)
+        
+        if (environment === 'local') {
+          link = `http://localhost:3000/student/checkin/${token}`
+        } else if (environment === 'prod') {
+          link = `https://uniclub-fpt.vercel.app/student/checkin/${token}`
+        } else {
+          // mobile deep link
+          link = `exp://192.168.1.50:8081/--/student/checkin/${token}`
         }
-        link = `exp://192.168.1.50:8081/--/student/checkin/${token}`
+      } catch (err) {
+        toast({ title: 'Error', description: 'Could not generate link', variant: 'destructive' })
+        return
       }
 
       if (!link) return
@@ -374,23 +393,26 @@ export default function AdminEventsPage() {
   // Helper to get event status based on date and time
   const getEventStatus = (eventDate: string, eventTime: string) => {
     if (!eventDate) return "Finished"
+    // Get current time in Vietnam timezone (UTC+7)
     const now = new Date()
-    // Combine date and time into a single Date object
+    const vnTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }))
+    
+    // Parse event date and time
     const [hour = "00", minute = "00"] = (eventTime || "00:00").split(":")
-    const event = new Date(eventDate)
-    event.setHours(Number(hour), Number(minute), 0, 0)
+    const [year, month, day] = eventDate.split('-').map(Number)
+    const event = new Date(year, month - 1, day, Number(hour), Number(minute), 0, 0)
 
     // Event duration: assume 2 hours for "Now" window (customize as needed)
     const EVENT_DURATION_MS = 2 * 60 * 60 * 1000
     const start = event.getTime()
     const end = start + EVENT_DURATION_MS
 
-    if (now.getTime() < start) {
+    if (vnTime.getTime() < start) {
       // If event starts within next 7 days, it's "Soon"
-      if (start - now.getTime() < 7 * 24 * 60 * 60 * 1000) return "Soon"
+      if (start - vnTime.getTime() < 7 * 24 * 60 * 60 * 1000) return "Soon"
       return "Future"
     }
-    if (now.getTime() >= start && now.getTime() <= end) return "Now"
+    if (vnTime.getTime() >= start && vnTime.getTime() <= end) return "Now"
     return "Finished"
   }
 
@@ -519,17 +541,24 @@ export default function AdminEventsPage() {
             <>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {paginatedEvents.map((event: any) => {
-                  const status = getEventStatus(event.date, event.time)
-                  // Border color logic
+                  const expired = isEventExpired(event)
+                  const status = expired ? "Finished" : getEventStatus(event.date, event.time)
+                  // Border color logic - expired events override approval status
                   let borderColor = ""
-                  if (event.status === "APPROVED") borderColor = "border-green-500"
-                  else if (event.status === "REJECTED") borderColor = "border-red-500"
-                  else borderColor = "border-transparent"
+                  if (expired) {
+                    borderColor = "border-gray-400 dark:border-gray-600"
+                  } else if (event.status === "APPROVED") {
+                    borderColor = "border-green-500"
+                  } else if (event.status === "REJECTED") {
+                    borderColor = "border-red-500"
+                  } else {
+                    borderColor = "border-transparent"
+                  }
 
                   return (
                     <Card
                       key={event.id}
-                      className={`hover:shadow-md transition-shadow border-2 ${borderColor} h-full flex flex-col`}
+                      className={`hover:shadow-md transition-shadow border-2 ${borderColor} ${expired ? 'opacity-60' : ''} h-full flex flex-col`}
                     >
                       <CardHeader>
                         <div className="flex items-start justify-between">
@@ -563,16 +592,22 @@ export default function AdminEventsPage() {
                             {status}
                           </Badge>
                         </div>
-                        {/* Approval status badge */}
+                        {/* Approval status badge - show gray for expired events */}
                         <div className="mt-2">
-                          {event.status === "APPROVED" && (
-                            <Badge variant="default">Approved</Badge>
-                          )}
-                          {event.status === "PENDING" && (
-                            <Badge variant="outline">Pending</Badge>
-                          )}
-                          {event.status === "REJECTED" && (
-                            <Badge variant="destructive">Rejected</Badge>
+                          {expired ? (
+                            <Badge variant="secondary" className="bg-gray-400 text-white">Expired</Badge>
+                          ) : (
+                            <>
+                              {event.status === "APPROVED" && (
+                                <Badge variant="default">Approved</Badge>
+                              )}
+                              {event.status === "PENDING" && (
+                                <Badge variant="outline">Pending</Badge>
+                              )}
+                              {event.status === "REJECTED" && (
+                                <Badge variant="destructive">Rejected</Badge>
+                              )}
+                            </>
                           )}
                         </div>
                       </CardHeader>
@@ -601,18 +636,12 @@ export default function AdminEventsPage() {
 
                         {/* Buttons section - pushed to bottom */}
                         <div className="mt-auto pt-4 space-y-3">
-                          <div className="grid grid-cols-2 gap-2">
-                            <Button variant="outline" onClick={() => router.push(`/admin/events/${event.id}`)}>
-                              <Eye className="h-4 w-4 mr-2" />
-                              View Detail
-                            </Button>
-                            <Button variant="outline" onClick={() => handleEdit(event)}>
-                              <Edit className="h-4 w-4 mr-2" />
-                              Edit Event
-                            </Button>
-                          </div>
-                          {/* QR Code Section - Only show if APPROVED */}
-                          {event.status === "APPROVED" && (
+                          <Button variant="outline" className="w-full" onClick={() => router.push(`/admin/events/${event.id}`)}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            View Detail
+                          </Button>
+                          {/* QR Code Section - Only show if APPROVED and not expired */}
+                          {event.status === "APPROVED" && !expired && (
                             <div className="mt-3 pt-3 border-t border-muted">
                               <Button
                                 variant="default"
@@ -722,64 +751,37 @@ export default function AdminEventsPage() {
             onOpenChange={setShowCreateModal}
             title="Create New Event"
             description="Add a new event for your club members"
+            className="sm:max-w-3xl max-h-[90vh] overflow-y-auto"
           >
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Event Name *</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Enter event name"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Describe your event..."
-                  rows={3}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="date">Date *</Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={formData.date}
-                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="startTime">Start Time *</Label>
+            <div className="space-y-3">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="name" className="text-sm">Event Name *</Label>
                   <Input
-                    id="startTime"
-                    type="time"
-                    value={formData.startTime.substring(0, 5)}
-                    onChange={(e) => setFormData({ ...formData, startTime: e.target.value + ":00" })}
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="Enter event name"
+                    className="h-9"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="endTime">End Time *</Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="date" className="text-sm">Date *</Label>
                   <Input
-                    id="endTime"
-                    type="time"
-                    value={formData.endTime.substring(0, 5)}
-                    onChange={(e) => setFormData({ ...formData, endTime: e.target.value + ":00" })}
+                    id="date"
+                    type="date"
+                    value={formData.date}
+                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                    className="h-9"
                   />
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="type">Type</Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="type" className="text-sm">Type</Label>
                   <Select
                     value={formData.type}
                     onValueChange={(value) => setFormData({ ...formData, type: value })}
                   >
-                    <SelectTrigger id="type">
+                    <SelectTrigger id="type" className="h-9">
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
@@ -788,66 +790,66 @@ export default function AdminEventsPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="maxCheckInCount">Max Check-ins</Label>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="description" className="text-sm">Description</Label>
+                <Textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Describe your event..."
+                  rows={2}
+                  className="resize-none"
+                />
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="startTime" className="text-sm">Start Time *</Label>
+                  <Input
+                    id="startTime"
+                    type="time"
+                    value={formData.startTime.substring(0, 5)}
+                    onChange={(e) => setFormData({ ...formData, startTime: e.target.value + ":00" })}
+                    className="h-9"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="endTime" className="text-sm">End Time *</Label>
+                  <Input
+                    id="endTime"
+                    type="time"
+                    value={formData.endTime.substring(0, 5)}
+                    onChange={(e) => setFormData({ ...formData, endTime: e.target.value + ":00" })}
+                    className="h-9"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="maxCheckInCount" className="text-sm">Max Check-ins</Label>
                   <Input
                     id="maxCheckInCount"
                     type="number"
                     value={formData.maxCheckInCount}
                     onChange={(e) => setFormData({ ...formData, maxCheckInCount: Number.parseInt(e.target.value) || 100 })}
+                    className="h-9"
+                    placeholder="100"
                   />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="locationName">Location Name</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="locationName" className="text-sm">Location Name</Label>
                 <Input
                   id="locationName"
                   value={formData.locationName}
                   onChange={(e) => setFormData({ ...formData, locationName: e.target.value })}
                   placeholder="Enter location name"
+                  className="h-9"
                 />
               </div>
-              <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={() => setShowCreateModal(false)}>
+              <div className="flex gap-2 justify-end pt-2">
+                <Button variant="outline" onClick={() => setShowCreateModal(false)} className="h-9">
                   Cancel
                 </Button>
-                <Button onClick={handleCreate}>Send</Button>
-              </div>
-            </div>
-          </Modal>
-
-          {/* Edit Event Modal */}
-          <Modal open={showEditModal} onOpenChange={setShowEditModal} title="Edit Event" description="Update event details">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-name">Event Name *</Label>
-                <Input id="edit-name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-description">Description</Label>
-                <Textarea id="edit-description" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows={3} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-date">Date *</Label>
-                <Input id="edit-date" type="date" value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="edit-startTime">Start Time *</Label>
-                  <Input id="edit-startTime" type="time" value={formData.startTime.substring(0, 5)} onChange={(e) => setFormData({ ...formData, startTime: e.target.value + ":00" })} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-endTime">End Time *</Label>
-                  <Input id="edit-endTime" type="time" value={formData.endTime.substring(0, 5)} onChange={(e) => setFormData({ ...formData, endTime: e.target.value + ":00" })} />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-locationName">Location Name</Label>
-                <Input id="edit-locationName" value={formData.locationName} onChange={(e) => setFormData({ ...formData, locationName: e.target.value })} placeholder="Enter location name" />
-              </div>
-              <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={() => setShowEditModal(false)}>Cancel</Button>
-                <Button onClick={handleUpdate}>Update Event</Button>
+                <Button onClick={handleCreate} className="h-9">Send</Button>
               </div>
             </div>
           </Modal>

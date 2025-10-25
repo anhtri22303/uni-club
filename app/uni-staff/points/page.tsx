@@ -84,6 +84,7 @@ export default function UniversityStaffRewardPage() {
     const selectedClubCount = useMemo(() => {
         return Object.values(selectedClubs).filter(Boolean).length
     }, [selectedClubs])
+    const allSelected = allClubs.length > 0 && selectedClubCount === allClubs.length;
 
     const {
         currentPage,
@@ -92,6 +93,17 @@ export default function UniversityStaffRewardPage() {
         setCurrentPage,
     } = usePagination({ data: allClubs, initialPageSize: 8 })
 
+    const handleToggleSelectAll = () => {
+        const newSelectionState = !allSelected; // Trạng thái mới (true hoặc false)
+        const newSelectedClubs: Record<string, boolean> = {};
+
+        // Duyệt qua *tất cả* CLB và gán trạng thái mới
+        allClubs.forEach(club => {
+            newSelectedClubs[club.id] = newSelectionState;
+        });
+
+        setSelectedClubs(newSelectedClubs);
+    };
     const handleDistributeRewards = async () => {
         if (rewardAmount === '' || rewardAmount <= 0) {
             toast({ title: "Error", description: "Please enter a valid reward amount.", variant: "destructive" })
@@ -196,8 +208,21 @@ export default function UniversityStaffRewardPage() {
 
                     <Separator />
 
-                    <h2 className="text-2xl font-semibold">Club List ({allClubs.length})</h2>
-
+                    {/* <h2 className="text-2xl font-semibold">Club List ({allClubs.length})</h2> */}
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-2xl font-semibold">Club List ({allClubs.length})</h2>
+                        {/* Thêm nút "Select All" */}
+                        {allClubs.length > 0 && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleToggleSelectAll}
+                                className="rounded-lg"
+                            >
+                                {allSelected ? "Deselect All" : "Select All"}
+                            </Button>
+                        )}
+                    </div>
                     <div className="space-y-4">
                         {loading ? (
                             <p>Loading clubs...</p>

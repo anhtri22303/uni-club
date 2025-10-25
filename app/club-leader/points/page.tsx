@@ -13,10 +13,12 @@ import { useData } from "@/contexts/data-context"
 import membershipApi, { ApiMembership } from "@/service/membershipApi"
 import { useToast } from "@/hooks/use-toast"
 import { usePagination } from "@/hooks/use-pagination"
-import { Users, Award, ChevronLeft, ChevronRight, Send } from "lucide-react"
+import { Users, Award, ChevronLeft, ChevronRight, Send, Filter, X, Wallet } from "lucide-react"
 import { getClubById, getClubIdFromToken } from "@/service/clubApi"
 import { fetchUserById, fetchProfile } from "@/service/userApi"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { getClubWallet, ApiClubWallet } from "@/service/walletApi"
 
 interface ClubMember {
   id: string;
@@ -46,12 +48,18 @@ export default function ClubLeaderRewardDistributionPage() {
   const [managedClub, setManagedClub] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [userId, setUserId] = useState<string | number | null>(null)
+  const [clubWallet, setClubWallet] = useState<ApiClubWallet | null>(null)
+  const [walletLoading, setWalletLoading] = useState(false)
   // === State và Logic tải dữ liệu thành viên (Tái sử dụng) ===
   const [apiMembers, setApiMembers] = useState<ApiMembership[] | null>(null)
   const [membersLoading, setMembersLoading] = useState(false)
   const [membersError, setMembersError] = useState<string | null>(null)
-
   const [selectedMembers, setSelectedMembers] = useState<Record<string, boolean>>({})
+  // State filters
+  const [searchTerm, setSearchTerm] = useState("")
+  const [activeFilters, setActiveFilters] = useState<Record<string, any>>({})
+  const [showFilters, setShowFilters] = useState(false)
+
 
   useEffect(() => {
     const loadData = async () => {
@@ -62,6 +70,17 @@ export default function ClubLeaderRewardDistributionPage() {
 
         const clubResponse = await getClubById(clubId)
         setManagedClub(clubResponse.data)
+
+        // Load club wallet
+        setWalletLoading(true)
+        try {
+          const walletData = await getClubWallet(clubId)
+          setClubWallet(walletData)
+        } catch (walletErr) {
+          console.error("Failed to load club wallet:", walletErr)
+        } finally {
+          setWalletLoading(false)
+        }
 
         const memberData = await membershipApi.getMembersByClubId(clubId)
         const membersWithUserData = await Promise.all(
@@ -124,20 +143,57 @@ export default function ClubLeaderRewardDistributionPage() {
           studentCode: m.studentCode ?? "—",
           avatarUrl: m.avatarUrl ?? null,
           role: m.clubRole ?? "MEMBER",
+          isStaff: m.staff ?? false,
         }
       })
     : []
 
+  const filteredMembers = clubMembers.filter((member) => {
+    // Tìm kiếm theo tên hoặc mã sinh viên
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase()
+      const matchName = member.fullName.toLowerCase().includes(searchLower)
+      const matchStudentCode = member.studentCode.toLowerCase().includes(searchLower)
+      if (!matchName && !matchStudentCode) return false
+    }
+    const roleFilter = activeFilters["role"]
+    if (roleFilter && roleFilter !== "all") {
+      if (member.role !== roleFilter) return false
+    }
+
+    // ✅ THÊM MỚI: Lọc theo Staff
+    const staffFilter = activeFilters["staff"]
+    if (staffFilter && staffFilter !== "all") {
+      const isStaff = staffFilter === "true"
+      if (member.isStaff !== isStaff) return false
+    }
+    return true
+  })
   const {
     currentPage: membersPage,
     totalPages: membersPages,
     paginatedData: paginatedMembers,
     setCurrentPage: setMembersPage,
-  } = usePagination({ data: clubMembers, initialPageSize: 8 }) // Tăng pageSize lên 5 cho ví dụ
+  } = usePagination({ data: filteredMembers, initialPageSize: 8 })
 
   // === State và Logic phân phát điểm thưởng (Mới) ===
   const [rewardAmount, setRewardAmount] = useState<number | ''>('')
   const [isDistributing, setIsDistributing] = useState(false)
+  // State filters
+  const uniqueRoles = Array.from(new Set(clubMembers.map((m) => m.role)))
+  const handleFilterChange = (filterKey: string, value: any) => {
+    setActiveFilters((prev) => ({ ...prev, [filterKey]: value }))
+    setMembersPage(1)
+  }
+  const hasActiveFilters = Object.values(activeFilters).some((v) => v && v !== "all") || Boolean(searchTerm)
+
+  const allFilteredSelected = useMemo(() => {
+    if (filteredMembers.length === 0) {
+      return false // Không có gì để chọn
+    }
+    // Kiểm tra xem *mọi* thành viên trong danh sách đã lọc có 'true' trong selectedMembers không
+    return filteredMembers.every((member) => selectedMembers[member.id] === true)
+  }, [filteredMembers, selectedMembers])
 
   const handleRewardAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
@@ -145,6 +201,20 @@ export default function ClubLeaderRewardDistributionPage() {
     if (value === '' || /^\d+$/.test(value)) {
       setRewardAmount(value === '' ? '' : parseInt(value, 10))
     }
+  }
+
+  const handleToggleSelectAll = () => {
+    const newSelectionState = !allFilteredSelected // Trạng thái mới (true hoặc false)
+
+    // Cập nhật trạng thái chọn *chỉ* cho các thành viên trong danh sách đã lọc
+    // Những thành viên khác không bị ảnh hưởng
+    setSelectedMembers((prevSelected) => {
+      const newSelected = { ...prevSelected } // Bắt đầu với trạng thái cũ
+      filteredMembers.forEach((member) => {
+        newSelected[member.id] = newSelectionState // Áp dụng trạng thái mới
+      })
+      return newSelected
+    })
   }
 
   const handleDistributeRewards = async () => {
@@ -206,6 +276,12 @@ export default function ClubLeaderRewardDistributionPage() {
     }
   }
 
+  const clearFilters = () => {
+    setSearchTerm("")
+    setActiveFilters({})
+    setMembersPage(1)
+  }
+
   // Component Pager đơn giản (Tái sử dụng)
   const MinimalPager = ({ current, total, onPrev, onNext }: { current: number; total: number; onPrev: () => void; onNext: () => void }) =>
     total > 1 ? (
@@ -229,8 +305,39 @@ export default function ClubLeaderRewardDistributionPage() {
             <h1 className="text-3xl font-bold flex items-center gap-3">
               <Award className="h-8 w-8 text-yellow-500" /> Reward Point Distribution
             </h1>
-            <p className="text-muted-foreground">Distribute bonus points from club funds to members {managedClub?.name}.</p>
+            <p className="text-muted-foreground">Distribute bonus points from club funds to members of "<span className="font-semibold text-primary">{managedClub?.name}</span>"</p>
           </div>
+
+          {/* Club Wallet Balance Card */}
+          <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
+            <CardContent className="py-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="h-14 w-14 rounded-full bg-blue-500 flex items-center justify-center">
+                    <Wallet className="h-7 w-7 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Club Balance</p>
+                    {walletLoading ? (
+                      <p className="text-3xl font-bold text-blue-600">Loading...</p>
+                    ) : clubWallet ? (
+                      <p className="text-3xl font-bold text-blue-600">
+                        {clubWallet.balancePoints.toLocaleString()} pts
+                      </p>
+                    ) : (
+                      <p className="text-3xl font-bold text-gray-400">N/A</p>
+                    )}
+                  </div>
+                </div>
+                {clubWallet && (
+                  <div className="text-right">
+                    <p className="text-xs text-muted-foreground">Wallet ID</p>
+                    <p className="text-sm font-medium text-gray-700">#{clubWallet.walletId}</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader>
@@ -267,9 +374,120 @@ export default function ClubLeaderRewardDistributionPage() {
             </CardFooter>
           </Card>
           <Separator />
-          {/* === Danh sách Thành viên === */}
-          <h2 className="text-2xl font-semibold">List of Members ({clubMembers.length})</h2>
 
+          {/* === Tìm kiếm Thành viên === */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              {/* Thanh tìm kiếm (từ lần trước) */}
+              <div className="flex-1 relative">
+                <Input
+                  placeholder="Search by name or student code..."
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value)
+                    setMembersPage(1)
+                  }}
+                  className="pl-4 pr-4 py-2.5 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                />
+              </div>
+
+              {/* ✅ THÊM MỚI: Nút Filter */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowFilters(!showFilters)}
+                className="flex items-center gap-2 rounded-lg border-slate-200 hover:bg-slate-50 transition-colors"
+              >
+                <Filter className="h-4 w-4" />
+                Filters
+                {hasActiveFilters && (
+                  <Badge className="ml-1 h-5 w-5 p-0 text-xs bg-blue-500 hover:bg-blue-600 text-white rounded-full flex items-center justify-center">
+                    {Object.values(activeFilters).filter((v) => v && v !== "all").length + (searchTerm ? 1 : 0)}
+                  </Badge>
+                )}
+              </Button>
+            </div>
+
+            {/* ✅ THÊM MỚI: Bảng điều khiển Filter */}
+            {showFilters && (
+              <div className="space-y-4 p-6 border border-slate-200 rounded-xl bg-gradient-to-br from-slate-50 to-white">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-semibold text-slate-900">Advanced Filters</h4>
+                  {hasActiveFilters && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={clearFilters}
+                      className="h-auto p-1 text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-200/50 transition-colors"
+                    >
+                      <X className="h-3 w-3 mr-1" />
+                      Clear all
+                    </Button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Role Filter */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Role</label>
+                    <Select
+                      value={activeFilters["role"] || "all"}
+                      onValueChange={(v) => handleFilterChange("role", v)}
+                    >
+                      <SelectTrigger className="h-9 text-sm rounded-lg border-slate-200 bg-white hover:border-slate-300 transition-colors">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Roles</SelectItem>
+                        {uniqueRoles.map((role) => (
+                          <SelectItem key={role} value={role}>
+                            {role}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Staff Filter */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Staff</label>
+                    <Select
+                      value={activeFilters["staff"] || "all"}
+                      onValueChange={(v) => handleFilterChange("staff", v)}
+                    >
+                      <SelectTrigger className="h-9 text-sm rounded-lg border-slate-200 bg-white hover:border-slate-300 transition-colors">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All</SelectItem>
+                        <SelectItem value="true">Staff Only</SelectItem>
+                        <SelectItem value="false">Non-Staff</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* === Danh sách Thành viên === */}
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-semibold">
+              List of Members ({filteredMembers.length})
+            </h2>
+
+            {/* ✅ THÊM MỚI: Nút "Select All" */}
+            {filteredMembers.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleToggleSelectAll}
+                className="rounded-lg"
+              >
+                {allFilteredSelected ? "Deselect All" : "Select All"}
+              </Button>
+            )}
+          </div>
           <div className="space-y-4">
             {membersLoading ? (
               <Card>
@@ -295,6 +513,26 @@ export default function ClubLeaderRewardDistributionPage() {
                   <p className="text-muted-foreground">Please review the application to add members.</p>
                 </CardContent>
               </Card>
+            ) : filteredMembers.length === 0 ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-20 text-center">
+                  <div className="h-20 w-20 rounded-full bg-slate-100 flex items-center justify-center mb-4">
+                    <Filter className="h-10 w-10 text-slate-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-slate-900 mb-2">No Members Found</h3>
+                  <p className="text-sm text-slate-500 mb-4">No members match your search term.</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={clearFilters}
+                    className="rounded-lg border-slate-200 hover:bg-slate-50 bg-transparent"
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Clear Search
+                  </Button>
+                </CardContent>
+              </Card>
+
             ) : (
               <>
                 {paginatedMembers.map((member) => {
@@ -304,8 +542,8 @@ export default function ClubLeaderRewardDistributionPage() {
                     <Card
                       key={member.id}
                       className={`transition-all duration-200 border-2 ${isSelected
-                          ? "border-primary/70 bg-primary/5 shadow-sm"
-                          : "border-transparent hover:border-muted"
+                        ? "border-primary/70 bg-primary/5 shadow-sm"
+                        : "border-transparent hover:border-muted"
                         }`}
                     >
                       <CardContent className="py-3 flex items-center justify-between">

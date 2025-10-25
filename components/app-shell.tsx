@@ -8,7 +8,7 @@ import { Sheet, SheetContent } from "@/components/ui/sheet"
 import { Sidebar } from "@/components/sidebar"
 import { UserProfileWidget } from "@/components/user-profile-widget"
 import { ChatbotWidget } from "@/components/chatbot-widget"
-import { Menu, PanelLeftOpen, PanelLeftClose, AlertTriangle, X } from "lucide-react"
+import { Menu, PanelLeftOpen, PanelLeftClose, AlertTriangle, X, Eye, EyeOff } from "lucide-react"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -16,7 +16,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
-import { forgotPassword } from "@/service/authApi"
+import { forceResetPassword } from "@/service/userApi"
+import { ChangePasswordModal } from "@/components/change-password"
 
 interface AppShellProps {
   children: React.ReactNode
@@ -51,7 +52,13 @@ export function AppShell({ children }: AppShellProps) {
   // Password reset banner and modal states
   const [showPasswordResetBanner, setShowPasswordResetBanner] = useState(false)
   const [showPasswordResetModal, setShowPasswordResetModal] = useState(false)
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false)
   const [resetEmail, setResetEmail] = useState("")
+  const [resetUserId, setResetUserId] = useState<string | null>(null)
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoadingPasswordReset, setIsLoadingPasswordReset] = useState(false)
 
   // Persist desktop collapsed state
@@ -67,9 +74,11 @@ export function AppShell({ children }: AppShellProps) {
   useEffect(() => {
     const requireReset = sessionStorage.getItem("requirePasswordReset")
     const email = sessionStorage.getItem("resetEmail")
+    const userId = sessionStorage.getItem("resetUserId")
     
-    if (requireReset === "true" && email) {
+    if (requireReset === "true" && email && userId) {
       setResetEmail(email)
+      setResetUserId(userId)
       setShowPasswordResetBanner(true)
       // Don't clear the flags here - keep them until user dismisses or resets password
     }
@@ -77,10 +86,38 @@ export function AppShell({ children }: AppShellProps) {
 
   // Handle password reset
   const handlePasswordReset = async () => {
-    if (!resetEmail) {
+    // Validate inputs
+    if (!resetUserId) {
       toast({
         title: "Error",
-        description: "Email is required",
+        description: "User ID is missing",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (!newPassword) {
+      toast({
+        title: "Error",
+        description: "Please enter a new password",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // if (newPassword.length < 6) {
+    //   toast({
+    //     title: "Error",
+    //     description: "Password must be at least 6 characters long",
+    //     variant: "destructive",
+    //   })
+    //   return
+    // }
+
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: "Error",
+        description: "Passwords do not match",
         variant: "destructive",
       })
       return
@@ -89,18 +126,21 @@ export function AppShell({ children }: AppShellProps) {
     setIsLoadingPasswordReset(true)
 
     try {
-      const response = await forgotPassword(resetEmail)
+      const response = await forceResetPassword(resetUserId, newPassword)
       
       toast({
-        title: "Password Reset Email Sent",
-        description: response.message || "Please check your email for the password reset link",
+        title: "Password Reset Successful",
+        description: response.message || "Your password has been successfully reset. Please login with your new password.",
       })
 
       // Clear session storage flags and close modal
       sessionStorage.removeItem("requirePasswordReset")
       sessionStorage.removeItem("resetEmail")
+      sessionStorage.removeItem("resetUserId")
       setShowPasswordResetModal(false)
       setShowPasswordResetBanner(false)
+      setNewPassword("")
+      setConfirmPassword("")
       
       // Wait a moment for the toast to show, then logout
       setTimeout(() => {
@@ -108,7 +148,7 @@ export function AppShell({ children }: AppShellProps) {
       }, 1500)
     } catch (error: any) {
       toast({
-        title: "Failed to Send Reset Email",
+        title: "Failed to Reset Password",
         description: error.response?.data?.message || "Something went wrong",
         variant: "destructive",
       })
@@ -118,7 +158,14 @@ export function AppShell({ children }: AppShellProps) {
   }
 
   const handleBannerClick = () => {
-    setShowPasswordResetModal(true)
+    // Check if user is CLUB_LEADER to show change password modal
+    const userRole = auth.role
+    if (userRole === "CLUB_LEADER" || userRole === "club_leader") {
+      setShowChangePasswordModal(true)
+    } else {
+      // For other roles (admin-forced reset), use the force reset modal
+      setShowPasswordResetModal(true)
+    }
   }
 
   const handleCloseBanner = (e: React.MouseEvent) => {
@@ -127,6 +174,15 @@ export function AppShell({ children }: AppShellProps) {
     // Clear session storage when user dismisses the banner
     sessionStorage.removeItem("requirePasswordReset")
     sessionStorage.removeItem("resetEmail")
+    sessionStorage.removeItem("resetUserId")
+  }
+
+  const handleChangePasswordClose = (open: boolean) => {
+    setShowChangePasswordModal(open)
+    if (!open) {
+      // When change password modal closes, also hide the banner
+      setShowPasswordResetBanner(false)
+    }
   }
 
   if (!auth.user) return null
@@ -273,14 +329,56 @@ export function AppShell({ children }: AppShellProps) {
                   id="reset-email"
                   type="email"
                   value={resetEmail}
-                  onChange={(e) => setResetEmail(e.target.value)}
-                  placeholder="Enter your email"
                   className="w-full"
                   disabled
                 />
                 <p className="text-xs text-muted-foreground">
-                  We'll send a password reset link to this email address.
+                  Your account email address
                 </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="new-password">New Password</Label>
+                <div className="relative">
+                  <Input
+                    id="new-password"
+                    type={showPassword ? "text" : "password"}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Enter new password"
+                    className="w-full pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="confirm-password">Confirm New Password</Label>
+                <div className="relative">
+                  <Input
+                    id="confirm-password"
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Confirm new password"
+                    className="w-full pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    tabIndex={-1}
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
             </div>
             <DialogFooter className="flex-col sm:flex-row gap-2">
@@ -295,21 +393,27 @@ export function AppShell({ children }: AppShellProps) {
               <Button
                 type="button"
                 onClick={handlePasswordReset}
-                disabled={isLoadingPasswordReset || !resetEmail}
+                disabled={isLoadingPasswordReset || !newPassword || !confirmPassword}
                 className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
               >
                 {isLoadingPasswordReset ? (
                   <>
                     <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2" />
-                    Sending...
+                    Resetting...
                   </>
                 ) : (
-                  "Send Reset Link"
+                  "Reset Password"
                 )}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Change Password Modal (for CLUB_LEADER) */}
+        <ChangePasswordModal 
+          open={showChangePasswordModal} 
+          onOpenChange={handleChangePasswordClose}
+        />
       </div>
     </SidebarContext.Provider>
   )

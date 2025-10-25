@@ -32,7 +32,7 @@ const navigationConfig = {
     { href: "/student/events", label: "Events", icon: Calendar },
     { href: "/student/checkin", label: "Check In", icon: CheckCircle },
     { href: "/student/gift", label: "Gift", icon: Gift },
-    { href: "/student/wallet", label: "Wallet", icon: Wallet },
+    // { href: "/student/wallet", label: "Wallet", icon: Wallet },
     { href: "/student/history", label: "History", icon: History },
   ],
   club_leader: [

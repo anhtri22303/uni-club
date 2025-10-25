@@ -261,3 +261,69 @@ export const resetPassword = async (
   }
 }
 
+// Change Password API (for CLUB_LEADER when clicking banner)
+export interface ChangePasswordRequest {
+  oldPassword: string
+  newPassword: string
+}
+
+export interface ChangePasswordResponse {
+  success: boolean
+  message: string
+  data: null
+}
+
+export const changePassword = async (
+  oldPassword: string,
+  newPassword: string
+): Promise<ChangePasswordResponse> => {
+  try {
+    const res = await axiosInstance.post(
+      "/auth/change-password",
+      {
+        oldPassword,
+        newPassword
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    )
+    console.log("Change password response:", res.data)
+    
+    // Handle both wrapped and direct response formats
+    if (res.data && typeof res.data === 'object') {
+      // If response is wrapped in standard format { success, message, data }
+      if ('success' in res.data && 'message' in res.data) {
+        return res.data as ChangePasswordResponse
+      }
+      // If response is direct message string or other format
+      return {
+        success: true,
+        message: (res.data as any).message || "Password changed successfully. Please re-login.",
+        data: null
+      }
+    }
+    
+    // Fallback for unexpected response format
+    return {
+      success: true,
+      message: "Password changed successfully. Please re-login.",
+      data: null
+    }
+  } catch (error: any) {
+    console.error("Change password error:", {
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message
+    })
+    
+    // Re-throw with formatted error
+    if (error.response?.data) {
+      throw error
+    }
+    
+    throw new Error("Failed to change password")
+  }
+}

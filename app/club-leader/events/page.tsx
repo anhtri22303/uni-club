@@ -14,53 +14,35 @@ import { Modal } from "@/components/modal"
 import { QRModal } from "@/components/qr-modal"
 import { useToast } from "@/hooks/use-toast"
 import { usePagination } from "@/hooks/use-pagination"
-import { useClubEvents } from "@/hooks/use-query-hooks"
-import { useQueryClient } from "@tanstack/react-query"
-import { Calendar, Plus, Edit, MapPin, Trophy, ChevronLeft, ChevronRight, Filter, X, Eye } from "lucide-react"
+import { useClub } from "@/hooks/use-query-hooks"
+import { Calendar, Plus, MapPin, Trophy, ChevronLeft, ChevronRight, Filter, X, Eye, Loader2 } from "lucide-react"
 import { QrCode } from "lucide-react"
 import QRCode from "qrcode"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
-
-import clubs from "@/src/data/clubs.json"
-import { createEvent, getEventById } from "@/service/eventApi"
+import { createEvent, getEventByClubId } from "@/service/eventApi"
 import { generateCode } from "@/service/checkinApi"
 import { safeLocalStorage } from "@/lib/browser-utils"
 import { fetchLocation } from "@/service/locationApi"
-import { fetchClub } from "@/service/clubApi"
+import { fetchClub, getClubIdFromToken } from "@/service/clubApi"
 import { Checkbox } from "@/components/ui/checkbox"
 
 export default function ClubLeaderEventsPage() {
   const router = useRouter()
   const { toast } = useToast()
-  const queryClient = useQueryClient()
-  const [userClubId, setUserClubId] = useState<number | null>(null)
+  const [userClubId, setUserClubId] = useState<number | null>(() => getClubIdFromToken()) // Gọi hàm trực tiếp
   const [locations, setLocations] = useState<any[]>([])
   const [locationsLoading, setLocationsLoading] = useState(false)
   const [selectedLocationId, setSelectedLocationId] = useState<string>("")
   const [allClubs, setAllClubs] = useState<any[]>([])
   const [clubsLoading, setClubsLoading] = useState(false)
   const [selectedCoHostClubIds, setSelectedCoHostClubIds] = useState<number[]>([])
+  const [isCreating, setIsCreating] = useState(false)
 
   // Add fullscreen and environment states
   const [isFullscreen, setIsFullscreen] = useState(false)
   // support 'mobile' environment for deep-link QR
   const [activeEnvironment, setActiveEnvironment] = useState<'local' | 'prod' | 'mobile'>('prod')
-
-  // Get clubId from localStorage
-  useEffect(() => {
-    try {
-      const saved = safeLocalStorage.getItem("uniclub-auth")
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        if (parsed.clubId) {
-          setUserClubId(Number(parsed.clubId))
-        }
-      }
-    } catch (error) {
-      console.error("Failed to get clubId from localStorage:", error)
-    }
-  }, [])
 
   // Fetch locations on mount
   useEffect(() => {
@@ -73,10 +55,10 @@ export default function ClubLeaderEventsPage() {
         setLocations(locationList)
       } catch (error) {
         console.error("Failed to fetch locations:", error)
-        toast({ 
-          title: "Error", 
-          description: "Failed to load locations", 
-          variant: "destructive" 
+        toast({
+          title: "Error",
+          description: "Failed to load locations",
+          variant: "destructive"
         })
       } finally {
         setLocationsLoading(false)
@@ -95,10 +77,10 @@ export default function ClubLeaderEventsPage() {
         setAllClubs(clubList)
       } catch (error) {
         console.error("Failed to fetch clubs:", error)
-        toast({ 
-          title: "Error", 
-          description: "Failed to load clubs", 
-          variant: "destructive" 
+        toast({
+          title: "Error",
+          description: "Failed to load clubs",
+          variant: "destructive"
         })
       } finally {
         setClubsLoading(false)
@@ -107,39 +89,74 @@ export default function ClubLeaderEventsPage() {
     loadClubs()
   }, [])
 
-  // ✅ USE REACT QUERY for events
-  const { data: rawEvents = [], isLoading: eventsLoading } = useClubEvents(
-    userClubId ? [userClubId] : []
-  )
+  // Fetch events directly using getEventByClubId API
+  const [rawEvents, setRawEvents] = useState<any[]>([])
+  const [eventsLoading, setEventsLoading] = useState(false)
+
+  const { data: managedClub, isLoading: clubLoading } = useClub(userClubId || 0, !!userClubId)
+
+  // Fetch events when userClubId is available
+  useEffect(() => {
+    const loadEvents = async () => {
+      if (!userClubId) return
+      
+      setEventsLoading(true)
+      try {
+        const events = await getEventByClubId(userClubId)
+        setRawEvents(events)
+      } catch (error) {
+        console.error("Failed to fetch events:", error)
+        toast({
+          title: "Error",
+          description: "Failed to load events",
+          variant: "destructive"
+        })
+      } finally {
+        setEventsLoading(false)
+      }
+    }
+    loadEvents()
+  }, [userClubId])
+
+  // Helper function to check if event has expired (past endTime)
+  const isEventExpired = (event: any) => {
+    // Check if date and endTime are present
+    if (!event.date || !event.endTime) return false
+
+    try {
+      // Get current date/time in Vietnam timezone (UTC+7)
+      const now = new Date()
+      const vnTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }))
+
+      // Parse event date (format: YYYY-MM-DD)
+      const [year, month, day] = event.date.split('-').map(Number)
+      
+      // Parse endTime (format: HH:MM:SS or HH:MM)
+      const [hours, minutes] = event.endTime.split(':').map(Number)
+
+      // Create event end datetime in Vietnam timezone
+      const eventEndDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0)
+
+      // Event is expired if current VN time is past the end time
+      return vnTime > eventEndDateTime
+    } catch (error) {
+      console.error('Error checking event expiration:', error)
+      return false
+    }
+  }
 
   // Helper function to check if event is active (APPROVED and within date/time range)
   const isEventActive = (event: any) => {
     // Must be APPROVED
     if (event.status !== "APPROVED") return false
-    
+
+    // Must not be expired
+    if (isEventExpired(event)) return false
+
     // Check if date and endTime are present
     if (!event.date || !event.endTime) return false
-    
-    try {
-      // Get current date/time
-      const now = new Date()
-      
-      // Parse event date (format: YYYY-MM-DD)
-      const eventDate = new Date(event.date)
-      
-      // Parse endTime (format: HH:MM:SS or HH:MM)
-      const [hours, minutes] = event.endTime.split(':').map(Number)
-      
-      // Create event end datetime
-      const eventEndDateTime = new Date(eventDate)
-      eventEndDateTime.setHours(hours, minutes, 0, 0)
-      
-      // Event is active if current time is before or equal to end time
-      return now <= eventEndDateTime
-    } catch (error) {
-      console.error('Error checking event active status:', error)
-      return false
-    }
+
+    return true
   }
 
   // Helper function to sort events by date and time (newest to oldest)
@@ -148,17 +165,17 @@ export default function ClubLeaderEventsPage() {
       // Parse dates for comparison
       const dateA = new Date(a.date || '1970-01-01')
       const dateB = new Date(b.date || '1970-01-01')
-      
+
       // Compare dates first (newest first)
       if (dateA.getTime() !== dateB.getTime()) {
         return dateB.getTime() - dateA.getTime()
       }
-      
+
       // If dates are equal, compare times (latest startTime first)
       // Support both new (startTime) and legacy (time) formats
       const timeA = a.startTime || a.time || '00:00'
       const timeB = b.startTime || b.time || '00:00'
-      
+
       // Convert time strings to comparable format (HH:MM:SS or HH:MM to minutes)
       const parseTime = (timeStr: string) => {
         const parts = timeStr.split(':').map(Number)
@@ -166,7 +183,7 @@ export default function ClubLeaderEventsPage() {
         const minutes = parts[1] || 0
         return hours * 60 + minutes
       }
-      
+
       return parseTime(timeB) - parseTime(timeA)
     })
   }
@@ -174,19 +191,19 @@ export default function ClubLeaderEventsPage() {
   // Process and sort events
   const events = useMemo(() => {
     // Normalize events with both new and legacy field support
-    const normalized = rawEvents.map((e: any) => ({ 
-      ...e, 
+    const normalized = rawEvents.map((e: any) => ({
+      ...e,
       title: e.name || e.title,
       time: e.startTime || e.time, // Map startTime to time for legacy compatibility
+      clubId: e.hostClub?.id || e.clubId, // Map hostClub.id to clubId for backward compatibility
+      clubName: e.hostClub?.name || e.clubName, // Map hostClub.name to clubName for backward compatibility
     }))
     return sortEventsByDateTime(normalized)
   }, [rawEvents])
 
   const [showCreateModal, setShowCreateModal] = useState(false)
-  const [showEditModal, setShowEditModal] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<any>(null)
   const [showQrModal, setShowQrModal] = useState(false)
-  const [qrDataUrls, setQrDataUrls] = useState<{ local?: string; prod?: string; mobile?: string }>({})
   const [qrLinks, setQrLinks] = useState<{ local?: string; prod?: string; mobile?: string }>({})
   const [qrRotations, setQrRotations] = useState<{ local: string[]; prod: string[]; mobile?: string[] }>({ local: [], prod: [] })
   const [visibleIndex, setVisibleIndex] = useState(0)
@@ -266,13 +283,8 @@ export default function ClubLeaderEventsPage() {
     return () => clearTimeout(t)
   }, [visibleIndex, showQrModal])
 
-  // Find managed club based on userClubId or fallback to first club
-  const managedClub = userClubId 
-    ? clubs.find(club => Number(club.id) === userClubId) || clubs[0] 
-    : clubs[0]
-
   const [formData, setFormData] = useState({
-    clubId: userClubId || managedClub.id,
+    clubId: userClubId || 0,
     name: "",
     description: "",
     type: "PUBLIC",
@@ -361,7 +373,7 @@ export default function ClubLeaderEventsPage() {
   const hasActiveFilters = Object.values(activeFilters).some((v) => v && v !== "all") || Boolean(searchTerm)
 
   const resetForm = () => {
-    setFormData({ clubId: userClubId || managedClub.id, name: "", description: "", type: "PUBLIC", date: "", startTime: "09:00:00", endTime: "11:00:00", locationId: 0, maxCheckInCount: 100 })
+    setFormData({ clubId: userClubId || 0, name: "", description: "", type: "PUBLIC", date: "", startTime: "09:00:00", endTime: "11:00:00", locationId: 0, maxCheckInCount: 100 })
     setSelectedLocationId("")
     setSelectedCoHostClubIds([])
   }
@@ -373,6 +385,7 @@ export default function ClubLeaderEventsPage() {
       return
     }
 
+    setIsCreating(true)
     try {
       const hostClubId = Number(formData.clubId)
       const payload: any = {
@@ -394,40 +407,25 @@ export default function ClubLeaderEventsPage() {
 
       const res: any = await createEvent(payload)
       toast({ title: "Event Created", description: "Event created successfully" })
-      // Invalidate query to refresh events
-      queryClient.invalidateQueries({ queryKey: ["events"] })
+      // Refresh events list
+      if (userClubId) {
+        const events = await getEventByClubId(userClubId)
+        setRawEvents(events)
+      }
       setShowCreateModal(false)
       resetForm()
     } catch (error: any) {
       console.error(error)
-      toast({ 
-        title: "Error", 
-        description: error?.response?.data?.message || "Failed to create event", 
-        variant: "destructive" 
+      toast({
+        title: "Error",
+        description: error?.response?.data?.message || "Failed to create event",
+        variant: "destructive"
       })
+    } finally {
+      setIsCreating(false)
     }
   }
 
-  const handleEdit = (event: any) => {
-    setSelectedEvent(event)
-    setFormData({
-      clubId: event.hostClub?.id ?? event.clubId ?? userClubId ?? managedClub.id,
-      name: event.name ?? event.title ?? "",
-      description: event.description ?? "",
-      type: event.type ?? "PUBLIC",
-      date: event.date ?? "",
-      startTime: event.startTime ?? event.time ?? "09:00:00",
-      endTime: event.endTime ?? "11:00:00",
-      locationId: event.locationId ?? 0,
-      maxCheckInCount: event.maxCheckInCount ?? 100,
-    })
-    // Set the selected location dropdown value
-    if (event.locationId) {
-      setSelectedLocationId(String(event.locationId))
-    }
-    setShowEditModal(true)
-  }
-  const handleUpdate = () => { /* same as source */ }
 
   // Helper functions for QR actions
   const handleDownloadQR = (environment: 'local' | 'prod' | 'mobile') => {
@@ -455,9 +453,9 @@ export default function ClubLeaderEventsPage() {
       link.href = qrDataUrl
       link.click()
 
-      toast({ 
-        title: 'Downloaded', 
-        description: `QR code downloaded for ${environment} environment` 
+      toast({
+        title: 'Downloaded',
+        description: `QR code downloaded for ${environment} environment`
       })
     } catch (err) {
       toast({ title: 'Download failed', description: 'Could not download QR code' })
@@ -466,25 +464,35 @@ export default function ClubLeaderEventsPage() {
 
   const handleCopyLink = async (environment: 'local' | 'prod' | 'mobile') => {
     try {
+      // Generate fresh token for all environments
+      if (!selectedEvent?.id) {
+        toast({ title: 'No event', description: 'Event not available', variant: 'destructive' })
+        return
+      }
+
       let link: string | undefined
-      if (environment === 'local') link = qrLinks.local
-      else if (environment === 'prod') link = qrLinks.prod
-      else {
-        // mobile deep link uses checkInCode
-        const token = selectedEvent?.checkInCode || ''
-        if (!token) {
-          toast({ title: 'No token', description: 'Mobile token not available', variant: 'destructive' })
-          return
+      try {
+        const { token } = await generateCode(selectedEvent.id)
+        
+        if (environment === 'local') {
+          link = `http://localhost:3000/student/checkin/${token}`
+        } else if (environment === 'prod') {
+          link = `https://uniclub-fpt.vercel.app/student/checkin/${token}`
+        } else {
+          // mobile deep link
+          link = `exp://192.168.1.50:8081/--/student/checkin/${token}`
         }
-        link = `exp://192.168.1.50:8081/--/student/checkin/${token}`
+      } catch (err) {
+        toast({ title: 'Error', description: 'Could not generate link', variant: 'destructive' })
+        return
       }
 
       if (!link) return
-      
+
       await navigator.clipboard.writeText(link)
-      toast({ 
-        title: 'Copied', 
-        description: `${environment.charAt(0).toUpperCase() + environment.slice(1)} link copied to clipboard` 
+      toast({
+        title: 'Copied',
+        description: `${environment.charAt(0).toUpperCase() + environment.slice(1)} link copied to clipboard`
       })
     } catch {
       toast({ title: 'Copy failed', description: 'Could not copy link to clipboard' })
@@ -494,23 +502,26 @@ export default function ClubLeaderEventsPage() {
   // Helper to get event status based on date and time
   const getEventStatus = (eventDate: string, eventTime: string) => {
     if (!eventDate) return "Finished"
+    // Get current time in Vietnam timezone (UTC+7)
     const now = new Date()
-    // Combine date and time into a single Date object
+    const vnTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }))
+    
+    // Parse event date and time
     const [hour = "00", minute = "00"] = (eventTime || "00:00").split(":")
-    const event = new Date(eventDate)
-    event.setHours(Number(hour), Number(minute), 0, 0)
+    const [year, month, day] = eventDate.split('-').map(Number)
+    const event = new Date(year, month - 1, day, Number(hour), Number(minute), 0, 0)
 
     // Event duration: assume 2 hours for "Now" window (customize as needed)
     const EVENT_DURATION_MS = 2 * 60 * 60 * 1000
     const start = event.getTime()
     const end = start + EVENT_DURATION_MS
 
-    if (now.getTime() < start) {
+    if (vnTime.getTime() < start) {
       // If event starts within next 7 days, it's "Soon"
-      if (start - now.getTime() < 7 * 24 * 60 * 60 * 1000) return "Soon"
+      if (start - vnTime.getTime() < 7 * 24 * 60 * 60 * 1000) return "Soon"
       return "Future"
     }
-    if (now.getTime() >= start && now.getTime() <= end) return "Now"
+    if (vnTime.getTime() >= start && vnTime.getTime() <= end) return "Now"
     return "Finished"
   }
 
@@ -521,9 +532,19 @@ export default function ClubLeaderEventsPage() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold">Events</h1>
-              <p className="text-muted-foreground">
+              {/* <p className="text-muted-foreground">
                 Manage {managedClub ? managedClub.name : 'Club'} events
                 {userClubId && <span className="text-xs text-muted-foreground/70 ml-2">(Club ID: {userClubId})</span>}
+              </p> */}
+              <p className="text-muted-foreground h-5">
+                {clubLoading ? (
+                  <Skeleton className="h-4 w-48" />
+                ) : (
+                  <span>
+                    Event management for "{managedClub ? <span className="font-semibold text-primary">{managedClub.name}</span> : 'Club'}"
+                  </span>
+                )}
+                {/* {userClubId && <span className="text-xs text-muted-foreground/70 ml-2">(Club ID: {userClubId})</span>} */}
               </p>
             </div>
             <Button onClick={() => setShowCreateModal(true)}>
@@ -592,7 +613,7 @@ export default function ClubLeaderEventsPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All</SelectItem>
-                        {clubs.map((c: any) => (
+                        {allClubs.map((c: any) => (
                           <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
                         ))}
                       </SelectContent>
@@ -650,24 +671,31 @@ export default function ClubLeaderEventsPage() {
             <>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {paginatedEvents.map((event: any) => {
-                  const status = getEventStatus(event.date, event.time)
-                  // Border color logic
+                  const expired = isEventExpired(event)
+                  const status = expired ? "Finished" : getEventStatus(event.date, event.time)
+                  // Border color logic - expired events override approval status
                   let borderColor = ""
-                  if (event.status === "APPROVED") borderColor = "border-green-500"
-                  else if (event.status === "REJECTED") borderColor = "border-red-500"
-                  else borderColor = "border-transparent"
+                  if (expired) {
+                    borderColor = "border-gray-400 dark:border-gray-600"
+                  } else if (event.status === "APPROVED") {
+                    borderColor = "border-green-500"
+                  } else if (event.status === "REJECTED") {
+                    borderColor = "border-red-500"
+                  } else {
+                    borderColor = "border-transparent"
+                  }
 
                   return (
                     <Card
                       key={event.id}
-                      className={`hover:shadow-md transition-shadow border-2 ${borderColor} h-full flex flex-col`}
+                      className={`hover:shadow-md transition-shadow border-2 ${borderColor} ${expired ? 'opacity-60' : ''} h-full flex flex-col`}
                     >
                       <CardHeader>
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <CardTitle className="text-lg">{event.title}</CardTitle>
                             {event.description && (
-                              <CardDescription 
+                              <CardDescription
                                 className="mt-1 text-sm leading-5 max-h-[3.75rem] overflow-hidden"
                                 style={{
                                   display: '-webkit-box',
@@ -685,25 +713,31 @@ export default function ClubLeaderEventsPage() {
                               status === "Finished"
                                 ? "secondary"
                                 : status === "Soon"
-                                ? "default"
-                                : status === "Now"
-                                ? "destructive"
-                                : "outline"
+                                  ? "default"
+                                  : status === "Now"
+                                    ? "destructive"
+                                    : "outline"
                             }
                           >
                             {status}
                           </Badge>
                         </div>
-                        {/* Approval status badge */}
+                        {/* Approval status badge - show gray for expired events */}
                         <div className="mt-2">
-                          {event.status === "APPROVED" && (
-                            <Badge variant="default">Approved</Badge>
-                          )}
-                          {event.status === "PENDING" && (
-                            <Badge variant="outline">Pending</Badge>
-                          )}
-                          {event.status === "REJECTED" && (
-                            <Badge variant="destructive">Rejected</Badge>
+                          {expired ? (
+                            <Badge variant="secondary" className="bg-gray-400 text-white">Expired</Badge>
+                          ) : (
+                            <>
+                              {event.status === "APPROVED" && (
+                                <Badge variant="default">Approved</Badge>
+                              )}
+                              {event.status === "PENDING" && (
+                                <Badge variant="outline">Pending</Badge>
+                              )}
+                              {event.status === "REJECTED" && (
+                                <Badge variant="destructive">Rejected</Badge>
+                              )}
+                            </>
                           )}
                         </div>
                       </CardHeader>
@@ -734,16 +768,10 @@ export default function ClubLeaderEventsPage() {
 
                         {/* Buttons section - pushed to bottom */}
                         <div className="mt-auto pt-4 space-y-3">
-                          <div className="grid grid-cols-2 gap-2">
-                            <Button variant="outline" onClick={() => router.push(`/club-leader/events/${event.id}`)}>
-                              <Eye className="h-4 w-4 mr-2" />
-                              View Detail
-                            </Button>
-                            <Button variant="outline" onClick={() => handleEdit(event)}>
-                              <Edit className="h-4 w-4 mr-2" />
-                              Edit Event
-                            </Button>
-                          </div>
+                          <Button variant="outline" className="w-full" onClick={() => router.push(`/club-leader/events/${event.id}`)}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            View Detail
+                          </Button>
                           {/* QR Code Section - Only show if APPROVED and event is still active */}
                           {isEventActive(event) && (
                             <div className="mt-3 pt-3 border-t border-muted">
@@ -759,53 +787,53 @@ export default function ClubLeaderEventsPage() {
                                     const { token, qrUrl } = await generateCode(event.id);
                                     console.log('Generated token:', token);
                                     console.log('Generated qrUrl:', qrUrl);
-                                    
+
                                     // Create URLs with token (path parameter format)
                                     const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${token}`;
                                     const localUrl = `http://localhost:3000/student/checkin/${token}`;
-                                    
+
                                     console.log('Production URL:', prodUrl);
                                     console.log('Development URL:', localUrl);
-                                    
+
                                     // Generate QR code variants
                                     const styleVariants = [
                                       { color: { dark: '#000000', light: '#FFFFFF' }, margin: 1 },
                                       { color: { dark: '#111111', light: '#FFFFFF' }, margin: 2 },
                                       { color: { dark: '#222222', light: '#FFFFFF' }, margin: 0 },
                                     ];
-                                    
+
                                     // Generate QR variants for local environment
                                     const localQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
                                       const opts = styleVariants[i % styleVariants.length];
                                       return QRCode.toDataURL(localUrl, opts as any);
                                     });
                                     const localQrVariants = await Promise.all(localQrVariantsPromises);
-                                    
+
                                     // Generate QR variants for production environment
                                     const prodQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
                                       const opts = styleVariants[i % styleVariants.length];
                                       return QRCode.toDataURL(prodUrl, opts as any);
                                     });
                                     const prodQrVariants = await Promise.all(prodQrVariantsPromises);
-                                    
+
                                     // Set different URLs for local and production
                                     setQrRotations({ local: localQrVariants, prod: prodQrVariants });
                                     setQrLinks({ local: localUrl, prod: prodUrl });
                                     setVisibleIndex(0);
                                     setDisplayedIndex(0);
                                     setShowQrModal(true);
-                                    
-                                    toast({ 
-                                      title: 'QR Code Generated', 
+
+                                    toast({
+                                      title: 'QR Code Generated',
                                       description: 'Check-in QR code has been generated successfully',
-                                      duration: 3000 
+                                      duration: 3000
                                     });
                                   } catch (err: any) {
                                     console.error('Failed to generate QR', err);
-                                    toast({ 
-                                      title: 'QR Error', 
-                                      description: err?.message || 'Could not generate QR code', 
-                                      variant: 'destructive' 
+                                    toast({
+                                      title: 'QR Error',
+                                      description: err?.message || 'Could not generate QR code',
+                                      variant: 'destructive'
                                     });
                                   }
                                 }}
@@ -859,69 +887,39 @@ export default function ClubLeaderEventsPage() {
             onOpenChange={setShowCreateModal}
             title="Create New Event"
             description="Add a new event for your club members"
+            className="sm:max-w-3xl max-h-[90vh] overflow-y-auto"
           >
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Event Name *</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Enter event name"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Describe your event..."
-                  rows={3}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="date">Date *</Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={formData.date}
-                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="startTime">Start Time *</Label>
+            <div className="space-y-3">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="name" className="text-sm">Event Name *</Label>
                   <Input
-                    id="startTime"
-                    type="time"
-                    value={formData.startTime.substring(0, 5)}
-                    onChange={(e) => setFormData({ ...formData, startTime: e.target.value + ":00" })}
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="Enter event name"
+                    className="h-9"
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="endTime">End Time *</Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="date" className="text-sm">Date *</Label>
                   <Input
-                    id="endTime"
-                    type="time"
-                    value={formData.endTime.substring(0, 5)}
-                    onChange={(e) => setFormData({ ...formData, endTime: e.target.value + ":00" })}
+                    id="date"
+                    type="date"
+                    value={formData.date}
+                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                    className="h-9"
                   />
                 </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="type">Type</Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="type" className="text-sm">Type</Label>
                   <Select
                     value={formData.type}
                     onValueChange={(value) => setFormData({ ...formData, type: value })}
                   >
-                    <SelectTrigger id="type">
+                    <SelectTrigger id="type" className="h-9">
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
@@ -930,65 +928,143 @@ export default function ClubLeaderEventsPage() {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="maxCheckInCount">Max Check-ins {selectedLocationId && "(Auto-filled from location)"}</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="description" className="text-sm">Description</Label>
+                <Textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Describe your event..."
+                  rows={2}
+                  className="resize-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="startTime" className="text-sm">Start Time *</Label>
+                  <Input
+                    id="startTime"
+                    type="time"
+                    value={formData.startTime.substring(0, 5)}
+                    onChange={(e) => setFormData({ ...formData, startTime: e.target.value + ":00" })}
+                    className="h-9"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="endTime" className="text-sm">End Time *</Label>
+                  <Input
+                    id="endTime"
+                    type="time"
+                    value={formData.endTime.substring(0, 5)}
+                    onChange={(e) => setFormData({ ...formData, endTime: e.target.value + ":00" })}
+                    className="h-9"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="maxCheckInCount" className="text-sm">Max Check-ins</Label>
                   <Input
                     id="maxCheckInCount"
                     type="number"
                     value={formData.maxCheckInCount}
                     onChange={(e) => setFormData({ ...formData, maxCheckInCount: Number.parseInt(e.target.value) || 100 })}
-                    className={selectedLocationId ? "bg-muted border-blue-300" : ""}
-                    placeholder="Select location first"
+                    className={`h-9 ${selectedLocationId ? "bg-muted border-blue-300" : ""}`}
+                    placeholder="100"
                   />
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="locationName">Location *</Label>
-                <Select
-                  value={selectedLocationId}
-                  onValueChange={(value) => {
-                    setSelectedLocationId(value)
-                    const location = locations.find(loc => String(loc.id) === value)
-                    if (location) {
-                      setFormData({ 
-                        ...formData, 
-                        locationId: Number(location.id),
-                        maxCheckInCount: location.capacity || 100
-                      })
-                    }
-                  }}
-                  disabled={locationsLoading}
-                >
-                  <SelectTrigger id="locationName">
-                    <SelectValue placeholder={locationsLoading ? "Loading locations..." : "Select a location"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {locations.map((location) => (
-                      <SelectItem key={location.id} value={String(location.id)}>
-                        {location.name} {location.capacity && `(Capacity: ${location.capacity})`}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="locationName" className="text-sm">Location *</Label>
+                  <Select
+                    value={selectedLocationId}
+                    onValueChange={(value) => {
+                      setSelectedLocationId(value)
+                      const location = locations.find(loc => String(loc.id) === value)
+                      if (location) {
+                        setFormData({
+                          ...formData,
+                          locationId: Number(location.id),
+                          maxCheckInCount: location.capacity || 100
+                        })
+                      }
+                    }}
+                    disabled={locationsLoading}
+                  >
+                    <SelectTrigger id="locationName" className="h-9">
+                      <SelectValue placeholder={locationsLoading ? "Loading locations..." : "Select a location"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {locations.map((location) => (
+                        <SelectItem key={location.id} value={String(location.id)}>
+                          {location.name} {location.capacity && `(${location.capacity})`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-sm">
+                    Co-Host Clubs 
+                    {selectedCoHostClubIds.length > 0 && (
+                      <span className="text-xs text-muted-foreground ml-1">
+                        ({selectedCoHostClubIds.length} selected)
+                      </span>
+                    )}
+                  </Label>
+                  <div className="border rounded-md p-2 min-h-[2.25rem] bg-muted/30 flex items-center gap-1 flex-wrap">
+                    {clubsLoading ? (
+                      <p className="text-xs text-muted-foreground">Loading...</p>
+                    ) : allClubs.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">No clubs available</p>
+                    ) : selectedCoHostClubIds.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">Click below to select clubs</p>
+                    ) : (
+                      <>
+                        {selectedCoHostClubIds.map((clubId) => {
+                          const club = allClubs.find(c => c.id === clubId)
+                          if (!club) return null
+                          return (
+                            <Badge 
+                              key={clubId} 
+                              variant="secondary" 
+                              className="text-xs px-2 py-0.5 flex items-center gap-1"
+                            >
+                              {club.name}
+                              <X 
+                                className="h-3 w-3 cursor-pointer hover:text-destructive" 
+                                onClick={() => setSelectedCoHostClubIds(selectedCoHostClubIds.filter(id => id !== clubId))}
+                              />
+                            </Badge>
+                          )
+                        })}
+                      </>
+                    )}
+                  </div>
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>Co-Host Clubs (Optional)</Label>
-                <div className="border rounded-md p-3 max-h-48 overflow-y-auto bg-muted/30">
-                  {clubsLoading ? (
-                    <p className="text-sm text-muted-foreground">Loading clubs...</p>
-                  ) : allClubs.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No clubs available</p>
-                  ) : (
-                    <div className="space-y-2">
+              {/* Expandable co-host section for selecting clubs */}
+              {allClubs.filter(club => club.id !== userClubId).length > 0 && (
+                <details className="space-y-2">
+                  <summary className="text-sm font-medium cursor-pointer hover:text-primary flex items-center gap-2">
+                    <Plus className="h-4 w-4" />
+                    Select Co-Host Clubs ({allClubs.filter(club => club.id !== userClubId).length} available)
+                  </summary>
+                  <div className="border rounded-md p-3 max-h-40 overflow-y-auto bg-muted/30 mt-2">
+                    <div className="grid grid-cols-2 gap-2">
                       {allClubs
-                        .filter(club => club.id !== userClubId) // Exclude host club
+                        .filter(club => club.id !== userClubId)
                         .map((club) => (
-                          <div key={club.id} className="flex items-center space-x-2">
+                          <div key={club.id} className="flex items-center space-x-2 p-1.5 hover:bg-background rounded">
                             <Checkbox
-                              id={`club-${club.id}`}
+                              id={`club-full-${club.id}`}
                               checked={selectedCoHostClubIds.includes(club.id)}
                               onCheckedChange={(checked: boolean) => {
                                 if (checked) {
@@ -997,91 +1073,35 @@ export default function ClubLeaderEventsPage() {
                                   setSelectedCoHostClubIds(selectedCoHostClubIds.filter(id => id !== club.id))
                                 }
                               }}
+                              className="h-4 w-4"
                             />
                             <label
-                              htmlFor={`club-${club.id}`}
-                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                              htmlFor={`club-full-${club.id}`}
+                              className="text-sm cursor-pointer flex-1"
                             >
                               {club.name}
                             </label>
                           </div>
                         ))}
                     </div>
-                  )}
-                </div>
-                {selectedCoHostClubIds.length > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    {selectedCoHostClubIds.length} club{selectedCoHostClubIds.length > 1 ? 's' : ''} selected
-                  </p>
-                )}
-              </div>
+                  </div>
+                </details>
+              )}
 
-              <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={() => setShowCreateModal(false)}>
+              <div className="flex gap-2 justify-end pt-2">
+                <Button variant="outline" onClick={() => setShowCreateModal(false)} disabled={isCreating} className="h-9">
                   Cancel
                 </Button>
-                <Button onClick={handleCreate}>Send</Button>
-              </div>
-            </div>
-          </Modal>
-
-          {/* Edit Event Modal */}
-          <Modal open={showEditModal} onOpenChange={setShowEditModal} title="Edit Event" description="Update event details">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-name">Event Name *</Label>
-                <Input id="edit-name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-description">Description</Label>
-                <Textarea id="edit-description" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows={3} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-date">Date *</Label>
-                <Input id="edit-date" type="date" value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="edit-startTime">Start Time *</Label>
-                  <Input id="edit-startTime" type="time" value={formData.startTime.substring(0, 5)} onChange={(e) => setFormData({ ...formData, startTime: e.target.value + ":00" })} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-endTime">End Time *</Label>
-                  <Input id="edit-endTime" type="time" value={formData.endTime.substring(0, 5)} onChange={(e) => setFormData({ ...formData, endTime: e.target.value + ":00" })} />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-locationName">Location *</Label>
-                <Select
-                  value={selectedLocationId}
-                  onValueChange={(value) => {
-                    setSelectedLocationId(value)
-                    const location = locations.find(loc => String(loc.id) === value)
-                    if (location) {
-                      setFormData({ 
-                        ...formData, 
-                        locationId: Number(location.id),
-                        maxCheckInCount: location.capacity || 100
-                      })
-                    }
-                  }}
-                  disabled={locationsLoading}
-                >
-                  <SelectTrigger id="edit-locationName">
-                    <SelectValue placeholder={locationsLoading ? "Loading locations..." : "Select a location"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {locations.map((location) => (
-                      <SelectItem key={location.id} value={String(location.id)}>
-                        {location.name} {location.capacity && `(Capacity: ${location.capacity})`}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={() => setShowEditModal(false)}>Cancel</Button>
-                <Button onClick={handleUpdate}>Update Event</Button>
+                <Button onClick={handleCreate} disabled={isCreating} className="h-9">
+                  {isCreating ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    'Send'
+                  )}
+                </Button>
               </div>
             </div>
           </Modal>

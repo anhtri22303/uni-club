@@ -12,8 +12,10 @@ import { usePagination } from "@/hooks/use-pagination"
 import membershipApi, { ApiMembership } from "@/service/membershipApi"
 import { getClubById, getClubIdFromToken } from "@/service/clubApi"
 import { fetchUserById, fetchProfile } from "@/service/userApi"
-import { Users, ChevronLeft, ChevronRight, CheckCircle } from "lucide-react"
+import { Users, ChevronLeft, ChevronRight, CheckCircle, Filter, X } from "lucide-react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface Club {
   id: number
@@ -36,7 +38,7 @@ export default function ClubAttendancePage() {
   const [apiMembers, setApiMembers] = useState<ApiMembership[]>([])
   const [membersLoading, setMembersLoading] = useState(false)
   const [membersError, setMembersError] = useState<string | null>(null)
-  const [attendance, setAttendance] = useState<Record<string, boolean>>({}) // ✅ trạng thái điểm danh
+  const [attendance, setAttendance] = useState<Record<string, boolean>>({})
   const today = new Date().toLocaleDateString("vi-VN", {
     day: "2-digit",
     month: "2-digit",
@@ -44,7 +46,10 @@ export default function ClubAttendancePage() {
   })
   const [currentDate, setCurrentDate] = useState("")
   const [userId, setUserId] = useState<string | number | null>(null)
-
+  // State search và filter
+  const [searchTerm, setSearchTerm] = useState("")
+  const [activeFilters, setActiveFilters] = useState<Record<string, any>>({})
+  const [showFilters, setShowFilters] = useState(false)
 
   useEffect(() => {
     const loadInitialData = async () => {
@@ -119,16 +124,53 @@ export default function ClubAttendancePage() {
           studentCode: m.studentCode ?? "—",
           avatarUrl: m.avatarUrl ?? null,
           role: m.clubRole ?? "MEMBER",
+          isStaff: m.staff ?? false,
         }
       })
     : []
+  const filteredMembers = clubMembers.filter((member) => {
+    // 1. Lọc tìm kiếm
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase()
+      const matchName = member.fullName.toLowerCase().includes(searchLower)
+      const matchStudentCode = member.studentCode.toLowerCase().includes(searchLower)
+      if (!matchName && !matchStudentCode) return false
+    }
 
+    // 2. Lọc theo Role
+    const roleFilter = activeFilters["role"]
+    if (roleFilter && roleFilter !== "all") {
+      if (member.role !== roleFilter) return false
+    }
+
+    // 3. Lọc theo Staff
+    const staffFilter = activeFilters["staff"]
+    if (staffFilter && staffFilter !== "all") {
+      const isStaff = staffFilter === "true"
+      if (member.isStaff !== isStaff) return false
+    }
+
+    return true
+  })
+  const handleFilterChange = (filterKey: string, value: any) => {
+    setActiveFilters((prev) => ({ ...prev, [filterKey]: value }))
+    setMembersPage(1)
+  }
+  const hasActiveFilters = Object.values(activeFilters).some((v) => v && v !== "all") || Boolean(searchTerm)
+
+  const clearFilters = () => {
+    setSearchTerm("")
+    setActiveFilters({})
+    setMembersPage(1)
+  }
+
+  const uniqueRoles = Array.from(new Set(clubMembers.map((m) => m.role)))
   const {
     currentPage: membersPage,
     totalPages: membersPages,
     paginatedData: paginatedMembers,
     setCurrentPage: setMembersPage,
-  } = usePagination({ data: clubMembers, initialPageSize: 6 })
+  } = usePagination({ data: filteredMembers, initialPageSize: 6 })
 
   const handleToggleAttendance = (memberId: string) => {
     setAttendance((prev) => ({ ...prev, [memberId]: !prev[memberId] }))
@@ -139,7 +181,7 @@ export default function ClubAttendancePage() {
       .filter(([_, present]) => present)
       .map(([id]) => id)
     // 🔥 Sau này bạn có thể gọi API ở đây, ví dụ:
-    // await attendanceApi.saveAttendance({ clubId: managedClub.id, attendedMembers: attended })
+    // await attendanceApi.saveAttendance({ clubId: managedClub.id, attendedMefmbers: attended })
     toast({
       title: "Attendance Saved",
       description: `${attended.length} members marked as present (${today}).`,
@@ -195,7 +237,7 @@ export default function ClubAttendancePage() {
             <h1 className="text-3xl font-bold">Club Member Attendance</h1>
             {managedClub ? (
               <p className="text-muted-foreground">
-                Members of "{managedClub.name}"
+                Members of "<span className="font-semibold text-primary">{managedClub.name}</span>"
               </p>
             ) : (
               <p className="text-destructive">
@@ -207,6 +249,97 @@ export default function ClubAttendancePage() {
             <span className="text-sm font-medium text-muted-foreground">Attendance Date</span>
             <div className="text-lg font-semibold text-primary">{currentDate}</div>
           </div>
+        </div>
+
+        {/* ✅ THÊM MỚI: Thanh tìm kiếm và bộ lọc */}
+        <div className="space-y-4 mb-6">
+          <div className="flex items-center gap-3">
+            <div className="flex-1 relative">
+              <Input
+                placeholder="Search by name or student code..."
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value)
+                  setMembersPage(1)
+                }}
+                className="pl-4 pr-4 py-2.5 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              />
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center gap-2 rounded-lg border-slate-200 hover:bg-slate-50 transition-colors"
+            >
+              <Filter className="h-4 w-4" />
+              Filters
+              {hasActiveFilters && (
+                <Badge className="ml-1 h-5 w-5 p-0 text-xs bg-blue-500 hover:bg-blue-600 text-white rounded-full flex items-center justify-center">
+                  {Object.values(activeFilters).filter((v) => v && v !== "all").length + (searchTerm ? 1 : 0)}
+                </Badge>
+              )}
+            </Button>
+          </div>
+
+          {showFilters && (
+            <div className="space-y-4 p-6 border border-slate-200 rounded-xl bg-gradient-to-br from-slate-50 to-white">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-slate-900">Advanced Filters</h4>
+                {hasActiveFilters && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearFilters}
+                    className="h-auto p-1 text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-200/50 transition-colors"
+                  >
+                    <X className="h-3 w-3 mr-1" />
+                    Clear all
+                  </Button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Role Filter */}
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Role</label>
+                  <Select
+                    value={activeFilters["role"] || "all"}
+                    onValueChange={(v) => handleFilterChange("role", v)}
+                  >
+                    <SelectTrigger className="h-9 text-sm rounded-lg border-slate-200 bg-white hover:border-slate-300 transition-colors">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Roles</SelectItem>
+                      {uniqueRoles.map((role) => (
+                        <SelectItem key={role} value={role}>
+                          {role}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {/* Staff Filter */}
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Staff</label>
+                  <Select
+                    value={activeFilters["staff"] || "all"}
+                    onValueChange={(v) => handleFilterChange("staff", v)}
+                  >
+                    <SelectTrigger className="h-9 text-sm rounded-lg border-slate-200 bg-white hover:border-slate-300 transition-colors">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All</SelectItem>
+                      <SelectItem value="true">Staff Only</SelectItem>
+                      <SelectItem value="false">Non-Staff</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="space-y-6">
