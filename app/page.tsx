@@ -249,8 +249,23 @@ export default function LoginPage() {
       // Check if CLUB_LEADER logged in with default password "123"
       const userRole = localStorage.getItem("userRole")
       if (userRole === "CLUB_LEADER" && password === "123") {
+        // Get userId from auth data
+        const authData = localStorage.getItem("uniclub-auth")
+        let userId = null
+        if (authData) {
+          try {
+            const auth = JSON.parse(authData)
+            userId = auth.userId
+          } catch (e) {
+            console.error("Failed to parse auth data:", e)
+          }
+        }
+        
         sessionStorage.setItem("requirePasswordReset", "true")
         sessionStorage.setItem("resetEmail", normalizedEmail)
+        if (userId) {
+          sessionStorage.setItem("resetUserId", String(userId))
+        }
       }
       
       toast({

@@ -261,3 +261,70 @@ export const resetPassword = async (
   }
 }
 
+// Force Reset Password API (for admin/system forced password resets)
+export interface ForceResetPasswordRequest {
+  userId: number | string
+  newPassword: string
+}
+
+export interface ForceResetPasswordResponse {
+  success: boolean
+  message: string
+  data: null
+}
+
+export const forceResetPassword = async (
+  userId: number | string,
+  newPassword: string
+): Promise<ForceResetPasswordResponse> => {
+  try {
+    const res = await axiosInstance.put(
+      `/api/users/${userId}/force-reset-password`,
+      null,
+      {
+        params: {
+          newPassword
+        },
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    )
+    console.log("Force reset password response:", res.data)
+    
+    // Handle both wrapped and direct response formats
+    if (res.data && typeof res.data === 'object') {
+      // If response is wrapped in standard format { success, message, data }
+      if ('success' in res.data && 'message' in res.data) {
+        return res.data as ForceResetPasswordResponse
+      }
+      // If response is direct message string or other format
+      return {
+        success: true,
+        message: (res.data as any).message || "Password has been successfully reset.",
+        data: null
+      }
+    }
+    
+    // Fallback for unexpected response format
+    return {
+      success: true,
+      message: "Password has been successfully reset.",
+      data: null
+    }
+  } catch (error: any) {
+    console.error("Force reset password error:", {
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message
+    })
+    
+    // Re-throw with formatted error
+    if (error.response?.data) {
+      throw error
+    }
+    
+    throw new Error("Failed to force reset password")
+  }
+}
+
