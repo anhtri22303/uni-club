@@ -21,7 +21,7 @@ import { QrCode } from "lucide-react"
 import QRCode from "qrcode"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
-import { createEvent, getEventById } from "@/service/eventApi"
+import { createEvent, getEventById, updateEvent } from "@/service/eventApi"
 import { generateCode } from "@/service/checkinApi"
 import { safeLocalStorage } from "@/lib/browser-utils"
 import { fetchLocation } from "@/service/locationApi"
@@ -171,7 +171,6 @@ export default function ClubLeaderEventsPage() {
   const [showEditModal, setShowEditModal] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<any>(null)
   const [showQrModal, setShowQrModal] = useState(false)
-  const [qrDataUrls, setQrDataUrls] = useState<{ local?: string; prod?: string; mobile?: string }>({})
   const [qrLinks, setQrLinks] = useState<{ local?: string; prod?: string; mobile?: string }>({})
   const [qrRotations, setQrRotations] = useState<{ local: string[]; prod: string[]; mobile?: string[] }>({ local: [], prod: [] })
   const [visibleIndex, setVisibleIndex] = useState(0)
@@ -252,7 +251,7 @@ export default function ClubLeaderEventsPage() {
   }, [visibleIndex, showQrModal])
 
   const [formData, setFormData] = useState({
-    clubId: userClubId || managedClub.id,
+    clubId: userClubId || 0,
     name: "",
     description: "",
     type: "PUBLIC",
@@ -341,7 +340,7 @@ export default function ClubLeaderEventsPage() {
   const hasActiveFilters = Object.values(activeFilters).some((v) => v && v !== "all") || Boolean(searchTerm)
 
   const resetForm = () => {
-    setFormData({ clubId: userClubId || managedClub.id, name: "", description: "", type: "PUBLIC", date: "", startTime: "09:00:00", endTime: "11:00:00", locationId: 0, maxCheckInCount: 100 })
+    setFormData({ clubId: userClubId || 0, name: "", description: "", type: "PUBLIC", date: "", startTime: "09:00:00", endTime: "11:00:00", locationId: 0, maxCheckInCount: 100 })
     setSelectedLocationId("")
     setSelectedCoHostClubIds([])
   }
@@ -391,7 +390,7 @@ export default function ClubLeaderEventsPage() {
   const handleEdit = (event: any) => {
     setSelectedEvent(event)
     setFormData({
-      clubId: event.hostClub?.id ?? event.clubId ?? userClubId ?? managedClub.id,
+      clubId: event.hostClub?.id ?? event.clubId ?? userClubId ?? 0,
       name: event.name ?? event.title ?? "",
       description: event.description ?? "",
       type: event.type ?? "PUBLIC",
@@ -407,7 +406,60 @@ export default function ClubLeaderEventsPage() {
     }
     setShowEditModal(true)
   }
-  const handleUpdate = () => { /* same as source */ }
+
+  const handleUpdate = async () => {
+    // Validate required fields
+    if (!formData.name || !formData.date || !formData.startTime || !formData.endTime || !formData.locationId) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required fields including location",
+        variant: "destructive"
+      })
+      return
+    }
+
+    if (!selectedEvent?.id) {
+      toast({
+        title: "Error",
+        description: "No event selected for update",
+        variant: "destructive"
+      })
+      return
+    }
+
+    try {
+      const payload: any = {
+        hostClubId: Number(formData.clubId),
+        name: formData.name,
+        description: formData.description,
+        type: formData.type as "PUBLIC" | "PRIVATE",
+        date: formData.date,
+        startTime: formData.startTime,
+        endTime: formData.endTime,
+        locationId: formData.locationId,
+        maxCheckInCount: formData.maxCheckInCount,
+      }
+
+      await updateEvent(selectedEvent.id, payload)
+      toast({
+        title: "Event Updated",
+        description: "Event has been updated successfully"
+      })
+
+      // Invalidate query to refresh events
+      queryClient.invalidateQueries({ queryKey: ["events"] })
+      setShowEditModal(false)
+      resetForm()
+      setSelectedEvent(null)
+    } catch (error: any) {
+      console.error(error)
+      toast({
+        title: "Error",
+        description: error?.response?.data?.message || "Failed to update event",
+        variant: "destructive"
+      })
+    }
+  }
 
   // Helper functions for QR actions
   const handleDownloadQR = (environment: 'local' | 'prod' | 'mobile') => {

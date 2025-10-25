@@ -14,7 +14,7 @@ import { Modal } from "@/components/modal"
 import { QRModal } from "@/components/qr-modal"
 import { useToast } from "@/hooks/use-toast"
 import { usePagination } from "@/hooks/use-pagination"
-import { Calendar, Plus, Edit, MapPin, Trophy, ChevronLeft, ChevronRight, Filter, X, Eye } from "lucide-react"
+import { Calendar, Plus, MapPin, Trophy, ChevronLeft, ChevronRight, Filter, X, Eye } from "lucide-react"
 import { QrCode } from "lucide-react"
 import QRCode from "qrcode"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -100,10 +100,8 @@ export default function AdminEventsPage() {
   }, [rawEvents])
 
   const [showCreateModal, setShowCreateModal] = useState(false)
-  const [showEditModal, setShowEditModal] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<any>(null)
   const [showQrModal, setShowQrModal] = useState(false)
-  const [qrDataUrls, setQrDataUrls] = useState<{ local?: string; prod?: string; mobile?: string }>({})
   const [qrLinks, setQrLinks] = useState<{ local?: string; prod?: string; mobile?: string }>({})
   const [qrRotations, setQrRotations] = useState<{ local: string[]; prod: string[]; mobile?: string[] }>({ local: [], prod: [] })
   const [visibleIndex, setVisibleIndex] = useState(0)
@@ -292,22 +290,6 @@ export default function AdminEventsPage() {
     }
   }
 
-  const handleEdit = (event: any) => {
-    setSelectedEvent(event)
-    setFormData({
-      clubId: event.hostClub?.id ?? event.clubId ?? managedClub.id,
-      name: event.name ?? event.title ?? "",
-      description: event.description ?? "",
-      type: event.type ?? "PUBLIC",
-      date: event.date ?? "",
-      startTime: event.startTime ?? event.time ?? "09:00:00",
-      endTime: event.endTime ?? "11:00:00",
-      locationName: event.locationName ?? "",
-      maxCheckInCount: event.maxCheckInCount ?? 100,
-    })
-    setShowEditModal(true)
-  }
-  const handleUpdate = () => { /* same as source */ }
 
   // Helper functions for QR actions
   const handleDownloadQR = (environment: 'local' | 'prod' | 'mobile') => {
@@ -601,16 +583,10 @@ export default function AdminEventsPage() {
 
                         {/* Buttons section - pushed to bottom */}
                         <div className="mt-auto pt-4 space-y-3">
-                          <div className="grid grid-cols-2 gap-2">
-                            <Button variant="outline" onClick={() => router.push(`/admin/events/${event.id}`)}>
-                              <Eye className="h-4 w-4 mr-2" />
-                              View Detail
-                            </Button>
-                            <Button variant="outline" onClick={() => handleEdit(event)}>
-                              <Edit className="h-4 w-4 mr-2" />
-                              Edit Event
-                            </Button>
-                          </div>
+                          <Button variant="outline" className="w-full" onClick={() => router.push(`/admin/events/${event.id}`)}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            View Detail
+                          </Button>
                           {/* QR Code Section - Only show if APPROVED */}
                           {event.status === "APPROVED" && (
                             <div className="mt-3 pt-3 border-t border-muted">
@@ -812,42 +788,6 @@ export default function AdminEventsPage() {
                   Cancel
                 </Button>
                 <Button onClick={handleCreate}>Send</Button>
-              </div>
-            </div>
-          </Modal>
-
-          {/* Edit Event Modal */}
-          <Modal open={showEditModal} onOpenChange={setShowEditModal} title="Edit Event" description="Update event details">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-name">Event Name *</Label>
-                <Input id="edit-name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-description">Description</Label>
-                <Textarea id="edit-description" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows={3} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-date">Date *</Label>
-                <Input id="edit-date" type="date" value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="edit-startTime">Start Time *</Label>
-                  <Input id="edit-startTime" type="time" value={formData.startTime.substring(0, 5)} onChange={(e) => setFormData({ ...formData, startTime: e.target.value + ":00" })} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-endTime">End Time *</Label>
-                  <Input id="edit-endTime" type="time" value={formData.endTime.substring(0, 5)} onChange={(e) => setFormData({ ...formData, endTime: e.target.value + ":00" })} />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-locationName">Location Name</Label>
-                <Input id="edit-locationName" value={formData.locationName} onChange={(e) => setFormData({ ...formData, locationName: e.target.value })} placeholder="Enter location name" />
-              </div>
-              <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={() => setShowEditModal(false)}>Cancel</Button>
-                <Button onClick={handleUpdate}>Update Event</Button>
               </div>
             </div>
           </Modal>
