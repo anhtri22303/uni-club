@@ -7,18 +7,15 @@ import { CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-// ✅ Giả định bạn đã tạo các hàm API và type cho Major
 import { Major, deleteMajorById, updateMajorById, createMajor } from "@/service/majorApi"
 import { useMemo, useState } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-// ✅ Thêm icon BookMarked
 import { BookMarked, Search, Eye, Trash, Plus } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
-// ✅ Giả định bạn đã tạo hook useMajors
 import { useMajors } from "@/hooks/use-query-hooks"
 import { useQueryClient } from "@tanstack/react-query"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -30,10 +27,8 @@ export default function UniStaffMajorsPage() {
     const { toast } = useToast()
     const router = useRouter()
     const queryClient = useQueryClient()
-
     // ✅ USE REACT QUERY for majors
     const { data: majors = [], isLoading: loading } = useMajors()
-
     // edit form state for major detail modal
     const [editMajorName, setEditMajorName] = useState("")
     const [editDescription, setEditDescription] = useState("")
@@ -147,38 +142,43 @@ export default function UniStaffMajorsPage() {
             <AppShell>
                 <div className="space-y-6 p-6">
                     <div className="flex items-center justify-between gap-4">
-                        <div className="w-24 h-24">
-                            <Card className="border-0 shadow-md bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 h-full">
-                                <CardContent className="p-2 h-full flex flex-col justify-center">
-                                    {/* ✅ Cập nhật tiêu đề card */}
-                                    <div className="text-[10px] font-medium text-blue-700 dark:text-blue-300 mb-1">Total Majors</div>
-                                    <div className="flex items-center gap-2">
-                                        <div className="p-1 bg-blue-500 rounded-md">
-                                            {/* ✅ Đổi icon */}
-                                            <BookMarked className="h-3 w-3 text-white" />
-                                        </div>
-                                        <div>
-                                            {/* ✅ Cập nhật tổng số majors */}
-                                            <div className="text-base font-bold text-blue-900 dark:text-blue-100">{majors.length}</div>
-                                            <p className="text-[10px] text-blue-600 dark:text-blue-400">Majors</p>
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
+                        <div>
+                            <h1 className="text-3xl font-bold">Major Management</h1>
+                            <p className="text-muted-foreground">View and manage all majors</p>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <Input
-                                // ✅ Cập nhật placeholder
-                                placeholder="Search majors"
-                                value={query}
-                                onChange={(e) => setQuery((e.target as HTMLInputElement).value)}
-                                className="max-w-sm bg-white dark:bg-slate-800 rounded-md px-3 py-2 shadow-sm border border-gray-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/40"
-                            />
-                            <Button onClick={() => { setQuery("") }} variant="ghost">Clear</Button>
-                            <Button size="sm" className="ml-2" onClick={() => setCreateOpen(true)} title="Create new major">
-                                Create New Major
-                                <Plus className="h-4 w-4" />
-                            </Button>
+                        <div className="flex items-center gap-4"> {/* Nested flex for card + search */}
+                            {/* Total Majors Card */}
+                            <div className="w-24 h-24 flex-shrink-0"> {/* Added flex-shrink-0 to prevent card shrinking */}
+                                <Card className="border-0 shadow-md bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 h-full">
+                                    <CardContent className="p-2 h-full flex flex-col justify-center">
+                                        <div className="text-[10px] font-medium text-blue-700 dark:text-blue-300 mb-1">Total Majors</div>
+                                        <div className="flex items-center gap-2">
+                                            <div className="p-1 bg-blue-500 rounded-md">
+                                                <BookMarked className="h-3 w-3 text-white" />
+                                            </div>
+                                            <div>
+                                                <div className="text-base font-bold text-blue-900 dark:text-blue-100">{majors.length}</div>
+                                                <p className="text-[10px] text-blue-600 dark:text-blue-400">Majors</p>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </div>
+
+                            {/* Search Input and Buttons */}
+                            <div className="flex items-center gap-2">
+                                <Input
+                                    placeholder="Search majors"
+                                    value={query}
+                                    onChange={(e) => setQuery((e.target as HTMLInputElement).value)}
+                                    className="max-w-sm bg-white dark:bg-slate-800 rounded-md px-3 py-2 shadow-sm border border-gray-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                                />
+                                <Button onClick={() => { setQuery("") }} variant="ghost">Clear</Button>
+                                <Button size="sm" className="ml-2" onClick={() => setCreateOpen(true)} title="Create major">
+                                    Create major
+                                    <Plus className="h-4 w-4 ml-1" />
+                                </Button>
+                            </div>
                         </div>
                     </div>
 
@@ -234,32 +234,6 @@ export default function UniStaffMajorsPage() {
                                                                 <Button size="sm" onClick={() => openDetail(m)}>
                                                                     <Eye className="h-4 w-4" />
                                                                 </Button>
-                                                                {/* <Button
-                                                                    size="sm"
-                                                                    variant="destructive"
-                                                                    onClick={async () => {
-                                                                        const ok = confirm('Confirm deletion of this major?')
-                                                                        if (!ok) return
-                                                                        try {
-                                                                            const res: any = await deleteMajorById(m.id)
-                                                                            if (res && (res.success === true || res.deleted)) {
-                                                                                toast({ title: res.message || 'Deleted', description: '' })
-                                                                                if (selected?.id === m.id) setDialogOpen(false)
-                                                                                await reloadMajors()
-                                                                                try { router.refresh() } catch (e) { /* ignore */ }
-
-                                                                {/*      } else {
-                                                                                toast({ title: 'Failure', description: (res && res.message) || 'Major deletion failed.' })
-
-                                                                            }
-                                                                        } catch (err) {
-                                                                            console.error('Delete major failed:', err)
-                                                                            toast({ title: 'Error', description: 'Error deleting major.' })
-                                                                        }
-                                                                    }}
-                                                                >
-                                                                    <Trash className="h-4 w-4" />
-                                                                </Button> */}
                                                                 <Button
                                                                     size="sm"
                                                                     variant="destructive"
@@ -385,17 +359,6 @@ export default function UniStaffMajorsPage() {
                                             }
                                             // ✅ Gọi API createMajor
                                             const res: Major = await createMajor(payload as any)
-                                            // if (res && (res.success || res.data || res.status === 201)) {
-                                            //     toast({ title: res.message || 'Created', description: '' })
-                                            //     setCreateOpen(false)
-                                            //     // ✅ reload list
-                                            //     setCreateMajorName("")
-                                            //     setCreateMajorCode("")
-                                            //     setCreateDescription("")
-                                            //     await reloadMajors()
-                                            // } else {
-                                            //     toast({ title: 'Failure', description: (res && res.message) || 'Failed major creation.' })
-                                            // }
                                             if (res && res.id) { // Nếu có res và res.id (khác 0) nghĩa là tạo thành công
                                                 toast({ title: 'Created Successfully', description: `Major "${res.name}" created with ID: ${res.id}` })
                                                 setCreateOpen(false)

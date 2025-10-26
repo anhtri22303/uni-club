@@ -14,7 +14,7 @@ import { usePrefetchClubs, usePrefetchEvents, usePrefetchUsers } from "@/hooks/u
 import {
   LayoutDashboard, Users, Calendar, Gift, Wallet, History, BarChart3,
   Building, Home, CheckCircle, FileText, FileUser, HandCoins, CalendarDays,
-  CreditCard, LibraryBig 
+  CreditCard, LibraryBig
 } from "lucide-react"
 
 interface SidebarProps {
@@ -50,10 +50,10 @@ const navigationConfig = {
     { href: "/uni-staff", label: "Dashboard", icon: LayoutDashboard },
     { href: "/uni-staff/clubs", label: "Clubs", icon: Building },
     { href: "/uni-staff/policies", label: "Policies", icon: FileText },
+    { href: "/uni-staff/majors", label: "Majors", icon: LibraryBig },
     { href: "/uni-staff/clubs-req", label: "Club Requests", icon: FileText },
     { href: "/uni-staff/events-req", label: "Event Requests", icon: Calendar },
     { href: "/uni-staff/points", label: "Points Staff", icon: HandCoins },
-    { href: "/uni-staff/majors", label: "Majors", icon: LibraryBig },
     // { href: "/uni-staff/reports", label: "Reports", icon: BarChart3 },
   ],
   admin: [
@@ -88,11 +88,11 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
         if (storedAuth) {
           const parsedAuth = JSON.parse(storedAuth)
           const clubIds = parsedAuth.clubIds
-          
+
           // Check if student has clubs
           const studentHasClubs = clubIds && Array.isArray(clubIds) && clubIds.length > 0
           setHasClubs(studentHasClubs)
-          
+
           console.log("Sidebar check - Student clubIds:", clubIds, "hasClubs:", studentHasClubs)
         } else {
           setHasClubs(false)
