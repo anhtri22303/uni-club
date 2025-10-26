@@ -227,7 +227,7 @@ export default function AdminEventsPage() {
   const effectiveEvents = events
 
   const [searchTerm, setSearchTerm] = useState("")
-  const [activeFilters, setActiveFilters] = useState<Record<string, any>>({})
+  const [activeFilters, setActiveFilters] = useState<Record<string, any>>({ expired: "hide" })
   const [showFilters, setShowFilters] = useState(false)
 
   const filteredEvents = effectiveEvents.filter((item) => {
@@ -263,6 +263,14 @@ export default function AdminEventsPage() {
       if (String(item.status).toUpperCase() !== String(approvalFilter).toUpperCase()) return false
     }
 
+    // expired filter
+    const expiredFilter = activeFilters["expired"]
+    if (expiredFilter === "hide") {
+      if (isEventExpired(item)) return false
+    } else if (expiredFilter === "only") {
+      if (!isEventExpired(item)) return false
+    }
+
     return true
   })
 
@@ -274,11 +282,14 @@ export default function AdminEventsPage() {
     setCurrentPage(1)
   }
   const clearFilters = () => {
-    setActiveFilters({})
+    setActiveFilters({ expired: "hide" })
     setSearchTerm("")
     setCurrentPage(1)
   }
-  const hasActiveFilters = Object.values(activeFilters).some((v) => v && v !== "all") || Boolean(searchTerm)
+  const hasActiveFilters = Object.entries(activeFilters).some(([key, v]) => {
+    if (key === "expired") return v !== "hide"
+    return v && v !== "all"
+  }) || Boolean(searchTerm)
   const resetForm = () => setFormData({ clubId: managedClub.id, name: "", description: "", type: "PUBLIC", date: "", startTime: "09:00:00", endTime: "11:00:00", locationName: "", maxCheckInCount: 100 })
 
   const handleCreate = async () => {
@@ -460,7 +471,7 @@ export default function AdminEventsPage() {
                     </Button>
                   )}
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-muted-foreground">Type</label>
                     <Select value={activeFilters["type"] || "all"} onValueChange={(v) => handleFilterChange("type", v)}>
@@ -517,6 +528,19 @@ export default function AdminEventsPage() {
                         <SelectItem value="APPROVED">Approved</SelectItem>
                         <SelectItem value="PENDING">Pending</SelectItem>
                         <SelectItem value="REJECTED">Rejected</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground">Expired</label>
+                    <Select value={activeFilters["expired"] || "hide"} onValueChange={(v) => handleFilterChange("expired", v)}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="hide">Hide Expired</SelectItem>
+                        <SelectItem value="show">Show All</SelectItem>
+                        <SelectItem value="only">Only Expired</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
