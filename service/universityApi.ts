@@ -56,7 +56,7 @@ interface ApiResponse<T> {
 export const fetchUniversityPoints = async (): Promise<UniversityPointsResponse> => {
   try {
     const response = await axiosInstance.get("/api/university/points")
-    console.log("Fetched university points response:", response.data)
+    console.log("University points:", response.data)
     
     // If backend wraps the response with { success, message, data }
     if (response.data && typeof response.data === "object" && "data" in response.data) {

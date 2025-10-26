@@ -19,6 +19,11 @@ import {
   getClubApplications, 
   getMyClubApply 
 } from "@/service/clubApplicationAPI"
+import {
+  fetchUniversityPoints,
+  fetchAttendanceSummary,
+  fetchAttendanceRanking
+} from "@/service/universityApi"
 
 // ============================================
 // QUERY KEYS - Centralized for consistency
@@ -75,6 +80,12 @@ export const queryKeys = {
   
   // Profile
   profile: ["profile"] as const,
+
+  // University Analytics
+  university: ["university"] as const,
+  universityPoints: () => [...queryKeys.university, "points"] as const,
+  attendanceSummary: (year: number) => [...queryKeys.university, "attendance-summary", year] as const,
+  attendanceRanking: () => [...queryKeys.university, "attendance-ranking"] as const,
 }
 
 // ============================================
@@ -651,5 +662,58 @@ export function useMyClubApplications(enabled = true) {
     },
     enabled,
     staleTime: 2 * 60 * 1000, // 2 minutes
+  })
+}
+
+// ============================================
+// UNIVERSITY ANALYTICS QUERIES
+// ============================================
+
+/**
+ * Hook to fetch university points and club rankings
+ */
+export function useUniversityPoints(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.universityPoints(),
+    queryFn: async () => {
+      const data = await fetchUniversityPoints()
+      return data
+    },
+    enabled,
+    staleTime: 5 * 60 * 1000, // 5 minutes (changes occasionally)
+    retry: 2, // Retry twice on failure
+  })
+}
+
+/**
+ * Hook to fetch attendance summary by year
+ * @param year - Year to fetch attendance summary for
+ */
+export function useAttendanceSummary(year: number, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.attendanceSummary(year),
+    queryFn: async () => {
+      const data = await fetchAttendanceSummary(year)
+      return data
+    },
+    enabled: enabled && !!year,
+    staleTime: 3 * 60 * 1000, // 3 minutes
+    retry: 2,
+  })
+}
+
+/**
+ * Hook to fetch attendance ranking (top clubs by attendance)
+ */
+export function useAttendanceRanking(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.attendanceRanking(),
+    queryFn: async () => {
+      const data = await fetchAttendanceRanking()
+      return data
+    },
+    enabled,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 2,
   })
 }

@@ -58,30 +58,6 @@ export const rewardPointsToMember = async (
   }
 }
 
-export const distributePointsToClubs = async (
-  clubIds: (string | number)[],
-  points: number,
-  reason?: string
-): Promise<any> => {
-  try {
-    // Endpoint này cần được tạo ở backend
-    // Ví dụ: POST /api/wallets/distribute/clubs
-    const res = await axiosInstance.post(
-      "/api/wallets/distribute/clubs",
-      // Dữ liệu được gửi trong body của request
-      {
-        clubIds,
-        points, // Số điểm cho mỗi CLB
-        reason,
-      }
-    )
-    return res.data
-  } catch (err) {
-    console.error(`Failed to distribute points to clubs`, err)
-    throw err // Ném lỗi ra để component xử lý và hiển thị toast
-  }
-}
-
 export const getClubWallet = async (clubId: string | number): Promise<ApiClubWallet> => {
   try {
     const res = await axiosInstance.get(`/api/wallets/club/${clubId}`)
@@ -93,9 +69,34 @@ export const getClubWallet = async (clubId: string | number): Promise<ApiClubWal
   }
 }
 
+export const postClubWalletByClubId = async (
+  clubId: string | number,
+  points: number,
+  reason?: string
+): Promise<ApiClubWallet> => {
+  try {
+    const res = await axiosInstance.post(
+      `/api/wallets/club/${clubId}/topup`,
+      null, // No body required
+      {
+        // `points` and `reason` are sent as query parameters
+        params: {
+          points,
+          reason,
+        },
+      }
+    )
+    console.log("postClubWalletByClubId:", res.data)
+    return res.data as ApiClubWallet
+  } catch (err) {
+    console.error(`Failed to topup club wallet for clubId ${clubId}`, err)
+    throw err
+  }
+}
+
 export default {
   getWallet,
   rewardPointsToMember,
-  distributePointsToClubs,
-  getClubWallet
+  getClubWallet,
+  postClubWalletByClubId
 }

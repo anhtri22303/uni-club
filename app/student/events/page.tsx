@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Pagination } from "@/components/pagination"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { usePagination } from "@/hooks/use-pagination"
 import { useState } from "react"
 import { Calendar, Users, Trophy } from "lucide-react"
@@ -59,6 +60,46 @@ export default function MemberEventsPage() {
       clubs.find((c) => c.id === event.hostClub?.id)?.name.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
+  // Helper function to check if event has expired (past endTime)
+  const isEventExpired = (event: any) => {
+    // Check if date and endTime are present
+    if (!event.date || !event.endTime) return false
+
+    try {
+      // Get current date/time in Vietnam timezone (UTC+7)
+      const now = new Date()
+      const vnTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }))
+
+      // Parse event date (format: YYYY-MM-DD)
+      const [year, month, day] = event.date.split('-').map(Number)
+      
+      // Parse endTime (format: HH:MM:SS or HH:MM)
+      const [hours, minutes] = event.endTime.split(':').map(Number)
+
+      // Create event end datetime in Vietnam timezone
+      const eventEndDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0)
+
+      // Event is expired if current VN time is past the end time
+      return vnTime > eventEndDateTime
+    } catch (error) {
+      console.error('Error checking event expiration:', error)
+      return false
+    }
+  }
+
+  const [activeFilters, setActiveFilters] = useState<Record<string, any>>({ expired: "hide" })
+
+  const finalFilteredEvents = filteredEvents.filter((event) => {
+    // expired filter
+    const expiredFilter = activeFilters["expired"]
+    if (expiredFilter === "hide") {
+      if (isEventExpired(event)) return false
+    } else if (expiredFilter === "only") {
+      if (!isEventExpired(event)) return false
+    }
+    return true
+  })
+
   const {
     currentPage,
     pageSize,
@@ -68,7 +109,7 @@ export default function MemberEventsPage() {
     setCurrentPage,
     setPageSize,
   } = usePagination({
-    data: filteredEvents,
+    data: finalFilteredEvents,
     initialPageSize: 6,
   })
 
@@ -110,6 +151,22 @@ export default function MemberEventsPage() {
               }}
               className="max-w-sm"
             />
+            <Select 
+              value={activeFilters["expired"] || "hide"} 
+              onValueChange={(v) => {
+                setActiveFilters({ ...activeFilters, expired: v })
+                setCurrentPage(1)
+              }}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="hide">Hide Expired</SelectItem>
+                <SelectItem value="show">Show All</SelectItem>
+                <SelectItem value="only">Only Expired</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

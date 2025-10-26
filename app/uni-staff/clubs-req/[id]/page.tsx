@@ -89,6 +89,9 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
   // Function to handle input change for the account creation form
   const handleAccountFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target
+    const finalValue = (id === "leaderEmail" || id === "viceEmail")
+      ? value.toLowerCase() // Chuyển thành chữ thường nếu là email
+      : value;             // Giữ nguyên giá trị nếu không phải email
     setAccountForm(prev => ({ ...prev, [id]: value }))
   }
   // 👇 3. Hàm xử lý khi nhấn nút "Approve"

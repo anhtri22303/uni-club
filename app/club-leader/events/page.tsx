@@ -307,7 +307,7 @@ export default function ClubLeaderEventsPage() {
 
   // Filters (DataTable-style)
   const [searchTerm, setSearchTerm] = useState("")
-  const [activeFilters, setActiveFilters] = useState<Record<string, any>>({})
+  const [activeFilters, setActiveFilters] = useState<Record<string, any>>({ expired: "hide" })
   const [showFilters, setShowFilters] = useState(false)
 
   const filteredEvents = effectiveEvents.filter((item) => {
@@ -350,6 +350,14 @@ export default function ClubLeaderEventsPage() {
       if (String(item.status).toUpperCase() !== String(approvalFilter).toUpperCase()) return false
     }
 
+    // expired filter
+    const expiredFilter = activeFilters["expired"]
+    if (expiredFilter === "hide") {
+      if (isEventExpired(item)) return false
+    } else if (expiredFilter === "only") {
+      if (!isEventExpired(item)) return false
+    }
+
     return true
   })
 
@@ -365,12 +373,15 @@ export default function ClubLeaderEventsPage() {
   }
 
   const clearFilters = () => {
-    setActiveFilters({})
+    setActiveFilters({ expired: "hide" })
     setSearchTerm("")
     setCurrentPage(1)
   }
 
-  const hasActiveFilters = Object.values(activeFilters).some((v) => v && v !== "all") || Boolean(searchTerm)
+  const hasActiveFilters = Object.entries(activeFilters).some(([key, v]) => {
+    if (key === "expired") return v !== "hide"
+    return v && v !== "all"
+  }) || Boolean(searchTerm)
 
   const resetForm = () => {
     setFormData({ clubId: userClubId || 0, name: "", description: "", type: "PUBLIC", date: "", startTime: "09:00:00", endTime: "11:00:00", locationId: 0, maxCheckInCount: 100 })
@@ -585,7 +596,7 @@ export default function ClubLeaderEventsPage() {
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-muted-foreground">Type</label>
                     <Select value={activeFilters["type"] || "all"} onValueChange={(v) => handleFilterChange("type", v)}>
@@ -635,7 +646,6 @@ export default function ClubLeaderEventsPage() {
                     </Select>
                   </div>
 
-                  {/* New approval status filter */}
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-muted-foreground">Approval</label>
                     <Select value={activeFilters["approval"] || "all"} onValueChange={(v) => handleFilterChange("approval", v)}>
@@ -647,6 +657,20 @@ export default function ClubLeaderEventsPage() {
                         <SelectItem value="APPROVED">Approved</SelectItem>
                         <SelectItem value="PENDING">Pending</SelectItem>
                         <SelectItem value="REJECTED">Rejected</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground">Expired</label>
+                    <Select value={activeFilters["expired"] || "hide"} onValueChange={(v) => handleFilterChange("expired", v)}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="hide">Hide Expired</SelectItem>
+                        <SelectItem value="show">Show All</SelectItem>
+                        <SelectItem value="only">Only Expired</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

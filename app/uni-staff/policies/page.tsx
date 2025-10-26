@@ -127,33 +127,41 @@ export default function UniStaffPoliciesPage() {
       <AppShell>
         <div className="space-y-6 p-6">
           <div className="flex items-center justify-between gap-4">
-            <div className="w-24 h-24">
-              <Card className="border-0 shadow-md bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 h-full">
-                <CardContent className="p-2 h-full flex flex-col justify-center">
-                  <div className="text-[10px] font-medium text-blue-700 dark:text-blue-300 mb-1">Total Policies</div>
-                  <div className="flex items-center gap-2">
-                    <div className="p-1 bg-blue-500 rounded-md">
-                      <FileText className="h-3 w-3 text-white" />
-                    </div>
-                    <div>
-                      <div className="text-base font-bold text-blue-900 dark:text-blue-100">{policies.length}</div>
-                      <p className="text-[10px] text-blue-600 dark:text-blue-400">Policies</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+            <div>
+              <h1 className="text-3xl font-bold">Policy Management</h1>
+              <p className="text-muted-foreground">View and manage all policies</p>
             </div>
-            <div className="flex items-center gap-2">
-              <Input
-                placeholder="Search policies"
-                value={query}
-                onChange={(e) => setQuery((e.target as HTMLInputElement).value)}
-                className="max-w-sm bg-white dark:bg-slate-800 rounded-md px-3 py-2 shadow-sm border border-gray-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/40"
-              />
-              <Button onClick={() => { setQuery("") }} variant="ghost">Clear</Button>
-              <Button size="sm" className="ml-2" onClick={() => setCreateOpen(true)} title="Create policy">
-                <Plus className="h-4 w-4" />
-              </Button>
+
+            <div className="flex items-center gap-4">
+              <div className="w-24 h-24">
+                <Card className="border-0 shadow-md bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 h-full">
+                  <CardContent className="p-2 h-full flex flex-col justify-center">
+                    <div className="text-[10px] font-medium text-blue-700 dark:text-blue-300 mb-1">Total Policies</div>
+                    <div className="flex items-center gap-2">
+                      <div className="p-1 bg-blue-500 rounded-md">
+                        <FileText className="h-3 w-3 text-white" />
+                      </div>
+                      <div>
+                        <div className="text-base font-bold text-blue-900 dark:text-blue-100">{policies.length}</div>
+                        <p className="text-[10px] text-blue-600 dark:text-blue-400">Policies</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+              <div className="flex items-center gap-2">
+                <Input
+                  placeholder="Search policies"
+                  value={query}
+                  onChange={(e) => setQuery((e.target as HTMLInputElement).value)}
+                  className="max-w-sm bg-white dark:bg-slate-800 rounded-md px-3 py-2 shadow-sm border border-gray-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                />
+                <Button onClick={() => { setQuery("") }} variant="ghost">Clear</Button>
+                <Button size="sm" className="ml-2" onClick={() => setCreateOpen(true)} title="Create policy">
+                  Create policy
+                  <Plus className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
             </div>
           </div>
 

@@ -7,10 +7,16 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { usePagination } from "@/hooks/use-pagination"
 import { useData } from "@/contexts/data-context"
-import { usePolicies, useEvents, useClubs } from "@/hooks/use-query-hooks"
-import { getClubApplications } from "@/service/clubApplicationAPI"
+import { 
+  usePolicies, 
+  useEvents, 
+  useClubs, 
+  useClubApplications,
+  useUniversityPoints,
+  useAttendanceSummary,
+  useAttendanceRanking
+} from "@/hooks/use-query-hooks"
 import { getClubMemberCount } from "@/service/clubApi"
-import { fetchUniversityPoints, fetchAttendanceSummary, fetchAttendanceRanking } from "@/service/universityApi"
 import { useEffect, useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import {
@@ -38,13 +44,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { BarChart3, List } from "lucide-react"
 
 export default function UniStaffReportsPage() {
-  const { clubApplications, eventRequests, updateClubApplications, updateEventRequests } = useData()
+  const { eventRequests, updateEventRequests } = useData()
   const router = useRouter()
 
-  // ✅ USE REACT QUERY for events, clubs, and policies
+  // ✅ USE REACT QUERY for all data fetching
   const { data: events = [], isLoading: eventsLoading } = useEvents()
   const { data: clubs = [], isLoading: clubsLoading } = useClubs()
   const { data: policies = [] } = usePolicies()
+  const { data: clubApplications = [], isLoading: clubAppsLoading } = useClubApplications()
 
   // State management - Event filters
   const [eventStatusFilter, setEventStatusFilter] = useState<string>("PENDING")
@@ -56,103 +63,38 @@ export default function UniStaffReportsPage() {
   // State management - Clubs with member count
   const [clubsWithMemberCount, setClubsWithMemberCount] = useState<any[]>([])
 
-  // State management - University points data
-  const [universityPointsData, setUniversityPointsData] = useState<{
-    totalUniversityPoints: number
-    clubRankings: Array<{
-      rank: number
-      clubId: number
-      clubName: string
-      totalPoints: number
-    }>
-  } | null>(null)
-
   // State management - Club sorting
   const [clubSortField, setClubSortField] = useState<"rank" | "points" | "members">("rank")
   const [clubSortOrder, setClubSortOrder] = useState<"asc" | "desc">("asc")
 
-  // State management - Attendance summary
-  const [attendanceSummary, setAttendanceSummary] = useState<{
-    year: number
-    monthlySummary: Array<{
-      month: string
-      participantCount: number
-    }>
-    clubId: number | null
-    eventId: number | null
-  } | null>(null)
+  // State management - Attendance filters
   const [attendanceYear, setAttendanceYear] = useState<number>(new Date().getFullYear())
   const [attendanceMonthFilter, setAttendanceMonthFilter] = useState<string>("ALL")
 
-  // State management - Attendance ranking
-  const [attendanceRanking, setAttendanceRanking] = useState<{
-    totalAttendances: number
-    clubRankings: Array<{
-      rank: number
-      clubId: number
-      clubName: string
-      attendanceCount: number
-    }>
-  } | null>(null)
+  // ✅ USE REACT QUERY for university analytics
+  const { data: universityPointsData, isLoading: pointsLoading } = useUniversityPoints()
+  const { data: attendanceSummary, isLoading: summaryLoading } = useAttendanceSummary(attendanceYear)
+  const { data: attendanceRanking, isLoading: rankingLoading } = useAttendanceRanking()
 
-  // Fetch club applications and university points when component mounts
+  // Update event requests when events are loaded (for legacy compatibility)
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        // Fetch club applications
-        const clubAppData = await getClubApplications()
-        updateClubApplications(clubAppData || [])
-
-        // Use events for eventRequests to avoid calling API twice
-        updateEventRequests(events || [])
-
-        // Fetch university points
-        const pointsData = await fetchUniversityPoints()
-        setUniversityPointsData(pointsData)
-      } catch (error) {
-        console.error("Failed to fetch data:", error)
-      }
-    }
     if (events.length > 0) {
-      loadData()
+      updateEventRequests(events || [])
     }
-  }, [events])
-
-  // Fetch attendance summary when year changes
-  useEffect(() => {
-    const loadAttendanceSummary = async () => {
-      try {
-        const attendanceData = await fetchAttendanceSummary(attendanceYear)
-        setAttendanceSummary(attendanceData)
-      } catch (error) {
-        console.error("Failed to fetch attendance summary:", error)
-      }
-    }
-    loadAttendanceSummary()
-  }, [attendanceYear])
+  }, [events, updateEventRequests])
 
   // Reset month filter when year changes
   useEffect(() => {
     setAttendanceMonthFilter("ALL")
   }, [attendanceYear])
 
-  // Fetch attendance ranking when component mounts
-  useEffect(() => {
-    const loadAttendanceRanking = async () => {
-      try {
-        const rankingData = await fetchAttendanceRanking()
-        setAttendanceRanking(rankingData)
-      } catch (error) {
-        console.error("Failed to fetch attendance ranking:", error)
-      }
-    }
-    loadAttendanceRanking()
-  }, [])
-
   // Fetch member count for each club and merge with points data
   useEffect(() => {
     const fetchMemberCounts = async () => {
-      if (clubs.length === 0) return
+      if (clubs.length === 0 || !universityPointsData) {
+        setClubsWithMemberCount([])
+        return
+      }
 
       const clubsWithCounts = await Promise.all(
         clubs.map(async (club: any) => {
@@ -166,13 +108,20 @@ export default function UniStaffReportsPage() {
             
             return {
               ...club,
+              clubName: club.name, // Add clubName for chart compatibility
               memberCount: activeMemberCount,
               rank: rankingData?.rank,
               totalPoints: rankingData?.totalPoints || 0
             }
           } catch (error) {
             console.error(`Error fetching member count for club ${club.id}:`, error)
-            return { ...club, memberCount: 0, rank: undefined, totalPoints: 0 }
+            return { 
+              ...club, 
+              clubName: club.name,
+              memberCount: 0, 
+              rank: undefined, 
+              totalPoints: 0 
+            }
           }
         })
       )
