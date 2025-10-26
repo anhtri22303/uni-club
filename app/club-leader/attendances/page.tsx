@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { AppShell } from "@/components/app-shell"
 import { ProtectedRoute } from "@/contexts/protected-route"
 import { Card, CardContent } from "@/components/ui/card"
@@ -12,11 +12,23 @@ import { usePagination } from "@/hooks/use-pagination"
 import membershipApi, { ApiMembership } from "@/service/membershipApi"
 import { getClubById, getClubIdFromToken } from "@/service/clubApi"
 import { fetchUserById, fetchProfile } from "@/service/userApi"
-import { Users, ChevronLeft, ChevronRight, CheckCircle, Filter, X } from "lucide-react"
+import {
+  Users, ChevronLeft, ChevronRight, CheckCircle, Filter, X, Calendar as CalendarIcon,
+  MessageSquare, Check, XCircle, Clock, AlertCircle,
+} from "lucide-react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Calendar } from "@/components/ui/calendar" // ✅ MỚI
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose,
+} from "@/components/ui/dialog" // ✅ MỚI
+import { Textarea } from "@/components/ui/textarea" // ✅ MỚI
+import { cn } from "@/lib/utils" // ✅ MỚI
+import { format } from "date-fns" // ✅ MỚI
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
+type AttendanceStatus = "present" | "absent" | "late" | "excused"
 interface Club {
   id: number
   name: string
@@ -31,6 +43,14 @@ interface ClubApiResponse {
   message: string
   data: Club
 }
+interface Member {
+  id: string
+  fullName: string
+  studentCode: string
+  avatarUrl: string | null
+  role: string
+  isStaff: boolean
+}
 export default function ClubAttendancePage() {
   const { toast } = useToast()
   const [managedClub, setManagedClub] = useState<Club | null>(null)
@@ -38,7 +58,7 @@ export default function ClubAttendancePage() {
   const [apiMembers, setApiMembers] = useState<ApiMembership[]>([])
   const [membersLoading, setMembersLoading] = useState(false)
   const [membersError, setMembersError] = useState<string | null>(null)
-  const [attendance, setAttendance] = useState<Record<string, boolean>>({})
+  // const [attendance, setAttendance] = useState<Record<string, boolean>>({})
   const today = new Date().toLocaleDateString("vi-VN", {
     day: "2-digit",
     month: "2-digit",
@@ -46,71 +66,110 @@ export default function ClubAttendancePage() {
   })
   const [currentDate, setCurrentDate] = useState("")
   const [userId, setUserId] = useState<string | number | null>(null)
+  // --- ✅ MỚI: State cho tính năng nâng cao ---
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date())
+  const [isReadOnly, setIsReadOnly] = useState(false)
+  const [attendance, setAttendance] = useState<Record<string, AttendanceStatus>>({})
+  const [notes, setNotes] = useState<Record<string, string>>({})
+  const [editingNoteMember, setEditingNoteMember] = useState<Member | null>(null)
+  const [currentNote, setCurrentNote] = useState("")
   // State search và filter
   const [searchTerm, setSearchTerm] = useState("")
   const [activeFilters, setActiveFilters] = useState<Record<string, any>>({})
   const [showFilters, setShowFilters] = useState(false)
-
+  // ✅ MỚI: Tách useEffect
+  // useEffect này chỉ chạy 1 lần để lấy thông tin cơ bản
   useEffect(() => {
-    const loadInitialData = async () => {
+    const loadBaseData = async () => {
       setLoading(true)
       try {
+        const profile = await fetchProfile()
+        setUserId((profile as any)?.userId)
+
         const clubId = getClubIdFromToken()
         if (!clubId) throw new Error("No club information found.")
 
         const clubResponse = (await getClubById(clubId)) as ClubApiResponse
         if (!clubResponse?.success) throw new Error("Unable to load club information.")
         setManagedClub(clubResponse.data)
-        setMembersLoading(true)
-        setMembersError(null)
+      } catch (err: any) {
+        setMembersError(err?.message || "Error loading initial data")
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadBaseData()
+  }, [])
 
-        const memberData = await membershipApi.getMembersByClubId(clubId)
-        const membersWithUserData = await Promise.all(
-          memberData.map(async (m: any) => {
-            try {
-              const userInfo = await fetchUserById(m.userId)
-              return { ...m, userInfo }
-            } catch {
-              return { ...m, userInfo: null }
-            }
+  // ✅ MỚI: useEffect này chạy mỗi khi clubId hoặc selectedDate thay đổi
+  useEffect(() => {
+    if (!managedClub?.id) return
+
+    // 1. Kiểm tra xem có phải ngày hôm nay không
+    const today = new Date()
+    const isToday =
+      selectedDate.getDate() === today.getDate() &&
+      selectedDate.getMonth() === today.getMonth() &&
+      selectedDate.getFullYear() === today.getFullYear()
+
+    setIsReadOnly(!isToday)
+
+    const loadMembersAndAttendance = async () => {
+      setMembersLoading(true)
+      setMembersError(null)
+
+      try {
+        // 2. Fetch danh sách thành viên (giả sử không đổi)
+        // Nếu danh sách thành viên đã load rồi thì không cần load lại
+        let membersData: ApiMembership[] = apiMembers
+        if (membersData.length === 0) {
+          membersData = await membershipApi.getMembersByClubId(managedClub.id)
+          const membersWithUserData = await Promise.all(
+            membersData.map(async (m: any) => {
+              try {
+                const userInfo = await fetchUserById(m.userId)
+                return { ...m, userInfo }
+              } catch {
+                return { ...m, userInfo: null }
+              }
+            }),
+          )
+          setApiMembers(membersWithUserData)
+          membersData = membersWithUserData // Dùng data mới fetch
+        }
+
+        // 3. ✅ Fetch dữ liệu điểm danh cho ngày đã chọn
+        // BẠN SẼ CẦN API MỚI Ở ĐÂY, ví dụ:
+        const attendanceData: any = null // Giả lập là chưa có dữ liệu
+
+        const initialAttendance: Record<string, AttendanceStatus> = {}
+        const initialNotes: Record<string, string> = {}
+
+        if (attendanceData && attendanceData.records) {
+          // Nếu có dữ liệu từ API
+          attendanceData.records.forEach((record: any) => {
+            initialAttendance[record.memberId] = record.status
+            initialNotes[record.memberId] = record.note || ""
           })
-        )
-        setApiMembers(membersWithUserData)
-        // ✅ Khởi tạo attendance = false cho toàn bộ thành viên
-        const initialAttendance: Record<string, boolean> = {}
-        membersWithUserData.forEach((m: any) => {
-          const id = m.membershipId ?? `m-${m.userId}`
-          initialAttendance[id] = false
-        })
+        } else {
+          // Nếu không có dữ liệu (hoặc là ngày hôm nay, chưa điểm danh)
+          membersData.forEach((m: any) => {
+            const id = m.membershipId ?? `m-${m.userId}`
+            initialAttendance[id] = "absent" // Mặc định là vắng mặt
+            initialNotes[id] = ""
+          })
+        }
         setAttendance(initialAttendance)
+        setNotes(initialNotes)
       } catch (err: any) {
         setMembersError(err?.message || "Error loading member list")
       } finally {
         setMembersLoading(false)
-        setLoading(false)
-      }
-    }
-    const today = new Date()
-    const formatted = today.toLocaleDateString("en-GB", {
-      weekday: "short",
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    })
-    const loadProfile = async () => {
-      try {
-        const profile = await fetchProfile()
-        console.log("Current user profile:", profile)
-        setUserId((profile as any)?.userId) // Lưu userId
-      } catch (error) {
-        console.error("Failed to load profile:", error)
       }
     }
 
-    setCurrentDate(formatted)
-    loadInitialData()
-    loadProfile()
-  }, [])
+    loadMembersAndAttendance()
+  }, [managedClub, selectedDate]) // ✅ Chạy lại khi đổi ngày
 
   // Lọc thành viên active
   const clubMembers = managedClub
@@ -172,22 +231,90 @@ export default function ClubAttendancePage() {
     setCurrentPage: setMembersPage,
   } = usePagination({ data: filteredMembers, initialPageSize: 6 })
 
-  const handleToggleAttendance = (memberId: string) => {
-    setAttendance((prev) => ({ ...prev, [memberId]: !prev[memberId] }))
+  // const handleToggleAttendance = (memberId: string) => {
+  //   setAttendance((prev) => ({ ...prev, [memberId]: !prev[memberId] }))
+  // }
+  const handleStatusChange = (memberId: string, status: AttendanceStatus) => {
+    if (isReadOnly) return
+    setAttendance((prev) => ({ ...prev, [memberId]: status }))
   }
-
+  // const handleSaveAttendance = async () => {
+  //   const attended = Object.entries(attendance)
+  //     .filter(([_, present]) => present)
+  //     .map(([id]) => id)
+  //   // 🔥 Sau này bạn có thể gọi API ở đây, ví dụ:
+  //   // await attendanceApi.saveAttendance({ clubId: managedClub.id, attendedMefmbers: attended })
+  //   toast({
+  //     title: "Attendance Saved",
+  //     description: `${attended.length} members marked as present (${today}).`,
+  //   })
+  // }
   const handleSaveAttendance = async () => {
-    const attended = Object.entries(attendance)
-      .filter(([_, present]) => present)
-      .map(([id]) => id)
+    if (isReadOnly) return
+    // Tạo payload gửi đi
+    const records = Object.entries(attendance).map(([memberId, status]) => ({
+      memberId,
+      status,
+      note: notes[memberId] || "",
+    }))
+
     // 🔥 Sau này bạn có thể gọi API ở đây, ví dụ:
-    // await attendanceApi.saveAttendance({ clubId: managedClub.id, attendedMefmbers: attended })
+    // await attendanceApi.saveAttendance({
+    //   clubId: managedClub.id,
+    //   date: selectedDate,
+    //   records: records
+    // })
+
     toast({
       title: "Attendance Saved",
-      description: `${attended.length} members marked as present (${today}).`,
+      description: `Attendance for ${format(selectedDate, "PPP")} has been saved.`,
     })
   }
 
+  // ✅ MỚI: Thống kê nhanh
+  const stats = useMemo(() => {
+    const total = filteredMembers.length
+    let present = 0
+    let absent = 0
+    let late = 0
+    let excused = 0
+    filteredMembers.forEach((member) => {
+      const status = attendance[member.id]
+      switch (status) {
+        case "present":
+          present++
+          break
+        case "late":
+          late++
+          break
+        case "excused":
+          excused++
+          break
+        case "absent":
+        default:
+          absent++
+          break
+      }
+    })
+    return { total, present, absent, late, excused }
+  }, [attendance, filteredMembers])
+
+  // ✅ MỚI: Hành động hàng loạt
+  const handleBulkAction = (status: "present" | "absent") => {
+    if (isReadOnly) return
+    const newAttendance = { ...attendance }
+    filteredMembers.forEach((member) => {
+      newAttendance[member.id] = status
+    })
+    setAttendance(newAttendance)
+  }
+  // ✅ MỚI: Xử lý lưu ghi chú
+  const handleSaveNote = () => {
+    if (isReadOnly || !editingNoteMember) return
+    setNotes((prev) => ({ ...prev, [editingNoteMember.id]: currentNote }))
+    setEditingNoteMember(null)
+    setCurrentNote("")
+  }
   const MinimalPager = ({ current, total, onPrev, onNext }: any) =>
     total > 1 ? (
       <div className="flex items-center justify-center gap-3 mt-4">
@@ -246,8 +373,30 @@ export default function ClubAttendancePage() {
             )}
           </div>
           <div className="text-right">
-            <span className="text-sm font-medium text-muted-foreground">Attendance Date</span>
-            <div className="text-lg font-semibold text-primary">{currentDate}</div>
+            <span className="text-sm font-medium text-muted-foreground mr-5">Attendance Date</span>
+            {/* ✅ MỚI: Date Picker */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"outline"}
+                  className={cn(
+                    "w-[240px] justify-start text-left font-norma mt-4",
+                    !selectedDate && "text-muted-foreground",
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(date) => setSelectedDate(date || new Date())}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
 
@@ -342,6 +491,38 @@ export default function ClubAttendancePage() {
           )}
         </div>
 
+        {/* ✅ MỚI: Thống kê nhanh và Hành động hàng loạt */}
+        {!membersLoading && filteredMembers.length > 0 && (
+          <Card className="mb-4">
+            <CardContent className="p-4 flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-4 text-sm">
+                <span className="font-semibold">Total: {stats.total}</span>
+                <span className="text-green-600 font-medium flex items-center gap-1">
+                  <CheckCircle className="h-4 w-4" /> Present: {stats.present}
+                </span>
+                <span className="text-orange-500 font-medium flex items-center gap-1">
+                  <Clock className="h-4 w-4" /> Late: {stats.late}
+                </span>
+                <span className="text-gray-500 font-medium flex items-center gap-1">
+                  <AlertCircle className="h-4 w-4" /> Excused: {stats.excused}
+                </span>
+                <span className="text-red-600 font-medium flex items-center gap-1">
+                  <XCircle className="h-4 w-4" /> Absent: {stats.absent}
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => handleBulkAction("present")} disabled={isReadOnly}>
+                  Mark All Present
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => handleBulkAction("absent")} disabled={isReadOnly}>
+                  Mark All Absent
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+
         <div className="space-y-6">
           {membersLoading ? (
             <Card>
@@ -392,13 +573,70 @@ export default function ClubAttendancePage() {
                         </Badge>
                       </div>
                     </div>
-                    <Button
-                      variant={attendance[member.id] ? "default" : "destructive"}
-                      onClick={() => handleToggleAttendance(member.id)}
-                      className="w-28"
-                    >
-                      {attendance[member.id] ? "Present" : "Absent"}
-                    </Button>
+
+                    {/* ✅ MỚI: Select Trạng thái và Nút Ghi chú */}
+                    <div className="flex items-center gap-2">
+                      {/* Nút Ghi chú */}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          setEditingNoteMember(member)
+                          setCurrentNote(notes[member.id] || "")
+                        }}
+                        disabled={isReadOnly}
+                        className={cn(
+                          "relative text-muted-foreground hover:text-primary",
+                          notes[member.id] && "text-blue-500 hover:text-blue-600",
+                        )}
+                      >
+                        <MessageSquare className="h-5 w-5" />
+                        {notes[member.id] && (
+                          <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-blue-500" />
+                        )}
+                      </Button>
+
+                      {/* Select Trạng thái */}
+                      <Select
+                        value={attendance[member.id] || "absent"}
+                        onValueChange={(value: AttendanceStatus) => handleStatusChange(member.id, value)}
+                        disabled={isReadOnly}
+                      >
+                        <SelectTrigger
+                          className={cn(
+                            "w-[120px]",
+                            attendance[member.id] === "present" && "bg-green-100 text-green-800",
+                            attendance[member.id] === "absent" && "bg-red-100 text-red-800",
+                            attendance[member.id] === "late" && "bg-orange-100 text-orange-800",
+                            attendance[member.id] === "excused" && "bg-gray-100 text-gray-800",
+                          )}
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="present">
+                            <span className="flex items-center gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-500" /> Present
+                            </span>
+                          </SelectItem>
+                          <SelectItem value="late">
+                            <span className="flex items-center gap-2">
+                              <Clock className="h-4 w-4 text-orange-500" /> Late
+                            </span>
+                          </SelectItem>
+                          <SelectItem value="excused">
+                            <span className="flex items-center gap-2">
+                              <AlertCircle className="h-4 w-4 text-gray-500" /> Excused
+                            </span>
+                          </SelectItem>
+                          <SelectItem value="absent">
+                            <span className="flex items-center gap-2">
+                              <XCircle className="h-4 w-4 text-red-500" /> Absent
+                            </span>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </CardContent>
                 </Card>
 
@@ -413,7 +651,7 @@ export default function ClubAttendancePage() {
 
               {/* ✅ Nút lưu điểm danh */}
               <div className="flex justify-end mt-6">
-                <Button onClick={handleSaveAttendance} className="flex items-center gap-2">
+                <Button onClick={handleSaveAttendance} className="flex items-center gap-2 mr-10 mb-5">
                   <CheckCircle className="h-4 w-4" />
                   Save Attendance
                 </Button>
@@ -421,6 +659,37 @@ export default function ClubAttendancePage() {
             </>
           )}
         </div>
+        {/* ✅ MỚI: Dialog để chỉnh sửa Ghi chú (chỉ 1 dialog, tái sử dụng) */}
+        <Dialog
+          open={!!editingNoteMember}
+          onOpenChange={(open) => {
+            if (!open) {
+              setEditingNoteMember(null)
+              setCurrentNote("")
+            }
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add Note for {editingNoteMember?.fullName}</DialogTitle>
+            </DialogHeader>
+            <Textarea
+              placeholder="E.g., Excused (sick), Late (traffic)..."
+              value={currentNote}
+              onChange={(e) => setCurrentNote(e.target.value)}
+              rows={4}
+              disabled={isReadOnly}
+            />
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="ghost">Cancel</Button>
+              </DialogClose>
+              <Button onClick={handleSaveNote} disabled={isReadOnly}>
+                Save Note
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </AppShell>
     </ProtectedRoute >
   )
