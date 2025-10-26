@@ -274,12 +274,16 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                         </div>
                       </div>
                     )}
-                    { (request.time || request.eventTime) && (
+                    { (request.startTime || request.endTime || request.time || request.eventTime) && (
                       <div>
                         <label className="text-sm font-medium text-muted-foreground">Event Time</label>
                         <div className="flex items-center gap-2 mt-1">
                           <Clock className="h-4 w-4 text-muted-foreground" />
-                          <span>{request.time || request.eventTime}</span>
+                          <span>
+                            {request.startTime && request.endTime 
+                              ? `${request.startTime} - ${request.endTime}`
+                              : request.time || request.eventTime || "Time not set"}
+                          </span>
                         </div>
                       </div>
                     )}
@@ -290,12 +294,18 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                     <div className="flex items-center gap-2 mt-1">
                       <MapPin className="h-4 w-4 text-muted-foreground" />
                       <span>
-                        {locationLoading && "Loading location..."}
-                        {locationError && `Location #${request.locationId} (failed to load)`}
-                        {!locationLoading && !locationError && location && (location.name || location.locationName) && (
-                          <>{location.name || location.locationName} (#{location.id ?? request.locationId})</>
+                        {request.locationName ? (
+                          request.locationName
+                        ) : (
+                          <>
+                            {locationLoading && "Loading location..."}
+                            {locationError && `Location #${request.locationId} (failed to load)`}
+                            {!locationLoading && !locationError && location && (location.name || location.locationName) && (
+                              <>{location.name || location.locationName} (#{location.id ?? request.locationId})</>
+                            )}
+                            {!locationLoading && !locationError && !location && (request.locationId ? `Location #${request.locationId}` : request.venue)}
+                          </>
                         )}
-                        {!locationLoading && !locationError && !location && (request.locationId ? `Location #${request.locationId}` : request.venue)}
                       </span>
                     </div>
                   </div>
@@ -320,6 +330,54 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                       </div>
                     )}
                   </div>
+
+                  {/* Check-in Capacity - only show if available */}
+                  {request.maxCheckInCount !== undefined && request.currentCheckInCount !== undefined && (
+                    <div className="grid grid-cols-3 gap-4 mt-4">
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Max Capacity</label>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Users className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-semibold">{request.maxCheckInCount} people</span>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Current Check-ins</label>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Users className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-semibold">{request.currentCheckInCount} / {request.maxCheckInCount}</span>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Available Spots</label>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Users className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-semibold">{request.maxCheckInCount - request.currentCheckInCount} remaining</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Co-hosted Clubs */}
+                  {request.coHostedClubs && request.coHostedClubs.length > 0 && (
+                    <div className="mt-4">
+                      <label className="text-sm font-medium text-muted-foreground">Co-hosting Clubs</label>
+                      <div className="grid grid-cols-1 gap-2 mt-2">
+                        {request.coHostedClubs.map((club: any) => (
+                          <div key={club.id} className="flex items-center justify-between p-2 bg-muted/50 rounded-lg">
+                            <div className="flex items-center gap-2">
+                              <Users className="h-4 w-4 text-muted-foreground" />
+                              <span className="font-medium">{club.name}</span>
+                              <span className="text-sm text-muted-foreground">(#{club.id})</span>
+                            </div>
+                            <Badge variant={club.coHostStatus === "APPROVED" ? "default" : "secondary"}>
+                              {club.coHostStatus}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -362,12 +420,18 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                     <div className="flex items-center gap-2 mt-1">
                       <Building className="h-4 w-4 text-muted-foreground" />
                       <span className="font-semibold">
-                        {clubLoading && "Loading club..."}
-                        {clubError && `Club #${request.clubId ?? request.requestedByClubId} (failed to load)`}
-                        {!clubLoading && !clubError && club && (club.name || club.clubName) && (
-                          <>{club.name || club.clubName} (#{club.id ?? request.clubId})</>
+                        {request.hostClub ? (
+                          <>{request.hostClub.name} (#{request.hostClub.id})</>
+                        ) : (
+                          <>
+                            {clubLoading && "Loading club..."}
+                            {clubError && `Club #${request.clubId ?? request.requestedByClubId} (failed to load)`}
+                            {!clubLoading && !clubError && club && (club.name || club.clubName) && (
+                              <>{club.name || club.clubName} (#{club.id ?? request.clubId})</>
+                            )}
+                            {!clubLoading && !clubError && !club && (request.requestedBy ?? (request.clubId ? `Club #${request.clubId}` : "-"))}
+                          </>
                         )}
-                        {!clubLoading && !clubError && !club && (request.requestedBy ?? (request.clubId ? `Club #${request.clubId}` : "-"))}
                       </span>
                     </div>
                   </div>

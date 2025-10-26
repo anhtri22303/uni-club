@@ -19,8 +19,8 @@ interface EventDetail {
   description: string
   type: string
   date: string
-  startTime: string
-  endTime: string
+  startTime: string | null
+  endTime: string | null
   status: string
   checkInCode: string
   locationName: string
@@ -29,7 +29,13 @@ interface EventDetail {
   hostClub: {
     id: number
     name: string
+    coHostStatus?: string
   }
+  coHostedClubs?: Array<{
+    id: number
+    name: string
+    coHostStatus: string
+  }>
   // Legacy fields for backward compatibility
   clubId?: number
   time?: string
@@ -191,7 +197,11 @@ export default function EventDetailPage() {
                     <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
                       <Clock className="h-5 w-5 text-primary" />
                       <div>
-                        <div className="font-medium">{event.startTime} - {event.endTime}</div>
+                        <div className="font-medium">
+                          {event.startTime && event.endTime 
+                            ? `${event.startTime} - ${event.endTime}`
+                            : event.time || "Time not set"}
+                        </div>
                         <div className="text-sm text-muted-foreground">Event Duration</div>
                       </div>
                     </div>
@@ -241,6 +251,31 @@ export default function EventDetailPage() {
                 </div>
               </div>
 
+              {/* Co-hosted Clubs */}
+              {event.coHostedClubs && event.coHostedClubs.length > 0 && (
+                <>
+                  <Separator />
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold">Co-hosting Clubs</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {event.coHostedClubs.map((club) => (
+                        <div key={club.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <Users className="h-5 w-5 text-primary" />
+                            <div>
+                              <div className="font-medium">{club.name}</div>
+                              <div className="text-sm text-muted-foreground">Club ID: {club.id}</div>
+                            </div>
+                          </div>
+                          <Badge variant={club.coHostStatus === "APPROVED" ? "default" : "secondary"}>
+                            {club.coHostStatus}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
 
             </CardContent>
           </Card>

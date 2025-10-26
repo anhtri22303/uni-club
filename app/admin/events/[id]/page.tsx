@@ -18,18 +18,31 @@ import { LoadingSkeleton } from "@/components/loading-skeleton"
 
 interface EventDetail {
   id: number
-  clubId: number
   name: string
   description: string
   type: string
   date: string
-  time: string
+  startTime: string | null
+  endTime: string | null
   status: string
-  locationId: number
-  locationName: string
   checkInCode: string
-  maxCheckInCount: number | null
+  locationName: string
+  maxCheckInCount: number
   currentCheckInCount: number
+  hostClub: {
+    id: number
+    name: string
+    coHostStatus?: string
+  }
+  coHostedClubs?: Array<{
+    id: number
+    name: string
+    coHostStatus: string
+  }>
+  // Legacy fields for backward compatibility
+  clubId?: number
+  time?: string
+  locationId?: number
 }
 
 export default function AdminEventDetailPage() {
@@ -402,8 +415,12 @@ export default function AdminEventDetailPage() {
                     <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
                       <Clock className="h-5 w-5 text-primary" />
                       <div>
-                        <div className="font-medium">{formatTime(event.time)}</div>
-                        <div className="text-sm text-muted-foreground">Start Time</div>
+                        <div className="font-medium">
+                          {event.startTime && event.endTime 
+                            ? `${event.startTime} - ${event.endTime}`
+                            : event.time || "Time not set"}
+                        </div>
+                        <div className="text-sm text-muted-foreground">Event Duration</div>
                       </div>
                     </div>
                   </div>
@@ -423,8 +440,8 @@ export default function AdminEventDetailPage() {
                     <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
                       <Users className="h-5 w-5 text-primary" />
                       <div>
-                        <div className="font-medium">Club ID: {event.clubId}</div>
-                        <div className="text-sm text-muted-foreground">Organizing Club</div>
+                        <div className="font-medium">{event.hostClub.name}</div>
+                        <div className="text-sm text-muted-foreground">Organizing Club (ID: {event.hostClub.id})</div>
                       </div>
                     </div>
                   </div>
@@ -436,6 +453,23 @@ export default function AdminEventDetailPage() {
               {/* Admin Check-in Information */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Check-in Information</h3>
+                
+                {/* Check-in Capacity */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                  <div className="p-4 bg-muted/50 rounded-lg">
+                    <div className="text-sm text-muted-foreground">Max Capacity</div>
+                    <div className="font-semibold text-lg">{event.maxCheckInCount} people</div>
+                  </div>
+                  <div className="p-4 bg-muted/50 rounded-lg">
+                    <div className="text-sm text-muted-foreground">Current Check-ins</div>
+                    <div className="font-semibold text-lg">{event.currentCheckInCount} / {event.maxCheckInCount}</div>
+                  </div>
+                  <div className="p-4 bg-muted/50 rounded-lg">
+                    <div className="text-sm text-muted-foreground">Available Spots</div>
+                    <div className="font-semibold text-lg">{event.maxCheckInCount - event.currentCheckInCount} remaining</div>
+                  </div>
+                </div>
+
                 <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
                   <div className="flex items-center justify-between mb-4">
                     <div>
@@ -490,6 +524,32 @@ export default function AdminEventDetailPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Co-hosted Clubs */}
+              {event.coHostedClubs && event.coHostedClubs.length > 0 && (
+                <>
+                  <Separator />
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold">Co-hosting Clubs</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {event.coHostedClubs.map((club) => (
+                        <div key={club.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <Users className="h-5 w-5 text-primary" />
+                            <div>
+                              <div className="font-medium">{club.name}</div>
+                              <div className="text-sm text-muted-foreground">Club ID: {club.id}</div>
+                            </div>
+                          </div>
+                          <Badge variant={club.coHostStatus === "APPROVED" ? "default" : "secondary"}>
+                            {club.coHostStatus}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         </div>

@@ -298,16 +298,16 @@ export default function AdminEventsPage() {
       return
     }
     try {
-      const clubId = String(formData.clubId).match(/^\d+$/) ? Number(formData.clubId) : formData.clubId
-      const payload = {
-        clubId,
+      const hostClubId = Number(formData.clubId)
+      const payload: any = {
+        hostClubId,
         name: formData.name,
         description: formData.description,
-        type: formData.type,
+        type: formData.type as "PUBLIC" | "PRIVATE",
         date: formData.date,
         startTime: formData.startTime,
         endTime: formData.endTime,
-        locationName: formData.locationName,
+        locationId: 1, // Default location - admin should select from locations
         maxCheckInCount: formData.maxCheckInCount,
       }
       const res: any = await createEvent(payload)
@@ -652,10 +652,12 @@ export default function AdminEventsPage() {
                               {event.locationName}
                             </div>
                           )}
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Trophy className="h-4 w-4" />
-                            {event.points} loyalty points
-                          </div>
+                          {(event.startTime && event.endTime) && (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Trophy className="h-4 w-4" />
+                              {event.startTime} - {event.endTime}
+                            </div>
+                          )}
                         </div>
 
                         {/* Buttons section - pushed to bottom */}
