@@ -784,10 +784,12 @@ export default function ClubLeaderEventsPage() {
                             </div>
                           )}
 
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Trophy className="h-4 w-4" />
-                            {event.points} loyalty points
-                          </div>
+                          {(event.startTime && event.endTime) && (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Trophy className="h-4 w-4" />
+                              {event.startTime} - {event.endTime}
+                            </div>
+                          )}
                         </div>
 
                         {/* Buttons section - pushed to bottom */}

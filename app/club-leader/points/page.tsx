@@ -15,7 +15,6 @@ import { useToast } from "@/hooks/use-toast"
 import { usePagination } from "@/hooks/use-pagination"
 import { Users, Award, ChevronLeft, ChevronRight, Send, Filter, X, Wallet } from "lucide-react"
 import { getClubById, getClubIdFromToken } from "@/service/clubApi"
-import { fetchUserById, fetchProfile } from "@/service/userApi"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { getClubWallet, ApiClubWallet } from "@/service/walletApi"
@@ -47,7 +46,6 @@ export default function ClubLeaderRewardDistributionPage() {
   const { toast } = useToast()
   const [managedClub, setManagedClub] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [userId, setUserId] = useState<string | number | null>(null)
   const [clubWallet, setClubWallet] = useState<ApiClubWallet | null>(null)
   const [walletLoading, setWalletLoading] = useState(false)
   // === State và Logic tải dữ liệu thành viên (Tái sử dụng) ===
@@ -64,6 +62,7 @@ export default function ClubLeaderRewardDistributionPage() {
   useEffect(() => {
     const loadData = async () => {
       setLoading(true)
+      setMembersLoading(true)
       try {
         const clubId = getClubIdFromToken()
         if (!clubId) throw new Error("No club information found")
@@ -82,18 +81,9 @@ export default function ClubLeaderRewardDistributionPage() {
           setWalletLoading(false)
         }
 
+        // Load members - no need to fetch user data separately as it's included in membership data
         const memberData = await membershipApi.getMembersByClubId(clubId)
-        const membersWithUserData = await Promise.all(
-          memberData.map(async (m: any) => {
-            try {
-              const userInfo = await fetchUserById(m.userId)
-              return { ...m, userInfo }
-            } catch {
-              return { ...m, userInfo: null }
-            }
-          })
-        )
-        setApiMembers(membersWithUserData)
+        setApiMembers(memberData)
       } catch (err: any) {
         setMembersError(err.message || "Error loading members")
       } finally {
@@ -102,17 +92,6 @@ export default function ClubLeaderRewardDistributionPage() {
       }
     }
 
-    const loadProfile = async () => {
-      try {
-        const profile = await fetchProfile()
-        // setUserId(profile?.userId)
-        setUserId((profile as any)?.userId)
-      } catch (err) {
-        console.error("Failed to load profile:", err)
-      }
-    }
-
-    loadProfile()
     loadData()
   }, [])
   // Chon thanh vien cu the de phan diem
@@ -135,11 +114,10 @@ export default function ClubLeaderRewardDistributionPage() {
     ? (apiMembers ?? [])
       .filter((m: any) => String(m.clubId) === String(managedClub.id) && m.state === "ACTIVE")
       .map((m: any) => {
-        const u = m.userInfo || {}
         return {
           id: m.membershipId ?? `m-${m.userId}`,
           userId: m.userId,
-          fullName: u.fullName ?? m.fullName ?? `User ${m.userId}`,
+          fullName: m.fullName ?? `User ${m.userId}`,
           studentCode: m.studentCode ?? "—",
           avatarUrl: m.avatarUrl ?? null,
           role: m.clubRole ?? "MEMBER",

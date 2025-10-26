@@ -6,8 +6,8 @@ export interface Event {
   description: string
   type: "PUBLIC" | "PRIVATE" | string
   date: string
-  startTime: string
-  endTime: string
+  startTime: string | null
+  endTime: string | null
   status: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED" | string
   checkInCode: string
   locationName: string
@@ -16,7 +16,13 @@ export interface Event {
   hostClub: {
     id: number
     name: string
+    coHostStatus?: string
   }
+  coHostedClubs?: Array<{
+    id: number
+    name: string
+    coHostStatus: string
+  }>
   // Legacy fields for backward compatibility
   clubId?: number
   clubName?: string
