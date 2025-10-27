@@ -10,7 +10,7 @@ import { Pagination } from "@/components/pagination"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { usePagination } from "@/hooks/use-pagination"
 import { useState } from "react"
-import { Calendar, Users, Trophy } from "lucide-react"
+import { Calendar, Users, Trophy, Layers } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import { safeLocalStorage } from "@/lib/browser-utils"
@@ -23,6 +23,12 @@ export default function MemberEventsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [userClubIds, setUserClubIds] = useState<number[]>([])
   const router = useRouter()
+  // ✅ MỚI: State để quản lý việc chọn club
+  // const [selectedClubId, setSelectedClubId] = useState<string>("all") // 'all' là giá trị mặc định
+  const [selectedClubId, setSelectedClubId] = useState<string | null>(null) // Bắt đầu là null
+  const [userClubsDetails, setUserClubsDetails] = useState<any[]>([]) // Để lưu {id, name}
+
+
 
   // Get user's club IDs from localStorage
   useEffect(() => {
@@ -32,7 +38,7 @@ export default function MemberEventsPage() {
       if (saved) {
         const parsed = JSON.parse(saved)
         console.log("Events page - Parsed localStorage data:", parsed)
-        
+
         if (parsed.clubIds && Array.isArray(parsed.clubIds)) {
           const clubIdNumbers = parsed.clubIds.map((id: any) => Number(id)).filter((id: number) => !isNaN(id))
           console.log("Events page - Setting userClubIds to:", clubIdNumbers)
@@ -51,6 +57,22 @@ export default function MemberEventsPage() {
   // ✅ USE REACT QUERY - automatically filters by clubIds
   const { data: eventsData = [], isLoading: loading } = useClubEvents(userClubIds)
   const { data: clubsData = [] } = useClubs()
+
+  // ✅ CẬP NHẬT: useEffect để lấy chi tiết club VÀ set default
+  useEffect(() => {
+    if (userClubIds.length > 0 && clubsData.length > 0) {
+      // Lọc danh sách 'all clubs' để chỉ lấy những club mà user tham gia
+      // const details = clubsData.filter((club: any) => userClubIds.includes(club.id))
+      const details = userClubIds
+        .map((id) => clubsData.find((club: any) => club.id === id))
+        .filter(Boolean) // Loại bỏ (filter out) bất kỳ club nào không tìm thấy (undefined)
+      setUserClubsDetails(details as any[])
+      // Chỉ đặt nếu 'details' có và 'selectedClubId' chưa được set (vẫn là null)
+      if (details.length > 0 && selectedClubId === null) {
+        setSelectedClubId(String(details[0].id))
+      }
+    }
+  }, [userClubIds, clubsData]) // Chạy lại khi 3 danh sách này sẵn sàng
 
   const filteredEvents = eventsData.filter(
     (event) =>
@@ -72,7 +94,7 @@ export default function MemberEventsPage() {
 
       // Parse event date (format: YYYY-MM-DD)
       const [year, month, day] = event.date.split('-').map(Number)
-      
+
       // Parse endTime (format: HH:MM:SS or HH:MM)
       const [hours, minutes] = event.endTime.split(':').map(Number)
 
@@ -90,6 +112,14 @@ export default function MemberEventsPage() {
   const [activeFilters, setActiveFilters] = useState<Record<string, any>>({ expired: "hide" })
 
   const finalFilteredEvents = filteredEvents.filter((event) => {
+    if (!selectedClubId) {
+      return false
+    }
+    // Lọc theo club ID đã chọn (bỏ qua "all")
+    if (String(event.hostClub?.id) !== selectedClubId) {
+      return false
+    }
+
     // expired filter
     const expiredFilter = activeFilters["expired"]
     if (expiredFilter === "hide") {
@@ -141,7 +171,8 @@ export default function MemberEventsPage() {
             </p>
           </div>
 
-          <div className="flex gap-4">
+          {/* ✅ CẬP NHẬT: Thêm dropdown chọn club */}
+          <div className="flex flex-wrap gap-4">
             <Input
               placeholder="Search events..."
               value={searchTerm}
@@ -149,16 +180,44 @@ export default function MemberEventsPage() {
                 setSearchTerm(e.target.value)
                 setCurrentPage(1)
               }}
-              className="max-w-sm"
+              className="max-w-sm flex-1 min-w-[200px]"
             />
-            <Select 
-              value={activeFilters["expired"] || "hide"} 
+
+            {/* Dropdown chọn Club */}
+            {userClubIds.length > 0 && (
+              <Select
+                value={selectedClubId || ""}
+                onValueChange={(value) => {
+                  setSelectedClubId(value)
+                  setCurrentPage(1) // Reset về trang 1 khi đổi filter
+                }}
+              >
+                <SelectTrigger className="w-full sm:w-[240px]">
+                  <div className="flex items-center gap-2">
+                    <Layers className="h-4 w-4 text-muted-foreground" />
+                    <SelectValue placeholder="Select a club" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  {/* <SelectItem value="all">All My Clubs</SelectItem> */}
+                  {userClubsDetails.map((club) => (
+                    <SelectItem key={club.id} value={String(club.id)}>
+                      {club.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
+            {/* Dropdown lọc sự kiện hết hạn */}
+            <Select
+              value={activeFilters["expired"] || "hide"}
               onValueChange={(v) => {
                 setActiveFilters({ ...activeFilters, expired: v })
                 setCurrentPage(1)
               }}
             >
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-full sm:w-[180px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -168,6 +227,7 @@ export default function MemberEventsPage() {
               </SelectContent>
             </Select>
           </div>
+
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {loading ? (
@@ -185,8 +245,8 @@ export default function MemberEventsPage() {
                 <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-lg font-semibold mb-2">No events found</h3>
                 <p className="text-muted-foreground">
-                  {filteredEvents.length === 0 && eventsData.length > 0 
-                    ? "Try adjusting your search terms" 
+                  {filteredEvents.length === 0 && eventsData.length > 0
+                    ? "Try adjusting your search terms"
                     : "Your clubs haven't posted any events yet"}
                 </p>
               </div>
@@ -207,12 +267,12 @@ export default function MemberEventsPage() {
                         </div>
                         <Badge
                           variant={
-                            event.status === "APPROVED" 
+                            event.status === "APPROVED"
                               ? status === "past" ? "secondary" : status === "upcoming" ? "default" : "outline"
                               : "destructive"
                           }
                         >
-                          {event.status === "APPROVED" 
+                          {event.status === "APPROVED"
                             ? (status === "past" ? "Past" : status === "upcoming" ? "Soon" : "Future")
                             : event.status}
                         </Badge>
@@ -221,7 +281,7 @@ export default function MemberEventsPage() {
                     <CardContent>
                       <div className="space-y-3">
                         <p className="text-sm text-muted-foreground line-clamp-2">{event.description}</p>
-                        
+
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Calendar className="h-4 w-4" />
                           {new Date(event.date).toLocaleDateString("en-US", {
