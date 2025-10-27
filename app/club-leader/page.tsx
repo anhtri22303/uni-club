@@ -10,12 +10,10 @@ import { useAuth } from "@/contexts/auth-context"
 import { useData } from "@/contexts/data-context"
 import { Users, Calendar, UserCheck, Clock, TrendingUp } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useProfile, useClub } from "@/hooks/use-query-hooks"
+import { useProfile, useClub, useClubMembers, useMemberApplicationsByClub, useEventsByClubId } from "@/hooks/use-query-hooks"
 import { getClubIdFromToken } from "@/service/clubApi"
 import { useEffect, useState } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
-import events from "@/src/data/events.json"
-import users from "@/src/data/users.json"
 import { ApiMembership } from "@/service/membershipApi"
 
 
@@ -51,25 +49,110 @@ export default function ClubLeaderDashboardPage() {
     }
   }, [])
 
-  // ✅ USE REACT QUERY for profile and club
+  // ✅ USE REACT QUERY for profile, club, members, applications, and events
   const { data: profile, isLoading: profileLoading } = useProfile()
   const { data: managedClub, isLoading: clubLoading } = useClub(clubId || 0, !!clubId)
+  const { data: apiMembers = [], isLoading: membersLoading } = useClubMembers(clubId || 0, !!clubId)
+  const { data: applications = [], isLoading: applicationsLoading } = useMemberApplicationsByClub(
+    clubId || 0,
+    !!clubId
+  )
+  const { data: rawEvents = [], isLoading: eventsLoading } = useEventsByClubId(clubId || 0, !!clubId)
 
   const loading = profileLoading || clubLoading
 
   // Type assertion for profile to fix TypeScript error
   const typedProfile = profile as any
 
-  const clubMembers = managedClub ? clubMemberships.filter((m) => m.clubId === managedClub.id && m.status === "APPROVED") : []
-  const pendingApplications = managedClub ? membershipApplications.filter((a) => a.clubId === managedClub.id && a.status === "PENDING") : []
-  const clubEvents = managedClub ? events.filter((e) => e.clubId === String(managedClub.id)) : []
-  const upcomingEvents = clubEvents.filter((event) => new Date(event.date) > new Date()).length
-  const recentApplications = managedClub
-    ? membershipApplications
-      .filter((a) => a.clubId === managedClub.id)
-      .sort((a, b) => new Date(b.appliedAt || 0).getTime() - new Date(a.appliedAt || 0).getTime())
-      .slice(0, 5)
+  // Transform API members data (similar to members page)
+  const allClubMembers = managedClub
+    ? apiMembers
+        .filter((m: any) => String(m.clubId) === String(managedClub.id) && m.state === "ACTIVE")
+        .map((m: any) => ({
+          id: m.membershipId ?? `m-${m.userId}`,
+          userId: m.userId,
+          clubId: m.clubId,
+          fullName: m.fullName ?? `User ${m.userId}`,
+          email: m.email ?? "N/A",
+          phone: m.phone ?? "N/A",
+          studentCode: m.studentCode ?? "N/A",
+          majorName: m.major ?? "N/A",
+          avatarUrl: m.avatarUrl ?? "/placeholder-user.jpg",
+          role: m.clubRole ?? "MEMBER",
+          isStaff: m.staff ?? false,
+          status: m.state,
+          joinedAt: m.joinedDate ? new Date(m.joinedDate).toLocaleDateString() : "N/A",
+          joinedDate: m.joinedDate,
+        }))
     : []
+
+  // ✅ COMPREHENSIVE MEMBER STATISTICS
+  const totalMembers = allClubMembers.length
+  const leaderCount = allClubMembers.filter((m) => m.role === "LEADER").length
+  const viceLeaderCount = allClubMembers.filter((m) => m.role === "VICE_LEADER").length
+  const regularMembers = allClubMembers.filter((m) => m.role === "MEMBER").length
+  const staffMembers = allClubMembers.filter((m) => m.isStaff).length
+  const nonStaffMembers = totalMembers - staffMembers
+
+  // Members by major
+  const membersByMajor = allClubMembers.reduce((acc: Record<string, number>, member) => {
+    const major = member.majorName
+    if (major && major !== "N/A") {
+      acc[major] = (acc[major] || 0) + 1
+    }
+    return acc
+  }, {})
+
+  // Get members joined in the last 30 days
+  const thirtyDaysAgo = new Date()
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+  const recentlyJoined = allClubMembers.filter(
+    (m) => m.joinedDate && new Date(m.joinedDate) >= thirtyDaysAgo
+  ).length
+
+  // ✅ APPLICATION STATISTICS from API
+  const totalApplications = applications.length
+  const pendingApplicationsCount = applications.filter((a: any) => a.status === "PENDING").length
+  const approvedApplicationsCount = applications.filter((a: any) => a.status === "APPROVED").length
+  const rejectedApplicationsCount = applications.filter((a: any) => a.status === "REJECTED").length
+
+  // ✅ EVENT STATISTICS from API
+  // Helper function to check if event has expired (past endTime)
+  const isEventExpired = (event: any) => {
+    if (!event.date || !event.endTime) return false
+
+    try {
+      const now = new Date()
+      const vnTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }))
+
+      const [year, month, day] = event.date.split('-').map(Number)
+      const [hours, minutes] = event.endTime.split(':').map(Number)
+
+      const eventEndDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0)
+
+      return vnTime > eventEndDateTime
+    } catch (error) {
+      console.error('Error checking event expiration:', error)
+      return false
+    }
+  }
+
+  // Helper function to check if event is active (APPROVED and not expired)
+  const isEventActive = (event: any) => {
+    if (event.status !== "APPROVED") return false
+    if (isEventExpired(event)) return false
+    if (!event.date || !event.endTime) return false
+    return true
+  }
+
+  // Calculate event statistics
+  const totalApprovedEvents = rawEvents.filter((e: any) => e.status === "APPROVED").length
+  const activeApprovedEvents = rawEvents.filter((e: any) => isEventActive(e)).length
+  
+  // Recent applications from API (sorted by creation date)
+  const recentApplications = applications
+    .sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+    .slice(0, 5)
 
   if (loading) {
     return (
@@ -111,41 +194,143 @@ export default function ClubLeaderDashboardPage() {
             )}
           </div>
 
-          {/* ... StatsCards remain the same ... */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <StatsCard
-              title="Total Members"
-              value={clubMembers.length}
-              description="Active club members"
-              icon={Users}
-              trend={{ value: 8, label: "from last month" }}
-              variant="primary"
-            />
-            <StatsCard
-              title="Pending Applications"
-              value={pendingApplications.length}
-              description="Awaiting review"
-              icon={Clock}
-              variant="warning"
-            />
-            <StatsCard
-              title="Upcoming Events"
-              value={upcomingEvents}
-              description="This month"
-              icon={Calendar}
-              variant="info"
-            />
-            <StatsCard
-              title="Total Events"
-              value={clubEvents.length}
-              description="All time"
-              icon={TrendingUp}
-              variant="success"
-            />
+          {/* ✅ 3 BIG HORIZONTAL STATS FRAMES */}
+          <div className="grid gap-6 md:grid-cols-3">
+            <Card className="border-2 border-primary/20 hover:border-primary/40 transition-all shadow-lg hover:shadow-xl">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-2xl font-bold text-primary">
+                      {membersLoading ? "..." : totalMembers}
+                    </CardTitle>
+                    <CardDescription className="text-base font-medium mt-1">Total Members</CardDescription>
+                  </div>
+                  <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Users className="h-8 w-8 text-primary" />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Leaders:</span>
+                    <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                      {leaderCount + viceLeaderCount}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Regular Members:</span>
+                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                      {regularMembers}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Staff Members:</span>
+                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                      {staffMembers}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t">
+                    <span className="text-muted-foreground">Recently Joined (30d):</span>
+                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                      +{recentlyJoined}
+                    </Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-2 border-green-500/20 hover:border-green-500/40 transition-all shadow-lg hover:shadow-xl">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-2xl font-bold text-green-600">
+                      {applicationsLoading ? "..." : totalApplications}
+                    </CardTitle>
+                    <CardDescription className="text-base font-medium mt-1">Applications</CardDescription>
+                  </div>
+                  <div className="h-14 w-14 rounded-full bg-green-500/10 flex items-center justify-center">
+                    <UserCheck className="h-8 w-8 text-green-600" />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Approved:</span>
+                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                      {approvedApplicationsCount}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Pending Review:</span>
+                    <Badge variant={pendingApplicationsCount > 0 ? "default" : "outline"} className="bg-yellow-50 text-yellow-700 border-yellow-200">
+                      {pendingApplicationsCount}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Rejected:</span>
+                    <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+                      {rejectedApplicationsCount}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t">
+                    <span className="text-muted-foreground font-medium">Approval Rate:</span>
+                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                      {totalApplications > 0 ? Math.round((approvedApplicationsCount / totalApplications) * 100) : 0}%
+                    </Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-2 border-blue-500/20 hover:border-blue-500/40 transition-all shadow-lg hover:shadow-xl">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-2xl font-bold text-blue-600">
+                      {eventsLoading ? "..." : rawEvents.length}
+                    </CardTitle>
+                    <CardDescription className="text-base font-medium mt-1">Events Created</CardDescription>
+                  </div>
+                  <div className="h-14 w-14 rounded-full bg-blue-500/10 flex items-center justify-center">
+                    <Calendar className="h-8 w-8 text-blue-600" />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Approved:</span>
+                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                      {totalApprovedEvents}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Active Events:</span>
+                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                      {activeApprovedEvents}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Pending Approval:</span>
+                    <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+                      {rawEvents.filter((e: any) => e.status === "PENDING").length}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t">
+                    <span className="text-muted-foreground font-medium">Approval Rate:</span>
+                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                      {rawEvents.length > 0 ? Math.round((totalApprovedEvents / rawEvents.length) * 100) : 0}%
+                    </Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-2">
-            {/* ... Recent Applications card remains the same ... */}
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {/* Recent Applications */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -155,70 +340,138 @@ export default function ClubLeaderDashboardPage() {
                 <CardDescription>Latest membership requests</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {recentApplications.length === 0 ? (
-                    <p className="text-muted-foreground text-center py-4">No recent applications</p>
-                  ) : (
-                    recentApplications.map((application) => {
-                      const applicant = users.find((u) => u.id === application.userId)
-                      return (
-                        <div key={application.id} className="flex items-center justify-between p-3 border rounded-lg">
-                          <div>
-                            <p className="font-medium">{applicant?.fullName}</p>
-                            <p className="text-sm text-muted-foreground">{applicant?.email}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {application.appliedAt ? new Date(application.appliedAt).toLocaleDateString() : "Recently"}
-                            </p>
+                {applicationsLoading ? (
+                  <div className="space-y-3">
+                    <Skeleton className="h-20 w-full" />
+                    <Skeleton className="h-20 w-full" />
+                    <Skeleton className="h-20 w-full" />
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {recentApplications.length === 0 ? (
+                      <p className="text-muted-foreground text-center py-4">No recent applications</p>
+                    ) : (
+                      recentApplications.map((application: any) => {
+                        return (
+                          <div key={application.applicationId} className="flex items-center justify-between p-3 border rounded-lg">
+                            <div>
+                              <p className="font-medium">{application.applicantName}</p>
+                              <p className="text-sm text-muted-foreground">{application.applicantEmail}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {application.createdAt ? new Date(application.createdAt).toLocaleDateString() : "Recently"}
+                              </p>
+                            </div>
+                            <Badge
+                              variant={
+                                application.status === "APPROVED" ? "default" : application.status === "PENDING" ? "secondary" : "destructive"
+                              }
+                            >
+                              {application.status}
+                            </Badge>
                           </div>
-                          <Badge
-                            variant={
-                              application.status === "APPROVED" ? "default" : application.status === "PENDING" ? "secondary" : "destructive"
-                            }
-                          >
-                            {application.status}
-                          </Badge>
-                        </div>
-                      )
-                    })
-                  )}
-                  <Button variant="outline" className="w-full mt-3 bg-transparent" onClick={() => router.push("/club-leader/members")}>Manage All Applications</Button>
-                </div>
+                        )
+                      })
+                    )}
+                    <Button variant="outline" className="w-full mt-3 bg-transparent" onClick={() => router.push("/club-leader/applications")}>Manage All Applications</Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle>Club Overview</CardTitle>
+                <CardTitle>Club Information</CardTitle>
                 {managedClub ? (
-                  <CardDescription>{managedClub.name} statistics</CardDescription>
+                  <CardDescription>{managedClub.name}</CardDescription>
                 ) : (
                   <Skeleton className="h-5 w-40 mt-1" />
                 )}
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Major:</span>
-                    {managedClub ? <Badge variant="outline">{managedClub.majorName}</Badge> : <Skeleton className="h-6 w-24" />}
+                {clubLoading ? (
+                  <div className="space-y-4">
+                    <Skeleton className="h-8 w-full" />
+                    <Skeleton className="h-8 w-full" />
+                    <Skeleton className="h-8 w-full" />
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Total Members:</span>
-                    <span className="font-semibold">{clubMembers.length}</span>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Club Name:</span>
+                      {managedClub ? <Badge variant="outline" className="max-w-[200px] truncate">{managedClub.name}</Badge> : <Skeleton className="h-6 w-24" />}
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Major:</span>
+                      {managedClub ? <Badge variant="outline">{managedClub.majorName}</Badge> : <Skeleton className="h-6 w-24" />}
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Policy:</span>
+                      {managedClub ? <Badge variant="secondary">{managedClub.majorPolicyName}</Badge> : <Skeleton className="h-6 w-24" />}
+                    </div>
+                    <div className="border-t pt-4">
+                      <p className="text-sm text-muted-foreground mb-2">Description</p>
+                      {managedClub ? (
+                        <p className="text-sm leading-relaxed">{managedClub.description || "No description available"}</p>
+                      ) : (
+                        <Skeleton className="h-16 w-full" />
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Events Created:</span>
-                    <span className="font-semibold">{clubEvents.length}</span>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Members by Major */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Members by Major
+                </CardTitle>
+                <CardDescription>Distribution across majors</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {membersLoading ? (
+                  <div className="space-y-3">
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Pending Reviews:</span>
-                    <span className="font-semibold">{pendingApplications.length}</span>
+                ) : Object.keys(membersByMajor).length === 0 ? (
+                  <p className="text-muted-foreground text-center py-4 text-sm">No major data available</p>
+                ) : (
+                  <div className="space-y-3 max-h-[280px] overflow-y-auto">
+                    {Object.entries(membersByMajor)
+                      .sort(([, a], [, b]) => (b as number) - (a as number))
+                      .slice(0, 10)
+                      .map(([major, count]) => (
+                        <div key={major} className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 transition-colors">
+                          <div className="flex-1">
+                            <p className="font-medium text-sm truncate">{major}</p>
+                            <div className="mt-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all"
+                                style={{ width: `${((count as number) / totalMembers) * 100}%` }}
+                              />
+                            </div>
+                          </div>
+                          <Badge variant="outline" className="ml-3 min-w-[3rem] justify-center">
+                            {count as number}
+                          </Badge>
+                        </div>
+                      ))}
+                    {Object.keys(membersByMajor).length > 10 && (
+                      <p className="text-xs text-muted-foreground text-center pt-2">
+                        Showing top 10 of {Object.keys(membersByMajor).length} majors
+                      </p>
+                    )}
                   </div>
-                </div>
+                )}
               </CardContent>
             </Card>
           </div>
 
-          {/* ... Quick Actions card remains the same ... */}
+          {/* Quick Actions */}
           <Card>
             <CardHeader>
               <CardTitle>Quick Actions</CardTitle>
@@ -226,8 +479,8 @@ export default function ClubLeaderDashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="grid gap-3 md:grid-cols-3">
-                <Button variant="outline" onClick={() => router.push("/club-leader/members")}>
-                  <Users className="h-4 w-4 mr-2" />
+                <Button variant="outline" onClick={() => router.push("/club-leader/applications")}>
+                  <UserCheck className="h-4 w-4 mr-2" />
                   Review Applications
                 </Button>
                 <Button variant="outline" onClick={() => router.push("/club-leader/events")}>
@@ -235,7 +488,7 @@ export default function ClubLeaderDashboardPage() {
                   Create Event
                 </Button>
                 <Button variant="outline" onClick={() => router.push("/club-leader/members")}>
-                  <UserCheck className="h-4 w-4 mr-2" />
+                  <Users className="h-4 w-4 mr-2" />
                   Manage Members
                 </Button>
               </div>

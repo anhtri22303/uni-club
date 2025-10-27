@@ -105,7 +105,7 @@ export default function EventDetailPage() {
       // Generate new QR code when rotating
       if (event?.id) {
         try {
-          const { token, qrUrl } = await generateCode(event.id)
+          const { token } = await generateCode(event.id)
           console.log('Rotating QR - Generated new token:', token)
           
           // Create URLs with token (path parameter format)
@@ -248,11 +248,10 @@ export default function EventDetailPage() {
     if (!event) return
 
     try {
-      // Generate fresh token and qrUrl using the new API
+      // Generate fresh token using the new API
       console.log('Generating check-in token for event:', event.id)
-      const { token, qrUrl } = await generateCode(event.id)
+      const { token } = await generateCode(event.id)
       console.log('Generated token:', token)
-      console.log('Generated qrUrl:', qrUrl)
       
       // Create URLs with token (path parameter format)
       const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${token}`

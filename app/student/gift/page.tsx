@@ -56,7 +56,7 @@ export default function MemberGiftPage() {
 	const [searchTerm, setSearchTerm] = useState("")
 
 	// ✅ USE REACT QUERY for products
-	const { data: products = [], isLoading: loading } = useProducts({ page: 0, size: 50, sort: "name" })
+	const { data: products = [], isLoading: loading } = useProducts({ page: 0, size: 100, sort: "name" })
 
 	const filteredProducts = products.filter(
 		(p) =>

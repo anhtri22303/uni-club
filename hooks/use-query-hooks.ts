@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { fetchClub, getClubById, getClubMemberCount } from "@/service/clubApi"
-import { fetchEvent, getEventById } from "@/service/eventApi"
+import { fetchEvent, getEventById, getEventByClubId } from "@/service/eventApi"
 import { fetchUser, fetchUserById, fetchProfile } from "@/service/userApi"
 import { getMembersByClubId } from "@/service/membershipApi"
 import { fetchMajors } from "@/service/majorApi"
@@ -40,6 +40,7 @@ export const queryKeys = {
   events: ["events"] as const,
   eventsList: () => [...queryKeys.events, "list"] as const,
   eventDetail: (id: number) => [...queryKeys.events, "detail", id] as const,
+  eventsByClubId: (clubId: number) => [...queryKeys.events, "club", clubId] as const,
 
   // Users
   users: ["users"] as const,
@@ -250,6 +251,31 @@ export function useClubEvents(clubIds: number[]) {
   })
 }
 
+/**
+ * Hook to fetch events by a specific club ID
+ * Uses the dedicated API endpoint /api/events/club/:clubId
+ * @param clubId - Club ID to fetch events for
+ * @param enabled - Whether to enable the query (default: true)
+ */
+export function useEventsByClubId(clubId: number, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.eventsByClubId(clubId),
+    queryFn: async () => {
+      const events = await getEventByClubId(clubId)
+      // Normalize events with both new and legacy field support
+      return events.map((e: any) => ({
+        ...e,
+        title: e.name || e.title,
+        time: e.startTime || e.time, // Map startTime to time for legacy compatibility
+        clubId: e.hostClub?.id || e.clubId, // Map hostClub.id to clubId for backward compatibility
+        clubName: e.hostClub?.name || e.clubName, // Map hostClub.name to clubName for backward compatibility
+      }))
+    },
+    enabled: !!clubId && enabled,
+    staleTime: 3 * 60 * 1000, // 3 minutes (events change frequently)
+  })
+}
+
 // ============================================
 // USERS QUERIES
 // ============================================
@@ -316,9 +342,9 @@ export function usePrefetchClubs() {
   
   return () => {
     queryClient.prefetchQuery({
-      queryKey: queryKeys.clubsList({ page: 0, size: 20, sort: ["name"] }),
+      queryKey: queryKeys.clubsList({ page: 0, size: 100, sort: ["name"] }),
       queryFn: async () => {
-        const res: any = await fetchClub({ page: 0, size: 20, sort: ["name"] })
+        const res: any = await fetchClub({ page: 0, size: 100, sort: ["name"] })
         return res?.content ?? []
       },
       staleTime: 5 * 60 * 1000,
@@ -388,7 +414,7 @@ export function usePrefetchClub() {
 /**
  * Hook to fetch products with pagination
  */
-export function useProducts(params = { page: 0, size: 10, sort: "name" }) {
+export function useProducts(params = { page: 0, size: 100, sort: "name" }) {
   return useQuery({
     queryKey: queryKeys.productsList(params),
     queryFn: async () => {
@@ -495,7 +521,7 @@ export function useProfile(enabled = true) {
 /**
  * Hook to fetch all locations with pagination
  */
-export function useLocations(params = { page: 0, size: 10, sort: ["name"] }, enabled = true) {
+export function useLocations(params = { page: 0, size: 100, sort: ["name"] }, enabled = true) {
   return useQuery({
     queryKey: ["locations", "list", params],
     queryFn: async () => {

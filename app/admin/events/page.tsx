@@ -150,8 +150,12 @@ export default function AdminEventsPage() {
     const generateAndSet = async () => {
       if (!selectedEvent?.id) return
       try {
-        const { token, qrUrl } = await generateCode(selectedEvent.id)
+        const { token } = await generateCode(selectedEvent.id)
         console.log('Generated QR token:', token)
+
+        // Create URLs with token (path parameter format)
+        const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${token}`
+        const localUrl = `http://localhost:3000/student/checkin/${token}`
 
         const styleVariants = [
           { color: { dark: '#000000', light: '#FFFFFF' }, margin: 1 },
@@ -159,12 +163,19 @@ export default function AdminEventsPage() {
           { color: { dark: '#222222', light: '#FFFFFF' }, margin: 0 },
         ]
 
-        // Generate DataURL variants for the qrUrl
-        const qrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
+        // Generate QR variants for local environment
+        const localQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
           const opts = styleVariants[i % styleVariants.length]
-          return QRCode.toDataURL(qrUrl, opts as any)
+          return QRCode.toDataURL(localUrl, opts as any)
         })
-        const qrVariants = await Promise.all(qrVariantsPromises)
+        const localQrVariants = await Promise.all(localQrVariantsPromises)
+
+        // Generate QR variants for production environment
+        const prodQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
+          const opts = styleVariants[i % styleVariants.length]
+          return QRCode.toDataURL(prodUrl, opts as any)
+        })
+        const prodQrVariants = await Promise.all(prodQrVariantsPromises)
 
         // Build mobile deep link and its QR variants
         const mobileLink = `exp://192.168.1.50:8081/--/student/checkin/${token}`
@@ -174,8 +185,8 @@ export default function AdminEventsPage() {
         })
         const mobileVariants = await Promise.all(mobileVariantsPromises)
 
-        setQrRotations({ local: qrVariants, prod: qrVariants, mobile: mobileVariants })
-        setQrLinks({ local: qrUrl, prod: qrUrl, mobile: mobileLink })
+        setQrRotations({ local: localQrVariants, prod: prodQrVariants, mobile: mobileVariants })
+        setQrLinks({ local: localUrl, prod: prodUrl, mobile: mobileLink })
       } catch (err) {
         console.error('Failed to generate QR:', err)
       }
@@ -676,11 +687,10 @@ export default function AdminEventsPage() {
                                 onClick={async () => {
                                   setSelectedEvent(event);
                                   try {
-                                    // Generate fresh token and qrUrl using the new API
+                                    // Generate fresh token using the new API
                                     console.log('Generating check-in token for event:', event.id);
-                                    const { token, qrUrl } = await generateCode(event.id);
+                                    const { token } = await generateCode(event.id);
                                     console.log('Generated token:', token);
-                                    console.log('Generated qrUrl:', qrUrl);
                                     
                                     // Create URLs with token (path parameter format)
                                     const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${token}`;

@@ -55,13 +55,13 @@ export default function AdminEventDetailPage() {
 
   // QR Code states
   const [showQrModal, setShowQrModal] = useState(false)
-  const [qrLinks, setQrLinks] = useState<{ local?: string; prod?: string }>({})
-  const [qrRotations, setQrRotations] = useState<{ local: string[]; prod: string[] }>({ local: [], prod: [] })
+  const [qrLinks, setQrLinks] = useState<{ local?: string; prod?: string; mobile?: string }>({})
+  const [qrRotations, setQrRotations] = useState<{ local: string[]; prod: string[]; mobile?: string[] }>({ local: [], prod: [] })
   const [visibleIndex, setVisibleIndex] = useState(0)
   const [displayedIndex, setDisplayedIndex] = useState(0)
   const [isFading, setIsFading] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const [activeEnvironment, setActiveEnvironment] = useState<'local' | 'prod'>('prod')
+  const [activeEnvironment, setActiveEnvironment] = useState<'local' | 'prod' | 'mobile'>('prod')
   const ROTATION_INTERVAL_MS = 30 * 1000
   const VARIANTS = 3
   const [countdown, setCountdown] = useState(() => Math.floor(ROTATION_INTERVAL_MS / 1000))
@@ -104,7 +104,7 @@ export default function AdminEventDetailPage() {
       // Generate new QR code when rotating
       if (event?.id) {
         try {
-          const { token, qrUrl } = await generateCode(event.id)
+          const { token } = await generateCode(event.id)
           console.log('Rotating QR - Generated new token:', token)
           
           // Create URLs with token (path parameter format)
@@ -215,11 +215,10 @@ export default function AdminEventDetailPage() {
     if (!event) return
 
     try {
-      // Generate fresh token and qrUrl using the new API
+      // Generate fresh token using the new API
       console.log('Generating check-in token for event:', event.id)
-      const { token, qrUrl } = await generateCode(event.id)
+      const { token } = await generateCode(event.id)
       console.log('Generated token:', token)
-      console.log('Generated qrUrl:', qrUrl)
       
       // Create URLs with token (path parameter format)
       const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${token}`
@@ -269,11 +268,23 @@ export default function AdminEventDetailPage() {
     }
   }
 
-  const handleDownloadQR = async (environment: 'local' | 'prod') => {
+  const handleDownloadQR = async (environment: 'local' | 'prod' | 'mobile') => {
     try {
-      const qrDataUrl = environment === 'local' 
-        ? qrRotations.local[displayedIndex % qrRotations.local.length]
-        : qrRotations.prod[displayedIndex % qrRotations.prod.length]
+      let qrDataUrl: string | undefined
+      if (environment === 'local') {
+        qrDataUrl = qrRotations.local[displayedIndex % qrRotations.local.length]
+      } else if (environment === 'prod') {
+        qrDataUrl = qrRotations.prod[displayedIndex % qrRotations.prod.length]
+      } else {
+        // mobile: construct QR image using public API (fallback)
+        const token = event?.checkInCode || ''
+        if (!token) {
+          toast({ title: 'No token', description: 'Mobile token not available', variant: 'destructive' })
+          return
+        }
+        const mobileLink = `exp://192.168.1.50:8081/--/student/checkin/${token}`
+        qrDataUrl = `https://api.qrserver.com/v1/create-qr-code/?size=640x640&data=${encodeURIComponent(mobileLink)}`
+      }
       
       if (!qrDataUrl) return
 
@@ -291,9 +302,22 @@ export default function AdminEventDetailPage() {
     }
   }
 
-  const handleCopyLink = async (environment: 'local' | 'prod') => {
+  const handleCopyLink = async (environment: 'local' | 'prod' | 'mobile') => {
     try {
-      const link = environment === 'local' ? qrLinks.local : qrLinks.prod
+      let link: string | undefined
+      if (!event?.id) {
+        toast({ title: 'No event', description: 'Event not available', variant: 'destructive' })
+        return
+      }
+
+      if (environment === 'mobile') {
+        // Generate fresh token for mobile deep link
+        const { token } = await generateCode(event.id)
+        link = `exp://192.168.1.50:8081/--/student/checkin/${token}`
+      } else {
+        link = environment === 'local' ? qrLinks.local : qrLinks.prod
+      }
+      
       if (!link) return
       
       await navigator.clipboard.writeText(link)
