@@ -2,7 +2,18 @@ import axiosInstance from "@/lib/axiosInstance"
 
 export type ApiWallet = {
   points: number;
+  memberships?: ApiMembershipWallet[]; // Array of membership wallets
   [key: string]: any; // Cho phép các thuộc tính khác từ backend
+};
+
+export type ApiMembershipWallet = {
+  walletId: number;
+  balancePoints: number;
+  ownerType: string;
+  clubId: number;
+  clubName: string;
+  userId: number;
+  userFullName: string;
 };
 
 export type ApiClubWallet = {
@@ -17,16 +28,27 @@ export type ApiClubWallet = {
 
 export const getWallet = async (): Promise<ApiWallet> => {
   try {
-    const res = await axiosInstance.get("/api/wallets/me")
+    const res = await axiosInstance.get("/api/wallets/me/memberships")
 
-    // Chuẩn hóa các kiểu trả về khác nhau từ backend thành một trường "points" nhất quán
-    const data: any = res.data ?? {}
-    const points = Number(
-      data.points ?? data.balance ?? data.balancePoints ?? data.balance_points ?? 0
-    )
+    // Response is an array of membership wallets
+    const memberships: ApiMembershipWallet[] = Array.isArray(res.data) ? res.data : []
+    
+    // Sum all membership balancePoints to get total points
+    const totalPoints = memberships.reduce((sum, membership) => {
+      return sum + (Number(membership.balancePoints) || 0)
+    }, 0)
 
-    const normalized = { ...data, points }
-    console.log("getWallet:", normalized)
+    const normalized: ApiWallet = {
+      points: totalPoints,
+      memberships: memberships
+    }
+    
+    console.log("getWallet (memberships):", {
+      totalMemberships: memberships.length,
+      totalPoints,
+      memberships
+    })
+    
     return normalized
   } catch (err) {
     console.error("walletApi.getWallet failed", err)
@@ -34,11 +56,21 @@ export const getWallet = async (): Promise<ApiWallet> => {
   }
 }
 
+export type ApiRewardResponse = {
+  walletId: number;
+  balancePoints: number;
+  ownerType: string;
+  clubId: number;
+  clubName: string;
+  userId: number;
+  userFullName: string;
+};
+
 export const rewardPointsToMember = async (
   membershipId: string | number,
   points: number,
   reason?: string
-): Promise<any> => {
+): Promise<ApiRewardResponse> => {
   try {
     const res = await axiosInstance.post(
       `/api/wallets/reward/${membershipId}`,
@@ -51,7 +83,8 @@ export const rewardPointsToMember = async (
         },
       }
     )
-    return res.data
+    console.log(`rewardPointsToMember (membershipId: ${membershipId}):`, res.data)
+    return res.data as ApiRewardResponse
   } catch (err) {
     console.error(`Failed to reward points to membership ${membershipId}`, err)
     throw err // Ném lỗi ra để component có thể xử lý

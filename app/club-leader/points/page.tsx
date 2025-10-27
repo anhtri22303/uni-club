@@ -17,7 +17,7 @@ import { Users, Award, ChevronLeft, ChevronRight, Send, Filter, X, Wallet } from
 import { getClubById, getClubIdFromToken } from "@/service/clubApi"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { getClubWallet, ApiClubWallet } from "@/service/walletApi"
+import { getClubWallet, ApiClubWallet, rewardPointsToMember, ApiRewardResponse } from "@/service/walletApi"
 
 interface ClubMember {
   id: string;
@@ -26,19 +26,6 @@ interface ClubMember {
   role: string;
   status: string;
   joinedAt: string | null;
-}
-
-// Giả định service API mới
-const rewardApi = {
-  // Giả lập hàm phân phát điểm
-  distributeRewards: async (clubId: string, amount: number, memberIds: string[]): Promise<any> => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        console.log(`Distributing ${amount} points to ${memberIds.length} members of club ${clubId}`);
-        resolve({ success: true, count: memberIds.length, amount });
-      }, 1500); // Giả lập độ trễ API
-    });
-  }
 }
 
 export default function ClubLeaderRewardDistributionPage() {
@@ -227,34 +214,54 @@ export default function ClubLeaderRewardDistributionPage() {
       return
     }
     setIsDistributing(true)
-    // const memberUserIds = clubMembers.map(m => m.userId)
-    const memberUserIds = clubMembers.filter(m => selectedMembers[m.id]).map(m => m.userId)
-    if (memberUserIds.length === 0) {
+    
+    // Get selected members with their membershipIds
+    const selectedMembersList = clubMembers.filter(m => selectedMembers[m.id])
+    if (selectedMembersList.length === 0) {
       toast({
         title: "No members selected",
         description: "Please select at least one member to distribute points.",
         variant: "destructive"
       })
+      setIsDistributing(false)
       return
     }
 
     try {
-      // Gọi API phân phát điểm thưởng
-      const result = await rewardApi.distributeRewards(
-        String(managedClub.id),
-        rewardAmount as number,
-        memberUserIds
+      // Reward points to each selected member individually
+      const rewardPromises = selectedMembersList.map(member => 
+        rewardPointsToMember(
+          member.id, // membershipId
+          rewardAmount as number,
+          "Event giving" // reason
+        )
       )
 
-      if (result.success) {
+      // Execute all reward API calls in parallel
+      const results = await Promise.allSettled(rewardPromises)
+
+      // Count successes and failures
+      const successCount = results.filter(r => r.status === 'fulfilled').length
+      const failureCount = results.filter(r => r.status === 'rejected').length
+
+      if (successCount > 0) {
         toast({
           title: "Success",
-          description: `Distributed ${result.amount} points to ${result.count} members of ${managedClub.name}.`,
+          description: `Distributed ${rewardAmount} points to ${successCount} member(s) of ${managedClub.name}.${failureCount > 0 ? ` ${failureCount} failed.` : ''}`,
           variant: "default"
         })
+
+        // Reload club wallet balance
+        try {
+          const walletData = await getClubWallet(managedClub.id)
+          setClubWallet(walletData)
+        } catch (walletErr) {
+          console.error("Failed to reload club wallet:", walletErr)
+        }
+
         setRewardAmount('') // Reset số điểm sau khi thành công
       } else {
-        throw new Error("Failure point distribution")
+        throw new Error("All reward distributions failed")
       }
     } catch (err: any) {
       toast({

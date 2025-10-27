@@ -15,6 +15,8 @@ import { getClubIdFromToken } from "@/service/clubApi"
 import { useEffect, useState } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ApiMembership } from "@/service/membershipApi"
+import { BarChart3 } from "lucide-react"
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line } from "recharts"
 
 
 // Define a type for the club based on the Swagger definition
@@ -40,6 +42,8 @@ export default function ClubLeaderDashboardPage() {
   const { clubMemberships, membershipApplications } = useData()
   const router = useRouter()
   const [clubId, setClubId] = useState<number | null>(null)
+  const [activeTab, setActiveTab] = useState<"overview" | "analytics">("overview")
+  const [isMobile, setIsMobile] = useState(false)
 
   // Get clubId from token
   useEffect(() => {
@@ -47,6 +51,18 @@ export default function ClubLeaderDashboardPage() {
     if (id) {
       setClubId(id)
     }
+  }, [])
+
+  // Track window size for mobile responsiveness
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 640)
+    }
+    
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    
+    return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
   // ✅ USE REACT QUERY for profile, club, members, applications, and events
@@ -159,19 +175,15 @@ export default function ClubLeaderDashboardPage() {
       <ProtectedRoute allowedRoles={["club_leader"]}>
         <AppShell>
           <div className="space-y-4 sm:space-y-6 px-2 sm:px-0">
-            <div>
-              <Skeleton className="h-8 sm:h-9 w-3/4 sm:w-1/2" />
-              <Skeleton className="h-4 sm:h-5 w-2/3 sm:w-1/3 mt-2" />
-            </div>
+            <Skeleton className="h-64 sm:h-72 rounded-lg" />
             <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
               <Skeleton className="h-40 sm:h-48 rounded-lg" />
               <Skeleton className="h-40 sm:h-48 rounded-lg" />
               <Skeleton className="h-40 sm:h-48 rounded-lg" />
             </div>
-            <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-3">
+            <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
               <Skeleton className="h-80 sm:h-96 rounded-lg" />
-              <Skeleton className="h-64 sm:h-80 rounded-lg" />
-              <Skeleton className="h-64 sm:h-80 rounded-lg" />
+              <Skeleton className="h-80 sm:h-96 rounded-lg" />
             </div>
           </div>
         </AppShell>
@@ -183,17 +195,107 @@ export default function ClubLeaderDashboardPage() {
     <ProtectedRoute allowedRoles={["club_leader"]}>
       <AppShell>
         <div className="space-y-4 sm:space-y-6 px-2 sm:px-0">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-balance">
-              Hello, {typedProfile?.fullName || "Club Leader"} 👋
-            </h1>
-            {managedClub ? (
-              <p className="text-sm sm:text-base text-muted-foreground">Welcome to "<span className="font-semibold text-primary">{managedClub.name}</span>"</p>
-            ) : (
-              <p className="text-sm sm:text-base text-destructive">Could not load club information. Please check your permissions.</p>
-            )}
+          {/* Club Information */}
+          <Card className="border-l-4 border-l-primary shadow-md">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-xl sm:text-2xl font-semibold flex items-center gap-2">
+                <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
+                  <Users className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+                </div>
+                Club Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {clubLoading ? (
+                <div className="space-y-4">
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-20 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ) : !managedClub ? (
+                <div className="text-center py-8">
+                  <p className="text-destructive font-medium">Could not load club information</p>
+                  <p className="text-sm text-muted-foreground mt-2">Please check your permissions or contact support</p>
+                </div>
+              ) : (
+                <div className="space-y-5">
+                  {/* Club Name - Featured */}
+                  <div className="bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg p-4 border border-primary/20">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Club Name</p>
+                    <p className="text-xl sm:text-2xl font-bold text-primary">{managedClub.name}</p>
+                  </div>
+
+                  {/* Grid for Major and Policy */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-4 border border-slate-200 dark:border-slate-800">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Major</p>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-900">
+                          {managedClub.majorName}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-4 border border-slate-200 dark:border-slate-800">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Policy</p>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-900">
+                          {managedClub.majorPolicyName}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-4 border border-slate-200 dark:border-slate-800">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Description</p>
+                    <p className="text-sm leading-relaxed text-foreground">
+                      {managedClub.description || "No description available"}
+                    </p>
+                  </div>
+
+                  {/* Club Leader Info */}
+                  <div className="flex items-center gap-2 pt-2 border-t">
+                    <span className="text-sm text-muted-foreground">Club Leader:</span>
+                    <span className="text-sm font-medium truncate">{managedClub.leaderName}</span>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Tab Buttons */}
+          <div className="flex gap-2 border-b">
+            <Button
+              variant={activeTab === "overview" ? "default" : "ghost"}
+              className={`flex items-center gap-2 rounded-b-none ${
+                activeTab === "overview" 
+                  ? "border-b-2 border-primary" 
+                  : "border-b-2 border-transparent hover:border-muted"
+              }`}
+              onClick={() => setActiveTab("overview")}
+            >
+              <Users className="h-4 w-4" />
+              Overview
+            </Button>
+            <Button
+              variant={activeTab === "analytics" ? "default" : "ghost"}
+              className={`flex items-center gap-2 rounded-b-none ${
+                activeTab === "analytics" 
+                  ? "border-b-2 border-primary" 
+                  : "border-b-2 border-transparent hover:border-muted"
+              }`}
+              onClick={() => setActiveTab("analytics")}
+            >
+              <BarChart3 className="h-4 w-4" />
+              Analytics
+            </Button>
           </div>
 
+          {/* Overview Tab Content */}
+          {activeTab === "overview" && (
+            <>
           {/* ✅ 3 BIG HORIZONTAL STATS FRAMES */}
           <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
             <Card className="border-4 border-primary/30 bg-primary/5 hover:border-primary/50 transition-all shadow-lg hover:shadow-xl">
@@ -329,7 +431,7 @@ export default function ClubLeaderDashboardPage() {
             </Card>
           </div>
 
-          <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-3">
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
             {/* Recent Applications */}
             <Card>
               <CardHeader>
@@ -374,49 +476,6 @@ export default function ClubLeaderDashboardPage() {
                       })
                     )}
                     <Button variant="outline" className="w-full mt-3 bg-transparent text-xs sm:text-sm" onClick={() => router.push("/club-leader/applications")}>Manage All Applications</Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg sm:text-xl">Club Information</CardTitle>
-                {managedClub ? (
-                  <CardDescription className="text-xs sm:text-sm">{managedClub.name}</CardDescription>
-                ) : (
-                  <Skeleton className="h-5 w-40 mt-1" />
-                )}
-              </CardHeader>
-              <CardContent>
-                {clubLoading ? (
-                  <div className="space-y-4">
-                    <Skeleton className="h-8 w-full" />
-                    <Skeleton className="h-8 w-full" />
-                    <Skeleton className="h-8 w-full" />
-                  </div>
-                ) : (
-                <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Club Name:</span>
-                      {managedClub ? <Badge variant="outline" className="max-w-[200px] truncate">{managedClub.name}</Badge> : <Skeleton className="h-6 w-24" />}
-                    </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Major:</span>
-                    {managedClub ? <Badge variant="outline">{managedClub.majorName}</Badge> : <Skeleton className="h-6 w-24" />}
-                  </div>
-                  <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Policy:</span>
-                      {managedClub ? <Badge variant="secondary">{managedClub.majorPolicyName}</Badge> : <Skeleton className="h-6 w-24" />}
-                    </div>
-                    <div className="border-t pt-4">
-                      <p className="text-sm text-muted-foreground mb-2">Description</p>
-                      {managedClub ? (
-                        <p className="text-sm leading-relaxed">{managedClub.description || "No description available"}</p>
-                      ) : (
-                        <Skeleton className="h-16 w-full" />
-                      )}
-                    </div>
                   </div>
                 )}
               </CardContent>
@@ -471,30 +530,289 @@ export default function ClubLeaderDashboardPage() {
               </CardContent>
             </Card>
           </div>
+            </>
+          )}
 
-          {/* Quick Actions */}
+          {/* Analytics Tab Content */}
+          {activeTab === "analytics" && (
+            <div className="space-y-4 sm:space-y-6">
+              {/* First Row: Member Distribution & Application Status */}
+              <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
+                {/* Members by Role - Pie Chart */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+                      <Users className="h-5 w-5 text-primary" />
+                      Member Distribution by Role
+                    </CardTitle>
+                    <CardDescription className="text-xs sm:text-sm">Role breakdown of {totalMembers} total members</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {membersLoading ? (
+                      <Skeleton className="h-[250px] sm:h-[300px] w-full" />
+                    ) : totalMembers === 0 ? (
+                      <div className="h-[250px] sm:h-[300px] flex items-center justify-center">
+                        <p className="text-muted-foreground text-sm">No member data available</p>
+                      </div>
+                    ) : (
+                      <ResponsiveContainer width="100%" height={window.innerWidth < 640 ? 250 : 300}>
+                        <PieChart>
+                          <Pie
+                            data={[
+                              { name: "Leaders", value: leaderCount + viceLeaderCount, color: "#8b5cf6" },
+                              { name: "Members", value: regularMembers, color: "#22c55e" },
+                              { name: "Staff", value: staffMembers, color: "#3b82f6" },
+                            ].filter(item => item.value > 0)}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={({ name, percent }) => {
+                              const isMobile = window.innerWidth < 640
+                              return isMobile ? `${(percent * 100).toFixed(0)}%` : `${name}: ${(percent * 100).toFixed(0)}%`
+                            }}
+                            outerRadius={window.innerWidth < 640 ? 60 : 80}
+                            fill="#8884d8"
+                            dataKey="value"
+                          >
+                            {[
+                              { name: "Leaders", value: leaderCount + viceLeaderCount, color: "#8b5cf6" },
+                              { name: "Members", value: regularMembers, color: "#22c55e" },
+                              { name: "Staff", value: staffMembers, color: "#3b82f6" },
+                            ].filter(item => item.value > 0).map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip />
+                          <Legend wrapperStyle={{ fontSize: window.innerWidth < 640 ? '12px' : '14px' }} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Applications Status - Pie Chart */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+                      <UserCheck className="h-5 w-5 text-green-600" />
+                      Application Status Distribution
+                    </CardTitle>
+                    <CardDescription className="text-xs sm:text-sm">{totalApplications} total applications</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {applicationsLoading ? (
+                      <Skeleton className="h-[250px] sm:h-[300px] w-full" />
+                    ) : totalApplications === 0 ? (
+                      <div className="h-[250px] sm:h-[300px] flex items-center justify-center">
+                        <p className="text-muted-foreground text-sm">No application data available</p>
+                      </div>
+                    ) : (
+                      <ResponsiveContainer width="100%" height={window.innerWidth < 640 ? 250 : 300}>
+                        <PieChart>
+                          <Pie
+                            data={[
+                              { name: "Approved", value: approvedApplicationsCount, color: "#22c55e" },
+                              { name: "Pending", value: pendingApplicationsCount, color: "#eab308" },
+                              { name: "Rejected", value: rejectedApplicationsCount, color: "#ef4444" },
+                            ].filter(item => item.value > 0)}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={({ name, percent }) => {
+                              const isMobile = window.innerWidth < 640
+                              return isMobile ? `${(percent * 100).toFixed(0)}%` : `${name}: ${(percent * 100).toFixed(0)}%`
+                            }}
+                            outerRadius={window.innerWidth < 640 ? 60 : 80}
+                            fill="#8884d8"
+                            dataKey="value"
+                          >
+                            {[
+                              { name: "Approved", value: approvedApplicationsCount, color: "#22c55e" },
+                              { name: "Pending", value: pendingApplicationsCount, color: "#eab308" },
+                              { name: "Rejected", value: rejectedApplicationsCount, color: "#ef4444" },
+                            ].filter(item => item.value > 0).map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip />
+                          <Legend wrapperStyle={{ fontSize: window.innerWidth < 640 ? '12px' : '14px' }} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Second Row: Events & Members by Major */}
+              <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
+                {/* Events Status - Bar Chart */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+                      <Calendar className="h-5 w-5 text-blue-600" />
+                      Events Overview
+                    </CardTitle>
+                    <CardDescription className="text-xs sm:text-sm">{rawEvents.length} total events created</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {eventsLoading ? (
+                      <Skeleton className="h-[250px] sm:h-[300px] w-full" />
+                    ) : rawEvents.length === 0 ? (
+                      <div className="h-[250px] sm:h-[300px] flex items-center justify-center">
+                        <p className="text-muted-foreground text-sm">No event data available</p>
+                      </div>
+                    ) : (
+                      <ResponsiveContainer width="100%" height={window.innerWidth < 640 ? 250 : 300}>
+                        <BarChart
+                          data={[
+                            {
+                              name: "Approved",
+                              count: totalApprovedEvents,
+                              fill: "#22c55e"
+                            },
+                            {
+                              name: "Active",
+                              count: activeApprovedEvents,
+                              fill: "#3b82f6"
+                            },
+                            {
+                              name: "Pending",
+                              count: rawEvents.filter((e: any) => e.status === "PENDING").length,
+                              fill: "#eab308"
+                            },
+                            {
+                              name: "Rejected",
+                              count: rawEvents.filter((e: any) => e.status === "REJECTED").length,
+                              fill: "#ef4444"
+                            },
+                          ]}
+                          margin={{ 
+                            top: 20, 
+                            right: window.innerWidth < 640 ? 10 : 30, 
+                            left: window.innerWidth < 640 ? 0 : 20, 
+                            bottom: 5 
+                          }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis 
+                            dataKey="name" 
+                            tick={{ fontSize: window.innerWidth < 640 ? 11 : 14 }}
+                          />
+                          <YAxis tick={{ fontSize: window.innerWidth < 640 ? 11 : 14 }} />
+                          <Tooltip />
+                          <Bar dataKey="count" fill="#8884d8" radius={[8, 8, 0, 0]}>
+                            {[
+                              { fill: "#22c55e" },
+                              { fill: "#3b82f6" },
+                              { fill: "#eab308" },
+                              { fill: "#ef4444" },
+                            ].map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.fill} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Members by Major - Bar Chart */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg sm:text-xl">Quick Actions</CardTitle>
-              <CardDescription className="text-xs sm:text-sm">Manage your club efficiently</CardDescription>
+                    <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+                      <Users className="h-5 w-5 text-primary" />
+                      Top Majors by Member Count
+                    </CardTitle>
+                    <CardDescription className="text-xs sm:text-sm truncate">
+                      Top {window.innerWidth < 640 ? '5' : '8'} majors with most members
+                    </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-                <Button variant="outline" onClick={() => router.push("/club-leader/applications")} className="w-full">
-                  <UserCheck className="h-4 w-4 mr-2" />
-                  <span className="text-sm sm:text-base">Review Applications</span>
-                </Button>
-                <Button variant="outline" onClick={() => router.push("/club-leader/events")} className="w-full">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  <span className="text-sm sm:text-base">Create Event</span>
-                </Button>
-                <Button variant="outline" onClick={() => router.push("/club-leader/members")} className="w-full">
-                  <Users className="h-4 w-4 mr-2" />
-                  <span className="text-sm sm:text-base">Manage Members</span>
-                </Button>
+                    {membersLoading ? (
+                      <Skeleton className="h-[250px] sm:h-[300px] w-full" />
+                    ) : Object.keys(membersByMajor).length === 0 ? (
+                      <div className="h-[250px] sm:h-[300px] flex items-center justify-center">
+                        <p className="text-muted-foreground text-sm">No major data available</p>
+                      </div>
+                    ) : (
+                      <ResponsiveContainer width="100%" height={window.innerWidth < 640 ? 250 : 300}>
+                        <BarChart
+                          data={Object.entries(membersByMajor)
+                            .sort(([, a], [, b]) => (b as number) - (a as number))
+                            .slice(0, window.innerWidth < 640 ? 5 : 8)
+                            .map(([major, count]) => {
+                              const maxLength = window.innerWidth < 640 ? 12 : 20
+                              return {
+                                major: major.length > maxLength ? major.substring(0, maxLength) + "..." : major,
+                                count: count,
+                              }
+                            })}
+                          layout="horizontal"
+                          margin={{ 
+                            top: 5, 
+                            right: window.innerWidth < 640 ? 10 : 30, 
+                            left: window.innerWidth < 640 ? 0 : 20, 
+                            bottom: window.innerWidth < 640 ? 70 : 60 
+                          }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis 
+                            dataKey="major" 
+                            angle={-45} 
+                            textAnchor="end" 
+                            height={window.innerWidth < 640 ? 70 : 80}
+                            tick={{ fontSize: window.innerWidth < 640 ? 10 : 12 }}
+                          />
+                          <YAxis tick={{ fontSize: window.innerWidth < 640 ? 11 : 14 }} />
+                          <Tooltip />
+                          <Bar dataKey="count" fill="#3b82f6" radius={[8, 8, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Third Row: Membership Growth Trend */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+                    <TrendingUp className="h-5 w-5 text-emerald-600" />
+                    Key Metrics Summary
+                  </CardTitle>
+                  <CardDescription className="text-xs sm:text-sm">Performance indicators at a glance</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="text-center p-3 sm:p-4 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900 rounded-lg border border-purple-200 dark:border-purple-800">
+                      <p className="text-xl sm:text-2xl md:text-3xl font-bold text-purple-700 dark:text-purple-300">{totalMembers}</p>
+                      <p className="text-xs text-muted-foreground mt-1 truncate">Total Members</p>
+                      <Badge variant="outline" className="mt-2 bg-emerald-50 text-emerald-700 border-emerald-200 text-xs truncate max-w-full">
+                        +{recentlyJoined} this month
+                      </Badge>
+                    </div>
+                    <div className="text-center p-3 sm:p-4 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900 rounded-lg border border-green-200 dark:border-green-800">
+                      <p className="text-xl sm:text-2xl md:text-3xl font-bold text-green-700 dark:text-green-300">
+                        {totalApplications > 0 ? Math.round((approvedApplicationsCount / totalApplications) * 100) : 0}%
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1 truncate">Approval Rate</p>
+                      <p className="text-xs text-muted-foreground mt-2 truncate">{approvedApplicationsCount}/{totalApplications} approved</p>
+                    </div>
+                    <div className="text-center p-3 sm:p-4 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 rounded-lg border border-blue-200 dark:border-blue-800">
+                      <p className="text-xl sm:text-2xl md:text-3xl font-bold text-blue-700 dark:text-blue-300">{activeApprovedEvents}</p>
+                      <p className="text-xs text-muted-foreground mt-1 truncate">Active Events</p>
+                      <p className="text-xs text-muted-foreground mt-2 truncate">Out of {totalApprovedEvents} approved</p>
+                    </div>
+                    <div className="text-center p-3 sm:p-4 bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-950 dark:to-yellow-900 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                      <p className="text-xl sm:text-2xl md:text-3xl font-bold text-yellow-700 dark:text-yellow-300">{pendingApplicationsCount}</p>
+                      <p className="text-xs text-muted-foreground mt-1 truncate">Pending Review</p>
+                      <p className="text-xs text-muted-foreground mt-2 truncate">Applications waiting</p>
+                    </div>
               </div>
             </CardContent>
           </Card>
+            </div>
+          )}
         </div>
       </AppShell>
     </ProtectedRoute>
