@@ -25,10 +25,8 @@ export interface UpdateMajorPayload {
 
 export const fetchMajors = async (): Promise<Major[]> => {
 	try {
-		console.log("fetchMajors: GET api/university/majors")
 		const response = await axiosInstance.get("api/university/majors")
 		const body = response.data
-		console.log("fetchMajors response:", body)
 		// Nếu backend trả về { content: [...] }
 		if (body && typeof body === "object" && "content" in body && Array.isArray(body.content)) {
 			return body.content
@@ -48,11 +46,8 @@ export const fetchMajors = async (): Promise<Major[]> => {
 
 export const fetchMajorById = async (id: number): Promise<Major> => {
 	try {
-		console.log(`fetchMajorById: GET api/university/majors/${id}`)
 		const response = await axiosInstance.get(`api/university/majors/${id}`)
 		const body: any = response.data
-		console.log("fetchMajorById response:", body)
-
 		if (body && typeof body === "object" && "data" in body) {
 			return body.data
 		}
@@ -64,7 +59,6 @@ export const fetchMajorById = async (id: number): Promise<Major> => {
 }
 export const createMajor = async (payload: CreateMajorPayload): Promise<Major> => {
 	try {
-		console.log("createMajor: POST api/university/majors", payload)
 		// Swagger cho thấy request body không cần id/active
 		const response = await axiosInstance.post<Major>("api/university/majors", payload)
 		// Swagger cho thấy trả về object Major đã tạo
@@ -77,11 +71,8 @@ export const createMajor = async (payload: CreateMajorPayload): Promise<Major> =
 
 export const updateMajorById = async (id: number, payload: UpdateMajorPayload): Promise<Major> => {
 	try {
-		console.log(`updateMajorById: PUT api/university/majors/${id}`, payload)
 		const response = await axiosInstance.put(`api/university/majors/${id}`, payload)
 		const body: any = response.data
-		console.log("updateMajorById response:", body)
-
 		// Xử lý nếu API trả về có wrapper 'data'
 		if (body && typeof body === "object" && "data" in body) {
 			return body.data
@@ -95,7 +86,6 @@ export const updateMajorById = async (id: number, payload: UpdateMajorPayload): 
 
 export const deleteMajorById = async (id: number): Promise<any> => {
 	try {
-		console.log(`deleteMajorById: DELETE api/university/majors/${id}`)
 		const response = await axiosInstance.delete(`api/university/majors/${id}`)
 		// Swagger ghi 200 OK, không có response body.
 		// Tuy nhiên, trang page.tsx của bạn đang kiểm tra 'res.success'

@@ -43,7 +43,7 @@ export interface CreateEventPayload {
   coHostClubIds?: number[]
 }
 
-export const fetchEvent = async ({ page = 0, size = 50, sort = "name" } = {}): Promise<Event[]> => {
+export const fetchEvent = async ({ page = 0, size = 70, sort = "name" } = {}): Promise<Event[]> => {
   const timestamp = new Date().toISOString();
   const stack = new Error().stack;
   console.log(`🚀 fetchEvent called at ${timestamp}`);

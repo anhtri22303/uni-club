@@ -42,7 +42,7 @@ export default function UniversityStaffRewardPage() {
             setLoading(true);
             try {
                 // response bây giờ sẽ có dạng { content: [...] }
-                const response = await fetchClub({ page: 0, size: 1000, sort: ["name"] });
+                const response = await fetchClub({ page: 0, size: 70, sort: ["name"] });
 
                 // ✨ THAY ĐỔI QUAN TRỌNG: Truy cập trực tiếp vào response.content ✨
                 if (response && response.content) {

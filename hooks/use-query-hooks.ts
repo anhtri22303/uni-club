@@ -98,7 +98,7 @@ export const queryKeys = {
  * @param params - Pagination parameters (page, size, sort)
  * ✅ OPTIMIZED: Increased default size to reduce pagination requests
  */
-export function useClubs(params = { page: 0, size: 100, sort: ["name"] }) {
+export function useClubs(params = { page: 0, size: 70, sort: ["name"] }) {
   return useQuery({
     queryKey: queryKeys.clubsList(params),
     queryFn: async () => {
@@ -342,9 +342,9 @@ export function usePrefetchClubs() {
   
   return () => {
     queryClient.prefetchQuery({
-      queryKey: queryKeys.clubsList({ page: 0, size: 100, sort: ["name"] }),
+      queryKey: queryKeys.clubsList({ page: 0, size: 70, sort: ["name"] }),
       queryFn: async () => {
-        const res: any = await fetchClub({ page: 0, size: 100, sort: ["name"] })
+        const res: any = await fetchClub({ page: 0, size: 70, sort: ["name"] })
         return res?.content ?? []
       },
       staleTime: 5 * 60 * 1000,
@@ -414,7 +414,7 @@ export function usePrefetchClub() {
 /**
  * Hook to fetch products with pagination
  */
-export function useProducts(params = { page: 0, size: 100, sort: "name" }) {
+export function useProducts(params = { page: 0, size: 70, sort: "name" }) {
   return useQuery({
     queryKey: queryKeys.productsList(params),
     queryFn: async () => {
@@ -521,7 +521,7 @@ export function useProfile(enabled = true) {
 /**
  * Hook to fetch all locations with pagination
  */
-export function useLocations(params = { page: 0, size: 100, sort: ["name"] }, enabled = true) {
+export function useLocations(params = { page: 0, size: 70, sort: ["name"] }, enabled = true) {
   return useQuery({
     queryKey: ["locations", "list", params],
     queryFn: async () => {

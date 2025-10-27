@@ -52,7 +52,7 @@ export default function ClubLeaderEventsPage() {
     const loadLocations = async () => {
       setLocationsLoading(true)
       try {
-        const data = await fetchLocation({ page: 0, size: 100, sort: ["name"] }) as any
+        const data = await fetchLocation({ page: 0, size: 70, sort: ["name"] }) as any
         // Handle both paginated response and direct array
         const locationList = data?.content || data || []
         setLocations(locationList)
@@ -75,7 +75,7 @@ export default function ClubLeaderEventsPage() {
     const loadClubs = async () => {
       setClubsLoading(true)
       try {
-        const data = await fetchClub({ page: 0, size: 100, sort: ["name"] })
+        const data = await fetchClub({ page: 0, size: 70, sort: ["name"] })
         const clubList = data?.content || []
         setAllClubs(clubList)
       } catch (error) {

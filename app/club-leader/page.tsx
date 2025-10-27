@@ -158,20 +158,20 @@ export default function ClubLeaderDashboardPage() {
     return (
       <ProtectedRoute allowedRoles={["club_leader"]}>
         <AppShell>
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6 px-2 sm:px-0">
             <div>
-              <Skeleton className="h-9 w-1/2" />
-              <Skeleton className="h-5 w-1/3 mt-2" />
+              <Skeleton className="h-8 sm:h-9 w-3/4 sm:w-1/2" />
+              <Skeleton className="h-4 sm:h-5 w-2/3 sm:w-1/3 mt-2" />
             </div>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <Skeleton className="h-32 rounded-lg" />
-              <Skeleton className="h-32 rounded-lg" />
-              <Skeleton className="h-32 rounded-lg" />
-              <Skeleton className="h-32 rounded-lg" />
+            <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+              <Skeleton className="h-40 sm:h-48 rounded-lg" />
+              <Skeleton className="h-40 sm:h-48 rounded-lg" />
+              <Skeleton className="h-40 sm:h-48 rounded-lg" />
             </div>
-            <div className="grid gap-6 md:grid-cols-2">
-              <Skeleton className="h-96 rounded-lg" />
-              <Skeleton className="h-64 rounded-lg" />
+            <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-3">
+              <Skeleton className="h-80 sm:h-96 rounded-lg" />
+              <Skeleton className="h-64 sm:h-80 rounded-lg" />
+              <Skeleton className="h-64 sm:h-80 rounded-lg" />
             </div>
           </div>
         </AppShell>
@@ -182,31 +182,31 @@ export default function ClubLeaderDashboardPage() {
   return (
     <ProtectedRoute allowedRoles={["club_leader"]}>
       <AppShell>
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6 px-2 sm:px-0">
           <div>
-            <h1 className="text-3xl font-bold text-balance">
+            <h1 className="text-2xl sm:text-3xl font-bold text-balance">
               Hello, {typedProfile?.fullName || "Club Leader"} 👋
             </h1>
             {managedClub ? (
-              <p className="text-muted-foreground">Welcome to "<span className="font-semibold text-primary">{managedClub.name}</span>"</p>
+              <p className="text-sm sm:text-base text-muted-foreground">Welcome to "<span className="font-semibold text-primary">{managedClub.name}</span>"</p>
             ) : (
-              <p className="text-destructive">Could not load club information. Please check your permissions.</p>
+              <p className="text-sm sm:text-base text-destructive">Could not load club information. Please check your permissions.</p>
             )}
           </div>
 
           {/* ✅ 3 BIG HORIZONTAL STATS FRAMES */}
-          <div className="grid gap-6 md:grid-cols-3">
-            <Card className="border-2 border-primary/20 hover:border-primary/40 transition-all shadow-lg hover:shadow-xl">
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+            <Card className="border-4 border-primary/30 bg-primary/5 hover:border-primary/50 transition-all shadow-lg hover:shadow-xl">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="text-2xl font-bold text-primary">
+                    <CardTitle className="text-xl sm:text-2xl font-bold text-primary">
                       {membersLoading ? "..." : totalMembers}
                     </CardTitle>
-                    <CardDescription className="text-base font-medium mt-1">Total Members</CardDescription>
+                    <CardDescription className="text-sm sm:text-base font-medium mt-1">Total Members</CardDescription>
                   </div>
-                  <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Users className="h-8 w-8 text-primary" />
+                  <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Users className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
                   </div>
                 </div>
               </CardHeader>
@@ -240,17 +240,17 @@ export default function ClubLeaderDashboardPage() {
               </CardContent>
             </Card>
 
-            <Card className="border-2 border-green-500/20 hover:border-green-500/40 transition-all shadow-lg hover:shadow-xl">
+            <Card className="border-4 border-green-500/30 bg-green-500/5 hover:border-green-500/50 transition-all shadow-lg hover:shadow-xl">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="text-2xl font-bold text-green-600">
+                    <CardTitle className="text-xl sm:text-2xl font-bold text-green-600">
                       {applicationsLoading ? "..." : totalApplications}
                     </CardTitle>
-                    <CardDescription className="text-base font-medium mt-1">Applications</CardDescription>
+                    <CardDescription className="text-sm sm:text-base font-medium mt-1">Applications</CardDescription>
                   </div>
-                  <div className="h-14 w-14 rounded-full bg-green-500/10 flex items-center justify-center">
-                    <UserCheck className="h-8 w-8 text-green-600" />
+                  <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-full bg-green-500/10 flex items-center justify-center">
+                    <UserCheck className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
                   </div>
                 </div>
               </CardHeader>
@@ -284,17 +284,17 @@ export default function ClubLeaderDashboardPage() {
               </CardContent>
             </Card>
 
-            <Card className="border-2 border-blue-500/20 hover:border-blue-500/40 transition-all shadow-lg hover:shadow-xl">
+            <Card className="border-4 border-blue-500/30 bg-blue-500/5 hover:border-blue-500/50 transition-all shadow-lg hover:shadow-xl">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="text-2xl font-bold text-blue-600">
+                    <CardTitle className="text-xl sm:text-2xl font-bold text-blue-600">
                       {eventsLoading ? "..." : rawEvents.length}
                     </CardTitle>
-                    <CardDescription className="text-base font-medium mt-1">Events Created</CardDescription>
+                    <CardDescription className="text-sm sm:text-base font-medium mt-1">Events Created</CardDescription>
                   </div>
-                  <div className="h-14 w-14 rounded-full bg-blue-500/10 flex items-center justify-center">
-                    <Calendar className="h-8 w-8 text-blue-600" />
+                  <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-full bg-blue-500/10 flex items-center justify-center">
+                    <Calendar className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
                   </div>
                 </div>
               </CardHeader>
@@ -329,15 +329,15 @@ export default function ClubLeaderDashboardPage() {
             </Card>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-3">
             {/* Recent Applications */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <UserCheck className="h-5 w-5" />
+                <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+                  <UserCheck className="h-4 w-4 sm:h-5 sm:w-5" />
                   Recent Applications
                 </CardTitle>
-                <CardDescription>Latest membership requests</CardDescription>
+                <CardDescription className="text-xs sm:text-sm">Latest membership requests</CardDescription>
               </CardHeader>
               <CardContent>
                 {applicationsLoading ? (
@@ -349,14 +349,14 @@ export default function ClubLeaderDashboardPage() {
                 ) : (
                   <div className="space-y-3">
                     {recentApplications.length === 0 ? (
-                      <p className="text-muted-foreground text-center py-4">No recent applications</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground text-center py-4">No recent applications</p>
                     ) : (
                       recentApplications.map((application: any) => {
                         return (
-                          <div key={application.applicationId} className="flex items-center justify-between p-3 border rounded-lg">
-                            <div>
-                              <p className="font-medium">{application.applicantName}</p>
-                              <p className="text-sm text-muted-foreground">{application.applicantEmail}</p>
+                          <div key={application.applicationId} className="flex items-center justify-between p-2 sm:p-3 border rounded-lg gap-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm sm:text-base font-medium truncate">{application.applicantName}</p>
+                              <p className="text-xs sm:text-sm text-muted-foreground truncate">{application.applicantEmail}</p>
                               <p className="text-xs text-muted-foreground">
                                 {application.createdAt ? new Date(application.createdAt).toLocaleDateString() : "Recently"}
                               </p>
@@ -365,6 +365,7 @@ export default function ClubLeaderDashboardPage() {
                               variant={
                                 application.status === "APPROVED" ? "default" : application.status === "PENDING" ? "secondary" : "destructive"
                               }
+                              className="text-xs shrink-0"
                             >
                               {application.status}
                             </Badge>
@@ -372,7 +373,7 @@ export default function ClubLeaderDashboardPage() {
                         )
                       })
                     )}
-                    <Button variant="outline" className="w-full mt-3 bg-transparent" onClick={() => router.push("/club-leader/applications")}>Manage All Applications</Button>
+                    <Button variant="outline" className="w-full mt-3 bg-transparent text-xs sm:text-sm" onClick={() => router.push("/club-leader/applications")}>Manage All Applications</Button>
                   </div>
                 )}
               </CardContent>
@@ -380,9 +381,9 @@ export default function ClubLeaderDashboardPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Club Information</CardTitle>
+                <CardTitle className="text-lg sm:text-xl">Club Information</CardTitle>
                 {managedClub ? (
-                  <CardDescription>{managedClub.name}</CardDescription>
+                  <CardDescription className="text-xs sm:text-sm">{managedClub.name}</CardDescription>
                 ) : (
                   <Skeleton className="h-5 w-40 mt-1" />
                 )}
@@ -395,16 +396,16 @@ export default function ClubLeaderDashboardPage() {
                     <Skeleton className="h-8 w-full" />
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">Club Name:</span>
                       {managedClub ? <Badge variant="outline" className="max-w-[200px] truncate">{managedClub.name}</Badge> : <Skeleton className="h-6 w-24" />}
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Major:</span>
-                      {managedClub ? <Badge variant="outline">{managedClub.majorName}</Badge> : <Skeleton className="h-6 w-24" />}
-                    </div>
-                    <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Major:</span>
+                    {managedClub ? <Badge variant="outline">{managedClub.majorName}</Badge> : <Skeleton className="h-6 w-24" />}
+                  </div>
+                  <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">Policy:</span>
                       {managedClub ? <Badge variant="secondary">{managedClub.majorPolicyName}</Badge> : <Skeleton className="h-6 w-24" />}
                     </div>
@@ -424,11 +425,11 @@ export default function ClubLeaderDashboardPage() {
             {/* Members by Major */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5" />
+                <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+                  <Users className="h-4 w-4 sm:h-5 sm:w-5" />
                   Members by Major
                 </CardTitle>
-                <CardDescription>Distribution across majors</CardDescription>
+                <CardDescription className="text-xs sm:text-sm">Distribution across majors</CardDescription>
               </CardHeader>
               <CardContent>
                 {membersLoading ? (
@@ -474,22 +475,22 @@ export default function ClubLeaderDashboardPage() {
           {/* Quick Actions */}
           <Card>
             <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-              <CardDescription>Manage your club efficiently</CardDescription>
+              <CardTitle className="text-lg sm:text-xl">Quick Actions</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">Manage your club efficiently</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-3 md:grid-cols-3">
-                <Button variant="outline" onClick={() => router.push("/club-leader/applications")}>
+              <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                <Button variant="outline" onClick={() => router.push("/club-leader/applications")} className="w-full">
                   <UserCheck className="h-4 w-4 mr-2" />
-                  Review Applications
+                  <span className="text-sm sm:text-base">Review Applications</span>
                 </Button>
-                <Button variant="outline" onClick={() => router.push("/club-leader/events")}>
+                <Button variant="outline" onClick={() => router.push("/club-leader/events")} className="w-full">
                   <Calendar className="h-4 w-4 mr-2" />
-                  Create Event
+                  <span className="text-sm sm:text-base">Create Event</span>
                 </Button>
-                <Button variant="outline" onClick={() => router.push("/club-leader/members")}>
+                <Button variant="outline" onClick={() => router.push("/club-leader/members")} className="w-full">
                   <Users className="h-4 w-4 mr-2" />
-                  Manage Members
+                  <span className="text-sm sm:text-base">Manage Members</span>
                 </Button>
               </div>
             </CardContent>

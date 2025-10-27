@@ -96,13 +96,26 @@ export default function ClubLeaderRewardDistributionPage() {
   }, [])
   // Chon thanh vien cu the de phan diem
   useEffect(() => {
-    if (apiMembers) {
-      const initialSelected: Record<string, boolean> = {}
-      apiMembers.forEach((m: any) => {
-        const id = m.membershipId ?? `m-${m.userId}`
-        initialSelected[id] = false
+    if (apiMembers && apiMembers.length > 0) {
+      setSelectedMembers((prevSelected) => {
+        // Only update if we don't have any selections yet or the members have changed
+        const currentMemberIds = Object.keys(prevSelected)
+        const newMemberIds = apiMembers.map((m: any) => m.membershipId ?? `m-${m.userId}`)
+        
+        // If we already have selections and the IDs match, don't update
+        if (currentMemberIds.length === newMemberIds.length && 
+            newMemberIds.every(id => id in prevSelected)) {
+          return prevSelected
+        }
+        
+        // Otherwise, create new selection state
+        const initialSelected: Record<string, boolean> = {}
+        apiMembers.forEach((m: any) => {
+          const id = m.membershipId ?? `m-${m.userId}`
+          initialSelected[id] = false
+        })
+        return initialSelected
       })
-      setSelectedMembers(initialSelected)
     }
   }, [apiMembers])
 

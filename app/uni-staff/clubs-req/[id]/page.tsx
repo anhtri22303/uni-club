@@ -185,7 +185,7 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
       // 1. Fetch danh sách tất cả các club
       toast({ title: "Processing...", description: "Finding the newly approved club..." });
       // Fetch một lượng lớn để đảm bảo club mới nằm trong danh sách
-      const clubListResponse = await fetchClub({ page: 0, size: 9999, sort: ["name"] });
+      const clubListResponse = await fetchClub({ page: 0, size: 70, sort: ["name"] });
       const allClubs = clubListResponse.content;
 
       // 2. Tìm club trong danh sách bằng cách so sánh tên

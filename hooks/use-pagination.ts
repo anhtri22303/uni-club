@@ -30,9 +30,9 @@ export function usePagination<T>({
   const [currentPage, setCurrentPage] = useState(initialPage)
   const [pageSize, setPageSize] = useState(initialPageSize)
 
-  const safeData = data || []
+  const safeData = useMemo(() => data || [], [data])
   const totalItems = safeData.length
-  const totalPages = Math.ceil(totalItems / pageSize)
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
 
   const paginatedData = useMemo(() => {
     const startIndex = (currentPage - 1) * pageSize

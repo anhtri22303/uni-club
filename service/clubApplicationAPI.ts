@@ -47,7 +47,6 @@ export async function getClubApplications(): Promise<ClubApplication[]> {
   const resp = await axiosInstance.get("/api/club-applications/all")
   // The backend returns { success, message, data: [...] }
   const result = resp.data as { success: boolean; message: string; data: ClubApplication[] }
-  console.log("ClubApplications response:", result.data)
   return result.data
 }
 
@@ -80,7 +79,6 @@ export async function putClubApplicationStatus(applicationId: number, approve: b
     { approve, rejectReason },
     { headers: { 'Content-Type': 'application/json' } }
   )
-  console.log("ClubApplication response:", response.data)
   return response.data
 }
 
@@ -94,8 +92,6 @@ export async function getMyClubApply(): Promise<ClubApplication[]> {
       message: string
       data: ClubApplication[]
     }>("/api/club-applications/my")
-    console.log("My club applications:", response.data)
-
     // Response structure: { success, message, data }
     if (response.data?.success && response.data?.data) {
       return response.data.data
@@ -128,8 +124,6 @@ export async function processClubApplication(
   if (!result.success) {
     throw new Error(result.message || "Failed to process application")
   }
-
-  console.log("Application processed successfully:", result.data)
   return result.data
 }
 
@@ -157,8 +151,6 @@ export async function createClubAccount(
   if (!result.success) {
     throw new Error(result.message || "Failed to create club account");
   }
-
-  console.log("✅ Club account created successfully:", result.data);
   return result.data;
 }
 

@@ -54,7 +54,7 @@ export default function UniStaffClubsPage() {
       setLoading(true)
       setError(null)
       try {
-        const res: any = await fetchClub({ page: 0, size: 100, sort: ["name"] })
+        const res: any = await fetchClub({ page: 0, size: 70, sort: ["name"] })
         const clubList = res?.content ?? []
         
         // Fetch member count for each club
@@ -101,7 +101,7 @@ export default function UniStaffClubsPage() {
       toast({ title: "Club Deleted", description: `Club '${name}' has been deleted.` });
       // Reload club list
       try {
-        const res: any = await fetchClub({ page: 0, size: 100, sort: ["name"] });
+        const res: any = await fetchClub({ page: 0, size: 70, sort: ["name"] });
         const clubList = res?.content ?? []
         
         // Fetch member count for each club

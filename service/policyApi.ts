@@ -14,10 +14,8 @@ export interface Policy {
 
 export const fetchPolicies = async (): Promise<Policy[]> => {
 	try {
-		console.log("fetchPolicies: GET api/university/policies")
 		const response = await axiosInstance.get("api/university/policies")
 		const body = response.data
-		console.log("fetchPolicies:", body)
 		// if backend returns { content: [...] } or similar wrapper
 		if (body && typeof body === "object" && "content" in body && Array.isArray(body.content)) {
 			return body.content
@@ -36,10 +34,8 @@ export const fetchPolicies = async (): Promise<Policy[]> => {
 
 export const fetchPolicyById = async (id: number): Promise<Policy> => {
 		try {
-			console.log(`fetchPolicyById: GET api/university/policies/${id}`)
 			const response = await axiosInstance.get(`api/university/policies/${id}`)
 			const body: any = response.data
-			console.log("fetchPolicyById response body:", body)
 			if (body && typeof body === "object" && "data" in body) {
 				return body.data
 			}
@@ -52,9 +48,7 @@ export const fetchPolicyById = async (id: number): Promise<Policy> => {
 
 export const createPolicy = async (payload: Partial<Policy>) => {
 	try {
-		console.log("createPolicy: POST api/university/policies payload:", payload)
 		const response = await axiosInstance.post(`api/university/policies`, payload)
-		console.log("createPolicy response:", response.data)
 		return response.data as any
 	} catch (error) {
 		console.error("Error creating policy:", error)
@@ -64,9 +58,7 @@ export const createPolicy = async (payload: Partial<Policy>) => {
 
 export const updatePolicyById = async (id: number, payload: Partial<Policy>) => {
 	try {
-		console.log(`updatePolicyById: PUT api/university/policies/${id} payload:`, payload)
 		const response = await axiosInstance.put(`api/university/policies/${id}`, payload)
-		console.log(`updatePolicyById response for ${id}:`, response.data, 'status:', response.status)
 		// Normalize response so callers can rely on success/status/data/message
 		const raw: any = response.data
 		const normalized = {
@@ -84,9 +76,7 @@ export const updatePolicyById = async (id: number, payload: Partial<Policy>) => 
 
 export const deletePolicyById = async (id: number) => {
 	try {
-		console.log(`deletePolicyById: DELETE api/university/policies/${id}`)
 		const response = await axiosInstance.delete(`api/university/policies/${id}`)
-		console.log(`deletePolicyById response for ${id}:`, response.data)
 		return response.data as any
 	} catch (error) {
 		console.error(`Error deleting policy ${id}:`, error)

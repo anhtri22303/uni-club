@@ -61,7 +61,7 @@ export default function MemberGiftPage() {
 	const [selectedClubId, setSelectedClubId] = useState<string | null>(null) // Bắt đầu là null
 
 	// ✅ USE REACT QUERY for products
-	const { data: products = [], isLoading: loading } = useProducts({ page: 0, size: 100, sort: "name" })
+	const { data: products = [], isLoading: loading } = useProducts({ page: 0, size: 70, sort: "name" })
 
 	// ✅ MỚI: Fetch all clubs để lấy tên
 	const { data: clubsData = [] } = useClubs()
