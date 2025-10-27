@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { ArrowLeft, Calendar, Clock, MapPin, Users, CheckCircle, AlertCircle, XCircle, Eye, QrCode, Maximize2, Minimize2, Copy, Download, RotateCcw, Monitor, Smartphone } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { getEventById } from "@/service/eventApi"
+// import { getEventById } from "@/service/eventApi"
 import { generateCode } from "@/service/checkinApi"
 import { Modal } from "@/components/modal"
 import QRCode from "qrcode"
@@ -17,6 +17,8 @@ import { QRModal } from "@/components/qr-modal"
 import { ProtectedRoute } from "@/contexts/protected-route"
 import { LoadingSkeleton } from "@/components/loading-skeleton"
 
+import { getEventById, submitForUniversityApproval } from "@/service/eventApi" // 👈 Thêm submitForUniversityApproval
+import { Loader2 } from "lucide-react" // 👈 Thêm Loader2
 interface EventDetail {
   id: number
   name: string
@@ -53,6 +55,7 @@ export default function EventDetailPage() {
   const [event, setEvent] = useState<EventDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [showCheckInCode, setShowCheckInCode] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false) // 👈 THÊM STATE NÀY
 
   // QR Code states
   const [showQrModal, setShowQrModal] = useState(false)
@@ -107,31 +110,31 @@ export default function EventDetailPage() {
         try {
           const { token } = await generateCode(event.id)
           console.log('Rotating QR - Generated new token:', token)
-          
+
           // Create URLs with token (path parameter format)
           const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${token}`
           const localUrl = `http://localhost:3000/student/checkin/${token}`
-          
+
           const styleVariants = [
             { color: { dark: '#000000', light: '#FFFFFF' }, margin: 1 },
             { color: { dark: '#111111', light: '#FFFFFF' }, margin: 2 },
             { color: { dark: '#222222', light: '#FFFFFF' }, margin: 0 },
           ]
-          
+
           // Generate QR variants for local
           const localQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
             const opts = styleVariants[i % styleVariants.length]
             return QRCode.toDataURL(localUrl, opts as any)
           })
           const localQrVariants = await Promise.all(localQrVariantsPromises)
-          
+
           // Generate QR variants for production
           const prodQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
             const opts = styleVariants[i % styleVariants.length]
             return QRCode.toDataURL(prodUrl, opts as any)
           })
           const prodQrVariants = await Promise.all(prodQrVariantsPromises)
-          
+
           setQrRotations({ local: localQrVariants, prod: prodQrVariants })
           setQrLinks({ local: localUrl, prod: prodUrl })
         } catch (err) {
@@ -162,6 +165,31 @@ export default function EventDetailPage() {
     }, 300)
     return () => clearTimeout(t)
   }, [visibleIndex, showQrModal])
+
+  // ✅New function to handle submission to university
+  const handleSubmitToUniversity = async () => {
+    if (!event) return
+
+    setIsSubmitting(true)
+    try {
+      await submitForUniversityApproval(event.id)
+      toast({
+        title: "Success",
+        description: "Event has been submitted to university staff for final approval."
+      })
+      // Cập nhật state cục bộ để UI phản ánh ngay lập tức
+      setEvent(prev => prev ? { ...prev, status: "PENDING" } : null)
+    } catch (error: any) {
+      console.error("Failed to submit to university:", error)
+      toast({
+        title: "Error",
+        description: error?.response?.data?.message || "Failed to submit event",
+        variant: "destructive"
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   const getStatusBadge = (status: string) => {
     switch (status.toUpperCase()) {
@@ -215,27 +243,27 @@ export default function EventDetailPage() {
   // Check if the event is currently active (within date and time range)
   const isEventActive = () => {
     if (!event) return false
-    
+
     // Must be APPROVED
     if (event.status !== "APPROVED") return false
-    
+
     // Check if date and endTime are present
     if (!event.date || !event.endTime) return false
-    
+
     try {
       // Get current date/time
       const now = new Date()
-      
+
       // Parse event date (format: YYYY-MM-DD)
       const eventDate = new Date(event.date)
-      
+
       // Parse endTime (format: HH:MM:SS or HH:MM)
       const [hours, minutes] = event.endTime.split(':').map(Number)
-      
+
       // Create event end datetime
       const eventEndDateTime = new Date(eventDate)
       eventEndDateTime.setHours(hours, minutes, 0, 0)
-      
+
       // Event is active if current time is before or equal to end time
       return now <= eventEndDateTime
     } catch (error) {
@@ -252,14 +280,14 @@ export default function EventDetailPage() {
       console.log('Generating check-in token for event:', event.id)
       const { token } = await generateCode(event.id)
       console.log('Generated token:', token)
-      
+
       // Create URLs with token (path parameter format)
       const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${token}`
       const localUrl = `http://localhost:3000/student/checkin/${token}`
-      
+
       console.log('Production URL:', prodUrl)
       console.log('Development URL:', localUrl)
-      
+
       // Generate QR code variants
       const styleVariants = [
         { color: { dark: '#000000', light: '#FFFFFF' }, margin: 1 },
@@ -268,13 +296,13 @@ export default function EventDetailPage() {
       ]
 
       // Generate QR variants for local environment
-      const localQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => 
+      const localQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) =>
         QRCode.toDataURL(localUrl, styleVariants[i % styleVariants.length])
       )
       const localQrVariants = await Promise.all(localQrVariantsPromises)
 
       // Generate QR variants for production environment
-      const prodQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => 
+      const prodQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) =>
         QRCode.toDataURL(prodUrl, styleVariants[i % styleVariants.length])
       )
       const prodQrVariants = await Promise.all(prodQrVariantsPromises)
@@ -285,18 +313,18 @@ export default function EventDetailPage() {
       setVisibleIndex(0)
       setDisplayedIndex(0)
       setShowQrModal(true)
-      
-      toast({ 
-        title: 'QR Code Generated', 
+
+      toast({
+        title: 'QR Code Generated',
         description: 'Check-in QR code has been generated successfully',
-        duration: 3000 
+        duration: 3000
       })
     } catch (err: any) {
       console.error('Failed to generate QR', err)
-      toast({ 
-        title: 'QR Error', 
-        description: err?.message || 'Could not generate QR code', 
-        variant: 'destructive' 
+      toast({
+        title: 'QR Error',
+        description: err?.message || 'Could not generate QR code',
+        variant: 'destructive'
       })
     }
   }
@@ -318,17 +346,17 @@ export default function EventDetailPage() {
         const mobileLink = `exp://192.168.1.50:8081/--/student/checkin/${token}`
         qrDataUrl = `https://api.qrserver.com/v1/create-qr-code/?size=640x640&data=${encodeURIComponent(mobileLink)}`
       }
-      
+
       if (!qrDataUrl) return
 
       const link = document.createElement('a')
       link.download = `qr-code-${event?.name?.replace(/[^a-zA-Z0-9]/g, '-')}-${environment}.png`
       link.href = qrDataUrl
       link.click()
-      
-      toast({ 
-        title: 'Downloaded', 
-        description: `QR code downloaded for ${environment} environment` 
+
+      toast({
+        title: 'Downloaded',
+        description: `QR code downloaded for ${environment} environment`
       })
     } catch (err) {
       toast({ title: 'Download failed', description: 'Could not download QR code' })
@@ -350,13 +378,13 @@ export default function EventDetailPage() {
       } else {
         link = environment === 'local' ? qrLinks.local : qrLinks.prod
       }
-      
+
       if (!link) return
-      
+
       await navigator.clipboard.writeText(link)
-      toast({ 
-        title: 'Copied', 
-        description: `${environment.charAt(0).toUpperCase() + environment.slice(1)} link copied to clipboard` 
+      toast({
+        title: 'Copied',
+        description: `${environment.charAt(0).toUpperCase() + environment.slice(1)} link copied to clipboard`
       })
     } catch {
       toast({ title: 'Copy failed', description: 'Could not copy link to clipboard' })
@@ -380,6 +408,17 @@ export default function EventDetailPage() {
       </ProtectedRoute>
     )
   }
+  // // ✅ TÍNH TOÁN TRẠNG THÁI CO-HOST
+  // const coHosts = event.coHostedClubs || []
+  // const pendingCoHosts = coHosts.filter(
+  //   club => club.coHostStatus === "PENDING" // Giả sử status chờ là "PENDING"
+  // ).length
+
+  // const allCoHostsResponded = coHosts.length > 0 && pendingCoHosts === 0
+
+  // const anyCoHostRejected = coHosts.some(
+  //   club => club.coHostStatus === "REJECTED"
+  // )
 
   if (!event) {
     return (
@@ -404,6 +443,18 @@ export default function EventDetailPage() {
       </ProtectedRoute>
     )
   }
+
+  // ✅ TÍNH TOÁN TRẠNG THÁI CO-HOST
+  const coHosts = event.coHostedClubs || []
+  const pendingCoHosts = coHosts.filter(
+    club => club.coHostStatus === "PENDING" // Giả sử status chờ là "PENDING"
+  ).length
+
+  const allCoHostsResponded = coHosts.length > 0 && pendingCoHosts === 0
+
+  const anyCoHostRejected = coHosts.some(
+    club => club.coHostStatus === "REJECTED"
+  )
 
   return (
     <ProtectedRoute allowedRoles={["club_leader"]}>
@@ -469,7 +520,7 @@ export default function EventDetailPage() {
                       <Clock className="h-5 w-5 text-primary" />
                       <div>
                         <div className="font-medium">
-                          {event.startTime && event.endTime 
+                          {event.startTime && event.endTime
                             ? `${event.startTime} - ${event.endTime}`
                             : event.time || "Time not set"}
                         </div>
@@ -506,7 +557,7 @@ export default function EventDetailPage() {
               {/* Check-in Information */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Check-in Information</h3>
-                
+
                 {/* Check-in Capacity */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                   <div className="p-4 bg-muted/50 rounded-lg">
@@ -543,7 +594,7 @@ export default function EventDetailPage() {
                       </Button>
                     </div>
                   </div>
-                  
+
                   {/* QR Code Generation Button - Only show if APPROVED and event is still active */}
                   {isEventActive() && (
                     <div className="border-t border-blue-200 pt-4">
@@ -562,7 +613,7 @@ export default function EventDetailPage() {
                       </div>
                     </div>
                   )}
-                  
+
                   {/* Status message for non-active events */}
                   {!isEventActive() && (
                     <div className="border-t border-blue-200 pt-4">
@@ -571,7 +622,7 @@ export default function EventDetailPage() {
                         <div>
                           <div className="font-medium text-yellow-800">QR Code Unavailable</div>
                           <div className="text-sm text-yellow-700">
-                            {event.status !== "APPROVED" 
+                            {event.status !== "APPROVED"
                               ? `QR codes are only available for approved events. Current status: ${event.status}`
                               : "This event has ended or is missing date/time information. QR codes are no longer available."
                             }
@@ -582,6 +633,65 @@ export default function EventDetailPage() {
                   )}
                 </div>
               </div>
+
+              {/* ✅ THÊM KHU VỰC UNIVERSITY APPROVAL MỚI */}
+              {event.status === "WAITING" && ( // Chỉ hiển thị khi event đang chờ co-host
+                <>
+                  <Separator />
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold">University Approval Status</h3>
+
+                    {!allCoHostsResponded && (
+                      <div className="flex items-center gap-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                        <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0" />
+                        <div>
+                          <div className="font-medium text-yellow-800">Waiting for Co-hosts</div>
+                          <div className="text-sm text-yellow-700">
+                            Waiting for {pendingCoHosts} co-host(s) to respond before submitting to the university.
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {allCoHostsResponded && anyCoHostRejected && (
+                      <div className="flex items-center gap-3 p-3 bg-red-50 rounded-lg border border-red-200">
+                        <XCircle className="h-5 w-5 text-red-600 flex-shrink-0" />
+                        <div>
+                          <div className="font-medium text-red-800">Co-host Rejected</div>
+                          <div className="text-sm text-red-700">
+                            At least one co-host has rejected this event. It cannot be submitted to the university.
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {allCoHostsResponded && !anyCoHostRejected && (
+                      <div className="flex items-center justify-between gap-3 p-4 bg-green-50 rounded-lg border border-green-200">
+                        <div>
+                          <div className="font-medium text-green-800">Ready for Submission</div>
+                          <div className="text-sm text-green-700">
+                            All co-hosts have approved. You can now send this event for university approval.
+                          </div>
+                        </div>
+                        <Button
+                          onClick={handleSubmitToUniversity}
+                          disabled={isSubmitting}
+                        >
+                          {isSubmitting ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Submitting...
+                            </>
+                          ) : (
+                            "Submit to University"
+                          )}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+              {/* ✅ KẾT THÚC KHU VỰC MỚI */}
 
               {/* Co-hosted Clubs */}
               {event.coHostedClubs && event.coHostedClubs.length > 0 && (

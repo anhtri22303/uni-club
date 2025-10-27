@@ -109,7 +109,7 @@ export default function ClubLeaderEventsPage() {
 
       // Parse event date (format: YYYY-MM-DD)
       const [year, month, day] = event.date.split('-').map(Number)
-      
+
       // Parse endTime (format: HH:MM:SS or HH:MM)
       const [hours, minutes] = event.endTime.split(':').map(Number)
 
@@ -408,7 +408,19 @@ export default function ClubLeaderEventsPage() {
       }
 
       const res: any = await createEvent(payload)
-      toast({ title: "Event Created", description: "Event created successfully" })
+        // toast({ title: "Event Created", description: "Event created successfully" })
+      // ✅ THAY ĐỔI LOGIC TOAST
+      if (selectedCoHostClubIds.length > 0) {
+        toast({
+          title: "Event Created",
+          description: "Event has been sent to co-hosts for approval."
+        })
+      } else {
+        toast({
+          title: "Event Created",
+          description: "Event has been sent to university staff for approval."
+        })
+      }
       // Invalidate and refetch events using React Query
       if (userClubId) {
         queryClient.invalidateQueries({ queryKey: queryKeys.eventsByClubId(userClubId) })
@@ -474,7 +486,7 @@ export default function ClubLeaderEventsPage() {
       let link: string | undefined
       try {
         const { token } = await generateCode(selectedEvent.id)
-        
+
         if (environment === 'local') {
           link = `http://localhost:3000/student/checkin/${token}`
         } else if (environment === 'prod') {
@@ -506,7 +518,7 @@ export default function ClubLeaderEventsPage() {
     // Get current time in Vietnam timezone (UTC+7)
     const now = new Date()
     const vnTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }))
-    
+
     // Parse event date and time
     const [hour = "00", minute = "00"] = (eventTime || "00:00").split(":")
     const [year, month, day] = eventDate.split('-').map(Number)
@@ -1031,7 +1043,7 @@ export default function ClubLeaderEventsPage() {
 
                 <div className="space-y-1.5">
                   <Label className="text-sm">
-                    Co-Host Clubs 
+                    Co-Host Clubs
                     {selectedCoHostClubIds.length > 0 && (
                       <span className="text-xs text-muted-foreground ml-1">
                         ({selectedCoHostClubIds.length} selected)
@@ -1051,14 +1063,14 @@ export default function ClubLeaderEventsPage() {
                           const club = allClubs.find(c => c.id === clubId)
                           if (!club) return null
                           return (
-                            <Badge 
-                              key={clubId} 
-                              variant="secondary" 
+                            <Badge
+                              key={clubId}
+                              variant="secondary"
                               className="text-xs px-2 py-0.5 flex items-center gap-1"
                             >
                               {club.name}
-                              <X 
-                                className="h-3 w-3 cursor-pointer hover:text-destructive" 
+                              <X
+                                className="h-3 w-3 cursor-pointer hover:text-destructive"
                                 onClick={() => setSelectedCoHostClubIds(selectedCoHostClubIds.filter(id => id !== clubId))}
                               />
                             </Badge>
