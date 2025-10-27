@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Pagination } from "@/components/pagination"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { CalendarModal } from "@/components/calendar-modal"
 import { usePagination } from "@/hooks/use-pagination"
 import { useState } from "react"
 import { Calendar, Users, Trophy, Layers } from "lucide-react"
@@ -27,6 +28,7 @@ export default function MemberEventsPage() {
   // const [selectedClubId, setSelectedClubId] = useState<string>("all") // 'all' là giá trị mặc định
   const [selectedClubId, setSelectedClubId] = useState<string | null>(null) // Bắt đầu là null
   const [userClubsDetails, setUserClubsDetails] = useState<any[]>([]) // Để lưu {id, name}
+  const [showCalendarModal, setShowCalendarModal] = useState(false)
 
 
 
@@ -159,16 +161,21 @@ export default function MemberEventsPage() {
     <ProtectedRoute allowedRoles={["student"]}>
       <AppShell>
         <div className="space-y-6">
-          <div>
-            <h1 className="text-3xl font-bold">Events</h1>
-            <p className="text-muted-foreground">
-              Discover upcoming events from your clubs
-              {userClubIds.length > 0 && (
-                <span className="text-xs text-muted-foreground/70 ml-2">
-                  (Showing events from club{userClubIds.length > 1 ? 's' : ''} {userClubIds.join(', ')})
-                </span>
-              )}
-            </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold">Events</h1>
+              <p className="text-muted-foreground">
+                Discover upcoming events from your clubs
+                {userClubIds.length > 0 && (
+                  <span className="text-xs text-muted-foreground/70 ml-2">
+                    (Showing events from club{userClubIds.length > 1 ? 's' : ''} {userClubIds.join(', ')})
+                  </span>
+                )}
+              </p>
+            </div>
+            <Button variant="outline" onClick={() => setShowCalendarModal(true)}>
+              <Calendar className="h-4 w-4 mr-2" /> Calendar View
+            </Button>
           </div>
 
           {/* ✅ CẬP NHẬT: Thêm dropdown chọn club */}
@@ -326,6 +333,17 @@ export default function MemberEventsPage() {
               setCurrentPage(1)
             }}
             pageSizeOptions={[6, 12, 24, 48]}
+          />
+
+          {/* Calendar Modal */}
+          <CalendarModal
+            open={showCalendarModal}
+            onOpenChange={setShowCalendarModal}
+            events={eventsData}
+            onEventClick={(event) => {
+              setShowCalendarModal(false)
+              router.push(`/student/events/${event.id}`)
+            }}
           />
         </div>
       </AppShell>

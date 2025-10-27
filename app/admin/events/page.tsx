@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Modal } from "@/components/modal"
 import { QRModal } from "@/components/qr-modal"
+import { CalendarModal } from "@/components/calendar-modal"
 import { useToast } from "@/hooks/use-toast"
 import { usePagination } from "@/hooks/use-pagination"
 import { Calendar, Plus, MapPin, Trophy, ChevronLeft, ChevronRight, Filter, X, Eye } from "lucide-react"
@@ -127,6 +128,7 @@ export default function AdminEventsPage() {
   }, [rawEvents])
 
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showCalendarModal, setShowCalendarModal] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<any>(null)
   const [showQrModal, setShowQrModal] = useState(false)
   const [qrLinks, setQrLinks] = useState<{ local?: string; prod?: string; mobile?: string }>({})
@@ -447,9 +449,14 @@ export default function AdminEventsPage() {
               <h1 className="text-3xl font-bold">Events</h1>
               <p className="text-muted-foreground">Admin: Manage all club events and activities</p>
             </div>
-            <Button onClick={() => setShowCreateModal(true)}>
-              <Plus className="h-4 w-4 mr-2" /> Create Event
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => setShowCalendarModal(true)}>
+                <Calendar className="h-4 w-4 mr-2" /> Calendar View
+              </Button>
+              <Button onClick={() => setShowCreateModal(true)}>
+                <Plus className="h-4 w-4 mr-2" /> Create Event
+              </Button>
+            </div>
           </div>
 
           {/* Search + Filters */}
@@ -910,6 +917,17 @@ export default function AdminEventsPage() {
               handleDownloadQR={handleDownloadQR}
             />
           )}
+
+          {/* Calendar Modal */}
+          <CalendarModal
+            open={showCalendarModal}
+            onOpenChange={setShowCalendarModal}
+            events={events}
+            onEventClick={(event) => {
+              setShowCalendarModal(false)
+              router.push(`/admin/events/${event.id}`)
+            }}
+          />
         </div>
       </AppShell>
     </ProtectedRoute>

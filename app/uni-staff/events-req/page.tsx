@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { CalendarModal } from "@/components/calendar-modal"
 import { Calendar, Users, MapPin, Search, CheckCircle, XCircle, Clock, Building, Eye } from "lucide-react"
 import { renderTypeBadge } from "@/lib/eventUtils"
 import { useState, useEffect } from "react"
@@ -16,11 +17,13 @@ import { fetchLocation } from "@/service/locationApi"
 import { fetchClub } from "@/service/clubApi"
 import Link from "next/link"
 import { fetchEvent } from "@/service/eventApi"
+import { useRouter } from "next/navigation"
 
 // events will be fetched from the API. The API returns a paginated object
 // and the UI should display only the `content` array.
 
 export default function UniStaffEventRequestsPage() {
+	const router = useRouter()
 	const [searchTerm, setSearchTerm] = useState("")
 	const [statusFilter, setStatusFilter] = useState<string>("all")
 	const [categoryFilter, setCategoryFilter] = useState<string>("all")
@@ -31,6 +34,7 @@ export default function UniStaffEventRequestsPage() {
 	const [clubs, setClubs] = useState<any[]>([])
 	const [loading, setLoading] = useState<boolean>(false)
 	const [error, setError] = useState<string | null>(null)
+	const [showCalendarModal, setShowCalendarModal] = useState(false)
 
 	const { toast } = useToast()
 	const [processingId, setProcessingId] = useState<number | string | null>(null)
@@ -205,9 +209,14 @@ export default function UniStaffEventRequestsPage() {
 		<ProtectedRoute allowedRoles={["uni_staff"]}>
 			<AppShell>
 				<div className="space-y-6">
-					<div>
-						<h1 className="text-3xl font-bold">Event Requests</h1>
-						<p className="text-muted-foreground">Review and manage event organization requests</p>
+					<div className="flex items-center justify-between">
+						<div>
+							<h1 className="text-3xl font-bold">Event Requests</h1>
+							<p className="text-muted-foreground">Review and manage event organization requests</p>
+						</div>
+						<Button variant="outline" onClick={() => setShowCalendarModal(true)}>
+							<Calendar className="h-4 w-4 mr-2" /> Calendar View
+						</Button>
 					</div>
 
 					{/* Stats Cards */}
@@ -473,6 +482,17 @@ export default function UniStaffEventRequestsPage() {
 								</select>
 							</div>
 						</div>
+
+						{/* Calendar Modal */}
+						<CalendarModal
+							open={showCalendarModal}
+							onOpenChange={setShowCalendarModal}
+							events={events}
+							onEventClick={(event) => {
+								setShowCalendarModal(false)
+								router.push(`/uni-staff/events-req/${event.id}`)
+							}}
+						/>
 				</div>
 			</AppShell>
 		</ProtectedRoute>
