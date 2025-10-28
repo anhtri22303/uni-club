@@ -11,11 +11,13 @@ import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { useToast } from "@/hooks/use-toast"
 import { usePagination } from "@/hooks/use-pagination"
-import { Users, ShieldCheck, ChevronLeft, ChevronRight, Send, UserCircle } from "lucide-react"
+import { Users, ShieldCheck, ChevronLeft, ChevronRight, Send, UserCircle, History } from "lucide-react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 // ✨ --- IMPORT API THẬT --- ✨
 import { fetchClub } from "@/service/clubApi"
-import { postClubWalletByClubId } from "@/service/walletApi"
+import { postClubWalletByClubId, getUniToClubTransactions, ApiUniToClubTransaction } from "@/service/walletApi"
 
 // Định nghĩa một kiểu dữ liệu cơ bản cho Club
 interface Club {
@@ -35,6 +37,11 @@ export default function UniversityStaffRewardPage() {
     const [selectedClubId, setSelectedClubId] = useState<string | number | null>(null)
     const [rewardAmount, setRewardAmount] = useState<number | ''>('')
     const [isDistributing, setIsDistributing] = useState(false)
+
+    // History modal state
+    const [showHistoryModal, setShowHistoryModal] = useState(false)
+    const [transactions, setTransactions] = useState<ApiUniToClubTransaction[]>([])
+    const [transactionsLoading, setTransactionsLoading] = useState(false)
 
     // Tải danh sách tất cả các CLB khi component được mount bằng API thật
     useEffect(() => {
@@ -114,6 +121,38 @@ export default function UniversityStaffRewardPage() {
         }
     }
 
+    const loadTransactionHistory = async () => {
+        setTransactionsLoading(true)
+        try {
+            const data = await getUniToClubTransactions()
+            setTransactions(data)
+        } catch (err: any) {
+            toast({
+                title: "Error",
+                description: err?.response?.data?.message || "Failed to load transaction history",
+                variant: "destructive"
+            })
+        } finally {
+            setTransactionsLoading(false)
+        }
+    }
+
+    const handleOpenHistoryModal = () => {
+        setShowHistoryModal(true)
+        loadTransactionHistory()
+    }
+
+    const formatDate = (dateString: string) => {
+        const date = new Date(dateString)
+        return date.toLocaleString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        })
+    }
+
     const MinimalPager = ({ current, total, onPrev, onNext }: { current: number; total: number; onPrev: () => void; onNext: () => void }) =>
         total > 1 ? (
             <div className="flex items-center justify-center gap-3 mt-4">
@@ -131,12 +170,86 @@ export default function UniversityStaffRewardPage() {
         <ProtectedRoute allowedRoles={["uni_staff"]}>
             <AppShell>
                 <div className="space-y-6">
-                    <div>
-                        <h1 className="text-3xl font-bold flex items-center gap-3">
-                            <ShieldCheck className="h-8 w-8 text-blue-600" /> Club Reward Distribution
-                        </h1>
-                        <p className="text-muted-foreground">Distribute reward points to university clubs.</p>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h1 className="text-3xl font-bold flex items-center gap-3">
+                                <ShieldCheck className="h-8 w-8 text-blue-600" /> Club Reward Distribution
+                            </h1>
+                            <p className="text-muted-foreground">Distribute reward points to university clubs.</p>
+                        </div>
+                        <Button
+                            variant="outline"
+                            size="default"
+                            onClick={handleOpenHistoryModal}
+                            className="flex items-center gap-2"
+                        >
+                            <History className="h-4 w-4" />
+                            History
+                        </Button>
                     </div>
+
+                    {/* Transaction History Modal */}
+                    <Dialog open={showHistoryModal} onOpenChange={setShowHistoryModal}>
+                        <DialogContent
+                            className="
+                                !max-w-none
+                                w-[72vw]
+                                lg:w-[68vw]
+                                md:w-[78vw]
+                                sm:w-[92vw]
+                                h-[85vh]
+                                overflow-y-auto p-8 rounded-xl shadow-2xl
+                            "
+                        >
+                            <DialogHeader>
+                                <DialogTitle className="flex items-center gap-3 text-3xl font-bold">
+                                    <History className="h-8 w-8" />
+                                    University to Club Transaction History
+                                </DialogTitle>
+                            </DialogHeader>
+
+                            <div className="mt-4">
+                                {transactionsLoading ? (
+                                    <div className="flex flex-col items-center justify-center py-12">
+                                        <p className="text-muted-foreground">Loading transaction history...</p>
+                                    </div>
+                                ) : transactions.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                                        <History className="h-12 w-12 text-muted-foreground mb-4" />
+                                        <h3 className="text-lg font-semibold mb-2">No Transactions Yet</h3>
+                                        <p className="text-muted-foreground">No university-to-club transactions found.</p>
+                                    </div>
+                                ) : (
+                                    <div className="rounded-md border overflow-x-auto">
+                                        <Table className="min-w-full">
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead className="w-[80px]">ID</TableHead>
+                                                    <TableHead>Type</TableHead>
+                                                    <TableHead>Amount</TableHead>
+                                                    <TableHead className="w-[40%]">Description</TableHead>
+                                                    <TableHead>Date</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {transactions.map((t) => (
+                                                    <TableRow key={t.id}>
+                                                        <TableCell className="font-medium">#{t.id}</TableCell>
+                                                        <TableCell><Badge variant="secondary">{t.type}</Badge></TableCell>
+                                                        <TableCell className="font-semibold text-green-600">+{t.amount} pts</TableCell>
+                                                        <TableCell className="truncate">{t.description || "—"}</TableCell>
+                                                        <TableCell className="text-sm text-muted-foreground">
+                                                            {formatDate(t.createdAt)}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+                                )}
+                            </div>
+                        </DialogContent>
+                    </Dialog>
 
                     <Card>
                         <CardHeader>

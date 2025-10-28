@@ -127,9 +127,49 @@ export const postClubWalletByClubId = async (
   }
 }
 
+export type ApiClubToMemberTransaction = {
+  id: number;
+  type: string;
+  amount: number;
+  description: string;
+  createdAt: string;
+}
+
+export const getClubToMemberTransactions = async (): Promise<ApiClubToMemberTransaction[]> => {
+  try {
+    const res = await axiosInstance.get("/api/wallets/transactions/club-to-member")
+    console.log("getClubToMemberTransactions:", res.data)
+    return Array.isArray(res.data) ? res.data : []
+  } catch (err) {
+    console.error("Failed to get club-to-member transactions", err)
+    throw err
+  }
+}
+
+export type ApiUniToClubTransaction = {
+  id: number;
+  type: string;
+  amount: number;
+  description: string;
+  createdAt: string;
+}
+
+export const getUniToClubTransactions = async (): Promise<ApiUniToClubTransaction[]> => {
+  try {
+    const res = await axiosInstance.get("/api/wallets/transactions/uni-to-club")
+    console.log("getUniToClubTransactions:", res.data)
+    return Array.isArray(res.data) ? res.data : []
+  } catch (err) {
+    console.error("Failed to get uni-to-club transactions", err)
+    throw err
+  }
+}
+
 export default {
   getWallet,
   rewardPointsToMember,
   getClubWallet,
-  postClubWalletByClubId
+  postClubWalletByClubId,
+  getClubToMemberTransactions,
+  getUniToClubTransactions
 }

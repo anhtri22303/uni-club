@@ -11,12 +11,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CalendarModal } from "@/components/calendar-modal"
 import { usePagination } from "@/hooks/use-pagination"
 import { useState } from "react"
-import { Calendar, Users, Trophy, Layers } from "lucide-react"
+import { Calendar, Users, Trophy, Layers, History } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import { safeLocalStorage } from "@/lib/browser-utils"
 import { useClubEvents, useClubs } from "@/hooks/use-query-hooks"
-import { timeObjectToString } from "@/service/eventApi"
+import { timeObjectToString, registerForEvent } from "@/service/eventApi"
+import { useToast } from "@/hooks/use-toast"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 // Import data
 import clubs from "@/src/data/clubs.json"
@@ -30,6 +32,9 @@ export default function MemberEventsPage() {
   const [selectedClubId, setSelectedClubId] = useState<string | null>(null) // Bắt đầu là null
   const [userClubsDetails, setUserClubsDetails] = useState<any[]>([]) // Để lưu {id, name}
   const [showCalendarModal, setShowCalendarModal] = useState(false)
+  const [showHistoryModal, setShowHistoryModal] = useState(false)
+  const [registeringEventId, setRegisteringEventId] = useState<number | null>(null)
+  const { toast } = useToast()
 
 
 
@@ -126,6 +131,11 @@ export default function MemberEventsPage() {
       return false
     }
 
+    // Filter by status - only show APPROVED or COMPLETED events
+    if (event.status !== "APPROVED" && event.status !== "COMPLETED") {
+      return false
+    }
+
     // expired filter
     const expiredFilter = activeFilters["expired"]
     if (expiredFilter === "hide") {
@@ -161,6 +171,26 @@ export default function MemberEventsPage() {
     router.push(`/student/events/${eventId}`)
   }
 
+  const handleRegister = async (eventId: number) => {
+    setRegisteringEventId(eventId)
+    try {
+      const result = await registerForEvent(eventId)
+      toast({
+        title: "Success",
+        description: result.message || "Successfully registered for the event!",
+      })
+    } catch (error: any) {
+      console.error("Error registering for event:", error)
+      toast({
+        title: "Error",
+        description: error?.response?.data?.message || "Failed to register for the event",
+        variant: "destructive"
+      })
+    } finally {
+      setRegisteringEventId(null)
+    }
+  }
+
   return (
     <ProtectedRoute allowedRoles={["student"]}>
       <AppShell>
@@ -177,9 +207,14 @@ export default function MemberEventsPage() {
                 )}
               </p>
             </div>
-            <Button variant="outline" onClick={() => setShowCalendarModal(true)}>
-              <Calendar className="h-4 w-4 mr-2" /> Calendar View
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setShowHistoryModal(true)}>
+                <History className="h-4 w-4 mr-2" /> History
+              </Button>
+              <Button variant="outline" onClick={() => setShowCalendarModal(true)}>
+                <Calendar className="h-4 w-4 mr-2" /> Calendar View
+              </Button>
+            </div>
           </div>
 
           {/* ✅ CẬP NHẬT: Thêm dropdown chọn club */}
@@ -276,17 +311,32 @@ export default function MemberEventsPage() {
                             {event.hostClub?.name || "Unknown Club"}
                           </CardDescription>
                         </div>
-                        <Badge
-                          variant={
-                            event.status === "APPROVED"
-                              ? status === "past" ? "secondary" : status === "upcoming" ? "default" : "outline"
-                              : "destructive"
-                          }
-                        >
-                          {event.status === "APPROVED"
-                            ? (status === "past" ? "Past" : status === "upcoming" ? "Soon" : "Future")
-                            : event.status}
-                        </Badge>
+                        {event.status === "COMPLETED" ? (
+                          <Badge variant="outline" className="bg-gray-100 text-gray-700 border-gray-400">
+                            COMPLETED
+                          </Badge>
+                        ) : (
+                          <Badge
+                            variant="outline"
+                            className={
+                              event.status === "APPROVED"
+                                ? status === "past" 
+                                  ? "bg-gray-100 text-gray-700 border-gray-400" 
+                                  : status === "upcoming" 
+                                  ? "bg-green-100 text-green-700 border-green-500" 
+                                  : "bg-blue-100 text-blue-700 border-blue-500"
+                                : event.status === "PENDING"
+                                ? "bg-yellow-100 text-yellow-700 border-yellow-500"
+                                : event.status === "REJECTED"
+                                ? "bg-red-100 text-red-700 border-red-500"
+                                : "bg-gray-100 text-gray-700 border-gray-400"
+                            }
+                          >
+                            {event.status === "APPROVED"
+                              ? (status === "past" ? "Past" : status === "upcoming" ? "Soon" : "Future")
+                              : event.status}
+                          </Badge>
+                        )}
                       </div>
                     </CardHeader>
                     <CardContent>
@@ -312,11 +362,11 @@ export default function MemberEventsPage() {
 
                         <Button
                           className="w-full"
-                          variant={status === "past" || event.status !== "APPROVED" ? "outline" : "default"}
-                          disabled={status === "past" || event.status !== "APPROVED"}
-                          onClick={() => handleEventDetail(event.id)}
+                          variant="default"
+                          disabled={registeringEventId === event.id}
+                          onClick={() => handleRegister(event.id)}
                         >
-                          {status === "past" ? "Event Ended" : event.status !== "APPROVED" ? event.status : "Detail"}
+                          {registeringEventId === event.id ? "Registering..." : "Register"}
                         </Button>
                       </div>
                     </CardContent>
@@ -349,6 +399,18 @@ export default function MemberEventsPage() {
               router.push(`/student/events/${event.id}`)
             }}
           />
+
+          {/* History Modal */}
+          <Dialog open={showHistoryModal} onOpenChange={setShowHistoryModal}>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Event History</DialogTitle>
+              </DialogHeader>
+              <div className="py-8 text-center text-muted-foreground">
+                hello
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </AppShell>
     </ProtectedRoute>

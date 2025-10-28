@@ -295,3 +295,16 @@ export const getEventWallet = async (eventId: string | number): Promise<EventWal
     throw error
   }
 }
+
+export const registerForEvent = async (eventId: string | number) => {
+  try {
+    const response = await axiosInstance.post(`/api/events/register`, { eventId })
+    const data: any = response.data
+    console.log(`Registered for event ${eventId}:`, data)
+    // Response structure: { success: true, message: "string", data: "string" }
+    return data
+  } catch (error) {
+    console.error(`Error registering for event ${eventId}:`, error)
+    throw error
+  }
+}
