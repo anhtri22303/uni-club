@@ -16,6 +16,7 @@ import {
   useAttendanceRanking
 } from "@/hooks/use-query-hooks"
 import { getClubMemberCount } from "@/service/clubApi"
+import { timeObjectToString } from "@/service/eventApi"
 import { useEffect, useState, useMemo, useRef } from "react"
 import { useRouter } from "next/navigation"
 import {
@@ -195,7 +196,8 @@ export default function UniStaffReportsPage() {
       try {
         const eventDate = new Date(event.date)
         if (event.endTime) {
-          const [hours, minutes] = event.endTime.split(':')
+          const endTimeStr = timeObjectToString(event.endTime)
+          const [hours, minutes] = endTimeStr.split(':')
           eventDate.setHours(parseInt(hours), parseInt(minutes))
         }
         return eventDate >= now || (eventDate.toDateString() === now.toDateString())
@@ -214,7 +216,8 @@ export default function UniStaffReportsPage() {
       try {
         const eventDate = new Date(event.date)
         if (event.endTime) {
-          const [hours, minutes] = event.endTime.split(':')
+          const endTimeStr = timeObjectToString(event.endTime)
+          const [hours, minutes] = endTimeStr.split(':')
           eventDate.setHours(parseInt(hours), parseInt(minutes))
         }
         return eventDate >= now || (eventDate.toDateString() === now.toDateString())
@@ -233,7 +236,8 @@ export default function UniStaffReportsPage() {
       try {
         const eventDate = new Date(event.date)
         if (event.endTime) {
-          const [hours, minutes] = event.endTime.split(':')
+          const endTimeStr = timeObjectToString(event.endTime)
+          const [hours, minutes] = endTimeStr.split(':')
           eventDate.setHours(parseInt(hours), parseInt(minutes))
         }
         return eventDate >= now || (eventDate.toDateString() === now.toDateString())
@@ -281,7 +285,8 @@ export default function UniStaffReportsPage() {
         
         // If there's an endTime, combine date and endTime for evaluation
         if (event.endTime) {
-          const [hours, minutes] = event.endTime.split(':')
+          const endTimeStr = timeObjectToString(event.endTime)
+          const [hours, minutes] = endTimeStr.split(':')
           eventDate.setHours(parseInt(hours), parseInt(minutes))
         }
         
@@ -678,7 +683,7 @@ export default function UniStaffReportsPage() {
                                 <Clock className="h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0" />
                                 <span className="truncate">
                                 {formattedDate} {event.time || ""}
-                                {event.endTime && <span>- {event.endTime}</span>}
+                                {event.endTime && <span>- {timeObjectToString(event.endTime)}</span>}
                                 </span>
                               </span>
                               <span className="truncate">{event.locationName || "Location not specified"}</span>

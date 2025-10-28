@@ -17,7 +17,8 @@ import { QRModal } from "@/components/qr-modal"
 import { ProtectedRoute } from "@/contexts/protected-route"
 import { LoadingSkeleton } from "@/components/loading-skeleton"
 
-import { getEventById, submitForUniversityApproval } from "@/service/eventApi" // 👈 Thêm submitForUniversityApproval
+import { getEventById, submitForUniversityApproval, timeObjectToString, acceptCoHostInvitation, rejectCoHostInvitation, getEventWallet, EventWallet } from "@/service/eventApi" // 👈 Thêm submitForUniversityApproval
+import { getClubIdFromToken } from "@/service/clubApi"
 import { Loader2 } from "lucide-react" // 👈 Thêm Loader2
 interface EventDetail {
   id: number
@@ -55,7 +56,13 @@ export default function EventDetailPage() {
   const [event, setEvent] = useState<EventDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [showCheckInCode, setShowCheckInCode] = useState(false)
+  const [wallet, setWallet] = useState<EventWallet | null>(null)
+  const [walletLoading, setWalletLoading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false) // 👈 THÊM STATE NÀY
+  const [isAcceptingCoHost, setIsAcceptingCoHost] = useState(false) // State for accepting co-host
+  const [isRejectingCoHost, setIsRejectingCoHost] = useState(false) // State for rejecting co-host
+  const [userClubId, setUserClubId] = useState<number | null>(null)
+  const [myCoHostStatus, setMyCoHostStatus] = useState<string | null>(null)
 
   // QR Code states
   const [showQrModal, setShowQrModal] = useState(false)
@@ -70,6 +77,14 @@ export default function EventDetailPage() {
   const VARIANTS = 3
   const [countdown, setCountdown] = useState(() => Math.floor(ROTATION_INTERVAL_MS / 1000))
 
+  // Get club ID from token on mount
+  useEffect(() => {
+    const id = getClubIdFromToken()
+    if (id) {
+      setUserClubId(id)
+    }
+  }, [])
+
   useEffect(() => {
     const loadEventDetail = async () => {
       if (!params.id) return
@@ -78,6 +93,26 @@ export default function EventDetailPage() {
         setLoading(true)
         const data = await getEventById(params.id as string)
         setEvent(data)
+        
+        // Check if current club is a co-host
+        if (userClubId && data.coHostedClubs) {
+          const myCoHost = data.coHostedClubs.find((club: any) => club.id === userClubId)
+          if (myCoHost) {
+            setMyCoHostStatus(myCoHost.coHostStatus)
+          }
+        }
+
+        // Fetch wallet data
+        try {
+          setWalletLoading(true)
+          const walletData = await getEventWallet(params.id as string)
+          setWallet(walletData)
+        } catch (walletError) {
+          console.error("Failed to load wallet:", walletError)
+          // Don't show error toast for wallet, it's not critical
+        } finally {
+          setWalletLoading(false)
+        }
       } catch (error) {
         console.error("Failed to load event detail:", error)
         toast({
@@ -91,7 +126,7 @@ export default function EventDetailPage() {
     }
 
     loadEventDetail()
-  }, [params.id, toast])
+  }, [params.id, userClubId, toast])
 
   // QR rotation logic
   useEffect(() => {
@@ -257,8 +292,11 @@ export default function EventDetailPage() {
       // Parse event date (format: YYYY-MM-DD)
       const eventDate = new Date(event.date)
 
+      // Convert endTime to string if it's an object
+      const endTimeStr = timeObjectToString(event.endTime)
+      
       // Parse endTime (format: HH:MM:SS or HH:MM)
-      const [hours, minutes] = event.endTime.split(':').map(Number)
+      const [hours, minutes] = endTimeStr.split(':').map(Number)
 
       // Create event end datetime
       const eventEndDateTime = new Date(eventDate)
@@ -269,6 +307,92 @@ export default function EventDetailPage() {
     } catch (error) {
       console.error('Error checking event active status:', error)
       return false
+    }
+  }
+
+  // Helper function to reload event data
+  const reloadEventData = async () => {
+    try {
+      console.log('🔄 Reloading event data...')
+      const updatedEvent = await getEventById(params.id as string)
+      setEvent(updatedEvent)
+      
+      // Update co-host status for current club
+      if (userClubId && updatedEvent.coHostedClubs) {
+        const myCoHost = updatedEvent.coHostedClubs.find((club: any) => club.id === userClubId)
+        if (myCoHost) {
+          setMyCoHostStatus(myCoHost.coHostStatus)
+          console.log('✅ Co-host status updated:', myCoHost.coHostStatus)
+        } else {
+          setMyCoHostStatus(null)
+        }
+      }
+      
+      console.log('✅ Event data reloaded successfully')
+    } catch (error) {
+      console.error('❌ Failed to reload event data:', error)
+      toast({
+        title: 'Warning',
+        description: 'Could not refresh event data. Please reload the page.',
+        variant: 'destructive'
+      })
+    }
+  }
+
+  const handleAcceptCoHost = async () => {
+    if (!event) return
+
+    try {
+      setIsAcceptingCoHost(true)
+      const response = await acceptCoHostInvitation(event.id)
+      
+      // Show success message
+      toast({
+        title: 'Success',
+        description: response.message || 'Co-host invitation accepted successfully',
+      })
+      
+      // Reload event detail to get updated status immediately
+      await reloadEventData()
+      
+    } catch (err: any) {
+      console.error('Failed to accept co-host invitation', err)
+      toast({
+        title: 'Error',
+        description: err?.response?.data?.message || 'Failed to accept co-host invitation',
+        variant: 'destructive'
+      })
+    } finally {
+      setIsAcceptingCoHost(false)
+    }
+  }
+
+  const handleRejectCoHost = async () => {
+    if (!event) return
+
+    try {
+      setIsRejectingCoHost(true)
+      const response = await rejectCoHostInvitation(event.id)
+      
+      // Show rejection message
+      toast({
+        title: 'Rejected',
+        description: response.message || 'Co-host invitation rejected',
+        variant: 'destructive'
+      })
+      
+      // Reload event detail to get updated status immediately
+      await reloadEventData()
+      
+    } catch (err: any) {
+      console.error('Failed to reject co-host invitation', err)
+      toast({
+        title: 'Error',
+        description: err?.response?.data?.message || 'Failed to reject co-host invitation',
+        variant: 'destructive'
+      })
+    } finally {
+      setIsRejectingCoHost(false)
     }
   }
 
@@ -468,9 +592,50 @@ export default function EventDetailPage() {
                 Back to Events
               </Button>
             </div>
-            <div className="flex items-center gap-2">
-              <Eye className="h-5 w-5 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Event Details</span>
+            <div className="flex items-center gap-3">
+              {/* Show Accept and Reject buttons if this club is a co-host with PENDING status */}
+              {myCoHostStatus === "PENDING" && (
+                <>
+                  <Button
+                    onClick={handleAcceptCoHost}
+                    disabled={isAcceptingCoHost || isRejectingCoHost}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    {isAcceptingCoHost ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Accepting...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Accept
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    onClick={handleRejectCoHost}
+                    disabled={isAcceptingCoHost || isRejectingCoHost}
+                    variant="destructive"
+                  >
+                    {isRejectingCoHost ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Rejecting...
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="h-4 w-4 mr-2" />
+                        Reject
+                      </>
+                    )}
+                  </Button>
+                </>
+              )}
+              <div className="flex items-center gap-2">
+                <Eye className="h-5 w-5 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Event Details</span>
+              </div>
             </div>
           </div>
 
@@ -521,7 +686,7 @@ export default function EventDetailPage() {
                       <div>
                         <div className="font-medium">
                           {event.startTime && event.endTime
-                            ? `${event.startTime} - ${event.endTime}`
+                            ? `${timeObjectToString(event.startTime)} - ${timeObjectToString(event.endTime)}`
                             : event.time || "Time not set"}
                         </div>
                         <div className="text-sm text-muted-foreground">Event Duration</div>
@@ -559,7 +724,7 @@ export default function EventDetailPage() {
                 <h3 className="text-lg font-semibold">Check-in Information</h3>
 
                 {/* Check-in Capacity */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
                   <div className="p-4 bg-muted/50 rounded-lg">
                     <div className="text-sm text-muted-foreground">Max Capacity</div>
                     <div className="font-semibold text-lg">{event.maxCheckInCount} people</div>
@@ -571,6 +736,18 @@ export default function EventDetailPage() {
                   <div className="p-4 bg-muted/50 rounded-lg">
                     <div className="text-sm text-muted-foreground">Available Spots</div>
                     <div className="font-semibold text-lg">{event.maxCheckInCount - event.currentCheckInCount} remaining</div>
+                  </div>
+                  <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-200">
+                    <div className="text-sm text-green-700 font-medium">Wallet Balance</div>
+                    <div className="font-semibold text-lg text-green-800">
+                      {walletLoading ? (
+                        <span className="text-muted-foreground">Loading...</span>
+                      ) : wallet ? (
+                        `${wallet.walletBalance} points`
+                      ) : (
+                        <span className="text-muted-foreground">N/A</span>
+                      )}
+                    </div>
                   </div>
                 </div>
 

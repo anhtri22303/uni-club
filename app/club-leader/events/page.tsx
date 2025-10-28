@@ -15,13 +15,13 @@ import { QRModal } from "@/components/qr-modal"
 import { CalendarModal } from "@/components/calendar-modal"
 import { useToast } from "@/hooks/use-toast"
 import { usePagination } from "@/hooks/use-pagination"
-import { useClub, useEventsByClubId } from "@/hooks/use-query-hooks"
-import { Calendar, Plus, MapPin, Trophy, ChevronLeft, ChevronRight, Filter, X, Eye, Loader2 } from "lucide-react"
+import { useClub, useEventsByClubId, useEventCoHostByClubId } from "@/hooks/use-query-hooks"
+import { Calendar, Plus, MapPin, Trophy, ChevronLeft, ChevronRight, Filter, X, Eye, Loader2, Users } from "lucide-react"
 import { QrCode } from "lucide-react"
 import QRCode from "qrcode"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
-import { createEvent } from "@/service/eventApi"
+import { createEvent, timeObjectToString } from "@/service/eventApi"
 import { generateCode } from "@/service/checkinApi"
 import { safeLocalStorage } from "@/lib/browser-utils"
 import { fetchLocation } from "@/service/locationApi"
@@ -38,10 +38,12 @@ export default function ClubLeaderEventsPage() {
   const [locations, setLocations] = useState<any[]>([])
   const [locationsLoading, setLocationsLoading] = useState(false)
   const [selectedLocationId, setSelectedLocationId] = useState<string>("")
+  const [selectedLocationCapacity, setSelectedLocationCapacity] = useState<number | null>(null)
   const [allClubs, setAllClubs] = useState<any[]>([])
   const [clubsLoading, setClubsLoading] = useState(false)
   const [selectedCoHostClubIds, setSelectedCoHostClubIds] = useState<number[]>([])
   const [isCreating, setIsCreating] = useState(false)
+  const [viewMode, setViewMode] = useState<"hosted" | "cohost">("hosted") // Toggle between hosted and co-host events
 
   // Add fullscreen and environment states
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -95,7 +97,8 @@ export default function ClubLeaderEventsPage() {
 
   // ✅ USE REACT QUERY for club and events
   const { data: managedClub, isLoading: clubLoading } = useClub(userClubId || 0, !!userClubId)
-  const { data: rawEvents = [], isLoading: eventsLoading } = useEventsByClubId(userClubId || 0, !!userClubId)
+  const { data: rawEvents = [], isLoading: eventsLoading } = useEventsByClubId(userClubId || 0, !!userClubId && viewMode === "hosted")
+  const { data: rawCoHostEvents = [], isLoading: coHostEventsLoading } = useEventCoHostByClubId(userClubId || 0, !!userClubId && viewMode === "cohost")
 
   // Helper function to check if event has expired (past endTime)
   const isEventExpired = (event: any) => {
@@ -110,8 +113,11 @@ export default function ClubLeaderEventsPage() {
       // Parse event date (format: YYYY-MM-DD)
       const [year, month, day] = event.date.split('-').map(Number)
 
+      // Convert endTime to string if it's an object
+      const endTimeStr = timeObjectToString(event.endTime)
+      
       // Parse endTime (format: HH:MM:SS or HH:MM)
-      const [hours, minutes] = event.endTime.split(':').map(Number)
+      const [hours, minutes] = endTimeStr.split(':').map(Number)
 
       // Create event end datetime in Vietnam timezone
       const eventEndDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0)
@@ -152,8 +158,9 @@ export default function ClubLeaderEventsPage() {
 
       // If dates are equal, compare times (latest startTime first)
       // Support both new (startTime) and legacy (time) formats
-      const timeA = a.startTime || a.time || '00:00'
-      const timeB = b.startTime || b.time || '00:00'
+      // Convert TimeObject to string if needed
+      const timeAStr = timeObjectToString(a.startTime) || a.time || '00:00'
+      const timeBStr = timeObjectToString(b.startTime) || b.time || '00:00'
 
       // Convert time strings to comparable format (HH:MM:SS or HH:MM to minutes)
       const parseTime = (timeStr: string) => {
@@ -163,22 +170,38 @@ export default function ClubLeaderEventsPage() {
         return hours * 60 + minutes
       }
 
-      return parseTime(timeB) - parseTime(timeA)
+      return parseTime(timeBStr) - parseTime(timeAStr)
     })
   }
 
-  // Process and sort events
+  // Process and sort events (both hosted and co-host based on viewMode)
   const events = useMemo(() => {
+    const eventsToProcess = viewMode === "hosted" ? rawEvents : rawCoHostEvents
+    
     // Normalize events with both new and legacy field support
-    const normalized = rawEvents.map((e: any) => ({
-      ...e,
-      title: e.name || e.title,
-      time: e.startTime || e.time, // Map startTime to time for legacy compatibility
-      clubId: e.hostClub?.id || e.clubId, // Map hostClub.id to clubId for backward compatibility
-      clubName: e.hostClub?.name || e.clubName, // Map hostClub.name to clubName for backward compatibility
-    }))
+    const normalized = eventsToProcess.map((e: any) => {
+      // Convert TimeObject to string if needed
+      const startTimeStr = timeObjectToString(e.startTime)
+      const endTimeStr = timeObjectToString(e.endTime)
+      
+      // For co-host events, find the club's co-host status
+      const myCoHostStatus = viewMode === "cohost" && userClubId
+        ? e.coHostedClubs?.find((club: any) => club.id === userClubId)?.coHostStatus
+        : null
+      
+      return {
+        ...e,
+        title: e.name || e.title,
+        time: startTimeStr || e.time, // Map startTime to time for legacy compatibility
+        startTime: startTimeStr, // Ensure startTime is always a string for display
+        endTime: endTimeStr, // Ensure endTime is always a string for display
+        clubId: e.hostClub?.id || e.clubId, // Map hostClub.id to clubId for backward compatibility
+        clubName: e.hostClub?.name || e.clubName, // Map hostClub.name to clubName for backward compatibility
+        myCoHostStatus, // Add co-host status for this club
+      }
+    })
     return sortEventsByDateTime(normalized)
-  }, [rawEvents])
+  }, [viewMode, rawEvents, rawCoHostEvents, userClubId])
 
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showCalendarModal, setShowCalendarModal] = useState(false)
@@ -284,6 +307,7 @@ export default function ClubLeaderEventsPage() {
     endTime: "11:00:00",
     locationId: 0,
     maxCheckInCount: 100,
+    commitPointCost: 0,
   })
 
   // Update formData clubId when userClubId changes
@@ -375,8 +399,9 @@ export default function ClubLeaderEventsPage() {
   }) || Boolean(searchTerm)
 
   const resetForm = () => {
-    setFormData({ clubId: userClubId || 0, name: "", description: "", type: "PUBLIC", date: "", startTime: "09:00:00", endTime: "11:00:00", locationId: 0, maxCheckInCount: 100 })
+    setFormData({ clubId: userClubId || 0, name: "", description: "", type: "PUBLIC", date: "", startTime: "09:00:00", endTime: "11:00:00", locationId: 0, maxCheckInCount: 100, commitPointCost: 0 })
     setSelectedLocationId("")
+    setSelectedLocationCapacity(null)
     setSelectedCoHostClubIds([])
   }
 
@@ -387,19 +412,32 @@ export default function ClubLeaderEventsPage() {
       return
     }
 
+    // Validate max check-in count against location capacity
+    if (selectedLocationCapacity && formData.maxCheckInCount > selectedLocationCapacity) {
+      toast({ 
+        title: "Invalid Max Check-ins", 
+        description: `Max check-ins (${formData.maxCheckInCount}) cannot exceed location capacity (${selectedLocationCapacity})`, 
+        variant: "destructive" 
+      })
+      return
+    }
+
     setIsCreating(true)
     try {
       const hostClubId = Number(formData.clubId)
+      
+      // Backend expects string format for LocalTime, not object format
       const payload: any = {
         hostClubId,
         name: formData.name,
         description: formData.description,
         type: formData.type as "PUBLIC" | "PRIVATE",
         date: formData.date,
-        startTime: formData.startTime,
-        endTime: formData.endTime,
+        startTime: formData.startTime, // Send as string "HH:MM:SS"
+        endTime: formData.endTime,     // Send as string "HH:MM:SS"
         locationId: formData.locationId,
         maxCheckInCount: formData.maxCheckInCount,
+        commitPointCost: formData.commitPointCost,
       }
 
       // Add coHostClubIds if any are selected
@@ -513,14 +551,17 @@ export default function ClubLeaderEventsPage() {
   }
 
   // Helper to get event status based on date and time
-  const getEventStatus = (eventDate: string, eventTime: string) => {
+  const getEventStatus = (eventDate: string, eventTime: string | any) => {
     if (!eventDate) return "Finished"
     // Get current time in Vietnam timezone (UTC+7)
     const now = new Date()
     const vnTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }))
 
+    // Convert TimeObject to string if needed
+    const eventTimeStr = timeObjectToString(eventTime)
+    
     // Parse event date and time
-    const [hour = "00", minute = "00"] = (eventTime || "00:00").split(":")
+    const [hour = "00", minute = "00"] = (eventTimeStr || "00:00").split(":")
     const [year, month, day] = eventDate.split('-').map(Number)
     const event = new Date(year, month - 1, day, Number(hour), Number(minute), 0, 0)
 
@@ -568,6 +609,28 @@ export default function ClubLeaderEventsPage() {
                 <Plus className="h-4 w-4 mr-2" /> Create Event
               </Button>
             </div>
+          </div>
+
+          {/* View Mode Toggle */}
+          <div className="flex items-center gap-2 border-b pb-3">
+            <Button
+              variant={viewMode === "hosted" ? "default" : "outline"}
+              onClick={() => setViewMode("hosted")}
+              className="flex items-center gap-2"
+            >
+              <Calendar className="h-4 w-4" />
+              Hosted Events
+              {viewMode === "hosted" && <Badge variant="secondary" className="ml-1">{rawEvents.length}</Badge>}
+            </Button>
+            <Button
+              variant={viewMode === "cohost" ? "default" : "outline"}
+              onClick={() => setViewMode("cohost")}
+              className="flex items-center gap-2"
+            >
+              <Users className="h-4 w-4" />
+              Co-Host Events
+              {viewMode === "cohost" && <Badge variant="secondary" className="ml-1">{rawCoHostEvents.length}</Badge>}
+            </Button>
           </div>
 
           {/* Search + Filters (DataTable-style) */}
@@ -704,16 +767,33 @@ export default function ClubLeaderEventsPage() {
                 {paginatedEvents.map((event: any) => {
                   const expired = isEventExpired(event)
                   const status = expired ? "Finished" : getEventStatus(event.date, event.time)
-                  // Border color logic - expired events override approval status
+                  
+                  // Border color logic
                   let borderColor = ""
-                  if (expired) {
-                    borderColor = "border-gray-400 dark:border-gray-600"
-                  } else if (event.status === "APPROVED") {
-                    borderColor = "border-green-500"
-                  } else if (event.status === "REJECTED") {
-                    borderColor = "border-red-500"
+                  if (viewMode === "cohost") {
+                    // For co-host events, use coHostStatus
+                    if (expired) {
+                      borderColor = "border-gray-400 dark:border-gray-600"
+                    } else if (event.myCoHostStatus === "APPROVED") {
+                      borderColor = "border-green-500"
+                    } else if (event.myCoHostStatus === "REJECTED") {
+                      borderColor = "border-red-500"
+                    } else if (event.myCoHostStatus === "PENDING") {
+                      borderColor = "border-yellow-500"
+                    } else {
+                      borderColor = "border-transparent"
+                    }
                   } else {
-                    borderColor = "border-transparent"
+                    // For hosted events, use event status
+                    if (expired) {
+                      borderColor = "border-gray-400 dark:border-gray-600"
+                    } else if (event.status === "APPROVED") {
+                      borderColor = "border-green-500"
+                    } else if (event.status === "REJECTED") {
+                      borderColor = "border-red-500"
+                    } else {
+                      borderColor = "border-transparent"
+                    }
                   }
 
                   return (
@@ -754,9 +834,29 @@ export default function ClubLeaderEventsPage() {
                           </Badge>
                         </div>
                         {/* Approval status badge - show gray for expired events */}
-                        <div className="mt-2">
+                        <div className="mt-2 flex gap-2 flex-wrap">
                           {expired ? (
                             <Badge variant="secondary" className="bg-gray-400 text-white">Expired</Badge>
+                          ) : viewMode === "cohost" ? (
+                            <>
+                              {/* Show co-host status for co-host events */}
+                              {event.myCoHostStatus === "APPROVED" && (
+                                <Badge variant="default" className="bg-green-600">Co-Host Approved</Badge>
+                              )}
+                              {event.myCoHostStatus === "PENDING" && (
+                                <Badge variant="outline" className="border-yellow-500 text-yellow-600">Co-Host Pending</Badge>
+                              )}
+                              {event.myCoHostStatus === "REJECTED" && (
+                                <Badge variant="destructive">Co-Host Rejected</Badge>
+                              )}
+                              {/* Also show overall event status */}
+                              {event.status === "APPROVED" && (
+                                <Badge variant="secondary">Event Approved</Badge>
+                              )}
+                              {event.status === "PENDING" && (
+                                <Badge variant="outline" className="border-yellow-500 text-yellow-600 bg-yellow-50">Event Pending</Badge>
+                              )}
+                            </>
                           ) : (
                             <>
                               {event.status === "APPROVED" && (
@@ -974,7 +1074,7 @@ export default function ClubLeaderEventsPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-4 gap-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="startTime" className="text-sm">Start Time *</Label>
                   <Input
@@ -998,14 +1098,47 @@ export default function ClubLeaderEventsPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="maxCheckInCount" className="text-sm">Max Check-ins</Label>
+                  <Label htmlFor="maxCheckInCount" className="text-sm">Max Check-ins *</Label>
                   <Input
                     id="maxCheckInCount"
                     type="number"
                     value={formData.maxCheckInCount}
                     onChange={(e) => setFormData({ ...formData, maxCheckInCount: Number.parseInt(e.target.value) || 100 })}
-                    className={`h-9 ${selectedLocationId ? "bg-muted border-blue-300" : ""}`}
+                    className={`h-9 ${
+                      selectedLocationCapacity && formData.maxCheckInCount > selectedLocationCapacity 
+                        ? "border-red-500 focus-visible:ring-red-500" 
+                        : selectedLocationId 
+                          ? "bg-muted border-blue-300" 
+                          : ""
+                    }`}
                     placeholder="100"
+                    min="1"
+                    max={selectedLocationCapacity || undefined}
+                  />
+                  {selectedLocationCapacity && formData.maxCheckInCount > selectedLocationCapacity && (
+                    <p className="text-xs text-red-600 font-medium mt-1 flex items-center gap-1">
+                      <span className="text-base">🚫</span>
+                      Max check-ins cannot exceed location capacity ({selectedLocationCapacity})
+                    </p>
+                  )}
+                  {selectedLocationCapacity && formData.maxCheckInCount <= selectedLocationCapacity && selectedLocationId && (
+                    <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                      <span className="text-base">✓</span>
+                      Within location capacity
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="commitPointCost" className="text-sm">Point Cost</Label>
+                  <Input
+                    id="commitPointCost"
+                    type="number"
+                    value={formData.commitPointCost}
+                    onChange={(e) => setFormData({ ...formData, commitPointCost: Number.parseInt(e.target.value) || 0 })}
+                    className="h-9"
+                    placeholder="0"
+                    min="0"
                   />
                 </div>
               </div>
@@ -1019,6 +1152,7 @@ export default function ClubLeaderEventsPage() {
                       setSelectedLocationId(value)
                       const location = locations.find(loc => String(loc.id) === value)
                       if (location) {
+                        setSelectedLocationCapacity(location.capacity || null)
                         setFormData({
                           ...formData,
                           locationId: Number(location.id),
@@ -1124,7 +1258,14 @@ export default function ClubLeaderEventsPage() {
                 <Button variant="outline" onClick={() => setShowCreateModal(false)} disabled={isCreating} className="h-9">
                   Cancel
                 </Button>
-                <Button onClick={handleCreate} disabled={isCreating} className="h-9">
+                <Button 
+                  onClick={handleCreate} 
+                  disabled={
+                    isCreating || 
+                    (selectedLocationCapacity !== null && formData.maxCheckInCount > selectedLocationCapacity)
+                  } 
+                  className="h-9"
+                >
                   {isCreating ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />

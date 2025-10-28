@@ -22,7 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton"
 
 import clubs from "@/src/data/clubs.json"
-import { fetchEvent } from "@/service/eventApi"
+import { fetchEvent, timeObjectToString } from "@/service/eventApi"
 import { createEvent, getEventById } from "@/service/eventApi"
 import { generateCode } from "@/service/checkinApi"
 import { safeLocalStorage } from "@/lib/browser-utils"
@@ -51,8 +51,11 @@ export default function AdminEventsPage() {
       // Parse event date (format: YYYY-MM-DD)
       const [year, month, day] = event.date.split('-').map(Number)
       
+      // Convert endTime to string if it's an object
+      const endTimeStr = timeObjectToString(event.endTime)
+      
       // Parse endTime (format: HH:MM:SS or HH:MM)
-      const [hours, minutes] = event.endTime.split(':').map(Number)
+      const [hours, minutes] = endTimeStr.split(':').map(Number)
 
       // Create event end datetime in Vietnam timezone
       const eventEndDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0)
@@ -673,7 +676,7 @@ export default function AdminEventsPage() {
                           {(event.startTime && event.endTime) && (
                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
                               <Trophy className="h-4 w-4" />
-                              {event.startTime} - {event.endTime}
+                              {timeObjectToString(event.startTime)} - {timeObjectToString(event.endTime)}
                             </div>
                           )}
                         </div>

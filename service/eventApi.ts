@@ -1,13 +1,21 @@
 import axiosInstance from "@/lib/axiosInstance"
 
+// Time object format for API requests/responses
+export interface TimeObject {
+  hour: number
+  minute: number
+  second: number
+  nano: number
+}
+
 export interface Event {
   id: number
   name: string
   description: string
   type: "PUBLIC" | "PRIVATE" | string
   date: string
-  startTime: string | null
-  endTime: string | null
+  startTime: TimeObject | string | null
+  endTime: TimeObject | string | null
   status: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED" | string
   checkInCode: string
   locationName: string
@@ -35,12 +43,33 @@ export interface CreateEventPayload {
   description: string
   type: "PUBLIC" | "PRIVATE"
   date: string
-  startTime: string
-  endTime: string
+  startTime: string  // Backend expects string format "HH:MM:SS", not TimeObject
+  endTime: string    // Backend expects string format "HH:MM:SS", not TimeObject
   locationId: number
   maxCheckInCount: number
   hostClubId: number
   coHostClubIds?: number[]
+  commitPointCost: number
+}
+
+// Helper function to convert time string (HH:MM:SS or HH:MM) to TimeObject
+export const timeStringToObject = (timeStr: string): TimeObject => {
+  const parts = timeStr.split(':').map(Number)
+  return {
+    hour: parts[0] || 0,
+    minute: parts[1] || 0,
+    second: parts[2] || 0,
+    nano: 0
+  }
+}
+
+// Helper function to convert TimeObject to time string (HH:MM:SS)
+export const timeObjectToString = (timeObj: TimeObject | string | null): string => {
+  if (!timeObj) return "00:00:00"
+  if (typeof timeObj === 'string') return timeObj
+  
+  const pad = (n: number) => n.toString().padStart(2, '0')
+  return `${pad(timeObj.hour)}:${pad(timeObj.minute)}:${pad(timeObj.second)}`
 }
 
 export const fetchEvent = async ({ page = 0, size = 70, sort = "name" } = {}): Promise<Event[]> => {
@@ -161,6 +190,29 @@ export const getEventByClubId = async (clubId: string | number): Promise<Event[]
   }
 }
 
+export const getEventCoHost = async (clubId: string | number): Promise<Event[]> => {
+  try {
+    const response = await axiosInstance.get(`/api/events/club/${clubId}/cohost`)
+    const resData: any = response.data
+    console.log(`Fetched co-host events for club ${clubId}:`, resData)
+
+    // If response is direct array of events
+    if (Array.isArray(resData)) return resData
+
+    // If response has wrapper structure like { success, data, message }
+    if (resData?.data && Array.isArray(resData.data)) return resData.data
+
+    // If response has content property (pagination)
+    if (resData?.content && Array.isArray(resData.content)) return resData.content
+
+    // Fallback to empty array if no events found
+    return []
+  } catch (error) {
+    console.error(`Error fetching co-host events for club ${clubId}:`, error)
+    throw error
+  }
+}
+
 export const updateEvent = async (id: string | number, payload: Partial<CreateEventPayload>): Promise<Event> => {
   try {
     const response = await axiosInstance.put(`api/events/${id}`, payload)
@@ -193,4 +245,53 @@ export const submitForUniversityApproval = async (eventId: string | number) => {
     if (data && data.data) return data.data
     return data
   // return api.put(`/events/${eventId}/submit-to-staff`)
+}
+
+export const acceptCoHostInvitation = async (eventId: string | number) => {
+  try {
+    const response = await axiosInstance.post(`/api/events/${eventId}/cohost/accept`)
+    const data: any = response.data
+    console.log(`Accepted co-host invitation for event ${eventId}:`, data)
+    // Response structure: { success: true, message: "✅ Club ... accepted ...", data: null }
+    return data
+  } catch (error) {
+    console.error(`Error accepting co-host invitation for event ${eventId}:`, error)
+    throw error
+  }
+}
+
+export const rejectCoHostInvitation = async (eventId: string | number) => {
+  try {
+    const response = await axiosInstance.post(`/api/events/${eventId}/cohost/reject`)
+    const data: any = response.data
+    console.log(`Rejected co-host invitation for event ${eventId}:`, data)
+    // Response structure: { success: true, message: "string", data: "string" }
+    return data
+  } catch (error) {
+    console.error(`Error rejecting co-host invitation for event ${eventId}:`, error)
+    throw error
+  }
+}
+
+export interface EventWallet {
+  hostClubId: number
+  eventName: string
+  walletBalance: number
+  active: boolean
+  eventId: number
+  ownerType: string
+}
+
+export const getEventWallet = async (eventId: string | number): Promise<EventWallet> => {
+  try {
+    const response = await axiosInstance.get(`/api/events/${eventId}/wallet`)
+    const data: any = response.data
+    console.log(`Fetched wallet for event ${eventId}:`, data)
+    // Response structure: { success: true, message: "success", data: {...wallet} }
+    if (data?.data) return data.data
+    return data
+  } catch (error) {
+    console.error(`Error fetching wallet for event ${eventId}:`, error)
+    throw error
+  }
 }

@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { fetchClub, getClubById, getClubMemberCount } from "@/service/clubApi"
-import { fetchEvent, getEventById, getEventByClubId } from "@/service/eventApi"
+import { fetchEvent, getEventById, getEventByClubId, getEventCoHost } from "@/service/eventApi"
 import { fetchUser, fetchUserById, fetchProfile } from "@/service/userApi"
 import { getMembersByClubId } from "@/service/membershipApi"
 import { fetchMajors } from "@/service/majorApi"
@@ -41,6 +41,7 @@ export const queryKeys = {
   eventsList: () => [...queryKeys.events, "list"] as const,
   eventDetail: (id: number) => [...queryKeys.events, "detail", id] as const,
   eventsByClubId: (clubId: number) => [...queryKeys.events, "club", clubId] as const,
+  eventsCoHostByClubId: (clubId: number) => [...queryKeys.events, "club", clubId, "cohost"] as const,
 
   // Users
   users: ["users"] as const,
@@ -262,6 +263,31 @@ export function useEventsByClubId(clubId: number, enabled = true) {
     queryKey: queryKeys.eventsByClubId(clubId),
     queryFn: async () => {
       const events = await getEventByClubId(clubId)
+      // Normalize events with both new and legacy field support
+      return events.map((e: any) => ({
+        ...e,
+        title: e.name || e.title,
+        time: e.startTime || e.time, // Map startTime to time for legacy compatibility
+        clubId: e.hostClub?.id || e.clubId, // Map hostClub.id to clubId for backward compatibility
+        clubName: e.hostClub?.name || e.clubName, // Map hostClub.name to clubName for backward compatibility
+      }))
+    },
+    enabled: !!clubId && enabled,
+    staleTime: 3 * 60 * 1000, // 3 minutes (events change frequently)
+  })
+}
+
+/**
+ * Hook to fetch co-host events by a specific club ID
+ * Uses the dedicated API endpoint /api/events/club/:clubId/cohost
+ * @param clubId - Club ID to fetch co-host events for
+ * @param enabled - Whether to enable the query (default: true)
+ */
+export function useEventCoHostByClubId(clubId: number, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.eventsCoHostByClubId(clubId),
+    queryFn: async () => {
+      const events = await getEventCoHost(clubId)
       // Normalize events with both new and legacy field support
       return events.map((e: any) => ({
         ...e,

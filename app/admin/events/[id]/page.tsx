@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { ArrowLeft, Calendar, Clock, MapPin, Users, CheckCircle, AlertCircle, XCircle, Eye, QrCode, Shield } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { getEventById } from "@/service/eventApi"
+import { getEventById, timeObjectToString, getEventWallet, EventWallet } from "@/service/eventApi"
 import { generateCode } from "@/service/checkinApi"
 import QRCode from "qrcode"
 import { AppShell } from "@/components/app-shell"
@@ -52,6 +52,8 @@ export default function AdminEventDetailPage() {
   const [event, setEvent] = useState<EventDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [showCheckInCode, setShowCheckInCode] = useState(false)
+  const [wallet, setWallet] = useState<EventWallet | null>(null)
+  const [walletLoading, setWalletLoading] = useState(false)
 
   // QR Code states
   const [showQrModal, setShowQrModal] = useState(false)
@@ -74,6 +76,18 @@ export default function AdminEventDetailPage() {
         setLoading(true)
         const data = await getEventById(params.id as string)
         setEvent(data)
+
+        // Fetch wallet data
+        try {
+          setWalletLoading(true)
+          const walletData = await getEventWallet(params.id as string)
+          setWallet(walletData)
+        } catch (walletError) {
+          console.error("Failed to load wallet:", walletError)
+          // Don't show error toast for wallet, it's not critical
+        } finally {
+          setWalletLoading(false)
+        }
       } catch (error) {
         console.error("Failed to load event detail:", error)
         toast({
@@ -441,7 +455,7 @@ export default function AdminEventDetailPage() {
                       <div>
                         <div className="font-medium">
                           {event.startTime && event.endTime 
-                            ? `${event.startTime} - ${event.endTime}`
+                            ? `${timeObjectToString(event.startTime)} - ${timeObjectToString(event.endTime)}`
                             : event.time || "Time not set"}
                         </div>
                         <div className="text-sm text-muted-foreground">Event Duration</div>
@@ -479,7 +493,7 @@ export default function AdminEventDetailPage() {
                 <h3 className="text-lg font-semibold">Check-in Information</h3>
                 
                 {/* Check-in Capacity */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
                   <div className="p-4 bg-muted/50 rounded-lg">
                     <div className="text-sm text-muted-foreground">Max Capacity</div>
                     <div className="font-semibold text-lg">{event.maxCheckInCount} people</div>
@@ -491,6 +505,18 @@ export default function AdminEventDetailPage() {
                   <div className="p-4 bg-muted/50 rounded-lg">
                     <div className="text-sm text-muted-foreground">Available Spots</div>
                     <div className="font-semibold text-lg">{event.maxCheckInCount - event.currentCheckInCount} remaining</div>
+                  </div>
+                  <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-200">
+                    <div className="text-sm text-green-700 font-medium">Wallet Balance</div>
+                    <div className="font-semibold text-lg text-green-800">
+                      {walletLoading ? (
+                        <span className="text-muted-foreground">Loading...</span>
+                      ) : wallet ? (
+                        `${wallet.walletBalance} points`
+                      ) : (
+                        <span className="text-muted-foreground">N/A</span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
