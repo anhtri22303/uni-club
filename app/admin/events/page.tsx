@@ -596,21 +596,21 @@ export default function AdminEventsPage() {
                   // Border color logic - completed events get dark blue, expired events override approval status
                   let borderColor = ""
                   if (isCompleted) {
-                    borderColor = "border-blue-900 dark:border-blue-800"
+                    borderColor = "border-l-4 border-l-blue-900"
                   } else if (expired) {
-                    borderColor = "border-gray-400 dark:border-gray-600"
+                    borderColor = "border-l-4 border-l-gray-400"
                   } else if (event.status === "APPROVED") {
-                    borderColor = "border-green-500"
+                    borderColor = "border-l-4 border-l-green-500"
+                  } else if (event.status === "PENDING") {
+                    borderColor = "border-l-4 border-l-yellow-500"
                   } else if (event.status === "REJECTED") {
-                    borderColor = "border-red-500"
-                  } else {
-                    borderColor = "border-transparent"
+                    borderColor = "border-l-4 border-l-red-500"
                   }
 
                   return (
                     <Card
                       key={event.id}
-                      className={`hover:shadow-md transition-shadow border-2 ${borderColor} ${expired ? 'opacity-60' : ''} h-full flex flex-col`}
+                      className={`hover:shadow-md transition-shadow ${borderColor} ${expired || isCompleted ? 'opacity-60' : ''} h-full flex flex-col`}
                     >
                       <CardHeader>
                         <div className="flex items-start justify-between">
@@ -647,19 +647,34 @@ export default function AdminEventsPage() {
                         {/* Approval status badge - show COMPLETED in dark blue, gray for expired events */}
                         <div className="mt-2">
                           {isCompleted ? (
-                            <Badge variant="secondary" className="bg-blue-900 text-white border-blue-900">Completed</Badge>
+                            <Badge variant="secondary" className="bg-blue-900 text-white border-blue-900 font-semibold">
+                              <span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
+                              Completed
+                            </Badge>
                           ) : expired ? (
-                            <Badge variant="secondary" className="bg-gray-400 text-white">Expired</Badge>
+                            <Badge variant="secondary" className="bg-gray-400 text-white font-semibold">
+                              <span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
+                              Expired
+                            </Badge>
                           ) : (
                             <>
                               {event.status === "APPROVED" && (
-                                <Badge variant="default">Approved</Badge>
+                                <Badge variant="default" className="bg-green-600 font-semibold">
+                                  <span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
+                                  Approved
+                                </Badge>
                               )}
                               {event.status === "PENDING" && (
-                                <Badge variant="outline">Pending</Badge>
+                                <Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-500 font-semibold">
+                                  <span className="inline-block w-2 h-2 rounded-full bg-yellow-500 mr-1.5"></span>
+                                  Pending
+                                </Badge>
                               )}
                               {event.status === "REJECTED" && (
-                                <Badge variant="destructive">Rejected</Badge>
+                                <Badge variant="destructive" className="font-semibold">
+                                  <span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
+                                  Rejected
+                                </Badge>
                               )}
                             </>
                           )}

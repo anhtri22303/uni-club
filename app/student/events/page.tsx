@@ -314,9 +314,21 @@ export default function MemberEventsPage() {
             ) : (
               paginatedEvents.map((event) => {
                 const status = getEventStatus(event.date)
+                
+                // Determine border color based on event status
+                let borderColor = ""
+                if (event.status === "COMPLETED") {
+                  borderColor = "border-l-4 border-l-blue-900"
+                } else if (event.status === "APPROVED") {
+                  borderColor = "border-l-4 border-l-green-500"
+                } else if (event.status === "PENDING") {
+                  borderColor = "border-l-4 border-l-yellow-500"
+                } else if (event.status === "REJECTED") {
+                  borderColor = "border-l-4 border-l-red-500"
+                }
 
                 return (
-                  <Card key={event.id} className="hover:shadow-md transition-shadow">
+                  <Card key={event.id} className={`hover:shadow-md transition-shadow ${borderColor}`}>
                     <CardHeader>
                       <div className="flex items-start justify-between">
                         <div>
@@ -327,29 +339,28 @@ export default function MemberEventsPage() {
                           </CardDescription>
                         </div>
                         {event.status === "COMPLETED" ? (
-                          <Badge variant="outline" className="bg-blue-900 text-white border-blue-900">
+                          <Badge variant="outline" className="bg-blue-900 text-white border-blue-900 font-semibold">
+                            <span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
                             COMPLETED
                           </Badge>
+                        ) : event.status === "APPROVED" ? (
+                          <Badge variant="outline" className="bg-green-100 text-green-700 border-green-500 font-semibold">
+                            <span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-1.5"></span>
+                            {status === "past" ? "Past" : status === "upcoming" ? "Soon" : "Approved"}
+                          </Badge>
+                        ) : event.status === "PENDING" ? (
+                          <Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-500 font-semibold">
+                            <span className="inline-block w-2 h-2 rounded-full bg-yellow-500 mr-1.5"></span>
+                            PENDING
+                          </Badge>
+                        ) : event.status === "REJECTED" ? (
+                          <Badge variant="outline" className="bg-red-100 text-red-700 border-red-500 font-semibold">
+                            <span className="inline-block w-2 h-2 rounded-full bg-red-500 mr-1.5"></span>
+                            REJECTED
+                          </Badge>
                         ) : (
-                          <Badge
-                            variant="outline"
-                            className={
-                              event.status === "APPROVED"
-                                ? status === "past" 
-                                  ? "bg-gray-100 text-gray-700 border-gray-400" 
-                                  : status === "upcoming" 
-                                  ? "bg-green-100 text-green-700 border-green-500" 
-                                  : "bg-blue-100 text-blue-700 border-blue-500"
-                                : event.status === "PENDING"
-                                ? "bg-yellow-100 text-yellow-700 border-yellow-500"
-                                : event.status === "REJECTED"
-                                ? "bg-red-100 text-red-700 border-red-500"
-                                : "bg-gray-100 text-gray-700 border-gray-400"
-                            }
-                          >
-                            {event.status === "APPROVED"
-                              ? (status === "past" ? "Past" : status === "upcoming" ? "Soon" : "Future")
-                              : event.status}
+                          <Badge variant="outline" className="bg-gray-100 text-gray-700 border-gray-400">
+                            {event.status}
                           </Badge>
                         )}
                       </div>

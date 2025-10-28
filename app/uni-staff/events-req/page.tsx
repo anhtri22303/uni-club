@@ -178,8 +178,8 @@ export default function UniStaffEventRequestsPage() {
 		// COMPLETED status gets dark blue badge - highest priority
 		if (isCompleted || status === "COMPLETED") {
 			return (
-				<Badge variant="secondary" className="bg-blue-900 text-white border-blue-900">
-					<CheckCircle className="h-3 w-3 mr-1" />
+				<Badge variant="secondary" className="bg-blue-900 text-white border-blue-900 font-semibold">
+					<span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
 					Completed
 				</Badge>
 			)
@@ -188,7 +188,8 @@ export default function UniStaffEventRequestsPage() {
 		// Override with Expired badge if expired - gray color to override approval status
 		if (isExpired) {
 			return (
-				<Badge variant="secondary" className="bg-gray-400 text-white">
+				<Badge variant="secondary" className="bg-gray-400 text-white font-semibold">
+					<span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
 					Expired
 				</Badge>
 			)
@@ -197,22 +198,22 @@ export default function UniStaffEventRequestsPage() {
 		switch (status) {
 			case "PENDING":
 				return (
-					<Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300">
-						<Clock className="h-3 w-3 mr-1" />
+					<Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-500 font-semibold">
+						<span className="inline-block w-2 h-2 rounded-full bg-yellow-500 mr-1.5"></span>
 						Pending
 					</Badge>
 				)
 			case "APPROVED":
 				return (
-					<Badge variant="default" className="bg-green-100 text-green-700 border-green-300">
-						<CheckCircle className="h-3 w-3 mr-1" />
+					<Badge variant="default" className="bg-green-600 text-white border-green-600 font-semibold">
+						<span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
 						Approved
 					</Badge>
 				)
 			case "REJECTED":
 				return (
-					<Badge variant="destructive" className="bg-red-100 text-red-700 border-red-300">
-						<XCircle className="h-3 w-3 mr-1" />
+					<Badge variant="destructive" className="font-semibold">
+						<span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
 						Rejected
 					</Badge>
 				)
@@ -427,11 +428,21 @@ export default function UniStaffEventRequestsPage() {
 								// COMPLETED status means event has ended, regardless of date/time
 								const isCompleted = request.status === "COMPLETED"
 								const expired = isCompleted || isEventExpired(request)
-								const borderClass = isCompleted 
-									? 'border-2 border-blue-900 dark:border-blue-800 opacity-60' 
-									: expired 
-										? 'border-2 border-gray-400 dark:border-gray-600 opacity-60' 
-										: ''
+								
+								// Left border color based on status
+								let borderClass = ""
+								if (isCompleted) {
+									borderClass = 'border-l-4 border-l-blue-900 opacity-60'
+								} else if (expired) {
+									borderClass = 'border-l-4 border-l-gray-400 opacity-60'
+								} else if (request.status === "APPROVED") {
+									borderClass = 'border-l-4 border-l-green-500'
+								} else if (request.status === "PENDING") {
+									borderClass = 'border-l-4 border-l-yellow-500'
+								} else if (request.status === "REJECTED") {
+									borderClass = 'border-l-4 border-l-red-500'
+								}
+								
 								return (
 								<Card key={request.id} className={`hover:shadow-md transition-shadow cursor-pointer ${borderClass}`}>
 									<Link href={`/uni-staff/events-req/${request.id}`}>

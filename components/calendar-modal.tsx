@@ -134,18 +134,18 @@ export function CalendarModal({
   const getEventColor = (event: any) => {
     const status = event.status?.toUpperCase()
     
-    // Check if event is in the future (after today)
+    // Check if event is in the past (before today)
     const today = new Date()
     today.setHours(0, 0, 0, 0) // Reset to start of day for comparison
     const eventDate = event.date ? new Date(event.date) : null
-    const isFuture = eventDate && eventDate > today
+    const isPast = eventDate && eventDate < today
     
     // COMPLETED status always gets dark blue
     if (status === "COMPLETED")
       return "bg-gradient-to-br from-blue-900 to-blue-950 dark:from-blue-900 dark:to-blue-950 text-white dark:text-white border-blue-900 dark:border-blue-800 shadow-sm opacity-70"
     
-    // Future events get lighter colors
-    if (isFuture) {
+    // Past events get lighter colors
+    if (isPast) {
       if (status === "REJECTED")
         return "bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 text-red-600 dark:text-red-400 border-red-200 dark:border-red-700 shadow-sm opacity-60"
       if (status === "PENDING")
@@ -155,7 +155,7 @@ export function CalendarModal({
       return "bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-700 shadow-sm opacity-60"
     }
     
-    // Past/today events get normal colors
+    // Future/today events get normal vibrant colors
     if (status === "REJECTED")
       return "bg-gradient-to-br from-red-100 to-red-200 dark:from-red-900/40 dark:to-red-800/40 text-red-800 dark:text-red-300 border-red-400 dark:border-red-600 shadow-sm"
     if (status === "PENDING")
