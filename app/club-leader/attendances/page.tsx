@@ -14,21 +14,30 @@ import { getClubById, getClubIdFromToken } from "@/service/clubApi"
 import { fetchUserById, fetchProfile } from "@/service/userApi"
 import {
   Users, ChevronLeft, ChevronRight, CheckCircle, Filter, X, Calendar as CalendarIcon,
-  MessageSquare, Check, XCircle, Clock, AlertCircle,
+  MessageSquare, Check, XCircle, Clock, AlertCircle, Info,
 } from "lucide-react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Calendar } from "@/components/ui/calendar" // ✅ MỚI
+import { Calendar } from "@/components/ui/calendar"
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose,
-} from "@/components/ui/dialog" // ✅ MỚI
-import { Textarea } from "@/components/ui/textarea" // ✅ MỚI
-import { cn } from "@/lib/utils" // ✅ MỚI
-import { format } from "date-fns" // ✅ MỚI
+} from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
+import { cn } from "@/lib/utils"
+import { format } from "date-fns"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import {
+  fetchTodayClubAttendance,
+  fetchClubAttendanceHistory,
+  markClubAttendance,
+  markAllClubAttendance,
+  type AttendanceStatus as ApiAttendanceStatus, // Kiểu dữ liệu từ API (UPPERCASE)
+} from "@/service/attendanceApi"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
-type AttendanceStatus = "present" | "absent" | "late" | "excused"
+// type AttendanceStatus = "present" | "absent" | "late" | "excused"
+type PageAttendanceStatus = "present" | "absent" | "late" | "excused"
 interface Club {
   id: number
   name: string
@@ -44,12 +53,23 @@ interface ClubApiResponse {
   data: Club
 }
 interface Member {
-  id: string
+  id: number
   fullName: string
   studentCode: string
   avatarUrl: string | null
   role: string
   isStaff: boolean
+}
+// ✅ THAY ĐỔI: Dữ liệu trả về từ API (Giả định)
+// Dựa trên logic code, API của bạn CẦN trả về cấu trúc tương tự vầy
+interface AttendanceResponse {
+  sessionId: number
+  // sessionDate: string
+  attendances: {
+    membershipId: number
+    status: ApiAttendanceStatus // "PRESENT", "LATE", ...
+    note: string | null
+  }[]
 }
 export default function ClubAttendancePage() {
   const { toast } = useToast()
@@ -69,8 +89,11 @@ export default function ClubAttendancePage() {
   // --- ✅ MỚI: State cho tính năng nâng cao ---
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [isReadOnly, setIsReadOnly] = useState(false)
-  const [attendance, setAttendance] = useState<Record<string, AttendanceStatus>>({})
-  const [notes, setNotes] = useState<Record<string, string>>({})
+  const [sessionId, setSessionId] = useState<number | null>(null) // ✅ THAY ĐỔI: State mới để lưu sessionId
+  const [sessionError, setSessionError] = useState<string | null>(null) // ✅ THAY ĐỔI: State mới cho lỗi session
+
+  const [attendance, setAttendance] = useState<Record<number, PageAttendanceStatus>>({})
+  const [notes, setNotes] = useState<Record<number, string>>({})
   const [editingNoteMember, setEditingNoteMember] = useState<Member | null>(null)
   const [currentNote, setCurrentNote] = useState("")
   // State search và filter
@@ -101,7 +124,7 @@ export default function ClubAttendancePage() {
     loadBaseData()
   }, [])
 
-  // ✅ MỚI: useEffect này chạy mỗi khi clubId hoặc selectedDate thay đổi
+  // ✅ THAY ĐỔI: useEffect này chạy mỗi khi clubId hoặc selectedDate thay đổi
   useEffect(() => {
     if (!managedClub?.id) return
 
@@ -117,6 +140,8 @@ export default function ClubAttendancePage() {
     const loadMembersAndAttendance = async () => {
       setMembersLoading(true)
       setMembersError(null)
+      setSessionError(null) // ✅ THAY ĐỔI: Reset lỗi session
+      setSessionId(null) // ✅ THAY ĐỔI: Reset sessionId
 
       try {
         // 2. Fetch danh sách thành viên (giả sử không đổi)
@@ -140,25 +165,67 @@ export default function ClubAttendancePage() {
 
         // 3. ✅ Fetch dữ liệu điểm danh cho ngày đã chọn
         // BẠN SẼ CẦN API MỚI Ở ĐÂY, ví dụ:
-        const attendanceData: any = null // Giả lập là chưa có dữ liệu
+        // const attendanceData: any = null // Giả lập là chưa có dữ liệu
 
-        const initialAttendance: Record<string, AttendanceStatus> = {}
-        const initialNotes: Record<string, string> = {}
+        // 3. ✅ THAY ĐỔI: Fetch dữ liệu điểm danh cho ngày đã chọn
+        let attendanceData: AttendanceResponse | null = null
+        try {
+          if (isToday) {
+            // API lấy điểm danh HÔM NAY
+            attendanceData = (await fetchTodayClubAttendance(managedClub.id)) as AttendanceResponse
+          } else {
+            // API lấy lịch sử
+            const formattedDate = format(selectedDate, "yyyy-MM-dd")
+            attendanceData = (await fetchClubAttendanceHistory({
+              clubId: managedClub.id,
+              date: formattedDate,
+            })) as AttendanceResponse
+          }
+        } catch (apiErr: any) {
+          // Lỗi khi fetch điểm danh (ví dụ: 404 Not Found - không có buổi học)
+          console.error("Failed to fetch attendance session:", apiErr)
+          if (isToday) {
+            setSessionError(
+              "Could not find an attendance session for today. Attendance cannot be saved.",
+            )
+          } else {
+            setSessionError("No attendance records found for this date.")
+          }
+        }
 
-        if (attendanceData && attendanceData.records) {
+        const initialAttendance: Record<number, PageAttendanceStatus> = {}
+        const initialNotes: Record<number, string> = {}
+
+        if (attendanceData && attendanceData.attendances) {
+          // ✅ THAY ĐỔI: Lấy sessionId từ data
+          setSessionId(attendanceData.sessionId)
           // Nếu có dữ liệu từ API
-          attendanceData.records.forEach((record: any) => {
-            initialAttendance[record.memberId] = record.status
-            initialNotes[record.memberId] = record.note || ""
+          attendanceData.attendances.forEach((record: any) => {
+            // Chuyển status từ UPPERCASE (API) sang lowercase (Page state)
+            const status = (record.status?.toLowerCase() || "absent") as PageAttendanceStatus
+            initialAttendance[record.membershipId] = status
+            initialNotes[record.membershipId] = record.note || ""
+          })
+          // Gán trạng thái mặc định cho các member không có trong record
+          membersData.forEach((m: any) => {
+            if (m.membershipId && !initialAttendance[m.membershipId]) {
+              initialAttendance[m.membershipId] = "absent" // Mặc định là vắng mặt
+              initialNotes[m.membershipId] = ""
+            }
           })
         } else {
-          // Nếu không có dữ liệu (hoặc là ngày hôm nay, chưa điểm danh)
+          // Không có dữ liệu (hoặc lỗi 404)
+          // Set mặc định cho tất cả thành viên
           membersData.forEach((m: any) => {
-            const id = m.membershipId ?? `m-${m.userId}`
-            initialAttendance[id] = "absent" // Mặc định là vắng mặt
-            initialNotes[id] = ""
+            if (m.membershipId) {
+              const id = m.membershipId
+              initialAttendance[id] = "absent" // Mặc định là vắng mặt
+              initialNotes[id] = ""
+            }
           })
+          // `sessionId` vẫn là `null`
         }
+
         setAttendance(initialAttendance)
         setNotes(initialNotes)
       } catch (err: any) {
@@ -169,24 +236,35 @@ export default function ClubAttendancePage() {
     }
 
     loadMembersAndAttendance()
-  }, [managedClub, selectedDate]) // ✅ Chạy lại khi đổi ngày
+  }, [managedClub, selectedDate, apiMembers]) // ✅ THAY ĐỔI: Thêm apiMembers
 
   // Lọc thành viên active
-  const clubMembers = managedClub
-    ? apiMembers
-      .filter((m: any) => String(m.clubId) === String(managedClub.id) && m.state === "ACTIVE" && m.userId !== userId)
-      .map((m: any) => {
-        const u = m.userInfo || {}
-        return {
-          id: m.membershipId ?? `m-${m.userId}`,
-          fullName: u.fullName ?? m.fullName ?? `User ${m.userId}`,
-          studentCode: m.studentCode ?? "—",
-          avatarUrl: m.avatarUrl ?? null,
-          role: m.clubRole ?? "MEMBER",
-          isStaff: m.staff ?? false,
-        }
-      })
-    : []
+  const clubMembers = useMemo(
+    () =>
+      managedClub
+        ? apiMembers
+          // ✅ THAY ĐỔI: Lọc member có membershipId
+          .filter(
+            (m: any) =>
+              m.membershipId &&
+              String(m.clubId) === String(managedClub.id) &&
+              m.state === "ACTIVE" &&
+              m.userId !== userId,
+          )
+          .map((m: any) => {
+            const u = m.userInfo || {}
+            return {
+              id: m.membershipId, // ✅ THAY ĐỔI: Dùng membershipId làm ID
+              fullName: u.fullName ?? m.fullName ?? `User ${m.userId}`,
+              studentCode: m.studentCode ?? "—",
+              avatarUrl: m.avatarUrl ?? null,
+              role: m.clubRole ?? "MEMBER",
+              isStaff: m.staff ?? false,
+            }
+          })
+        : [],
+    [managedClub, apiMembers, userId],
+  )
   const filteredMembers = clubMembers.filter((member) => {
     // 1. Lọc tìm kiếm
     if (searchTerm) {
@@ -208,7 +286,6 @@ export default function ClubAttendancePage() {
       const isStaff = staffFilter === "true"
       if (member.isStaff !== isStaff) return false
     }
-
     return true
   })
   const handleFilterChange = (filterKey: string, value: any) => {
@@ -231,44 +308,45 @@ export default function ClubAttendancePage() {
     setCurrentPage: setMembersPage,
   } = usePagination({ data: filteredMembers, initialPageSize: 6 })
 
-  // const handleToggleAttendance = (memberId: string) => {
-  //   setAttendance((prev) => ({ ...prev, [memberId]: !prev[memberId] }))
-  // }
-  const handleStatusChange = (memberId: string, status: AttendanceStatus) => {
-    if (isReadOnly) return
+  /// ✅ THAY ĐỔI: Hàm này giờ sẽ gọi API `markClubAttendance`
+  const handleStatusChange = async (memberId: number, status: PageAttendanceStatus) => {
+    // 1. Nếu đang ở chế độ chỉ đọc (ngày quá khứ), không làm gì cả
+    if (isReadOnly) return;
+    // 2. Nếu không phải chế độ chỉ đọc (là hôm nay) NHƯNG không có sessionId
+    if (!sessionId) {
+      toast({
+        variant: "destructive",
+        title: "Session Not Found",
+        description: "Cannot save, attendance session not found.",
+      });
+      return;
+    }
+    // Cập nhật UI trước (Optimistic Update)
+    const oldStatus = attendance[memberId]
     setAttendance((prev) => ({ ...prev, [memberId]: status }))
-  }
-  // const handleSaveAttendance = async () => {
-  //   const attended = Object.entries(attendance)
-  //     .filter(([_, present]) => present)
-  //     .map(([id]) => id)
-  //   // 🔥 Sau này bạn có thể gọi API ở đây, ví dụ:
-  //   // await attendanceApi.saveAttendance({ clubId: managedClub.id, attendedMefmbers: attended })
-  //   toast({
-  //     title: "Attendance Saved",
-  //     description: `${attended.length} members marked as present (${today}).`,
-  //   })
-  // }
-  const handleSaveAttendance = async () => {
-    if (isReadOnly) return
-    // Tạo payload gửi đi
-    const records = Object.entries(attendance).map(([memberId, status]) => ({
-      memberId,
-      status,
-      note: notes[memberId] || "",
-    }))
 
-    // 🔥 Sau này bạn có thể gọi API ở đây, ví dụ:
-    // await attendanceApi.saveAttendance({
-    //   clubId: managedClub.id,
-    //   date: selectedDate,
-    //   records: records
-    // })
+    try {
+      // Gọi API
+      await markClubAttendance({
+        sessionId: sessionId,
+        membershipId: memberId,
+        status: status.toUpperCase() as ApiAttendanceStatus, // Chuyển sang UPPERCASE
+        note: notes[memberId] || "", // Gửi kèm note hiện tại
+      })
 
-    toast({
-      title: "Attendance Saved",
-      description: `Attendance for ${format(selectedDate, "PPP")} has been saved.`,
-    })
+      toast({
+        title: "Status Updated",
+        description: `Marked member as ${status}.`,
+      })
+    } catch (err) {
+      // Hoàn tác lại nếu lỗi
+      setAttendance((prev) => ({ ...prev, [memberId]: oldStatus }))
+      toast({
+        variant: "destructive",
+        title: "Update Failed",
+        description: "Could not update attendance status. Please try again.",
+      })
+    }
   }
 
   // ✅ MỚI: Thống kê nhanh
@@ -300,21 +378,97 @@ export default function ClubAttendancePage() {
   }, [attendance, filteredMembers])
 
   // ✅ MỚI: Hành động hàng loạt
-  const handleBulkAction = (status: "present" | "absent") => {
-    if (isReadOnly) return
+  // ✅ THAY ĐỔI: Hành động hàng loạt, gọi API `markAllClubAttendance`
+  const handleBulkAction = async (status: "present" | "absent") => {
+    // 1. Nếu đang ở chế độ chỉ đọc (ngày quá khứ), không làm gì cả
+    if (isReadOnly) return;
+    // 2. Nếu không phải chế độ chỉ đọc (là hôm nay) NHƯNG không có sessionId
+    if (!sessionId) {
+      toast({
+        variant: "destructive",
+        title: "Session Not Found",
+        description: "Cannot save, attendance session not found.",
+      });
+      return;
+    }
+
+    // Cập nhật UI trước (Optimistic Update)
+    const oldAttendance = { ...attendance }
     const newAttendance = { ...attendance }
     filteredMembers.forEach((member) => {
       newAttendance[member.id] = status
     })
     setAttendance(newAttendance)
+
+    try {
+      // Gọi API
+      await markAllClubAttendance({
+        sessionId: sessionId,
+        status: status.toUpperCase() as ApiAttendanceStatus, // Chuyển sang UPPERCASE
+      })
+      toast({
+        title: "Bulk Update Successful",
+        description: `Marked all filtered members as ${status}.`,
+      })
+    } catch (err) {
+      // Hoàn tác nếu lỗi
+      setAttendance(oldAttendance)
+      toast({
+        variant: "destructive",
+        title: "Bulk Update Failed",
+        description: "Could not update all members. Please try again.",
+      })
+    }
   }
+
   // ✅ MỚI: Xử lý lưu ghi chú
-  const handleSaveNote = () => {
-    if (isReadOnly || !editingNoteMember) return
-    setNotes((prev) => ({ ...prev, [editingNoteMember.id]: currentNote }))
-    setEditingNoteMember(null)
-    setCurrentNote("")
+  // ✅ THAY ĐỔI: Xử lý lưu ghi chú, gọi API `markClubAttendance`
+  const handleSaveNote = async () => {
+    // 1. Nếu đang ở chế độ chỉ đọc hoặc không có thành viên nào đang được sửa, không làm gì cả
+    if (isReadOnly || !editingNoteMember) return;
+    // 2. Nếu không phải chế độ chỉ đọc (là hôm nay) NHƯNG không có sessionId
+    if (!sessionId) {
+      toast({
+        variant: "destructive",
+        title: "Session Not Found",
+        description: "Cannot save note, attendance session not found.",
+      });
+      return;
+    }
+    const memberId = editingNoteMember.id
+    const oldNote = notes[memberId]
+    const currentStatus = (attendance[memberId] || "absent") as PageAttendanceStatus
+
+    // Cập nhật UI trước
+    setNotes((prev) => ({ ...prev, [memberId]: currentNote }))
+    setEditingNoteMember(null) // Đóng dialog
+
+    try {
+      // Gọi API
+      await markClubAttendance({
+        sessionId: sessionId,
+        membershipId: memberId,
+        status: currentStatus.toUpperCase() as ApiAttendanceStatus, // Gửi status hiện tại
+        note: currentNote, // Gửi note mới
+      })
+      toast({
+        title: "Note Saved",
+        description: `Note for ${editingNoteMember.fullName} has been saved.`,
+      })
+    } catch (err) {
+      // Hoàn tác nếu lỗi
+      setNotes((prev) => ({ ...prev, [memberId]: oldNote }))
+      toast({
+        variant: "destructive",
+        title: "Save Note Failed",
+        description: "Could not save note. Please try again.",
+      })
+    } finally {
+      // Dọn dẹp state
+      setCurrentNote("")
+    }
   }
+
   const MinimalPager = ({ current, total, onPrev, onNext }: any) =>
     total > 1 ? (
       <div className="flex items-center justify-center gap-3 mt-4">
@@ -394,6 +548,7 @@ export default function ClubAttendancePage() {
                   selected={selectedDate}
                   onSelect={(date) => setSelectedDate(date || new Date())}
                   initialFocus
+                  disabled={(date) => date > new Date()} // ✅ THAY ĐỔI: Không cho chọn ngày tương lai
                 />
               </PopoverContent>
             </Popover>
@@ -491,7 +646,34 @@ export default function ClubAttendancePage() {
           )}
         </div>
 
-        {/* ✅ MỚI: Thống kê nhanh và Hành động hàng loạt */}
+        {/* ✅ THAY ĐỔI: Thêm cảnh báo nếu không có sessionId hoặc readonly */}
+        {isReadOnly && (
+          <Alert variant="default" className="mb-4 bg-gray-100 border-gray-300">
+            <Info className="h-4 w-4 text-gray-700" />
+            <AlertTitle>Read-Only Mode</AlertTitle>
+            <AlertDescription>
+              You are viewing attendance for a past date. Changes cannot be made.
+            </AlertDescription>
+          </Alert>
+        )}
+        {sessionError && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Session Error</AlertTitle>
+            <AlertDescription>{sessionError}</AlertDescription>
+          </Alert>
+        )}
+        {!isReadOnly && sessionId && (
+          <Alert variant="default" className="mb-4 bg-blue-50 border-blue-200">
+            <Info className="h-4 w-4 text-blue-700" />
+            <AlertTitle>Auto-Save is Active</AlertTitle>
+            <AlertDescription>
+              Attendance session is active (ID: {sessionId}). All changes are saved automatically.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Thống kê nhanh và Hành động hàng loạt */}
         {!membersLoading && filteredMembers.length > 0 && (
           <Card className="mb-4">
             <CardContent className="p-4 flex flex-wrap items-center justify-between gap-4">
@@ -511,10 +693,14 @@ export default function ClubAttendancePage() {
                 </span>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => handleBulkAction("present")} disabled={isReadOnly}>
+                <Button variant="outline" size="sm" onClick={() => handleBulkAction("present")}
+                  disabled={isReadOnly || !sessionId} // ✅ THAY ĐỔI: Disable nếu không có session
+                >
                   Mark All Present
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => handleBulkAction("absent")} disabled={isReadOnly}>
+                <Button variant="outline" size="sm" onClick={() => handleBulkAction("absent")}
+                  disabled={isReadOnly || !sessionId} // ✅ THAY ĐỔI: Disable nếu không có session
+                >
                   Mark All Absent
                 </Button>
               </div>
@@ -584,7 +770,7 @@ export default function ClubAttendancePage() {
                           setEditingNoteMember(member)
                           setCurrentNote(notes[member.id] || "")
                         }}
-                        disabled={isReadOnly}
+                        disabled={isReadOnly || !sessionId} // ✅ THAY ĐỔI: Disable nếu không có session
                         className={cn(
                           "relative text-muted-foreground hover:text-primary",
                           notes[member.id] && "text-blue-500 hover:text-blue-600",
@@ -599,8 +785,8 @@ export default function ClubAttendancePage() {
                       {/* Select Trạng thái */}
                       <Select
                         value={attendance[member.id] || "absent"}
-                        onValueChange={(value: AttendanceStatus) => handleStatusChange(member.id, value)}
-                        disabled={isReadOnly}
+                        onValueChange={(value: PageAttendanceStatus) => handleStatusChange(member.id, value)}
+                        disabled={isReadOnly || !sessionId} // ✅ THAY ĐỔI: Disable nếu không có session
                       >
                         <SelectTrigger
                           className={cn(
@@ -650,12 +836,12 @@ export default function ClubAttendancePage() {
               />
 
               {/* ✅ Nút lưu điểm danh */}
-              <div className="flex justify-end mt-6">
+              {/* <div className="flex justify-end mt-6">
                 <Button onClick={handleSaveAttendance} className="flex items-center gap-2 mr-10 mb-5">
                   <CheckCircle className="h-4 w-4" />
                   Save Attendance
                 </Button>
-              </div>
+              </div> */}
             </>
           )}
         </div>
@@ -678,7 +864,7 @@ export default function ClubAttendancePage() {
               value={currentNote}
               onChange={(e) => setCurrentNote(e.target.value)}
               rows={4}
-              disabled={isReadOnly}
+              disabled={isReadOnly || !sessionId} // ✅ THAY ĐỔI: Disable
             />
             <DialogFooter>
               <DialogClose asChild>
