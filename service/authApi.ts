@@ -54,6 +54,22 @@ export const handleGoogleCallback = async (code: string) => {
   }
 }
 
+// Google OAuth Response from backend (wrapped in success/data format)
+export interface GoogleAuthResponse {
+  success: boolean
+  message: string
+  data: {
+    token: string
+    email: string
+    fullName: string
+    avatar?: string
+    userId?: number | string
+    role?: string
+    staff?: boolean
+    clubIds?: number[]
+  }
+}
+
 export const loginWithGoogleToken = async (credentials: { token: string }): Promise<LoginResponse> => {
   try {
     console.log("🚀 Sending Google token to backend:", {
@@ -62,16 +78,50 @@ export const loginWithGoogleToken = async (credentials: { token: string }): Prom
       tokenStart: credentials.token?.substring(0, 20) + "..."
     })
 
-    const response = await axiosInstance.post<LoginResponse>("/auth/google", credentials)
-    return response.data
+    const response = await axiosInstance.post<GoogleAuthResponse>("/auth/google", credentials)
+    
+    console.log("✅ Google OAuth Response:", {
+      success: response.data.success,
+      message: response.data.message,
+      hasToken: !!response.data.data?.token,
+      email: response.data.data?.email,
+      fullName: response.data.data?.fullName,
+    })
+
+    // Check if response is successful
+    if (!response.data.success || !response.data.data) {
+      throw new Error(response.data.message || "Google authentication failed")
+    }
+
+    // Transform Google OAuth response to LoginResponse format
+    const userData = response.data.data
+    return {
+      token: userData.token,
+      userId: userData.userId || 0, // Backend might not return userId immediately
+      email: userData.email,
+      fullName: userData.fullName,
+      role: userData.role || "student", // Default to student if not provided
+      staff: userData.staff || false,
+      clubIds: userData.clubIds || [],
+    }
   } catch (error: any) {
     console.error("❌ Error during Google token login:", {
       status: error.response?.status,
       statusText: error.response?.statusText,
       data: error.response?.data,
       url: error.config?.url,
-      method: error.config?.method
+      method: error.config?.method,
+      message: error.message
     })
+
+    // Re-throw with more specific error message
+    if (error.response?.status === 401) {
+      throw new Error("Invalid Google token or authentication failed")
+    } else if (error.response?.status === 400) {
+      throw new Error(error.response?.data?.message || "Missing or invalid Google token")
+    } else if (error.response?.data?.message) {
+      throw new Error(error.response.data.message)
+    }
 
     throw error
   }

@@ -21,7 +21,7 @@ import { QrCode } from "lucide-react"
 import QRCode from "qrcode"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
-import { createEvent, timeObjectToString } from "@/service/eventApi"
+import { createEvent, timeObjectToString, timeStringToObject } from "@/service/eventApi"
 import { generateCode } from "@/service/checkinApi"
 import { safeLocalStorage } from "@/lib/browser-utils"
 import { fetchLocation } from "@/service/locationApi"
@@ -314,6 +314,7 @@ export default function ClubLeaderEventsPage() {
     locationId: 0,
     maxCheckInCount: 100,
     commitPointCost: 0,
+    budgetPoints: 0,
   })
 
   // Update formData clubId when userClubId changes
@@ -418,7 +419,7 @@ export default function ClubLeaderEventsPage() {
   }) || Boolean(searchTerm)
 
   const resetForm = () => {
-    setFormData({ clubId: userClubId || 0, name: "", description: "", type: "PUBLIC", date: "", startTime: "09:00:00", endTime: "11:00:00", locationId: 0, maxCheckInCount: 100, commitPointCost: 0 })
+    setFormData({ clubId: userClubId || 0, name: "", description: "", type: "PUBLIC", date: "", startTime: "09:00:00", endTime: "11:00:00", locationId: 0, maxCheckInCount: 100, commitPointCost: 0, budgetPoints: 0 })
     setSelectedLocationId("")
     setSelectedLocationCapacity(null)
     setSelectedCoHostClubIds([])
@@ -445,18 +446,22 @@ export default function ClubLeaderEventsPage() {
     try {
       const hostClubId = Number(formData.clubId)
       
-      // Backend expects string format for LocalTime, not object format
+      // Convert string time to TimeObject format
+      const startTimeObj = timeStringToObject(formData.startTime)
+      const endTimeObj = timeStringToObject(formData.endTime)
+      
       const payload: any = {
         hostClubId,
         name: formData.name,
         description: formData.description,
         type: formData.type as "PUBLIC" | "PRIVATE",
         date: formData.date,
-        startTime: formData.startTime, // Send as string "HH:MM:SS"
-        endTime: formData.endTime,     // Send as string "HH:MM:SS"
+        startTime: startTimeObj,
+        endTime: endTimeObj,
         locationId: formData.locationId,
         maxCheckInCount: formData.maxCheckInCount,
         commitPointCost: formData.commitPointCost,
+        budgetPoints: formData.budgetPoints,
       }
 
       // Add coHostClubIds if any are selected
@@ -1185,6 +1190,21 @@ export default function ClubLeaderEventsPage() {
                     type="number"
                     value={formData.commitPointCost}
                     onChange={(e) => setFormData({ ...formData, commitPointCost: Number.parseInt(e.target.value) || 0 })}
+                    className="h-9"
+                    placeholder="0"
+                    min="0"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="budgetPoints" className="text-sm">Budget Points</Label>
+                  <Input
+                    id="budgetPoints"
+                    type="number"
+                    value={formData.budgetPoints}
+                    onChange={(e) => setFormData({ ...formData, budgetPoints: Number.parseInt(e.target.value) || 0 })}
                     className="h-9"
                     placeholder="0"
                     min="0"

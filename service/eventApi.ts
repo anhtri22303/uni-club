@@ -21,6 +21,7 @@ export interface Event {
   locationName: string
   maxCheckInCount: number
   currentCheckInCount: number
+  budgetPoints: number
   hostClub: {
     id: number
     name: string
@@ -43,13 +44,14 @@ export interface CreateEventPayload {
   description: string
   type: "PUBLIC" | "PRIVATE"
   date: string
-  startTime: string  // Backend expects string format "HH:MM:SS", not TimeObject
-  endTime: string    // Backend expects string format "HH:MM:SS", not TimeObject
+  startTime: string  // Form uses string format, converted to TimeObject before API call
+  endTime: string    // Form uses string format, converted to TimeObject before API call
   locationId: number
   maxCheckInCount: number
   hostClubId: number
   coHostClubIds?: number[]
   commitPointCost: number
+  budgetPoints: number
 }
 
 // Helper function to convert time string (HH:MM:SS or HH:MM) to TimeObject
