@@ -51,7 +51,7 @@ export default function MemberClubsPage() {
   const [newProposerReason, setNewProposerReason] = useState("")
 
   // ✅ USE REACT QUERY instead of manual state
-  const { data: clubs = [], isLoading: loading, error: queryError } = useClubs({ page: 0, size: 100, sort: ["name"] })
+  const { data: clubs = [], isLoading: loading, error: queryError } = useClubs({ page: 0, size: 70, sort: ["name"] })
   const clubIds = clubs.map((club: ClubApiItem) => club.id)
   const { data: memberCounts = {}, isLoading: memberCountsLoading } = useClubMemberCounts(clubIds)
   

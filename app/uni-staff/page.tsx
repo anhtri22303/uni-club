@@ -6,9 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { usePagination } from "@/hooks/use-pagination"
-import { useData } from "@/contexts/data-context"
 import { 
-  usePolicies, 
+  // usePolicies, 
   useEvents, 
   useClubs, 
   useClubApplications,
@@ -17,7 +16,8 @@ import {
   useAttendanceRanking
 } from "@/hooks/use-query-hooks"
 import { getClubMemberCount } from "@/service/clubApi"
-import { useEffect, useState, useMemo } from "react"
+import { timeObjectToString } from "@/service/eventApi"
+import { useEffect, useState, useMemo, useRef } from "react"
 import { useRouter } from "next/navigation"
 import {
   Calendar,
@@ -44,14 +44,22 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { BarChart3, List } from "lucide-react"
 
 export default function UniStaffReportsPage() {
-  const { eventRequests, updateEventRequests } = useData()
   const router = useRouter()
+  const isMountedRef = useRef(true)
 
   // ✅ USE REACT QUERY for all data fetching
   const { data: events = [], isLoading: eventsLoading } = useEvents()
   const { data: clubs = [], isLoading: clubsLoading } = useClubs()
-  const { data: policies = [] } = usePolicies()
+  // const { data: policies = [] } = usePolicies() // COMMENTED OUT
+  const policies: any[] = [] // Mock data for policies
   const { data: clubApplications = [], isLoading: clubAppsLoading } = useClubApplications()
+  
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
 
   // State management - Event filters
   const [eventStatusFilter, setEventStatusFilter] = useState<string>("PENDING")
@@ -60,8 +68,8 @@ export default function UniStaffReportsPage() {
   // State management - Club Application filter
   const [clubAppStatusFilter, setClubAppStatusFilter] = useState<string>("PENDING")
 
-  // State management - Clubs with member count
-  const [clubsWithMemberCount, setClubsWithMemberCount] = useState<any[]>([])
+  // State management - Clubs with member count (unsorted)
+  const [clubsWithMemberCountUnsorted, setClubsWithMemberCountUnsorted] = useState<any[]>([])
 
   // State management - Club sorting
   const [clubSortField, setClubSortField] = useState<"rank" | "points" | "members">("rank")
@@ -76,12 +84,6 @@ export default function UniStaffReportsPage() {
   const { data: attendanceSummary, isLoading: summaryLoading } = useAttendanceSummary(attendanceYear)
   const { data: attendanceRanking, isLoading: rankingLoading } = useAttendanceRanking()
 
-  // Update event requests when events are loaded (for legacy compatibility)
-  useEffect(() => {
-    if (events.length > 0) {
-      updateEventRequests(events || [])
-    }
-  }, [events, updateEventRequests])
 
   // Reset month filter when year changes
   useEffect(() => {
@@ -91,8 +93,10 @@ export default function UniStaffReportsPage() {
   // Fetch member count for each club and merge with points data
   useEffect(() => {
     const fetchMemberCounts = async () => {
-      if (clubs.length === 0 || !universityPointsData) {
-        setClubsWithMemberCount([])
+      if (clubs.length === 0) {
+        if (isMountedRef.current) {
+          setClubsWithMemberCountUnsorted([])
+        }
         return
       }
 
@@ -102,7 +106,7 @@ export default function UniStaffReportsPage() {
             const { activeMemberCount } = await getClubMemberCount(club.id)
             
             // Find matching ranking data
-            const rankingData = universityPointsData?.clubRankings.find(
+            const rankingData = universityPointsData?.clubRankings?.find(
               (ranking) => ranking.clubId === club.id
             )
             
@@ -126,36 +130,53 @@ export default function UniStaffReportsPage() {
         })
       )
 
-      // Sort clubs based on selected field and order
-      const sortedClubs = clubsWithCounts.sort((a, b) => {
-        let comparison = 0
-
-        if (clubSortField === "rank") {
-          // Sort by rank
-          const rankA = a.rank !== undefined ? a.rank : Infinity
-          const rankB = b.rank !== undefined ? b.rank : Infinity
-          comparison = rankA - rankB
-        } else if (clubSortField === "points") {
-          // Sort by total points
-          comparison = (a.totalPoints || 0) - (b.totalPoints || 0)
-        } else if (clubSortField === "members") {
-          // Sort by member count
-          comparison = (a.memberCount || 0) - (b.memberCount || 0)
-        }
-
-        // Apply sort order (asc or desc)
-        return clubSortOrder === "desc" ? -comparison : comparison
-      })
-      setClubsWithMemberCount(sortedClubs)
+      if (isMountedRef.current) {
+        setClubsWithMemberCountUnsorted(prevClubs => {
+          // Only update if data actually changed to prevent unnecessary re-renders
+          if (JSON.stringify(prevClubs) === JSON.stringify(clubsWithCounts)) {
+            return prevClubs
+          }
+          return clubsWithCounts
+        })
+      }
     }
 
     fetchMemberCounts()
-  }, [clubs, universityPointsData, clubSortField, clubSortOrder])
+  }, [clubs, universityPointsData])
+  
+  // Sort clubs using useMemo to avoid infinite loops
+  const clubsWithMemberCount = useMemo(() => {
+    if (clubsWithMemberCountUnsorted.length === 0) return []
+    
+    // Create a copy to avoid mutating state directly
+    const clubsCopy = [...clubsWithMemberCountUnsorted]
+    
+    // Sort clubs based on selected field and order
+    return clubsCopy.sort((a, b) => {
+      let comparison = 0
+
+      if (clubSortField === "rank") {
+        // Sort by rank
+        const rankA = a.rank !== undefined ? a.rank : Infinity
+        const rankB = b.rank !== undefined ? b.rank : Infinity
+        comparison = rankA - rankB
+      } else if (clubSortField === "points") {
+        // Sort by total points
+        comparison = (a.totalPoints || 0) - (b.totalPoints || 0)
+      } else if (clubSortField === "members") {
+        // Sort by member count
+        comparison = (a.memberCount || 0) - (b.memberCount || 0)
+      }
+
+      // Apply sort order (asc or desc)
+      return clubSortOrder === "desc" ? -comparison : comparison
+    })
+  }, [clubsWithMemberCountUnsorted, clubSortField, clubSortOrder])
 
   const totalClubs = clubs.length
   const totalPolicies = policies.length
   const totalClubApplications = clubApplications.length
-  const totalEventRequests = eventRequests.length
+  const totalEventRequests = events.length
   
   // Count approved club applications
   const approvedClubApplications = clubApplications.filter((app: any) => app.status === "APPROVED").length
@@ -175,7 +196,8 @@ export default function UniStaffReportsPage() {
       try {
         const eventDate = new Date(event.date)
         if (event.endTime) {
-          const [hours, minutes] = event.endTime.split(':')
+          const endTimeStr = timeObjectToString(event.endTime)
+          const [hours, minutes] = endTimeStr.split(':')
           eventDate.setHours(parseInt(hours), parseInt(minutes))
         }
         return eventDate >= now || (eventDate.toDateString() === now.toDateString())
@@ -194,7 +216,8 @@ export default function UniStaffReportsPage() {
       try {
         const eventDate = new Date(event.date)
         if (event.endTime) {
-          const [hours, minutes] = event.endTime.split(':')
+          const endTimeStr = timeObjectToString(event.endTime)
+          const [hours, minutes] = endTimeStr.split(':')
           eventDate.setHours(parseInt(hours), parseInt(minutes))
         }
         return eventDate >= now || (eventDate.toDateString() === now.toDateString())
@@ -213,7 +236,8 @@ export default function UniStaffReportsPage() {
       try {
         const eventDate = new Date(event.date)
         if (event.endTime) {
-          const [hours, minutes] = event.endTime.split(':')
+          const endTimeStr = timeObjectToString(event.endTime)
+          const [hours, minutes] = endTimeStr.split(':')
           eventDate.setHours(parseInt(hours), parseInt(minutes))
         }
         return eventDate >= now || (eventDate.toDateString() === now.toDateString())
@@ -261,7 +285,8 @@ export default function UniStaffReportsPage() {
         
         // If there's an endTime, combine date and endTime for evaluation
         if (event.endTime) {
-          const [hours, minutes] = event.endTime.split(':')
+          const endTimeStr = timeObjectToString(event.endTime)
+          const [hours, minutes] = endTimeStr.split(':')
           eventDate.setHours(parseInt(hours), parseInt(minutes))
         }
         
@@ -658,7 +683,7 @@ export default function UniStaffReportsPage() {
                                 <Clock className="h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0" />
                                 <span className="truncate">
                                 {formattedDate} {event.time || ""}
-                                {event.endTime && <span>- {event.endTime}</span>}
+                                {event.endTime && <span>- {timeObjectToString(event.endTime)}</span>}
                                 </span>
                               </span>
                               <span className="truncate">{event.locationName || "Location not specified"}</span>

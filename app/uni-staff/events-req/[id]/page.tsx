@@ -21,7 +21,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { useState, useEffect } from "react"
-import { getEventById, putEventStatus } from "@/service/eventApi"
+import { getEventById, putEventStatus, getEventWallet, EventWallet } from "@/service/eventApi"
 import { useToast } from "@/hooks/use-toast"
 import { renderTypeBadge } from "@/lib/eventUtils"
 import { getLocationById } from "@/service/locationApi"
@@ -45,6 +45,8 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
   const [clubError, setClubError] = useState<string | null>(null)
   const { toast } = useToast()
   const [processing, setProcessing] = useState(false)
+  const [wallet, setWallet] = useState<EventWallet | null>(null)
+  const [walletLoading, setWalletLoading] = useState(false)
 
   useEffect(() => {
     let mounted = true
@@ -55,6 +57,19 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
         const data: any = await getEventById(params.id)
         if (!mounted) return
         setRequest(data)
+
+        // Fetch wallet data
+        try {
+          setWalletLoading(true)
+          const walletData = await getEventWallet(params.id)
+          if (mounted) setWallet(walletData)
+        } catch (walletError) {
+          console.error("Failed to load wallet:", walletError)
+          // Don't show error toast for wallet, it's not critical
+        } finally {
+          if (mounted) setWalletLoading(false)
+        }
+
         // if the event has a locationId, fetch that location
         if (data && (data.locationId || data.venueId || data.location)) {
           const locId = data.locationId ?? data.venueId ?? data.location
@@ -142,21 +157,21 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
     switch (status) {
       case "PENDING":
         return (
-          <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300">
+          <Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-500">
             <Clock className="h-3 w-3 mr-1" />
             Pending
           </Badge>
         )
       case "APPROVED":
         return (
-          <Badge variant="default" className="bg-green-100 text-green-700 border-green-300">
+          <Badge variant="default" className="bg-green-100 text-green-700 border-green-500">
             <CheckCircle className="h-3 w-3 mr-1" />
             Approved
           </Badge>
         )
       case "REJECTED":
         return (
-          <Badge variant="destructive" className="bg-red-100 text-red-700 border-red-300">
+          <Badge variant="destructive" className="bg-red-100 text-red-700 border-red-500">
             <XCircle className="h-3 w-3 mr-1" />
             Rejected
           </Badge>
@@ -333,7 +348,7 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
 
                   {/* Check-in Capacity - only show if available */}
                   {request.maxCheckInCount !== undefined && request.currentCheckInCount !== undefined && (
-                    <div className="grid grid-cols-3 gap-4 mt-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
                       <div>
                         <label className="text-sm font-medium text-muted-foreground">Max Capacity</label>
                         <div className="flex items-center gap-2 mt-1">
@@ -355,6 +370,18 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                           <span className="font-semibold">{request.maxCheckInCount - request.currentCheckInCount} remaining</span>
                         </div>
                       </div>
+                      <div className="p-3 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-200">
+                        <label className="text-sm text-green-700 font-medium">Wallet Balance</label>
+                        <div className="font-semibold text-green-800 mt-1">
+                          {walletLoading ? (
+                            <span className="text-muted-foreground">Loading...</span>
+                          ) : wallet ? (
+                            `${wallet.walletBalance} points`
+                          ) : (
+                            <span className="text-muted-foreground">N/A</span>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   )}
 
@@ -370,7 +397,18 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                               <span className="font-medium">{club.name}</span>
                               <span className="text-sm text-muted-foreground">(#{club.id})</span>
                             </div>
-                            <Badge variant={club.coHostStatus === "APPROVED" ? "default" : "secondary"}>
+                            <Badge 
+                              variant="outline"
+                              className={
+                                club.coHostStatus === "APPROVED"
+                                  ? "bg-green-100 text-green-700 border-green-500"
+                                  : club.coHostStatus === "REJECTED"
+                                  ? "bg-red-100 text-red-700 border-red-500"
+                                  : club.coHostStatus === "PENDING"
+                                  ? "bg-yellow-100 text-yellow-700 border-yellow-500"
+                                  : ""
+                              }
+                            >
                               {club.coHostStatus}
                             </Badge>
                           </div>

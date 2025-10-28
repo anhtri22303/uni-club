@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { ArrowLeft, Calendar, Clock, MapPin, Users, Eye, XCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { getEventById } from "@/service/eventApi"
+import { getEventById, timeObjectToString } from "@/service/eventApi"
 import { AppShell } from "@/components/app-shell"
 import { ProtectedRoute } from "@/contexts/protected-route"
 import { LoadingSkeleton } from "@/components/loading-skeleton"
@@ -199,7 +199,7 @@ export default function EventDetailPage() {
                       <div>
                         <div className="font-medium">
                           {event.startTime && event.endTime 
-                            ? `${event.startTime} - ${event.endTime}`
+                            ? `${timeObjectToString(event.startTime)} - ${timeObjectToString(event.endTime)}`
                             : event.time || "Time not set"}
                         </div>
                         <div className="text-sm text-muted-foreground">Event Duration</div>

@@ -11,7 +11,7 @@ interface AvatarCropModalProps {
   isOpen: boolean
   onClose: () => void
   imageSrc: string
-  onCropComplete: (croppedBlob: Blob) => void
+  onCropComplete: (croppedBlob: Blob) => void | Promise<void>
 }
 
 function getCroppedImg(
@@ -93,11 +93,11 @@ export function AvatarCropModal({ isOpen, onClose, imageSrc, onCropComplete }: A
     try {
       setIsProcessing(true)
       const croppedBlob = await getCroppedImg(imgRef.current, completedCrop)
-      onCropComplete(croppedBlob)
+      await onCropComplete(croppedBlob)
+      // Modal will close after upload completes
       onClose()
     } catch (error) {
-      console.error('Error cropping image:', error)
-    } finally {
+      console.error('Error cropping/uploading image:', error)
       setIsProcessing(false)
     }
   }
@@ -160,7 +160,7 @@ export function AvatarCropModal({ isOpen, onClose, imageSrc, onCropComplete }: A
               ) : (
                 <CropIcon className="h-4 w-4 mr-2" />
               )}
-              {isProcessing ? 'Processing...' : 'Crop Image'}
+              {isProcessing ? 'Uploading...' : 'Crop & Upload'}
             </Button>
           </div>
         </div>

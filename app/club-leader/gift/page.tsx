@@ -67,7 +67,7 @@ export default function ClubLeaderGiftPage() {
     async function fetchProducts() {
       setLoading(true)
       try {
-        const data = await getProduct({ page: 0, size: 20 })
+        const data = await getProduct({ page: 0, size: 70 })
         setProducts(data)
       } catch (err) {
         setProducts([])
@@ -95,7 +95,7 @@ export default function ClubLeaderGiftPage() {
         setOpen(false)
         setForm({ clubId: 6, name: "", description: "", pricePoints: 0, stockQuantity: 0 })
         // reload products
-        const data = await getProduct({ page: 0, size: 20 })
+        const data = await getProduct({ page: 0, size: 70 })
         setProducts(data)
       } else {
         toast({ title: "Error", description: res.message || "Failed to create product", variant: "destructive" })

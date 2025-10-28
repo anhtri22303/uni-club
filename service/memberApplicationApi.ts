@@ -7,7 +7,6 @@ export const postMemAppli = async (payload: { clubId: number | string; message: 
       clubId: Number(payload.clubId),
       message: payload.message,
     })
-    console.log("✅ Posted member application:", response.data)
     return response.data as {
       applicationId: number
       clubId: number
@@ -33,7 +32,6 @@ export const postMemAppli = async (payload: { clubId: number | string; message: 
 export const getMemberApplications = async () => {
   try {
     const response = await axiosInstance.get("/api/member-applications")
-    console.log("Member apply:", response.data)
     // Expecting an array of application objects
     return response.data
   } catch (error: any) {
@@ -49,8 +47,6 @@ export const getMyMemApply = async () => {
       message: string
       data: any[]
     }>("/api/member-applications/my")
-    console.log("✅ My member applications:", response.data)
-    
     // Response structure: { success, message, data }
     if (response.data?.success && response.data?.data) {
       return response.data.data
@@ -67,7 +63,6 @@ export const getMyMemApply = async () => {
 export const fetchAllMemberApplications = async () => {
   try {
     const response = await axiosInstance.get("/api/member-applications")
-    console.log("✅ Fetch member applications:", response.data)
     return response.data
   } catch (error: any) {
     console.error("❌ Error fetching member applications:", error.response?.data || error.message)
@@ -81,7 +76,6 @@ export const approveMemberApplication = async (applicationId: number | string) =
       status: "APPROVED",
       reason: "Approved by club leader",
     })
-    console.log("✅ Approved membership application:", response.data)
     return response.data
   } catch (error: any) {
     console.error("❌ Error approving application:", error.response?.data || error.message)
@@ -98,7 +92,6 @@ export const rejectMemberApplication = async (
       status: "REJECTED",
       reason,
     })
-    console.log("✅ Rejected membership application:", response.data)
     return response.data
   } catch (error: any) {
     console.error("❌ Error rejecting application:", error.response?.data || error.message)
@@ -109,7 +102,6 @@ export const rejectMemberApplication = async (
 export const deleteMemberApplication = async (applicationId: number | string) => {
   try {
     const response = await axiosInstance.delete(`/api/member-applications/${applicationId}`)
-    console.log("✅ Deleted membership application:", response.data)
     return response.data
   } catch (error: any) {
     console.error("❌ Error deleting application:", error.response?.data || error.message)
@@ -121,7 +113,6 @@ export const getMemberApplyByClubId = async (clubId: string | number) => {
   try {
     const response = await axiosInstance.get(`/api/member-applications/club/${clubId}`)
     const resData: any = response.data
-    console.log(`✅ Fetched member applications for club ${clubId}:`, resData)
     // If response is direct array of applications
     if (Array.isArray(resData)) return resData
     // If response has wrapper structure like { success, data, message }

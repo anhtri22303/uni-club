@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Modal } from "@/components/modal"
 import { QRModal } from "@/components/qr-modal"
+import { CalendarModal } from "@/components/calendar-modal"
 import { useToast } from "@/hooks/use-toast"
 import { usePagination } from "@/hooks/use-pagination"
 import { Calendar, Plus, MapPin, Trophy, ChevronLeft, ChevronRight, Filter, X, Eye } from "lucide-react"
@@ -21,7 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton"
 
 import clubs from "@/src/data/clubs.json"
-import { fetchEvent } from "@/service/eventApi"
+import { fetchEvent, timeObjectToString } from "@/service/eventApi"
 import { createEvent, getEventById } from "@/service/eventApi"
 import { generateCode } from "@/service/checkinApi"
 import { safeLocalStorage } from "@/lib/browser-utils"
@@ -50,8 +51,11 @@ export default function AdminEventsPage() {
       // Parse event date (format: YYYY-MM-DD)
       const [year, month, day] = event.date.split('-').map(Number)
       
+      // Convert endTime to string if it's an object
+      const endTimeStr = timeObjectToString(event.endTime)
+      
       // Parse endTime (format: HH:MM:SS or HH:MM)
-      const [hours, minutes] = event.endTime.split(':').map(Number)
+      const [hours, minutes] = endTimeStr.split(':').map(Number)
 
       // Create event end datetime in Vietnam timezone
       const eventEndDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0)
@@ -127,6 +131,7 @@ export default function AdminEventsPage() {
   }, [rawEvents])
 
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showCalendarModal, setShowCalendarModal] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<any>(null)
   const [showQrModal, setShowQrModal] = useState(false)
   const [qrLinks, setQrLinks] = useState<{ local?: string; prod?: string; mobile?: string }>({})
@@ -150,8 +155,12 @@ export default function AdminEventsPage() {
     const generateAndSet = async () => {
       if (!selectedEvent?.id) return
       try {
-        const { token, qrUrl } = await generateCode(selectedEvent.id)
+        const { token } = await generateCode(selectedEvent.id)
         console.log('Generated QR token:', token)
+
+        // Create URLs with token (path parameter format)
+        const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${token}`
+        const localUrl = `http://localhost:3000/student/checkin/${token}`
 
         const styleVariants = [
           { color: { dark: '#000000', light: '#FFFFFF' }, margin: 1 },
@@ -159,12 +168,19 @@ export default function AdminEventsPage() {
           { color: { dark: '#222222', light: '#FFFFFF' }, margin: 0 },
         ]
 
-        // Generate DataURL variants for the qrUrl
-        const qrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
+        // Generate QR variants for local environment
+        const localQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
           const opts = styleVariants[i % styleVariants.length]
-          return QRCode.toDataURL(qrUrl, opts as any)
+          return QRCode.toDataURL(localUrl, opts as any)
         })
-        const qrVariants = await Promise.all(qrVariantsPromises)
+        const localQrVariants = await Promise.all(localQrVariantsPromises)
+
+        // Generate QR variants for production environment
+        const prodQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
+          const opts = styleVariants[i % styleVariants.length]
+          return QRCode.toDataURL(prodUrl, opts as any)
+        })
+        const prodQrVariants = await Promise.all(prodQrVariantsPromises)
 
         // Build mobile deep link and its QR variants
         const mobileLink = `exp://192.168.1.50:8081/--/student/checkin/${token}`
@@ -174,8 +190,8 @@ export default function AdminEventsPage() {
         })
         const mobileVariants = await Promise.all(mobileVariantsPromises)
 
-        setQrRotations({ local: qrVariants, prod: qrVariants, mobile: mobileVariants })
-        setQrLinks({ local: qrUrl, prod: qrUrl, mobile: mobileLink })
+        setQrRotations({ local: localQrVariants, prod: prodQrVariants, mobile: mobileVariants })
+        setQrLinks({ local: localUrl, prod: prodUrl, mobile: mobileLink })
       } catch (err) {
         console.error('Failed to generate QR:', err)
       }
@@ -436,9 +452,14 @@ export default function AdminEventsPage() {
               <h1 className="text-3xl font-bold">Events</h1>
               <p className="text-muted-foreground">Admin: Manage all club events and activities</p>
             </div>
-            <Button onClick={() => setShowCreateModal(true)}>
-              <Plus className="h-4 w-4 mr-2" /> Create Event
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => setShowCalendarModal(true)}>
+                <Calendar className="h-4 w-4 mr-2" /> Calendar View
+              </Button>
+              <Button onClick={() => setShowCreateModal(true)}>
+                <Plus className="h-4 w-4 mr-2" /> Create Event
+              </Button>
+            </div>
           </div>
 
           {/* Search + Filters */}
@@ -655,7 +676,7 @@ export default function AdminEventsPage() {
                           {(event.startTime && event.endTime) && (
                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
                               <Trophy className="h-4 w-4" />
-                              {event.startTime} - {event.endTime}
+                              {timeObjectToString(event.startTime)} - {timeObjectToString(event.endTime)}
                             </div>
                           )}
                         </div>
@@ -676,11 +697,10 @@ export default function AdminEventsPage() {
                                 onClick={async () => {
                                   setSelectedEvent(event);
                                   try {
-                                    // Generate fresh token and qrUrl using the new API
+                                    // Generate fresh token using the new API
                                     console.log('Generating check-in token for event:', event.id);
-                                    const { token, qrUrl } = await generateCode(event.id);
+                                    const { token } = await generateCode(event.id);
                                     console.log('Generated token:', token);
-                                    console.log('Generated qrUrl:', qrUrl);
                                     
                                     // Create URLs with token (path parameter format)
                                     const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${token}`;
@@ -900,6 +920,17 @@ export default function AdminEventsPage() {
               handleDownloadQR={handleDownloadQR}
             />
           )}
+
+          {/* Calendar Modal */}
+          <CalendarModal
+            open={showCalendarModal}
+            onOpenChange={setShowCalendarModal}
+            events={events}
+            onEventClick={(event) => {
+              setShowCalendarModal(false)
+              router.push(`/admin/events/${event.id}`)
+            }}
+          />
         </div>
       </AppShell>
     </ProtectedRoute>

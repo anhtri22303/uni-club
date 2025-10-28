@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { CalendarModal } from "@/components/calendar-modal"
 import { Calendar, Users, MapPin, Search, CheckCircle, XCircle, Clock, Building, Eye } from "lucide-react"
 import { renderTypeBadge } from "@/lib/eventUtils"
 import { useState, useEffect } from "react"
@@ -16,21 +17,25 @@ import { fetchLocation } from "@/service/locationApi"
 import { fetchClub } from "@/service/clubApi"
 import Link from "next/link"
 import { fetchEvent } from "@/service/eventApi"
+import { useRouter } from "next/navigation"
 
 // events will be fetched from the API. The API returns a paginated object
 // and the UI should display only the `content` array.
 
 export default function UniStaffEventRequestsPage() {
+	const router = useRouter()
 	const [searchTerm, setSearchTerm] = useState("")
 	const [statusFilter, setStatusFilter] = useState<string>("all")
 	const [categoryFilter, setCategoryFilter] = useState<string>("all")
 	const [typeFilter, setTypeFilter] = useState<string>("all")
+	const [activeTab, setActiveTab] = useState<"PENDING" | "APPROVED" | "REJECTED">("PENDING")
 
 	const [events, setEvents] = useState<any[]>([])
 	const [locations, setLocations] = useState<any[]>([])
 	const [clubs, setClubs] = useState<any[]>([])
 	const [loading, setLoading] = useState<boolean>(false)
 	const [error, setError] = useState<string | null>(null)
+	const [showCalendarModal, setShowCalendarModal] = useState(false)
 
 	const { toast } = useToast()
 	const [processingId, setProcessingId] = useState<number | string | null>(null)
@@ -119,32 +124,47 @@ export default function UniStaffEventRequestsPage() {
 		}
 	}, [])
 
-	// Filter events based on API shape: { id, clubId, name, description, type, date, time, locationId, status }
-	const filteredRequests = events.filter((evt) => {
-		const q = searchTerm.trim().toLowerCase()
-		const matchSearch =
-			q === "" ||
-			evt.name?.toLowerCase().includes(q) ||
-			// club names are not included in this payload; fallback to clubId
-			String(evt.clubId || "").includes(q)
+	// Filter events based on active tab and search/filters
+	const filteredRequests = events
+		.filter((evt) => {
+			// First filter by active tab status
+			const matchTab = (evt.status ?? "").toUpperCase() === activeTab
 
-		// status/category filters: prefer `status` field (new API). fall back to `type` when `status` missing
-		const matchStatus = statusFilter === "all" ? true : ((evt.status ?? evt.type) === statusFilter)
-		const matchCategory = categoryFilter === "all" ? true : (evt.category || "") === categoryFilter
-		const matchType = typeFilter === "all" ? true : (evt.type || "") === typeFilter
+			const q = searchTerm.trim().toLowerCase()
+			const matchSearch =
+				q === "" ||
+				evt.name?.toLowerCase().includes(q) ||
+				// club names are not included in this payload; fallback to clubId
+				String(evt.clubId || "").includes(q)
 
-		return matchSearch && matchStatus && matchCategory && matchType
-	})
+			// Additional filters (if you want to keep them)
+			const matchStatus = statusFilter === "all" ? true : ((evt.status ?? evt.type) === statusFilter)
+			const matchCategory = categoryFilter === "all" ? true : (evt.category || "") === categoryFilter
+			const matchType = typeFilter === "all" ? true : (evt.type || "") === typeFilter
+
+			return matchTab && matchSearch && matchStatus && matchCategory && matchType
+		})
+		// Sort by latest date (newest first)
+		.sort((a, b) => {
+			const dateA = a.date ? new Date(a.date).getTime() : 0
+			const dateB = b.date ? new Date(b.date).getTime() : 0
+			return dateB - dateA // Descending order (latest first)
+		})
 
 		// Minimal pagination state
 		const [page, setPage] = useState(0)
 		const [pageSize, setPageSize] = useState(3)
 
-		// Clamp page when filteredRequests or pageSize change
-		useEffect(() => {
-			const last = Math.max(0, Math.ceil(filteredRequests.length / pageSize) - 1)
-			if (page > last) setPage(last)
-		}, [filteredRequests.length, pageSize])
+	// Clamp page when filteredRequests or pageSize change
+	useEffect(() => {
+		const last = Math.max(0, Math.ceil(filteredRequests.length / pageSize) - 1)
+		if (page > last) setPage(last)
+	}, [filteredRequests.length, pageSize])
+
+	// Reset to page 0 when switching tabs
+	useEffect(() => {
+		setPage(0)
+	}, [activeTab])
 
 		const paginated = (() => {
 			const start = page * pageSize
@@ -205,73 +225,121 @@ export default function UniStaffEventRequestsPage() {
 		<ProtectedRoute allowedRoles={["uni_staff"]}>
 			<AppShell>
 				<div className="space-y-6">
-					<div>
-						<h1 className="text-3xl font-bold">Event Requests</h1>
-						<p className="text-muted-foreground">Review and manage event organization requests</p>
+					<div className="flex items-center justify-between">
+						<div>
+							<h1 className="text-3xl font-bold">Event Requests</h1>
+							<p className="text-muted-foreground">Review and manage event organization requests</p>
+						</div>
+						<Button variant="outline" onClick={() => setShowCalendarModal(true)}>
+							<Calendar className="h-4 w-4 mr-2" /> Calendar View
+						</Button>
 					</div>
 
 					{/* Stats Cards */}
 					<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 						<Card className="border-0 shadow-md bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-950 dark:to-yellow-900">
-							<CardHeader className="pb-1 px-4 pt-3">
-								<CardTitle className="text-xs font-medium text-yellow-700 dark:text-yellow-300">
+							<CardHeader className="pb-3 px-4 pt-3">
+								<CardTitle className="text-sm font-medium text-yellow-700 dark:text-yellow-300">
 									Pending Requests
 								</CardTitle>
 							</CardHeader>
 							<CardContent className="pb-3 px-4">
 								<div className="flex items-center gap-2">
 									<div className="p-1.5 bg-yellow-500 rounded-md">
-										<Clock className="h-4 w-4 text-white" />
+										<Clock className="h-5 w-5 text-white" />
 									</div>
 									<div>
-										<div className="text-lg font-bold text-yellow-900 dark:text-yellow-100">
+										<div className="text-2xl font-bold text-yellow-900 dark:text-yellow-100">
 																{pendingCount}
 															</div>
-															<p className="text-xs text-yellow-600 dark:text-yellow-400">Pending events</p>
+															<p className="text-sm text-yellow-600 dark:text-yellow-400">Pending events</p>
 									</div>
 								</div>
 							</CardContent>
 						</Card>
 
 						<Card className="border-0 shadow-md bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900">
-							<CardHeader className="pb-1 px-4 pt-3">
-								<CardTitle className="text-xs font-medium text-green-700 dark:text-green-300">
+							<CardHeader className="pb-3 px-4 pt-3">
+								<CardTitle className="text-sm font-medium text-green-700 dark:text-green-300">
 									Approved
 								</CardTitle>
 							</CardHeader>
 							<CardContent className="pb-3 px-4">
 								<div className="flex items-center gap-2">
 									<div className="p-1.5 bg-green-500 rounded-md">
-										<CheckCircle className="h-4 w-4 text-white" />
+										<CheckCircle className="h-5 w-5 text-white" />
 									</div>
 									<div>
-										<div className="text-lg font-bold text-green-900 dark:text-green-100">
+										<div className="text-2xl font-bold text-green-900 dark:text-green-100">
 																{approvedCount}
 															</div>
-															<p className="text-xs text-green-600 dark:text-green-400">Approved events</p>
+															<p className="text-sm text-green-600 dark:text-green-400">Approved events</p>
 									</div>
 								</div>
 							</CardContent>
 						</Card>
 
 						<Card className="border-0 shadow-md bg-gradient-to-br from-red-50 to-red-100 dark:from-red-950 dark:to-red-900">
-							<CardHeader className="pb-1 px-4 pt-3">
-								<CardTitle className="text-xs font-medium text-red-700 dark:text-red-300">Rejected</CardTitle>
+							<CardHeader className="pb-3 px-4 pt-3">
+								<CardTitle className="text-sm font-medium text-red-700 dark:text-red-300">Rejected</CardTitle>
 							</CardHeader>
 							<CardContent className="pb-3 px-4">
 								<div className="flex items-center gap-2">
 									<div className="p-1.5 bg-red-500 rounded-md">
-										<XCircle className="h-4 w-4 text-white" />
+										<XCircle className="h-5 w-5 text-white" />
 									</div>
 									<div>
-										<div className="text-lg font-bold text-red-900 dark:text-red-100">
+										<div className="text-2xl font-bold text-red-900 dark:text-red-100">
 																{rejectedCount}
 															</div>
-															<p className="text-xs text-red-600 dark:text-red-400">Rejected events</p>
+															<p className="text-sm text-red-600 dark:text-red-400">Rejected events</p>
 									</div>
 								</div>
 							</CardContent>
 						</Card>
+					</div>
+
+					{/* Tab Buttons */}
+					<div className="flex gap-3 border-b-2 border-gray-200 dark:border-gray-700">
+						<Button
+							variant={activeTab === "PENDING" ? "default" : "ghost"}
+							size="lg"
+							className={`flex-1 rounded-b-none py-6 text-base font-semibold transition-all ${
+								activeTab === "PENDING"
+									? "border-b-4 border-yellow-500 bg-yellow-50 text-yellow-700 hover:bg-yellow-100 dark:bg-yellow-950 dark:text-yellow-300"
+									: "border-b-4 border-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
+							}`}
+							onClick={() => setActiveTab("PENDING")}
+						>
+							<Clock className="h-5 w-5 mr-2" />
+							Pending ({pendingCount})
+						</Button>
+						<Button
+							variant={activeTab === "APPROVED" ? "default" : "ghost"}
+							size="lg"
+							className={`flex-1 rounded-b-none py-6 text-base font-semibold transition-all ${
+								activeTab === "APPROVED"
+									? "border-b-4 border-green-500 bg-green-50 text-green-700 hover:bg-green-100 dark:bg-green-950 dark:text-green-300"
+									: "border-b-4 border-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
+							}`}
+							onClick={() => setActiveTab("APPROVED")}
+						>
+							<CheckCircle className="h-5 w-5 mr-2" />
+							Approved ({approvedCount})
+						</Button>
+						<Button
+							variant={activeTab === "REJECTED" ? "default" : "ghost"}
+							size="lg"
+							className={`flex-1 rounded-b-none py-6 text-base font-semibold transition-all ${
+								activeTab === "REJECTED"
+									? "border-b-4 border-red-500 bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-950 dark:text-red-300"
+									: "border-b-4 border-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
+							}`}
+							onClick={() => setActiveTab("REJECTED")}
+						>
+							<XCircle className="h-5 w-5 mr-2" />
+							Rejected ({rejectedCount})
+						</Button>
 					</div>
 
 					{/* Filters */}
@@ -473,6 +541,17 @@ export default function UniStaffEventRequestsPage() {
 								</select>
 							</div>
 						</div>
+
+						{/* Calendar Modal */}
+						<CalendarModal
+							open={showCalendarModal}
+							onOpenChange={setShowCalendarModal}
+							events={events}
+							onEventClick={(event) => {
+								setShowCalendarModal(false)
+								router.push(`/uni-staff/events-req/${event.id}`)
+							}}
+						/>
 				</div>
 			</AppShell>
 		</ProtectedRoute>

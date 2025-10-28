@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { createContext, useContext } from "react"
+import { createContext, useContext, useMemo, useCallback } from "react"
 import { useLocalStorage } from "@/hooks/use-local-storage"
 
 // Import initial data
@@ -71,46 +71,50 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [shopProducts, setShopProducts] = useLocalStorage("clubly-shop-products", initialShopProducts)
   const [userBalances, setUserBalances] = useLocalStorage("clubly-user-balances", initialUserBalances)
 
-  const addMembershipApplication = (application: any) => {
+  const addMembershipApplication = useCallback((application: any) => {
     const id = application.id ?? `a-${Date.now()}`
     setMembershipApplications((prev) => [...prev, { ...application, id }])
     return id
-  }
+  }, [setMembershipApplications])
 
-  const removeMembershipApplication = (id: string) => {
+  const removeMembershipApplication = useCallback((id: string) => {
     setMembershipApplications((prev) => prev.filter((a) => String(a.id) !== String(id)))
-  }
+  }, [setMembershipApplications])
 
-  const replaceMembershipApplication = (tempId: string, newApp: any) => {
+  const replaceMembershipApplication = useCallback((tempId: string, newApp: any) => {
     setMembershipApplications((prev) => prev.map((a) => (String(a.id) === String(tempId) ? newApp : a)))
-  }
+  }, [setMembershipApplications])
 
-  const addVoucher = (voucher: any) => {
+  const addVoucher = useCallback((voucher: any) => {
     setVouchers((prev) => [...prev, voucher])
-  }
+  }, [setVouchers])
 
-  const addStaffHistoryEntry = (entry: any) => {
+  const addStaffHistoryEntry = useCallback((entry: any) => {
     setStaffHistory((prev) => [...prev, entry])
-  }
+  }, [setStaffHistory])
 
-  const removeVoucher = (voucherCode: string) => {
+  const removeVoucher = useCallback((voucherCode: string) => {
     setVouchers((prev) => prev.filter((v) => v.code !== voucherCode))
-  }
+  }, [setVouchers])
 
-  const getUserBalance = (userId: string): number => {
+  const getUserBalance = useCallback((userId: string): number => {
     const userBalance = userBalances.find((b) => b.userId === userId)
     return userBalance?.balance || 0
-  }
+  }, [userBalances])
 
-  const updateUserBalance = (userId: string, newBalance: number) => {
+  const updateUserBalance = useCallback((userId: string, newBalance: number) => {
     setUserBalances((prev) =>
       prev.map((b) => (b.userId === userId ? { ...b, balance: newBalance, lastUpdated: new Date().toISOString() } : b)),
     )
-  }
+  }, [setUserBalances])
 
-  const purchaseProduct = (userId: string, productId: string, quantity = 1): boolean => {
+  const purchaseProduct = useCallback((userId: string, productId: string, quantity = 1): boolean => {
+    // Find product directly from state
     const product = shopProducts.find((p) => p.id === productId)
-    const userBalance = getUserBalance(userId)
+    
+    // Get user balance directly from state
+    const userBalanceObj = userBalances.find((b) => b.userId === userId)
+    const userBalance = userBalanceObj?.balance || 0
 
     if (!product || !product.available || product.stock < quantity) {
       return false
@@ -121,8 +125,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       return false
     }
 
-    // Update user balance
-    updateUserBalance(userId, userBalance - totalCost)
+    // Update user balance using setter function
+    setUserBalances((prev) =>
+      prev.map((b) => (b.userId === userId ? { ...b, balance: userBalance - totalCost, lastUpdated: new Date().toISOString() } : b)),
+    )
 
     // Update product stock and purchase count
     setShopProducts((prev) =>
@@ -139,48 +145,88 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     )
 
     return true
-  }
+  }, [shopProducts, userBalances, setUserBalances, setShopProducts])
+
+  // Memoize context value to prevent infinite re-renders
+  const contextValue = useMemo(
+    () => ({
+      clubMemberships,
+      membershipApplications,
+      vouchers,
+      staffHistory,
+      clubGiftProducts,
+      shopProducts,
+      userBalances,
+      events,
+      clubs,
+      users,
+      policies,
+      clubApplications,
+      eventRequests,
+      updateClubMemberships: setClubMemberships,
+      updateMembershipApplications: setMembershipApplications,
+      updateVouchers: setVouchers,
+      updateStaffHistory: setStaffHistory,
+      updateClubGiftProducts: setClubGiftProducts,
+      updateShopProducts: setShopProducts,
+      updateUserBalances: setUserBalances,
+      updateEvents: setEvents,
+      updateClubs: setClubs,
+      updateUsers: setUsers,
+      updatePolicies: setPolicies,
+      updateClubApplications: setClubApplications,
+      updateEventRequests: setEventRequests,
+      addMembershipApplication,
+      removeMembershipApplication,
+      replaceMembershipApplication,
+      addVoucher,
+      addStaffHistoryEntry,
+      removeVoucher,
+      getUserBalance,
+      updateUserBalance,
+      purchaseProduct,
+    }),
+    [
+      clubMemberships,
+      membershipApplications,
+      vouchers,
+      staffHistory,
+      clubGiftProducts,
+      shopProducts,
+      userBalances,
+      events,
+      clubs,
+      users,
+      policies,
+      clubApplications,
+      eventRequests,
+      setClubMemberships,
+      setMembershipApplications,
+      setVouchers,
+      setStaffHistory,
+      setClubGiftProducts,
+      setShopProducts,
+      setUserBalances,
+      setEvents,
+      setClubs,
+      setUsers,
+      setPolicies,
+      setClubApplications,
+      setEventRequests,
+      addMembershipApplication,
+      removeMembershipApplication,
+      replaceMembershipApplication,
+      addVoucher,
+      addStaffHistoryEntry,
+      removeVoucher,
+      getUserBalance,
+      updateUserBalance,
+      purchaseProduct,
+    ]
+  )
 
   return (
-    <DataContext.Provider
-      value={{
-        clubMemberships,
-        membershipApplications,
-        vouchers,
-        staffHistory,
-        clubGiftProducts,
-        shopProducts,
-        userBalances,
-        events,
-        clubs,
-        users,
-        policies,
-        clubApplications,
-        eventRequests,
-        updateClubMemberships: setClubMemberships,
-        updateMembershipApplications: setMembershipApplications,
-        updateVouchers: setVouchers,
-        updateStaffHistory: setStaffHistory,
-        updateClubGiftProducts: setClubGiftProducts,
-        updateShopProducts: setShopProducts,
-        updateUserBalances: setUserBalances,
-        updateEvents: setEvents,
-        updateClubs: setClubs,
-        updateUsers: setUsers,
-        updatePolicies: setPolicies,
-        updateClubApplications: setClubApplications,
-        updateEventRequests: setEventRequests,
-  addMembershipApplication,
-  removeMembershipApplication,
-  replaceMembershipApplication,
-        addVoucher,
-        addStaffHistoryEntry,
-        removeVoucher,
-        getUserBalance,
-        updateUserBalance,
-        purchaseProduct,
-      }}
-    >
+    <DataContext.Provider value={contextValue}>
       {children}
     </DataContext.Provider>
   )

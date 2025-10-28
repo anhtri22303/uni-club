@@ -23,7 +23,6 @@ export const login = async (credentials: LoginCredentials): Promise<LoginRespons
   // return res.data
   try {
     const res = await axiosInstance.post<LoginResponse>("/auth/login", credentials)
-    console.log("Login response:", res.data)
     return res.data
   } catch (error: any) {
     console.error("Login failed:", error.response?.data || error.message)
@@ -48,7 +47,6 @@ export const loginWithGoogle = async (): Promise<void> => {
 export const handleGoogleCallback = async (code: string) => {
   try {
     const response = await axiosInstance.get(`/auth/oauth2/callback?code=${code}`)
-    console.log("Google callback success", response.data)
     return response.data
   } catch (error) {
     console.error("Error during Google callback:", error)
@@ -65,7 +63,6 @@ export const loginWithGoogleToken = async (credentials: { token: string }): Prom
     })
 
     const response = await axiosInstance.post<LoginResponse>("/auth/google", credentials)
-    console.log("✅ Google token login success:", response.data)
     return response.data
   } catch (error: any) {
     console.error("❌ Error during Google token login:", {
@@ -119,7 +116,6 @@ export const signUp = async (credentials: SignUpCredentials): Promise<SignUpResp
         },
       }
     )
-    console.log("Sign up response:", res.data)
     return res.data
   } catch (error: any) {
     if (error.response) {
@@ -153,8 +149,6 @@ export const forgotPassword = async (email: string): Promise<ForgotPasswordRespo
         },
       }
     )
-    console.log("Forgot password response:", res.data)
-    
     // Handle both wrapped and direct response formats
     if (res.data && typeof res.data === 'object') {
       // If response is wrapped in standard format { success, message, data }
@@ -223,8 +217,6 @@ export const resetPassword = async (
         },
       }
     )
-    console.log("Reset password response:", res.data)
-    
     // Handle both wrapped and direct response formats
     if (res.data && typeof res.data === 'object') {
       // If response is wrapped in standard format { success, message, data }
@@ -290,8 +282,6 @@ export const changePassword = async (
         },
       }
     )
-    console.log("Change password response:", res.data)
-    
     // Handle both wrapped and direct response formats
     if (res.data && typeof res.data === 'object') {
       // If response is wrapped in standard format { success, message, data }

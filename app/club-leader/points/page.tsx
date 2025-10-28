@@ -13,11 +13,13 @@ import { useData } from "@/contexts/data-context"
 import membershipApi, { ApiMembership } from "@/service/membershipApi"
 import { useToast } from "@/hooks/use-toast"
 import { usePagination } from "@/hooks/use-pagination"
-import { Users, Award, ChevronLeft, ChevronRight, Send, Filter, X, Wallet } from "lucide-react"
+import { Users, Award, ChevronLeft, ChevronRight, Send, Filter, X, Wallet, History } from "lucide-react"
 import { getClubById, getClubIdFromToken } from "@/service/clubApi"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { getClubWallet, ApiClubWallet } from "@/service/walletApi"
+import { getClubWallet, ApiClubWallet, rewardPointsToMember, ApiRewardResponse, getClubToMemberTransactions, ApiClubToMemberTransaction } from "@/service/walletApi"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
 interface ClubMember {
   id: string;
@@ -26,19 +28,6 @@ interface ClubMember {
   role: string;
   status: string;
   joinedAt: string | null;
-}
-
-// Giả định service API mới
-const rewardApi = {
-  // Giả lập hàm phân phát điểm
-  distributeRewards: async (clubId: string, amount: number, memberIds: string[]): Promise<any> => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        console.log(`Distributing ${amount} points to ${memberIds.length} members of club ${clubId}`);
-        resolve({ success: true, count: memberIds.length, amount });
-      }, 1500); // Giả lập độ trễ API
-    });
-  }
 }
 
 export default function ClubLeaderRewardDistributionPage() {
@@ -57,6 +46,10 @@ export default function ClubLeaderRewardDistributionPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [activeFilters, setActiveFilters] = useState<Record<string, any>>({})
   const [showFilters, setShowFilters] = useState(false)
+  // History modal state
+  const [showHistoryModal, setShowHistoryModal] = useState(false)
+  const [transactions, setTransactions] = useState<ApiClubToMemberTransaction[]>([])
+  const [transactionsLoading, setTransactionsLoading] = useState(false)
 
 
   useEffect(() => {
@@ -96,13 +89,26 @@ export default function ClubLeaderRewardDistributionPage() {
   }, [])
   // Chon thanh vien cu the de phan diem
   useEffect(() => {
-    if (apiMembers) {
-      const initialSelected: Record<string, boolean> = {}
-      apiMembers.forEach((m: any) => {
-        const id = m.membershipId ?? `m-${m.userId}`
-        initialSelected[id] = false
+    if (apiMembers && apiMembers.length > 0) {
+      setSelectedMembers((prevSelected) => {
+        // Only update if we don't have any selections yet or the members have changed
+        const currentMemberIds = Object.keys(prevSelected)
+        const newMemberIds = apiMembers.map((m: any) => m.membershipId ?? `m-${m.userId}`)
+
+        // If we already have selections and the IDs match, don't update
+        if (currentMemberIds.length === newMemberIds.length &&
+          newMemberIds.every(id => id in prevSelected)) {
+          return prevSelected
+        }
+
+        // Otherwise, create new selection state
+        const initialSelected: Record<string, boolean> = {}
+        apiMembers.forEach((m: any) => {
+          const id = m.membershipId ?? `m-${m.userId}`
+          initialSelected[id] = false
+        })
+        return initialSelected
       })
-      setSelectedMembers(initialSelected)
     }
   }, [apiMembers])
 
@@ -214,34 +220,54 @@ export default function ClubLeaderRewardDistributionPage() {
       return
     }
     setIsDistributing(true)
-    // const memberUserIds = clubMembers.map(m => m.userId)
-    const memberUserIds = clubMembers.filter(m => selectedMembers[m.id]).map(m => m.userId)
-    if (memberUserIds.length === 0) {
+
+    // Get selected members with their membershipIds
+    const selectedMembersList = clubMembers.filter(m => selectedMembers[m.id])
+    if (selectedMembersList.length === 0) {
       toast({
         title: "No members selected",
         description: "Please select at least one member to distribute points.",
         variant: "destructive"
       })
+      setIsDistributing(false)
       return
     }
 
     try {
-      // Gọi API phân phát điểm thưởng
-      const result = await rewardApi.distributeRewards(
-        String(managedClub.id),
-        rewardAmount as number,
-        memberUserIds
+      // Reward points to each selected member individually
+      const rewardPromises = selectedMembersList.map(member =>
+        rewardPointsToMember(
+          member.id, // membershipId
+          rewardAmount as number,
+          "Event giving" // reason
+        )
       )
 
-      if (result.success) {
+      // Execute all reward API calls in parallel
+      const results = await Promise.allSettled(rewardPromises)
+
+      // Count successes and failures
+      const successCount = results.filter(r => r.status === 'fulfilled').length
+      const failureCount = results.filter(r => r.status === 'rejected').length
+
+      if (successCount > 0) {
         toast({
           title: "Success",
-          description: `Distributed ${result.amount} points to ${result.count} members of ${managedClub.name}.`,
+          description: `Distributed ${rewardAmount} points to ${successCount} member(s) of ${managedClub.name}.${failureCount > 0 ? ` ${failureCount} failed.` : ''}`,
           variant: "default"
         })
+
+        // Reload club wallet balance
+        try {
+          const walletData = await getClubWallet(managedClub.id)
+          setClubWallet(walletData)
+        } catch (walletErr) {
+          console.error("Failed to reload club wallet:", walletErr)
+        }
+
         setRewardAmount('') // Reset số điểm sau khi thành công
       } else {
-        throw new Error("Failure point distribution")
+        throw new Error("All reward distributions failed")
       }
     } catch (err: any) {
       toast({
@@ -258,6 +284,38 @@ export default function ClubLeaderRewardDistributionPage() {
     setSearchTerm("")
     setActiveFilters({})
     setMembersPage(1)
+  }
+
+  const loadTransactionHistory = async () => {
+    setTransactionsLoading(true)
+    try {
+      const data = await getClubToMemberTransactions()
+      setTransactions(data)
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err?.response?.data?.message || "Failed to load transaction history",
+        variant: "destructive"
+      })
+    } finally {
+      setTransactionsLoading(false)
+    }
+  }
+
+  const handleOpenHistoryModal = () => {
+    setShowHistoryModal(true)
+    loadTransactionHistory()
+  }
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
   }
 
   // Component Pager đơn giản (Tái sử dụng)
@@ -307,15 +365,92 @@ export default function ClubLeaderRewardDistributionPage() {
                     )}
                   </div>
                 </div>
-                {clubWallet && (
-                  <div className="text-right">
-                    <p className="text-xs text-muted-foreground">Wallet ID</p>
-                    <p className="text-sm font-medium text-gray-700">#{clubWallet.walletId}</p>
-                  </div>
-                )}
+                <div className="flex items-center gap-4">
+                  {clubWallet && (
+                    <div className="text-right">
+                      <p className="text-xs text-muted-foreground">Wallet ID</p>
+                      <p className="text-sm font-medium text-gray-700">#{clubWallet.walletId}</p>
+                    </div>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleOpenHistoryModal}
+                    className="flex items-center gap-2"
+                  >
+                    <History className="h-4 w-4" />
+                    History
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
+
+          {/* Transaction History Modal */}
+          <Dialog open={showHistoryModal} onOpenChange={setShowHistoryModal}>
+            <DialogContent
+              className="
+                !max-w-none
+                w-[72vw]           /* nhỏ hơn 98vw */
+                lg:w-[68vw]        /* nhỏ thêm trên màn lớn */
+                md:w-[78vw]
+                sm:w-[92vw]
+                h-[85vh]
+                overflow-y-auto p-8 rounded-xl shadow-2xl
+                "
+            >
+
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-3 text-3xl font-bold">
+                  <History className="h-9 w-9" />
+                  Club to Member Transaction History
+                </DialogTitle>
+              </DialogHeader>
+
+              <div className="mt-4">
+                {transactionsLoading ? (
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <p className="text-muted-foreground">Loading transaction history...</p>
+                  </div>
+                ) : transactions.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <History className="h-12 w-12 text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">No Transactions Yet</h3>
+                    <p className="text-muted-foreground">No club-to-member transactions found.</p>
+                  </div>
+                ) : (
+                  <div className="rounded-md border overflow-x-auto">
+                    <Table className="min-w-full">
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[80px]">ID</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead>Amount</TableHead>
+                          <TableHead className="w-[40%]">Description</TableHead>
+                          <TableHead>Date</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {transactions.map((t) => (
+                          <TableRow key={t.id}>
+                            <TableCell className="font-medium">#{t.id}</TableCell>
+                            <TableCell><Badge variant="secondary">{t.type}</Badge></TableCell>
+                            <TableCell className="font-semibold text-green-600">+{t.amount} pts</TableCell>
+                            <TableCell className="truncate">{t.description || "—"}</TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {formatDate(t.createdAt)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
+
+
 
           <Card>
             <CardHeader>

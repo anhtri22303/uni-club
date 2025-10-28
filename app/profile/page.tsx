@@ -74,7 +74,6 @@ export default function ProfilePage() {
   // State for temporary avatar preview (before saving)
   const [previewAvatarUrl, setPreviewAvatarUrl] = useState<string>("")
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [savingAvatar, setSavingAvatar] = useState<boolean>(false)
   
   // States for crop modal
   const [showCropModal, setShowCropModal] = useState<boolean>(false)
@@ -221,51 +220,6 @@ export default function ProfilePage() {
     fileInputRef.current?.click()
   }
 
-  // Handle save avatar separately - upload trực tiếp file
-  const handleSaveAvatar = async () => {
-    if (!selectedFile) return
-
-    try {
-      setSavingAvatar(true)
-
-      toast({
-        title: "Uploading...",
-        description: "Uploading image, please wait...",
-      })
-
-      // Gọi API upload avatar trực tiếp với file đã được crop
-      const avatarRes = await uploadAvatar(selectedFile)
-      if (avatarRes && avatarRes.success) {
-        // Clear all avatar upload states
-        setSelectedFile(null)
-        setCroppedFile(null)
-        setPreviewAvatarUrl("") 
-        
-        // Clear file input
-        if (fileInputRef.current) {
-          fileInputRef.current.value = ""
-        }
-
-        toast({
-          title: "Avatar Updated Successfully",
-          description: "Your profile picture has been changed.",
-        })
-
-        // Reload profile data to get updated avatar
-        await loadProfile()
-      } else {
-        throw new Error(avatarRes?.message || "Unable to update avatar")
-      }
-    } catch (err) {
-      console.error("Save avatar failed:", err)
-      toast({
-        title: "Error",
-        description: err instanceof Error ? err.message : "An error occurred while updating profile picture"
-      })
-    } finally {
-      setSavingAvatar(false)
-    }
-  }
 
   // Handle file selection and preview
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -309,24 +263,54 @@ export default function ProfilePage() {
     }
   }, [profileState.data?.avatarUrl, previewAvatarUrl])
 
-  // Handle crop complete - convert blob to file and set for upload
-  const handleCropComplete = (croppedBlob: Blob) => {
+  // Handle crop complete - convert blob to file and upload immediately
+  const handleCropComplete = async (croppedBlob: Blob) => {
     // Convert blob to file
     const croppedFile = new File([croppedBlob], 'cropped-avatar.jpg', {
       type: 'image/jpeg',
       lastModified: Date.now()
     })
     
-    setCroppedFile(croppedFile)
-    setSelectedFile(croppedFile)
-    
-    // Create preview URL từ blob
-    const previewUrl = URL.createObjectURL(croppedBlob)
-    setPreviewAvatarUrl(previewUrl)
-    
-    // Close modal
-    setShowCropModal(false)
-    setImageToCrop("")
+    // Upload avatar immediately
+    try {
+      toast({
+        title: "Uploading...",
+        description: "Uploading image, please wait...",
+      })
+
+      // Call API to upload avatar directly with cropped file
+      const avatarRes = await uploadAvatar(croppedFile)
+      if (avatarRes && avatarRes.success) {
+        // Clear all avatar upload states
+        setSelectedFile(null)
+        setCroppedFile(null)
+        setPreviewAvatarUrl("")
+        setImageToCrop("")
+        
+        // Clear file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = ""
+        }
+
+        toast({
+          title: "Avatar Updated Successfully",
+          description: "Your profile picture has been changed.",
+        })
+
+        // Reload profile data to get updated avatar
+        await loadProfile()
+      } else {
+        throw new Error(avatarRes?.message || "Unable to update avatar")
+      }
+    } catch (err) {
+      console.error("Upload avatar failed:", err)
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : "An error occurred while updating profile picture",
+        variant: "destructive"
+      })
+      throw err // Re-throw to let modal know upload failed
+    }
   }
 
   // Handle crop cancel
@@ -474,39 +458,20 @@ export default function ProfilePage() {
             <div className="bg-gradient-to-r from-primary to-secondary text-white">
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
                 <div className="flex items-center space-x-6">
-                  <div className="relative flex flex-col items-center">
-                    <div className="relative">
-                      <Avatar 
-                        className="w-24 h-24 border-4 border-white/30 shadow-lg cursor-pointer hover:opacity-80 transition-opacity"
-                        onClick={handleAvatarClick}
-                      >
-                        <AvatarImage src={previewAvatarUrl || avatarUrl || "/placeholder-user.jpg"} alt={fullName} />
-                        <AvatarFallback className="text-3xl bg-white/20">{getInitials(fullName || "A")}</AvatarFallback>
-                      </Avatar>
-                      <div 
-                        className="absolute bottom-0 right-0 bg-primary text-primary-foreground rounded-full p-2 cursor-pointer hover:bg-primary/80 transition-colors shadow-lg"
-                        onClick={handleAvatarClick}
-                      >
-                        <Camera className="h-3 w-3" />
-                      </div>
+                  <div className="relative">
+                    <Avatar 
+                      className="w-24 h-24 border-4 border-white/30 shadow-lg cursor-pointer hover:opacity-80 transition-opacity"
+                      onClick={handleAvatarClick}
+                    >
+                      <AvatarImage src={previewAvatarUrl || avatarUrl || "/placeholder-user.jpg"} alt={fullName} />
+                      <AvatarFallback className="text-3xl bg-white/20">{getInitials(fullName || "A")}</AvatarFallback>
+                    </Avatar>
+                    <div 
+                      className="absolute bottom-0 right-0 bg-primary text-primary-foreground rounded-full p-2 cursor-pointer hover:bg-primary/80 transition-colors shadow-lg"
+                      onClick={handleAvatarClick}
+                    >
+                      <Camera className="h-3 w-3" />
                     </div>
-                    
-                    {/* Nút Save Avatar cho admin - chỉ hiện khi có file được chọn */}
-                    {selectedFile && (
-                      <Button
-                        onClick={handleSaveAvatar}
-                        disabled={savingAvatar}
-                        size="sm"
-                        className="mt-2 bg-white/20 text-white hover:bg-white/30 border border-white/30"
-                      >
-                        {savingAvatar ? (
-                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                        ) : (
-                          <Save className="h-3 w-3 mr-1" />
-                        )}
-                        {savingAvatar ? "Lưu..." : "Lưu"}
-                      </Button>
-                    )}
                   </div>
                   <div>
                     <h1 className="text-4xl font-bold tracking-tight">{fullName || "Administrator"}</h1>
@@ -697,47 +662,28 @@ export default function ProfilePage() {
           {/* Header với ảnh đại diện */}
           <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 pb-20">
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 text-center">
-              <div className="relative flex flex-col items-center">
-                <div className="relative">
-                  <Avatar 
-                    className="w-28 h-28 mx-auto border-4 border-white/50 shadow-xl cursor-pointer hover:opacity-80 transition-opacity"
-                    onClick={handleAvatarClick}
-                  >
-                    <AvatarImage src={previewAvatarUrl || avatarUrl || "/placeholder-user.jpg"} alt={fullName} />
-                    <AvatarFallback className="text-4xl bg-white/30 text-white">{getInitials(fullName)}</AvatarFallback>
-                  </Avatar>
-                  <div 
-                    className="absolute bottom-0 right-0 bg-primary text-primary-foreground rounded-full p-2 cursor-pointer hover:bg-primary/80 transition-colors shadow-lg"
-                    onClick={handleAvatarClick}
-                  >
-                    <Camera className="h-4 w-4" />
-                  </div>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileChange}
-                    className="hidden"
-                    aria-label="Upload avatar image"
-                  />
+              <div className="relative">
+                <Avatar 
+                  className="w-28 h-28 mx-auto border-4 border-white/50 shadow-xl cursor-pointer hover:opacity-80 transition-opacity"
+                  onClick={handleAvatarClick}
+                >
+                  <AvatarImage src={previewAvatarUrl || avatarUrl || "/placeholder-user.jpg"} alt={fullName} />
+                  <AvatarFallback className="text-4xl bg-white/30 text-white">{getInitials(fullName)}</AvatarFallback>
+                </Avatar>
+                <div 
+                  className="absolute bottom-0 right-0 bg-primary text-primary-foreground rounded-full p-2 cursor-pointer hover:bg-primary/80 transition-colors shadow-lg"
+                  onClick={handleAvatarClick}
+                >
+                  <Camera className="h-4 w-4" />
                 </div>
-                
-                {/* Save Avatar Button - only shown when file is selected */}
-                {selectedFile && (
-                  <Button
-                    onClick={handleSaveAvatar}
-                    disabled={savingAvatar}
-                    size="sm"
-                    className="mt-3 bg-white/20 text-white hover:bg-white/30 border border-white/30"
-                  >
-                    {savingAvatar ? (
-                      <Loader2 className="h-3 w-3 mr-2 animate-spin" />
-                    ) : (
-                      <Save className="h-3 w-3 mr-2" />
-                    )}
-                    {savingAvatar ? "Saving..." : "Save Avatar"}
-                  </Button>
-                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="hidden"
+                  aria-label="Upload avatar image"
+                />
               </div>
               <h1 className="mt-4 text-3xl font-bold text-white tracking-tight">{fullName}</h1>
               <p className="mt-1 text-lg text-white/80">{auth.user?.email}</p>
@@ -801,19 +747,6 @@ export default function ProfilePage() {
                         className="min-h-[80px]" 
                       />
                     </div>
-                    
-                    {/* Preview notification */}
-                    {selectedFile && (
-                      <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                        <p className="text-sm text-blue-700 flex items-center gap-2">
-                          <Camera className="h-4 w-4" />
-                          New avatar selected: <strong>{selectedFile.name}</strong>
-                        </p>
-                        <p className="text-xs text-blue-600 mt-1">
-                          Click the "Save Avatar" button above to update your profile picture.
-                        </p>
-                      </div>
-                    )}
 
                     <Button 
                       onClick={handleSave} 

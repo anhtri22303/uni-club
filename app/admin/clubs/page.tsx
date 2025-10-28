@@ -47,7 +47,7 @@ export default function AdminClubsPage() {
   // ✅ USE REACT QUERY for clubs
   const { data: clubs = [], isLoading: loading, error: queryError } = useClubs({
     page: 0,
-    size: 20,
+    size: 100,
     sort: ["name"]
   })
   const error = queryError ? String(queryError) : null
