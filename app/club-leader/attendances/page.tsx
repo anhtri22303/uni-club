@@ -32,7 +32,12 @@ import {
   fetchClubAttendanceHistory,
   markClubAttendance,
   markAllClubAttendance,
-  type AttendanceStatus as ApiAttendanceStatus, // Kiểu dữ liệu từ API (UPPERCASE)
+  type AttendanceStatus as ApiAttendanceStatus,
+  createClubAttendanceSession,
+  CreateSessionBody, // Kiểu dữ liệu từ API (UPPERCASE)
+  markAttendanceBulk,     // ✅ THÊM HÀM MỚI
+  type MarkBulkBody,       // ✅ THÊM TYPE MỚI
+  type MarkBulkRecord,
 } from "@/service/attendanceApi"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
@@ -62,10 +67,19 @@ interface Member {
 }
 // ✅ THAY ĐỔI: Dữ liệu trả về từ API (Giả định)
 // Dựa trên logic code, API của bạn CẦN trả về cấu trúc tương tự vầy
+// interface AttendanceResponse {
+//   sessionId: number
+//   // sessionDate: string
+//   attendances: {
+//     membershipId: number
+//     status: ApiAttendanceStatus // "PRESENT", "LATE", ...
+//     note: string | null
+//   }[]
+// }
 interface AttendanceResponse {
   sessionId: number
   // sessionDate: string
-  attendances: {
+  records: { // ✅ SỬA LẠI TÊN
     membershipId: number
     status: ApiAttendanceStatus // "PRESENT", "LATE", ...
     note: string | null
@@ -91,8 +105,8 @@ export default function ClubAttendancePage() {
   const [isReadOnly, setIsReadOnly] = useState(false)
   const [sessionId, setSessionId] = useState<number | null>(null) // ✅ THAY ĐỔI: State mới để lưu sessionId
   const [sessionError, setSessionError] = useState<string | null>(null) // ✅ THAY ĐỔI: State mới cho lỗi session
-
-  const [attendance, setAttendance] = useState<Record<number, PageAttendanceStatus>>({})
+  const [isSaving, setIsSaving] = useState(false); // ✅ THÊM STATE NÀY
+  const [attendance, setAttendance] = useState<Record<number, PageAttendanceStatus>>({});
   const [notes, setNotes] = useState<Record<number, string>>({})
   const [editingNoteMember, setEditingNoteMember] = useState<Member | null>(null)
   const [currentNote, setCurrentNote] = useState("")
@@ -124,119 +138,175 @@ export default function ClubAttendancePage() {
     loadBaseData()
   }, [])
 
+  //   loadMembersAndAttendance()
+  // }, [managedClub, selectedDate, apiMembers]) // ✅ THAY ĐỔI: Thêm apiMembers
   // ✅ THAY ĐỔI: useEffect này chạy mỗi khi clubId hoặc selectedDate thay đổi
   useEffect(() => {
-    if (!managedClub?.id) return
+    if (!managedClub?.id) return;
 
     // 1. Kiểm tra xem có phải ngày hôm nay không
-    const today = new Date()
+    const today = new Date();
     const isToday =
       selectedDate.getDate() === today.getDate() &&
       selectedDate.getMonth() === today.getMonth() &&
-      selectedDate.getFullYear() === today.getFullYear()
+      selectedDate.getFullYear() === today.getFullYear();
 
-    setIsReadOnly(!isToday)
+    setIsReadOnly(!isToday); // Chỉ cho phép chỉnh sửa ngày hôm nay
 
     const loadMembersAndAttendance = async () => {
-      setMembersLoading(true)
-      setMembersError(null)
-      setSessionError(null) // ✅ THAY ĐỔI: Reset lỗi session
-      setSessionId(null) // ✅ THAY ĐỔI: Reset sessionId
+      setMembersLoading(true);
+      setMembersError(null);
+      setSessionError(null);
+      setSessionId(null);
 
-      try {
-        // 2. Fetch danh sách thành viên (giả sử không đổi)
-        // Nếu danh sách thành viên đã load rồi thì không cần load lại
-        let membersData: ApiMembership[] = apiMembers
-        if (membersData.length === 0) {
-          membersData = await membershipApi.getMembersByClubId(managedClub.id)
-          const membersWithUserData = await Promise.all(
-            membersData.map(async (m: any) => {
-              try {
-                const userInfo = await fetchUserById(m.userId)
-                return { ...m, userInfo }
-              } catch {
-                return { ...m, userInfo: null }
-              }
-            }),
-          )
-          setApiMembers(membersWithUserData)
-          membersData = membersWithUserData // Dùng data mới fetch
+      // Hàm trợ giúp để xử lý dữ liệu thành viên
+      const getMembers = async (): Promise<ApiMembership[]> => {
+        if (apiMembers.length > 0) return apiMembers; // Dùng cache nếu có
+
+        const membersData = await membershipApi.getMembersByClubId(managedClub.id);
+        const membersWithUserData = await Promise.all(
+          membersData.map(async (m: any) => {
+            try {
+              const userInfo = await fetchUserById(m.userId);
+              return { ...m, userInfo };
+            } catch {
+              return { ...m, userInfo: null };
+            }
+          }),
+        );
+        setApiMembers(membersWithUserData);
+        return membersWithUserData;
+      };
+
+      // // Hàm trợ giúp để thiết lập state điểm danh
+      // const setAttendanceStates = (
+      //   data: AttendanceResponse | null,
+      //   members: ApiMembership[],
+      // ) => {
+      //   const initialAttendance: Record<number, PageAttendanceStatus> = {};
+      //   const initialNotes: Record<number, string> = {};
+
+      //   if (data && data.attendances) {
+      //     setSessionId(data.sessionId);
+      //     data.attendances.forEach((record) => {
+      //       const status = (record.status?.toLowerCase() || "absent") as PageAttendanceStatus;
+      //       initialAttendance[record.membershipId] = status;
+      //       initialNotes[record.membershipId] = record.note || "";
+      //     });
+      //   }
+
+      //   // Set mặc định cho các thành viên
+      //   members.forEach((m: any) => {
+      //     if (m.membershipId && !initialAttendance[m.membershipId]) {
+      //       initialAttendance[m.membershipId] = "absent";
+      //       initialNotes[m.membershipId] = "";
+      //     }
+      //   });
+
+      //   setAttendance(initialAttendance);
+      //   setNotes(initialNotes);
+      // };
+      // Hàm trợ giúp để thiết lập state điểm danh
+      const setAttendanceStates = (
+        data: AttendanceResponse | null,
+        members: ApiMembership[],
+      ) => {
+        const initialAttendance: Record<number, PageAttendanceStatus> = {};
+        const initialNotes: Record<number, string> = {};
+
+        // ✅ THAY ĐỔI TẠI ĐÂY
+        if (data && data.records) {
+          setSessionId(data.sessionId); // Bây giờ sẽ chạy
+
+          // ✅ VÀ THAY ĐỔI TẠI ĐÂY
+          data.records.forEach((record) => {
+            const status = (record.status?.toLowerCase() || "absent") as PageAttendanceStatus;
+            initialAttendance[record.membershipId] = status;
+            initialNotes[record.membershipId] = record.note || "";
+          });
         }
+        // Set mặc định cho các thành viên
+        members.forEach((m: any) => {
+          if (m.membershipId && !initialAttendance[m.membershipId]) {
+            initialAttendance[m.membershipId] = "absent";
+            initialNotes[m.membershipId] = "";
+          }
+        });
+        setAttendance(initialAttendance);
+        setNotes(initialNotes);
+      };
 
-        // 3. ✅ Fetch dữ liệu điểm danh cho ngày đã chọn
-        // BẠN SẼ CẦN API MỚI Ở ĐÂY, ví dụ:
-        // const attendanceData: any = null // Giả lập là chưa có dữ liệu
+      // --- BẮT ĐẦU LOGIC CHÍNH ---
+      try {
+        const members = await getMembers(); // Lấy danh sách thành viên trước
 
-        // 3. ✅ THAY ĐỔI: Fetch dữ liệu điểm danh cho ngày đã chọn
-        let attendanceData: AttendanceResponse | null = null
-        try {
-          if (isToday) {
-            // API lấy điểm danh HÔM NAY
-            attendanceData = (await fetchTodayClubAttendance(managedClub.id)) as AttendanceResponse
-          } else {
-            // API lấy lịch sử
-            const formattedDate = format(selectedDate, "yyyy-MM-dd")
+        let attendanceData: AttendanceResponse | null = null;
+
+        if (isToday) {
+          // --- LOGIC CHO NGÀY HÔM NAY ---
+          try {
+            // Bước 1: Thử lấy session hôm nay
+            attendanceData = (await fetchTodayClubAttendance(managedClub.id)) as AttendanceResponse;
+          } catch (fetchErr: any) {
+            // Bước 2: Lỗi (ví dụ 404) -> Thử TẠO session mới
+            console.warn("Session not found, attempting to create one...");
+            try {
+              // Chuẩn bị body cho API POST
+              const todayStr = format(new Date(), "yyyy-MM-dd");
+              const defaultTime = { hour: 0, minute: 0, second: 0, nano: 0 };
+              const newSessionBody: CreateSessionBody = {
+                date: todayStr,
+                startTime: defaultTime, // Dùng giá trị mặc định từ Swagger
+                endTime: defaultTime,   // Dùng giá trị mặc định từ Swagger
+                note: "Auto-created session by frontend",
+              };
+
+              // Gọi API tạo session
+              attendanceData = (await createClubAttendanceSession(
+                managedClub.id,
+                newSessionBody,
+              )) as AttendanceResponse;
+
+              toast({
+                title: "New Session Created",
+                description: "An attendance session for today has been started.",
+              });
+
+            } catch (createErr: any) {
+              // Bước 3: Lỗi khi TẠO -> Đây mới là lỗi thực sự
+              console.error("Failed to create attendance session:", createErr);
+              setSessionError(
+                "Failed to create an attendance session for today. Please check backend.",
+              );
+            }
+          }
+        } else {
+          // --- LOGIC CHO NGÀY QUÁ KHỨ ---
+          try {
+            const formattedDate = format(selectedDate, "yyyy-MM-dd");
             attendanceData = (await fetchClubAttendanceHistory({
               clubId: managedClub.id,
               date: formattedDate,
-            })) as AttendanceResponse
-          }
-        } catch (apiErr: any) {
-          // Lỗi khi fetch điểm danh (ví dụ: 404 Not Found - không có buổi học)
-          console.error("Failed to fetch attendance session:", apiErr)
-          if (isToday) {
-            setSessionError(
-              "Could not find an attendance session for today. Attendance cannot be saved.",
-            )
-          } else {
-            setSessionError("No attendance records found for this date.")
+            })) as AttendanceResponse;
+          } catch (historyErr: any) {
+            console.error("Failed to fetch attendance history:", historyErr);
+            setSessionError("No attendance records found for this date.");
           }
         }
 
-        const initialAttendance: Record<number, PageAttendanceStatus> = {}
-        const initialNotes: Record<number, string> = {}
+        // Thiết lập state với bất kỳ dữ liệu nào đã lấy/tạo được
+        setAttendanceStates(attendanceData, members);
 
-        if (attendanceData && attendanceData.attendances) {
-          // ✅ THAY ĐỔI: Lấy sessionId từ data
-          setSessionId(attendanceData.sessionId)
-          // Nếu có dữ liệu từ API
-          attendanceData.attendances.forEach((record: any) => {
-            // Chuyển status từ UPPERCASE (API) sang lowercase (Page state)
-            const status = (record.status?.toLowerCase() || "absent") as PageAttendanceStatus
-            initialAttendance[record.membershipId] = status
-            initialNotes[record.membershipId] = record.note || ""
-          })
-          // Gán trạng thái mặc định cho các member không có trong record
-          membersData.forEach((m: any) => {
-            if (m.membershipId && !initialAttendance[m.membershipId]) {
-              initialAttendance[m.membershipId] = "absent" // Mặc định là vắng mặt
-              initialNotes[m.membershipId] = ""
-            }
-          })
-        } else {
-          // Không có dữ liệu (hoặc lỗi 404)
-          // Set mặc định cho tất cả thành viên
-          membersData.forEach((m: any) => {
-            if (m.membershipId) {
-              const id = m.membershipId
-              initialAttendance[id] = "absent" // Mặc định là vắng mặt
-              initialNotes[id] = ""
-            }
-          })
-          // `sessionId` vẫn là `null`
-        }
-
-        setAttendance(initialAttendance)
-        setNotes(initialNotes)
       } catch (err: any) {
-        setMembersError(err?.message || "Error loading member list")
+        // Lỗi chung (ví dụ: không thể fetch thành viên)
+        setMembersError(err?.message || "Error loading member list");
       } finally {
-        setMembersLoading(false)
+        setMembersLoading(false);
       }
-    }
+    };
 
-    loadMembersAndAttendance()
-  }, [managedClub, selectedDate, apiMembers]) // ✅ THAY ĐỔI: Thêm apiMembers
+    loadMembersAndAttendance();
+  }, [managedClub, selectedDate, apiMembers]);
 
   // Lọc thành viên active
   const clubMembers = useMemo(
@@ -308,46 +378,10 @@ export default function ClubAttendancePage() {
     setCurrentPage: setMembersPage,
   } = usePagination({ data: filteredMembers, initialPageSize: 6 })
 
-  /// ✅ THAY ĐỔI: Hàm này giờ sẽ gọi API `markClubAttendance`
-  const handleStatusChange = async (memberId: number, status: PageAttendanceStatus) => {
-    // 1. Nếu đang ở chế độ chỉ đọc (ngày quá khứ), không làm gì cả
+  const handleStatusChange = (memberId: number, status: PageAttendanceStatus) => {
     if (isReadOnly) return;
-    // 2. Nếu không phải chế độ chỉ đọc (là hôm nay) NHƯNG không có sessionId
-    if (!sessionId) {
-      toast({
-        variant: "destructive",
-        title: "Session Not Found",
-        description: "Cannot save, attendance session not found.",
-      });
-      return;
-    }
-    // Cập nhật UI trước (Optimistic Update)
-    const oldStatus = attendance[memberId]
-    setAttendance((prev) => ({ ...prev, [memberId]: status }))
-
-    try {
-      // Gọi API
-      await markClubAttendance({
-        sessionId: sessionId,
-        membershipId: memberId,
-        status: status.toUpperCase() as ApiAttendanceStatus, // Chuyển sang UPPERCASE
-        note: notes[memberId] || "", // Gửi kèm note hiện tại
-      })
-
-      toast({
-        title: "Status Updated",
-        description: `Marked member as ${status}.`,
-      })
-    } catch (err) {
-      // Hoàn tác lại nếu lỗi
-      setAttendance((prev) => ({ ...prev, [memberId]: oldStatus }))
-      toast({
-        variant: "destructive",
-        title: "Update Failed",
-        description: "Could not update attendance status. Please try again.",
-      })
-    }
-  }
+    setAttendance((prev) => ({ ...prev, [memberId]: status }));
+  };
 
   // ✅ MỚI: Thống kê nhanh
   const stats = useMemo(() => {
@@ -377,97 +411,74 @@ export default function ClubAttendancePage() {
     return { total, present, absent, late, excused }
   }, [attendance, filteredMembers])
 
-  // ✅ MỚI: Hành động hàng loạt
-  // ✅ THAY ĐỔI: Hành động hàng loạt, gọi API `markAllClubAttendance`
-  const handleBulkAction = async (status: "present" | "absent") => {
-    // 1. Nếu đang ở chế độ chỉ đọc (ngày quá khứ), không làm gì cả
+  // ✅ THAY ĐỔI: Tắt auto-save
+  const handleBulkAction = (status: "present" | "absent") => {
     if (isReadOnly) return;
-    // 2. Nếu không phải chế độ chỉ đọc (là hôm nay) NHƯNG không có sessionId
-    if (!sessionId) {
-      toast({
-        variant: "destructive",
-        title: "Session Not Found",
-        description: "Cannot save, attendance session not found.",
-      });
-      return;
-    }
-
-    // Cập nhật UI trước (Optimistic Update)
-    const oldAttendance = { ...attendance }
-    const newAttendance = { ...attendance }
+    const newAttendance = { ...attendance };
     filteredMembers.forEach((member) => {
-      newAttendance[member.id] = status
-    })
-    setAttendance(newAttendance)
+      newAttendance[member.id] = status;
+    });
+    setAttendance(newAttendance);
+  };
 
-    try {
-      // Gọi API
-      await markAllClubAttendance({
-        sessionId: sessionId,
-        status: status.toUpperCase() as ApiAttendanceStatus, // Chuyển sang UPPERCASE
-      })
-      toast({
-        title: "Bulk Update Successful",
-        description: `Marked all filtered members as ${status}.`,
-      })
-    } catch (err) {
-      // Hoàn tác nếu lỗi
-      setAttendance(oldAttendance)
-      toast({
-        variant: "destructive",
-        title: "Bulk Update Failed",
-        description: "Could not update all members. Please try again.",
-      })
-    }
-  }
-
-  // ✅ MỚI: Xử lý lưu ghi chú
-  // ✅ THAY ĐỔI: Xử lý lưu ghi chú, gọi API `markClubAttendance`
-  const handleSaveNote = async () => {
-    // 1. Nếu đang ở chế độ chỉ đọc hoặc không có thành viên nào đang được sửa, không làm gì cả
+  // ✅ THAY ĐỔI: Tắt auto-save
+  const handleSaveNote = () => {
     if (isReadOnly || !editingNoteMember) return;
-    // 2. Nếu không phải chế độ chỉ đọc (là hôm nay) NHƯNG không có sessionId
-    if (!sessionId) {
-      toast({
-        variant: "destructive",
-        title: "Session Not Found",
-        description: "Cannot save note, attendance session not found.",
-      });
-      return;
-    }
-    const memberId = editingNoteMember.id
-    const oldNote = notes[memberId]
-    const currentStatus = (attendance[memberId] || "absent") as PageAttendanceStatus
 
-    // Cập nhật UI trước
-    setNotes((prev) => ({ ...prev, [memberId]: currentNote }))
-    setEditingNoteMember(null) // Đóng dialog
+    const memberId = editingNoteMember.id;
+    // Cập nhật state local
+    setNotes((prev) => ({ ...prev, [memberId]: currentNote }));
+
+    // Đóng dialog
+    setEditingNoteMember(null);
+    setCurrentNote("");
+  };
+
+  // ✅ THAY THẾ: Hàm Save thủ công (phiên bản MỚI, hiệu quả cao)
+  const handleSaveAttendance = async () => {
+    if (isReadOnly || !sessionId || isSaving) return;
+
+    setIsSaving(true);
+    toast({ title: "Saving attendance...", description: "Please wait..." });
+
+    // 1. Gom tất cả dữ liệu từ state thành mảng
+    // (Lưu tất cả thành viên, không chỉ thành viên đã lọc)
+    const recordsToSave: MarkBulkRecord[] = clubMembers.map(member => {
+      const memberId = member.id;
+      const status = (attendance[memberId] || "absent") as PageAttendanceStatus;
+      const note = notes[memberId] || "";
+
+      return {
+        membershipId: memberId,
+        status: status.toUpperCase() as ApiAttendanceStatus, // Chuyển sang UPPERCASE
+        note: note,
+      };
+    });
+
+    // 2. Chuẩn bị body cho API
+    const requestBody: MarkBulkBody = {
+      records: recordsToSave
+    };
 
     try {
-      // Gọi API
-      await markClubAttendance({
-        sessionId: sessionId,
-        membershipId: memberId,
-        status: currentStatus.toUpperCase() as ApiAttendanceStatus, // Gửi status hiện tại
-        note: currentNote, // Gửi note mới
-      })
+      // 3. Gọi API .../mark-bulk MỘT LẦN DUY NHẤT
+      await markAttendanceBulk(sessionId, requestBody);
+
       toast({
-        title: "Note Saved",
-        description: `Note for ${editingNoteMember.fullName} has been saved.`,
-      })
+        title: "Attendance Saved!",
+        description: `All ${recordsToSave.length} records have been saved successfully.`,
+      });
     } catch (err) {
-      // Hoàn tác nếu lỗi
-      setNotes((prev) => ({ ...prev, [memberId]: oldNote }))
+      console.error("Failed to save bulk attendance:", err);
       toast({
         variant: "destructive",
-        title: "Save Note Failed",
-        description: "Could not save note. Please try again.",
-      })
+        title: "Save Failed",
+        description: "Could not save attendance. Please try again.",
+      });
     } finally {
-      // Dọn dẹp state
-      setCurrentNote("")
+      setIsSaving(false);
     }
-  }
+  };
 
   const MinimalPager = ({ current, total, onPrev, onNext }: any) =>
     total > 1 ? (
@@ -666,9 +677,9 @@ export default function ClubAttendancePage() {
         {!isReadOnly && sessionId && (
           <Alert variant="default" className="mb-4 bg-blue-50 border-blue-200">
             <Info className="h-4 w-4 text-blue-700" />
-            <AlertTitle>Auto-Save is Active</AlertTitle>
+            <AlertTitle>Session is Ready</AlertTitle>
             <AlertDescription>
-              Attendance session is active (ID: {sessionId}). All changes are saved automatically.
+              Session (ID: {sessionId}) is active. Changes must be saved manually using the "Save" button.
             </AlertDescription>
           </Alert>
         )}
@@ -836,12 +847,43 @@ export default function ClubAttendancePage() {
               />
 
               {/* ✅ Nút lưu điểm danh */}
-              {/* <div className="flex justify-end mt-6">
-                <Button onClick={handleSaveAttendance} className="flex items-center gap-2 mr-10 mb-5">
-                  <CheckCircle className="h-4 w-4" />
-                  Save Attendance
-                </Button>
-              </div> */}
+              {/* ✅ THAY ĐỔI: Kích hoạt Nút lưu điểm danh thủ công */}
+              {!isReadOnly && sessionId && (
+                <div className="flex justify-end mt-6">
+                  <Button
+                    onClick={handleSaveAttendance}
+                    disabled={isSaving || !sessionId} // Disable khi đang lưu hoặc không có session
+                    className="flex items-center gap-2 mr-10 mb-5 w-[180px]" // Thêm độ rộng cố định
+                  >
+                    {isSaving ? (
+                      // Thêm icon spinner đơn giản
+                      <svg
+                        className="animate-spin -ml-1 mr-2 h-4 w-4"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
+                      </svg>
+                    ) : (
+                      <CheckCircle className="h-4 w-4" />
+                    )}
+                    {isSaving ? "Saving..." : "Save Attendance"}
+                  </Button>
+                </div>
+              )}
             </>
           )}
         </div>

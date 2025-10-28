@@ -2,7 +2,6 @@
 import axiosInstance from "@/lib/axiosInstance";
 
 // --- Các hàm API điểm danh chung (Bạn đã có) ---
-
 export const fetchAttendanceByDate = async (date: string) => {
   const response = await axiosInstance.get(`/api/attendance?date=${date}`);
   return response.data;
@@ -14,12 +13,39 @@ export const saveAttendanceRecords = async (records: any[]) => {
 };
 
 // --- Các hàm API điểm danh CLB (Mới từ Swagger) ---
+interface TimeObject {
+  hour: number;
+  minute: number;
+  second: number;
+  nano: number;
+}
+export interface CreateSessionBody {
+  date: string; // "YYYY-MM-DD"
+  startTime: TimeObject;
+  endTime: TimeObject;
+  note: string;
+}
 
-/**
- * Định nghĩa các trạng thái điểm danh hợp lệ
- * Dựa trên "Available values" trong ảnh
- */
 export type AttendanceStatus = "PRESENT" | "LATE" | "EXCUSED" | "ABSENT";
+
+export interface MarkBulkRecord {
+  membershipId: number;
+  status: AttendanceStatus; // "PRESENT", "LATE", v.v.
+  note: string;
+}
+export interface MarkBulkBody {
+  records: MarkBulkRecord[];
+}
+export const createClubAttendanceSession = async (
+  clubId: number,
+  sessionData: CreateSessionBody
+) => {
+  const response = await axiosInstance.post(
+    `/api/club-attendance/${clubId}/create-session`,
+    sessionData // Gửi dữ liệu qua request body
+  );
+  return response.data;
+};
 
 export const fetchTodayClubAttendance = async (clubId: number) => {
   const response = await axiosInstance.get(
@@ -27,7 +53,6 @@ export const fetchTodayClubAttendance = async (clubId: number) => {
   );
   return response.data;
 };
-
 
 export interface MarkClubAttendanceParams {
   sessionId: number; // (path) ID của buổi học/sinh hoạt
@@ -87,6 +112,14 @@ export const fetchClubAttendanceHistory = async (
   const response = await axiosInstance.get(
     `/api/club-attendance/${clubId}/history`,
     { params: { date } } // Thêm 'date' làm query parameter
+  );
+  return response.data;
+};
+
+export const markAttendanceBulk = async (sessionId: number, data: MarkBulkBody) => {
+  const response = await axiosInstance.put(
+    `/api/club-attendance/${sessionId}/mark-bulk`,
+    data // Gửi body
   );
   return response.data;
 };
