@@ -155,6 +155,13 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
 
   const getStatusBadge = (status: string) => {
     switch (status) {
+      case "COMPLETED":
+        return (
+          <Badge variant="secondary" className="bg-blue-900 text-white border-blue-900">
+            <CheckCircle className="h-3 w-3 mr-1" />
+            Completed
+          </Badge>
+        )
       case "PENDING":
         return (
           <Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-500">

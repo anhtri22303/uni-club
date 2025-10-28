@@ -52,8 +52,11 @@ export default function UniStaffEventRequestsPage() {
 		return loc.capacity ?? loc.maxCapacity ?? loc.seatingCapacity ?? null
 	}
 
-	// Helper function to check if event has expired (past endTime)
+	// Helper function to check if event has expired (past endTime) or is COMPLETED
 	const isEventExpired = (event: any) => {
+		// COMPLETED status is always considered expired
+		if (event.status === "COMPLETED") return true
+		
 		// Check if date and endTime are present
 		if (!event.date || !event.endTime) return false
 
@@ -171,7 +174,17 @@ export default function UniStaffEventRequestsPage() {
 			return filteredRequests.slice(start, start + pageSize)
 		})()
 
-	const getStatusBadge = (status: string, isExpired: boolean = false) => {
+	const getStatusBadge = (status: string, isExpired: boolean = false, isCompleted: boolean = false) => {
+		// COMPLETED status gets dark blue badge - highest priority
+		if (isCompleted || status === "COMPLETED") {
+			return (
+				<Badge variant="secondary" className="bg-blue-900 text-white border-blue-900">
+					<CheckCircle className="h-3 w-3 mr-1" />
+					Completed
+				</Badge>
+			)
+		}
+		
 		// Override with Expired badge if expired - gray color to override approval status
 		if (isExpired) {
 			return (
@@ -411,9 +424,16 @@ export default function UniStaffEventRequestsPage() {
 							</Card>
 						) : (
 							paginated.map((request) => {
-								const expired = isEventExpired(request)
+								// COMPLETED status means event has ended, regardless of date/time
+								const isCompleted = request.status === "COMPLETED"
+								const expired = isCompleted || isEventExpired(request)
+								const borderClass = isCompleted 
+									? 'border-2 border-blue-900 dark:border-blue-800 opacity-60' 
+									: expired 
+										? 'border-2 border-gray-400 dark:border-gray-600 opacity-60' 
+										: ''
 								return (
-								<Card key={request.id} className={`hover:shadow-md transition-shadow cursor-pointer ${expired ? 'border-2 border-gray-400 dark:border-gray-600 opacity-60' : ''}`}>
+								<Card key={request.id} className={`hover:shadow-md transition-shadow cursor-pointer ${borderClass}`}>
 									<Link href={`/uni-staff/events-req/${request.id}`}>
 										<CardContent className="p-6">
 											<div className="flex items-start justify-between">
@@ -423,7 +443,7 @@ export default function UniStaffEventRequestsPage() {
 														<h3 className="font-semibold text-lg">{request.name || request.eventName}</h3>
 														{renderTypeBadge(request.type || request.eventType)}
 														{/* category not provided by API example */}
-														{getStatusBadge(request.status || request.type, expired)}
+														{getStatusBadge(request.status || request.type, expired, isCompleted)}
 													</div>
 
 													<p className="text-muted-foreground mb-3 line-clamp-2">{request.description}</p>

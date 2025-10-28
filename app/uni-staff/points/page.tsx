@@ -34,7 +34,7 @@ export default function UniversityStaffRewardPage() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
 
-    const [selectedClubId, setSelectedClubId] = useState<string | number | null>(null)
+    const [selectedClubs, setSelectedClubs] = useState<Record<string, boolean>>({})
     const [rewardAmount, setRewardAmount] = useState<number | ''>('')
     const [isDistributing, setIsDistributing] = useState(false)
 
@@ -66,8 +66,31 @@ export default function UniversityStaffRewardPage() {
         loadClubs();
     }, []);
 
-    const handleSelectClub = (clubId: string | number) => {
-        setSelectedClubId(clubId)
+    // Initialize selection state for all clubs
+    useEffect(() => {
+        if (allClubs && allClubs.length > 0) {
+            setSelectedClubs((prevSelected) => {
+                const currentClubIds = Object.keys(prevSelected)
+                const newClubIds = allClubs.map((c) => String(c.id))
+
+                // If we already have selections and the IDs match, don't update
+                if (currentClubIds.length === newClubIds.length &&
+                    newClubIds.every(id => id in prevSelected)) {
+                    return prevSelected
+                }
+
+                // Otherwise, create new selection state
+                const initialSelected: Record<string, boolean> = {}
+                allClubs.forEach((c) => {
+                    initialSelected[String(c.id)] = false
+                })
+                return initialSelected
+            })
+        }
+    }, [allClubs])
+
+    const handleToggleSelectClub = (clubId: string | number) => {
+        setSelectedClubs((prev) => ({ ...prev, [String(clubId)]: !prev[String(clubId)] }))
     }
 
     const handleRewardAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -77,9 +100,27 @@ export default function UniversityStaffRewardPage() {
         }
     }
 
-    const selectedClub = useMemo(() => {
-        return allClubs.find(club => club.id === selectedClubId) || null
-    }, [allClubs, selectedClubId])
+    const allSelected = useMemo(() => {
+        if (allClubs.length === 0) {
+            return false
+        }
+        return allClubs.every((club) => selectedClubs[String(club.id)] === true)
+    }, [allClubs, selectedClubs])
+
+    const handleToggleSelectAll = () => {
+        const newSelectionState = !allSelected
+        setSelectedClubs((prevSelected) => {
+            const newSelected = { ...prevSelected }
+            allClubs.forEach((club) => {
+                newSelected[String(club.id)] = newSelectionState
+            })
+            return newSelected
+        })
+    }
+
+    const selectedCount = useMemo(() => {
+        return Object.values(selectedClubs).filter(v => v === true).length
+    }, [selectedClubs])
 
     const {
         currentPage,
@@ -90,26 +131,53 @@ export default function UniversityStaffRewardPage() {
 
     const handleDistributeRewards = async () => {
         if (rewardAmount === '' || rewardAmount <= 0) {
-            toast({ title: "Error", description: "Please enter a valid reward amount.", variant: "destructive" })
+            toast({ 
+                title: "Error", 
+                description: "Please enter a valid reward amount.", 
+                variant: "destructive" 
+            })
             return
         }
 
-        if (!selectedClubId) {
-            toast({ title: "No club selected", description: "Please select a club to distribute rewards.", variant: "destructive" })
+        // Get selected clubs
+        const selectedClubsList = allClubs.filter(club => selectedClubs[String(club.id)])
+        if (selectedClubsList.length === 0) {
+            toast({ 
+                title: "No clubs selected", 
+                description: "Please select at least one club to distribute rewards.", 
+                variant: "destructive" 
+            })
             return
         }
 
         setIsDistributing(true)
         try {
-            const result = await postClubWalletByClubId(selectedClubId, rewardAmount as number, "giving")
+            // Distribute points to each selected club individually
+            const distributePromises = selectedClubsList.map(club =>
+                postClubWalletByClubId(
+                    club.id,
+                    rewardAmount as number,
+                    "Giving Point Month"
+                )
+            )
 
-            toast({
-                title: "Success",
-                description: `Successfully distributed ${rewardAmount} points to ${selectedClub?.name}. New balance: ${result.balancePoints} points.`,
-                variant: "default"
-            })
-            setRewardAmount('')
-            setSelectedClubId(null)
+            // Execute all distribution API calls in parallel
+            const results = await Promise.allSettled(distributePromises)
+
+            // Count successes and failures
+            const successCount = results.filter(r => r.status === 'fulfilled').length
+            const failureCount = results.filter(r => r.status === 'rejected').length
+
+            if (successCount > 0) {
+                toast({
+                    title: "Success",
+                    description: `Distributed ${rewardAmount} points to ${successCount} club(s).${failureCount > 0 ? ` ${failureCount} failed.` : ''}`,
+                    variant: "default"
+                })
+                setRewardAmount('')
+            } else {
+                throw new Error("All reward distributions failed")
+            }
         } catch (err: any) {
             toast({
                 title: "Distribution Error",
@@ -227,7 +295,8 @@ export default function UniversityStaffRewardPage() {
                                                     <TableHead className="w-[80px]">ID</TableHead>
                                                     <TableHead>Type</TableHead>
                                                     <TableHead>Amount</TableHead>
-                                                    <TableHead className="w-[40%]">Description</TableHead>
+                                                    <TableHead className="w-[25%]">Receiver Club</TableHead>
+                                                    <TableHead className="w-[30%]">Description</TableHead>
                                                     <TableHead>Date</TableHead>
                                                 </TableRow>
                                             </TableHeader>
@@ -237,6 +306,9 @@ export default function UniversityStaffRewardPage() {
                                                         <TableCell className="font-medium">#{t.id}</TableCell>
                                                         <TableCell><Badge variant="secondary">{t.type}</Badge></TableCell>
                                                         <TableCell className="font-semibold text-green-600">+{t.amount} pts</TableCell>
+                                                        <TableCell className="font-medium text-blue-600">
+                                                            {t.receiverName || "—"}
+                                                        </TableCell>
                                                         <TableCell className="truncate">{t.description || "—"}</TableCell>
                                                         <TableCell className="text-sm text-muted-foreground">
                                                             {formatDate(t.createdAt)}
@@ -269,19 +341,19 @@ export default function UniversityStaffRewardPage() {
                                 />
                             </div>
                             <p className="text-sm text-muted-foreground">
-                                Selected club: <strong>{selectedClub?.name || "None"}</strong>
+                                Selected clubs: <strong>{selectedCount} club(s)</strong>
                             </p>
                         </CardContent>
                         <CardFooter>
                             <Button
                                 onClick={handleDistributeRewards}
-                                disabled={isDistributing || rewardAmount === '' || rewardAmount <= 0 || !selectedClubId}
+                                disabled={isDistributing || rewardAmount === '' || rewardAmount <= 0 || selectedCount === 0}
                                 className="w-full"
                             >
                                 {isDistributing ? "Distributing..." : (
                                     <>
                                         <Send className="mr-2 h-4 w-4" />
-                                        Distribute {rewardAmount || 0} points to {selectedClub?.name || "selected club"}
+                                        Distribute {rewardAmount || 0} points to {selectedCount} club(s)
                                     </>
                                 )}
                             </Button>
@@ -290,7 +362,19 @@ export default function UniversityStaffRewardPage() {
 
                     <Separator />
 
-                    <h2 className="text-2xl font-semibold">Select a Club ({allClubs.length})</h2>
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-2xl font-semibold">Select Clubs ({allClubs.length})</h2>
+                        {allClubs.length > 0 && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleToggleSelectAll}
+                                className="rounded-lg"
+                            >
+                                {allSelected ? "Deselect All" : "Select All"}
+                            </Button>
+                        )}
+                    </div>
                     <div className="space-y-4">
                         {loading ? (
                             <p>Loading clubs...</p>
@@ -301,13 +385,14 @@ export default function UniversityStaffRewardPage() {
                         ) : (
                             <>
                                 {paginatedClubs.map((club) => {
-                                    const isSelected = selectedClubId === club.id
+                                    const isSelected = selectedClubs[String(club.id)] || false
                                     return (
                                         <Card
                                             key={club.id}
-                                            className={`transition-all duration-200 border-2 cursor-pointer ${isSelected ? "border-primary/70 bg-primary/5" : "border-transparent hover:border-muted"
-                                                }`}
-                                            onClick={() => handleSelectClub(club.id)}
+                                            className={`transition-all duration-200 border-2 ${isSelected 
+                                                ? "border-primary/70 bg-primary/5 shadow-sm" 
+                                                : "border-transparent hover:border-muted"
+                                            }`}
                                         >
                                             <CardContent className="py-3 flex items-center justify-between">
                                                 <div className="flex items-center gap-4">
@@ -328,20 +413,18 @@ export default function UniversityStaffRewardPage() {
 
                                                 <div className="flex items-center gap-4">
                                                     <input
-                                                        type="radio"
-                                                        name="club-selection"
+                                                        type="checkbox"
                                                         checked={isSelected}
-                                                        onChange={() => handleSelectClub(club.id)}
-                                                        className="w-5 h-5 accent-primary cursor-pointer"
+                                                        onChange={() => handleToggleSelectClub(club.id)}
+                                                        className="w-5 h-5 accent-primary cursor-pointer transition-all duration-150"
+                                                        style={{ transform: "scale(1.2)" }}
                                                         aria-label={`Select ${club.name}`}
                                                         title={`Select ${club.name}`}
-                                                        onClick={(e) => e.stopPropagation()}
                                                     />
                                                     <Button
                                                         variant="outline"
                                                         size="sm"
                                                         className={isSelected ? "border-primary text-primary" : ""}
-                                                        onClick={(e) => e.stopPropagation()}
                                                     >
                                                         + {rewardAmount || 0} pts
                                                     </Button>

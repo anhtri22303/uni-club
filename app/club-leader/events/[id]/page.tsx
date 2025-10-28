@@ -228,6 +228,13 @@ export default function EventDetailPage() {
 
   const getStatusBadge = (status: string) => {
     switch (status.toUpperCase()) {
+      case "COMPLETED":
+        return (
+          <Badge variant="secondary" className="bg-blue-900 text-white border-blue-900">
+            <CheckCircle className="h-3 w-3 mr-1" />
+            Completed
+          </Badge>
+        )
       case "APPROVED":
         return (
           <Badge variant="default" className="bg-green-100 text-green-800 border-green-300">
@@ -278,6 +285,9 @@ export default function EventDetailPage() {
   // Check if the event is currently active (within date and time range)
   const isEventActive = () => {
     if (!event) return false
+
+    // COMPLETED status means event has ended
+    if (event.status === "COMPLETED") return false
 
     // Must be APPROVED
     if (event.status !== "APPROVED") return false

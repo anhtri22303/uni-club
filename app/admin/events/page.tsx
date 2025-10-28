@@ -38,8 +38,11 @@ export default function AdminEventsPage() {
   // support 'mobile' environment for deep-link QR
   const [activeEnvironment, setActiveEnvironment] = useState<'local' | 'prod' | 'mobile'>('prod')
 
-  // Helper function to check if event has expired (past endTime)
+  // Helper function to check if event has expired (past endTime) or is COMPLETED
   const isEventExpired = (event: any) => {
+    // COMPLETED status is always considered expired
+    if (event.status === "COMPLETED") return true
+    
     // Check if date and endTime are present
     if (!event.date || !event.endTime) return false
 
@@ -586,11 +589,15 @@ export default function AdminEventsPage() {
             <>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {paginatedEvents.map((event: any) => {
-                  const expired = isEventExpired(event)
+                  // COMPLETED status means event has ended, regardless of date/time
+                  const isCompleted = event.status === "COMPLETED"
+                  const expired = isCompleted || isEventExpired(event)
                   const status = expired ? "Finished" : getEventStatus(event.date, event.time)
-                  // Border color logic - expired events override approval status
+                  // Border color logic - completed events get dark blue, expired events override approval status
                   let borderColor = ""
-                  if (expired) {
+                  if (isCompleted) {
+                    borderColor = "border-blue-900 dark:border-blue-800"
+                  } else if (expired) {
                     borderColor = "border-gray-400 dark:border-gray-600"
                   } else if (event.status === "APPROVED") {
                     borderColor = "border-green-500"
@@ -637,9 +644,11 @@ export default function AdminEventsPage() {
                             {status}
                           </Badge>
                         </div>
-                        {/* Approval status badge - show gray for expired events */}
+                        {/* Approval status badge - show COMPLETED in dark blue, gray for expired events */}
                         <div className="mt-2">
-                          {expired ? (
+                          {isCompleted ? (
+                            <Badge variant="secondary" className="bg-blue-900 text-white border-blue-900">Completed</Badge>
+                          ) : expired ? (
                             <Badge variant="secondary" className="bg-gray-400 text-white">Expired</Badge>
                           ) : (
                             <>
@@ -687,8 +696,8 @@ export default function AdminEventsPage() {
                             <Eye className="h-4 w-4 mr-2" />
                             View Detail
                           </Button>
-                          {/* QR Code Section - Only show if APPROVED and not expired */}
-                          {event.status === "APPROVED" && !expired && (
+                          {/* QR Code Section - Only show if APPROVED and not expired/completed */}
+                          {event.status === "APPROVED" && !expired && !isCompleted && (
                             <div className="mt-3 pt-3 border-t border-muted">
                               <Button
                                 variant="default"

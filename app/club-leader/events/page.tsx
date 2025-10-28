@@ -100,8 +100,11 @@ export default function ClubLeaderEventsPage() {
   const { data: rawEvents = [], isLoading: eventsLoading } = useEventsByClubId(userClubId || 0, !!userClubId && viewMode === "hosted")
   const { data: rawCoHostEvents = [], isLoading: coHostEventsLoading } = useEventCoHostByClubId(userClubId || 0, !!userClubId && viewMode === "cohost")
 
-  // Helper function to check if event has expired (past endTime)
+  // Helper function to check if event has expired (past endTime) or is COMPLETED
   const isEventExpired = (event: any) => {
+    // COMPLETED status is always considered expired
+    if (event.status === "COMPLETED") return true
+    
     // Check if date and endTime are present
     if (!event.date || !event.endTime) return false
 
@@ -132,6 +135,9 @@ export default function ClubLeaderEventsPage() {
 
   // Helper function to check if event is active (APPROVED and within date/time range)
   const isEventActive = (event: any) => {
+    // COMPLETED status means event has ended
+    if (event.status === "COMPLETED") return false
+    
     // Must be APPROVED
     if (event.status !== "APPROVED") return false
 
@@ -326,6 +332,19 @@ export default function ClubLeaderEventsPage() {
   const [showFilters, setShowFilters] = useState(false)
 
   const filteredEvents = effectiveEvents.filter((item) => {
+    // Default: Show future PENDING and APPROVED events (hide expired/completed and rejected)
+    const isExpired = isEventExpired(item)
+    const isFutureEvent = item.date && new Date(item.date) >= new Date(new Date().toDateString())
+    
+    // By default, only show future events that are PENDING or APPROVED
+    if (!activeFilters["approval"] || activeFilters["approval"] === "all") {
+      if (item.status === "REJECTED") return false
+      if (item.status === "COMPLETED") return false
+      if (isExpired) return false
+      // Only show future or today's events
+      if (!isFutureEvent) return false
+    }
+    
     // search by title/name
     if (searchTerm) {
       const v = String(item.title || item.name || "").toLowerCase()
@@ -368,9 +387,9 @@ export default function ClubLeaderEventsPage() {
     // expired filter
     const expiredFilter = activeFilters["expired"]
     if (expiredFilter === "hide") {
-      if (isEventExpired(item)) return false
+      if (isExpired) return false
     } else if (expiredFilter === "only") {
-      if (!isEventExpired(item)) return false
+      if (!isExpired) return false
     }
 
     return true
@@ -765,14 +784,18 @@ export default function ClubLeaderEventsPage() {
             <>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {paginatedEvents.map((event: any) => {
-                  const expired = isEventExpired(event)
+                  // COMPLETED status means event has ended, regardless of date/time
+                  const isCompleted = event.status === "COMPLETED"
+                  const expired = isCompleted || isEventExpired(event)
                   const status = expired ? "Finished" : getEventStatus(event.date, event.time)
                   
                   // Border color logic
                   let borderColor = ""
                   if (viewMode === "cohost") {
                     // For co-host events, use coHostStatus
-                    if (expired) {
+                    if (isCompleted) {
+                      borderColor = "border-blue-900 dark:border-blue-800"
+                    } else if (expired) {
                       borderColor = "border-gray-400 dark:border-gray-600"
                     } else if (event.myCoHostStatus === "APPROVED") {
                       borderColor = "border-green-500"
@@ -785,7 +808,9 @@ export default function ClubLeaderEventsPage() {
                     }
                   } else {
                     // For hosted events, use event status
-                    if (expired) {
+                    if (isCompleted) {
+                      borderColor = "border-blue-900 dark:border-blue-800"
+                    } else if (expired) {
                       borderColor = "border-gray-400 dark:border-gray-600"
                     } else if (event.status === "APPROVED") {
                       borderColor = "border-green-500"
@@ -833,9 +858,11 @@ export default function ClubLeaderEventsPage() {
                             {status}
                           </Badge>
                         </div>
-                        {/* Approval status badge - show gray for expired events */}
+                        {/* Approval status badge - show COMPLETED in dark blue, gray for expired events */}
                         <div className="mt-2 flex gap-2 flex-wrap">
-                          {expired ? (
+                          {isCompleted ? (
+                            <Badge variant="secondary" className="bg-blue-900 text-white border-blue-900">Completed</Badge>
+                          ) : expired ? (
                             <Badge variant="secondary" className="bg-gray-400 text-white">Expired</Badge>
                           ) : viewMode === "cohost" ? (
                             <>

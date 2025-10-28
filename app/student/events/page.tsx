@@ -90,8 +90,11 @@ export default function MemberEventsPage() {
       clubs.find((c) => c.id === event.hostClub?.id)?.name.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
-  // Helper function to check if event has expired (past endTime)
+  // Helper function to check if event has expired (past endTime) or is COMPLETED
   const isEventExpired = (event: any) => {
+    // COMPLETED status is always considered expired
+    if (event.status === "COMPLETED") return true
+    
     // Check if date and endTime are present
     if (!event.date || !event.endTime) return false
 
@@ -131,18 +134,30 @@ export default function MemberEventsPage() {
       return false
     }
 
-    // Filter by status - only show APPROVED or COMPLETED events
-    if (event.status !== "APPROVED" && event.status !== "COMPLETED") {
-      return false
-    }
-
-    // expired filter
+    // Default: Show future PENDING and APPROVED events (hide expired/completed and rejected)
+    const isExpired = isEventExpired(event)
+    const isFutureEvent = event.date && new Date(event.date) >= new Date(new Date().toDateString())
+    
+    // By default, only show future events that are PENDING or APPROVED
     const expiredFilter = activeFilters["expired"]
     if (expiredFilter === "hide") {
-      if (isEventExpired(event)) return false
+      // Hide expired events (including COMPLETED status)
+      if (isExpired) return false
+      // Hide rejected events
+      if (event.status === "REJECTED") return false
+      // Only show APPROVED or PENDING events
+      if (event.status !== "APPROVED" && event.status !== "PENDING") return false
+      // Only show future or today's events
+      if (!isFutureEvent) return false
     } else if (expiredFilter === "only") {
-      if (!isEventExpired(event)) return false
+      if (!isExpired) return false
+    } else if (expiredFilter === "show") {
+      // Show all events regardless of expiration
+      if (event.status !== "APPROVED" && event.status !== "PENDING" && event.status !== "COMPLETED") {
+        return false
+      }
     }
+    
     return true
   })
 
@@ -312,7 +327,7 @@ export default function MemberEventsPage() {
                           </CardDescription>
                         </div>
                         {event.status === "COMPLETED" ? (
-                          <Badge variant="outline" className="bg-gray-100 text-gray-700 border-gray-400">
+                          <Badge variant="outline" className="bg-blue-900 text-white border-blue-900">
                             COMPLETED
                           </Badge>
                         ) : (
@@ -360,14 +375,14 @@ export default function MemberEventsPage() {
                           </div>
                         )}
 
-                        <Button
-                          className="w-full"
-                          variant="default"
-                          disabled={registeringEventId === event.id}
-                          onClick={() => handleRegister(event.id)}
-                        >
-                          {registeringEventId === event.id ? "Registering..." : "Register"}
-                        </Button>
+                          <Button
+                            className="w-full"
+                            variant="default"
+                            disabled={registeringEventId === event.id || event.status === "COMPLETED"}
+                            onClick={() => handleRegister(event.id)}
+                          >
+                            {registeringEventId === event.id ? "Registering..." : event.status === "COMPLETED" ? "Ended" : "Register"}
+                          </Button>
                       </div>
                     </CardContent>
                   </Card>

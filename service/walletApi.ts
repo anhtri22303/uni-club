@@ -133,6 +133,7 @@ export type ApiClubToMemberTransaction = {
   amount: number;
   description: string;
   createdAt: string;
+  receiverName: string | null;
 }
 
 export const getClubToMemberTransactions = async (): Promise<ApiClubToMemberTransaction[]> => {
@@ -152,6 +153,7 @@ export type ApiUniToClubTransaction = {
   amount: number;
   description: string;
   createdAt: string;
+  receiverName: string | null;
 }
 
 export const getUniToClubTransactions = async (): Promise<ApiUniToClubTransaction[]> => {
