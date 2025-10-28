@@ -17,7 +17,7 @@ import { QRModal } from "@/components/qr-modal"
 import { ProtectedRoute } from "@/contexts/protected-route"
 import { LoadingSkeleton } from "@/components/loading-skeleton"
 
-import { getEventById, submitForUniversityApproval, timeObjectToString, acceptCoHostInvitation, rejectCoHostInvitation, getEventWallet, EventWallet } from "@/service/eventApi" // 👈 Thêm submitForUniversityApproval
+import { getEventById, submitForUniversityApproval, timeObjectToString, acceptCoHostInvitation, rejectCoHostInvitation, getEventWallet, EventWallet, TimeObject } from "@/service/eventApi" // 👈 Thêm submitForUniversityApproval
 import { getClubIdFromToken } from "@/service/clubApi"
 import { Loader2 } from "lucide-react" // 👈 Thêm Loader2
 interface EventDetail {
@@ -26,8 +26,8 @@ interface EventDetail {
   description: string
   type: string
   date: string
-  startTime: string | null
-  endTime: string | null
+  startTime: TimeObject | string | null
+  endTime: TimeObject | string | null
   status: string
   checkInCode: string
   locationName: string
