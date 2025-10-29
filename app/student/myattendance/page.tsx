@@ -57,12 +57,11 @@ interface SimpleClub {
 }
 
 export default function MemberAttendancePage() {
-  const [searchTerm, setSearchTerm] = useState("")
   const [loggedInUserId, setLoggedInUserId] = useState<number | null>(null)
   const [userClubIds, setUserClubIds] = useState<number[]>([])
   const [userClubsDetails, setUserClubsDetails] = useState<SimpleClub[]>([])
   const [selectedClubId, setSelectedClubId] = useState<number | null>(null)
-  
+
   const { toast } = useToast()
 
   // 4. LẤY DỮ LIỆU TỪ LOCALSTORAGE (userId VÀ clubIds)
@@ -94,7 +93,7 @@ export default function MemberAttendancePage() {
         } else if (parsed.clubId) {
           clubIdNumbers = [Number(parsed.clubId)]
         }
-        
+
         setUserClubIds(clubIdNumbers)
 
       }
@@ -115,7 +114,7 @@ export default function MemberAttendancePage() {
         .filter(Boolean) as SimpleClub[] // Loại bỏ (filter out) bất kỳ club nào không tìm thấy
 
       setUserClubsDetails(details)
-      
+
       // Tự động chọn club đầu tiên làm default
       if (details.length > 0 && selectedClubId === null) {
         setSelectedClubId(details[0].id)
@@ -125,12 +124,12 @@ export default function MemberAttendancePage() {
 
   // 7. 🚀 LOGIC TRUNG TÂM: QUERY CHỒNG
   //    Query 1: Lấy danh sách members của CLB đã chọn
-  const { 
-    data: apiMembers = [], 
+  const {
+    data: apiMembers = [],
     isLoading: isLoadingMembers,
-    error: membersError 
+    error: membersError
   } = useClubMembers(
-    selectedClubId ?? 0, 
+    selectedClubId ?? 0,
     !!selectedClubId // Chỉ chạy khi selectedClubId có giá trị
   );
 
@@ -150,31 +149,16 @@ export default function MemberAttendancePage() {
   }, [apiMembers, loggedInUserId, selectedClubId])
 
   //    Query 2: Lấy lịch sử điểm danh (chỉ chạy khi đã tìm thấy 'foundMembershipId')
-  const { 
-    data: attendanceHistoryData = [], 
-    isLoading: isLoadingHistory 
+  const {
+    data: attendanceHistoryData = [],
+    isLoading: isLoadingHistory
   } = useMemberAttendanceHistory(foundMembershipId)
 
   // 8. LỌC DỮ LIỆU (SEARCH TERM)
   const filteredHistory = useMemo(() => {
-    return attendanceHistoryData.filter((record: any) => {
-      const searchLower = searchTerm.toLowerCase()
-      if (!record) return false
-      
-      const sessionDate = record.session?.date || ""
-      const sessionNote = record.session?.note || ""
-      const recordNote = record.note || ""
-      const status = record.status || ""
-
-      return (
-        sessionDate.includes(searchLower) ||
-        sessionNote.toLowerCase().includes(searchLower) ||
-        recordNote.toLowerCase().includes(searchLower) ||
-        status.toLowerCase().includes(searchLower)
-      )
-    })
-  }, [attendanceHistoryData, searchTerm])
-
+    // Chỉ cần trả về dữ liệu, hoặc mảng rỗng nếu chưa có
+    return attendanceHistoryData || []
+  }, [attendanceHistoryData])
 
   // 9. PHÂN TRANG
   const {
@@ -211,23 +195,13 @@ export default function MemberAttendancePage() {
 
           {/* --- Filters --- */}
           <div className="flex flex-wrap gap-4">
-            <Input
-              placeholder="Search history (date, note, status...)"
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value)
-                setCurrentPage(1)
-              }}
-              className="max-w-sm flex-1 min-w-[200px]"
-            />
-
             {/* Dropdown chọn Club */}
             {userClubsDetails.length > 0 ? (
               <Select
                 value={selectedClubId ? String(selectedClubId) : ""}
                 onValueChange={(value) => {
                   setSelectedClubId(Number(value))
-                  setCurrentPage(1) 
+                  setCurrentPage(1)
                 }}
               >
                 <SelectTrigger className="w-full sm:w-[240px]">
@@ -238,8 +212,8 @@ export default function MemberAttendancePage() {
                 </SelectTrigger>
                 <SelectContent>
                   {userClubsDetails.map((club) => (
-                    <SelectItem 
-                      key={club.id} 
+                    <SelectItem
+                      key={club.id}
                       value={String(club.id)}
                     >
                       {club.name}
@@ -286,9 +260,7 @@ export default function MemberAttendancePage() {
                 <History className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-lg font-semibold mb-2">No attendance records found</h3>
                 <p className="text-muted-foreground">
-                  {filteredHistory.length === 0 && attendanceHistoryData.length > 0
-                    ? "Try adjusting your search terms"
-                    : "There are no attendance records for this club yet."}
+                  "There are no attendance records for this club yet."
                 </p>
               </div>
             ) : (
@@ -298,17 +270,19 @@ export default function MemberAttendancePage() {
                   <CardHeader>
                     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
                       <div>
+
                         <CardTitle className="text-lg">
-                          {record.session?.date ? new Date(record.session.date).toLocaleDateString("en-US", {
+                          {record.date ? new Date(record.date).toLocaleDateString("en-US", {
                             weekday: "long",
                             year: "numeric",
                             month: "long",
                             day: "numeric",
                           }) : "Unknown Date"}
                         </CardTitle>
+                        {/* ✅ ĐÃ SỬA: Hiển thị 'record.clubName' thay vì thời gian N/A */}
                         <CardDescription className="flex items-center gap-2 mt-1">
-                          <Clock className="h-4 w-4" />
-                          {timeObjectToString(record.session?.startTime)} - {timeObjectToString(record.session?.endTime)}
+                          <Layers className="h-4 w-4" />
+                          {record.clubName || "Unknown Club"}
                         </CardDescription>
                       </div>
                       <div className="flex-shrink-0 mt-2 sm:mt-0">
@@ -323,10 +297,18 @@ export default function MemberAttendancePage() {
                         {record.session.note}
                       </p>
                     )}
+
+                    {/* ✅ ĐÃ SỬA: Đọc từ 'record.note' */}
                     {record.note && (
-                       <p className="text-sm">
-                        <span className="font-semibold">My Note: </span>
+                      <p className="text-sm">
+                        <span className="font-semibold">Note: </span>
                         {record.note}
+                      </p>
+                    )}
+                    {/* Thêm dòng này nếu không có ghi chú */}
+                    {!record.note && (
+                      <p className="text-sm text-muted-foreground italic">
+                        No note for this session.
                       </p>
                     )}
                   </CardContent>
@@ -337,7 +319,7 @@ export default function MemberAttendancePage() {
 
           {/* --- Pagination --- */}
           {paginatedHistory.length > 0 && totalPages > 1 && (
-             <Pagination
+            <Pagination
               currentPage={currentPage}
               totalPages={totalPages}
               pageSize={pageSize}

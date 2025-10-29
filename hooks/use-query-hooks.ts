@@ -537,7 +537,8 @@ export function useMemberAttendanceHistory(membershipId: number | null, enabled 
       // const history = await fetchMemberAttendanceHistory(membershipId)
       const responseBody = await fetchMemberAttendanceHistory(membershipId)
       // return history ?? [] // Đảm bảo luôn trả về một mảng
-      return (responseBody as any)?.data || []
+      // return (responseBody as any)?.data || []
+      return (responseBody as any)?.attendanceHistory || []
     },
     enabled: !!membershipId && enabled,
     staleTime: 2 * 60 * 1000,

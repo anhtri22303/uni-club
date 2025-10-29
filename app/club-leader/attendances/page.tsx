@@ -168,34 +168,74 @@ export default function ClubAttendancePage() {
       };
 
       // Hàm trợ giúp để thiết lập state điểm danh
-      const setAttendanceStates = (
-        data: AttendanceResponse | null,
-        members: ApiMembership[],
-      ) => {
-        const initialAttendance: Record<number, PageAttendanceStatus> = {};
-        const initialNotes: Record<number, string> = {};
+      // const setAttendanceStates = (
+      //   data: AttendanceResponse | null,
+      //   members: ApiMembership[],
+      // ) => {
+      //   const initialAttendance: Record<number, PageAttendanceStatus> = {};
+      //   const initialNotes: Record<number, string> = {};
 
-        // ✅ THAY ĐỔI TẠI ĐÂY
-        if (data && data.records) {
-          setSessionId(data.sessionId); // Bây giờ sẽ chạy
+      //   // ✅ THAY ĐỔI TẠI ĐÂY
+      //   if (data && data.records) {
+      //     setSessionId(data.sessionId); // Bây giờ sẽ chạy
 
-          // ✅ VÀ THAY ĐỔI TẠI ĐÂY
-          data.records.forEach((record) => {
-            const status = (record.status?.toLowerCase() || "absent") as PageAttendanceStatus;
-            initialAttendance[record.membershipId] = status;
-            initialNotes[record.membershipId] = record.note || "";
-          });
-        }
-        // Set mặc định cho các thành viên
-        members.forEach((m: any) => {
-          if (m.membershipId && !initialAttendance[m.membershipId]) {
-            initialAttendance[m.membershipId] = "absent";
-            initialNotes[m.membershipId] = "";
-          }
+      //     // ✅ VÀ THAY ĐỔI TẠI ĐÂY
+      //     data.records.forEach((record) => {
+      //       const status = (record.status?.toLowerCase() || "absent") as PageAttendanceStatus;
+      //       initialAttendance[record.membershipId] = status;
+      //       initialNotes[record.membershipId] = record.note || "";
+      //     });
+      //   }
+      //   // Set mặc định cho các thành viên
+      //   members.forEach((m: any) => {
+      //     if (m.membershipId && !initialAttendance[m.membershipId]) {
+      //       initialAttendance[m.membershipId] = "absent";
+      //       initialNotes[m.membershipId] = "";
+      //     }
+      //   });
+      //   setAttendance(initialAttendance);
+      //   setNotes(initialNotes);
+      // };
+      // Hàm trợ giúp để thiết lập state điểm danh
+  const setAttendanceStates = (
+    data: AttendanceResponse | null,
+    members: ApiMembership[],
+  ) => {
+    const initialAttendance: Record<number, PageAttendanceStatus> = {};
+    const initialNotes: Record<number, string> = {};
+
+    // ✅ THAY ĐỔI: CHỈ xử lý điểm danh NẾU `data` (session) tồn tại
+    if (data) {
+      setSessionId(data.sessionId); // Luôn set sessionId nếu có data
+
+      // 1. Tải các record đã lưu (nếu có)
+      if (data.records && data.records.length > 0) {
+        data.records.forEach((record) => {
+          const status = (record.status?.toLowerCase() || "absent") as PageAttendanceStatus;
+          initialAttendance[record.membershipId] = status;
+          initialNotes[record.membershipId] = record.note || "";
         });
-        setAttendance(initialAttendance);
-        setNotes(initialNotes);
-      };
+      }
+
+      // 2. Set mặc định "absent" cho bất kỳ thành viên nào
+      // CHƯA CÓ trong `initialAttendance` (chỉ chạy khi session load thành công)
+      members.forEach((m: any) => {
+        if (m.membershipId && !initialAttendance[m.membershipId]) {
+          initialAttendance[m.membershipId] = "absent";
+          initialNotes[m.membershipId] = "";
+        }
+      });
+
+    }
+    // Nếu `data` là `null` (do lỗi fetch),
+    // `initialAttendance` và `initialNotes` sẽ là {} (rỗng).
+    // `setAttendance({})` sẽ được gọi ở dưới.
+    // Điều này là ĐÚNG, vì chúng ta không muốn
+    // hiển thị "absent" khi có lỗi, mà chỉ hiển thị lỗi.
+
+    setAttendance(initialAttendance);
+    setNotes(initialNotes);
+  };
 
       // --- BẮT ĐẦU LOGIC CHÍNH ---
       try {
@@ -204,42 +244,58 @@ export default function ClubAttendancePage() {
         let attendanceData: AttendanceResponse | null = null;
 
         if (isToday) {
-          // --- LOGIC CHO NGÀY HÔM NAY ---
+          // }// MỚI --- LOGIC CHO NGÀY HÔM NAY ---
           try {
             // Bước 1: Thử lấy session hôm nay
             attendanceData = (await fetchTodayClubAttendance(managedClub.id)) as AttendanceResponse;
           } catch (fetchErr: any) {
-            // Bước 2: Lỗi (ví dụ 404) -> Thử TẠO session mới
-            console.warn("Session not found, attempting to create one...");
-            try {
-              // Chuẩn bị body cho API POST
-              const todayStr = format(new Date(), "yyyy-MM-dd");
-              const defaultTime = { hour: 0, minute: 0, second: 0, nano: 0 };
-              const newSessionBody: CreateSessionBody = {
-                date: todayStr,
-                startTime: defaultTime, // Dùng giá trị mặc định từ Swagger
-                endTime: defaultTime,   // Dùng giá trị mặc định từ Swagger
-                note: "Auto-created session by frontend",
-              };
 
-              // Gọi API tạo session
-              attendanceData = (await createClubAttendanceSession(
-                managedClub.id,
-                newSessionBody,
-              )) as AttendanceResponse;
+            // ✅ BẮT ĐẦU SỬA: KIỂM TRA LỖI CỤ THỂ LÀ 404
+            const isNotFound = fetchErr?.response?.status === 404;
 
-              toast({
-                title: "New Session Created",
-                description: "An attendance session for today has been started.",
-              });
+            if (isNotFound) {
+              // --- LỖI 404: ĐÚNG LÀ KHÔNG CÓ SESSION -> TẠO MỚI ---
+              console.warn("Session not found, attempting to create one...");
+              try {
+                // Chuẩn bị body cho API POST
+                const todayStr = format(new Date(), "yyyy-MM-dd");
+                const defaultTime = { hour: 0, minute: 0, second: 0, nano: 0 };
+                const newSessionBody: CreateSessionBody = {
+                  date: todayStr,
+                  startTime: defaultTime,
+                  endTime: defaultTime,
+                  note: "Auto-created session by frontend",
+                };
 
-            } catch (createErr: any) {
-              // Bước 3: Lỗi khi TẠO -> Đây mới là lỗi thực sự
-              console.error("Failed to create attendance session:", createErr);
+                // Gọi API tạo session
+                attendanceData = (await createClubAttendanceSession(
+                  managedClub.id,
+                  newSessionBody,
+                )) as AttendanceResponse;
+
+                toast({
+                  title: "New Session Created",
+                  description: "An attendance session for today has been started.",
+                });
+
+              } catch (createErr: any) {
+                // Bước 3: Lỗi khi TẠO -> Đây mới là lỗi thực sự
+                console.error("Failed to create attendance session:", createErr);
+                setSessionError(
+                  "Failed to create an attendance session for today. Please check backend.",
+                );
+              }
+            } else {
+              // --- LỖI KHÁC (500, 401, etc.) -> KHÔNG TẠO MỚI, CHỈ BÁO LỖI ---
+              console.error("Failed to fetch attendance session:", fetchErr);
               setSessionError(
-                "Failed to create an attendance session for today. Please check backend.",
+                fetchErr?.response?.data?.message || // Thử lấy message lỗi từ API
+                fetchErr?.message ||
+                "An error occurred while fetching attendance data. Please try refreshing."
               );
+              // Để attendanceData = null và hàm setAttendanceStates sẽ xử lý
             }
+            // ✅ KẾT THÚC SỬA
           }
         } else {
           // --- LOGIC CHO NGÀY QUÁ KHỨ ---
