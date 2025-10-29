@@ -14,30 +14,22 @@ import { getClubById, getClubIdFromToken } from "@/service/clubApi"
 import { fetchUserById, fetchProfile } from "@/service/userApi"
 import {
   Users, ChevronLeft, ChevronRight, CheckCircle, Filter, X, Calendar as CalendarIcon,
-  MessageSquare, Check, XCircle, Clock, AlertCircle, Info,
+  MessageSquare, XCircle, Clock, AlertCircle, Info,
 } from "lucide-react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Calendar } from "@/components/ui/calendar"
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose,
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { format } from "date-fns"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
-  fetchTodayClubAttendance,
-  fetchClubAttendanceHistory,
-  markClubAttendance,
-  markAllClubAttendance,
-  type AttendanceStatus as ApiAttendanceStatus,
-  createClubAttendanceSession,
-  CreateSessionBody, // Kiểu dữ liệu từ API (UPPERCASE)
-  markAttendanceBulk,     // ✅ THÊM HÀM MỚI
-  type MarkBulkBody,       // ✅ THÊM TYPE MỚI
-  type MarkBulkRecord,
+  fetchTodayClubAttendance, fetchClubAttendanceHistory, type AttendanceStatus as ApiAttendanceStatus, createClubAttendanceSession,
+  CreateSessionBody, markAttendanceBulk, type MarkBulkBody, type MarkBulkRecord,
 } from "@/service/attendanceApi"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
@@ -68,11 +60,14 @@ interface Member {
 
 interface AttendanceResponse {
   sessionId: number
-  // sessionDate: string
+  date?: string
+  isLocked?: boolean
   records: { // ✅ SỬA LẠI TÊN
-    membershipId: number
+    memberId: number
     status: ApiAttendanceStatus // "PRESENT", "LATE", ...
     note: string | null
+    studentCode: string | null
+    fullName: string
   }[]
 }
 export default function ClubAttendancePage() {
@@ -127,8 +122,6 @@ export default function ClubAttendancePage() {
     }
     loadBaseData()
   }, [])
-
-  //   loadMembersAndAttendance()
   // ✅ THAY ĐỔI: useEffect này chạy mỗi khi clubId hoặc selectedDate thay đổi
   useEffect(() => {
     if (!managedClub?.id) return;
@@ -166,76 +159,42 @@ export default function ClubAttendancePage() {
         setApiMembers(membersWithUserData);
         return membersWithUserData;
       };
-
       // Hàm trợ giúp để thiết lập state điểm danh
-      // const setAttendanceStates = (
-      //   data: AttendanceResponse | null,
-      //   members: ApiMembership[],
-      // ) => {
-      //   const initialAttendance: Record<number, PageAttendanceStatus> = {};
-      //   const initialNotes: Record<number, string> = {};
+      const setAttendanceStates = (
+        data: AttendanceResponse | null,
+        members: ApiMembership[],
+      ) => {
+        const initialAttendance: Record<number, PageAttendanceStatus> = {};
+        const initialNotes: Record<number, string> = {};
 
-      //   // ✅ THAY ĐỔI TẠI ĐÂY
-      //   if (data && data.records) {
-      //     setSessionId(data.sessionId); // Bây giờ sẽ chạy
+        // ✅ THAY ĐỔI: CHỈ xử lý điểm danh NẾU `data` (session) tồn tại
+        if (data) {
+          setSessionId(data.sessionId); // Luôn set sessionId nếu có data
 
-      //     // ✅ VÀ THAY ĐỔI TẠI ĐÂY
-      //     data.records.forEach((record) => {
-      //       const status = (record.status?.toLowerCase() || "absent") as PageAttendanceStatus;
-      //       initialAttendance[record.membershipId] = status;
-      //       initialNotes[record.membershipId] = record.note || "";
-      //     });
-      //   }
-      //   // Set mặc định cho các thành viên
-      //   members.forEach((m: any) => {
-      //     if (m.membershipId && !initialAttendance[m.membershipId]) {
-      //       initialAttendance[m.membershipId] = "absent";
-      //       initialNotes[m.membershipId] = "";
-      //     }
-      //   });
-      //   setAttendance(initialAttendance);
-      //   setNotes(initialNotes);
-      // };
-      // Hàm trợ giúp để thiết lập state điểm danh
-  const setAttendanceStates = (
-    data: AttendanceResponse | null,
-    members: ApiMembership[],
-  ) => {
-    const initialAttendance: Record<number, PageAttendanceStatus> = {};
-    const initialNotes: Record<number, string> = {};
+          // 1. Tải các record đã lưu (nếu có)
+          if (data.records && data.records.length > 0) {
+            data.records.forEach((record) => {
+              const status = (record.status?.toLowerCase() || "absent") as PageAttendanceStatus;
+              initialAttendance[record.memberId] = status;
+              initialNotes[record.memberId] = record.note || "";
+            });
+          }
 
-    // ✅ THAY ĐỔI: CHỈ xử lý điểm danh NẾU `data` (session) tồn tại
-    if (data) {
-      setSessionId(data.sessionId); // Luôn set sessionId nếu có data
+          // 2. Set mặc định "absent" cho các member
+          // `members` ở đây là `apiMembers`, nó có `m.membershipId`
+          members.forEach((m: any) => {
+            // `m.membershipId` là ID chuẩn được dùng trong UI
+            const memberUiId = m.membershipId;
 
-      // 1. Tải các record đã lưu (nếu có)
-      if (data.records && data.records.length > 0) {
-        data.records.forEach((record) => {
-          const status = (record.status?.toLowerCase() || "absent") as PageAttendanceStatus;
-          initialAttendance[record.membershipId] = status;
-          initialNotes[record.membershipId] = record.note || "";
-        });
-      }
-
-      // 2. Set mặc định "absent" cho bất kỳ thành viên nào
-      // CHƯA CÓ trong `initialAttendance` (chỉ chạy khi session load thành công)
-      members.forEach((m: any) => {
-        if (m.membershipId && !initialAttendance[m.membershipId]) {
-          initialAttendance[m.membershipId] = "absent";
-          initialNotes[m.membershipId] = "";
+            if (memberUiId && !initialAttendance[memberUiId]) {
+              initialAttendance[memberUiId] = "absent";
+              initialNotes[memberUiId] = "";
+            }
+          });
         }
-      });
-
-    }
-    // Nếu `data` là `null` (do lỗi fetch),
-    // `initialAttendance` và `initialNotes` sẽ là {} (rỗng).
-    // `setAttendance({})` sẽ được gọi ở dưới.
-    // Điều này là ĐÚNG, vì chúng ta không muốn
-    // hiển thị "absent" khi có lỗi, mà chỉ hiển thị lỗi.
-
-    setAttendance(initialAttendance);
-    setNotes(initialNotes);
-  };
+        setAttendance(initialAttendance);
+        setNotes(initialNotes);
+      };
 
       // --- BẮT ĐẦU LOGIC CHÍNH ---
       try {
@@ -250,7 +209,6 @@ export default function ClubAttendancePage() {
             attendanceData = (await fetchTodayClubAttendance(managedClub.id)) as AttendanceResponse;
           } catch (fetchErr: any) {
 
-            // ✅ BẮT ĐẦU SỬA: KIỂM TRA LỖI CỤ THỂ LÀ 404
             const isNotFound = fetchErr?.response?.status === 404;
 
             if (isNotFound) {
@@ -295,7 +253,6 @@ export default function ClubAttendancePage() {
               );
               // Để attendanceData = null và hàm setAttendanceStates sẽ xử lý
             }
-            // ✅ KẾT THÚC SỬA
           }
         } else {
           // --- LOGIC CHO NGÀY QUÁ KHỨ ---
@@ -818,7 +775,7 @@ export default function ClubAttendancePage() {
                       >
                         <SelectTrigger
                           className={cn(
-                            "w-[120px]",
+                            "w-[130px]",
                             attendance[member.id] === "present" && "bg-green-100 text-green-800",
                             attendance[member.id] === "absent" && "bg-red-100 text-red-800",
                             attendance[member.id] === "late" && "bg-orange-100 text-orange-800",
