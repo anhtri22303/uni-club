@@ -146,18 +146,8 @@ export default function ClubAttendancePage() {
         if (apiMembers.length > 0) return apiMembers; // Dùng cache nếu có
 
         const membersData = await membershipApi.getMembersByClubId(managedClub.id);
-        const membersWithUserData = await Promise.all(
-          membersData.map(async (m: any) => {
-            try {
-              const userInfo = await fetchUserById(m.userId);
-              return { ...m, userInfo };
-            } catch {
-              return { ...m, userInfo: null };
-            }
-          }),
-        );
-        setApiMembers(membersWithUserData);
-        return membersWithUserData;
+        setApiMembers(membersData);
+        return membersData;
       };
       // Hàm trợ giúp để thiết lập state điểm danh
       const setAttendanceStates = (
@@ -296,10 +286,9 @@ export default function ClubAttendancePage() {
               m.userId !== userId,
           )
           .map((m: any) => {
-            const u = m.userInfo || {}
             return {
               id: m.membershipId, // ✅ THAY ĐỔI: Dùng membershipId làm ID
-              fullName: u.fullName ?? m.fullName ?? `User ${m.userId}`,
+              fullName: m.fullName ?? m.fullName ?? `User ${m.userId}`,
               studentCode: m.studentCode ?? "—",
               avatarUrl: m.avatarUrl ?? null,
               role: m.clubRole ?? "MEMBER",
