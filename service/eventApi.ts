@@ -310,3 +310,86 @@ export const registerForEvent = async (eventId: string | number) => {
     throw error
   }
 }
+
+export interface EventRegistration {
+  clubName: string
+  status: string
+  eventId: number
+  eventName: string
+  registeredAt: string
+  attendanceLevel: string
+  date: string
+  committedPoints: number
+}
+
+export const getMyEventRegistrations = async (): Promise<EventRegistration[]> => {
+  try {
+    const response = await axiosInstance.get(`/api/events/my-registrations`)
+    const data: any = response.data
+    console.log(`Fetched my event registrations:`, data)
+    // Response structure: { success: true, message: "success", data: [...] }
+    if (data?.data && Array.isArray(data.data)) return data.data
+    if (Array.isArray(data)) return data
+    return []
+  } catch (error) {
+    console.error(`Error fetching my event registrations:`, error)
+    throw error
+  }
+}
+
+export interface EventCheckinPayload {
+  eventJwtToken: string
+  level: string
+}
+
+export const eventCheckin = async (eventJwtToken: string, level: string = "NONE") => {
+  try {
+    const payload: EventCheckinPayload = {
+      eventJwtToken,
+      level
+    }
+    const response = await axiosInstance.post(`/api/events/checkin`, payload)
+    const data: any = response.data
+    console.log(`Event check-in response:`, data)
+    // Response structure: { success: true, message: "Check-in success for event co club", data: null }
+    return data
+  } catch (error) {
+    console.error(`Error checking in to event:`, error)
+    throw error
+  }
+}
+
+export interface EventSummary {
+  refundedCount: number
+  registrationsCount: number
+  checkedInCount: number
+  eventName: string
+  totalCommitPoints: number
+}
+
+export const getEventSummary = async (eventId: string | number): Promise<EventSummary> => {
+  try {
+    const response = await axiosInstance.get(`/api/events/${eventId}/summary`)
+    const data: any = response.data
+    console.log(`Fetched event summary for event ${eventId}:`, data)
+    // Response structure: { success: true, message: "success", data: {...summary} }
+    if (data?.data) return data.data
+    return data
+  } catch (error) {
+    console.error(`Error fetching event summary for event ${eventId}:`, error)
+    throw error
+  }
+}
+
+export const endEvent = async (eventId: string | number) => {
+  try {
+    const response = await axiosInstance.put(`/api/events/end`, { eventId })
+    const data: any = response.data
+    console.log(`Ended event ${eventId}:`, data)
+    // Response structure: { success: true, message: "Event completed. Total reward 0 pts: leftover returned", data: "null" }
+    return data
+  } catch (error) {
+    console.error(`Error ending event ${eventId}:`, error)
+    throw error
+  }
+}

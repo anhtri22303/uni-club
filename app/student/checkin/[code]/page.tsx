@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast"
 import { CheckCircle, Clock } from "lucide-react"
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { checkin } from '@/service/checkinApi'
+import { eventCheckin } from '@/service/eventApi'
 
 export default function MemberCheckinByCodePage() {
   const { toast } = useToast()
@@ -39,15 +39,16 @@ export default function MemberCheckinByCodePage() {
     setIsCheckinLoading(true)
     
     try {
-      console.log('Starting check-in with token:', checkInCode)
-      const response = await checkin(checkInCode)
+      console.log('Starting event check-in with token:', checkInCode)
+      // Call new event check-in API with eventJwtToken and level="NONE"
+      const response = await eventCheckin(checkInCode, "NONE")
       
-      console.log('Check-in response:', response)
+      console.log('Event check-in response:', response)
       
-      // Response is a simple string like "Checked-in"
+      // Response structure: { success: true, message: "Check-in success for event co club", data: null }
       toast({ 
         title: "Check-in Successful! 🎉", 
-        description: String(response) || "You've successfully checked in!",
+        description: response?.message || "You've successfully checked in to the event!",
         duration: 5000
       })
       
@@ -58,10 +59,10 @@ export default function MemberCheckinByCodePage() {
         router.push('/student/events')
       }, 2000)
     } catch (error: any) {
-      console.error('Check-in error:', error)
+      console.error('Event check-in error:', error)
       
-      // Ensure error message is a string
-      const errorMessage = error?.message || 'An error occurred during check-in. Please try again.'
+      // Extract error message from response
+      const errorMessage = error?.response?.data?.message || error?.message || 'An error occurred during check-in. Please try again.'
       
       toast({ 
         title: "Check-in Failed", 

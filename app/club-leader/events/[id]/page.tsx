@@ -17,7 +17,7 @@ import { QRModal } from "@/components/qr-modal"
 import { ProtectedRoute } from "@/contexts/protected-route"
 import { LoadingSkeleton } from "@/components/loading-skeleton"
 
-import { getEventById, submitForUniversityApproval, timeObjectToString, acceptCoHostInvitation, rejectCoHostInvitation, getEventWallet, EventWallet, TimeObject } from "@/service/eventApi" // 👈 Thêm submitForUniversityApproval
+import { getEventById, submitForUniversityApproval, timeObjectToString, acceptCoHostInvitation, rejectCoHostInvitation, getEventWallet, EventWallet, TimeObject, getEventSummary, EventSummary, endEvent } from "@/service/eventApi" // 👈 Thêm submitForUniversityApproval
 import { getClubIdFromToken } from "@/service/clubApi"
 import { Loader2 } from "lucide-react" // 👈 Thêm Loader2
 interface EventDetail {
@@ -58,9 +58,12 @@ export default function EventDetailPage() {
   const [loading, setLoading] = useState(true)
   const [wallet, setWallet] = useState<EventWallet | null>(null)
   const [walletLoading, setWalletLoading] = useState(false)
+  const [eventSummary, setEventSummary] = useState<EventSummary | null>(null)
+  const [summaryLoading, setSummaryLoading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false) // 👈 THÊM STATE NÀY
   const [isAcceptingCoHost, setIsAcceptingCoHost] = useState(false) // State for accepting co-host
   const [isRejectingCoHost, setIsRejectingCoHost] = useState(false) // State for rejecting co-host
+  const [isEndingEvent, setIsEndingEvent] = useState(false) // State for ending event
   const [userClubId, setUserClubId] = useState<number | null>(null)
   const [myCoHostStatus, setMyCoHostStatus] = useState<string | null>(null)
 
@@ -112,6 +115,20 @@ export default function EventDetailPage() {
           // Don't show error toast for wallet, it's not critical
         } finally {
           setWalletLoading(false)
+        }
+
+        // Fetch event summary if APPROVED
+        if (data.status === "APPROVED") {
+          try {
+            setSummaryLoading(true)
+            const summaryData = await getEventSummary(params.id as string)
+            setEventSummary(summaryData)
+          } catch (summaryError) {
+            console.error("Failed to load event summary:", summaryError)
+            // Don't show error toast for summary, it's not critical
+          } finally {
+            setSummaryLoading(false)
+          }
         }
       } catch (error) {
         console.error("Failed to load event detail:", error)
@@ -413,6 +430,33 @@ export default function EventDetailPage() {
     }
   }
 
+  const handleEndEvent = async () => {
+    if (!event) return
+
+    try {
+      setIsEndingEvent(true)
+      const response = await endEvent(event.id)
+      
+      // Show success message
+      toast({
+        title: 'Success',
+        description: response.message || 'Event has been ended successfully',
+      })
+      
+      // Reload the page to get updated event status
+      window.location.reload()
+      
+    } catch (err: any) {
+      console.error('Failed to end event', err)
+      toast({
+        title: 'Error',
+        description: err?.response?.data?.message || 'Failed to end event',
+        variant: 'destructive'
+      })
+      setIsEndingEvent(false)
+    }
+  }
+
   const handleGenerateQR = async () => {
     if (!event) return
 
@@ -649,6 +693,27 @@ export default function EventDetailPage() {
                   </Button>
                 </>
               )}
+              {/* Show End Event button only when status is APPROVED */}
+              {event.status === "APPROVED" && (
+                <Button
+                  onClick={handleEndEvent}
+                  disabled={isEndingEvent}
+                  variant="destructive"
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  {isEndingEvent ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Ending Event...
+                    </>
+                  ) : (
+                    <>
+                      <XCircle className="h-4 w-4 mr-2" />
+                      End Event
+                    </>
+                  )}
+                </Button>
+              )}
               <div className="flex items-center gap-2">
                 <Eye className="h-5 w-5 text-muted-foreground" />
                 <span className="text-sm text-muted-foreground">Event Details</span>
@@ -782,11 +847,27 @@ export default function EventDetailPage() {
                   </div>
                   <div className="p-4 bg-muted/50 rounded-lg">
                     <div className="text-sm text-muted-foreground">Current Check-ins</div>
-                    <div className="font-semibold text-lg">{event.currentCheckInCount} / {event.maxCheckInCount}</div>
+                    <div className="font-semibold text-lg">
+                      {event.status === "APPROVED" ? (
+                        summaryLoading ? (
+                          <span className="text-muted-foreground">Loading...</span>
+                        ) : eventSummary ? (
+                          `${eventSummary.checkedInCount} / ${event.maxCheckInCount}`
+                        ) : (
+                          `${event.currentCheckInCount} / ${event.maxCheckInCount}`
+                        )
+                      ) : (
+                        `${event.currentCheckInCount} / ${event.maxCheckInCount}`
+                      )}
+                    </div>
                   </div>
                   <div className="p-4 bg-muted/50 rounded-lg">
                     <div className="text-sm text-muted-foreground">Available Spots</div>
-                    <div className="font-semibold text-lg">{event.maxCheckInCount - event.currentCheckInCount} remaining</div>
+                    <div className="font-semibold text-lg">
+                      {event.status === "APPROVED" && eventSummary
+                        ? `${event.maxCheckInCount - eventSummary.checkedInCount} remaining`
+                        : `${event.maxCheckInCount - event.currentCheckInCount} remaining`}
+                    </div>
                   </div>
                   <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-200">
                     <div className="text-sm text-green-700 font-medium">
@@ -807,6 +888,32 @@ export default function EventDetailPage() {
                     </div>
                   </div>
                 </div>
+
+                {/* Event Summary - Only shown when APPROVED */}
+                {event.status === "APPROVED" && eventSummary && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div className="p-4 bg-gradient-to-br from-blue-50 to-sky-50 rounded-lg border border-blue-200">
+                      <div className="text-sm text-blue-700 font-medium">Total Registrations</div>
+                      <div className="font-semibold text-lg text-blue-800">
+                        {summaryLoading ? (
+                          <span className="text-muted-foreground">Loading...</span>
+                        ) : (
+                          `${eventSummary.registrationsCount} registered`
+                        )}
+                      </div>
+                    </div>
+                    <div className="p-4 bg-gradient-to-br from-amber-50 to-orange-50 rounded-lg border border-amber-200">
+                      <div className="text-sm text-amber-700 font-medium">Refunded</div>
+                      <div className="font-semibold text-lg text-amber-800">
+                        {summaryLoading ? (
+                          <span className="text-muted-foreground">Loading...</span>
+                        ) : (
+                          `${eventSummary.refundedCount} refunds`
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* QR Code Generation Button - Only show if APPROVED and event is still active */}
                 {isEventActive() && (

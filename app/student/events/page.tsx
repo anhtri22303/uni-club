@@ -15,10 +15,11 @@ import { Calendar, Users, Trophy, Layers, History } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import { safeLocalStorage } from "@/lib/browser-utils"
-import { useClubEvents, useClubs } from "@/hooks/use-query-hooks"
+import { useClubEvents, useClubs, useMyEventRegistrations } from "@/hooks/use-query-hooks"
 import { timeObjectToString, registerForEvent } from "@/service/eventApi"
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { useQueryClient } from "@tanstack/react-query"
 
 // Import data
 import clubs from "@/src/data/clubs.json"
@@ -34,7 +35,9 @@ export default function MemberEventsPage() {
   const [showCalendarModal, setShowCalendarModal] = useState(false)
   const [showHistoryModal, setShowHistoryModal] = useState(false)
   const [registeringEventId, setRegisteringEventId] = useState<number | null>(null)
+  const [showRegisteredOnly, setShowRegisteredOnly] = useState(false)
   const { toast } = useToast()
+  const queryClient = useQueryClient()
 
 
 
@@ -65,6 +68,7 @@ export default function MemberEventsPage() {
   // ✅ USE REACT QUERY - automatically filters by clubIds
   const { data: eventsData = [], isLoading: loading } = useClubEvents(userClubIds)
   const { data: clubsData = [] } = useClubs()
+  const { data: myRegistrations = [] } = useMyEventRegistrations()
 
   // ✅ CẬP NHẬT: useEffect để lấy chi tiết club VÀ set default
   useEffect(() => {
@@ -89,6 +93,11 @@ export default function MemberEventsPage() {
       clubsData.find((c: any) => c.id === event.hostClub?.id)?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       clubs.find((c) => c.id === event.hostClub?.id)?.name.toLowerCase().includes(searchTerm.toLowerCase()),
   )
+
+  // Helper function to check if event is registered
+  const isEventRegistered = (eventId: number) => {
+    return myRegistrations.some((reg) => reg.eventId === eventId)
+  }
 
   // Helper function to check if event has expired (past endTime) or is COMPLETED
   const isEventExpired = (event: any) => {
@@ -131,6 +140,11 @@ export default function MemberEventsPage() {
     }
     // Lọc theo club ID đã chọn (bỏ qua "all")
     if (String(event.hostClub?.id) !== selectedClubId) {
+      return false
+    }
+
+    // Filter by registered events only if showRegisteredOnly is true
+    if (showRegisteredOnly && !isEventRegistered(event.id)) {
       return false
     }
 
@@ -194,6 +208,8 @@ export default function MemberEventsPage() {
         title: "Success",
         description: result.message || "Successfully registered for the event!",
       })
+      // Refetch registrations after successful registration
+      queryClient.invalidateQueries({ queryKey: ["events", "my-registrations"] })
     } catch (error: any) {
       console.error("Error registering for event:", error)
       toast({
@@ -287,6 +303,24 @@ export default function MemberEventsPage() {
                 <SelectItem value="only">Only Expired</SelectItem>
               </SelectContent>
             </Select>
+
+            {/* Toggle button for registered events only */}
+            <Button
+              variant={showRegisteredOnly ? "default" : "outline"}
+              onClick={() => {
+                setShowRegisteredOnly(!showRegisteredOnly)
+                setCurrentPage(1)
+              }}
+              className="whitespace-nowrap"
+            >
+              <Trophy className="h-4 w-4 mr-2" />
+              {showRegisteredOnly ? "All Events" : "My Registrations"}
+              {showRegisteredOnly && myRegistrations.length > 0 && (
+                <Badge variant="secondary" className="ml-2">
+                  {myRegistrations.length}
+                </Badge>
+              )}
+            </Button>
           </div>
 
 
@@ -389,10 +423,16 @@ export default function MemberEventsPage() {
                           <Button
                             className="w-full"
                             variant="default"
-                            disabled={registeringEventId === event.id || event.status === "COMPLETED"}
+                            disabled={registeringEventId === event.id || event.status === "COMPLETED" || isEventRegistered(event.id)}
                             onClick={() => handleRegister(event.id)}
                           >
-                            {registeringEventId === event.id ? "Registering..." : event.status === "COMPLETED" ? "Ended" : "Register"}
+                            {registeringEventId === event.id 
+                              ? "Registering..." 
+                              : isEventRegistered(event.id) 
+                                ? "Already Registered" 
+                                : event.status === "COMPLETED" 
+                                  ? "Ended" 
+                                  : "Register"}
                           </Button>
                       </div>
                     </CardContent>

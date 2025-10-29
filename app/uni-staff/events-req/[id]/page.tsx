@@ -21,7 +21,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { useState, useEffect } from "react"
-import { getEventById, putEventStatus, getEventWallet, EventWallet } from "@/service/eventApi"
+import { getEventById, putEventStatus, getEventWallet, EventWallet, getEventSummary, EventSummary } from "@/service/eventApi"
 import { useToast } from "@/hooks/use-toast"
 import { renderTypeBadge } from "@/lib/eventUtils"
 import { getLocationById } from "@/service/locationApi"
@@ -47,6 +47,8 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
   const [processing, setProcessing] = useState(false)
   const [wallet, setWallet] = useState<EventWallet | null>(null)
   const [walletLoading, setWalletLoading] = useState(false)
+  const [eventSummary, setEventSummary] = useState<EventSummary | null>(null)
+  const [summaryLoading, setSummaryLoading] = useState(false)
 
   useEffect(() => {
     let mounted = true
@@ -68,6 +70,20 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
           // Don't show error toast for wallet, it's not critical
         } finally {
           if (mounted) setWalletLoading(false)
+        }
+
+        // Fetch event summary if APPROVED
+        if (data.status === "APPROVED") {
+          try {
+            setSummaryLoading(true)
+            const summaryData = await getEventSummary(params.id)
+            if (mounted) setEventSummary(summaryData)
+          } catch (summaryError) {
+            console.error("Failed to load event summary:", summaryError)
+            // Don't show error toast for summary, it's not critical
+          } finally {
+            if (mounted) setSummaryLoading(false)
+          }
         }
 
         // if the event has a locationId, fetch that location
@@ -362,47 +378,91 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
 
                   {/* Check-in Capacity - only show if available */}
                   {request.maxCheckInCount !== undefined && request.currentCheckInCount !== undefined && (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Max Capacity</label>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Users className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-semibold">{request.maxCheckInCount} people</span>
+                    <>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Max Capacity</label>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Users className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-semibold">{request.maxCheckInCount} people</span>
+                          </div>
                         </div>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Current Check-ins</label>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Users className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-semibold">{request.currentCheckInCount} / {request.maxCheckInCount}</span>
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Current Check-ins</label>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Users className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-semibold">
+                              {request.status === "APPROVED" ? (
+                                summaryLoading ? (
+                                  "Loading..."
+                                ) : eventSummary ? (
+                                  `${eventSummary.checkedInCount} / ${request.maxCheckInCount}`
+                                ) : (
+                                  `${request.currentCheckInCount} / ${request.maxCheckInCount}`
+                                )
+                              ) : (
+                                `${request.currentCheckInCount} / ${request.maxCheckInCount}`
+                              )}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Available Spots</label>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Users className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-semibold">{request.maxCheckInCount - request.currentCheckInCount} remaining</span>
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Available Spots</label>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Users className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-semibold">
+                              {request.status === "APPROVED" && eventSummary
+                                ? `${request.maxCheckInCount - eventSummary.checkedInCount} remaining`
+                                : `${request.maxCheckInCount - request.currentCheckInCount} remaining`}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                      <div className="p-3 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-200">
-                        <label className="text-sm text-green-700 font-medium">
-                          {request.status === "APPROVED" ? "Wallet Balance" : "Budget Points"}
-                        </label>
-                        <div className="font-semibold text-green-800 mt-1">
-                          {request.status === "APPROVED" ? (
-                            walletLoading ? (
-                              <span className="text-muted-foreground">Loading...</span>
-                            ) : wallet ? (
-                              `${wallet.walletBalance} points`
+                        <div className="p-3 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-200">
+                          <label className="text-sm text-green-700 font-medium">
+                            {request.status === "APPROVED" ? "Wallet Balance" : "Budget Points"}
+                          </label>
+                          <div className="font-semibold text-green-800 mt-1">
+                            {request.status === "APPROVED" ? (
+                              walletLoading ? (
+                                <span className="text-muted-foreground">Loading...</span>
+                              ) : wallet ? (
+                                `${wallet.walletBalance} points`
+                              ) : (
+                                <span className="text-muted-foreground">N/A</span>
+                              )
                             ) : (
-                              <span className="text-muted-foreground">N/A</span>
-                            )
-                          ) : (
-                            `${request.budgetPoints || 0} points`
-                          )}
+                              `${request.budgetPoints || 0} points`
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
+
+                      {/* Event Summary - Only shown when APPROVED */}
+                      {request.status === "APPROVED" && eventSummary && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                          <div className="p-3 bg-gradient-to-br from-blue-50 to-sky-50 rounded-lg border border-blue-200">
+                            <label className="text-sm text-blue-700 font-medium">Total Registrations</label>
+                            <div className="font-semibold text-blue-800 mt-1">
+                              {summaryLoading ? (
+                                <span className="text-muted-foreground">Loading...</span>
+                              ) : (
+                                `${eventSummary.registrationsCount} registered`
+                              )}
+                            </div>
+                          </div>
+                          <div className="p-3 bg-gradient-to-br from-amber-50 to-orange-50 rounded-lg border border-amber-200">
+                            <label className="text-sm text-amber-700 font-medium">Refunded</label>
+                            <div className="font-semibold text-amber-800 mt-1">
+                              {summaryLoading ? (
+                                <span className="text-muted-foreground">Loading...</span>
+                              ) : (
+                                `${eventSummary.refundedCount} refunds`
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
 
                   {/* Co-hosted Clubs */}
