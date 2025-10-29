@@ -138,11 +138,11 @@ export const getEventById = async (id: string | number): Promise<Event> => {
   }
 }
 
-export const putEventStatus = async (id: string | number, status: string): Promise<Event> => {
+export const putEventStatus = async (id: string | number, status: string, budgetPoints: number = 0): Promise<Event> => {
   try {
-    const response = await axiosInstance.put(`api/events/${id}/status`, { status })
+    const response = await axiosInstance.put(`api/events/${id}/status`, { status, budgetPoints })
     const data: any = response.data
-    console.log(`Updated event ${id} status -> ${status}:`, data)
+    console.log(`Updated event ${id} status -> ${status} with budgetPoints: ${budgetPoints}:`, data)
     // Response structure: { success: true, message: "success", data: {...event} }
     if (data && data.data) return data.data
     return data

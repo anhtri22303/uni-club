@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { CalendarModal } from "@/components/calendar-modal"
-import { Calendar, Users, MapPin, Search, CheckCircle, XCircle, Clock, Building, Eye } from "lucide-react"
+import { Calendar, Users, MapPin, Search, CheckCircle, XCircle, Clock, Building, Eye, Filter } from "lucide-react"
 import { renderTypeBadge } from "@/lib/eventUtils"
 import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
@@ -25,10 +25,11 @@ import { useRouter } from "next/navigation"
 export default function UniStaffEventRequestsPage() {
 	const router = useRouter()
 	const [searchTerm, setSearchTerm] = useState("")
-	const [statusFilter, setStatusFilter] = useState<string>("all")
-	const [categoryFilter, setCategoryFilter] = useState<string>("all")
 	const [typeFilter, setTypeFilter] = useState<string>("all")
-	const [activeTab, setActiveTab] = useState<"PENDING" | "APPROVED" | "REJECTED">("PENDING")
+	const [expiredFilter, setExpiredFilter] = useState<string>("hide")
+	const [dateFilter, setDateFilter] = useState<string>("")
+	const [activeTab, setActiveTab] = useState<"WAITING_UNISTAFF_APPROVAL" | "APPROVED" | "REJECTED">("WAITING_UNISTAFF_APPROVAL")
+	const [showWaitingCoClub, setShowWaitingCoClub] = useState<boolean>(false)
 
 	const [events, setEvents] = useState<any[]>([])
 	const [locations, setLocations] = useState<any[]>([])
@@ -50,6 +51,39 @@ export default function UniStaffEventRequestsPage() {
 		if (!loc) return null
 		// common field names: capacity, maxCapacity, seatingCapacity
 		return loc.capacity ?? loc.maxCapacity ?? loc.seatingCapacity ?? null
+	}
+
+	// Helper to get event status based on date and time
+	const getEventStatus = (eventDate: string, eventTime: string | any) => {
+		if (!eventDate) return "Finished"
+		// Get current time in Vietnam timezone (UTC+7)
+		const now = new Date()
+		const vnTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }))
+
+		// Handle both string and TimeObject formats
+		let eventTimeStr = eventTime
+		if (typeof eventTime === 'object' && eventTime !== null) {
+			const pad = (n: number) => n.toString().padStart(2, '0')
+			eventTimeStr = `${pad(eventTime.hour || 0)}:${pad(eventTime.minute || 0)}:${pad(eventTime.second || 0)}`
+		}
+		
+		// Parse event date and time
+		const [hour = "00", minute = "00"] = (eventTimeStr || "00:00").split(":")
+		const [year, month, day] = eventDate.split('-').map(Number)
+		const event = new Date(year, month - 1, day, Number(hour), Number(minute), 0, 0)
+
+		// Event duration: assume 2 hours for "Now" window (customize as needed)
+		const EVENT_DURATION_MS = 2 * 60 * 60 * 1000
+		const start = event.getTime()
+		const end = start + EVENT_DURATION_MS
+
+		if (vnTime.getTime() < start) {
+			// If event starts within next 7 days, it's "Soon"
+			if (start - vnTime.getTime() < 7 * 24 * 60 * 60 * 1000) return "Soon"
+			return "Future"
+		}
+		if (vnTime.getTime() >= start && vnTime.getTime() <= end) return "Now"
+		return "Finished"
 	}
 
 	// Helper function to check if event has expired (past endTime) or is COMPLETED
@@ -130,8 +164,16 @@ export default function UniStaffEventRequestsPage() {
 	// Filter events based on active tab and search/filters
 	const filteredRequests = events
 		.filter((evt) => {
+			// Hide WAITING_COCLUB_APPROVAL events by default unless toggle is enabled
+			if (!showWaitingCoClub && (evt.status ?? "").toUpperCase() === "WAITING_COCLUB_APPROVAL") {
+				return false
+			}
+
 			// First filter by active tab status
-			const matchTab = (evt.status ?? "").toUpperCase() === activeTab
+			// WAITING_COCLUB_APPROVAL events should appear in the WAITING_UNISTAFF_APPROVAL tab
+			const eventStatus = (evt.status ?? "").toUpperCase()
+			const matchTab = eventStatus === activeTab || 
+				(activeTab === "WAITING_UNISTAFF_APPROVAL" && eventStatus === "WAITING_COCLUB_APPROVAL")
 
 			const q = searchTerm.trim().toLowerCase()
 			const matchSearch =
@@ -140,12 +182,28 @@ export default function UniStaffEventRequestsPage() {
 				// club names are not included in this payload; fallback to clubId
 				String(evt.clubId || "").includes(q)
 
-			// Additional filters (if you want to keep them)
-			const matchStatus = statusFilter === "all" ? true : ((evt.status ?? evt.type) === statusFilter)
-			const matchCategory = categoryFilter === "all" ? true : (evt.category || "") === categoryFilter
+			// Type filter
 			const matchType = typeFilter === "all" ? true : (evt.type || "") === typeFilter
 
-			return matchTab && matchSearch && matchStatus && matchCategory && matchType
+			// Date filter
+			const matchDate = !dateFilter ? true : (
+				new Date(evt.date).toDateString() === new Date(dateFilter).toDateString()
+			)
+
+			// Expired filter
+			const isExpired = isEventExpired(evt)
+			let matchExpired = true
+			if (expiredFilter === "hide") {
+				matchExpired = !isExpired
+			} else if (expiredFilter === "only") {
+				matchExpired = isExpired
+			} else if (expiredFilter === "Soon" || expiredFilter === "Finished") {
+				const status = getEventStatus(evt.date, evt.startTime || evt.time)
+				matchExpired = status.toLowerCase() === expiredFilter.toLowerCase()
+			}
+			// "show" means show all - no filtering needed
+
+			return matchTab && matchSearch && matchType && matchDate && matchExpired
 		})
 		// Sort by latest date (newest first)
 		.sort((a, b) => {
@@ -196,11 +254,11 @@ export default function UniStaffEventRequestsPage() {
 		}
 
 		switch (status) {
-			case "PENDING":
+			case "WAITING_UNISTAFF_APPROVAL":
 				return (
 					<Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-500 font-semibold">
 						<span className="inline-block w-2 h-2 rounded-full bg-yellow-500 mr-1.5"></span>
-						Pending
+						Waiting Uni-Staff
 					</Badge>
 				)
 			case "APPROVED":
@@ -208,6 +266,13 @@ export default function UniStaffEventRequestsPage() {
 					<Badge variant="default" className="bg-green-600 text-white border-green-600 font-semibold">
 						<span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
 						Approved
+					</Badge>
+				)
+			case "WAITING_COCLUB_APPROVAL":
+				return (
+					<Badge variant="outline" className="bg-orange-100 text-orange-700 border-orange-500 font-semibold">
+						<span className="inline-block w-2 h-2 rounded-full bg-orange-500 mr-1.5"></span>
+						Waiting
 					</Badge>
 				)
 			case "REJECTED":
@@ -231,9 +296,10 @@ export default function UniStaffEventRequestsPage() {
 
 	// Compute counts by status (prefer `status` field). Fallback to type-based heuristics when missing
 	const totalCount = events.length
-	const pendingCount = events.filter((e) => (e.status ?? "").toUpperCase() === "PENDING").length
+	const waitingUniStaffCount = events.filter((e) => (e.status ?? "").toUpperCase() === "WAITING_UNISTAFF_APPROVAL").length
 	const approvedCount = events.filter((e) => (e.status ?? "").toUpperCase() === "APPROVED").length
 	const rejectedCount = events.filter((e) => (e.status ?? "").toUpperCase() === "REJECTED").length
+	const waitingCoClubCount = events.filter((e) => (e.status ?? "").toUpperCase() === "WAITING_COCLUB_APPROVAL").length
 
 	return (
 		<ProtectedRoute allowedRoles={["uni_staff"]}>
@@ -254,7 +320,7 @@ export default function UniStaffEventRequestsPage() {
 						<Card className="border-0 shadow-md bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-950 dark:to-yellow-900">
 							<CardHeader className="pb-3 px-4 pt-3">
 								<CardTitle className="text-sm font-medium text-yellow-700 dark:text-yellow-300">
-									Pending Requests
+									Waiting Approval
 								</CardTitle>
 							</CardHeader>
 							<CardContent className="pb-3 px-4">
@@ -264,9 +330,9 @@ export default function UniStaffEventRequestsPage() {
 									</div>
 									<div>
 										<div className="text-2xl font-bold text-yellow-900 dark:text-yellow-100">
-																{pendingCount}
+																{waitingUniStaffCount}
 															</div>
-															<p className="text-sm text-yellow-600 dark:text-yellow-400">Pending events</p>
+															<p className="text-sm text-yellow-600 dark:text-yellow-400">Waiting events</p>
 									</div>
 								</div>
 							</CardContent>
@@ -316,17 +382,17 @@ export default function UniStaffEventRequestsPage() {
 					{/* Tab Buttons */}
 					<div className="flex gap-3 border-b-2 border-gray-200 dark:border-gray-700">
 						<Button
-							variant={activeTab === "PENDING" ? "default" : "ghost"}
+							variant={activeTab === "WAITING_UNISTAFF_APPROVAL" ? "default" : "ghost"}
 							size="lg"
 							className={`flex-1 rounded-b-none py-6 text-base font-semibold transition-all ${
-								activeTab === "PENDING"
+								activeTab === "WAITING_UNISTAFF_APPROVAL"
 									? "border-b-4 border-yellow-500 bg-yellow-50 text-yellow-700 hover:bg-yellow-100 dark:bg-yellow-950 dark:text-yellow-300"
 									: "border-b-4 border-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
 							}`}
-							onClick={() => setActiveTab("PENDING")}
+							onClick={() => setActiveTab("WAITING_UNISTAFF_APPROVAL")}
 						>
 							<Clock className="h-5 w-5 mr-2" />
-							Pending ({pendingCount})
+							Waiting ({waitingUniStaffCount})
 						</Button>
 						<Button
 							variant={activeTab === "APPROVED" ? "default" : "ghost"}
@@ -368,45 +434,55 @@ export default function UniStaffEventRequestsPage() {
 						</div>
 
 						<div className="flex items-center gap-3">
-							<Select value={statusFilter} onValueChange={setStatusFilter}>
-								<SelectTrigger className="w-32">
-									<SelectValue placeholder="Status" />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value="all">All Status</SelectItem>
-									<SelectItem value="PENDING">Pending</SelectItem>
-									<SelectItem value="APPROVED">Approved</SelectItem>
-									<SelectItem value="REJECTED">Rejected</SelectItem>
-								</SelectContent>
-							</Select>
-
 							<Select value={typeFilter} onValueChange={setTypeFilter}>
-								<SelectTrigger className="w-36">
+								<SelectTrigger className="w-32">
 									<SelectValue placeholder="Type" />
 								</SelectTrigger>
 								<SelectContent>
 									<SelectItem value="all">All Types</SelectItem>
-									<SelectItem value="Conference">Conference</SelectItem>
-									<SelectItem value="Workshop">Workshop</SelectItem>
-									<SelectItem value="Workshop Series">Workshop Series</SelectItem>
-									<SelectItem value="Exhibition">Exhibition</SelectItem>
-									<SelectItem value="Seminar">Seminar</SelectItem>
+									<SelectItem value="PUBLIC">Public</SelectItem>
+									<SelectItem value="PRIVATE">Private</SelectItem>
 								</SelectContent>
 							</Select>
 
-							<Select value={categoryFilter} onValueChange={setCategoryFilter}>
-								<SelectTrigger className="w-36">
-									<SelectValue placeholder="Category" />
+							<Input
+								type="date"
+								value={dateFilter}
+								onChange={(e) => setDateFilter(e.target.value)}
+								className="w-40"
+								placeholder="Filter by date"
+							/>
+
+							<Select value={expiredFilter} onValueChange={setExpiredFilter}>
+								<SelectTrigger className="w-40">
+									<SelectValue placeholder="Expired" />
 								</SelectTrigger>
 								<SelectContent>
-									<SelectItem value="all">All Categories</SelectItem>
-									<SelectItem value="Technology">Technology</SelectItem>
-									<SelectItem value="Social">Social</SelectItem>
-									<SelectItem value="Arts">Arts</SelectItem>
-									<SelectItem value="Academic">Academic</SelectItem>
-									<SelectItem value="Sports">Sports</SelectItem>
+									<SelectItem value="hide">Hide Expired</SelectItem>
+									<SelectItem value="show">Show All</SelectItem>
+									<SelectItem value="only">Only Expired</SelectItem>
+									<SelectItem value="Soon">Soon</SelectItem>
+									<SelectItem value="Finished">Finished</SelectItem>
 								</SelectContent>
 							</Select>
+
+							<Button
+								variant={showWaitingCoClub ? "default" : "outline"}
+								size="sm"
+								onClick={() => setShowWaitingCoClub(!showWaitingCoClub)}
+								className="flex items-center gap-2"
+							>
+								<Filter className="h-4 w-4" />
+								{showWaitingCoClub ? "Hide" : "Show"} Waiting Co-Club
+								{waitingCoClubCount > 0 && (
+									<Badge 
+										variant="secondary" 
+										className={`ml-1 ${showWaitingCoClub ? "bg-white/20" : "bg-orange-100 text-orange-700"}`}
+									>
+										{waitingCoClubCount}
+									</Badge>
+								)}
+							</Button>
 						</div>
 					</div>
 
@@ -437,7 +513,9 @@ export default function UniStaffEventRequestsPage() {
 									borderClass = 'border-l-4 border-l-gray-400 opacity-60'
 								} else if (request.status === "APPROVED") {
 									borderClass = 'border-l-4 border-l-green-500'
-								} else if (request.status === "PENDING") {
+								} else if (request.status === "WAITING_COCLUB_APPROVAL") {
+									borderClass = 'border-l-4 border-l-orange-500'
+								} else if (request.status === "WAITING_UNISTAFF_APPROVAL") {
 									borderClass = 'border-l-4 border-l-yellow-500'
 								} else if (request.status === "REJECTED") {
 									borderClass = 'border-l-4 border-l-red-500'
@@ -501,14 +579,14 @@ export default function UniStaffEventRequestsPage() {
 												</div>
 
 												<div className="flex items-center gap-2 ml-4">
-													{request.status === "PENDING" && !expired && (
+													{request.status === "WAITING_UNISTAFF_APPROVAL" && !expired && (
 														<>
 															<Button size="sm" variant="default" className="h-8 w-8 p-0" onClick={async (e) => {
 																e.preventDefault()
 																if (processingId) return
 																setProcessingId(request.id)
 																try {
-																	await putEventStatus(request.id, "APPROVED")
+																	await putEventStatus(request.id, "APPROVED", request.budgetPoints || 0)
 																	// optimistic update in local state
 																	setEvents(prev => prev.map(ev => ev.id === request.id ? { ...ev, status: "APPROVED" } : ev))
 																	toast({ title: 'Approved', description: `Event ${request.name || request.id} approved.` })
@@ -526,7 +604,7 @@ export default function UniStaffEventRequestsPage() {
 																if (processingId) return
 																setProcessingId(request.id)
 																try {
-																	await putEventStatus(request.id, "REJECTED")
+																	await putEventStatus(request.id, "REJECTED", request.budgetPoints || 0)
 																	setEvents(prev => prev.map(ev => ev.id === request.id ? { ...ev, status: "REJECTED" } : ev))
 																	toast({ title: 'Rejected', description: `Event ${request.name || request.id} rejected.` })
 																} catch (err: any) {

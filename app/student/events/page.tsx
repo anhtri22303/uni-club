@@ -145,15 +145,15 @@ export default function MemberEventsPage() {
       if (isExpired) return false
       // Hide rejected events
       if (event.status === "REJECTED") return false
-      // Only show APPROVED or PENDING events
-      if (event.status !== "APPROVED" && event.status !== "PENDING") return false
+      // Only show APPROVED or WAITING_UNISTAFF_APPROVAL events
+      if (event.status !== "APPROVED" && event.status !== "WAITING_UNISTAFF_APPROVAL") return false
       // Only show future or today's events
       if (!isFutureEvent) return false
     } else if (expiredFilter === "only") {
       if (!isExpired) return false
     } else if (expiredFilter === "show") {
       // Show all events regardless of expiration
-      if (event.status !== "APPROVED" && event.status !== "PENDING" && event.status !== "COMPLETED") {
+      if (event.status !== "APPROVED" && event.status !== "WAITING_UNISTAFF_APPROVAL" && event.status !== "COMPLETED") {
         return false
       }
     }
@@ -321,7 +321,7 @@ export default function MemberEventsPage() {
                   borderColor = "border-l-4 border-l-blue-900"
                 } else if (event.status === "APPROVED") {
                   borderColor = "border-l-4 border-l-green-500"
-                } else if (event.status === "PENDING") {
+                } else if (event.status === "WAITING_UNISTAFF_APPROVAL") {
                   borderColor = "border-l-4 border-l-yellow-500"
                 } else if (event.status === "REJECTED") {
                   borderColor = "border-l-4 border-l-red-500"
@@ -348,10 +348,10 @@ export default function MemberEventsPage() {
                             <span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-1.5"></span>
                             {status === "past" ? "Past" : status === "upcoming" ? "Soon" : "Approved"}
                           </Badge>
-                        ) : event.status === "PENDING" ? (
+                        ) : event.status === "WAITING_UNISTAFF_APPROVAL" ? (
                           <Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-500 font-semibold">
                             <span className="inline-block w-2 h-2 rounded-full bg-yellow-500 mr-1.5"></span>
-                            PENDING
+                            WAITING APPROVAL
                           </Badge>
                         ) : event.status === "REJECTED" ? (
                           <Badge variant="outline" className="bg-red-100 text-red-700 border-red-500 font-semibold">

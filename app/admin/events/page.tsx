@@ -250,44 +250,62 @@ export default function AdminEventsPage() {
   const [showFilters, setShowFilters] = useState(false)
 
   const filteredEvents = effectiveEvents.filter((item) => {
+    // Calculate status values
+    const isExpired = isEventExpired(item)
+    const isFutureEvent = item.date && new Date(item.date) >= new Date(new Date().toDateString())
+    
+    const approvalFilter = activeFilters["approval"]
+    const expiredFilter = activeFilters["expired"] || "hide"
+    
+    // Apply default restrictions only when filters are at default values
+    const isDefaultState = !approvalFilter && expiredFilter === "hide"
+    
+    if (isDefaultState) {
+      // Default: Only show future WAITING_UNISTAFF_APPROVAL and APPROVED events
+      if (item.status === "REJECTED") return false
+      if (item.status === "COMPLETED") return false
+      if (isExpired) return false
+      if (!isFutureEvent) return false
+    }
+    
+    // search by title/name
     if (searchTerm) {
       const v = String(item.title || item.name || "").toLowerCase()
       if (!v.includes(searchTerm.toLowerCase())) return false
     }
+
+    // type filter
     const typeFilter = activeFilters["type"]
     if (typeFilter && typeFilter !== "all") {
       if (String(item.type || "").toUpperCase() !== String(typeFilter).toUpperCase()) return false
     }
-    const clubFilter = activeFilters["club"]
-    if (clubFilter && clubFilter !== "all") {
-      if (String(item.clubId) !== String(clubFilter)) return false
-    }
+
+    // date exact match (can be extended to ranges)
     const dateFilter = activeFilters["date"]
     if (dateFilter) {
       const it = new Date(item.date).toDateString()
       const df = new Date(dateFilter).toDateString()
       if (it !== df) return false
     }
-    
-    // status filter
-    const statusFilter = activeFilters["status"]
-    if (statusFilter && statusFilter !== "all") {
-      const status = getEventStatus(item.date, item.time)
-      if (String(status).toLowerCase() !== String(statusFilter).toLowerCase()) return false
-    }
 
-    // approval status filter
-    const approvalFilter = activeFilters["approval"]
+    // approval status filter (specific status like APPROVED, PENDING, REJECTED)
     if (approvalFilter && approvalFilter !== "all") {
       if (String(item.status).toUpperCase() !== String(approvalFilter).toUpperCase()) return false
     }
 
-    // expired filter
-    const expiredFilter = activeFilters["expired"]
-    if (expiredFilter === "hide") {
-      if (isEventExpired(item)) return false
-    } else if (expiredFilter === "only") {
-      if (!isEventExpired(item)) return false
+    // expired filter - only apply if not in default state (to avoid duplicate filtering)
+    if (!isDefaultState) {
+      if (expiredFilter === "hide") {
+        if (isExpired) return false
+      } else if (expiredFilter === "only") {
+        if (!isExpired) return false
+      } 
+      // Handle time-based status options (Soon, Finished)
+      else if (expiredFilter === "Soon" || expiredFilter === "Finished") {
+        const status = getEventStatus(item.date, item.time)
+        if (String(status).toLowerCase() !== String(expiredFilter).toLowerCase()) return false
+      }
+      // "show" means show all - no filtering needed
     }
 
     return true
@@ -495,7 +513,7 @@ export default function AdminEventsPage() {
                     </Button>
                   )}
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-muted-foreground">Type</label>
                     <Select value={activeFilters["type"] || "all"} onValueChange={(v) => handleFilterChange("type", v)}>
@@ -509,40 +527,14 @@ export default function AdminEventsPage() {
                       </SelectContent>
                     </Select>
                   </div>
+
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-muted-foreground">Date</label>
                     <Input type="date" value={activeFilters["date"] || ""} onChange={(e) => handleFilterChange("date", e.target.value)} className="h-8 text-xs" />
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">Club</label>
-                    <Select value={activeFilters["club"] || "all"} onValueChange={(v) => handleFilterChange("club", v)}>
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All</SelectItem>
-                        {clubs.map((c: any) => (
-                          <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-muted-foreground">Status</label>
-                    <Select value={activeFilters["status"] || "all"} onValueChange={(v) => handleFilterChange("status", v)}>
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All</SelectItem>
-                        <SelectItem value="Soon">Soon</SelectItem>
-                        <SelectItem value="Now">Now</SelectItem>
-                        <SelectItem value="Finished">Finished</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">Approval</label>
                     <Select value={activeFilters["approval"] || "all"} onValueChange={(v) => handleFilterChange("approval", v)}>
                       <SelectTrigger className="h-8 text-xs">
                         <SelectValue />
@@ -550,11 +542,13 @@ export default function AdminEventsPage() {
                       <SelectContent>
                         <SelectItem value="all">All</SelectItem>
                         <SelectItem value="APPROVED">Approved</SelectItem>
-                        <SelectItem value="PENDING">Pending</SelectItem>
+                        <SelectItem value="WAITING_COCLUB_APPROVAL">Waiting Co-Club</SelectItem>
+                        <SelectItem value="WAITING_UNISTAFF_APPROVAL">Waiting Uni-Staff</SelectItem>
                         <SelectItem value="REJECTED">Rejected</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
+
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-muted-foreground">Expired</label>
                     <Select value={activeFilters["expired"] || "hide"} onValueChange={(v) => handleFilterChange("expired", v)}>
@@ -565,6 +559,8 @@ export default function AdminEventsPage() {
                         <SelectItem value="hide">Hide Expired</SelectItem>
                         <SelectItem value="show">Show All</SelectItem>
                         <SelectItem value="only">Only Expired</SelectItem>
+                        <SelectItem value="Soon">Soon</SelectItem>
+                        <SelectItem value="Finished">Finished</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -601,7 +597,9 @@ export default function AdminEventsPage() {
                     borderColor = "border-l-4 border-l-gray-400"
                   } else if (event.status === "APPROVED") {
                     borderColor = "border-l-4 border-l-green-500"
-                  } else if (event.status === "PENDING") {
+                  } else if (event.status === "WAITING_COCLUB_APPROVAL") {
+                    borderColor = "border-l-4 border-l-orange-500"
+                  } else if (event.status === "WAITING_UNISTAFF_APPROVAL") {
                     borderColor = "border-l-4 border-l-yellow-500"
                   } else if (event.status === "REJECTED") {
                     borderColor = "border-l-4 border-l-red-500"
@@ -664,10 +662,16 @@ export default function AdminEventsPage() {
                                   Approved
                                 </Badge>
                               )}
-                              {event.status === "PENDING" && (
+                              {event.status === "WAITING_COCLUB_APPROVAL" && (
+                                <Badge variant="outline" className="bg-orange-100 text-orange-700 border-orange-500 font-semibold">
+                                  <span className="inline-block w-2 h-2 rounded-full bg-orange-500 mr-1.5"></span>
+                                  Waiting Co-Club Approval
+                                </Badge>
+                              )}
+                              {event.status === "WAITING_UNISTAFF_APPROVAL" && (
                                 <Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-500 font-semibold">
                                   <span className="inline-block w-2 h-2 rounded-full bg-yellow-500 mr-1.5"></span>
-                                  Pending
+                                  Waiting Uni-Staff Approval
                                 </Badge>
                               )}
                               {event.status === "REJECTED" && (

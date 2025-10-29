@@ -185,27 +185,39 @@ export default function ClubLeaderEventsPage() {
     const eventsToProcess = viewMode === "hosted" ? rawEvents : rawCoHostEvents
     
     // Normalize events with both new and legacy field support
-    const normalized = eventsToProcess.map((e: any) => {
-      // Convert TimeObject to string if needed
-      const startTimeStr = timeObjectToString(e.startTime)
-      const endTimeStr = timeObjectToString(e.endTime)
-      
-      // For co-host events, find the club's co-host status
-      const myCoHostStatus = viewMode === "cohost" && userClubId
-        ? e.coHostedClubs?.find((club: any) => club.id === userClubId)?.coHostStatus
-        : null
-      
-      return {
-        ...e,
-        title: e.name || e.title,
-        time: startTimeStr || e.time, // Map startTime to time for legacy compatibility
-        startTime: startTimeStr, // Ensure startTime is always a string for display
-        endTime: endTimeStr, // Ensure endTime is always a string for display
-        clubId: e.hostClub?.id || e.clubId, // Map hostClub.id to clubId for backward compatibility
-        clubName: e.hostClub?.name || e.clubName, // Map hostClub.name to clubName for backward compatibility
-        myCoHostStatus, // Add co-host status for this club
-      }
-    })
+    const normalized = eventsToProcess
+      .filter((e: any) => {
+        // For hosted events, ONLY show events where this club is the hostClub
+        if (viewMode === "hosted" && userClubId) {
+          return e.hostClub?.id === userClubId
+        }
+        // For co-host events, ONLY show events where this club is in coHostedClubs
+        if (viewMode === "cohost" && userClubId) {
+          return e.coHostedClubs?.some((club: any) => club.id === userClubId)
+        }
+        return true
+      })
+      .map((e: any) => {
+        // Convert TimeObject to string if needed
+        const startTimeStr = timeObjectToString(e.startTime)
+        const endTimeStr = timeObjectToString(e.endTime)
+        
+        // For co-host events, find the club's co-host status
+        const myCoHostStatus = viewMode === "cohost" && userClubId
+          ? e.coHostedClubs?.find((club: any) => club.id === userClubId)?.coHostStatus
+          : null
+        
+        return {
+          ...e,
+          title: e.name || e.title,
+          time: startTimeStr || e.time, // Map startTime to time for legacy compatibility
+          startTime: startTimeStr, // Ensure startTime is always a string for display
+          endTime: endTimeStr, // Ensure endTime is always a string for display
+          clubId: e.hostClub?.id || e.clubId, // Map hostClub.id to clubId for backward compatibility
+          clubName: e.hostClub?.name || e.clubName, // Map hostClub.name to clubName for backward compatibility
+          myCoHostStatus, // Add co-host status for this club
+        }
+      })
     return sortEventsByDateTime(normalized)
   }, [viewMode, rawEvents, rawCoHostEvents, userClubId])
 
@@ -332,17 +344,51 @@ export default function ClubLeaderEventsPage() {
   const [activeFilters, setActiveFilters] = useState<Record<string, any>>({ expired: "hide" })
   const [showFilters, setShowFilters] = useState(false)
 
+  // Helper to get event status based on date and time
+  const getEventStatus = (eventDate: string, eventTime: string | any) => {
+    if (!eventDate) return "Finished"
+    // Get current time in Vietnam timezone (UTC+7)
+    const now = new Date()
+    const vnTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }))
+
+    // Convert TimeObject to string if needed
+    const eventTimeStr = timeObjectToString(eventTime)
+    
+    // Parse event date and time
+    const [hour = "00", minute = "00"] = (eventTimeStr || "00:00").split(":")
+    const [year, month, day] = eventDate.split('-').map(Number)
+    const event = new Date(year, month - 1, day, Number(hour), Number(minute), 0, 0)
+
+    // Event duration: assume 2 hours for "Now" window (customize as needed)
+    const EVENT_DURATION_MS = 2 * 60 * 60 * 1000
+    const start = event.getTime()
+    const end = start + EVENT_DURATION_MS
+
+    if (vnTime.getTime() < start) {
+      // If event starts within next 7 days, it's "Soon"
+      if (start - vnTime.getTime() < 7 * 24 * 60 * 60 * 1000) return "Soon"
+      return "Future"
+    }
+    if (vnTime.getTime() >= start && vnTime.getTime() <= end) return "Now"
+    return "Finished"
+  }
+
   const filteredEvents = effectiveEvents.filter((item) => {
-    // Default: Show future PENDING and APPROVED events (hide expired/completed and rejected)
+    // Calculate status values
     const isExpired = isEventExpired(item)
     const isFutureEvent = item.date && new Date(item.date) >= new Date(new Date().toDateString())
     
-    // By default, only show future events that are PENDING or APPROVED
-    if (!activeFilters["approval"] || activeFilters["approval"] === "all") {
+    const approvalFilter = activeFilters["approval"]
+    const expiredFilter = activeFilters["expired"] || "hide"
+    
+    // Apply default restrictions only when filters are at default values
+    const isDefaultState = !approvalFilter && expiredFilter === "hide"
+    
+    if (isDefaultState) {
+      // Default: Only show future WAITING_UNISTAFF_APPROVAL and APPROVED events
       if (item.status === "REJECTED") return false
       if (item.status === "COMPLETED") return false
       if (isExpired) return false
-      // Only show future or today's events
       if (!isFutureEvent) return false
     }
     
@@ -358,12 +404,6 @@ export default function ClubLeaderEventsPage() {
       if (String(item.type || "").toUpperCase() !== String(typeFilter).toUpperCase()) return false
     }
 
-    // club filter
-    const clubFilter = activeFilters["club"]
-    if (clubFilter && clubFilter !== "all") {
-      if (String(item.clubId) !== String(clubFilter)) return false
-    }
-
     // date exact match (can be extended to ranges)
     const dateFilter = activeFilters["date"]
     if (dateFilter) {
@@ -372,25 +412,24 @@ export default function ClubLeaderEventsPage() {
       if (it !== df) return false
     }
 
-    // status filter
-    const statusFilter = activeFilters["status"]
-    if (statusFilter && statusFilter !== "all") {
-      const status = getEventStatus(item.date, item.time)
-      if (String(status).toLowerCase() !== String(statusFilter).toLowerCase()) return false
-    }
-
-    // approval status filter
-    const approvalFilter = activeFilters["approval"]
+    // approval status filter (specific status like APPROVED, PENDING, REJECTED)
     if (approvalFilter && approvalFilter !== "all") {
       if (String(item.status).toUpperCase() !== String(approvalFilter).toUpperCase()) return false
     }
 
-    // expired filter
-    const expiredFilter = activeFilters["expired"]
-    if (expiredFilter === "hide") {
-      if (isExpired) return false
-    } else if (expiredFilter === "only") {
-      if (!isExpired) return false
+    // expired filter - only apply if not in default state (to avoid duplicate filtering)
+    if (!isDefaultState) {
+      if (expiredFilter === "hide") {
+        if (isExpired) return false
+      } else if (expiredFilter === "only") {
+        if (!isExpired) return false
+      } 
+      // Handle time-based status options (Soon, Finished)
+      else if (expiredFilter === "Soon" || expiredFilter === "Finished") {
+        const status = getEventStatus(item.date, item.time)
+        if (String(status).toLowerCase() !== String(expiredFilter).toLowerCase()) return false
+      }
+      // "show" means show all - no filtering needed
     }
 
     return true
@@ -574,35 +613,6 @@ export default function ClubLeaderEventsPage() {
     }
   }
 
-  // Helper to get event status based on date and time
-  const getEventStatus = (eventDate: string, eventTime: string | any) => {
-    if (!eventDate) return "Finished"
-    // Get current time in Vietnam timezone (UTC+7)
-    const now = new Date()
-    const vnTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }))
-
-    // Convert TimeObject to string if needed
-    const eventTimeStr = timeObjectToString(eventTime)
-    
-    // Parse event date and time
-    const [hour = "00", minute = "00"] = (eventTimeStr || "00:00").split(":")
-    const [year, month, day] = eventDate.split('-').map(Number)
-    const event = new Date(year, month - 1, day, Number(hour), Number(minute), 0, 0)
-
-    // Event duration: assume 2 hours for "Now" window (customize as needed)
-    const EVENT_DURATION_MS = 2 * 60 * 60 * 1000
-    const start = event.getTime()
-    const end = start + EVENT_DURATION_MS
-
-    if (vnTime.getTime() < start) {
-      // If event starts within next 7 days, it's "Soon"
-      if (start - vnTime.getTime() < 7 * 24 * 60 * 60 * 1000) return "Soon"
-      return "Future"
-    }
-    if (vnTime.getTime() >= start && vnTime.getTime() <= end) return "Now"
-    return "Finished"
-  }
-
   return (
     <ProtectedRoute allowedRoles={["club_leader"]}>
       <AppShell>
@@ -690,7 +700,7 @@ export default function ClubLeaderEventsPage() {
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-muted-foreground">Type</label>
                     <Select value={activeFilters["type"] || "all"} onValueChange={(v) => handleFilterChange("type", v)}>
@@ -711,37 +721,7 @@ export default function ClubLeaderEventsPage() {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">Club</label>
-                    <Select value={activeFilters["club"] || "all"} onValueChange={(v) => handleFilterChange("club", v)}>
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All</SelectItem>
-                        {allClubs.map((c: any) => (
-                          <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-1">
                     <label className="text-xs font-medium text-muted-foreground">Status</label>
-                    <Select value={activeFilters["status"] || "all"} onValueChange={(v) => handleFilterChange("status", v)}>
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All</SelectItem>
-                        <SelectItem value="Soon">Soon</SelectItem>
-                        <SelectItem value="Now">Now</SelectItem>
-                        <SelectItem value="Finished">Finished</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">Approval</label>
                     <Select value={activeFilters["approval"] || "all"} onValueChange={(v) => handleFilterChange("approval", v)}>
                       <SelectTrigger className="h-8 text-xs">
                         <SelectValue />
@@ -749,7 +729,8 @@ export default function ClubLeaderEventsPage() {
                       <SelectContent>
                         <SelectItem value="all">All</SelectItem>
                         <SelectItem value="APPROVED">Approved</SelectItem>
-                        <SelectItem value="PENDING">Pending</SelectItem>
+                        <SelectItem value="WAITING_COCLUB_APPROVAL">Waiting Co-Club</SelectItem>
+                        <SelectItem value="WAITING_UNISTAFF_APPROVAL">Waiting Uni-Staff</SelectItem>
                         <SelectItem value="REJECTED">Rejected</SelectItem>
                       </SelectContent>
                     </Select>
@@ -765,6 +746,8 @@ export default function ClubLeaderEventsPage() {
                         <SelectItem value="hide">Hide Expired</SelectItem>
                         <SelectItem value="show">Show All</SelectItem>
                         <SelectItem value="only">Only Expired</SelectItem>
+                        <SelectItem value="Soon">Soon</SelectItem>
+                        <SelectItem value="Finished">Finished</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -806,7 +789,7 @@ export default function ClubLeaderEventsPage() {
                       borderColor = "border-l-4 border-l-green-500"
                     } else if (event.myCoHostStatus === "REJECTED") {
                       borderColor = "border-l-4 border-l-red-500"
-                    } else if (event.myCoHostStatus === "PENDING") {
+                    } else if (event.myCoHostStatus === "PENDING" || event.myCoHostStatus === "WAITING_COCLUB_APPROVAL") {
                       borderColor = "border-l-4 border-l-yellow-500"
                     }
                   } else {
@@ -817,7 +800,9 @@ export default function ClubLeaderEventsPage() {
                       borderColor = "border-l-4 border-l-gray-400"
                     } else if (event.status === "APPROVED") {
                       borderColor = "border-l-4 border-l-green-500"
-                    } else if (event.status === "PENDING") {
+                    } else if (event.status === "WAITING_COCLUB_APPROVAL") {
+                      borderColor = "border-l-4 border-l-orange-500"
+                    } else if (event.status === "WAITING_UNISTAFF_APPROVAL") {
                       borderColor = "border-l-4 border-l-yellow-500"
                     } else if (event.status === "REJECTED") {
                       borderColor = "border-l-4 border-l-red-500"
@@ -898,8 +883,11 @@ export default function ClubLeaderEventsPage() {
                               {event.status === "APPROVED" && (
                                 <Badge variant="secondary" className="bg-green-100 text-green-700 border-green-500">Event Approved</Badge>
                               )}
-                              {event.status === "PENDING" && (
-                                <Badge variant="outline" className="border-yellow-500 text-yellow-700 bg-yellow-100">Event Pending</Badge>
+                              {event.status === "WAITING_COCLUB_APPROVAL" && (
+                                <Badge variant="outline" className="border-orange-500 text-orange-700 bg-orange-100">Event Waiting Co-Club</Badge>
+                              )}
+                              {event.status === "WAITING_UNISTAFF_APPROVAL" && (
+                                <Badge variant="outline" className="border-yellow-500 text-yellow-700 bg-yellow-100">Event Waiting Uni-Staff</Badge>
                               )}
                             </>
                           ) : (
@@ -910,10 +898,16 @@ export default function ClubLeaderEventsPage() {
                                   Approved
                                 </Badge>
                               )}
-                              {event.status === "PENDING" && (
+                              {event.status === "WAITING_COCLUB_APPROVAL" && (
+                                <Badge variant="outline" className="bg-orange-100 text-orange-700 border-orange-500 font-semibold">
+                                  <span className="inline-block w-2 h-2 rounded-full bg-orange-500 mr-1.5"></span>
+                                  Waiting Co-Club Approval
+                                </Badge>
+                              )}
+                              {event.status === "WAITING_UNISTAFF_APPROVAL" && (
                                 <Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-500 font-semibold">
                                   <span className="inline-block w-2 h-2 rounded-full bg-yellow-500 mr-1.5"></span>
-                                  Pending
+                                  Waiting Uni-Staff Approval
                                 </Badge>
                               )}
                               {event.status === "REJECTED" && (

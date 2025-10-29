@@ -162,18 +162,25 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
             Completed
           </Badge>
         )
-      case "PENDING":
-        return (
-          <Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-500">
-            <Clock className="h-3 w-3 mr-1" />
-            Pending
-          </Badge>
-        )
       case "APPROVED":
         return (
           <Badge variant="default" className="bg-green-100 text-green-700 border-green-500">
             <CheckCircle className="h-3 w-3 mr-1" />
             Approved
+          </Badge>
+        )
+      case "WAITING_COCLUB_APPROVAL":
+        return (
+          <Badge variant="outline" className="bg-orange-100 text-orange-700 border-orange-500">
+            <Clock className="h-3 w-3 mr-1" />
+            Waiting Co-Club Approval
+          </Badge>
+        )
+      case "WAITING_UNISTAFF_APPROVAL":
+        return (
+          <Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-500">
+            <Clock className="h-3 w-3 mr-1" />
+            Waiting Uni-Staff Approval
           </Badge>
         )
       case "REJECTED":
@@ -195,7 +202,7 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
     if (!request) return
     setProcessing(true)
     try {
-      await putEventStatus(request.id, status)
+      await putEventStatus(request.id, status, request.budgetPoints || 0)
       // optimistic/local update
       setRequest({ ...request, status })
       toast({ title: status === "APPROVED" ? "Approved" : "Rejected", description: `Event ${request.name || request.id} ${status === "APPROVED" ? "approved" : "rejected"}.` })
@@ -378,14 +385,20 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                         </div>
                       </div>
                       <div className="p-3 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-200">
-                        <label className="text-sm text-green-700 font-medium">Wallet Balance</label>
+                        <label className="text-sm text-green-700 font-medium">
+                          {request.status === "APPROVED" ? "Wallet Balance" : "Budget Points"}
+                        </label>
                         <div className="font-semibold text-green-800 mt-1">
-                          {walletLoading ? (
-                            <span className="text-muted-foreground">Loading...</span>
-                          ) : wallet ? (
-                            `${wallet.walletBalance} points`
+                          {request.status === "APPROVED" ? (
+                            walletLoading ? (
+                              <span className="text-muted-foreground">Loading...</span>
+                            ) : wallet ? (
+                              `${wallet.walletBalance} points`
+                            ) : (
+                              <span className="text-muted-foreground">N/A</span>
+                            )
                           ) : (
-                            <span className="text-muted-foreground">N/A</span>
+                            `${request.budgetPoints || 0} points`
                           )}
                         </div>
                       </div>
@@ -413,7 +426,7 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                                   ? "bg-red-100 text-red-700 border-red-500"
                                   : club.coHostStatus === "PENDING"
                                   ? "bg-yellow-100 text-yellow-700 border-yellow-500"
-                                  : ""
+                                  : "bg-gray-100 text-gray-700 border-gray-300"
                               }
                             >
                               {club.coHostStatus}

@@ -29,6 +29,7 @@ interface EventDetail {
   locationName: string
   maxCheckInCount: number
   currentCheckInCount: number
+  budgetPoints: number
   hostClub: {
     id: number
     name: string
@@ -192,11 +193,18 @@ export default function AdminEventDetailPage() {
             Approved
           </Badge>
         )
-      case "PENDING":
+      case "WAITING_COCLUB_APPROVAL":
+        return (
+          <Badge variant="outline" className="bg-orange-100 text-orange-800 border-orange-300">
+            <AlertCircle className="h-3 w-3 mr-1" />
+            Waiting Co-Club Approval
+          </Badge>
+        )
+      case "WAITING_UNISTAFF_APPROVAL":
         return (
           <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300">
             <AlertCircle className="h-3 w-3 mr-1" />
-            Pending
+            Waiting Uni-Staff Approval
           </Badge>
         )
       case "REJECTED":
@@ -514,14 +522,20 @@ export default function AdminEventDetailPage() {
                     <div className="font-semibold text-lg">{event.maxCheckInCount - event.currentCheckInCount} remaining</div>
                   </div>
                   <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-200">
-                    <div className="text-sm text-green-700 font-medium">Wallet Balance</div>
+                    <div className="text-sm text-green-700 font-medium">
+                      {event.status === "APPROVED" ? "Wallet Balance" : "Budget Points"}
+                    </div>
                     <div className="font-semibold text-lg text-green-800">
-                      {walletLoading ? (
-                        <span className="text-muted-foreground">Loading...</span>
-                      ) : wallet ? (
-                        `${wallet.walletBalance} points`
+                      {event.status === "APPROVED" ? (
+                        walletLoading ? (
+                          <span className="text-muted-foreground">Loading...</span>
+                        ) : wallet ? (
+                          `${wallet.walletBalance} points`
+                        ) : (
+                          <span className="text-muted-foreground">N/A</span>
+                        )
                       ) : (
-                        <span className="text-muted-foreground">N/A</span>
+                        `${event.budgetPoints || 0} points`
                       )}
                     </div>
                   </div>
@@ -598,7 +612,18 @@ export default function AdminEventDetailPage() {
                               <div className="text-sm text-muted-foreground">Club ID: {club.id}</div>
                             </div>
                           </div>
-                          <Badge variant={club.coHostStatus === "APPROVED" ? "default" : "secondary"}>
+                          <Badge 
+                            variant="outline"
+                            className={
+                              club.coHostStatus === "APPROVED"
+                                ? "bg-green-100 text-green-700 border-green-500"
+                                : club.coHostStatus === "REJECTED"
+                                ? "bg-red-100 text-red-700 border-red-500"
+                                : club.coHostStatus === "PENDING"
+                                ? "bg-yellow-100 text-yellow-700 border-yellow-500"
+                                : "bg-gray-100 text-gray-700 border-gray-300"
+                            }
+                          >
                             {club.coHostStatus}
                           </Badge>
                         </div>

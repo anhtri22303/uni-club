@@ -33,6 +33,7 @@ interface EventDetail {
   locationName: string
   maxCheckInCount: number
   currentCheckInCount: number
+  budgetPoints: number
   hostClub: {
     id: number
     name: string
@@ -55,7 +56,6 @@ export default function EventDetailPage() {
   const { toast } = useToast()
   const [event, setEvent] = useState<EventDetail | null>(null)
   const [loading, setLoading] = useState(true)
-  const [showCheckInCode, setShowCheckInCode] = useState(false)
   const [wallet, setWallet] = useState<EventWallet | null>(null)
   const [walletLoading, setWalletLoading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false) // 👈 THÊM STATE NÀY
@@ -242,11 +242,18 @@ export default function EventDetailPage() {
             Approved
           </Badge>
         )
-      case "PENDING":
+      case "WAITING_COCLUB_APPROVAL":
+        return (
+          <Badge variant="outline" className="bg-orange-100 text-orange-800 border-orange-300">
+            <AlertCircle className="h-3 w-3 mr-1" />
+            Waiting Co-Club Approval
+          </Badge>
+        )
+      case "WAITING_UNISTAFF_APPROVAL":
         return (
           <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300">
             <AlertCircle className="h-3 w-3 mr-1" />
-            Pending
+            Waiting Uni-Staff Approval
           </Badge>
         )
       case "REJECTED":
@@ -729,6 +736,40 @@ export default function EventDetailPage() {
 
               <Separator />
 
+              {/* Co-hosted Clubs */}
+              {event.coHostedClubs && event.coHostedClubs.length > 0 && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Co-hosting Clubs</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {event.coHostedClubs.map((club) => (
+                      <div key={club.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <Users className="h-5 w-5 text-primary" />
+                          <div>
+                            <div className="font-medium">{club.name}</div>
+                            <div className="text-sm text-muted-foreground">Club ID: {club.id}</div>
+                          </div>
+                        </div>
+                        <Badge 
+                          variant="outline"
+                          className={
+                            club.coHostStatus === "APPROVED"
+                              ? "bg-green-100 text-green-700 border-green-500"
+                              : club.coHostStatus === "REJECTED"
+                              ? "bg-red-100 text-red-700 border-red-500"
+                              : club.coHostStatus === "PENDING"
+                              ? "bg-yellow-100 text-yellow-700 border-yellow-500"
+                              : "bg-gray-100 text-gray-700 border-gray-300"
+                          }
+                        >
+                          {club.coHostStatus}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Check-in Information */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Check-in Information</h3>
@@ -748,77 +789,61 @@ export default function EventDetailPage() {
                     <div className="font-semibold text-lg">{event.maxCheckInCount - event.currentCheckInCount} remaining</div>
                   </div>
                   <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-200">
-                    <div className="text-sm text-green-700 font-medium">Wallet Balance</div>
+                    <div className="text-sm text-green-700 font-medium">
+                      {event.status === "APPROVED" ? "Wallet Balance" : "Budget Points"}
+                    </div>
                     <div className="font-semibold text-lg text-green-800">
-                      {walletLoading ? (
-                        <span className="text-muted-foreground">Loading...</span>
-                      ) : wallet ? (
-                        `${wallet.walletBalance} points`
+                      {event.status === "APPROVED" ? (
+                        walletLoading ? (
+                          <span className="text-muted-foreground">Loading...</span>
+                        ) : wallet ? (
+                          `${wallet.walletBalance} points`
+                        ) : (
+                          <span className="text-muted-foreground">N/A</span>
+                        )
                       ) : (
-                        <span className="text-muted-foreground">N/A</span>
+                        `${event.budgetPoints || 0} points`
                       )}
                     </div>
                   </div>
                 </div>
 
-                <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <div className="font-medium text-blue-900">Check-in Code</div>
-                      <div className="text-sm text-blue-700">Use this code for event attendance</div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="font-mono text-xl font-bold text-blue-800 bg-white px-4 py-2 rounded-md border min-w-[120px] text-center">
-                        {showCheckInCode ? event.checkInCode : "••••••••"}
+                {/* QR Code Generation Button - Only show if APPROVED and event is still active */}
+                {isEventActive() && (
+                  <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-medium text-blue-900">QR Code Access</div>
+                        <div className="text-sm text-blue-700">Generate scannable QR codes for easy check-in</div>
                       </div>
                       <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowCheckInCode((v) => !v)}
-                        className="ml-2"
+                        onClick={handleGenerateQR}
+                        className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200"
                       >
-                        {showCheckInCode ? "Ẩn" : "Hiện"}
+                        <QrCode className="h-4 w-4 mr-2" />
+                        Generate QR Code
                       </Button>
                     </div>
                   </div>
+                )}
 
-                  {/* QR Code Generation Button - Only show if APPROVED and event is still active */}
-                  {isEventActive() && (
-                    <div className="border-t border-blue-200 pt-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="font-medium text-blue-900">QR Code Access</div>
-                          <div className="text-sm text-blue-700">Generate scannable QR codes for easy check-in</div>
-                        </div>
-                        <Button
-                          onClick={handleGenerateQR}
-                          className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200"
-                        >
-                          <QrCode className="h-4 w-4 mr-2" />
-                          Generate QR Code
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Status message for non-active events */}
-                  {!isEventActive() && (
-                    <div className="border-t border-blue-200 pt-4">
-                      <div className="flex items-center gap-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                        <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0" />
-                        <div>
-                          <div className="font-medium text-yellow-800">QR Code Unavailable</div>
-                          <div className="text-sm text-yellow-700">
-                            {event.status !== "APPROVED"
-                              ? `QR codes are only available for approved events. Current status: ${event.status}`
-                              : "This event has ended or is missing date/time information. QR codes are no longer available."
-                            }
-                          </div>
+                {/* Status message for non-active events */}
+                {!isEventActive() && (
+                  <div className="p-4 bg-gradient-to-r from-yellow-50 to-amber-50 rounded-lg border border-yellow-200">
+                    <div className="flex items-center gap-3">
+                      <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0" />
+                      <div>
+                        <div className="font-medium text-yellow-800">QR Code Unavailable</div>
+                        <div className="text-sm text-yellow-700">
+                          {event.status !== "APPROVED"
+                            ? `QR codes are only available for approved events. Current status: ${event.status}`
+                            : "This event has ended or is missing date/time information. QR codes are no longer available."
+                          }
                         </div>
                       </div>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
 
               {/* ✅ THÊM KHU VỰC UNIVERSITY APPROVAL MỚI */}
@@ -879,32 +904,6 @@ export default function EventDetailPage() {
                 </>
               )}
               {/* ✅ KẾT THÚC KHU VỰC MỚI */}
-
-              {/* Co-hosted Clubs */}
-              {event.coHostedClubs && event.coHostedClubs.length > 0 && (
-                <>
-                  <Separator />
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Co-hosting Clubs</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {event.coHostedClubs.map((club) => (
-                        <div key={club.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                          <div className="flex items-center gap-3">
-                            <Users className="h-5 w-5 text-primary" />
-                            <div>
-                              <div className="font-medium">{club.name}</div>
-                              <div className="text-sm text-muted-foreground">Club ID: {club.id}</div>
-                            </div>
-                          </div>
-                          <Badge variant={club.coHostStatus === "APPROVED" ? "default" : "secondary"}>
-                            {club.coHostStatus}
-                          </Badge>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
             </CardContent>
           </Card>
         </div>
