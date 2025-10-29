@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useData } from "@/contexts/data-context"
-import { type ApiMembership } from "@/service/membershipApi"
+import { type ApiMembership, deleteMember } from "@/service/membershipApi"
 import { getClubById, getClubIdFromToken } from "@/service/clubApi"
 import { useToast } from "@/hooks/use-toast"
 import { usePagination } from "@/hooks/use-pagination"
@@ -148,11 +148,35 @@ export default function ClubLeaderMembersPage() {
 
   const hasActiveFilters = Object.values(activeFilters).some((v) => v && v !== "all") || Boolean(searchTerm)
 
-  const handleDeleteMember = (membershipId: string) => {
+  const handleDeleteMember = async (membershipId: string) => {
     const member = allClubMembers.find((m: any) => m.id === membershipId)
     if (!member) return
-    toast({ title: "Member Removed", description: `${member.fullName} has been removed from the club` })
-    setMembersPage(1)
+
+    if (!confirm(`Are you sure you want to remove ${member.fullName} from the club?`)) {
+      return
+    }
+
+    try {
+      const membershipIdNum = typeof membershipId === 'string' ? parseInt(membershipId, 10) : membershipId
+      await deleteMember(membershipIdNum)
+      
+      // Invalidate and refetch the members list using the correct query key
+      queryClient.invalidateQueries({ queryKey: ['clubs', clubId, 'members'] })
+      
+      toast({ 
+        title: "Member Removed", 
+        description: `${member.fullName} has been removed from the club successfully`,
+        variant: "default"
+      })
+      
+      setMembersPage(1)
+    } catch (error: any) {
+      toast({ 
+        title: "Failed to Remove Member", 
+        description: error?.message || "An error occurred while removing the member",
+        variant: "destructive"
+      })
+    }
   }
 
   const goPrev = () => setMembersPage(Math.max(1, membersPage - 1))

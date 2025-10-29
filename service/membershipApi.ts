@@ -42,8 +42,22 @@ export const getMembersByClubId = async (clubId: number): Promise<ApiMembership[
 	return body.data || []
 }
 
+export const deleteMember = async (membershipId: number): Promise<{ message: string }> => {
+	const res = await axiosInstance.delete(`/api/memberships/${membershipId}`)
+	const body: any = res.data
+
+	console.log("Delete member response:", body)
+
+	if (!body?.success) {
+		throw new Error(body?.message || "Failed to remove member")
+	}
+
+	return body.data || { message: "Member removed successfully" }
+}
+
 export default {
 	getClubMembers,
 	getMembersByClubId,
+	deleteMember,
 }
 
