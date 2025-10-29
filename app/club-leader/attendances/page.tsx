@@ -65,17 +65,7 @@ interface Member {
   role: string
   isStaff: boolean
 }
-// ✅ THAY ĐỔI: Dữ liệu trả về từ API (Giả định)
-// Dựa trên logic code, API của bạn CẦN trả về cấu trúc tương tự vầy
-// interface AttendanceResponse {
-//   sessionId: number
-//   // sessionDate: string
-//   attendances: {
-//     membershipId: number
-//     status: ApiAttendanceStatus // "PRESENT", "LATE", ...
-//     note: string | null
-//   }[]
-// }
+
 interface AttendanceResponse {
   sessionId: number
   // sessionDate: string
@@ -139,7 +129,6 @@ export default function ClubAttendancePage() {
   }, [])
 
   //   loadMembersAndAttendance()
-  // }, [managedClub, selectedDate, apiMembers]) // ✅ THAY ĐỔI: Thêm apiMembers
   // ✅ THAY ĐỔI: useEffect này chạy mỗi khi clubId hoặc selectedDate thay đổi
   useEffect(() => {
     if (!managedClub?.id) return;
@@ -178,34 +167,6 @@ export default function ClubAttendancePage() {
         return membersWithUserData;
       };
 
-      // // Hàm trợ giúp để thiết lập state điểm danh
-      // const setAttendanceStates = (
-      //   data: AttendanceResponse | null,
-      //   members: ApiMembership[],
-      // ) => {
-      //   const initialAttendance: Record<number, PageAttendanceStatus> = {};
-      //   const initialNotes: Record<number, string> = {};
-
-      //   if (data && data.attendances) {
-      //     setSessionId(data.sessionId);
-      //     data.attendances.forEach((record) => {
-      //       const status = (record.status?.toLowerCase() || "absent") as PageAttendanceStatus;
-      //       initialAttendance[record.membershipId] = status;
-      //       initialNotes[record.membershipId] = record.note || "";
-      //     });
-      //   }
-
-      //   // Set mặc định cho các thành viên
-      //   members.forEach((m: any) => {
-      //     if (m.membershipId && !initialAttendance[m.membershipId]) {
-      //       initialAttendance[m.membershipId] = "absent";
-      //       initialNotes[m.membershipId] = "";
-      //     }
-      //   });
-
-      //   setAttendance(initialAttendance);
-      //   setNotes(initialNotes);
-      // };
       // Hàm trợ giúp để thiết lập state điểm danh
       const setAttendanceStates = (
         data: AttendanceResponse | null,

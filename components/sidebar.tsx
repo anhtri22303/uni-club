@@ -34,6 +34,7 @@ const navigationConfig = {
     { href: "/student/gift", label: "Gift", icon: Gift },
     // { href: "/student/wallet", label: "Wallet", icon: Wallet },
     { href: "/student/history", label: "History", icon: History },
+    { href: "/student/myattendance", label: "My Attendance", icon: CalendarDays },
   ],
   club_leader: [
     { href: "/club-leader", label: "Dashboard", icon: LayoutDashboard },

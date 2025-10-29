@@ -9,15 +9,15 @@ import { fetchMajors } from "@/service/majorApi"
 import { getProduct } from "@/service/productApi"
 import { getWallet } from "@/service/walletApi"
 import { fetchPolicies, fetchPolicyById } from "@/service/policyApi"
-import { fetchAttendanceByDate } from "@/service/attendanceApi"
-import { 
-  getMemberApplyByClubId, 
-  getMyMemApply, 
-  fetchAllMemberApplications 
+import { fetchAttendanceByDate, fetchMemberAttendanceHistory } from "@/service/attendanceApi"
+import {
+  getMemberApplyByClubId,
+  getMyMemApply,
+  fetchAllMemberApplications
 } from "@/service/memberApplicationApi"
-import { 
-  getClubApplications, 
-  getMyClubApply 
+import {
+  getClubApplications,
+  getMyClubApply
 } from "@/service/clubApplicationAPI"
 import {
   fetchUniversityPoints,
@@ -55,11 +55,11 @@ export const queryKeys = {
   // Products
   products: ["products"] as const,
   productsList: (params?: any) => [...queryKeys.products, "list", params] as const,
-  
+
   // Wallet
   wallet: ["wallet"] as const,
   walletDetail: (userId?: string | number) => [...queryKeys.wallet, "detail", userId] as const,
-  
+
   // Policies
   policies: ["policies"] as const,
   policiesList: () => [...queryKeys.policies, "list"] as const,
@@ -75,11 +75,11 @@ export const queryKeys = {
   clubApplications: ["club-applications"] as const,
   clubApplicationsList: () => [...queryKeys.clubApplications, "list"] as const,
   myClubApplications: () => [...queryKeys.clubApplications, "my"] as const,
-  
+
   // Attendances
   attendances: ["attendances"] as const,
   attendancesByDate: (date: string) => [...queryKeys.attendances, "date", date] as const,
-  
+  memberAttendanceHistory: (membershipId: number | null) => [...queryKeys.attendances, "member", membershipId] as const,
   // Profile
   profile: ["profile"] as const,
 
@@ -173,15 +173,15 @@ export function useClubMemberCounts(clubIds: number[]) {
         clubIds.map(async (id) => {
           try {
             const countData = await getClubMemberCount(id)
-            return { 
-              clubId: id, 
+            return {
+              clubId: id,
               activeMemberCount: countData.activeMemberCount ?? 0,
               approvedEvents: countData.approvedEvents ?? 0
             }
           } catch (error) {
             console.error(`Failed to fetch member count for club ${id}:`, error)
-            return { 
-              clubId: id, 
+            return {
+              clubId: id,
               activeMemberCount: 0,
               approvedEvents: 0
             }
@@ -218,8 +218,8 @@ export function useEvents() {
       const data: any = await fetchEvent()
       const raw: any[] = Array.isArray(data) ? data : (data?.content ?? data?.events ?? [])
       // Normalize events - ensure backward compatibility with legacy 'title' field
-      return raw.map((e: any) => ({ 
-        ...e, 
+      return raw.map((e: any) => ({
+        ...e,
         title: e.name || e.title,
         // Add legacy fields for backward compatibility
         clubId: e.hostClub?.id || e.clubId,
@@ -240,7 +240,7 @@ export function useClubEvents(clubIds: number[]) {
     queryFn: async () => {
       const data: any = await fetchEvent()
       const raw: any[] = Array.isArray(data) ? data : (data?.content ?? data?.events ?? [])
-      
+
       // Filter by clubIds - support both new (hostClub) and legacy (clubId) formats
       return raw.filter((event: any) => {
         const eventClubId = Number(event.hostClub?.id || event.clubId)
@@ -365,7 +365,7 @@ export function useMajors() {
  */
 export function usePrefetchClubs() {
   const queryClient = useQueryClient()
-  
+
   return () => {
     queryClient.prefetchQuery({
       queryKey: queryKeys.clubsList({ page: 0, size: 70, sort: ["name"] }),
@@ -383,7 +383,7 @@ export function usePrefetchClubs() {
  */
 export function usePrefetchEvents() {
   const queryClient = useQueryClient()
-  
+
   return () => {
     queryClient.prefetchQuery({
       queryKey: queryKeys.eventsList(),
@@ -402,7 +402,7 @@ export function usePrefetchEvents() {
  */
 export function usePrefetchUsers() {
   const queryClient = useQueryClient()
-  
+
   return () => {
     queryClient.prefetchQuery({
       queryKey: queryKeys.usersList(),
@@ -420,7 +420,7 @@ export function usePrefetchUsers() {
  */
 export function usePrefetchClub() {
   const queryClient = useQueryClient()
-  
+
   return (clubId: number) => {
     queryClient.prefetchQuery({
       queryKey: queryKeys.clubDetail(clubId),
@@ -518,6 +518,29 @@ export function useAttendancesByDate(date: string, enabled = true) {
     },
     enabled: !!date && enabled,
     staleTime: 1 * 60 * 1000, // 1 minute (attendance data is time-sensitive)
+  })
+}
+
+// ✅ THÊM HOOK MỚI NÀY VÀO ĐÂY:
+/**
+ * Hook to fetch attendance history for a specific member
+ * @param membershipId - The member's membership ID (NOT userId or clubId)
+ */
+export function useMemberAttendanceHistory(membershipId: number | null, enabled = true) {
+  // 👇 Chỉ cần thêm <any[], Error> vào đây
+  return useQuery<any[], Error>({ 
+    queryKey: queryKeys.memberAttendanceHistory(membershipId),
+    queryFn: async () => {
+      if (!membershipId) return []
+      
+      // Giả sử bạn đã import 'fetchMemberAttendanceHistory' ở đầu file
+      // const history = await fetchMemberAttendanceHistory(membershipId)
+      const responseBody = await fetchMemberAttendanceHistory(membershipId)
+      // return history ?? [] // Đảm bảo luôn trả về một mảng
+      return (responseBody as any)?.data || []
+    },
+    enabled: !!membershipId && enabled,
+    staleTime: 2 * 60 * 1000,
   })
 }
 

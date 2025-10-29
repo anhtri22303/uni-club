@@ -13,7 +13,7 @@ export const saveAttendanceRecords = async (records: any[]) => {
 };
 
 // --- Các hàm API điểm danh CLB (Mới từ Swagger) ---
-interface TimeObject {
+export interface TimeObject {
   hour: number;
   minute: number;
   second: number;
@@ -120,6 +120,19 @@ export const markAttendanceBulk = async (sessionId: number, data: MarkBulkBody) 
   const response = await axiosInstance.put(
     `/api/club-attendance/${sessionId}/mark-bulk`,
     data // Gửi body
+  );
+  return response.data;
+};
+
+/**
+ * Tương ứng với: GET /api/club-attendance/member/{membershipId}/history
+ * Lấy toàn bộ lịch sử điểm danh của một thành viên (membershipId) trong CLB.
+ *
+ * @param membershipId ID thành viên của CLB (membershipId)
+ */
+export const fetchMemberAttendanceHistory = async (membershipId: number) => {
+  const response = await axiosInstance.get(
+    `/api/club-attendance/member/${membershipId}/history`
   );
   return response.data;
 };
