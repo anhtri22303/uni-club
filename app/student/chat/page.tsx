@@ -19,9 +19,19 @@ import { useAuth } from "@/contexts/auth-context"
 import { useProfile, useClub, useClubs } from "@/hooks/use-query-hooks"
 import { safeLocalStorage } from "@/lib/browser-utils"
 import { useEffect, useState, useRef, useCallback } from "react"
-import { Send, MessageCircle, Users, Loader2, Building2 } from "lucide-react"
+import { Send, MessageCircle, Users, Loader2, Building2, Trash2, X, Reply } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import axios from "axios"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 interface ChatMessage {
   id: string
@@ -31,6 +41,11 @@ interface ChatMessage {
   userAvatar?: string
   message: string
   timestamp: number
+  replyTo?: {
+    id: string
+    userName: string
+    message: string
+  }
 }
 
 interface ClubDetails {
@@ -49,8 +64,15 @@ export default function StudentChatPage() {
   const [sending, setSending] = useState(false)
   const [latestTimestamp, setLatestTimestamp] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMoreMessages, setHasMoreMessages] = useState(true)
+  const [oldestTimestamp, setOldestTimestamp] = useState<number | null>(null)
+  const [messageToDelete, setMessageToDelete] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messagesTopRef = useRef<HTMLDivElement>(null)
 
   // Fetch all clubs data for names
   const { data: allClubsData = [] } = useClubs()
@@ -118,10 +140,16 @@ export default function StudentChatPage() {
     try {
       const response = await axios.get(`/api/chat/messages?clubId=${selectedClubId}&limit=50`)
       const fetchedMessages = response.data.messages || []
-      setMessages(fetchedMessages.reverse()) // Reverse to show oldest first
+      const reversedMessages = fetchedMessages.reverse() // Reverse to show oldest first
+      setMessages(reversedMessages)
+      
       if (fetchedMessages.length > 0) {
         setLatestTimestamp(fetchedMessages[0].timestamp)
+        setOldestTimestamp(reversedMessages[0].timestamp)
       }
+      
+      // If we got less than requested, there are no more messages
+      setHasMoreMessages(fetchedMessages.length >= 50)
       setError(null)
       setLoading(false)
       setTimeout(scrollToBottom, 100)
@@ -136,6 +164,38 @@ export default function StudentChatPage() {
     }
   }, [selectedClubId, scrollToBottom])
 
+  // Load more older messages
+  const loadMoreMessages = useCallback(async () => {
+    if (!selectedClubId || !oldestTimestamp || loadingMore || !hasMoreMessages) return
+
+    setLoadingMore(true)
+    try {
+      const response = await axios.get(
+        `/api/chat/messages?clubId=${selectedClubId}&limit=30&before=${oldestTimestamp}`
+      )
+      const olderMessages = response.data.messages || []
+      
+      if (olderMessages.length > 0) {
+        const reversedOlder = olderMessages.reverse()
+        
+        // Prepend older messages to the beginning
+        setMessages((prev) => [...reversedOlder, ...prev])
+        setOldestTimestamp(reversedOlder[0].timestamp)
+        
+        // If we got less than requested, no more messages available
+        if (olderMessages.length < 30) {
+          setHasMoreMessages(false)
+        }
+      } else {
+        setHasMoreMessages(false)
+      }
+    } catch (error) {
+      console.error("Error loading more messages:", error)
+    } finally {
+      setLoadingMore(false)
+    }
+  }, [selectedClubId, oldestTimestamp, loadingMore, hasMoreMessages])
+
   // Poll for new messages (realtime updates)
   const pollMessages = useCallback(async () => {
     if (!selectedClubId || latestTimestamp === 0) return
@@ -147,7 +207,16 @@ export default function StudentChatPage() {
       const newMessages = response.data.messages || []
       
       if (newMessages.length > 0) {
-        setMessages((prev) => [...prev, ...newMessages.reverse()])
+        // Prevent duplicates by checking message IDs
+        setMessages((prev) => {
+          const existingIds = new Set(prev.map(m => m.id))
+          const uniqueNewMessages = newMessages
+            .reverse()
+            .filter((msg: ChatMessage) => !existingIds.has(msg.id))
+          
+          if (uniqueNewMessages.length === 0) return prev
+          return [...prev, ...uniqueNewMessages]
+        })
         setLatestTimestamp(response.data.latestTimestamp)
         setTimeout(scrollToBottom, 100)
       }
@@ -162,6 +231,8 @@ export default function StudentChatPage() {
       setLoading(true)
       setMessages([])
       setLatestTimestamp(0)
+      setOldestTimestamp(null)
+      setHasMoreMessages(true)
       fetchMessages()
     }
   }, [selectedClubId, fetchMessages])
@@ -182,23 +253,43 @@ export default function StudentChatPage() {
     if (!newMessage.trim() || !selectedClubId || !profile || sending) return
 
     setSending(true)
+    const messageToSend = newMessage.trim()
+    const replyData = replyingTo ? {
+      id: replyingTo.id,
+      userName: replyingTo.userName,
+      message: replyingTo.message
+    } : undefined
+    
+    setNewMessage("") // Clear input immediately for better UX
+    setReplyingTo(null) // Clear reply state
+    
     try {
       const response = await axios.post("/api/chat/messages", {
         clubId: selectedClubId,
-        message: newMessage.trim(),
+        message: messageToSend,
         userId: auth.userId,
         userName: (profile as any).fullName || "Unknown User",
         userAvatar: (profile as any).avatarUrl || "/placeholder-user.jpg",
+        replyTo: replyData,
       })
 
       const sentMessage = response.data.message
-      setMessages((prev) => [...prev, sentMessage])
+      
+      // Add message only if it doesn't exist already
+      setMessages((prev) => {
+        const exists = prev.some(m => m.id === sentMessage.id)
+        if (exists) return prev
+        return [...prev, sentMessage]
+      })
+      
       setLatestTimestamp(sentMessage.timestamp)
-      setNewMessage("")
       setError(null)
       setTimeout(scrollToBottom, 100)
     } catch (error: any) {
       console.error("Error sending message:", error)
+      // Restore message and reply state on error
+      setNewMessage(messageToSend)
+      setReplyingTo(replyData ? replyingTo : null)
       if (error.response?.status === 503) {
         setError("Chat service is not configured. Please contact your administrator.")
       } else {
@@ -214,6 +305,36 @@ export default function StudentChatPage() {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
       handleSendMessage()
+    }
+  }
+
+  // Handle delete message
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!selectedClubId || deleting) return
+
+    setDeleting(true)
+    try {
+      await axios.delete("/api/chat/messages", {
+        data: {
+          clubId: selectedClubId,
+          messageId: messageId,
+          userId: auth.userId,
+        },
+      })
+
+      // Remove message from local state
+      setMessages((prev) => prev.filter((msg) => msg.id !== messageId))
+      setMessageToDelete(null)
+      setError(null)
+    } catch (error: any) {
+      console.error("Error deleting message:", error)
+      if (error.response?.status === 403) {
+        setError("You can only delete your own messages.")
+      } else {
+        setError("Failed to delete message. Please try again.")
+      }
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -275,11 +396,11 @@ export default function StudentChatPage() {
       <ProtectedRoute allowedRoles={["student"]}>
         <AppShell>
           <Card>
-            <CardContent className="pt-6">
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <MessageCircle className="h-16 w-16 text-muted-foreground/50 mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No Club Membership</h3>
-                <p className="text-muted-foreground max-w-md">
+            <CardContent className="pt-6 px-4 md:px-6">
+              <div className="flex flex-col items-center justify-center py-8 md:py-12 text-center">
+                <MessageCircle className="h-12 w-12 md:h-16 md:w-16 text-muted-foreground/50 mb-3 md:mb-4" />
+                <h3 className="text-base md:text-lg font-semibold mb-2">No Club Membership</h3>
+                <p className="text-xs md:text-sm text-muted-foreground max-w-md px-4">
                   You need to join a club first to access the chat feature. 
                   Visit the Clubs page to find and join clubs!
                 </p>
@@ -294,35 +415,35 @@ export default function StudentChatPage() {
   return (
     <ProtectedRoute allowedRoles={["student"]}>
       <AppShell>
-        <div className="space-y-4 h-[calc(100vh-120px)] flex flex-col">
+        <div className="space-y-3 md:space-y-4 h-[calc(100vh-100px)] sm:h-[calc(100vh-120px)] flex flex-col">
           {/* Header with Club Selector */}
           <Card className="border-l-4 border-l-primary shadow-md">
-            <CardHeader className="pb-4">
-              <div className="flex items-center justify-between flex-wrap gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
-                    <MessageCircle className="h-6 w-6 text-primary" />
+            <CardHeader className="p-4 md:pb-4">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0">
+                  <div className="h-10 w-10 md:h-12 md:w-12 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center shrink-0">
+                    <MessageCircle className="h-5 w-5 md:h-6 md:w-6 text-primary" />
                   </div>
-                  <div>
-                    <CardTitle className="text-2xl font-semibold">Club Chat</CardTitle>
-                    <p className="text-sm text-muted-foreground mt-1">
+                  <div className="min-w-0 flex-1">
+                    <CardTitle className="text-xl md:text-2xl font-semibold truncate">Club Chat</CardTitle>
+                    <p className="text-xs md:text-sm text-muted-foreground mt-1 truncate">
                       {availableClubIds.length > 1 ? "Select a club to chat" : "Real-time messaging"}
                     </p>
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 md:gap-3 flex-wrap">
                   {/* Club Selector - only show if student has multiple clubs */}
                   {availableClubIds.length > 1 && (
-                    <div className="flex items-center gap-2">
-                      <Building2 className="h-4 w-4 text-muted-foreground" />
+                    <div className="flex items-center gap-1.5 md:gap-2">
+                      <Building2 className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground hidden sm:block" />
                       <Select value={selectedClubId?.toString()} onValueChange={handleClubChange}>
-                        <SelectTrigger className="w-[200px]">
+                        <SelectTrigger className="w-[140px] sm:w-[180px] md:w-[200px] h-8 md:h-9 text-xs md:text-sm">
                           <SelectValue placeholder="Select a club" />
                         </SelectTrigger>
                         <SelectContent>
                           {availableClubs.map((club) => (
-                            <SelectItem key={club.id} value={club.id.toString()}>
+                            <SelectItem key={club.id} value={club.id.toString()} className="text-xs md:text-sm">
                               {club.name}
                             </SelectItem>
                           ))}
@@ -331,17 +452,17 @@ export default function StudentChatPage() {
                     </div>
                   )}
                   
-                  <Badge variant="outline" className="flex items-center gap-1">
+                  <Badge variant="outline" className="flex items-center gap-1 shrink-0">
                     <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-                    <span>Live</span>
+                    <span className="text-xs">Live</span>
                   </Badge>
                 </div>
               </div>
               
               {/* Display selected club name */}
-              {selectedClub && (
+              {selectedClub && availableClubIds.length === 1 && (
                 <div className="mt-3 pt-3 border-t">
-                  <p className="text-sm font-medium text-muted-foreground">
+                  <p className="text-xs md:text-sm font-medium text-muted-foreground truncate">
                     Current Room: <span className="text-foreground">{selectedClub.name}</span>
                   </p>
                 </div>
@@ -351,7 +472,7 @@ export default function StudentChatPage() {
 
           {/* Chat Messages */}
           <Card className="flex-1 flex flex-col overflow-hidden">
-            <CardContent className="p-0 flex-1 flex flex-col">
+            <CardContent className="p-0 flex-1 flex flex-col overflow-hidden">
               {error && (
                 <div className="bg-destructive/10 border-b border-destructive/20 p-3">
                   <p className="text-sm text-destructive text-center">{error}</p>
@@ -364,88 +485,192 @@ export default function StudentChatPage() {
                 </div>
               ) : (
                 <>
-                  <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
-                    {messages.length === 0 ? (
-                      <div className="h-full flex flex-col items-center justify-center text-center py-12">
-                        <MessageCircle className="h-16 w-16 text-muted-foreground/50 mb-4" />
-                        <p className="text-lg font-medium text-muted-foreground">
-                          No messages yet
-                        </p>
-                        <p className="text-sm text-muted-foreground mt-2">
-                          Be the first to start the conversation!
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {messages.map((msg) => {
-                          const isOwnMessage = msg.userId === auth.userId
-                          return (
-                            <div
-                              key={msg.id}
-                              className={`flex items-start gap-3 ${
-                                isOwnMessage ? "flex-row-reverse" : "flex-row"
-                              }`}
-                            >
-                              <Avatar className="h-8 w-8 border-2 border-background">
-                                <AvatarImage src={msg.userAvatar} alt={msg.userName} />
-                                <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                                  {getInitials(msg.userName)}
-                                </AvatarFallback>
-                              </Avatar>
+                  {/* Messages Container with ScrollArea */}
+                  <div className="flex-1 overflow-hidden">
+                    <ScrollArea className="h-full p-3 md:p-4" ref={scrollAreaRef}>
+                      {messages.length === 0 ? (
+                        <div className="h-full flex flex-col items-center justify-center text-center py-8 md:py-12 px-4">
+                          <MessageCircle className="h-12 w-12 md:h-16 md:w-16 text-muted-foreground/50 mb-3 md:mb-4" />
+                          <p className="text-base md:text-lg font-medium text-muted-foreground">
+                            No messages yet
+                          </p>
+                          <p className="text-xs md:text-sm text-muted-foreground mt-2">
+                            Be the first to start the conversation!
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3 md:space-y-4">
+                          {/* Load more button at top */}
+                          <div ref={messagesTopRef} className="flex justify-center py-2">
+                            {hasMoreMessages && !loadingMore && messages.length >= 50 && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={loadMoreMessages}
+                                className="text-xs h-8 md:h-9"
+                              >
+                                Load older messages
+                              </Button>
+                            )}
+                            {loadingMore && (
+                              <div className="flex items-center gap-2 text-xs md:text-sm text-muted-foreground">
+                                <Loader2 className="h-3 w-3 md:h-4 md:w-4 animate-spin" />
+                                <span className="hidden sm:inline">Loading older messages...</span>
+                                <span className="sm:hidden">Loading...</span>
+                              </div>
+                            )}
+                            {!hasMoreMessages && messages.length >= 50 && (
+                              <p className="text-xs text-muted-foreground">
+                                No more messages to load
+                              </p>
+                            )}
+                          </div>
+                          
+                          {messages.map((msg) => {
+                            const isOwnMessage = msg.userId === auth.userId
+                            return (
                               <div
-                                className={`flex flex-col max-w-[70%] ${
-                                  isOwnMessage ? "items-end" : "items-start"
+                                key={msg.id}
+                                className={`flex items-start gap-2 md:gap-3 group ${
+                                  isOwnMessage ? "flex-row-reverse" : "flex-row"
                                 }`}
                               >
-                                <div className="flex items-center gap-2 mb-1">
-                                  <span className="text-xs font-medium text-muted-foreground">
-                                    {isOwnMessage ? "You" : msg.userName}
-                                  </span>
-                                  <span className="text-xs text-muted-foreground">
-                                    {formatTime(msg.timestamp)}
-                                  </span>
-                                </div>
+                                <Avatar className="h-7 w-7 md:h-8 md:w-8 border-2 border-background shrink-0">
+                                  <AvatarImage src={msg.userAvatar} alt={msg.userName} />
+                                  <AvatarFallback className="bg-primary/10 text-primary text-[10px] md:text-xs">
+                                    {getInitials(msg.userName)}
+                                  </AvatarFallback>
+                                </Avatar>
                                 <div
-                                  className={`rounded-2xl px-4 py-2 ${
-                                    isOwnMessage
-                                      ? "bg-primary text-primary-foreground rounded-tr-sm"
-                                      : "bg-muted text-foreground rounded-tl-sm"
+                                  className={`flex flex-col max-w-[75%] sm:max-w-[70%] ${
+                                    isOwnMessage ? "items-end" : "items-start"
                                   }`}
                                 >
-                                  <p className="text-sm whitespace-pre-wrap break-words">
-                                    {msg.message}
-                                  </p>
+                                  <div className="flex items-center gap-1.5 md:gap-2 mb-1">
+                                    <span className="text-[10px] md:text-xs font-medium text-muted-foreground truncate max-w-[120px] sm:max-w-none">
+                                      {isOwnMessage ? "You" : msg.userName}
+                                    </span>
+                                    <span className="text-[10px] md:text-xs text-muted-foreground whitespace-nowrap">
+                                      {formatTime(msg.timestamp)}
+                                    </span>
+                                  </div>
+                                  <div className="relative">
+                                    <div
+                                      className={`rounded-2xl px-3 py-2 md:px-4 ${
+                                        isOwnMessage
+                                          ? "bg-primary text-primary-foreground rounded-tr-sm"
+                                          : "bg-muted text-foreground rounded-tl-sm"
+                                      }`}
+                                    >
+                                      {/* Replied message reference */}
+                                      {msg.replyTo && (
+                                        <div
+                                          className={`mb-2 pb-2 border-l-2 pl-2 text-[10px] md:text-xs opacity-80 ${
+                                            isOwnMessage
+                                              ? "border-primary-foreground/30"
+                                              : "border-primary/30"
+                                          }`}
+                                        >
+                                          <div className="flex items-center gap-1 mb-0.5">
+                                            <Reply className="h-2.5 w-2.5 md:h-3 md:w-3" />
+                                            <span className="font-medium">{msg.replyTo.userName}</span>
+                                          </div>
+                                          <p className="line-clamp-2 break-words">
+                                            {msg.replyTo.message}
+                                          </p>
+                                        </div>
+                                      )}
+                                      <p className="text-xs md:text-sm whitespace-pre-wrap break-words">
+                                        {msg.message}
+                                      </p>
+                                    </div>
+                                    {/* Action buttons */}
+                                    <div
+                                      className={`absolute -top-2 ${
+                                        isOwnMessage ? "-left-[4.5rem]" : "-right-[4.5rem]"
+                                      } flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity`}
+                                    >
+                                      {/* Reply button - for all messages */}
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7 hover:bg-primary/10 hover:text-primary"
+                                        onClick={() => setReplyingTo(msg)}
+                                        title="Reply to message"
+                                      >
+                                        <Reply className="h-3.5 w-3.5" />
+                                      </Button>
+                                      {/* Delete button - only for own messages */}
+                                      {isOwnMessage && (
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-7 w-7 hover:bg-destructive/10 hover:text-destructive"
+                                          onClick={() => setMessageToDelete(msg.id)}
+                                          title="Delete message"
+                                        >
+                                          <Trash2 className="h-3.5 w-3.5" />
+                                        </Button>
+                                      )}
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          )
-                        })}
-                        <div ref={messagesEndRef} />
-                      </div>
-                    )}
-                  </ScrollArea>
+                            )
+                          })}
+                          <div ref={messagesEndRef} />
+                        </div>
+                      )}
+                    </ScrollArea>
+                  </div>
 
                   {/* Message Input */}
-                  <div className="border-t bg-background p-4">
+                  <div className="border-t bg-background p-3 md:p-4">
+                    {/* Reply indicator */}
+                    {replyingTo && (
+                      <div className="mb-2 flex items-start gap-2 p-2 rounded-lg bg-muted/50 border border-border">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <Reply className="h-3 w-3 text-primary" />
+                            <span className="text-xs font-medium text-muted-foreground">
+                              Replying to {replyingTo.userId === auth.userId ? "yourself" : replyingTo.userName}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground line-clamp-2 break-words">
+                            {replyingTo.message}
+                          </p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 shrink-0"
+                          onClick={() => setReplyingTo(null)}
+                          title="Cancel reply"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    )}
+                    
                     <div className="flex items-center gap-2">
                       <Input
-                        placeholder="Type your message..."
+                        placeholder={replyingTo ? "Type your reply..." : "Type your message..."}
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
                         onKeyDown={handleKeyPress}
                         disabled={sending}
-                        className="flex-1"
+                        className="flex-1 text-sm md:text-base"
                       />
                       <Button
                         onClick={handleSendMessage}
                         disabled={!newMessage.trim() || sending}
                         size="icon"
-                        className="h-10 w-10 shrink-0"
+                        className="h-9 w-9 md:h-10 md:w-10 shrink-0"
                       >
                         {sending ? (
-                          <Loader2 className="h-5 w-5 animate-spin" />
+                          <Loader2 className="h-4 w-4 md:h-5 md:w-5 animate-spin" />
                         ) : (
-                          <Send className="h-5 w-5" />
+                          <Send className="h-4 w-4 md:h-5 md:w-5" />
                         )}
                       </Button>
                     </div>
@@ -455,6 +680,35 @@ export default function StudentChatPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={!!messageToDelete} onOpenChange={(open) => !open && setMessageToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Message?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete this message? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => messageToDelete && handleDeleteMessage(messageToDelete)}
+                disabled={deleting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {deleting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  "Delete"
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </AppShell>
     </ProtectedRoute>
   )

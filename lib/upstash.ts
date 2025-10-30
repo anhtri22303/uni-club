@@ -22,6 +22,11 @@ export interface ChatMessage {
   userAvatar?: string
   message: string
   timestamp: number
+  replyTo?: {
+    id: string
+    userName: string
+    message: string
+  }
 }
 
 // Helper functions for chat operations
@@ -30,13 +35,26 @@ export const chatOperations = {
   getChatKey: (clubId: number) => `chat:club:${clubId}`,
   
   // Get messages for a club (latest first)
-  getMessages: async (clubId: number, limit: number = 50): Promise<ChatMessage[]> => {
+  // If beforeTimestamp is provided, get messages older than that timestamp
+  getMessages: async (clubId: number, limit: number = 50, beforeTimestamp?: number): Promise<ChatMessage[]> => {
     if (!redis) {
       throw new Error('Redis is not configured. Please set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN environment variables.')
     }
     const key = chatOperations.getChatKey(clubId)
-    const messages = await redis.lrange<ChatMessage>(key, 0, limit - 1)
-    return messages
+    
+    if (beforeTimestamp) {
+      // Fetch more messages to filter by timestamp
+      // We fetch up to 200 messages to ensure we get enough older ones
+      const allMessages = await redis.lrange<ChatMessage>(key, 0, 199)
+      const filteredMessages = allMessages
+        .filter(msg => msg.timestamp < beforeTimestamp)
+        .slice(0, limit)
+      return filteredMessages
+    } else {
+      // Regular fetch - get latest messages
+      const messages = await redis.lrange<ChatMessage>(key, 0, limit - 1)
+      return messages
+    }
   },
   
   // Add a new message to a club's chat
@@ -60,6 +78,39 @@ export const chatOperations = {
     }
     const messages = await chatOperations.getMessages(clubId, 1)
     return messages.length > 0 ? messages[0].timestamp : 0
+  },
+
+  // Delete a message from a club's chat
+  deleteMessage: async (clubId: number, messageId: string, userId: number): Promise<{ success: boolean; error?: string }> => {
+    if (!redis) {
+      throw new Error('Redis is not configured. Please set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN environment variables.')
+    }
+    try {
+      const key = chatOperations.getChatKey(clubId)
+      
+      // Get all messages to find the one to delete
+      const messages = await redis.lrange<ChatMessage>(key, 0, -1)
+      const messageToDelete = messages.find(msg => msg.id === messageId)
+      
+      if (!messageToDelete) {
+        return { success: false, error: 'Message not found' }
+      }
+      
+      // Verify the user owns this message
+      if (messageToDelete.userId !== userId) {
+        return { success: false, error: 'Unauthorized: You can only delete your own messages' }
+      }
+      
+      // Remove the message from the list
+      // Redis lrem: remove count occurrences of value from list
+      // We use 1 to remove only the first occurrence (should be unique anyway)
+      await redis.lrem(key, 1, messageToDelete)
+      
+      return { success: true }
+    } catch (error) {
+      console.error('Error deleting message:', error)
+      return { success: false, error: 'Failed to delete message' }
+    }
   },
 }
 

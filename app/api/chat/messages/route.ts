@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const clubId = searchParams.get('clubId')
     const limit = searchParams.get('limit') || '50'
+    const before = searchParams.get('before') // Optional: get messages before this timestamp
 
     if (!clubId) {
       return NextResponse.json(
@@ -24,7 +25,8 @@ export async function GET(request: NextRequest) {
 
     const messages = await chatOperations.getMessages(
       parseInt(clubId),
-      parseInt(limit)
+      parseInt(limit),
+      before ? parseInt(before) : undefined
     )
 
     return NextResponse.json({ messages })
@@ -48,7 +50,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { clubId, message, userId, userName, userAvatar } = body
+    const { clubId, message, userId, userName, userAvatar, replyTo } = body
 
     // Validate required fields
     if (!clubId || !message || !userId || !userName) {
@@ -67,6 +69,7 @@ export async function POST(request: NextRequest) {
       userAvatar: userAvatar || '/placeholder-user.jpg',
       message: message.trim(),
       timestamp: Date.now(),
+      ...(replyTo && { replyTo }), // Include reply metadata if present
     }
 
     // Save message to Redis
@@ -77,6 +80,51 @@ export async function POST(request: NextRequest) {
     console.error('Error sending message:', error)
     return NextResponse.json(
       { error: 'Failed to send message' },
+      { status: 500 }
+    )
+  }
+}
+
+// DELETE - Delete a message (user can only delete their own messages)
+export async function DELETE(request: NextRequest) {
+  try {
+    if (!isRedisConfigured()) {
+      return NextResponse.json(
+        { error: 'Chat service is not configured. Please contact your administrator.' },
+        { status: 503 }
+      )
+    }
+
+    const body = await request.json()
+    const { clubId, messageId, userId } = body
+
+    // Validate required fields
+    if (!clubId || !messageId || !userId) {
+      return NextResponse.json(
+        { error: 'Missing required fields: clubId, messageId, and userId are required' },
+        { status: 400 }
+      )
+    }
+
+    // Delete the message
+    const result = await chatOperations.deleteMessage(
+      parseInt(clubId),
+      messageId,
+      parseInt(userId)
+    )
+
+    if (!result.success) {
+      return NextResponse.json(
+        { error: result.error || 'Failed to delete message' },
+        { status: result.error?.includes('Unauthorized') ? 403 : 400 }
+      )
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Error deleting message:', error)
+    return NextResponse.json(
+      { error: 'Failed to delete message' },
       { status: 500 }
     )
   }
