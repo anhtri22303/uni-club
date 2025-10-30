@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useRef, useState } from "react"
+import React, { useRef, useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -8,8 +8,14 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { MessageCircle, X, Send, Maximize2, Minimize2 } from "lucide-react"
 import { ChatbotPromptMenu } from "@/components/chatbot-prompt-menu"
 import axios from "axios"
-import { fetchEvent, type Event } from "@/service/eventApi"
-import { fetchClub } from "@/service/clubApi"
+import { fetchEvent, getEventByClubId, type Event } from "@/service/eventApi"
+import { fetchClub, getClubMemberCount } from "@/service/clubApi"
+import { postClubApplication } from "@/service/clubApplicationAPI"
+import { getProduct } from "@/service/productApi"
+import { fetchLocation } from "@/service/locationApi"
+import { getClubWallet } from "@/service/walletApi"
+import { getMembersByClubId } from "@/service/membershipApi"
+import { getClubApplications } from "@/service/clubApplicationAPI"
 
 interface Message {
   id: string
@@ -18,13 +24,23 @@ interface Message {
   timestamp: Date
 }
 
-const PROMPTS = {
-  clubByMajor:
-    "Clubs by major: Show me all clubs organized by major, sorted by member count.",
-  eventsByMajor:
-    "Major events: List upcoming/ongoing events of clubs in the major [enter major], including time, location, and accumulated points.",
-  newEventContent:
-    "New event content: I want to create a new event. Please analyze the existing events and suggest unique event content that does NOT overlap with them.",
+// Role-based prompts
+const STUDENT_PROMPTS = {
+  clubsByMajor: "Clubs by Major: Show me all clubs organized by major, sorted by member count.",
+  createClub: "Create Club: I want to create a new club. Suggest a unique club based on existing clubs.",
+  eventByMyClub: "Events by My Club: Show me all events from clubs I'm a member of.",
+  myClubGift: "My Club Gifts: Show me available products/gifts from my clubs.",
+}
+
+const CLUB_LEADER_PROMPTS = {
+  newEventContent: "New Event Content: Suggest a new event with location for my club.",
+  myClubGift: "My Club Gifts: Show me products/gifts available for my club members.",
+  budgetForEvents: "Budget for Events: Analyze my club's budget and suggest events for this month.",
+}
+
+const UNIVERSITY_STAFF_PROMPTS = {
+  numberOfMembers: "Number of Members: Show me the top 10 clubs with the most members.",
+  clubApplication: "Club Applications: Show pending club applications and suggest approvals based on major diversity.",
 }
 
 export function ChatbotWidget() {
@@ -43,6 +59,43 @@ export function ChatbotWidget() {
   const inputRef = useRef<HTMLInputElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const [isExpanded, setIsExpanded] = useState(false)
+  const [userRole, setUserRole] = useState<string>("")
+  const [clubIds, setClubIds] = useState<number[]>([])
+  const [activePrompts, setActivePrompts] = useState<Record<string, string>>(STUDENT_PROMPTS)
+
+  // Load user role and clubIds from localStorage
+  useEffect(() => {
+    try {
+      const authDataString = localStorage.getItem("uniclub-auth")
+      if (authDataString) {
+        const authData = JSON.parse(authDataString)
+        const role = authData.role || "STUDENT"
+        setUserRole(role)
+
+        // Get clubIds from memberships
+        const memberships = authData.memberships || []
+        const extractedClubIds = memberships.map((m: any) => m.clubId).filter(Boolean)
+        setClubIds(extractedClubIds)
+
+        // Also check for single clubId (for CLUB_LEADER)
+        if (authData.clubId && !extractedClubIds.includes(authData.clubId)) {
+          extractedClubIds.push(authData.clubId)
+          setClubIds(extractedClubIds)
+        }
+
+        // Set prompts based on role
+        if (role === "CLUB_LEADER") {
+          setActivePrompts(CLUB_LEADER_PROMPTS)
+        } else if (role === "UNIVERSITY_STAFF") {
+          setActivePrompts(UNIVERSITY_STAFF_PROMPTS)
+        } else {
+          setActivePrompts(STUDENT_PROMPTS)
+        }
+      }
+    } catch (error) {
+      console.error("Error loading auth data:", error)
+    }
+  }, [])
 
   // Scroll to bottom when messages change
   React.useEffect(() => {
@@ -75,20 +128,15 @@ export function ChatbotWidget() {
         }>
       }
 
-      // Check if this is a "New event content" request
-      const isNewEventRequest = inputValue.toLowerCase().includes("new event") || 
-                                inputValue.toLowerCase().includes("create a new event")
-      
-      // Check if this is a "Clubs by major" request
-      const isClubsByMajorRequest = inputValue.toLowerCase().includes("clubs by major") ||
-                                     inputValue.toLowerCase().includes("club") && inputValue.toLowerCase().includes("major")
+      const inputLower = inputValue.toLowerCase()
 
       let systemContent = "You are an AI assistant for a university club and event management system. Please respond concisely, friendly, and helpful. Format your responses clearly:\n- Use line breaks to separate different points\n- Use numbered lists (1., 2., 3.) for sequential items\n- Use bullet points (•) for related items\n- Keep paragraphs short and easy to read\n- Put important information on separate lines"
       
       let userContent = userMessage.text
 
-      // If it's a clubs by major request, fetch and organize clubs
-      if (isClubsByMajorRequest) {
+      // ========== STUDENT PROMPTS ==========
+      // 1. Clubs by Major
+      if (inputLower.includes("clubs by major") || (inputLower.includes("club") && inputLower.includes("major"))) {
         try {
           const clubsResponse = await fetchClub({ page: 0, size: 500, sort: ["name"] })
           const clubs = clubsResponse.content || []
@@ -142,18 +190,136 @@ ${JSON.stringify(clubsByMajor, null, 2)}
 Please present all clubs organized by their major, with each major's clubs sorted by member count from highest to lowest.`
         } catch (error) {
           console.error("Error fetching clubs for context:", error)
-          // Continue with regular prompt if fetch fails
         }
       }
-      // If it's a new event request, fetch existing events and add context
-      else if (isNewEventRequest) {
+      // 2. Create Club (STUDENT)
+      else if (inputLower.includes("create club")) {
+        try {
+          const clubsResponse = await fetchClub({ page: 0, size: 500, sort: ["name"] })
+          const clubs = clubsResponse.content || []
+
+          systemContent = `You are an AI assistant for a university club and event management system.
+When suggesting a new club, provide ONE suggestion in this EXACT format:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🏛️ NEW CLUB SUGGESTION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📌 Club Name:
+[Unique club name that doesn't exist yet]
+
+📝 Description:
+[2-3 sentences describing the club's purpose and activities]
+
+🎓 Major ID:
+[Number - suggest an appropriate major ID based on the club's focus]
+
+🌟 Vision:
+[A compelling vision statement for the club]
+
+💡 Proposer Reason:
+[Why this club would be valuable for students]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Make sure the club is UNIQUE and doesn't overlap with existing clubs.`
+
+          userContent = `${userMessage.text}
+
+EXISTING CLUBS:
+${JSON.stringify(clubs.map(c => ({ name: c.name, description: c.description, majorName: c.majorName })), null, 2)}
+
+Please suggest a NEW, UNIQUE club that would fill a gap in the current club offerings.`
+        } catch (error) {
+          console.error("Error fetching clubs:", error)
+        }
+      }
+      // 3. Events by My Club (STUDENT)
+      else if (inputLower.includes("events by my club") || (inputLower.includes("event") && inputLower.includes("my club"))) {
+        if (clubIds.length === 0) {
+          systemContent = "You are a helpful assistant."
+          userContent = "The user has not joined any clubs yet. Please inform them politely that they need to join a club first to see club events."
+        } else {
+          try {
+            const allEvents: any[] = []
+            for (const clubId of clubIds) {
+              const events = await getEventByClubId(clubId)
+              allEvents.push(...events)
+            }
+
+            systemContent = `You are an AI assistant for a university club and event management system.
+Present the events in this BEAUTIFUL format:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎉 MY CLUB EVENTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+For each event:
+
+📅 [Event Name]
+• Club: [Club Name]
+• Date: [Date]
+• Time: [Start Time] - [End Time]
+• Location: [Location Name]
+• Status: [Status]
+• Type: [PUBLIC/PRIVATE]
+• Description: [Brief description]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`
+
+            userContent = `${userMessage.text}
+
+MY CLUB EVENTS:
+${JSON.stringify(allEvents, null, 2)}
+
+Please present all events from my clubs in a clean, organized format.`
+          } catch (error) {
+            console.error("Error fetching club events:", error)
+          }
+        }
+      }
+      // 4. My Club Gifts (STUDENT/CLUB_LEADER)
+      else if (inputLower.includes("my club") && inputLower.includes("gift")) {
+        try {
+          const products = await getProduct({ page: 0, size: 100 })
+
+          systemContent = `You are an AI assistant for a university club and event management system.
+Present the products/gifts in this BEAUTIFUL format:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎁 AVAILABLE GIFTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+For each product:
+
+🏆 [Product Name]
+• Price: [X] Points
+• Stock: [X] items
+• Description: [Description]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`
+
+          userContent = `${userMessage.text}
+
+AVAILABLE PRODUCTS:
+${JSON.stringify(products, null, 2)}
+
+Please present all available products/gifts in a clean format.`
+        } catch (error) {
+          console.error("Error fetching products:", error)
+        }
+      }
+      // 5. New Event Content (CLUB_LEADER)
+      else if (inputLower.includes("new event")) {
         try {
           const events: Event[] = await fetchEvent({ size: 100 })
+          const locations = await fetchLocation({ page: 0, size: 100 })
           const eventSummary = events.map(e => ({
             name: e.name,
             description: e.description,
             type: e.type,
             date: e.date,
+            locationName: e.locationName,
             hostClub: e.hostClub?.name || e.clubName
           }))
 
@@ -182,6 +348,9 @@ When suggesting new event content, provide ONE suggestion in this EXACT format f
 ⏰ End Time:
 [HH:MM format, e.g., 15:00]
 
+📍 Location Name:
+[Choose an appropriate location from the available locations]
+
 👥 Max Check-in Count:
 [Number of participants, e.g., 100]
 
@@ -200,10 +369,209 @@ Make sure the suggested event is UNIQUE and does NOT overlap with existing event
 EXISTING EVENTS:
 ${JSON.stringify(eventSummary, null, 2)}
 
-Please analyze these existing events and suggest NEW, UNIQUE event ideas with complete details that can be directly copied into the event creation form.`
+AVAILABLE LOCATIONS:
+${JSON.stringify(locations, null, 2)}
+
+Please analyze these existing events and suggest NEW, UNIQUE event ideas with complete details including an appropriate location from the available locations.`
         } catch (error) {
           console.error("Error fetching events for context:", error)
-          // Continue with regular prompt if fetch fails
+        }
+      }
+      // 6. Budget for Events (CLUB_LEADER)
+      else if (inputLower.includes("budget") && inputLower.includes("event")) {
+        if (clubIds.length === 0) {
+          systemContent = "You are a helpful assistant."
+          userContent = "The user is not associated with any club. Please inform them politely."
+        } else {
+          try {
+            const clubId = clubIds[0] // Use first club for club leader
+            const wallet = await getClubWallet(clubId)
+            const members = await getMembersByClubId(clubId)
+            const events = await getEventByClubId(clubId)
+
+            const currentDate = new Date()
+            const currentMonth = currentDate.getMonth()
+            const currentYear = currentDate.getFullYear()
+
+            systemContent = `You are an AI assistant for a university club and event management system.
+Analyze the club's financial situation and suggest events for the current month (${currentMonth + 1}/${currentYear}).
+
+Present in this format:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💰 BUDGET ANALYSIS & EVENT SUGGESTIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 CURRENT STATUS:
+• Club Wallet Balance: [X] points
+• Total Members: [X]
+• Existing Events: [X]
+
+💡 RECOMMENDATIONS:
+
+Based on the available budget and member count, here are suggested events for this month:
+
+1. [Event Name]
+   • Budget Points: [X]
+   • Expected Participants: [X]
+   • Points per Participant: [X]
+   • Purpose: [Brief description]
+
+2. [Event Name]
+   • Budget Points: [X]
+   • Expected Participants: [X]
+   • Points per Participant: [X]
+   • Purpose: [Brief description]
+
+🎯 GOAL: Fully utilize ${wallet.balancePoints} points while maximizing member engagement.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`
+
+            userContent = `${userMessage.text}
+
+CLUB WALLET:
+${JSON.stringify(wallet, null, 2)}
+
+CLUB MEMBERS (${members.length} total):
+${JSON.stringify(members.slice(0, 10), null, 2)}
+
+EXISTING EVENTS:
+${JSON.stringify(events, null, 2)}
+
+Please analyze this data and suggest events for the current month (${currentMonth + 1}/${currentYear}) that will:
+1. Fully utilize the available points
+2. Engage as many club members as possible
+3. Provide fair point distribution`
+          } catch (error) {
+            console.error("Error fetching budget data:", error)
+          }
+        }
+      }
+      // 7. Number of Members (UNIVERSITY_STAFF)
+      else if (inputLower.includes("number of members") || (inputLower.includes("top") && inputLower.includes("members"))) {
+        try {
+          const clubsResponse = await fetchClub({ page: 0, size: 500, sort: ["name"] })
+          const clubs = clubsResponse.content || []
+
+          // Fetch member counts for each club
+          const clubsWithCounts = await Promise.all(
+            clubs.map(async (club) => {
+              const counts = await getClubMemberCount(club.id)
+              return {
+                ...club,
+                activeMemberCount: counts.activeMemberCount,
+                approvedEvents: counts.approvedEvents
+              }
+            })
+          )
+
+          // Sort by member count and get top 10
+          const top10 = clubsWithCounts
+            .sort((a, b) => b.activeMemberCount - a.activeMemberCount)
+            .slice(0, 10)
+
+          systemContent = `You are an AI assistant for a university club and event management system.
+Present the top 10 clubs by member count in this BEAUTIFUL format:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🏆 TOP 10 CLUBS BY MEMBER COUNT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. 🥇 [Club Name]
+   • Members: [X]
+   • Major: [Major Name]
+   • Leader: [Leader Name]
+   • Approved Events: [X]
+
+2. 🥈 [Club Name]
+   • Members: [X]
+   • Major: [Major Name]
+   • Leader: [Leader Name]
+   • Approved Events: [X]
+
+[Continue for all 10 clubs]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`
+
+          userContent = `${userMessage.text}
+
+TOP 10 CLUBS:
+${JSON.stringify(top10, null, 2)}
+
+Please present the top 10 clubs with the most members in a clean, organized format with medals for top 3.`
+        } catch (error) {
+          console.error("Error fetching member counts:", error)
+        }
+      }
+      // 8. Club Applications (UNIVERSITY_STAFF)
+      else if (inputLower.includes("club application")) {
+        try {
+          const applications = await getClubApplications()
+          const pendingApplications = applications.filter(app => app.status === "PENDING")
+          const clubsResponse = await fetchClub({ page: 0, size: 500, sort: ["name"] })
+          const clubs = clubsResponse.content || []
+
+          // Group clubs by major
+          const clubsByMajor: Record<string, number> = {}
+          clubs.forEach(club => {
+            const majorName = club.majorName || "Unknown"
+            clubsByMajor[majorName] = (clubsByMajor[majorName] || 0) + 1
+          })
+
+          // Analyze applications by major
+          const applicationsByMajor: Record<string, any[]> = {}
+          pendingApplications.forEach(app => {
+            const majorName = app.majorName || "Unknown"
+            if (!applicationsByMajor[majorName]) {
+              applicationsByMajor[majorName] = []
+            }
+            applicationsByMajor[majorName].push(app)
+          })
+
+          systemContent = `You are an AI assistant for a university club and event management system.
+Analyze club applications and suggest approvals based on major diversity.
+
+Present in this format:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 CLUB APPLICATION ANALYSIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 CURRENT CLUB DISTRIBUTION BY MAJOR:
+• [Major Name]: [X] clubs
+• [Major Name]: [X] clubs
+[List all majors]
+
+⏳ PENDING APPLICATIONS:
+
+For each application:
+
+📝 Application #[ID]
+• Club Name: [Name]
+• Major: [Major Name]
+• Proposer: [Name]
+• Vision: [Brief vision]
+• Current clubs in this major: [X]
+• ✅ RECOMMENDATION: [APPROVE/REVIEW] - [Reason based on major diversity]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Focus on majors with few or no clubs and suggest approvals to improve diversity.`
+
+          userContent = `${userMessage.text}
+
+EXISTING CLUBS BY MAJOR:
+${JSON.stringify(clubsByMajor, null, 2)}
+
+PENDING APPLICATIONS:
+${JSON.stringify(pendingApplications, null, 2)}
+
+Please analyze the pending applications and recommend which ones to approve based on:
+1. Major diversity (prioritize majors with few or no clubs)
+2. Quality of vision and proposer reason
+3. Balance across the university`
+        } catch (error) {
+          console.error("Error fetching applications:", error)
         }
       }
 
@@ -370,7 +738,7 @@ Please analyze these existing events and suggest NEW, UNIQUE event ideas with co
                   isOpen={isPromptOpen}
                   onOpenChange={setIsPromptOpen}
                   onSelectPrompt={applyPrompt}
-                  prompts={PROMPTS}
+                  prompts={activePrompts}
                   disabled={isLoading}
                 />
 

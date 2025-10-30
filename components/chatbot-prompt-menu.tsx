@@ -48,24 +48,38 @@ export function ChatbotPromptMenu({
           sideOffset={5}
           className="w-56 z-[9999]"
         >
-          {Object.entries(prompts).map(([key, promptText]) => (
-            <DropdownMenuItem
-              key={key}
-              onSelect={(e) => {
-                e.preventDefault()
-                onSelectPrompt(promptText)
-                onOpenChange(false)
-              }}
-            >
-              {key === "clubByMajor"
-                ? "Clubs by Major"
-                : key === "eventsByMajor"
-                ? "Major Events"
-                : key === "newEventContent"
-                ? "New Event Content"
-                : key}
-            </DropdownMenuItem>
-          ))}
+          {Object.entries(prompts).map(([key, promptText]) => {
+            // Format the key to a readable name
+            const formatName = (k: string) => {
+              const nameMap: Record<string, string> = {
+                // Student prompts
+                clubsByMajor: "🎓 Clubs by Major",
+                createClub: "🏛️ Create Club",
+                eventByMyClub: "🎉 Events by My Club",
+                myClubGift: "🎁 My Club Gifts",
+                // Club Leader prompts
+                newEventContent: "📋 New Event Content",
+                budgetForEvents: "💰 Budget for Events",
+                // University Staff prompts
+                numberOfMembers: "🏆 Top Members",
+                clubApplication: "📝 Club Applications",
+              }
+              return nameMap[k] || k
+            }
+
+            return (
+              <DropdownMenuItem
+                key={key}
+                onSelect={(e) => {
+                  e.preventDefault()
+                  onSelectPrompt(promptText)
+                  onOpenChange(false)
+                }}
+              >
+                {formatName(key)}
+              </DropdownMenuItem>
+            )
+          })}
         </DropdownMenuContent>
       </DropdownMenuPortal>
     </DropdownMenu>
