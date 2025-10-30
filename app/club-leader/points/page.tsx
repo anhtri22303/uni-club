@@ -583,39 +583,6 @@ export default function ClubLeaderRewardDistributionPage() {
           </Dialog>
 
           <Card>
-            {/* <CardHeader>
-              <CardTitle>Set up the Point Distribution Index</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="reward-amount">Number of Bonus Points (per member)</Label>
-                <Input
-                  id="reward-amount"
-                  type="number"
-                  placeholder="Enter bonus points..."
-                  value={rewardAmount}
-                  onChange={handleRewardAmountChange}
-                  disabled={isDistributing}
-                  min="1"
-                />
-              </div>
-              <p className="text-sm text-muted-foreground">Total number of members who will receive the bonus points: {clubMembers.length}</p>
-            </CardContent>
-            <CardFooter>
-              <Button
-                onClick={handleDistributeRewards}
-                disabled={isDistributing || rewardAmount === '' || rewardAmount <= 0}
-                className="w-full"
-              >
-                {isDistributing ? "In the process of distribution..." : (
-                  <>
-                    <Send className="mr-2 h-4 w-4" />
-                    Distribution {rewardAmount || 0} point
-                  </>
-                )}
-              </Button>
-            </CardFooter> */}
-
             <CardHeader>
               <CardTitle>Set up the Point Distribution Index</CardTitle>
             </CardHeader>
@@ -626,18 +593,6 @@ export default function ClubLeaderRewardDistributionPage() {
                 {/* Container MỚI: dùng flex (responsive) */}
                 <div className="flex flex-col sm:flex-row sm:items-end sm:gap-3">
 
-                  {/* 1. Input (co lại) */}
-                  {/* <div className="flex-1 min-w-[200px] mb-2 sm:mb-0">
-                    <Input
-                      id="reward-amount"
-                      type="number"
-                      placeholder="Enter bonus points..."
-                      value={rewardAmount}
-                      onChange={handleRewardAmountChange}
-                      disabled={isDistributing}
-                      min="1"
-                    />
-                  </div> */}
                   {/* 1. Input (Cập nhật logic format) */}
                   <div className="flex-1 min-w-[200px] mb-2 sm:mb-0">
                     <Input

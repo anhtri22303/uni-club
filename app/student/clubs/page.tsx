@@ -54,10 +54,10 @@ export default function MemberClubsPage() {
   const { data: clubs = [], isLoading: loading, error: queryError } = useClubs({ page: 0, size: 70, sort: ["name"] })
   const clubIds = clubs.map((club: ClubApiItem) => club.id)
   const { data: memberCounts = {}, isLoading: memberCountsLoading } = useClubMemberCounts(clubIds)
-  
+
   // ✅ Fetch user's existing applications
   const { data: myApplications = [], isLoading: applicationsLoading } = useMyMemberApplications()
-  
+
   // Debug: Log applications when they load
   useEffect(() => {
     if (myApplications.length > 0) {
@@ -78,7 +78,7 @@ export default function MemberClubsPage() {
   // ✅ OPTIMIZED: Combine clubs with member counts using useMemo (no extra API calls)
   const clubsWithData = useMemo(() => {
     if (clubs.length === 0) return []
-    
+
     return clubs.map((club: ClubApiItem) => {
       const countData = memberCounts[club.id]
       return {
@@ -155,7 +155,7 @@ export default function MemberClubsPage() {
   const getClubStatus = (clubId: string) => {
     // If we have a local pending marker for this club, show pending immediately
     if (pendingClubIds.includes(clubId)) return "pending"
-    
+
     // Check memberships from context
     const membership = userMemberships.find((m) => m.clubId === clubId)
     if (membership?.status === "APPROVED") return "member"
@@ -404,7 +404,7 @@ export default function MemberClubsPage() {
         } else {
           toast({ title: "Error", description: apiMessage, variant: "destructive" })
         }
-        
+
         setIsSubmittingApplication(false)
       }
     })()
@@ -569,8 +569,8 @@ export default function MemberClubsPage() {
 
           {(loading || memberCountsLoading || applicationsLoading) ? (
             <div className="flex flex-col items-center justify-center py-12">
-              <Loading 
-                size="lg" 
+              <Loading
+                size="lg"
                 text={loading ? "Loading clubs..." : applicationsLoading ? "Loading applications..." : "Loading member counts..."}
               />
             </div>
@@ -615,13 +615,13 @@ export default function MemberClubsPage() {
                   />
                 </div>
                 <div className="flex gap-2 justify-end">
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     onClick={() => setShowApplicationModal(false)}
                   >
                     Cancel
                   </Button>
-                  <Button 
+                  <Button
                     onClick={submitApplication}
                   >
                     Submit Application
@@ -646,6 +646,7 @@ export default function MemberClubsPage() {
                   value={newClubName}
                   onChange={(e) => setNewClubName(e.target.value)}
                   placeholder="Enter club name"
+                  className="border-slate-400"
                 />
               </div>
 
@@ -657,6 +658,7 @@ export default function MemberClubsPage() {
                   value={newDescription}
                   onChange={(e) => setNewDescription(e.target.value)}
                   placeholder="Enter description"
+                  className="border-slate-400"
                 />
               </div>
 
@@ -668,6 +670,7 @@ export default function MemberClubsPage() {
                   value={newVision}
                   onChange={(e) => setNewVision(e.target.value)}
                   placeholder="Enter the club's vision"
+                  className="border-slate-400"
                 />
               </div>
 
@@ -677,7 +680,7 @@ export default function MemberClubsPage() {
                 <select
                   id="major"
                   aria-label="Major"
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm border-slate-400"
                   value={selectedMajorId}
                   onChange={(e) => setSelectedMajorId(Number(e.target.value))}
                 >
@@ -700,6 +703,7 @@ export default function MemberClubsPage() {
                   value={newProposerReason}
                   onChange={(e) => setNewProposerReason(e.target.value)}
                   placeholder="Why do you want to create this club?"
+                  className="border-slate-400"
                 />
               </div>
 

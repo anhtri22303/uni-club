@@ -295,8 +295,8 @@ export default function ClubAttendancePage() {
             (m: any) =>
               m.membershipId &&
               String(m.clubId) === String(managedClub.id) &&
-              m.state === "ACTIVE" &&
-              m.userId !== userId,
+              m.state === "ACTIVE" 
+              // && m.userId !== userId,
           )
           .map((m: any) => {
             return {

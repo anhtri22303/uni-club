@@ -13,39 +13,17 @@ import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import {
-  User,
-  Mail,
-  Phone,
-  Save,
-  Calendar,
-  MapPin,
-  Edit3,
-  Clock,
-  Users,
-  Settings,
-  UserCheck,
-  FileText,
-  BarChart3,
-  Globe,
-  Flame,
-  Zap,
-  Building2,
-  Trophy,
-  Loader2,
-  AlertCircle,
-  Camera,
-  Check,
-  ChevronDown,
+  User, Mail, Phone, Save, Calendar, MapPin, Edit3, Clock, Users, Settings, UserCheck, FileText, BarChart3, Globe, Flame,
+  Zap, Building2, Trophy, Loader2, AlertCircle, Camera, Check, ChevronDown,
 } from "lucide-react"
 import { editProfile, fetchProfile, uploadAvatar } from "@/service/userApi"
 import { AvatarCropModal } from "@/components/avatar-crop-modal"
 import { getWallet, ApiMembershipWallet } from "@/service/walletApi"
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from "@/components/ui/select"
+import { Major, fetchMajors } from "@/service/majorApi" // Import từ majorApi
 
 // Types for profile data
 interface ProfileData {
@@ -83,7 +61,7 @@ export default function ProfilePage() {
   // State for temporary avatar preview (before saving)
   const [previewAvatarUrl, setPreviewAvatarUrl] = useState<string>("")
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  
+
   // States for crop modal
   const [showCropModal, setShowCropModal] = useState<boolean>(false)
   const [imageToCrop, setImageToCrop] = useState<string>("")
@@ -94,6 +72,8 @@ export default function ProfilePage() {
   const [selectedWalletId, setSelectedWalletId] = useState<string>("")
   const [displayPoints, setDisplayPoints] = useState<number>(0)
 
+  //--- THÊM STATE CHO MAJORS ---
+  const [allMajors, setAllMajors] = useState<Major[]>([])
   // Dữ liệu tĩnh cho hoạt động người dùng
   const userStats = {
     clubsJoined: 5,
@@ -135,9 +115,13 @@ export default function ProfilePage() {
 
     try {
       setProfileState(prev => ({ ...prev, loading: true, error: null }))
-      
-      const profile = await fetchProfile() as any
-      
+
+      // Chạy song song fetchProfile và fetchMajors
+      const [profile, majorsList] = await Promise.all([
+        fetchProfile() as any,
+        fetchMajors() // <-- THAY ĐỔI 3: GỌI fetchMajors
+      ])
+
       if (!profile) {
         throw new Error("Profile not found")
       }
@@ -153,20 +137,41 @@ export default function ProfilePage() {
         userPoints: Number(profile?.wallet?.balancePoints ?? 0),
       }
 
+      // Xử lý danh sách majors
+      const currentMajorName = profileData.majorName
+      const activeMajors = majorsList.filter(m => m.active)
+
+      // Kiểm tra xem major hiện tại của user có active không
+      const isCurrentMajorActive = activeMajors.some(m => m.name === currentMajorName)
+
+      if (!isCurrentMajorActive && currentMajorName) {
+        // Nếu major hiện tại không active, tìm nó trong list gốc và thêm vào
+        const currentInactiveMajor = majorsList.find(m => m.name === currentMajorName)
+        if (currentInactiveMajor) {
+          // Hiển thị major (inactive) của user lên đầu danh sách
+          setAllMajors([currentInactiveMajor, ...activeMajors])
+        } else {
+          setAllMajors(activeMajors)
+        }
+      } else {
+        // Nếu major hiện tại active, hoặc user chưa có major
+        setAllMajors(activeMajors)
+      }
+
       setProfileState({
         data: profileData,
         loading: false,
         error: null,
         saving: false,
       })
-      
+
       // Load wallet memberships for students and club leaders
       if (auth.role === "student" || auth.role === "club_leader") {
         try {
           const walletData = await getWallet()
           const membershipsList = walletData?.memberships || []
           setMemberships(membershipsList)
-          
+
           // Set first wallet as default, or 0 if no wallets
           if (membershipsList.length > 0) {
             setSelectedWalletId(membershipsList[0].walletId.toString())
@@ -181,18 +186,32 @@ export default function ProfilePage() {
           setDisplayPoints(profileData.userPoints)
         }
       }
-      
+
       // Clear file selection when profile loads
       setSelectedFile(null)
       setPreviewAvatarUrl("")
 
+      // } catch (err) {
+      //   console.error("Failed to load profile:", err)
+      //   setProfileState(prev => ({
+      //     ...prev,
+      //     loading: false,
+      //     error: err instanceof Error ? err.message : "Failed to load profile"
+      //   }))
     } catch (err) {
-      console.error("Failed to load profile:", err)
+      console.error("Failed to load profile or majors:", err)
       setProfileState(prev => ({
         ...prev,
         loading: false,
-        error: err instanceof Error ? err.message : "Failed to load profile"
+        error: err instanceof Error ? err.message : "Failed to load data"
       }))
+      if (err instanceof Error && !(err.message.includes("Profile"))) {
+        toast({
+          title: "Warning",
+          description: "Could not load list of majors.",
+          variant: "destructive"
+        })
+      }
     }
   }
 
@@ -220,16 +239,16 @@ export default function ProfilePage() {
 
       // Chỉ cập nhật thông tin profile (không bao gồm avatar)
       const { fullName, email, phone, majorName, bio } = profileState.data
-      const payload: Record<string, any> = { 
-        email, 
-        fullName, 
-        phone, 
-        majorName, 
+      const payload: Record<string, any> = {
+        email,
+        fullName,
+        phone,
+        majorName,
         bio
       }
 
       const res = (await editProfile(payload)) as any
-      
+
       if (res && res.success) {
         toast({
           title: "Update Successful",
@@ -242,9 +261,9 @@ export default function ProfilePage() {
       }
     } catch (err) {
       console.error("Edit profile failed:", err)
-      toast({ 
-        title: "Error", 
-        description: err instanceof Error ? err.message : "An error occurred while updating profile" 
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : "An error occurred while updating profile"
       })
     } finally {
       setProfileState(prev => ({ ...prev, saving: false }))
@@ -254,7 +273,7 @@ export default function ProfilePage() {
   // Update profile data handlers
   const updateProfileData = (field: keyof ProfileData, value: string | number) => {
     if (!profileState.data) return
-    
+
     setProfileState(prev => ({
       ...prev,
       data: prev.data ? { ...prev.data, [field]: value } : null
@@ -265,7 +284,6 @@ export default function ProfilePage() {
   const handleAvatarClick = () => {
     fileInputRef.current?.click()
   }
-
 
   // Handle file selection and preview
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -285,7 +303,7 @@ export default function ProfilePage() {
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       toast({
-        title: "Error", 
+        title: "Error",
         description: "File size must be smaller than 5MB",
         variant: "destructive"
       })
@@ -316,7 +334,7 @@ export default function ProfilePage() {
       type: 'image/jpeg',
       lastModified: Date.now()
     })
-    
+
     // Upload avatar immediately
     try {
       toast({
@@ -332,7 +350,7 @@ export default function ProfilePage() {
         setCroppedFile(null)
         setPreviewAvatarUrl("")
         setImageToCrop("")
-        
+
         // Clear file input
         if (fileInputRef.current) {
           fileInputRef.current.value = ""
@@ -432,7 +450,7 @@ export default function ProfilePage() {
             <Card className="w-full max-w-md">
               <CardContent className="flex flex-col items-center space-y-4 p-8">
                 <AlertCircle className="h-8 w-8 text-yellow-500" />
-                <p className="text-lg font-medium">Không tìm thấy thông tin hồ sơ</p>
+                <p className="text-lg font-medium">No profile information found</p>
               </CardContent>
             </Card>
           </div>
@@ -443,7 +461,7 @@ export default function ProfilePage() {
 
   // Destructure profile data for easier access
   const { fullName, email, phone, majorName, studentCode, bio, avatarUrl, userPoints } = profileState.data
-  
+
   // --- HÀM ĐÃ CẬP NHẬT: Thêm logic trả về lớp animation ---
   const getPointsCardStyle = (points: number) => {
     if (points >= 5000) {
@@ -489,7 +507,7 @@ export default function ProfilePage() {
   }
 
   const isAdminRole = ["uni_staff", "uni_admin", "admin", "staff"].includes(auth.role || "")
-  
+
   const pointsCardStyle = getPointsCardStyle(displayPoints)
 
   // =================================================================
@@ -505,19 +523,19 @@ export default function ProfilePage() {
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
                 <div className="flex items-center space-x-6">
                   <div className="relative">
-                    <Avatar 
+                    <Avatar
                       className="w-24 h-24 border-4 border-white/30 shadow-lg cursor-pointer hover:opacity-80 transition-opacity"
                       onClick={handleAvatarClick}
                     >
                       <AvatarImage src={previewAvatarUrl || avatarUrl || "/placeholder-user.jpg"} alt={fullName} />
                       <AvatarFallback className="text-3xl bg-white/20">{getInitials(fullName || "A")}</AvatarFallback>
                     </Avatar>
-                    <div 
+                    {/* <div
                       className="absolute bottom-0 right-0 bg-primary text-primary-foreground rounded-full p-2 cursor-pointer hover:bg-primary/80 transition-colors shadow-lg"
                       onClick={handleAvatarClick}
                     >
                       <Camera className="h-3 w-3" />
-                    </div>
+                    </div> */}
                   </div>
                   <div>
                     <h1 className="text-4xl font-bold tracking-tight">{fullName || "Administrator"}</h1>
@@ -544,45 +562,61 @@ export default function ProfilePage() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-1">
                           <Label htmlFor="admin-email">Email Address</Label>
-                          <Input id="admin-email" value={auth.user?.email || ""} disabled className="bg-slate-100" />
+                          <Input id="admin-email" value={auth.user?.email || ""} disabled className="bg-slate-100 border-slate-400" />
                         </div>
                         <div className="space-y-1">
                           <Label htmlFor="admin-fullName">Full Name</Label>
-                          <Input 
-                            id="admin-fullName" 
-                            value={fullName} 
-                            onChange={(e) => updateProfileData('fullName', e.target.value)} 
+                          <Input
+                            id="admin-fullName"
+                            value={fullName}
+                            onChange={(e) => updateProfileData('fullName', e.target.value)}
+                            className="border-slate-400"
                           />
                         </div>
                         <div className="space-y-1">
                           <Label htmlFor="admin-studentCode">Student Code</Label>
-                          <Input id="admin-studentCode" value={studentCode} disabled className="bg-slate-100" />
+                          <Input id="admin-studentCode" value={studentCode} disabled className="bg-slate-100 border-slate-400" />
                         </div>
+
+                        {/* --- THAY ĐỔI 4 (ADMIN): THAY THẾ INPUT BẰNG SELECT --- */}
                         <div className="space-y-1">
                           <Label htmlFor="admin-majorName">Major</Label>
-                          <Input 
-                            id="admin-majorName" 
-                            value={majorName} 
-                            onChange={(e) => updateProfileData('majorName', e.target.value)} 
-                          />
+                          <Select
+                            value={majorName}
+                            onValueChange={(value) => updateProfileData('majorName', value)}
+                          >
+                            <SelectTrigger id="admin-majorName" className="w-full border-slate-400">
+                              <SelectValue placeholder="Select a major" className="truncate" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {allMajors.map((major) => (
+                                <SelectItem key={major.id} value={major.name}>
+                                  {major.name}
+                                  {!major.active && " (Inactive)"}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
+
                         <div className="space-y-1">
                           <Label htmlFor="admin-phone">Phone Number</Label>
-                          <Input 
-                            id="admin-phone" 
-                            value={phone} 
-                            onChange={(e) => updateProfileData('phone', e.target.value)} 
+                          <Input
+                            id="admin-phone"
+                            value={phone}
+                            onChange={(e) => updateProfileData('phone', e.target.value)}
+                            className="border-slate-400"
                           />
                         </div>
                         {/* location removed */}
                       </div>
                       <div className="space-y-1">
                         <Label htmlFor="admin-bio">Biography / Bio</Label>
-                        <Textarea 
-                          id="admin-bio" 
-                          value={bio} 
-                          onChange={(e) => updateProfileData('bio', e.target.value)} 
-                          className="min-h-[80px]" 
+                        <Textarea
+                          id="admin-bio"
+                          value={bio}
+                          onChange={(e) => updateProfileData('bio', e.target.value)}
+                          className="min-h-[80px] border-slate-400"
                         />
                       </div>
                       <Button onClick={handleSave} disabled={profileState.saving} className="w-fit">
@@ -604,22 +638,22 @@ export default function ProfilePage() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {auth.role === "uni_staff" && (
-                          <>
-                            <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg"><Building2 className="h-5 w-5 text-primary" /><span>University Management</span></div>
-                            <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg"><Users className="h-5 w-5 text-primary" /><span>User Administration</span></div>
-                            <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg"><BarChart3 className="h-5 w-5 text-primary" /><span>Analytics & Reports</span></div>
-                            <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg"><Settings className="h-5 w-5 text-primary" /><span>System Configuration</span></div>
-                          </>
-                        )}
-                        {(auth.role === "admin" || auth.role === "staff") && (
-                          <>
-                            <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg"><Globe className="h-5 w-5 text-primary" /><span>Partner Management</span></div>
-                            <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg"><FileText className="h-5 w-5 text-primary" /><span>Offer Management</span></div>
-                            <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg"><UserCheck className="h-5 w-5 text-primary" /><span>Customer Support</span></div>
-                            <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg"><BarChart3 className="h-5 w-5 text-primary" /><span>Performance Analytics</span></div>
-                          </>
-                        )}
+                      {auth.role === "uni_staff" && (
+                        <>
+                          <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg"><Building2 className="h-5 w-5 text-primary" /><span>University Management</span></div>
+                          <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg"><Users className="h-5 w-5 text-primary" /><span>User Administration</span></div>
+                          <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg"><BarChart3 className="h-5 w-5 text-primary" /><span>Analytics & Reports</span></div>
+                          <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg"><Settings className="h-5 w-5 text-primary" /><span>System Configuration</span></div>
+                        </>
+                      )}
+                      {(auth.role === "admin" || auth.role === "staff") && (
+                        <>
+                          <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg"><Globe className="h-5 w-5 text-primary" /><span>Partner Management</span></div>
+                          <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg"><FileText className="h-5 w-5 text-primary" /><span>Offer Management</span></div>
+                          <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg"><UserCheck className="h-5 w-5 text-primary" /><span>Customer Support</span></div>
+                          <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg"><BarChart3 className="h-5 w-5 text-primary" /><span>Performance Analytics</span></div>
+                        </>
+                      )}
                     </CardContent>
                   </Card>
                 </div>
@@ -636,57 +670,57 @@ export default function ProfilePage() {
                     <CardContent className="space-y-4">
                       <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                         <div className="flex items-center gap-3">
-                            <Users className="h-6 w-6 text-blue-600" />
-                            <span className="text-gray-700">Total Users</span>
+                          <Users className="h-6 w-6 text-blue-600" />
+                          <span className="text-gray-700">Total Users</span>
                         </div>
                         <span className="text-xl font-bold text-blue-600">{adminStats.totalUsers}</span>
                       </div>
-                       <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                      <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
                         <div className="flex items-center gap-3">
-                            <Calendar className="h-6 w-6 text-green-600" />
-                            <span className="text-gray-700">Active Events</span>
+                          <Calendar className="h-6 w-6 text-green-600" />
+                          <span className="text-gray-700">Active Events</span>
                         </div>
                         <span className="text-xl font-bold text-green-600">{adminStats.activeEvents}</span>
                       </div>
-                       <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+                      <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
                         <div className="flex items-center gap-3">
-                            <FileText className="h-6 w-6 text-purple-600" />
-                            <span className="text-gray-700">Reports Generated</span>
+                          <FileText className="h-6 w-6 text-purple-600" />
+                          <span className="text-gray-700">Reports Generated</span>
                         </div>
                         <span className="text-xl font-bold text-purple-600">{adminStats.reportsGenerated}</span>
                       </div>
                     </CardContent>
                   </Card>
-                  
+
                   <Card>
                     <CardHeader>
-                       <CardTitle className="flex items-center gap-3 text-xl">
+                      <CardTitle className="flex items-center gap-3 text-xl">
                         <Clock className="h-5 w-5 text-primary" />
                         Recent Activity
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <div className="flex items-start gap-3 text-sm">
-                            <Settings className="h-5 w-5 text-slate-500 mt-0.5" />
-                            <div>
-                                <p>Updated <span className="font-semibold">System Settings</span>.</p>
-                                <p className="text-xs text-muted-foreground">2 hours ago</p>
-                            </div>
+                      <div className="flex items-start gap-3 text-sm">
+                        <Settings className="h-5 w-5 text-slate-500 mt-0.5" />
+                        <div>
+                          <p>Updated <span className="font-semibold">System Settings</span>.</p>
+                          <p className="text-xs text-muted-foreground">2 hours ago</p>
                         </div>
-                        <div className="flex items-start gap-3 text-sm">
-                            <FileText className="h-5 w-5 text-slate-500 mt-0.5" />
-                            <div>
-                                <p>Created <span className="font-semibold">September Report</span>.</p>
-                                <p className="text-xs text-muted-foreground">5 hours ago</p>
-                            </div>
+                      </div>
+                      <div className="flex items-start gap-3 text-sm">
+                        <FileText className="h-5 w-5 text-slate-500 mt-0.5" />
+                        <div>
+                          <p>Created <span className="font-semibold">September Report</span>.</p>
+                          <p className="text-xs text-muted-foreground">5 hours ago</p>
                         </div>
-                        <div className="flex items-start gap-3 text-sm">
-                            <UserCheck className="h-5 w-5 text-slate-500 mt-0.5" />
-                            <div>
-                                <p>Approved new partner: <span className="font-semibold">ABC Corp</span>.</p>
-                                <p className="text-xs text-muted-foreground">1 day ago</p>
-                            </div>
+                      </div>
+                      <div className="flex items-start gap-3 text-sm">
+                        <UserCheck className="h-5 w-5 text-slate-500 mt-0.5" />
+                        <div>
+                          <p>Approved new partner: <span className="font-semibold">ABC Corp</span>.</p>
+                          <p className="text-xs text-muted-foreground">1 day ago</p>
                         </div>
+                      </div>
                     </CardContent>
                   </Card>
                 </div>
@@ -702,19 +736,19 @@ export default function ProfilePage() {
   // GIAO DIỆN DÀNH CHO NGƯỜI DÙNG THƯỜNG (STUDENT, CLUB_LEADER)
   // =================================================================
   return (
-  <ProtectedRoute allowedRoles={["student", "club_leader", "uni_staff", "admin", "staff"]}>
+    <ProtectedRoute allowedRoles={["student", "club_leader", "uni_staff", "admin", "staff"]}>
       <AppShell>
         <div className="min-h-screen bg-slate-50">
           {/* Header với ảnh đại diện */}
           <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 pb-20 relative">
             {/* View Card Button - Upper Right Corner */}
             <div className="absolute top-4 right-4 z-10">
-              <Button 
+              <Button
                 onClick={() => router.push('/virtual-card')}
                 className="bg-white text-indigo-600 hover:bg-white/90 font-semibold shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
               >
                 <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/>
+                  <path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z" />
                 </svg>
                 View Card
               </Button>
@@ -722,19 +756,13 @@ export default function ProfilePage() {
 
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 text-center">
               <div className="relative">
-                <Avatar 
+                <Avatar
                   className="w-28 h-28 mx-auto border-4 border-white/50 shadow-xl cursor-pointer hover:opacity-80 transition-opacity"
                   onClick={handleAvatarClick}
                 >
                   <AvatarImage src={previewAvatarUrl || avatarUrl || "/placeholder-user.jpg"} alt={fullName} />
                   <AvatarFallback className="text-4xl bg-white/30 text-white">{getInitials(fullName)}</AvatarFallback>
                 </Avatar>
-                <div 
-                  className="absolute bottom-0 right-0 bg-primary text-primary-foreground rounded-full p-2 cursor-pointer hover:bg-primary/80 transition-colors shadow-lg"
-                  onClick={handleAvatarClick}
-                >
-                  <Camera className="h-4 w-4" />
-                </div>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -766,50 +794,65 @@ export default function ProfilePage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-1">
                         <Label htmlFor="user-email">Email Address</Label>
-                        <Input id="user-email" value={auth.user?.email || ""} disabled className="bg-slate-100" />
+                        <Input id="user-email" value={auth.user?.email || ""} disabled className="bg-slate-100 border-slate-400" />
                       </div>
                       <div className="space-y-1">
                         <Label htmlFor="user-fullName">Full Name</Label>
-                        <Input 
-                          id="user-fullName" 
-                          value={fullName} 
-                          onChange={(e) => updateProfileData('fullName', e.target.value)} 
+                        <Input
+                          id="user-fullName"
+                          value={fullName}
+                          onChange={(e) => updateProfileData('fullName', e.target.value)}
+                          className="border-slate-400"
                         />
                       </div>
                       <div className="space-y-1">
                         <Label htmlFor="user-phone">Phone Number</Label>
-                        <Input 
-                          id="user-phone" 
-                          value={phone} 
-                          onChange={(e) => updateProfileData('phone', e.target.value)} 
+                        <Input
+                          id="user-phone"
+                          value={phone}
+                          onChange={(e) => updateProfileData('phone', e.target.value)}
+                          className="border-slate-400"
                         />
                       </div>
                       <div className="space-y-1">
                         <Label htmlFor="user-studentCode">Student Code</Label>
-                        <Input id="user-studentCode" value={studentCode} disabled className="bg-slate-100" />
+                        <Input id="user-studentCode" value={studentCode} disabled className="bg-slate-100 border-slate-400" />
                       </div>
+                      {/* --- THAY ĐỔI 5 (USER): THAY THẾ INPUT BẰNG SELECT --- */}
                       <div className="space-y-1">
                         <Label htmlFor="user-majorName">Major</Label>
-                        <Input 
-                          id="user-majorName" 
-                          value={majorName} 
-                          onChange={(e) => updateProfileData('majorName', e.target.value)} 
-                        />
+                        <Select
+                          value={majorName}
+                          onValueChange={(value) => updateProfileData('majorName', value)}
+                        >
+                          <SelectTrigger id="user-majorName" className="w-full border-slate-400">
+                            <SelectValue placeholder="Select a major" className="truncate" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {allMajors.map((major) => (
+                              <SelectItem key={major.id} value={major.name}>
+                                {major.name}
+                                {!major.active && " (Inactive)"}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
+
                     <div className="space-y-1">
                       <Label htmlFor="user-bio">Biography / Bio</Label>
-                      <Textarea 
-                        id="user-bio" 
-                        value={bio} 
-                        onChange={(e) => updateProfileData('bio', e.target.value)} 
-                        className="min-h-[80px]" 
+                      <Textarea
+                        id="user-bio"
+                        value={bio}
+                        onChange={(e) => updateProfileData('bio', e.target.value)}
+                        className="min-h-[80px] border-slate-400"
                       />
                     </div>
 
-                    <Button 
-                      onClick={handleSave} 
-                      disabled={profileState.saving} 
+                    <Button
+                      onClick={handleSave}
+                      disabled={profileState.saving}
                       className="w-fit bg-primary hover:bg-primary/90"
                     >
                       {profileState.saving ? (
@@ -863,9 +906,9 @@ export default function ProfilePage() {
                         ]
                         const colorScheme = colors[index % colors.length]
                         const isSelected = selectedWalletId === membership.walletId.toString()
-                        
+
                         return (
-                          <DropdownMenuItem 
+                          <DropdownMenuItem
                             key={membership.walletId}
                             onClick={() => setSelectedWalletId(membership.walletId.toString())}
                             className="cursor-pointer rounded-lg p-0 mb-2 overflow-hidden hover:shadow-md transition-all duration-200"
@@ -897,8 +940,8 @@ export default function ProfilePage() {
                     <CardContent className="p-4 flex items-center justify-between">
                       <div className="flex-1 min-w-0">
                         <p className={`text-sm font-medium transition-colors duration-300 ${pointsCardStyle.subtitleColorClassName} truncate`}>
-                          {memberships.length > 0 
-                            ? memberships[0].clubName 
+                          {memberships.length > 0
+                            ? memberships[0].clubName
                             : "Accumulated Points"}
                         </p>
                         <p className={`text-3xl font-bold transition-colors duration-300 ${pointsCardStyle.textColorClassName}`}>
@@ -939,7 +982,7 @@ export default function ProfilePage() {
                       <div className="text-2xl font-bold text-purple-800">{userStats.monthsActive}</div>
                       <div className="text-xs text-slate-600">Months Active</div>
                     </div>
-                     <div className="text-center p-4 bg-slate-100 rounded-lg">
+                    <div className="text-center p-4 bg-slate-100 rounded-lg">
                       <Trophy className="h-7 w-7 text-amber-600 mx-auto mb-1" />
                       <div className="text-2xl font-bold text-amber-800">{userStats.achievements}</div>
                       <div className="text-xs text-slate-600">Achievements</div>
@@ -951,7 +994,7 @@ export default function ProfilePage() {
           </div>
         </div>
       </AppShell>
-      
+
       {/* Avatar Crop Modal */}
       <AvatarCropModal
         isOpen={showCropModal}
