@@ -1,6 +1,6 @@
 "use client"
 
-import React from "react"
+import React, { useState } from "react"
 import { GoogleLogin, CredentialResponse } from '@react-oauth/google'
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/contexts/auth-context"
@@ -14,72 +14,101 @@ interface GoogleSignInButtonProps {
 export function GoogleSignInButton({ mode = "sign-in", onClick }: GoogleSignInButtonProps) {
   const { loginWithGoogle } = useAuth()
   const { toast } = useToast()
+  const [isLoading, setIsLoading] = useState(false)
 
   const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
     try {
-      console.log("Google response received:", credentialResponse)
+      setIsLoading(true)
+      console.log("✅ Google credential received from Google OAuth")
       
+      // Validate credential exists
       if (!credentialResponse.credential) {
         throw new Error("No credential received from Google")
       }
 
-      console.log("Sending token to backend...")
+      console.log("📤 Sending Google ID token to backend...", {
+        tokenLength: credentialResponse.credential.length,
+        tokenPreview: credentialResponse.credential.substring(0, 30) + "..."
+      })
       
-      // Sử dụng loginWithGoogle từ auth context
+      // Use loginWithGoogle from auth context to send token to backend
       const success = await loginWithGoogle(credentialResponse.credential)
       
       if (success) {
         toast({
-          title: "Google Sign-In Successful",
-          description: "Redirecting...",
+          title: "🎉 Google Sign-In Successful",
+          description: "Redirecting to your account...",
         })
+        console.log("✅ Google Sign-In successful, redirecting...")
       } else {
         throw new Error("Failed to authenticate with server")
       }
 
     } catch (error: any) {
-      console.error("Google login error:", error)
+      console.error("❌ Google login error:", error)
       
-      // Xử lý các loại lỗi khác nhau
+      // Handle different types of errors with specific messages
       let errorMessage = "Authentication failed"
+      let errorDetails = "Please try again"
       
       if (error.response?.status === 401) {
-        errorMessage = "Invalid Google token or authentication failed"
+        errorMessage = "Invalid Google Token"
+        errorDetails = "Google token verification failed. Please try logging in again"
       } else if (error.response?.status === 400) {
-        errorMessage = "Invalid request format"
-      } else if (error.message?.includes("fetch")) {
-        errorMessage = "Cannot connect to server. Please check if backend is running"
+        errorMessage = "Missing Required Parameters"
+        errorDetails = error.response?.data?.message || "Invalid request format"
+      } else if (error.message?.includes("fetch") || error.message?.includes("Network")) {
+        errorMessage = "Cannot Connect to Server"
+        errorDetails = "Please check your network connection or try again later"
+      } else if (error.message) {
+        errorMessage = "Login Failed"
+        errorDetails = error.message
       } else if (error.response?.data?.message) {
-        errorMessage = error.response.data.message
+        errorMessage = "Server Error"
+        errorDetails = error.response.data.message
       }
       
       toast({
-        title: "Google Sign-In Failed", 
-        description: errorMessage,
+        title: `❌ Google Sign-In Failed: ${errorMessage}`, 
+        description: errorDetails,
         variant: "destructive",
       })
+    } finally {
+      setIsLoading(false)
     }
   }
 
   const handleGoogleError = () => {
-    console.error("Google login failed")
+    console.error("❌ Google OAuth popup cancelled or failed")
     toast({
-      title: "Google Sign-In Failed",
-      description: "Please try again or use email/password login",
+      title: "Google Sign-In Cancelled",
+      description: "You can retry or use email/password login instead",
       variant: "destructive",
     })
   }
 
   return (
     <div className="w-full">
-      <GoogleLogin
-        onSuccess={handleGoogleSuccess}
-        onError={handleGoogleError}
-        text={mode === "sign-up" ? "signup_with" : "signin_with"}
-        theme="outline"
-        size="large"
-        width="100%"
-      />
+      {isLoading ? (
+        <Button 
+          disabled 
+          className="w-full h-10 sm:h-11 flex items-center justify-center gap-2"
+        >
+          <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
+          <span>Authenticating...</span>
+        </Button>
+      ) : (
+        <GoogleLogin
+          onSuccess={handleGoogleSuccess}
+          onError={handleGoogleError}
+          text={mode === "sign-up" ? "signup_with" : "signin_with"}
+          theme="outline"
+          size="large"
+          width="100%"
+          useOneTap={false}
+          auto_select={false}
+        />
+      )}
     </div>
   )
 }

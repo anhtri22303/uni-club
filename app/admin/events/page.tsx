@@ -22,10 +22,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton"
 
 import clubs from "@/src/data/clubs.json"
-import { fetchEvent, timeObjectToString } from "@/service/eventApi"
+import { fetchEvent, timeObjectToString, eventQR } from "@/service/eventApi"
 import { createEvent, getEventById } from "@/service/eventApi"
-import { generateCode } from "@/service/checkinApi"
 import { safeLocalStorage } from "@/lib/browser-utils"
+import { PhaseSelectionModal } from "@/components/phase-selection-modal"
 
 export default function AdminEventsPage() {
   const router = useRouter()
@@ -38,8 +38,11 @@ export default function AdminEventsPage() {
   // support 'mobile' environment for deep-link QR
   const [activeEnvironment, setActiveEnvironment] = useState<'local' | 'prod' | 'mobile'>('prod')
 
-  // Helper function to check if event has expired (past endTime)
+  // Helper function to check if event has expired (past endTime) or is COMPLETED
   const isEventExpired = (event: any) => {
+    // COMPLETED status is always considered expired
+    if (event.status === "COMPLETED") return true
+    
     // Check if date and endTime are present
     if (!event.date || !event.endTime) return false
 
@@ -133,6 +136,8 @@ export default function AdminEventsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showCalendarModal, setShowCalendarModal] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<any>(null)
+  const [showPhaseModal, setShowPhaseModal] = useState(false)
+  const [isGeneratingQR, setIsGeneratingQR] = useState(false)
   const [showQrModal, setShowQrModal] = useState(false)
   const [qrLinks, setQrLinks] = useState<{ local?: string; prod?: string; mobile?: string }>({})
   const [qrRotations, setQrRotations] = useState<{ local: string[]; prod: string[]; mobile?: string[] }>({ local: [], prod: [] })
@@ -151,57 +156,9 @@ export default function AdminEventsPage() {
       return
     }
     setCountdown(Math.floor(ROTATION_INTERVAL_MS / 1000))
-    // helper to generate and set QR variants (used immediately and on interval)
-    const generateAndSet = async () => {
-      if (!selectedEvent?.id) return
-      try {
-        const { token } = await generateCode(selectedEvent.id)
-        console.log('Generated QR token:', token)
 
-        // Create URLs with token (path parameter format)
-        const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${token}`
-        const localUrl = `http://localhost:3000/student/checkin/${token}`
-
-        const styleVariants = [
-          { color: { dark: '#000000', light: '#FFFFFF' }, margin: 1 },
-          { color: { dark: '#111111', light: '#FFFFFF' }, margin: 2 },
-          { color: { dark: '#222222', light: '#FFFFFF' }, margin: 0 },
-        ]
-
-        // Generate QR variants for local environment
-        const localQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
-          const opts = styleVariants[i % styleVariants.length]
-          return QRCode.toDataURL(localUrl, opts as any)
-        })
-        const localQrVariants = await Promise.all(localQrVariantsPromises)
-
-        // Generate QR variants for production environment
-        const prodQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
-          const opts = styleVariants[i % styleVariants.length]
-          return QRCode.toDataURL(prodUrl, opts as any)
-        })
-        const prodQrVariants = await Promise.all(prodQrVariantsPromises)
-
-        // Build mobile deep link and its QR variants
-        const mobileLink = `exp://192.168.1.50:8081/--/student/checkin/${token}`
-        const mobileVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
-          const opts = styleVariants[i % styleVariants.length]
-          return QRCode.toDataURL(mobileLink, opts as any)
-        })
-        const mobileVariants = await Promise.all(mobileVariantsPromises)
-
-        setQrRotations({ local: localQrVariants, prod: prodQrVariants, mobile: mobileVariants })
-        setQrLinks({ local: localUrl, prod: prodUrl, mobile: mobileLink })
-      } catch (err) {
-        console.error('Failed to generate QR:', err)
-      }
-    }
-
-    // generate once immediately so modal shows a QR without waiting for the first interval
-    generateAndSet()
-
+    // Just rotate the display, tokens are generated when phase is selected
     const rotId = setInterval(() => {
-      generateAndSet()
       setVisibleIndex((i) => i + 1)
       setCountdown(Math.floor(ROTATION_INTERVAL_MS / 1000))
     }, ROTATION_INTERVAL_MS)
@@ -247,44 +204,62 @@ export default function AdminEventsPage() {
   const [showFilters, setShowFilters] = useState(false)
 
   const filteredEvents = effectiveEvents.filter((item) => {
+    // Calculate status values
+    const isExpired = isEventExpired(item)
+    const isFutureEvent = item.date && new Date(item.date) >= new Date(new Date().toDateString())
+    
+    const approvalFilter = activeFilters["approval"]
+    const expiredFilter = activeFilters["expired"] || "hide"
+    
+    // Apply default restrictions only when filters are at default values
+    const isDefaultState = !approvalFilter && expiredFilter === "hide"
+    
+    if (isDefaultState) {
+      // Default: Only show future PENDING_UNISTAFF and APPROVED events
+      if (item.status === "REJECTED") return false
+      if (item.status === "COMPLETED") return false
+      if (isExpired) return false
+      if (!isFutureEvent) return false
+    }
+    
+    // search by title/name
     if (searchTerm) {
       const v = String(item.title || item.name || "").toLowerCase()
       if (!v.includes(searchTerm.toLowerCase())) return false
     }
+
+    // type filter
     const typeFilter = activeFilters["type"]
     if (typeFilter && typeFilter !== "all") {
       if (String(item.type || "").toUpperCase() !== String(typeFilter).toUpperCase()) return false
     }
-    const clubFilter = activeFilters["club"]
-    if (clubFilter && clubFilter !== "all") {
-      if (String(item.clubId) !== String(clubFilter)) return false
-    }
+
+    // date exact match (can be extended to ranges)
     const dateFilter = activeFilters["date"]
     if (dateFilter) {
       const it = new Date(item.date).toDateString()
       const df = new Date(dateFilter).toDateString()
       if (it !== df) return false
     }
-    
-    // status filter
-    const statusFilter = activeFilters["status"]
-    if (statusFilter && statusFilter !== "all") {
-      const status = getEventStatus(item.date, item.time)
-      if (String(status).toLowerCase() !== String(statusFilter).toLowerCase()) return false
-    }
 
-    // approval status filter
-    const approvalFilter = activeFilters["approval"]
+    // approval status filter (specific status like APPROVED, PENDING, REJECTED)
     if (approvalFilter && approvalFilter !== "all") {
       if (String(item.status).toUpperCase() !== String(approvalFilter).toUpperCase()) return false
     }
 
-    // expired filter
-    const expiredFilter = activeFilters["expired"]
-    if (expiredFilter === "hide") {
-      if (isEventExpired(item)) return false
-    } else if (expiredFilter === "only") {
-      if (!isEventExpired(item)) return false
+    // expired filter - only apply if not in default state (to avoid duplicate filtering)
+    if (!isDefaultState) {
+      if (expiredFilter === "hide") {
+        if (isExpired) return false
+      } else if (expiredFilter === "only") {
+        if (!isExpired) return false
+      } 
+      // Handle time-based status options (Soon, Finished)
+      else if (expiredFilter === "Soon" || expiredFilter === "Finished") {
+        const status = getEventStatus(item.date, item.time)
+        if (String(status).toLowerCase() !== String(expiredFilter).toLowerCase()) return false
+      }
+      // "show" means show all - no filtering needed
     }
 
     return true
@@ -315,16 +290,23 @@ export default function AdminEventsPage() {
     }
     try {
       const hostClubId = Number(formData.clubId)
+      
+      // Format time strings to HH:MM format
+      const startTime = formData.startTime.substring(0, 5)
+      const endTime = formData.endTime.substring(0, 5)
+      
       const payload: any = {
         hostClubId,
         name: formData.name,
         description: formData.description,
         type: formData.type as "PUBLIC" | "PRIVATE",
         date: formData.date,
-        startTime: formData.startTime,
-        endTime: formData.endTime,
+        startTime: startTime,
+        endTime: endTime,
         locationId: 1, // Default location - admin should select from locations
         maxCheckInCount: formData.maxCheckInCount,
+        commitPointCost: 0, // Admin creates events with 0 commit cost
+        budgetPoints: 0,    // Admin can set budget points later
       }
       const res: any = await createEvent(payload)
       toast({ title: "Event Created", description: "Event created successfully" })
@@ -344,6 +326,74 @@ export default function AdminEventsPage() {
     }
   }
 
+
+  // Helper function to handle phase confirmation
+  const handlePhaseConfirm = async (phase: string) => {
+    if (!selectedEvent?.id) return
+
+    try {
+      setIsGeneratingQR(true)
+
+      // Call new eventQR API with selected phase
+      console.log('Generating check-in token for event:', selectedEvent.id, 'with phase:', phase)
+      const { token, expiresIn } = await eventQR(selectedEvent.id, phase)
+      console.log('Generated token:', token, 'expires in:', expiresIn)
+
+      // Create URLs with token (path parameter format)
+      const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${token}`
+      const localUrl = `http://localhost:3000/student/checkin/${token}`
+      const mobileLink = `exp://192.168.1.50:8081/--/student/checkin/${token}`
+
+      // Generate QR code variants
+      const styleVariants = [
+        { color: { dark: '#000000', light: '#FFFFFF' }, margin: 1 },
+        { color: { dark: '#111111', light: '#FFFFFF' }, margin: 2 },
+        { color: { dark: '#222222', light: '#FFFFFF' }, margin: 0 },
+      ]
+
+      // Generate QR variants for local environment
+      const localQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) =>
+        QRCode.toDataURL(localUrl, styleVariants[i % styleVariants.length])
+      )
+      const localQrVariants = await Promise.all(localQrVariantsPromises)
+
+      // Generate QR variants for production environment
+      const prodQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) =>
+        QRCode.toDataURL(prodUrl, styleVariants[i % styleVariants.length])
+      )
+      const prodQrVariants = await Promise.all(prodQrVariantsPromises)
+
+      // Generate QR variants for mobile
+      const mobileVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) =>
+        QRCode.toDataURL(mobileLink, styleVariants[i % styleVariants.length])
+      )
+      const mobileVariants = await Promise.all(mobileVariantsPromises)
+
+      setQrRotations({ local: localQrVariants, prod: prodQrVariants, mobile: mobileVariants })
+      setQrLinks({ local: localUrl, prod: prodUrl, mobile: mobileLink })
+      setVisibleIndex(0)
+      setDisplayedIndex(0)
+
+      // Close phase modal and open QR modal
+      setShowPhaseModal(false)
+      setShowQrModal(true)
+
+      toast({
+        title: 'QR Code Generated',
+        description: `Check-in QR code generated for ${phase} phase`,
+        duration: 3000
+      })
+    } catch (err: any) {
+      console.error('Failed to generate QR', err)
+      toast({
+        title: 'QR Error',
+        description: err?.response?.data?.message || err?.message || 'Could not generate QR code',
+        variant: 'destructive'
+      })
+    } finally {
+      setIsGeneratingQR(false)
+    }
+  }
 
   // Helper functions for QR actions
   const handleDownloadQR = (environment: 'local' | 'prod' | 'mobile') => {
@@ -382,27 +432,14 @@ export default function AdminEventsPage() {
 
   const handleCopyLink = async (environment: 'local' | 'prod' | 'mobile') => {
     try {
-      // Generate fresh token for all environments
-      if (!selectedEvent?.id) {
-        toast({ title: 'No event', description: 'Event not available', variant: 'destructive' })
-        return
-      }
-
       let link: string | undefined
-      try {
-        const { token } = await generateCode(selectedEvent.id)
-        
-        if (environment === 'local') {
-          link = `http://localhost:3000/student/checkin/${token}`
-        } else if (environment === 'prod') {
-          link = `https://uniclub-fpt.vercel.app/student/checkin/${token}`
-        } else {
-          // mobile deep link
+      if (environment === 'mobile') {
+        const token = qrLinks.local?.split('/').pop() || qrLinks.prod?.split('/').pop()
+        if (token) {
           link = `exp://192.168.1.50:8081/--/student/checkin/${token}`
         }
-      } catch (err) {
-        toast({ title: 'Error', description: 'Could not generate link', variant: 'destructive' })
-        return
+      } else {
+        link = environment === 'local' ? qrLinks.local : qrLinks.prod
       }
 
       if (!link) return
@@ -492,7 +529,7 @@ export default function AdminEventsPage() {
                     </Button>
                   )}
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-muted-foreground">Type</label>
                     <Select value={activeFilters["type"] || "all"} onValueChange={(v) => handleFilterChange("type", v)}>
@@ -506,40 +543,14 @@ export default function AdminEventsPage() {
                       </SelectContent>
                     </Select>
                   </div>
+
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-muted-foreground">Date</label>
                     <Input type="date" value={activeFilters["date"] || ""} onChange={(e) => handleFilterChange("date", e.target.value)} className="h-8 text-xs" />
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">Club</label>
-                    <Select value={activeFilters["club"] || "all"} onValueChange={(v) => handleFilterChange("club", v)}>
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All</SelectItem>
-                        {clubs.map((c: any) => (
-                          <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-muted-foreground">Status</label>
-                    <Select value={activeFilters["status"] || "all"} onValueChange={(v) => handleFilterChange("status", v)}>
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All</SelectItem>
-                        <SelectItem value="Soon">Soon</SelectItem>
-                        <SelectItem value="Now">Now</SelectItem>
-                        <SelectItem value="Finished">Finished</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">Approval</label>
                     <Select value={activeFilters["approval"] || "all"} onValueChange={(v) => handleFilterChange("approval", v)}>
                       <SelectTrigger className="h-8 text-xs">
                         <SelectValue />
@@ -547,11 +558,13 @@ export default function AdminEventsPage() {
                       <SelectContent>
                         <SelectItem value="all">All</SelectItem>
                         <SelectItem value="APPROVED">Approved</SelectItem>
-                        <SelectItem value="PENDING">Pending</SelectItem>
+                        <SelectItem value="PENDING_COCLUB">Pending Co-Club</SelectItem>
+                        <SelectItem value="PENDING_UNISTAFF">Pending Uni-Staff</SelectItem>
                         <SelectItem value="REJECTED">Rejected</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
+
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-muted-foreground">Expired</label>
                     <Select value={activeFilters["expired"] || "hide"} onValueChange={(v) => handleFilterChange("expired", v)}>
@@ -562,6 +575,8 @@ export default function AdminEventsPage() {
                         <SelectItem value="hide">Hide Expired</SelectItem>
                         <SelectItem value="show">Show All</SelectItem>
                         <SelectItem value="only">Only Expired</SelectItem>
+                        <SelectItem value="Soon">Soon</SelectItem>
+                        <SelectItem value="Finished">Finished</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -586,24 +601,30 @@ export default function AdminEventsPage() {
             <>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {paginatedEvents.map((event: any) => {
-                  const expired = isEventExpired(event)
+                  // COMPLETED status means event has ended, regardless of date/time
+                  const isCompleted = event.status === "COMPLETED"
+                  const expired = isCompleted || isEventExpired(event)
                   const status = expired ? "Finished" : getEventStatus(event.date, event.time)
-                  // Border color logic - expired events override approval status
+                  // Border color logic - completed events get dark blue, expired events override approval status
                   let borderColor = ""
-                  if (expired) {
-                    borderColor = "border-gray-400 dark:border-gray-600"
+                  if (isCompleted) {
+                    borderColor = "border-l-4 border-l-blue-900"
+                  } else if (expired) {
+                    borderColor = "border-l-4 border-l-gray-400"
                   } else if (event.status === "APPROVED") {
-                    borderColor = "border-green-500"
+                    borderColor = "border-l-4 border-l-green-500"
+                  } else if (event.status === "PENDING_COCLUB") {
+                    borderColor = "border-l-4 border-l-orange-500"
+                  } else if (event.status === "PENDING_UNISTAFF") {
+                    borderColor = "border-l-4 border-l-yellow-500"
                   } else if (event.status === "REJECTED") {
-                    borderColor = "border-red-500"
-                  } else {
-                    borderColor = "border-transparent"
+                    borderColor = "border-l-4 border-l-red-500"
                   }
 
                   return (
                     <Card
                       key={event.id}
-                      className={`hover:shadow-md transition-shadow border-2 ${borderColor} ${expired ? 'opacity-60' : ''} h-full flex flex-col`}
+                      className={`hover:shadow-md transition-shadow ${borderColor} ${expired || isCompleted ? 'opacity-60' : ''} h-full flex flex-col`}
                     >
                       <CardHeader>
                         <div className="flex items-start justify-between">
@@ -637,20 +658,43 @@ export default function AdminEventsPage() {
                             {status}
                           </Badge>
                         </div>
-                        {/* Approval status badge - show gray for expired events */}
+                        {/* Approval status badge - show COMPLETED in dark blue, gray for expired events */}
                         <div className="mt-2">
-                          {expired ? (
-                            <Badge variant="secondary" className="bg-gray-400 text-white">Expired</Badge>
+                          {isCompleted ? (
+                            <Badge variant="secondary" className="bg-blue-900 text-white border-blue-900 font-semibold">
+                              <span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
+                              Completed
+                            </Badge>
+                          ) : expired ? (
+                            <Badge variant="secondary" className="bg-gray-400 text-white font-semibold">
+                              <span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
+                              Expired
+                            </Badge>
                           ) : (
                             <>
                               {event.status === "APPROVED" && (
-                                <Badge variant="default">Approved</Badge>
+                                <Badge variant="default" className="bg-green-600 font-semibold">
+                                  <span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
+                                  Approved
+                                </Badge>
                               )}
-                              {event.status === "PENDING" && (
-                                <Badge variant="outline">Pending</Badge>
+                              {event.status === "PENDING_COCLUB" && (
+                                <Badge variant="outline" className="bg-orange-100 text-orange-700 border-orange-500 font-semibold">
+                                  <span className="inline-block w-2 h-2 rounded-full bg-orange-500 mr-1.5"></span>
+                                  Pending Co-Club Approval
+                                </Badge>
+                              )}
+                              {event.status === "PENDING_UNISTAFF" && (
+                                <Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-500 font-semibold">
+                                  <span className="inline-block w-2 h-2 rounded-full bg-yellow-500 mr-1.5"></span>
+                                  Pending Uni-Staff Approval
+                                </Badge>
                               )}
                               {event.status === "REJECTED" && (
-                                <Badge variant="destructive">Rejected</Badge>
+                                <Badge variant="destructive" className="font-semibold">
+                                  <span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
+                                  Rejected
+                                </Badge>
                               )}
                             </>
                           )}
@@ -687,69 +731,16 @@ export default function AdminEventsPage() {
                             <Eye className="h-4 w-4 mr-2" />
                             View Detail
                           </Button>
-                          {/* QR Code Section - Only show if APPROVED and not expired */}
-                          {event.status === "APPROVED" && !expired && (
+                          {/* QR Code Section - Only show if APPROVED and not expired/completed */}
+                          {event.status === "APPROVED" && !expired && !isCompleted && (
                             <div className="mt-3 pt-3 border-t border-muted">
                               <Button
                                 variant="default"
                                 size="sm"
                                 className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium"
-                                onClick={async () => {
-                                  setSelectedEvent(event);
-                                  try {
-                                    // Generate fresh token using the new API
-                                    console.log('Generating check-in token for event:', event.id);
-                                    const { token } = await generateCode(event.id);
-                                    console.log('Generated token:', token);
-                                    
-                                    // Create URLs with token (path parameter format)
-                                    const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${token}`;
-                                    const localUrl = `http://localhost:3000/student/checkin/${token}`;
-                                    
-                                    console.log('Production URL:', prodUrl);
-                                    console.log('Development URL:', localUrl);
-                                    
-                                    // Generate QR code variants
-                                    const styleVariants = [
-                                      { color: { dark: '#000000', light: '#FFFFFF' }, margin: 1 },
-                                      { color: { dark: '#111111', light: '#FFFFFF' }, margin: 2 },
-                                      { color: { dark: '#222222', light: '#FFFFFF' }, margin: 0 },
-                                    ];
-                                    
-                                    // Generate QR variants for local environment
-                                    const localQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
-                                      const opts = styleVariants[i % styleVariants.length];
-                                      return QRCode.toDataURL(localUrl, opts as any);
-                                    });
-                                    const localQrVariants = await Promise.all(localQrVariantsPromises);
-                                    
-                                    // Generate QR variants for production environment
-                                    const prodQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
-                                      const opts = styleVariants[i % styleVariants.length];
-                                      return QRCode.toDataURL(prodUrl, opts as any);
-                                    });
-                                    const prodQrVariants = await Promise.all(prodQrVariantsPromises);
-                                    
-                                    // Set different URLs for local and production
-                                    setQrRotations({ local: localQrVariants, prod: prodQrVariants });
-                                    setQrLinks({ local: localUrl, prod: prodUrl });
-                                    setVisibleIndex(0);
-                                    setDisplayedIndex(0);
-                                    setShowQrModal(true);
-                                    
-                                    toast({ 
-                                      title: 'QR Code Generated', 
-                                      description: 'Check-in QR code has been generated successfully',
-                                      duration: 3000 
-                                    });
-                                  } catch (err: any) {
-                                    console.error('Failed to generate QR', err);
-                                    toast({ 
-                                      title: 'QR Error', 
-                                      description: err?.message || 'Could not generate QR code', 
-                                      variant: 'destructive' 
-                                    });
-                                  }
+                                onClick={() => {
+                                  setSelectedEvent(event)
+                                  setShowPhaseModal(true)
                                 }}
                               >
                                 <QrCode className="h-4 w-4 mr-2" />
@@ -899,6 +890,14 @@ export default function AdminEventsPage() {
               </div>
             </div>
           </Modal>
+
+          {/* Phase Selection Modal */}
+          <PhaseSelectionModal
+            open={showPhaseModal}
+            onOpenChange={setShowPhaseModal}
+            onConfirm={handlePhaseConfirm}
+            isLoading={isGeneratingQR}
+          />
 
           {/* QR Modal */}
           {selectedEvent && (

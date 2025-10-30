@@ -93,10 +93,11 @@ export function CalendarModal({
   // Month stats
   const monthStats = useMemo(() => {
     const list = Object.values(eventsByDate).flat()
+    const completed = list.filter((e) => e.status?.toUpperCase() === "COMPLETED").length
     const approved = list.filter((e) => e.status?.toUpperCase() === "APPROVED").length
     const pending = list.filter((e) => e.status?.toUpperCase() === "PENDING").length
     const rejected = list.filter((e) => e.status?.toUpperCase() === "REJECTED").length
-    return { total: list.length, approved, pending, rejected }
+    return { total: list.length, completed, approved, pending, rejected }
   }, [eventsByDate])
 
   // Calendar days
@@ -132,6 +133,29 @@ export function CalendarModal({
 
   const getEventColor = (event: any) => {
     const status = event.status?.toUpperCase()
+    
+    // Check if event is in the past (before today)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0) // Reset to start of day for comparison
+    const eventDate = event.date ? new Date(event.date) : null
+    const isPast = eventDate && eventDate < today
+    
+    // COMPLETED status always gets dark blue
+    if (status === "COMPLETED")
+      return "bg-gradient-to-br from-blue-900 to-blue-950 dark:from-blue-900 dark:to-blue-950 text-white dark:text-white border-blue-900 dark:border-blue-800 shadow-sm opacity-70"
+    
+    // Past events get lighter colors
+    if (isPast) {
+      if (status === "REJECTED")
+        return "bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 text-red-600 dark:text-red-400 border-red-200 dark:border-red-700 shadow-sm opacity-60"
+      if (status === "PENDING")
+        return "bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-700 shadow-sm opacity-60"
+      if (status === "APPROVED")
+        return "bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 text-green-600 dark:text-green-400 border-green-200 dark:border-green-700 shadow-sm opacity-60"
+      return "bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-700 shadow-sm opacity-60"
+    }
+    
+    // Future/today events get normal vibrant colors
     if (status === "REJECTED")
       return "bg-gradient-to-br from-red-100 to-red-200 dark:from-red-900/40 dark:to-red-800/40 text-red-800 dark:text-red-300 border-red-400 dark:border-red-600 shadow-sm"
     if (status === "PENDING")
@@ -208,6 +232,14 @@ export function CalendarModal({
                   {monthStats.total} {monthStats.total === 1 ? "Event" : "Events"}
                 </span>
               </div>
+              {monthStats.completed > 0 && (
+                <div className="flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-1 sm:py-1.5 bg-gradient-to-br from-blue-900 to-blue-950 rounded-lg border border-blue-900">
+                  <div className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-white flex-shrink-0"></div>
+                  <span className="text-[10px] sm:text-xs font-semibold text-white whitespace-nowrap">
+                    {monthStats.completed} <span className="hidden xs:inline">Completed</span>
+                  </span>
+                </div>
+              )}
               {monthStats.approved > 0 && (
                 <div className="flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-1 sm:py-1.5 bg-gradient-to-br from-green-100 to-green-200 dark:from-green-900/40 dark:to-green-800/40 rounded-lg border border-green-400 dark:border-green-600">
                   <div className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-green-600 dark:bg-green-400 flex-shrink-0"></div>
@@ -248,6 +280,10 @@ export function CalendarModal({
 
         {/* Legend */}
         <div className="flex flex-wrap gap-3 text-xs bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 p-3 rounded-lg border border-blue-200/50 dark:border-blue-800/50">
+          <div className="flex items-center gap-1.5">
+            <div className="h-3 w-3 rounded-full bg-gradient-to-br from-blue-900 to-blue-950 shadow-sm"></div>
+            <span className="font-medium text-blue-900 dark:text-blue-400">Completed</span>
+          </div>
           <div className="flex items-center gap-1.5">
             <div className="h-3 w-3 rounded-full bg-gradient-to-br from-green-400 to-green-600 shadow-sm"></div>
             <span className="font-medium text-green-700 dark:text-green-400">Approved</span>

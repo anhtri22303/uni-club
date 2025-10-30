@@ -8,13 +8,13 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { ArrowLeft, Calendar, Clock, MapPin, Users, CheckCircle, AlertCircle, XCircle, Eye, QrCode, Shield } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { getEventById, timeObjectToString, getEventWallet, EventWallet } from "@/service/eventApi"
-import { generateCode } from "@/service/checkinApi"
+import { getEventById, timeObjectToString, getEventWallet, EventWallet, eventQR } from "@/service/eventApi"
 import QRCode from "qrcode"
 import { AppShell } from "@/components/app-shell"
 import { QRModal } from "@/components/qr-modal"
 import { ProtectedRoute } from "@/contexts/protected-route"
 import { LoadingSkeleton } from "@/components/loading-skeleton"
+import { PhaseSelectionModal } from "@/components/phase-selection-modal"
 
 interface EventDetail {
   id: number
@@ -29,6 +29,7 @@ interface EventDetail {
   locationName: string
   maxCheckInCount: number
   currentCheckInCount: number
+  budgetPoints: number
   hostClub: {
     id: number
     name: string
@@ -54,6 +55,10 @@ export default function AdminEventDetailPage() {
   const [showCheckInCode, setShowCheckInCode] = useState(false)
   const [wallet, setWallet] = useState<EventWallet | null>(null)
   const [walletLoading, setWalletLoading] = useState(false)
+
+  // Phase selection modal state
+  const [showPhaseModal, setShowPhaseModal] = useState(false)
+  const [isGeneratingQR, setIsGeneratingQR] = useState(false)
 
   // QR Code states
   const [showQrModal, setShowQrModal] = useState(false)
@@ -114,43 +119,8 @@ export default function AdminEventDetailPage() {
 
     setCountdown(Math.floor(ROTATION_INTERVAL_MS / 1000))
 
-    const rotId = setInterval(async () => {
-      // Generate new QR code when rotating
-      if (event?.id) {
-        try {
-          const { token } = await generateCode(event.id)
-          console.log('Rotating QR - Generated new token:', token)
-          
-          // Create URLs with token (path parameter format)
-          const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${token}`
-          const localUrl = `http://localhost:3000/student/checkin/${token}`
-          
-          const styleVariants = [
-            { color: { dark: '#000000', light: '#FFFFFF' }, margin: 1 },
-            { color: { dark: '#111111', light: '#FFFFFF' }, margin: 2 },
-            { color: { dark: '#222222', light: '#FFFFFF' }, margin: 0 },
-          ]
-          
-          // Generate QR variants for local
-          const localQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
-            const opts = styleVariants[i % styleVariants.length]
-            return QRCode.toDataURL(localUrl, opts as any)
-          })
-          const localQrVariants = await Promise.all(localQrVariantsPromises)
-          
-          // Generate QR variants for production
-          const prodQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
-            const opts = styleVariants[i % styleVariants.length]
-            return QRCode.toDataURL(prodUrl, opts as any)
-          })
-          const prodQrVariants = await Promise.all(prodQrVariantsPromises)
-          
-          setQrRotations({ local: localQrVariants, prod: prodQrVariants })
-          setQrLinks({ local: localUrl, prod: prodUrl })
-        } catch (err) {
-          console.error('Failed to rotate QR:', err)
-        }
-      }
+    const rotId = setInterval(() => {
+      // Just rotate the display, tokens are generated when phase is selected
       setVisibleIndex((i) => i + 1)
       setCountdown(Math.floor(ROTATION_INTERVAL_MS / 1000))
     }, ROTATION_INTERVAL_MS)
@@ -178,6 +148,13 @@ export default function AdminEventDetailPage() {
 
   const getStatusBadge = (status: string) => {
     switch (status.toUpperCase()) {
+      case "COMPLETED":
+        return (
+          <Badge variant="secondary" className="bg-blue-900 text-white border-blue-900">
+            <CheckCircle className="h-3 w-3 mr-1" />
+            Completed
+          </Badge>
+        )
       case "APPROVED":
         return (
           <Badge variant="default" className="bg-green-100 text-green-800 border-green-300">
@@ -185,11 +162,18 @@ export default function AdminEventDetailPage() {
             Approved
           </Badge>
         )
-      case "PENDING":
+      case "PENDING_COCLUB":
+        return (
+          <Badge variant="outline" className="bg-orange-100 text-orange-800 border-orange-300">
+            <AlertCircle className="h-3 w-3 mr-1" />
+            Pending Co-Club Approval
+          </Badge>
+        )
+      case "PENDING_UNISTAFF":
         return (
           <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300">
             <AlertCircle className="h-3 w-3 mr-1" />
-            Pending
+            Pending Uni-Staff Approval
           </Badge>
         )
       case "REJECTED":
@@ -225,14 +209,21 @@ export default function AdminEventDetailPage() {
     return timeString
   }
 
-  const handleGenerateQR = async () => {
+  const handleGenerateQR = () => {
+    // Open phase selection modal
+    setShowPhaseModal(true)
+  }
+
+  const handlePhaseConfirm = async (phase: string) => {
     if (!event) return
 
     try {
-      // Generate fresh token using the new API
-      console.log('Generating check-in token for event:', event.id)
-      const { token } = await generateCode(event.id)
-      console.log('Generated token:', token)
+      setIsGeneratingQR(true)
+      
+      // Call new eventQR API with selected phase
+      console.log('Generating check-in token for event:', event.id, 'with phase:', phase)
+      const { token, expiresIn } = await eventQR(event.id, phase)
+      console.log('Generated token:', token, 'expires in:', expiresIn)
       
       // Create URLs with token (path parameter format)
       const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${token}`
@@ -265,20 +256,25 @@ export default function AdminEventDetailPage() {
       setQrLinks({ local: localUrl, prod: prodUrl })
       setVisibleIndex(0)
       setDisplayedIndex(0)
+      
+      // Close phase modal and open QR modal
+      setShowPhaseModal(false)
       setShowQrModal(true)
       
       toast({ 
         title: 'QR Code Generated', 
-        description: 'Check-in QR code has been generated successfully',
+        description: `Check-in QR code generated for ${phase} phase`,
         duration: 3000 
       })
     } catch (err: any) {
       console.error('Failed to generate QR', err)
       toast({ 
         title: 'QR Error', 
-        description: err?.message || 'Could not generate QR code', 
+        description: err?.response?.data?.message || err?.message || 'Could not generate QR code', 
         variant: 'destructive' 
       })
+    } finally {
+      setIsGeneratingQR(false)
     }
   }
 
@@ -319,15 +315,11 @@ export default function AdminEventDetailPage() {
   const handleCopyLink = async (environment: 'local' | 'prod' | 'mobile') => {
     try {
       let link: string | undefined
-      if (!event?.id) {
-        toast({ title: 'No event', description: 'Event not available', variant: 'destructive' })
-        return
-      }
-
       if (environment === 'mobile') {
-        // Generate fresh token for mobile deep link
-        const { token } = await generateCode(event.id)
-        link = `exp://192.168.1.50:8081/--/student/checkin/${token}`
+        const token = qrLinks.local?.split('/').pop() || qrLinks.prod?.split('/').pop()
+        if (token) {
+          link = `exp://192.168.1.50:8081/--/student/checkin/${token}`
+        }
       } else {
         link = environment === 'local' ? qrLinks.local : qrLinks.prod
       }
@@ -507,14 +499,20 @@ export default function AdminEventDetailPage() {
                     <div className="font-semibold text-lg">{event.maxCheckInCount - event.currentCheckInCount} remaining</div>
                   </div>
                   <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-200">
-                    <div className="text-sm text-green-700 font-medium">Wallet Balance</div>
+                    <div className="text-sm text-green-700 font-medium">
+                      {event.status === "APPROVED" ? "Wallet Balance" : "Budget Points"}
+                    </div>
                     <div className="font-semibold text-lg text-green-800">
-                      {walletLoading ? (
-                        <span className="text-muted-foreground">Loading...</span>
-                      ) : wallet ? (
-                        `${wallet.walletBalance} points`
+                      {event.status === "APPROVED" ? (
+                        walletLoading ? (
+                          <span className="text-muted-foreground">Loading...</span>
+                        ) : wallet ? (
+                          `${wallet.walletBalance} points`
+                        ) : (
+                          <span className="text-muted-foreground">N/A</span>
+                        )
                       ) : (
-                        <span className="text-muted-foreground">N/A</span>
+                        `${event.budgetPoints || 0} points`
                       )}
                     </div>
                   </div>
@@ -591,7 +589,18 @@ export default function AdminEventDetailPage() {
                               <div className="text-sm text-muted-foreground">Club ID: {club.id}</div>
                             </div>
                           </div>
-                          <Badge variant={club.coHostStatus === "APPROVED" ? "default" : "secondary"}>
+                          <Badge 
+                            variant="outline"
+                            className={
+                              club.coHostStatus === "APPROVED"
+                                ? "bg-green-100 text-green-700 border-green-500"
+                                : club.coHostStatus === "REJECTED"
+                                ? "bg-red-100 text-red-700 border-red-500"
+                                : club.coHostStatus === "PENDING"
+                                ? "bg-yellow-100 text-yellow-700 border-yellow-500"
+                                : "bg-gray-100 text-gray-700 border-gray-300"
+                            }
+                          >
                             {club.coHostStatus}
                           </Badge>
                         </div>
@@ -603,6 +612,13 @@ export default function AdminEventDetailPage() {
             </CardContent>
           </Card>
         </div>
+
+        <PhaseSelectionModal
+          open={showPhaseModal}
+          onOpenChange={setShowPhaseModal}
+          onConfirm={handlePhaseConfirm}
+          isLoading={isGeneratingQR}
+        />
 
         {event && (
           <QRModal

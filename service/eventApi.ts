@@ -21,6 +21,7 @@ export interface Event {
   locationName: string
   maxCheckInCount: number
   currentCheckInCount: number
+  budgetPoints: number
   hostClub: {
     id: number
     name: string
@@ -39,17 +40,18 @@ export interface Event {
 }
 
 export interface CreateEventPayload {
+  hostClubId: number
+  coHostClubIds?: number[]
   name: string
   description: string
   type: "PUBLIC" | "PRIVATE"
-  date: string
-  startTime: string  // Backend expects string format "HH:MM:SS", not TimeObject
-  endTime: string    // Backend expects string format "HH:MM:SS", not TimeObject
+  date: string // Format: YYYY-MM-DD
+  startTime: string  // Format: HH:MM (e.g., "09:00")
+  endTime: string    // Format: HH:MM (e.g., "15:00")
   locationId: number
   maxCheckInCount: number
-  hostClubId: number
-  coHostClubIds?: number[]
   commitPointCost: number
+  budgetPoints: number
 }
 
 // Helper function to convert time string (HH:MM:SS or HH:MM) to TimeObject
@@ -136,11 +138,11 @@ export const getEventById = async (id: string | number): Promise<Event> => {
   }
 }
 
-export const putEventStatus = async (id: string | number, status: string): Promise<Event> => {
+export const putEventStatus = async (id: string | number, status: string, budgetPoints: number = 0): Promise<Event> => {
   try {
-    const response = await axiosInstance.put(`api/events/${id}/status`, { status })
+    const response = await axiosInstance.put(`api/events/${id}/status`, { status, budgetPoints })
     const data: any = response.data
-    console.log(`Updated event ${id} status -> ${status}:`, data)
+    console.log(`Updated event ${id} status -> ${status} with budgetPoints: ${budgetPoints}:`, data)
     // Response structure: { success: true, message: "success", data: {...event} }
     if (data && data.data) return data.data
     return data
@@ -247,28 +249,23 @@ export const submitForUniversityApproval = async (eventId: string | number) => {
   // return api.put(`/events/${eventId}/submit-to-staff`)
 }
 
-export const acceptCoHostInvitation = async (eventId: string | number) => {
+/**
+ * Respond to co-host invitation (accept or reject)
+ * @param eventId - Event ID
+ * @param accept - true to accept, false to reject
+ * @returns { success: boolean, message: string, data: string }
+ */
+export const coHostRespond = async (eventId: string | number, accept: boolean) => {
   try {
-    const response = await axiosInstance.post(`/api/events/${eventId}/cohost/accept`)
+    const response = await axiosInstance.post(`/api/events/${eventId}/cohost/respond`, null, {
+      params: { accept }
+    })
     const data: any = response.data
-    console.log(`Accepted co-host invitation for event ${eventId}:`, data)
-    // Response structure: { success: true, message: "✅ Club ... accepted ...", data: null }
-    return data
-  } catch (error) {
-    console.error(`Error accepting co-host invitation for event ${eventId}:`, error)
-    throw error
-  }
-}
-
-export const rejectCoHostInvitation = async (eventId: string | number) => {
-  try {
-    const response = await axiosInstance.post(`/api/events/${eventId}/cohost/reject`)
-    const data: any = response.data
-    console.log(`Rejected co-host invitation for event ${eventId}:`, data)
+    console.log(`${accept ? 'Accepted' : 'Rejected'} co-host invitation for event ${eventId}:`, data)
     // Response structure: { success: true, message: "string", data: "string" }
     return data
   } catch (error) {
-    console.error(`Error rejecting co-host invitation for event ${eventId}:`, error)
+    console.error(`Error responding to co-host invitation for event ${eventId}:`, error)
     throw error
   }
 }
@@ -305,6 +302,185 @@ export const registerForEvent = async (eventId: string | number) => {
     return data
   } catch (error) {
     console.error(`Error registering for event ${eventId}:`, error)
+    throw error
+  }
+}
+
+export interface EventRegistration {
+  clubName: string
+  status: string
+  eventId: number
+  eventName: string
+  registeredAt: string
+  attendanceLevel: string
+  date: string
+  committedPoints: number
+}
+
+export const getMyEventRegistrations = async (): Promise<EventRegistration[]> => {
+  try {
+    const response = await axiosInstance.get(`/api/events/my-registrations`)
+    const data: any = response.data
+    console.log(`Fetched my event registrations:`, data)
+    // Response structure: { success: true, message: "success", data: [...] }
+    if (data?.data && Array.isArray(data.data)) return data.data
+    if (Array.isArray(data)) return data
+    return []
+  } catch (error) {
+    console.error(`Error fetching my event registrations:`, error)
+    throw error
+  }
+}
+
+export interface EventCheckinPayload {
+  eventJwtToken: string
+  level: string
+}
+
+export const eventCheckin = async (eventJwtToken: string, level: string = "NONE") => {
+  try {
+    const payload: EventCheckinPayload = {
+      eventJwtToken,
+      level
+    }
+    const response = await axiosInstance.post(`/api/events/checkin`, payload)
+    const data: any = response.data
+    console.log(`Event check-in response:`, data)
+    // Response structure: { success: true, message: "Check-in success for event co club", data: null }
+    return data
+  } catch (error) {
+    console.error(`Error checking in to event:`, error)
+    throw error
+  }
+}
+
+export interface EventSummary {
+  refundedCount: number
+  registrationsCount: number
+  checkedInCount: number
+  eventName: string
+  totalCommitPoints: number
+}
+
+export const getEventSummary = async (eventId: string | number): Promise<EventSummary> => {
+  try {
+    const response = await axiosInstance.get(`/api/events/${eventId}/summary`)
+    const data: any = response.data
+    console.log(`Fetched event summary for event ${eventId}:`, data)
+    // Response structure: { success: true, message: "success", data: {...summary} }
+    if (data?.data) return data.data
+    return data
+  } catch (error) {
+    console.error(`Error fetching event summary for event ${eventId}:`, error)
+    throw error
+  }
+}
+
+export const endEvent = async (eventId: string | number) => {
+  try {
+    const response = await axiosInstance.put(`/api/events/end`, { eventId })
+    const data: any = response.data
+    console.log(`Ended event ${eventId}:`, data)
+    // Response structure: { success: true, message: "Event completed. Total reward 0 pts: leftover returned", data: "null" }
+    return data
+  } catch (error) {
+    console.error(`Error ending event ${eventId}:`, error)
+    throw error
+  }
+}
+
+export const completeEvent = async (eventId: string | number) => {
+  try {
+    const response = await axiosInstance.post(`/api/events/${eventId}/complete`)
+    const data: any = response.data
+    console.log(`Completed event ${eventId}:`, data)
+    // Response structure: { success: true, message: "string", data: "string" }
+    return data
+  } catch (error) {
+    console.error(`Error completing event ${eventId}:`, error)
+    throw error
+  }
+}
+
+/**
+ * GET /api/events/{eventId}/attendance/qr
+ * Generate QR code with phase parameter
+ * @param eventId - Event ID
+ * @param phase - Phase of the event (START, MID, END)
+ * @returns { phase: string, token: string, expiresIn: number }
+ */
+export const eventQR = async (eventId: string | number, phase: string) => {
+  try {
+    const response = await axiosInstance.get(`/api/events/${eventId}/attendance/qr`, {
+      params: { phase }
+    })
+    const data: any = response.data
+    console.log(`Generated QR for event ${eventId} with phase ${phase}:`, data)
+    // Response structure: { success: true, message: "success", data: { phase: "START", token: "string", expiresIn: 120 } }
+    return data.data as { phase: string; token: string; expiresIn: number }
+  } catch (error) {
+    console.error(`Error generating QR for event ${eventId}:`, error)
+    throw error
+  }
+}
+
+/**
+ * POST /api/events/{eventId}/settle
+ * Settle a completed event
+ * @param eventId - Event ID
+ * @returns { success: boolean, message: string, data: string }
+ */
+export const eventSettle = async (eventId: string | number) => {
+  try {
+    const response = await axiosInstance.post(`/api/events/${eventId}/settle`)
+    const data: any = response.data
+    console.log(`Settled event ${eventId}:`, data)
+    // Response structure: { success: true, message: "string", data: "string" }
+    return data
+  } catch (error) {
+    console.error(`Error settling event ${eventId}:`, error)
+    throw error
+  }
+}
+
+/**
+ * GET /api/events/settled
+ * Get all settled events
+ * @returns Array of settled events
+ */
+export const getEventSettle = async () => {
+  try {
+    const response = await axiosInstance.get(`/api/events/settled`)
+    const data: any = response.data
+    console.log(`Fetched settled events:`, data)
+    // Response structure: { success: true, message: "success", data: [...] }
+    return data.data as Array<{
+      id: number
+      name: string
+      description: string
+      type: string
+      date: string
+      startTime: string
+      endTime: string
+      status: string
+      checkInCode: string
+      budgetPoints: number
+      locationName: string
+      maxCheckInCount: number
+      currentCheckInCount: number | null
+      hostClub: {
+        id: number
+        name: string
+        coHostStatus: string
+      }
+      coHostedClubs: Array<{
+        id: number
+        name: string
+        coHostStatus: string
+      }>
+    }>
+  } catch (error) {
+    console.error(`Error fetching settled events:`, error)
     throw error
   }
 }

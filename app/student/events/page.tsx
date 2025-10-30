@@ -15,10 +15,11 @@ import { Calendar, Users, Trophy, Layers, History } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import { safeLocalStorage } from "@/lib/browser-utils"
-import { useClubEvents, useClubs } from "@/hooks/use-query-hooks"
+import { useClubEvents, useClubs, useMyEventRegistrations } from "@/hooks/use-query-hooks"
 import { timeObjectToString, registerForEvent } from "@/service/eventApi"
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { useQueryClient } from "@tanstack/react-query"
 
 // Import data
 import clubs from "@/src/data/clubs.json"
@@ -34,7 +35,9 @@ export default function MemberEventsPage() {
   const [showCalendarModal, setShowCalendarModal] = useState(false)
   const [showHistoryModal, setShowHistoryModal] = useState(false)
   const [registeringEventId, setRegisteringEventId] = useState<number | null>(null)
+  const [showRegisteredOnly, setShowRegisteredOnly] = useState(false)
   const { toast } = useToast()
+  const queryClient = useQueryClient()
 
 
 
@@ -65,6 +68,7 @@ export default function MemberEventsPage() {
   // ✅ USE REACT QUERY - automatically filters by clubIds
   const { data: eventsData = [], isLoading: loading } = useClubEvents(userClubIds)
   const { data: clubsData = [] } = useClubs()
+  const { data: myRegistrations = [] } = useMyEventRegistrations()
 
   // ✅ CẬP NHẬT: useEffect để lấy chi tiết club VÀ set default
   useEffect(() => {
@@ -90,8 +94,16 @@ export default function MemberEventsPage() {
       clubs.find((c) => c.id === event.hostClub?.id)?.name.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
-  // Helper function to check if event has expired (past endTime)
+  // Helper function to check if event is registered
+  const isEventRegistered = (eventId: number) => {
+    return myRegistrations.some((reg) => reg.eventId === eventId)
+  }
+
+  // Helper function to check if event has expired (past endTime) or is COMPLETED
   const isEventExpired = (event: any) => {
+    // COMPLETED status is always considered expired
+    if (event.status === "COMPLETED") return true
+    
     // Check if date and endTime are present
     if (!event.date || !event.endTime) return false
 
@@ -131,18 +143,35 @@ export default function MemberEventsPage() {
       return false
     }
 
-    // Filter by status - only show APPROVED or COMPLETED events
-    if (event.status !== "APPROVED" && event.status !== "COMPLETED") {
+    // Filter by registered events only if showRegisteredOnly is true
+    if (showRegisteredOnly && !isEventRegistered(event.id)) {
       return false
     }
 
-    // expired filter
+    // Default: Show future PENDING and APPROVED events (hide expired/completed and rejected)
+    const isExpired = isEventExpired(event)
+    const isFutureEvent = event.date && new Date(event.date) >= new Date(new Date().toDateString())
+    
+    // By default, only show future events that are PENDING or APPROVED
     const expiredFilter = activeFilters["expired"]
     if (expiredFilter === "hide") {
-      if (isEventExpired(event)) return false
+      // Hide expired events (including COMPLETED status)
+      if (isExpired) return false
+      // Hide rejected events
+      if (event.status === "REJECTED") return false
+      // Only show APPROVED or PENDING_UNISTAFF events
+      if (event.status !== "APPROVED" && event.status !== "PENDING_UNISTAFF") return false
+      // Only show future or today's events
+      if (!isFutureEvent) return false
     } else if (expiredFilter === "only") {
-      if (!isEventExpired(event)) return false
+      if (!isExpired) return false
+    } else if (expiredFilter === "show") {
+      // Show all events regardless of expiration
+      if (event.status !== "APPROVED" && event.status !== "PENDING_UNISTAFF" && event.status !== "COMPLETED") {
+        return false
+      }
     }
+    
     return true
   })
 
@@ -179,6 +208,8 @@ export default function MemberEventsPage() {
         title: "Success",
         description: result.message || "Successfully registered for the event!",
       })
+      // Refetch registrations after successful registration
+      queryClient.invalidateQueries({ queryKey: ["events", "my-registrations"] })
     } catch (error: any) {
       console.error("Error registering for event:", error)
       toast({
@@ -272,6 +303,24 @@ export default function MemberEventsPage() {
                 <SelectItem value="only">Only Expired</SelectItem>
               </SelectContent>
             </Select>
+
+            {/* Toggle button for registered events only */}
+            <Button
+              variant={showRegisteredOnly ? "default" : "outline"}
+              onClick={() => {
+                setShowRegisteredOnly(!showRegisteredOnly)
+                setCurrentPage(1)
+              }}
+              className="whitespace-nowrap"
+            >
+              <Trophy className="h-4 w-4 mr-2" />
+              {showRegisteredOnly ? "All Events" : "My Registrations"}
+              {showRegisteredOnly && myRegistrations.length > 0 && (
+                <Badge variant="secondary" className="ml-2">
+                  {myRegistrations.length}
+                </Badge>
+              )}
+            </Button>
           </div>
 
 
@@ -299,9 +348,21 @@ export default function MemberEventsPage() {
             ) : (
               paginatedEvents.map((event) => {
                 const status = getEventStatus(event.date)
+                
+                // Determine border color based on event status
+                let borderColor = ""
+                if (event.status === "COMPLETED") {
+                  borderColor = "border-l-4 border-l-blue-900"
+                } else if (event.status === "APPROVED") {
+                  borderColor = "border-l-4 border-l-green-500"
+                } else if (event.status === "PENDING_UNISTAFF") {
+                  borderColor = "border-l-4 border-l-yellow-500"
+                } else if (event.status === "REJECTED") {
+                  borderColor = "border-l-4 border-l-red-500"
+                }
 
                 return (
-                  <Card key={event.id} className="hover:shadow-md transition-shadow">
+                  <Card key={event.id} className={`hover:shadow-md transition-shadow ${borderColor}`}>
                     <CardHeader>
                       <div className="flex items-start justify-between">
                         <div>
@@ -312,29 +373,28 @@ export default function MemberEventsPage() {
                           </CardDescription>
                         </div>
                         {event.status === "COMPLETED" ? (
-                          <Badge variant="outline" className="bg-gray-100 text-gray-700 border-gray-400">
+                          <Badge variant="outline" className="bg-blue-900 text-white border-blue-900 font-semibold">
+                            <span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
                             COMPLETED
                           </Badge>
+                        ) : event.status === "APPROVED" ? (
+                          <Badge variant="outline" className="bg-green-100 text-green-700 border-green-500 font-semibold">
+                            <span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-1.5"></span>
+                            {status === "past" ? "Past" : status === "upcoming" ? "Soon" : "Approved"}
+                          </Badge>
+                        ) : event.status === "PENDING_UNISTAFF" ? (
+                          <Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-500 font-semibold">
+                            <span className="inline-block w-2 h-2 rounded-full bg-yellow-500 mr-1.5"></span>
+                            PENDING APPROVAL
+                          </Badge>
+                        ) : event.status === "REJECTED" ? (
+                          <Badge variant="outline" className="bg-red-100 text-red-700 border-red-500 font-semibold">
+                            <span className="inline-block w-2 h-2 rounded-full bg-red-500 mr-1.5"></span>
+                            REJECTED
+                          </Badge>
                         ) : (
-                          <Badge
-                            variant="outline"
-                            className={
-                              event.status === "APPROVED"
-                                ? status === "past" 
-                                  ? "bg-gray-100 text-gray-700 border-gray-400" 
-                                  : status === "upcoming" 
-                                  ? "bg-green-100 text-green-700 border-green-500" 
-                                  : "bg-blue-100 text-blue-700 border-blue-500"
-                                : event.status === "PENDING"
-                                ? "bg-yellow-100 text-yellow-700 border-yellow-500"
-                                : event.status === "REJECTED"
-                                ? "bg-red-100 text-red-700 border-red-500"
-                                : "bg-gray-100 text-gray-700 border-gray-400"
-                            }
-                          >
-                            {event.status === "APPROVED"
-                              ? (status === "past" ? "Past" : status === "upcoming" ? "Soon" : "Future")
-                              : event.status}
+                          <Badge variant="outline" className="bg-gray-100 text-gray-700 border-gray-400">
+                            {event.status}
                           </Badge>
                         )}
                       </div>
@@ -360,14 +420,20 @@ export default function MemberEventsPage() {
                           </div>
                         )}
 
-                        <Button
-                          className="w-full"
-                          variant="default"
-                          disabled={registeringEventId === event.id}
-                          onClick={() => handleRegister(event.id)}
-                        >
-                          {registeringEventId === event.id ? "Registering..." : "Register"}
-                        </Button>
+                          <Button
+                            className="w-full"
+                            variant="default"
+                            disabled={registeringEventId === event.id || event.status === "COMPLETED" || isEventRegistered(event.id)}
+                            onClick={() => handleRegister(event.id)}
+                          >
+                            {registeringEventId === event.id 
+                              ? "Registering..." 
+                              : isEventRegistered(event.id) 
+                                ? "Already Registered" 
+                                : event.status === "COMPLETED" 
+                                  ? "Ended" 
+                                  : "Register"}
+                          </Button>
                       </div>
                     </CardContent>
                   </Card>

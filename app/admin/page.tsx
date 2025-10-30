@@ -81,13 +81,15 @@ export default function PartnerDashboard() {
   // Event statistics
   const eventStats = useMemo(() => {
     const approved = events.filter((e: any) => e.status === "APPROVED").length
-    const pending = events.filter((e: any) => e.status === "PENDING").length
+    const waitingUniStaff = events.filter((e: any) => e.status === "PENDING_UNISTAFF").length
+    const waitingCoClub = events.filter((e: any) => e.status === "PENDING_COCLUB").length
+    const pending = waitingUniStaff + waitingCoClub // Total pending (both types)
     const rejected = events.filter((e: any) => e.status === "REJECTED").length
     const now = events.filter((e: any) => getEventStatus(e.date, e.time) === "Now").length
     const soon = events.filter((e: any) => getEventStatus(e.date, e.time) === "Soon").length
     const finished = events.filter((e: any) => getEventStatus(e.date, e.time) === "Finished").length
     
-    return { approved, pending, rejected, now, soon, finished }
+    return { approved, pending, waitingUniStaff, waitingCoClub, rejected, now, soon, finished }
   }, [events])
 
   // Filtered events based on status and approval
@@ -714,7 +716,8 @@ export default function PartnerDashboard() {
                       <SelectContent>
                         <SelectItem value="all">All Approval</SelectItem>
                         <SelectItem value="APPROVED">Approved</SelectItem>
-                        <SelectItem value="PENDING">Pending</SelectItem>
+                        <SelectItem value="PENDING_UNISTAFF">Pending Uni-Staff</SelectItem>
+                        <SelectItem value="PENDING_COCLUB">Pending Co-Club</SelectItem>
                         <SelectItem value="REJECTED">Rejected</SelectItem>
                       </SelectContent>
                     </Select>
@@ -777,10 +780,13 @@ export default function PartnerDashboard() {
                                 {status}
                               </Badge>
                               {event.status === "APPROVED" && (
-                                <Badge variant="default" className="text-xs">Approved</Badge>
+                                <Badge variant="default" className="text-xs bg-green-600">Approved</Badge>
                               )}
-                              {event.status === "PENDING" && (
-                                <Badge variant="outline" className="text-xs">Pending</Badge>
+                              {event.status === "PENDING_COCLUB" && (
+                                <Badge variant="outline" className="text-xs bg-orange-100 text-orange-700 border-orange-500">Pending Co-Club</Badge>
+                              )}
+                              {event.status === "PENDING_UNISTAFF" && (
+                                <Badge variant="outline" className="text-xs bg-yellow-100 text-yellow-700 border-yellow-500">Pending Uni-Staff</Badge>
                               )}
                               {event.status === "REJECTED" && (
                                 <Badge variant="destructive" className="text-xs">Rejected</Badge>

@@ -60,10 +60,10 @@ export const fetchProfile = async () => {
     // If backend uses { success, message, data }
     if (body && typeof body === "object" && "data" in body && "success" in body && (body as any).success) {
       const profileData = (body as any).data
-      
+
       // Transform the response to match expected format
       return {
-        userId: profileData?.userId,
+        id: profileData?.id,
         email: profileData?.email,
         fullName: profileData?.fullName,
         phone: profileData?.phone,
@@ -73,6 +73,9 @@ export const fetchProfile = async () => {
         majorName: profileData?.majorName,
         bio: profileData?.bio,
         role: profileData?.role,
+        clubs: profileData?.clubs || [],
+        wallets: profileData?.wallets || [],
+        // Legacy support
         wallet: profileData?.wallet,
         memberships: profileData?.memberships || []
       }
@@ -135,7 +138,7 @@ export const editProfile = async (data: {
     const response = await axiosInstance.put(`api/users/profile`, data)
     const body = response.data
     console.log("Edit profile response:", body)
-    
+
     // Return the full response for consistent handling
     return body as any
   } catch (error) {
@@ -148,20 +151,20 @@ export const editProfile = async (data: {
 export const uploadAvatar = async (file: File) => {
   try {
     console.log("Uploading avatar file:", file.name)
-    
+
     const formData = new FormData()
     formData.append('file', file)
-    
+
     // Gọi API upload avatar với multipart/form-data
     const response = await axiosInstance.post(`api/users/profile/avatar`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       }
     })
-    
+
     const body = response.data
     console.log("Upload avatar response:", body)
-    
+
     return body as any
   } catch (error) {
     console.error("Error uploading avatar:", error)
@@ -186,17 +189,17 @@ export const getUserStats = async () => {
     const response = await axiosInstance.get("api/users/stats")
     const body = response.data
     console.log("Fetched user stats response:", body)
-    
+
     // If backend uses { success, message, data }
     if (body && typeof body === "object" && "data" in body && "success" in body && (body as any).success) {
       return (body as any).data
     }
-    
+
     // If the endpoint returns the stats object directly
     if (body && typeof body === "object") {
       return body
     }
-    
+
     return null
   } catch (error) {
     console.error("Error fetching user stats:", error)
@@ -234,7 +237,7 @@ export const forceResetPassword = async (
       }
     )
     console.log("Force reset password response:", res.data)
-    
+
     // Handle both wrapped and direct response formats
     if (res.data && typeof res.data === 'object') {
       // If response is wrapped in standard format { success, message, data }
@@ -248,7 +251,7 @@ export const forceResetPassword = async (
         data: null
       }
     }
-    
+
     // Fallback for unexpected response format
     return {
       success: true,
@@ -261,12 +264,12 @@ export const forceResetPassword = async (
       data: error.response?.data,
       message: error.message
     })
-    
+
     // Re-throw with formatted error
     if (error.response?.data) {
       throw error
     }
-    
+
     throw new Error("Failed to force reset password")
   }
 }

@@ -14,7 +14,7 @@ import { usePrefetchClubs, usePrefetchEvents, usePrefetchUsers } from "@/hooks/u
 import {
   LayoutDashboard, Users, Calendar, Gift, Wallet, History, BarChart3,
   Building, Home, CheckCircle, FileText, FileUser, HandCoins, CalendarDays,
-  CreditCard, LibraryBig
+  CreditCard, LibraryBig, MessageCircle
 } from "lucide-react"
 
 interface SidebarProps {
@@ -34,6 +34,8 @@ const navigationConfig = {
     { href: "/student/gift", label: "Gift", icon: Gift },
     // { href: "/student/wallet", label: "Wallet", icon: Wallet },
     { href: "/student/history", label: "History", icon: History },
+    { href: "/student/myattendance", label: "My Attendance", icon: CalendarDays },
+    { href: "/student/chat", label: "Chat", icon: MessageCircle },
   ],
   club_leader: [
     { href: "/club-leader", label: "Dashboard", icon: LayoutDashboard },
@@ -44,6 +46,7 @@ const navigationConfig = {
     { href: "/club-leader/points", label: "Points Club", icon: HandCoins },
     { href: "/club-leader/attendances", label: "Attendances", icon: CalendarDays },
     { href: "/club-leader/card", label: "Card", icon: CreditCard },
+    { href: "/club-leader/chat", label: "Chat", icon: MessageCircle },
 
   ],
   uni_staff: [
@@ -52,6 +55,7 @@ const navigationConfig = {
     { href: "/uni-staff/policies", label: "Policies", icon: FileText },
     { href: "/uni-staff/majors", label: "Majors", icon: LibraryBig },
     { href: "/uni-staff/clubs-req", label: "Club Requests", icon: FileText },
+    { href: "/uni-staff/points-req", label: "Points Requests", icon: HandCoins },
     { href: "/uni-staff/events-req", label: "Event Requests", icon: Calendar },
     { href: "/uni-staff/points", label: "Points Staff", icon: HandCoins },
     // { href: "/uni-staff/reports", label: "Reports", icon: BarChart3 },
@@ -153,7 +157,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
   if (auth.role === "student" && auth.staff) {
     // Add staff-specific navigation items for students
     const staffItems = [
-      { href: "/staff/validate", label: "Validate", icon: CheckCircle, isStaff: true },
+      // { href: "/staff/validate", label: "Validate", icon: CheckCircle, isStaff: true },
       { href: "/staff/history", label: "Staff History", icon: History, isStaff: true },
       { href: "/staff/gift", label: "Staff Gift", icon: Gift, isStaff: true },
     ]

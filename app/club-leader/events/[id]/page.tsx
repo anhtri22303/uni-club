@@ -9,15 +9,15 @@ import { Separator } from "@/components/ui/separator"
 import { ArrowLeft, Calendar, Clock, MapPin, Users, CheckCircle, AlertCircle, XCircle, Eye, QrCode, Maximize2, Minimize2, Copy, Download, RotateCcw, Monitor, Smartphone } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 // import { getEventById } from "@/service/eventApi"
-import { generateCode } from "@/service/checkinApi"
 import { Modal } from "@/components/modal"
 import QRCode from "qrcode"
 import { AppShell } from "@/components/app-shell"
 import { QRModal } from "@/components/qr-modal"
 import { ProtectedRoute } from "@/contexts/protected-route"
 import { LoadingSkeleton } from "@/components/loading-skeleton"
+import { PhaseSelectionModal } from "@/components/phase-selection-modal"
 
-import { getEventById, submitForUniversityApproval, timeObjectToString, acceptCoHostInvitation, rejectCoHostInvitation, getEventWallet, EventWallet } from "@/service/eventApi" // 👈 Thêm submitForUniversityApproval
+import { getEventById, submitForUniversityApproval, timeObjectToString, coHostRespond, getEventWallet, EventWallet, TimeObject, getEventSummary, EventSummary, completeEvent, eventQR } from "@/service/eventApi" // 👈 Thêm submitForUniversityApproval và eventQR
 import { getClubIdFromToken } from "@/service/clubApi"
 import { Loader2 } from "lucide-react" // 👈 Thêm Loader2
 interface EventDetail {
@@ -26,13 +26,14 @@ interface EventDetail {
   description: string
   type: string
   date: string
-  startTime: string | null
-  endTime: string | null
+  startTime: TimeObject | string | null
+  endTime: TimeObject | string | null
   status: string
   checkInCode: string
   locationName: string
   maxCheckInCount: number
   currentCheckInCount: number
+  budgetPoints: number
   hostClub: {
     id: number
     name: string
@@ -55,14 +56,20 @@ export default function EventDetailPage() {
   const { toast } = useToast()
   const [event, setEvent] = useState<EventDetail | null>(null)
   const [loading, setLoading] = useState(true)
-  const [showCheckInCode, setShowCheckInCode] = useState(false)
   const [wallet, setWallet] = useState<EventWallet | null>(null)
   const [walletLoading, setWalletLoading] = useState(false)
+  const [eventSummary, setEventSummary] = useState<EventSummary | null>(null)
+  const [summaryLoading, setSummaryLoading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false) // 👈 THÊM STATE NÀY
   const [isAcceptingCoHost, setIsAcceptingCoHost] = useState(false) // State for accepting co-host
   const [isRejectingCoHost, setIsRejectingCoHost] = useState(false) // State for rejecting co-host
+  const [isEndingEvent, setIsEndingEvent] = useState(false) // State for ending event
   const [userClubId, setUserClubId] = useState<number | null>(null)
   const [myCoHostStatus, setMyCoHostStatus] = useState<string | null>(null)
+
+  // Phase selection modal state
+  const [showPhaseModal, setShowPhaseModal] = useState(false)
+  const [isGeneratingQR, setIsGeneratingQR] = useState(false)
 
   // QR Code states
   const [showQrModal, setShowQrModal] = useState(false)
@@ -113,6 +120,20 @@ export default function EventDetailPage() {
         } finally {
           setWalletLoading(false)
         }
+
+        // Fetch event summary if APPROVED
+        if (data.status === "APPROVED") {
+          try {
+            setSummaryLoading(true)
+            const summaryData = await getEventSummary(params.id as string)
+            setEventSummary(summaryData)
+          } catch (summaryError) {
+            console.error("Failed to load event summary:", summaryError)
+            // Don't show error toast for summary, it's not critical
+          } finally {
+            setSummaryLoading(false)
+          }
+        }
       } catch (error) {
         console.error("Failed to load event detail:", error)
         toast({
@@ -139,43 +160,9 @@ export default function EventDetailPage() {
 
     setCountdown(Math.floor(ROTATION_INTERVAL_MS / 1000))
 
-    const rotId = setInterval(async () => {
-      // Generate new QR code when rotating
-      if (event?.id) {
-        try {
-          const { token } = await generateCode(event.id)
-          console.log('Rotating QR - Generated new token:', token)
-
-          // Create URLs with token (path parameter format)
-          const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${token}`
-          const localUrl = `http://localhost:3000/student/checkin/${token}`
-
-          const styleVariants = [
-            { color: { dark: '#000000', light: '#FFFFFF' }, margin: 1 },
-            { color: { dark: '#111111', light: '#FFFFFF' }, margin: 2 },
-            { color: { dark: '#222222', light: '#FFFFFF' }, margin: 0 },
-          ]
-
-          // Generate QR variants for local
-          const localQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
-            const opts = styleVariants[i % styleVariants.length]
-            return QRCode.toDataURL(localUrl, opts as any)
-          })
-          const localQrVariants = await Promise.all(localQrVariantsPromises)
-
-          // Generate QR variants for production
-          const prodQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
-            const opts = styleVariants[i % styleVariants.length]
-            return QRCode.toDataURL(prodUrl, opts as any)
-          })
-          const prodQrVariants = await Promise.all(prodQrVariantsPromises)
-
-          setQrRotations({ local: localQrVariants, prod: prodQrVariants })
-          setQrLinks({ local: localUrl, prod: prodUrl })
-        } catch (err) {
-          console.error('Failed to rotate QR:', err)
-        }
-      }
+    const rotId = setInterval(() => {
+      // Just rotate the display, don't generate new tokens
+      // Tokens are generated when the phase selection modal is confirmed
       setVisibleIndex((i) => i + 1)
       setCountdown(Math.floor(ROTATION_INTERVAL_MS / 1000))
     }, ROTATION_INTERVAL_MS)
@@ -228,6 +215,13 @@ export default function EventDetailPage() {
 
   const getStatusBadge = (status: string) => {
     switch (status.toUpperCase()) {
+      case "COMPLETED":
+        return (
+          <Badge variant="secondary" className="bg-blue-900 text-white border-blue-900">
+            <CheckCircle className="h-3 w-3 mr-1" />
+            Completed
+          </Badge>
+        )
       case "APPROVED":
         return (
           <Badge variant="default" className="bg-green-100 text-green-800 border-green-300">
@@ -235,11 +229,18 @@ export default function EventDetailPage() {
             Approved
           </Badge>
         )
-      case "PENDING":
+      case "PENDING_COCLUB":
+        return (
+          <Badge variant="outline" className="bg-orange-100 text-orange-800 border-orange-300">
+            <AlertCircle className="h-3 w-3 mr-1" />
+            Pending Co-Club Approval
+          </Badge>
+        )
+      case "PENDING_UNISTAFF":
         return (
           <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300">
             <AlertCircle className="h-3 w-3 mr-1" />
-            Pending
+            Pending Uni-Staff Approval
           </Badge>
         )
       case "REJECTED":
@@ -278,6 +279,9 @@ export default function EventDetailPage() {
   // Check if the event is currently active (within date and time range)
   const isEventActive = () => {
     if (!event) return false
+
+    // COMPLETED status means event has ended
+    if (event.status === "COMPLETED") return false
 
     // Must be APPROVED
     if (event.status !== "APPROVED") return false
@@ -344,7 +348,7 @@ export default function EventDetailPage() {
 
     try {
       setIsAcceptingCoHost(true)
-      const response = await acceptCoHostInvitation(event.id)
+      const response = await coHostRespond(event.id, true) // accept=true
       
       // Show success message
       toast({
@@ -372,7 +376,7 @@ export default function EventDetailPage() {
 
     try {
       setIsRejectingCoHost(true)
-      const response = await rejectCoHostInvitation(event.id)
+      const response = await coHostRespond(event.id, false) // accept=false
       
       // Show rejection message
       toast({
@@ -396,14 +400,48 @@ export default function EventDetailPage() {
     }
   }
 
-  const handleGenerateQR = async () => {
+  const handleEndEvent = async () => {
     if (!event) return
 
     try {
-      // Generate fresh token using the new API
-      console.log('Generating check-in token for event:', event.id)
-      const { token } = await generateCode(event.id)
-      console.log('Generated token:', token)
+      setIsEndingEvent(true)
+      const response = await completeEvent(event.id)
+      
+      // Show success message
+      toast({
+        title: 'Success',
+        description: response.message || 'Event has been completed successfully',
+      })
+      
+      // Reload the page to get updated event status
+      window.location.reload()
+      
+    } catch (err: any) {
+      console.error('Failed to complete event', err)
+      toast({
+        title: 'Error',
+        description: err?.response?.data?.message || 'Failed to complete event',
+        variant: 'destructive'
+      })
+      setIsEndingEvent(false)
+    }
+  }
+
+  const handleGenerateQR = () => {
+    // Open phase selection modal
+    setShowPhaseModal(true)
+  }
+
+  const handlePhaseConfirm = async (phase: string) => {
+    if (!event) return
+
+    try {
+      setIsGeneratingQR(true)
+      
+      // Call new eventQR API with selected phase
+      console.log('Generating check-in token for event:', event.id, 'with phase:', phase)
+      const { token, expiresIn } = await eventQR(event.id, phase)
+      console.log('Generated token:', token, 'expires in:', expiresIn)
 
       // Create URLs with token (path parameter format)
       const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${token}`
@@ -436,20 +474,25 @@ export default function EventDetailPage() {
       setQrLinks({ local: localUrl, prod: prodUrl })
       setVisibleIndex(0)
       setDisplayedIndex(0)
+      
+      // Close phase modal and open QR modal
+      setShowPhaseModal(false)
       setShowQrModal(true)
 
       toast({
         title: 'QR Code Generated',
-        description: 'Check-in QR code has been generated successfully',
+        description: `Check-in QR code generated for ${phase} phase`,
         duration: 3000
       })
     } catch (err: any) {
       console.error('Failed to generate QR', err)
       toast({
         title: 'QR Error',
-        description: err?.message || 'Could not generate QR code',
+        description: err?.response?.data?.message || err?.message || 'Could not generate QR code',
         variant: 'destructive'
       })
+    } finally {
+      setIsGeneratingQR(false)
     }
   }
 
@@ -490,15 +533,12 @@ export default function EventDetailPage() {
   const handleCopyLink = async (environment: 'local' | 'prod' | 'mobile') => {
     try {
       let link: string | undefined
-      if (!event?.id) {
-        toast({ title: 'No event', description: 'Event not available', variant: 'destructive' })
-        return
-      }
-
       if (environment === 'mobile') {
-        // Generate fresh token for mobile deep link
-        const { token } = await generateCode(event.id)
-        link = `exp://192.168.1.50:8081/--/student/checkin/${token}`
+        // For mobile, use existing link structure if available
+        const token = qrLinks.local?.split('/').pop() || qrLinks.prod?.split('/').pop()
+        if (token) {
+          link = `exp://192.168.1.50:8081/--/student/checkin/${token}`
+        }
       } else {
         link = environment === 'local' ? qrLinks.local : qrLinks.prod
       }
@@ -632,6 +672,27 @@ export default function EventDetailPage() {
                   </Button>
                 </>
               )}
+              {/* Show End Event button only when status is APPROVED */}
+              {event.status === "APPROVED" && (
+                <Button
+                  onClick={handleEndEvent}
+                  disabled={isEndingEvent}
+                  variant="destructive"
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  {isEndingEvent ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Ending Event...
+                    </>
+                  ) : (
+                    <>
+                      <XCircle className="h-4 w-4 mr-2" />
+                      End Event
+                    </>
+                  )}
+                </Button>
+              )}
               <div className="flex items-center gap-2">
                 <Eye className="h-5 w-5 text-muted-foreground" />
                 <span className="text-sm text-muted-foreground">Event Details</span>
@@ -719,6 +780,40 @@ export default function EventDetailPage() {
 
               <Separator />
 
+              {/* Co-hosted Clubs */}
+              {event.coHostedClubs && event.coHostedClubs.length > 0 && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Co-hosting Clubs</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {event.coHostedClubs.map((club) => (
+                      <div key={club.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <Users className="h-5 w-5 text-primary" />
+                          <div>
+                            <div className="font-medium">{club.name}</div>
+                            <div className="text-sm text-muted-foreground">Club ID: {club.id}</div>
+                          </div>
+                        </div>
+                        <Badge 
+                          variant="outline"
+                          className={
+                            club.coHostStatus === "APPROVED"
+                              ? "bg-green-100 text-green-700 border-green-500"
+                              : club.coHostStatus === "REJECTED"
+                              ? "bg-red-100 text-red-700 border-red-500"
+                              : club.coHostStatus === "PENDING"
+                              ? "bg-yellow-100 text-yellow-700 border-yellow-500"
+                              : "bg-gray-100 text-gray-700 border-gray-300"
+                          }
+                        >
+                          {club.coHostStatus}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Check-in Information */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Check-in Information</h3>
@@ -731,84 +826,110 @@ export default function EventDetailPage() {
                   </div>
                   <div className="p-4 bg-muted/50 rounded-lg">
                     <div className="text-sm text-muted-foreground">Current Check-ins</div>
-                    <div className="font-semibold text-lg">{event.currentCheckInCount} / {event.maxCheckInCount}</div>
+                    <div className="font-semibold text-lg">
+                      {event.status === "APPROVED" ? (
+                        summaryLoading ? (
+                          <span className="text-muted-foreground">Loading...</span>
+                        ) : eventSummary ? (
+                          `${eventSummary.checkedInCount} / ${event.maxCheckInCount}`
+                        ) : (
+                          `${event.currentCheckInCount} / ${event.maxCheckInCount}`
+                        )
+                      ) : (
+                        `${event.currentCheckInCount} / ${event.maxCheckInCount}`
+                      )}
+                    </div>
                   </div>
                   <div className="p-4 bg-muted/50 rounded-lg">
                     <div className="text-sm text-muted-foreground">Available Spots</div>
-                    <div className="font-semibold text-lg">{event.maxCheckInCount - event.currentCheckInCount} remaining</div>
+                    <div className="font-semibold text-lg">
+                      {event.status === "APPROVED" && eventSummary
+                        ? `${event.maxCheckInCount - eventSummary.checkedInCount} remaining`
+                        : `${event.maxCheckInCount - event.currentCheckInCount} remaining`}
+                    </div>
                   </div>
                   <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-200">
-                    <div className="text-sm text-green-700 font-medium">Wallet Balance</div>
+                    <div className="text-sm text-green-700 font-medium">
+                      {event.status === "APPROVED" ? "Wallet Balance" : "Budget Points"}
+                    </div>
                     <div className="font-semibold text-lg text-green-800">
-                      {walletLoading ? (
-                        <span className="text-muted-foreground">Loading...</span>
-                      ) : wallet ? (
-                        `${wallet.walletBalance} points`
+                      {event.status === "APPROVED" ? (
+                        walletLoading ? (
+                          <span className="text-muted-foreground">Loading...</span>
+                        ) : wallet ? (
+                          `${wallet.walletBalance} points`
+                        ) : (
+                          <span className="text-muted-foreground">N/A</span>
+                        )
                       ) : (
-                        <span className="text-muted-foreground">N/A</span>
+                        `${event.budgetPoints || 0} points`
                       )}
                     </div>
                   </div>
                 </div>
 
-                <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <div className="font-medium text-blue-900">Check-in Code</div>
-                      <div className="text-sm text-blue-700">Use this code for event attendance</div>
+                {/* Event Summary - Only shown when APPROVED */}
+                {event.status === "APPROVED" && eventSummary && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div className="p-4 bg-gradient-to-br from-blue-50 to-sky-50 rounded-lg border border-blue-200">
+                      <div className="text-sm text-blue-700 font-medium">Total Registrations</div>
+                      <div className="font-semibold text-lg text-blue-800">
+                        {summaryLoading ? (
+                          <span className="text-muted-foreground">Loading...</span>
+                        ) : (
+                          `${eventSummary.registrationsCount} registered`
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="font-mono text-xl font-bold text-blue-800 bg-white px-4 py-2 rounded-md border min-w-[120px] text-center">
-                        {showCheckInCode ? event.checkInCode : "••••••••"}
+                    <div className="p-4 bg-gradient-to-br from-amber-50 to-orange-50 rounded-lg border border-amber-200">
+                      <div className="text-sm text-amber-700 font-medium">Refunded</div>
+                      <div className="font-semibold text-lg text-amber-800">
+                        {summaryLoading ? (
+                          <span className="text-muted-foreground">Loading...</span>
+                        ) : (
+                          `${eventSummary.refundedCount} refunds`
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* QR Code Generation Button - Only show if APPROVED and event is still active */}
+                {isEventActive() && (
+                  <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-medium text-blue-900">QR Code Access</div>
+                        <div className="text-sm text-blue-700">Generate scannable QR codes for easy check-in</div>
                       </div>
                       <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowCheckInCode((v) => !v)}
-                        className="ml-2"
+                        onClick={handleGenerateQR}
+                        className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200"
                       >
-                        {showCheckInCode ? "Ẩn" : "Hiện"}
+                        <QrCode className="h-4 w-4 mr-2" />
+                        Generate QR Code
                       </Button>
                     </div>
                   </div>
+                )}
 
-                  {/* QR Code Generation Button - Only show if APPROVED and event is still active */}
-                  {isEventActive() && (
-                    <div className="border-t border-blue-200 pt-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="font-medium text-blue-900">QR Code Access</div>
-                          <div className="text-sm text-blue-700">Generate scannable QR codes for easy check-in</div>
-                        </div>
-                        <Button
-                          onClick={handleGenerateQR}
-                          className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200"
-                        >
-                          <QrCode className="h-4 w-4 mr-2" />
-                          Generate QR Code
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Status message for non-active events */}
-                  {!isEventActive() && (
-                    <div className="border-t border-blue-200 pt-4">
-                      <div className="flex items-center gap-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                        <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0" />
-                        <div>
-                          <div className="font-medium text-yellow-800">QR Code Unavailable</div>
-                          <div className="text-sm text-yellow-700">
-                            {event.status !== "APPROVED"
-                              ? `QR codes are only available for approved events. Current status: ${event.status}`
-                              : "This event has ended or is missing date/time information. QR codes are no longer available."
-                            }
-                          </div>
+                {/* Status message for non-active events */}
+                {!isEventActive() && (
+                  <div className="p-4 bg-gradient-to-r from-yellow-50 to-amber-50 rounded-lg border border-yellow-200">
+                    <div className="flex items-center gap-3">
+                      <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0" />
+                      <div>
+                        <div className="font-medium text-yellow-800">QR Code Unavailable</div>
+                        <div className="text-sm text-yellow-700">
+                          {event.status !== "APPROVED"
+                            ? `QR codes are only available for approved events. Current status: ${event.status}`
+                            : "This event has ended or is missing date/time information. QR codes are no longer available."
+                          }
                         </div>
                       </div>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
 
               {/* ✅ THÊM KHU VỰC UNIVERSITY APPROVAL MỚI */}
@@ -869,35 +990,16 @@ export default function EventDetailPage() {
                 </>
               )}
               {/* ✅ KẾT THÚC KHU VỰC MỚI */}
-
-              {/* Co-hosted Clubs */}
-              {event.coHostedClubs && event.coHostedClubs.length > 0 && (
-                <>
-                  <Separator />
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Co-hosting Clubs</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {event.coHostedClubs.map((club) => (
-                        <div key={club.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                          <div className="flex items-center gap-3">
-                            <Users className="h-5 w-5 text-primary" />
-                            <div>
-                              <div className="font-medium">{club.name}</div>
-                              <div className="text-sm text-muted-foreground">Club ID: {club.id}</div>
-                            </div>
-                          </div>
-                          <Badge variant={club.coHostStatus === "APPROVED" ? "default" : "secondary"}>
-                            {club.coHostStatus}
-                          </Badge>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
             </CardContent>
           </Card>
         </div>
+
+        <PhaseSelectionModal
+          open={showPhaseModal}
+          onOpenChange={setShowPhaseModal}
+          onConfirm={handlePhaseConfirm}
+          isLoading={isGeneratingQR}
+        />
 
         <QRModal
           open={showQrModal}

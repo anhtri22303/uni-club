@@ -21,9 +21,9 @@ import { QrCode } from "lucide-react"
 import QRCode from "qrcode"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
-import { createEvent, timeObjectToString } from "@/service/eventApi"
-import { generateCode } from "@/service/checkinApi"
+import { createEvent, timeObjectToString, timeStringToObject, eventQR } from "@/service/eventApi"
 import { safeLocalStorage } from "@/lib/browser-utils"
+import { PhaseSelectionModal } from "@/components/phase-selection-modal"
 import { fetchLocation } from "@/service/locationApi"
 import { fetchClub, getClubIdFromToken } from "@/service/clubApi"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -100,8 +100,11 @@ export default function ClubLeaderEventsPage() {
   const { data: rawEvents = [], isLoading: eventsLoading } = useEventsByClubId(userClubId || 0, !!userClubId && viewMode === "hosted")
   const { data: rawCoHostEvents = [], isLoading: coHostEventsLoading } = useEventCoHostByClubId(userClubId || 0, !!userClubId && viewMode === "cohost")
 
-  // Helper function to check if event has expired (past endTime)
+  // Helper function to check if event has expired (past endTime) or is COMPLETED
   const isEventExpired = (event: any) => {
+    // COMPLETED status is always considered expired
+    if (event.status === "COMPLETED") return true
+    
     // Check if date and endTime are present
     if (!event.date || !event.endTime) return false
 
@@ -132,6 +135,9 @@ export default function ClubLeaderEventsPage() {
 
   // Helper function to check if event is active (APPROVED and within date/time range)
   const isEventActive = (event: any) => {
+    // COMPLETED status means event has ended
+    if (event.status === "COMPLETED") return false
+    
     // Must be APPROVED
     if (event.status !== "APPROVED") return false
 
@@ -179,33 +185,47 @@ export default function ClubLeaderEventsPage() {
     const eventsToProcess = viewMode === "hosted" ? rawEvents : rawCoHostEvents
     
     // Normalize events with both new and legacy field support
-    const normalized = eventsToProcess.map((e: any) => {
-      // Convert TimeObject to string if needed
-      const startTimeStr = timeObjectToString(e.startTime)
-      const endTimeStr = timeObjectToString(e.endTime)
-      
-      // For co-host events, find the club's co-host status
-      const myCoHostStatus = viewMode === "cohost" && userClubId
-        ? e.coHostedClubs?.find((club: any) => club.id === userClubId)?.coHostStatus
-        : null
-      
-      return {
-        ...e,
-        title: e.name || e.title,
-        time: startTimeStr || e.time, // Map startTime to time for legacy compatibility
-        startTime: startTimeStr, // Ensure startTime is always a string for display
-        endTime: endTimeStr, // Ensure endTime is always a string for display
-        clubId: e.hostClub?.id || e.clubId, // Map hostClub.id to clubId for backward compatibility
-        clubName: e.hostClub?.name || e.clubName, // Map hostClub.name to clubName for backward compatibility
-        myCoHostStatus, // Add co-host status for this club
-      }
-    })
+    const normalized = eventsToProcess
+      .filter((e: any) => {
+        // For hosted events, ONLY show events where this club is the hostClub
+        if (viewMode === "hosted" && userClubId) {
+          return e.hostClub?.id === userClubId
+        }
+        // For co-host events, ONLY show events where this club is in coHostedClubs
+        if (viewMode === "cohost" && userClubId) {
+          return e.coHostedClubs?.some((club: any) => club.id === userClubId)
+        }
+        return true
+      })
+      .map((e: any) => {
+        // Convert TimeObject to string if needed
+        const startTimeStr = timeObjectToString(e.startTime)
+        const endTimeStr = timeObjectToString(e.endTime)
+        
+        // For co-host events, find the club's co-host status
+        const myCoHostStatus = viewMode === "cohost" && userClubId
+          ? e.coHostedClubs?.find((club: any) => club.id === userClubId)?.coHostStatus
+          : null
+        
+        return {
+          ...e,
+          title: e.name || e.title,
+          time: startTimeStr || e.time, // Map startTime to time for legacy compatibility
+          startTime: startTimeStr, // Ensure startTime is always a string for display
+          endTime: endTimeStr, // Ensure endTime is always a string for display
+          clubId: e.hostClub?.id || e.clubId, // Map hostClub.id to clubId for backward compatibility
+          clubName: e.hostClub?.name || e.clubName, // Map hostClub.name to clubName for backward compatibility
+          myCoHostStatus, // Add co-host status for this club
+        }
+      })
     return sortEventsByDateTime(normalized)
   }, [viewMode, rawEvents, rawCoHostEvents, userClubId])
 
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showCalendarModal, setShowCalendarModal] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<any>(null)
+  const [showPhaseModal, setShowPhaseModal] = useState(false)
+  const [isGeneratingQR, setIsGeneratingQR] = useState(false)
   const [showQrModal, setShowQrModal] = useState(false)
   const [qrLinks, setQrLinks] = useState<{ local?: string; prod?: string; mobile?: string }>({})
   const [qrRotations, setQrRotations] = useState<{ local: string[]; prod: string[]; mobile?: string[] }>({ local: [], prod: [] })
@@ -224,57 +244,9 @@ export default function ClubLeaderEventsPage() {
       return
     }
     setCountdown(Math.floor(ROTATION_INTERVAL_MS / 1000))
-    // helper to generate and set QR variants (used immediately and on interval)
-    const generateAndSet = async () => {
-      if (!selectedEvent?.id) return
-      try {
-        const { token } = await generateCode(selectedEvent.id)
-        console.log('Generated QR token:', token)
 
-        // Create URLs with token (path parameter format)
-        const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${token}`
-        const localUrl = `http://localhost:3000/student/checkin/${token}`
-
-        const styleVariants = [
-          { color: { dark: '#000000', light: '#FFFFFF' }, margin: 1 },
-          { color: { dark: '#111111', light: '#FFFFFF' }, margin: 2 },
-          { color: { dark: '#222222', light: '#FFFFFF' }, margin: 0 },
-        ]
-
-        // Generate QR variants for local environment
-        const localQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
-          const opts = styleVariants[i % styleVariants.length]
-          return QRCode.toDataURL(localUrl, opts as any)
-        })
-        const localQrVariants = await Promise.all(localQrVariantsPromises)
-
-        // Generate QR variants for production environment
-        const prodQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
-          const opts = styleVariants[i % styleVariants.length]
-          return QRCode.toDataURL(prodUrl, opts as any)
-        })
-        const prodQrVariants = await Promise.all(prodQrVariantsPromises)
-
-        // Build mobile deep link and its QR variants
-        const mobileLink = `exp://192.168.1.50:8081/--/student/checkin/${token}`
-        const mobileVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
-          const opts = styleVariants[i % styleVariants.length]
-          return QRCode.toDataURL(mobileLink, opts as any)
-        })
-        const mobileVariants = await Promise.all(mobileVariantsPromises)
-
-        setQrRotations({ local: localQrVariants, prod: prodQrVariants, mobile: mobileVariants })
-        setQrLinks({ local: localUrl, prod: prodUrl, mobile: mobileLink })
-      } catch (err) {
-        console.error('Failed to generate QR:', err)
-      }
-    }
-
-    // generate once immediately so modal shows a QR without waiting for the first interval
-    generateAndSet()
-
+    // Just rotate the display, tokens are generated when phase is selected
     const rotId = setInterval(() => {
-      generateAndSet()
       setVisibleIndex((i) => i + 1)
       setCountdown(Math.floor(ROTATION_INTERVAL_MS / 1000))
     }, ROTATION_INTERVAL_MS)
@@ -308,6 +280,7 @@ export default function ClubLeaderEventsPage() {
     locationId: 0,
     maxCheckInCount: 100,
     commitPointCost: 0,
+    budgetPoints: 0,
   })
 
   // Update formData clubId when userClubId changes
@@ -325,7 +298,54 @@ export default function ClubLeaderEventsPage() {
   const [activeFilters, setActiveFilters] = useState<Record<string, any>>({ expired: "hide" })
   const [showFilters, setShowFilters] = useState(false)
 
+  // Helper to get event status based on date and time
+  const getEventStatus = (eventDate: string, eventTime: string | any) => {
+    if (!eventDate) return "Finished"
+    // Get current time in Vietnam timezone (UTC+7)
+    const now = new Date()
+    const vnTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }))
+
+    // Convert TimeObject to string if needed
+    const eventTimeStr = timeObjectToString(eventTime)
+    
+    // Parse event date and time
+    const [hour = "00", minute = "00"] = (eventTimeStr || "00:00").split(":")
+    const [year, month, day] = eventDate.split('-').map(Number)
+    const event = new Date(year, month - 1, day, Number(hour), Number(minute), 0, 0)
+
+    // Event duration: assume 2 hours for "Now" window (customize as needed)
+    const EVENT_DURATION_MS = 2 * 60 * 60 * 1000
+    const start = event.getTime()
+    const end = start + EVENT_DURATION_MS
+
+    if (vnTime.getTime() < start) {
+      // If event starts within next 7 days, it's "Soon"
+      if (start - vnTime.getTime() < 7 * 24 * 60 * 60 * 1000) return "Soon"
+      return "Future"
+    }
+    if (vnTime.getTime() >= start && vnTime.getTime() <= end) return "Now"
+    return "Finished"
+  }
+
   const filteredEvents = effectiveEvents.filter((item) => {
+    // Calculate status values
+    const isExpired = isEventExpired(item)
+    const isFutureEvent = item.date && new Date(item.date) >= new Date(new Date().toDateString())
+    
+    const approvalFilter = activeFilters["approval"]
+    const expiredFilter = activeFilters["expired"] || "hide"
+    
+    // Apply default restrictions only when filters are at default values
+    const isDefaultState = !approvalFilter && expiredFilter === "hide"
+    
+    if (isDefaultState) {
+      // Default: Only show future PENDING_UNISTAFF and APPROVED events
+      if (item.status === "REJECTED") return false
+      if (item.status === "COMPLETED") return false
+      if (isExpired) return false
+      if (!isFutureEvent) return false
+    }
+    
     // search by title/name
     if (searchTerm) {
       const v = String(item.title || item.name || "").toLowerCase()
@@ -338,12 +358,6 @@ export default function ClubLeaderEventsPage() {
       if (String(item.type || "").toUpperCase() !== String(typeFilter).toUpperCase()) return false
     }
 
-    // club filter
-    const clubFilter = activeFilters["club"]
-    if (clubFilter && clubFilter !== "all") {
-      if (String(item.clubId) !== String(clubFilter)) return false
-    }
-
     // date exact match (can be extended to ranges)
     const dateFilter = activeFilters["date"]
     if (dateFilter) {
@@ -352,25 +366,24 @@ export default function ClubLeaderEventsPage() {
       if (it !== df) return false
     }
 
-    // status filter
-    const statusFilter = activeFilters["status"]
-    if (statusFilter && statusFilter !== "all") {
-      const status = getEventStatus(item.date, item.time)
-      if (String(status).toLowerCase() !== String(statusFilter).toLowerCase()) return false
-    }
-
-    // approval status filter
-    const approvalFilter = activeFilters["approval"]
+    // approval status filter (specific status like APPROVED, PENDING, REJECTED)
     if (approvalFilter && approvalFilter !== "all") {
       if (String(item.status).toUpperCase() !== String(approvalFilter).toUpperCase()) return false
     }
 
-    // expired filter
-    const expiredFilter = activeFilters["expired"]
-    if (expiredFilter === "hide") {
-      if (isEventExpired(item)) return false
-    } else if (expiredFilter === "only") {
-      if (!isEventExpired(item)) return false
+    // expired filter - only apply if not in default state (to avoid duplicate filtering)
+    if (!isDefaultState) {
+      if (expiredFilter === "hide") {
+        if (isExpired) return false
+      } else if (expiredFilter === "only") {
+        if (!isExpired) return false
+      } 
+      // Handle time-based status options (Soon, Finished)
+      else if (expiredFilter === "Soon" || expiredFilter === "Finished") {
+        const status = getEventStatus(item.date, item.time)
+        if (String(status).toLowerCase() !== String(expiredFilter).toLowerCase()) return false
+      }
+      // "show" means show all - no filtering needed
     }
 
     return true
@@ -399,7 +412,7 @@ export default function ClubLeaderEventsPage() {
   }) || Boolean(searchTerm)
 
   const resetForm = () => {
-    setFormData({ clubId: userClubId || 0, name: "", description: "", type: "PUBLIC", date: "", startTime: "09:00:00", endTime: "11:00:00", locationId: 0, maxCheckInCount: 100, commitPointCost: 0 })
+    setFormData({ clubId: userClubId || 0, name: "", description: "", type: "PUBLIC", date: "", startTime: "09:00:00", endTime: "11:00:00", locationId: 0, maxCheckInCount: 100, commitPointCost: 0, budgetPoints: 0 })
     setSelectedLocationId("")
     setSelectedLocationCapacity(null)
     setSelectedCoHostClubIds([])
@@ -426,18 +439,22 @@ export default function ClubLeaderEventsPage() {
     try {
       const hostClubId = Number(formData.clubId)
       
-      // Backend expects string format for LocalTime, not object format
+      // Format time strings to HH:MM format (API expects string, not TimeObject)
+      const startTime = formData.startTime.substring(0, 5) // Convert HH:MM:SS to HH:MM
+      const endTime = formData.endTime.substring(0, 5)     // Convert HH:MM:SS to HH:MM
+      
       const payload: any = {
         hostClubId,
         name: formData.name,
         description: formData.description,
         type: formData.type as "PUBLIC" | "PRIVATE",
         date: formData.date,
-        startTime: formData.startTime, // Send as string "HH:MM:SS"
-        endTime: formData.endTime,     // Send as string "HH:MM:SS"
+        startTime: startTime,
+        endTime: endTime,
         locationId: formData.locationId,
         maxCheckInCount: formData.maxCheckInCount,
         commitPointCost: formData.commitPointCost,
+        budgetPoints: formData.budgetPoints,
       }
 
       // Add coHostClubIds if any are selected
@@ -513,29 +530,83 @@ export default function ClubLeaderEventsPage() {
     }
   }
 
+  const handlePhaseConfirm = async (phase: string) => {
+    if (!selectedEvent?.id) return
+
+    try {
+      setIsGeneratingQR(true)
+
+      // Call new eventQR API with selected phase
+      console.log('Generating check-in token for event:', selectedEvent.id, 'with phase:', phase)
+      const { token, expiresIn } = await eventQR(selectedEvent.id, phase)
+      console.log('Generated token:', token, 'expires in:', expiresIn)
+
+      // Create URLs with token (path parameter format)
+      const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${token}`
+      const localUrl = `http://localhost:3000/student/checkin/${token}`
+      const mobileLink = `exp://192.168.1.50:8081/--/student/checkin/${token}`
+
+      // Generate QR code variants
+      const styleVariants = [
+        { color: { dark: '#000000', light: '#FFFFFF' }, margin: 1 },
+        { color: { dark: '#111111', light: '#FFFFFF' }, margin: 2 },
+        { color: { dark: '#222222', light: '#FFFFFF' }, margin: 0 },
+      ]
+
+      // Generate QR variants for local environment
+      const localQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) =>
+        QRCode.toDataURL(localUrl, styleVariants[i % styleVariants.length])
+      )
+      const localQrVariants = await Promise.all(localQrVariantsPromises)
+
+      // Generate QR variants for production environment
+      const prodQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) =>
+        QRCode.toDataURL(prodUrl, styleVariants[i % styleVariants.length])
+      )
+      const prodQrVariants = await Promise.all(prodQrVariantsPromises)
+
+      // Generate QR variants for mobile
+      const mobileVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) =>
+        QRCode.toDataURL(mobileLink, styleVariants[i % styleVariants.length])
+      )
+      const mobileVariants = await Promise.all(mobileVariantsPromises)
+
+      setQrRotations({ local: localQrVariants, prod: prodQrVariants, mobile: mobileVariants })
+      setQrLinks({ local: localUrl, prod: prodUrl, mobile: mobileLink })
+      setVisibleIndex(0)
+      setDisplayedIndex(0)
+
+      // Close phase modal and open QR modal
+      setShowPhaseModal(false)
+      setShowQrModal(true)
+
+      toast({
+        title: 'QR Code Generated',
+        description: `Check-in QR code generated for ${phase} phase`,
+        duration: 3000
+      })
+    } catch (err: any) {
+      console.error('Failed to generate QR', err)
+      toast({
+        title: 'QR Error',
+        description: err?.response?.data?.message || err?.message || 'Could not generate QR code',
+        variant: 'destructive'
+      })
+    } finally {
+      setIsGeneratingQR(false)
+    }
+  }
+
   const handleCopyLink = async (environment: 'local' | 'prod' | 'mobile') => {
     try {
-      // Generate fresh token for all environments
-      if (!selectedEvent?.id) {
-        toast({ title: 'No event', description: 'Event not available', variant: 'destructive' })
-        return
-      }
-
       let link: string | undefined
-      try {
-        const { token } = await generateCode(selectedEvent.id)
-
-        if (environment === 'local') {
-          link = `http://localhost:3000/student/checkin/${token}`
-        } else if (environment === 'prod') {
-          link = `https://uniclub-fpt.vercel.app/student/checkin/${token}`
-        } else {
-          // mobile deep link
+      if (environment === 'mobile') {
+        const token = qrLinks.local?.split('/').pop() || qrLinks.prod?.split('/').pop()
+        if (token) {
           link = `exp://192.168.1.50:8081/--/student/checkin/${token}`
         }
-      } catch (err) {
-        toast({ title: 'Error', description: 'Could not generate link', variant: 'destructive' })
-        return
+      } else {
+        link = environment === 'local' ? qrLinks.local : qrLinks.prod
       }
 
       if (!link) return
@@ -548,35 +619,6 @@ export default function ClubLeaderEventsPage() {
     } catch {
       toast({ title: 'Copy failed', description: 'Could not copy link to clipboard' })
     }
-  }
-
-  // Helper to get event status based on date and time
-  const getEventStatus = (eventDate: string, eventTime: string | any) => {
-    if (!eventDate) return "Finished"
-    // Get current time in Vietnam timezone (UTC+7)
-    const now = new Date()
-    const vnTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }))
-
-    // Convert TimeObject to string if needed
-    const eventTimeStr = timeObjectToString(eventTime)
-    
-    // Parse event date and time
-    const [hour = "00", minute = "00"] = (eventTimeStr || "00:00").split(":")
-    const [year, month, day] = eventDate.split('-').map(Number)
-    const event = new Date(year, month - 1, day, Number(hour), Number(minute), 0, 0)
-
-    // Event duration: assume 2 hours for "Now" window (customize as needed)
-    const EVENT_DURATION_MS = 2 * 60 * 60 * 1000
-    const start = event.getTime()
-    const end = start + EVENT_DURATION_MS
-
-    if (vnTime.getTime() < start) {
-      // If event starts within next 7 days, it's "Soon"
-      if (start - vnTime.getTime() < 7 * 24 * 60 * 60 * 1000) return "Soon"
-      return "Future"
-    }
-    if (vnTime.getTime() >= start && vnTime.getTime() <= end) return "Now"
-    return "Finished"
   }
 
   return (
@@ -666,7 +708,7 @@ export default function ClubLeaderEventsPage() {
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-muted-foreground">Type</label>
                     <Select value={activeFilters["type"] || "all"} onValueChange={(v) => handleFilterChange("type", v)}>
@@ -687,37 +729,7 @@ export default function ClubLeaderEventsPage() {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">Club</label>
-                    <Select value={activeFilters["club"] || "all"} onValueChange={(v) => handleFilterChange("club", v)}>
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All</SelectItem>
-                        {allClubs.map((c: any) => (
-                          <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-1">
                     <label className="text-xs font-medium text-muted-foreground">Status</label>
-                    <Select value={activeFilters["status"] || "all"} onValueChange={(v) => handleFilterChange("status", v)}>
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All</SelectItem>
-                        <SelectItem value="Soon">Soon</SelectItem>
-                        <SelectItem value="Now">Now</SelectItem>
-                        <SelectItem value="Finished">Finished</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">Approval</label>
                     <Select value={activeFilters["approval"] || "all"} onValueChange={(v) => handleFilterChange("approval", v)}>
                       <SelectTrigger className="h-8 text-xs">
                         <SelectValue />
@@ -725,7 +737,8 @@ export default function ClubLeaderEventsPage() {
                       <SelectContent>
                         <SelectItem value="all">All</SelectItem>
                         <SelectItem value="APPROVED">Approved</SelectItem>
-                        <SelectItem value="PENDING">Pending</SelectItem>
+                        <SelectItem value="PENDING_COCLUB">Pending Co-Club</SelectItem>
+                        <SelectItem value="PENDING_UNISTAFF">Pending Uni-Staff</SelectItem>
                         <SelectItem value="REJECTED">Rejected</SelectItem>
                       </SelectContent>
                     </Select>
@@ -741,6 +754,8 @@ export default function ClubLeaderEventsPage() {
                         <SelectItem value="hide">Hide Expired</SelectItem>
                         <SelectItem value="show">Show All</SelectItem>
                         <SelectItem value="only">Only Expired</SelectItem>
+                        <SelectItem value="Soon">Soon</SelectItem>
+                        <SelectItem value="Finished">Finished</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -765,41 +780,47 @@ export default function ClubLeaderEventsPage() {
             <>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {paginatedEvents.map((event: any) => {
-                  const expired = isEventExpired(event)
+                  // COMPLETED status means event has ended, regardless of date/time
+                  const isCompleted = event.status === "COMPLETED"
+                  const expired = isCompleted || isEventExpired(event)
                   const status = expired ? "Finished" : getEventStatus(event.date, event.time)
                   
                   // Border color logic
                   let borderColor = ""
                   if (viewMode === "cohost") {
                     // For co-host events, use coHostStatus
-                    if (expired) {
-                      borderColor = "border-gray-400 dark:border-gray-600"
+                    if (isCompleted) {
+                      borderColor = "border-l-4 border-l-blue-900"
+                    } else if (expired) {
+                      borderColor = "border-l-4 border-l-gray-400"
                     } else if (event.myCoHostStatus === "APPROVED") {
-                      borderColor = "border-green-500"
+                      borderColor = "border-l-4 border-l-green-500"
                     } else if (event.myCoHostStatus === "REJECTED") {
-                      borderColor = "border-red-500"
-                    } else if (event.myCoHostStatus === "PENDING") {
-                      borderColor = "border-yellow-500"
-                    } else {
-                      borderColor = "border-transparent"
+                      borderColor = "border-l-4 border-l-red-500"
+                    } else if (event.myCoHostStatus === "PENDING" || event.myCoHostStatus === "PENDING_COCLUB") {
+                      borderColor = "border-l-4 border-l-yellow-500"
                     }
                   } else {
                     // For hosted events, use event status
-                    if (expired) {
-                      borderColor = "border-gray-400 dark:border-gray-600"
+                    if (isCompleted) {
+                      borderColor = "border-l-4 border-l-blue-900"
+                    } else if (expired) {
+                      borderColor = "border-l-4 border-l-gray-400"
                     } else if (event.status === "APPROVED") {
-                      borderColor = "border-green-500"
+                      borderColor = "border-l-4 border-l-green-500"
+                    } else if (event.status === "PENDING_COCLUB") {
+                      borderColor = "border-l-4 border-l-orange-500"
+                    } else if (event.status === "PENDING_UNISTAFF") {
+                      borderColor = "border-l-4 border-l-yellow-500"
                     } else if (event.status === "REJECTED") {
-                      borderColor = "border-red-500"
-                    } else {
-                      borderColor = "border-transparent"
+                      borderColor = "border-l-4 border-l-red-500"
                     }
                   }
 
                   return (
                     <Card
                       key={event.id}
-                      className={`hover:shadow-md transition-shadow border-2 ${borderColor} ${expired ? 'opacity-60' : ''} h-full flex flex-col`}
+                      className={`hover:shadow-md transition-shadow ${borderColor} ${expired || isCompleted ? 'opacity-60' : ''} h-full flex flex-col`}
                     >
                       <CardHeader>
                         <div className="flex items-start justify-between">
@@ -833,40 +854,75 @@ export default function ClubLeaderEventsPage() {
                             {status}
                           </Badge>
                         </div>
-                        {/* Approval status badge - show gray for expired events */}
+                        {/* Approval status badge - show COMPLETED in dark blue, gray for expired events */}
                         <div className="mt-2 flex gap-2 flex-wrap">
-                          {expired ? (
-                            <Badge variant="secondary" className="bg-gray-400 text-white">Expired</Badge>
+                          {isCompleted ? (
+                            <Badge variant="secondary" className="bg-blue-900 text-white border-blue-900 font-semibold">
+                              <span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
+                              Completed
+                            </Badge>
+                          ) : expired ? (
+                            <Badge variant="secondary" className="bg-gray-400 text-white font-semibold">
+                              <span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
+                              Expired
+                            </Badge>
                           ) : viewMode === "cohost" ? (
                             <>
                               {/* Show co-host status for co-host events */}
                               {event.myCoHostStatus === "APPROVED" && (
-                                <Badge variant="default" className="bg-green-600">Co-Host Approved</Badge>
+                                <Badge variant="default" className="bg-green-600 font-semibold">
+                                  <span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
+                                  Co-Host Approved
+                                </Badge>
                               )}
                               {event.myCoHostStatus === "PENDING" && (
-                                <Badge variant="outline" className="border-yellow-500 text-yellow-600">Co-Host Pending</Badge>
+                                <Badge variant="outline" className="border-yellow-500 text-yellow-700 bg-yellow-100 font-semibold">
+                                  <span className="inline-block w-2 h-2 rounded-full bg-yellow-500 mr-1.5"></span>
+                                  Co-Host Pending
+                                </Badge>
                               )}
                               {event.myCoHostStatus === "REJECTED" && (
-                                <Badge variant="destructive">Co-Host Rejected</Badge>
+                                <Badge variant="destructive" className="font-semibold">
+                                  <span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
+                                  Co-Host Rejected
+                                </Badge>
                               )}
                               {/* Also show overall event status */}
                               {event.status === "APPROVED" && (
-                                <Badge variant="secondary">Event Approved</Badge>
+                                <Badge variant="secondary" className="bg-green-100 text-green-700 border-green-500">Event Approved</Badge>
                               )}
-                              {event.status === "PENDING" && (
-                                <Badge variant="outline" className="border-yellow-500 text-yellow-600 bg-yellow-50">Event Pending</Badge>
+                              {event.status === "PENDING_COCLUB" && (
+                                <Badge variant="outline" className="border-orange-500 text-orange-700 bg-orange-100">Event Pending Co-Club</Badge>
+                              )}
+                              {event.status === "PENDING_UNISTAFF" && (
+                                <Badge variant="outline" className="border-yellow-500 text-yellow-700 bg-yellow-100">Event Pending Uni-Staff</Badge>
                               )}
                             </>
                           ) : (
                             <>
                               {event.status === "APPROVED" && (
-                                <Badge variant="default">Approved</Badge>
+                                <Badge variant="default" className="bg-green-600 font-semibold">
+                                  <span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
+                                  Approved
+                                </Badge>
                               )}
-                              {event.status === "PENDING" && (
-                                <Badge variant="outline">Pending</Badge>
+                              {event.status === "PENDING_COCLUB" && (
+                                <Badge variant="outline" className="bg-orange-100 text-orange-700 border-orange-500 font-semibold">
+                                  <span className="inline-block w-2 h-2 rounded-full bg-orange-500 mr-1.5"></span>
+                                  Pending Co-Club Approval
+                                </Badge>
+                              )}
+                              {event.status === "PENDING_UNISTAFF" && (
+                                <Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-500 font-semibold">
+                                  <span className="inline-block w-2 h-2 rounded-full bg-yellow-500 mr-1.5"></span>
+                                  Pending Uni-Staff Approval
+                                </Badge>
                               )}
                               {event.status === "REJECTED" && (
-                                <Badge variant="destructive">Rejected</Badge>
+                                <Badge variant="destructive" className="font-semibold">
+                                  <span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
+                                  Rejected
+                                </Badge>
                               )}
                             </>
                           )}
@@ -912,62 +968,9 @@ export default function ClubLeaderEventsPage() {
                                 variant="default"
                                 size="sm"
                                 className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium"
-                                onClick={async () => {
-                                  setSelectedEvent(event);
-                                  try {
-                                    // Generate fresh token using the new API
-                                    console.log('Generating check-in token for event:', event.id);
-                                    const { token } = await generateCode(event.id);
-                                    console.log('Generated token:', token);
-
-                                    // Create URLs with token (path parameter format)
-                                    const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${token}`;
-                                    const localUrl = `http://localhost:3000/student/checkin/${token}`;
-
-                                    console.log('Production URL:', prodUrl);
-                                    console.log('Development URL:', localUrl);
-
-                                    // Generate QR code variants
-                                    const styleVariants = [
-                                      { color: { dark: '#000000', light: '#FFFFFF' }, margin: 1 },
-                                      { color: { dark: '#111111', light: '#FFFFFF' }, margin: 2 },
-                                      { color: { dark: '#222222', light: '#FFFFFF' }, margin: 0 },
-                                    ];
-
-                                    // Generate QR variants for local environment
-                                    const localQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
-                                      const opts = styleVariants[i % styleVariants.length];
-                                      return QRCode.toDataURL(localUrl, opts as any);
-                                    });
-                                    const localQrVariants = await Promise.all(localQrVariantsPromises);
-
-                                    // Generate QR variants for production environment
-                                    const prodQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
-                                      const opts = styleVariants[i % styleVariants.length];
-                                      return QRCode.toDataURL(prodUrl, opts as any);
-                                    });
-                                    const prodQrVariants = await Promise.all(prodQrVariantsPromises);
-
-                                    // Set different URLs for local and production
-                                    setQrRotations({ local: localQrVariants, prod: prodQrVariants });
-                                    setQrLinks({ local: localUrl, prod: prodUrl });
-                                    setVisibleIndex(0);
-                                    setDisplayedIndex(0);
-                                    setShowQrModal(true);
-
-                                    toast({
-                                      title: 'QR Code Generated',
-                                      description: 'Check-in QR code has been generated successfully',
-                                      duration: 3000
-                                    });
-                                  } catch (err: any) {
-                                    console.error('Failed to generate QR', err);
-                                    toast({
-                                      title: 'QR Error',
-                                      description: err?.message || 'Could not generate QR code',
-                                      variant: 'destructive'
-                                    });
-                                  }
+                                onClick={() => {
+                                  setSelectedEvent(event)
+                                  setShowPhaseModal(true)
                                 }}
                               >
                                 <QrCode className="h-4 w-4 mr-2" />
@@ -1143,6 +1146,21 @@ export default function ClubLeaderEventsPage() {
                 </div>
               </div>
 
+              <div className="grid grid-cols-1 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="budgetPoints" className="text-sm">Budget Points</Label>
+                  <Input
+                    id="budgetPoints"
+                    type="number"
+                    value={formData.budgetPoints}
+                    onChange={(e) => setFormData({ ...formData, budgetPoints: Number.parseInt(e.target.value) || 0 })}
+                    className="h-9"
+                    placeholder="0"
+                    min="0"
+                  />
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="locationName" className="text-sm">Location *</Label>
@@ -1299,6 +1317,14 @@ export default function ClubLeaderEventsPage() {
               handleDownloadQR={handleDownloadQR}
             />
           )}
+
+          {/* Phase Selection Modal */}
+          <PhaseSelectionModal
+            open={showPhaseModal}
+            onOpenChange={setShowPhaseModal}
+            onConfirm={handlePhaseConfirm}
+            isLoading={isGeneratingQR}
+          />
 
           {/* Calendar Modal */}
           <CalendarModal

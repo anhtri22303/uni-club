@@ -8,7 +8,9 @@ import { useToast } from "@/hooks/use-toast"
 import { CheckCircle, Clock } from "lucide-react"
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { checkin } from '@/service/checkinApi'
+import { eventCheckin } from '@/service/eventApi'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
 
 export default function MemberCheckinByCodePage() {
   const { toast } = useToast()
@@ -16,6 +18,7 @@ export default function MemberCheckinByCodePage() {
   const router = useRouter()
   const [isCheckinLoading, setIsCheckinLoading] = useState(false)
   const [isCheckedIn, setIsCheckedIn] = useState(false)
+  const [selectedLevel, setSelectedLevel] = useState<string>("START")
 
   // Get token from URL
   const checkInCode = (params as any)?.code || null
@@ -34,20 +37,30 @@ export default function MemberCheckinByCodePage() {
       return
     }
 
+    if (!selectedLevel) {
+      toast({ 
+        title: "Level Required", 
+        description: "Please select a check-in level",
+        variant: "destructive"
+      })
+      return
+    }
+
     if (isCheckinLoading || isCheckedIn) return
 
     setIsCheckinLoading(true)
     
     try {
-      console.log('Starting check-in with token:', checkInCode)
-      const response = await checkin(checkInCode)
+      console.log('Starting event check-in with token:', checkInCode, 'and level:', selectedLevel)
+      // Call new event check-in API with eventJwtToken and selected level
+      const response = await eventCheckin(checkInCode, selectedLevel)
       
-      console.log('Check-in response:', response)
+      console.log('Event check-in response:', response)
       
-      // Response is a simple string like "Checked-in"
+      // Response structure: { success: true, message: "Check-in success for event co club", data: null }
       toast({ 
         title: "Check-in Successful! 🎉", 
-        description: String(response) || "You've successfully checked in!",
+        description: response?.message || "You've successfully checked in to the event!",
         duration: 5000
       })
       
@@ -58,10 +71,10 @@ export default function MemberCheckinByCodePage() {
         router.push('/student/events')
       }, 2000)
     } catch (error: any) {
-      console.error('Check-in error:', error)
+      console.error('Event check-in error:', error)
       
-      // Ensure error message is a string
-      const errorMessage = error?.message || 'An error occurred during check-in. Please try again.'
+      // Extract error message from response
+      const errorMessage = error?.response?.data?.message || error?.message || 'An error occurred during check-in. Please try again.'
       
       toast({ 
         title: "Check-in Failed", 
@@ -80,10 +93,50 @@ export default function MemberCheckinByCodePage() {
         <div className="flex flex-col items-center justify-center min-h-[70vh] px-4">
           <div className="w-full max-w-md">
             <h1 className="text-4xl font-extrabold text-center mb-4 text-primary">Event Check-in</h1>
-            <p className="text-lg text-center text-muted-foreground mb-8">Tap the button below to check in</p>
+            <p className="text-lg text-center text-muted-foreground mb-8">Select your check-in level and tap the button below</p>
 
             <Card className="shadow-lg border-2 border-primary/20">
-              <CardContent className="pt-8 pb-8">
+              <CardContent className="pt-8 pb-8 space-y-6">
+                {/* Level Selection Dropdown */}
+                <div className="space-y-3">
+                  <Label htmlFor="level-select" className="text-base font-semibold">
+                    Check-in Level
+                  </Label>
+                  <Select 
+                    value={selectedLevel} 
+                    onValueChange={setSelectedLevel}
+                    disabled={isCheckinLoading || isCheckedIn}
+                  >
+                    <SelectTrigger 
+                      id="level-select" 
+                      className="w-full h-14 text-lg font-medium border-2"
+                    >
+                      <SelectValue placeholder="Select check-in level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="START" className="text-lg py-3">
+                        <div className="flex flex-col">
+                          <span className="font-semibold">START</span>
+                          <span className="text-sm text-muted-foreground">Beginning of event</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="MID" className="text-lg py-3">
+                        <div className="flex flex-col">
+                          <span className="font-semibold">MID</span>
+                          <span className="text-sm text-muted-foreground">Middle of event</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="END" className="text-lg py-3">
+                        <div className="flex flex-col">
+                          <span className="font-semibold">END</span>
+                          <span className="text-sm text-muted-foreground">End of event</span>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Check-in Button */}
                 <Button
                   size="lg"
                   className="w-full py-12 text-2xl font-bold flex items-center justify-center gap-3 bg-gradient-to-r from-primary to-blue-600 hover:from-blue-600 hover:to-primary transition-all transform hover:scale-105 shadow-xl"

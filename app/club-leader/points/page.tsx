@@ -17,9 +17,12 @@ import { Users, Award, ChevronLeft, ChevronRight, Send, Filter, X, Wallet, Histo
 import { getClubById, getClubIdFromToken } from "@/service/clubApi"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { getClubWallet, ApiClubWallet, rewardPointsToMember, ApiRewardResponse, getClubToMemberTransactions, ApiClubToMemberTransaction } from "@/service/walletApi"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { getClubWallet, ApiClubWallet, rewardPointsToMembers, getClubToMemberTransactions, ApiClubToMemberTransaction } from "@/service/walletApi"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription, } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Textarea } from "@/components/ui/textarea" // <-- THÊM MỚI
+import { createPointRequest } from "@/service/pointRequestsApi" // <-- THÊM MỚI
+import { PlusCircle } from "lucide-react" // <-- THÊM MỚI (hoặc icon bạn muốn)
 
 interface ClubMember {
   id: string;
@@ -50,7 +53,11 @@ export default function ClubLeaderRewardDistributionPage() {
   const [showHistoryModal, setShowHistoryModal] = useState(false)
   const [transactions, setTransactions] = useState<ApiClubToMemberTransaction[]>([])
   const [transactionsLoading, setTransactionsLoading] = useState(false)
-
+  // === MỚI: State cho modal xin điểm ===
+  const [showRequestModal, setShowRequestModal] = useState(false)
+  const [requestPoints, setRequestPoints] = useState<number | ''>('')
+  const [requestReason, setRequestReason] = useState("")
+  const [isSubmittingRequest, setIsSubmittingRequest] = useState(false)
 
   useEffect(() => {
     const loadData = async () => {
@@ -201,6 +208,52 @@ export default function ClubLeaderRewardDistributionPage() {
     })
   }
 
+  const handleCreatePointRequest = async () => {
+    if (!managedClub?.id) {
+      toast({ title: "Error", description: "Club information is not loaded.", variant: "destructive" })
+      return
+    }
+    if (requestPoints === '' || requestPoints <= 0) {
+      toast({ title: "Invalid points", description: "Please enter a positive number of points.", variant: "destructive" })
+      return
+    }
+    if (!requestReason.trim()) {
+      toast({ title: "Reason required", description: "Please provide a reason for the request.", variant: "destructive" })
+      return
+    }
+
+    setIsSubmittingRequest(true)
+    try {
+      const payload = {
+        clubId: managedClub.id,
+        requestedPoints: requestPoints as number,
+        reason: requestReason,
+      }
+      // Giả sử file pointRequestsApi.ts nằm trong @/service/
+      await createPointRequest(payload)
+
+      toast({
+        title: "Request Submitted",
+        description: "Your request for points has been sent to the university staff for review.",
+        variant: "default",
+      })
+
+      // Reset form và đóng modal
+      setShowRequestModal(false)
+      setRequestPoints('')
+      setRequestReason("")
+
+    } catch (err: any) {
+      toast({
+        title: "Submission Error",
+        description: err?.response?.data?.message || "Failed to submit point request.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSubmittingRequest(false)
+    }
+  }
+
   const handleDistributeRewards = async () => {
     if (rewardAmount === '' || rewardAmount <= 0) {
       toast({
@@ -234,26 +287,20 @@ export default function ClubLeaderRewardDistributionPage() {
     }
 
     try {
-      // Reward points to each selected member individually
-      const rewardPromises = selectedMembersList.map(member =>
-        rewardPointsToMember(
-          member.id, // membershipId
-          rewardAmount as number,
-          "Event giving" // reason
-        )
+      // Collect all membershipIds as numbers
+      const targetIds = selectedMembersList.map(member => Number(member.id))
+
+      // Call the new batch API
+      const response = await rewardPointsToMembers(
+        targetIds,
+        rewardAmount as number,
+        "Event giving" // reason
       )
 
-      // Execute all reward API calls in parallel
-      const results = await Promise.allSettled(rewardPromises)
-
-      // Count successes and failures
-      const successCount = results.filter(r => r.status === 'fulfilled').length
-      const failureCount = results.filter(r => r.status === 'rejected').length
-
-      if (successCount > 0) {
+      if (response.success) {
         toast({
           title: "Success",
-          description: `Distributed ${rewardAmount} points to ${successCount} member(s) of ${managedClub.name}.${failureCount > 0 ? ` ${failureCount} failed.` : ''}`,
+          description: response.message || `Distributed ${rewardAmount} points to ${selectedMembersList.length} member(s) of ${managedClub.name}.`,
           variant: "default"
         })
 
@@ -267,12 +314,12 @@ export default function ClubLeaderRewardDistributionPage() {
 
         setRewardAmount('') // Reset số điểm sau khi thành công
       } else {
-        throw new Error("All reward distributions failed")
+        throw new Error(response.message || "Failed to distribute points")
       }
     } catch (err: any) {
       toast({
         title: "Delivery error",
-        description: err?.message || "An error occurred while distributing points.",
+        description: err?.response?.data?.message || err?.message || "An error occurred while distributing points.",
         variant: "destructive"
       })
     } finally {
@@ -356,7 +403,7 @@ export default function ClubLeaderRewardDistributionPage() {
                     <p className="text-sm font-medium text-muted-foreground">Club Balance</p>
                     {walletLoading ? (
                       <p className="text-3xl font-bold text-blue-600">Loading...</p>
-                    ) : clubWallet ? (
+                    ) : clubWallet && clubWallet.balancePoints !== undefined ? (
                       <p className="text-3xl font-bold text-blue-600">
                         {clubWallet.balancePoints.toLocaleString()} pts
                       </p>
@@ -426,7 +473,8 @@ export default function ClubLeaderRewardDistributionPage() {
                           <TableHead className="w-[80px]">ID</TableHead>
                           <TableHead>Type</TableHead>
                           <TableHead>Amount</TableHead>
-                          <TableHead className="w-[40%]">Description</TableHead>
+                          <TableHead className="w-[25%]">Receiver</TableHead>
+                          <TableHead className="w-[30%]">Description</TableHead>
                           <TableHead>Date</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -436,6 +484,9 @@ export default function ClubLeaderRewardDistributionPage() {
                             <TableCell className="font-medium">#{t.id}</TableCell>
                             <TableCell><Badge variant="secondary">{t.type}</Badge></TableCell>
                             <TableCell className="font-semibold text-green-600">+{t.amount} pts</TableCell>
+                            <TableCell className="font-medium text-blue-600">
+                              {t.receiverName || "—"}
+                            </TableCell>
                             <TableCell className="truncate">{t.description || "—"}</TableCell>
                             <TableCell className="text-sm text-muted-foreground">
                               {formatDate(t.createdAt)}
@@ -450,7 +501,80 @@ export default function ClubLeaderRewardDistributionPage() {
             </DialogContent>
           </Dialog>
 
+          {/* === MỚI: Modal Xin Thêm Điểm === */}
+          <Dialog open={showRequestModal} onOpenChange={setShowRequestModal}>
+            <DialogContent className="sm:max-w-[480px]">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <PlusCircle className="h-6 w-6 text-green-600" />
+                  Request Additional Club Points
+                </DialogTitle>
+                <DialogDescription>
+                  Submit a request to the university staff to add more points to your club's wallet.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="req-points" className="text-right">
+                    Points
+                  </Label>
 
+                  {/* === CẬP NHẬT CHÍNH Ở ĐÂY === */}
+                  <Input
+                    id="req-points"
+                    type="text" // <-- 1. Chuyển từ "number" sang "text"
+                    inputMode="numeric" // <-- 2. Thêm để hiển thị bàn phím số trên di động
+                    placeholder="e.g., 1,000,000"
+
+                    // 3. Hiển thị giá trị đã được định dạng
+                    value={
+                      requestPoints === ''
+                        ? ''
+                        : new Intl.NumberFormat('en-US').format(requestPoints)
+                    }
+
+                    // 4. Khi thay đổi, lọc bỏ dấu phẩy để cập nhật state
+                    onChange={(e) => {
+                      const value = e.target.value
+                      const unformattedValue = value.replace(/[^0-9]/g, '') // Bỏ mọi thứ không phải số
+
+                      if (unformattedValue === '') {
+                        setRequestPoints('')
+                      } else {
+                        setRequestPoints(parseInt(unformattedValue, 10))
+                      }
+                    }}
+                    className="col-span-3"
+                    disabled={isSubmittingRequest}
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="req-reason" className="text-right">
+                    Reason
+                  </Label>
+                  <Textarea
+                    id="req-reason"
+                    placeholder="e.g., Funding for 'TechSponk 2025' event prizes..."
+                    value={requestReason}
+                    onChange={(e) => setRequestReason(e.target.value)}
+                    className="col-span-3 min-h-[100px]"
+                    disabled={isSubmittingRequest}
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowRequestModal(false)} disabled={isSubmittingRequest}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleCreatePointRequest}
+                  disabled={isSubmittingRequest || requestPoints === '' || requestPoints <= 0 || !requestReason.trim()}
+                >
+                  {isSubmittingRequest ? "Submitting..." : "Submit Request"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           <Card>
             <CardHeader>
@@ -459,33 +583,75 @@ export default function ClubLeaderRewardDistributionPage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="reward-amount">Number of Bonus Points (per member)</Label>
-                <Input
-                  id="reward-amount"
-                  type="number"
-                  placeholder="Enter bonus points..."
-                  value={rewardAmount}
-                  onChange={handleRewardAmountChange}
-                  disabled={isDistributing}
-                  min="1"
-                />
+
+                {/* Container MỚI: dùng flex (responsive) */}
+                <div className="flex flex-col sm:flex-row sm:items-end sm:gap-3">
+
+                  {/* 1. Input (Cập nhật logic format) */}
+                  <div className="flex-1 min-w-[200px] mb-2 sm:mb-0">
+                    <Input
+                      id="reward-amount"
+                      type="text" // <-- 1. Chuyển sang "text"
+                      inputMode="numeric" // <-- 2. Thêm inputMode
+                      placeholder="Enter bonus points..."
+
+                      // 3. Hiển thị giá trị đã định dạng
+                      value={
+                        rewardAmount === ''
+                          ? ''
+                          : new Intl.NumberFormat('en-US').format(rewardAmount)
+                      }
+
+                      // 4. Cập nhật hàm onChange
+                      onChange={(e) => {
+                        const value = e.target.value
+                        const unformattedValue = value.replace(/[^0-9]/g, '') // Bỏ mọi thứ không phải số
+
+                        if (unformattedValue === '') {
+                          setRewardAmount('')
+                        } else {
+                          setRewardAmount(parseInt(unformattedValue, 10))
+                        }
+                      }}
+
+                      disabled={isDistributing}
+                    />
+                  </div>
+
+                  {/* 2. Nút Phân phát (ĐÃ CẬP NHẬT TEXT) */}
+                  <Button
+                    onClick={handleDistributeRewards}
+                    disabled={isDistributing || rewardAmount === '' || rewardAmount <= 0}
+                    className="sm:w-auto"
+                  >
+                    {isDistributing ? "In the process..." : (
+                      <>
+                        <Send className="mr-2 h-4 w-4" />
+                        Distribution points
+                      </>
+                    )}
+                  </Button>
+
+                  {/* 3. Nút MỚI: Xin điểm */}
+                  <Button
+                    variant="outline"
+                    className="sm:w-auto mt-2 sm:mt-0" // Tự co giãn, thêm margin top trên mobile
+                    onClick={() => setShowRequestModal(true)}
+                    disabled={isDistributing} // Vô hiệu hóa khi đang phân phát
+                  >
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Request more points
+                  </Button>
+
+                </div>
               </div>
               <p className="text-sm text-muted-foreground">Total number of members who will receive the bonus points: {clubMembers.length}</p>
             </CardContent>
-            <CardFooter>
-              <Button
-                onClick={handleDistributeRewards}
-                disabled={isDistributing || rewardAmount === '' || rewardAmount <= 0}
-                className="w-full"
-              >
-                {isDistributing ? "In the process of distribution..." : (
-                  <>
-                    <Send className="mr-2 h-4 w-4" />
-                    Distribution {rewardAmount || 0} point
-                  </>
-                )}
-              </Button>
-            </CardFooter>
+            {/* CardFooter đã được xóa vì nút đã chuyển lên trên */}
           </Card>
+
+
+
           <Separator />
 
           {/* === Tìm kiếm Thành viên === */}

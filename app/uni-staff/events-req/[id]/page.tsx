@@ -21,7 +21,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { useState, useEffect } from "react"
-import { getEventById, putEventStatus, getEventWallet, EventWallet } from "@/service/eventApi"
+import { getEventById, putEventStatus, getEventWallet, EventWallet, getEventSummary, EventSummary, eventSettle, getEventSettle } from "@/service/eventApi"
 import { useToast } from "@/hooks/use-toast"
 import { renderTypeBadge } from "@/lib/eventUtils"
 import { getLocationById } from "@/service/locationApi"
@@ -47,6 +47,11 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
   const [processing, setProcessing] = useState(false)
   const [wallet, setWallet] = useState<EventWallet | null>(null)
   const [walletLoading, setWalletLoading] = useState(false)
+  const [eventSummary, setEventSummary] = useState<EventSummary | null>(null)
+  const [summaryLoading, setSummaryLoading] = useState(false)
+  const [settling, setSettling] = useState(false)
+  const [isEventSettled, setIsEventSettled] = useState(false)
+  const [checkingSettled, setCheckingSettled] = useState(false)
 
   useEffect(() => {
     let mounted = true
@@ -68,6 +73,35 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
           // Don't show error toast for wallet, it's not critical
         } finally {
           if (mounted) setWalletLoading(false)
+        }
+
+        // Fetch event summary if APPROVED
+        if (data.status === "APPROVED") {
+          try {
+            setSummaryLoading(true)
+            const summaryData = await getEventSummary(params.id)
+            if (mounted) setEventSummary(summaryData)
+          } catch (summaryError) {
+            console.error("Failed to load event summary:", summaryError)
+            // Don't show error toast for summary, it's not critical
+          } finally {
+            if (mounted) setSummaryLoading(false)
+          }
+        }
+
+        // Check if event is settled (if COMPLETED status)
+        if (data.status === "COMPLETED") {
+          try {
+            setCheckingSettled(true)
+            const settledEvents = await getEventSettle()
+            const isSettled = settledEvents.some((e: any) => e.id === data.id)
+            if (mounted) setIsEventSettled(isSettled)
+          } catch (settledError) {
+            console.error("Failed to check settled events:", settledError)
+            // Don't show error toast, it's not critical
+          } finally {
+            if (mounted) setCheckingSettled(false)
+          }
         }
 
         // if the event has a locationId, fetch that location
@@ -155,11 +189,11 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "PENDING":
+      case "COMPLETED":
         return (
-          <Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-500">
-            <Clock className="h-3 w-3 mr-1" />
-            Pending
+          <Badge variant="secondary" className="bg-blue-900 text-white border-blue-900">
+            <CheckCircle className="h-3 w-3 mr-1" />
+            Completed
           </Badge>
         )
       case "APPROVED":
@@ -167,6 +201,20 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
           <Badge variant="default" className="bg-green-100 text-green-700 border-green-500">
             <CheckCircle className="h-3 w-3 mr-1" />
             Approved
+          </Badge>
+        )
+      case "PENDING_COCLUB":
+        return (
+          <Badge variant="outline" className="bg-orange-100 text-orange-700 border-orange-500">
+            <Clock className="h-3 w-3 mr-1" />
+            Pending Co-Club Approval
+          </Badge>
+        )
+      case "PENDING_UNISTAFF":
+        return (
+          <Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-500">
+            <Clock className="h-3 w-3 mr-1" />
+            Pending Uni-Staff Approval
           </Badge>
         )
       case "REJECTED":
@@ -188,7 +236,7 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
     if (!request) return
     setProcessing(true)
     try {
-      await putEventStatus(request.id, status)
+      await putEventStatus(request.id, status, request.budgetPoints || 0)
       // optimistic/local update
       setRequest({ ...request, status })
       toast({ title: status === "APPROVED" ? "Approved" : "Rejected", description: `Event ${request.name || request.id} ${status === "APPROVED" ? "approved" : "rejected"}.` })
@@ -205,6 +253,31 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
       style: "currency",
       currency: "VND",
     }).format(amount)
+  }
+
+  const handleSettle = async () => {
+    if (!request) return
+    setSettling(true)
+    try {
+      const response = await eventSettle(request.id)
+      toast({ 
+        title: 'Event Settled', 
+        description: response.message || `Event ${request.name || request.id} has been settled successfully.` 
+      })
+      // Mark as settled and refetch the event data
+      setIsEventSettled(true)
+      const updatedData = await getEventById(params.id)
+      setRequest(updatedData)
+    } catch (err: any) {
+      console.error('Settle failed', err)
+      toast({ 
+        title: 'Error', 
+        description: err?.response?.data?.message || err?.message || 'Failed to settle event',
+        variant: 'destructive'
+      })
+    } finally {
+      setSettling(false)
+    }
   }
 
   return (
@@ -226,7 +299,19 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
             <div className="flex items-center gap-2">
               {/* prefer status, fallback to type */}
               {getStatusBadge(effectiveStatus)}
-              {effectiveStatus !== "APPROVED" && effectiveStatus !== "REJECTED" && (
+              {effectiveStatus === "COMPLETED" && (
+                <Button 
+                  variant="default" 
+                  size="sm" 
+                  className={isEventSettled ? "bg-gray-400" : "bg-blue-600 hover:bg-blue-700"}
+                  onClick={handleSettle} 
+                  disabled={settling || isEventSettled || checkingSettled}
+                >
+                  <DollarSign className="h-4 w-4 mr-2" />
+                  {checkingSettled ? 'Checking...' : settling ? 'Settling...' : isEventSettled ? 'Already Settled' : 'Settle Event'}
+                </Button>
+              )}
+              {effectiveStatus !== "APPROVED" && effectiveStatus !== "REJECTED" && effectiveStatus !== "COMPLETED" && (
                 <div className="flex gap-2">
                   <Button variant="default" size="sm" className="h-8 w-8 p-0" onClick={() => updateStatus('APPROVED')} disabled={processing}>
                     <CheckCircle className="h-4 w-4" />
@@ -348,41 +433,91 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
 
                   {/* Check-in Capacity - only show if available */}
                   {request.maxCheckInCount !== undefined && request.currentCheckInCount !== undefined && (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Max Capacity</label>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Users className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-semibold">{request.maxCheckInCount} people</span>
+                    <>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Max Capacity</label>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Users className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-semibold">{request.maxCheckInCount} people</span>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Current Check-ins</label>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Users className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-semibold">
+                              {request.status === "APPROVED" ? (
+                                summaryLoading ? (
+                                  "Loading..."
+                                ) : eventSummary ? (
+                                  `${eventSummary.checkedInCount} / ${request.maxCheckInCount}`
+                                ) : (
+                                  `${request.currentCheckInCount} / ${request.maxCheckInCount}`
+                                )
+                              ) : (
+                                `${request.currentCheckInCount} / ${request.maxCheckInCount}`
+                              )}
+                            </span>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Available Spots</label>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Users className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-semibold">
+                              {request.status === "APPROVED" && eventSummary
+                                ? `${request.maxCheckInCount - eventSummary.checkedInCount} remaining`
+                                : `${request.maxCheckInCount - request.currentCheckInCount} remaining`}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="p-3 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-200">
+                          <label className="text-sm text-green-700 font-medium">
+                            {request.status === "APPROVED" ? "Wallet Balance" : "Budget Points"}
+                          </label>
+                          <div className="font-semibold text-green-800 mt-1">
+                            {request.status === "APPROVED" ? (
+                              walletLoading ? (
+                                <span className="text-muted-foreground">Loading...</span>
+                              ) : wallet ? (
+                                `${wallet.walletBalance} points`
+                              ) : (
+                                <span className="text-muted-foreground">N/A</span>
+                              )
+                            ) : (
+                              `${request.budgetPoints || 0} points`
+                            )}
+                          </div>
                         </div>
                       </div>
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Current Check-ins</label>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Users className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-semibold">{request.currentCheckInCount} / {request.maxCheckInCount}</span>
+
+                      {/* Event Summary - Only shown when APPROVED */}
+                      {request.status === "APPROVED" && eventSummary && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                          <div className="p-3 bg-gradient-to-br from-blue-50 to-sky-50 rounded-lg border border-blue-200">
+                            <label className="text-sm text-blue-700 font-medium">Total Registrations</label>
+                            <div className="font-semibold text-blue-800 mt-1">
+                              {summaryLoading ? (
+                                <span className="text-muted-foreground">Loading...</span>
+                              ) : (
+                                `${eventSummary.registrationsCount} registered`
+                              )}
+                            </div>
+                          </div>
+                          <div className="p-3 bg-gradient-to-br from-amber-50 to-orange-50 rounded-lg border border-amber-200">
+                            <label className="text-sm text-amber-700 font-medium">Refunded</label>
+                            <div className="font-semibold text-amber-800 mt-1">
+                              {summaryLoading ? (
+                                <span className="text-muted-foreground">Loading...</span>
+                              ) : (
+                                `${eventSummary.refundedCount} refunds`
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Available Spots</label>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Users className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-semibold">{request.maxCheckInCount - request.currentCheckInCount} remaining</span>
-                        </div>
-                      </div>
-                      <div className="p-3 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-200">
-                        <label className="text-sm text-green-700 font-medium">Wallet Balance</label>
-                        <div className="font-semibold text-green-800 mt-1">
-                          {walletLoading ? (
-                            <span className="text-muted-foreground">Loading...</span>
-                          ) : wallet ? (
-                            `${wallet.walletBalance} points`
-                          ) : (
-                            <span className="text-muted-foreground">N/A</span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                      )}
+                    </>
                   )}
 
                   {/* Co-hosted Clubs */}
@@ -406,7 +541,7 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                                   ? "bg-red-100 text-red-700 border-red-500"
                                   : club.coHostStatus === "PENDING"
                                   ? "bg-yellow-100 text-yellow-700 border-yellow-500"
-                                  : ""
+                                  : "bg-gray-100 text-gray-700 border-gray-300"
                               }
                             >
                               {club.coHostStatus}
@@ -502,7 +637,41 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                 </CardContent>
               </Card>
 
-              {effectiveStatus !== "APPROVED" && effectiveStatus !== "REJECTED" && (
+              {effectiveStatus === "COMPLETED" && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Event Settlement</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {isEventSettled ? (
+                      <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <p className="text-sm text-green-700 font-medium flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4" />
+                          This event has already been settled.
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground mb-3">
+                        This event has been completed. Click the button below to process the final settlement.
+                      </p>
+                    )}
+                    <Button 
+                      className={`w-full ${isEventSettled ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'}`}
+                      variant="default" 
+                      onClick={handleSettle} 
+                      disabled={settling || isEventSettled || checkingSettled}
+                    >
+                      <DollarSign className="h-4 w-4 mr-2" />
+                      {checkingSettled ? 'Checking Status...' : settling ? 'Processing Settlement...' : isEventSettled ? 'Already Settled' : 'Settle Event'}
+                    </Button>
+                    <Button className="w-full bg-transparent" variant="outline">
+                      <Mail className="h-4 w-4 mr-2" />
+                      Contact Organizer
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+              {effectiveStatus !== "APPROVED" && effectiveStatus !== "REJECTED" && effectiveStatus !== "COMPLETED" && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg">Actions</CardTitle>
