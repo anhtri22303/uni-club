@@ -14,7 +14,7 @@ import { usePrefetchClubs, usePrefetchEvents, usePrefetchUsers } from "@/hooks/u
 import {
   LayoutDashboard, Users, Calendar, Gift, Wallet, History, BarChart3,
   Building, Home, CheckCircle, FileText, FileUser, HandCoins, CalendarDays,
-  CreditCard, LibraryBig
+  CreditCard, LibraryBig, MessageCircle
 } from "lucide-react"
 
 interface SidebarProps {
@@ -30,6 +30,7 @@ const navigationConfig = {
     { href: "/student/clubs", label: "Clubs", icon: Users },
     { href: "/student/myclub", label: "My Club", icon: Building },
     { href: "/student/events", label: "Events", icon: Calendar },
+    { href: "/student/chat", label: "Chat", icon: MessageCircle },
     { href: "/student/checkin", label: "Check In", icon: CheckCircle },
     { href: "/student/gift", label: "Gift", icon: Gift },
     // { href: "/student/wallet", label: "Wallet", icon: Wallet },
@@ -41,6 +42,7 @@ const navigationConfig = {
     { href: "/club-leader/applications", label: "Applications", icon: FileUser },
     { href: "/club-leader/members", label: "Members", icon: Users },
     { href: "/club-leader/events", label: "Events", icon: Calendar },
+    { href: "/club-leader/chat", label: "Chat", icon: MessageCircle },
     { href: "/club-leader/gift", label: "Gift", icon: Gift },
     { href: "/club-leader/points", label: "Points Club", icon: HandCoins },
     { href: "/club-leader/attendances", label: "Attendances", icon: CalendarDays },
