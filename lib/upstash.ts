@@ -27,6 +27,12 @@ export interface ChatMessage {
     userName: string
     message: string
   }
+  reactions?: {
+    [emoji: string]: {
+      count: number
+      userIds: number[]
+    }
+  }
 }
 
 // Helper functions for chat operations
@@ -110,6 +116,82 @@ export const chatOperations = {
     } catch (error) {
       console.error('Error deleting message:', error)
       return { success: false, error: 'Failed to delete message' }
+    }
+  },
+
+  // Toggle a reaction on a message
+  toggleReaction: async (
+    clubId: number, 
+    messageId: string, 
+    userId: number, 
+    emoji: string
+  ): Promise<{ success: boolean; message?: ChatMessage; error?: string }> => {
+    if (!redis) {
+      throw new Error('Redis is not configured. Please set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN environment variables.')
+    }
+    try {
+      const key = chatOperations.getChatKey(clubId)
+      
+      // Get all messages to find the one to react to
+      const messages = await redis.lrange<ChatMessage>(key, 0, -1)
+      const messageIndex = messages.findIndex(msg => msg.id === messageId)
+      
+      if (messageIndex === -1) {
+        return { success: false, error: 'Message not found' }
+      }
+      
+      const message = messages[messageIndex]
+      
+      // Initialize reactions if not present
+      if (!message.reactions) {
+        message.reactions = {}
+      }
+      
+      // Initialize this emoji's reactions if not present
+      if (!message.reactions[emoji]) {
+        message.reactions[emoji] = { count: 0, userIds: [] }
+      }
+      
+      // Check if user has already reacted with this emoji
+      const userIndex = message.reactions[emoji].userIds.indexOf(userId)
+      
+      if (userIndex > -1) {
+        // User already reacted, remove the reaction
+        message.reactions[emoji].userIds.splice(userIndex, 1)
+        message.reactions[emoji].count--
+        
+        // Remove emoji entry if count is 0
+        if (message.reactions[emoji].count === 0) {
+          delete message.reactions[emoji]
+        }
+      } else {
+        // Add the reaction
+        message.reactions[emoji].userIds.push(userId)
+        message.reactions[emoji].count++
+      }
+      
+      // Remove the old message and insert the updated one
+      await redis.lrem(key, 1, messages[messageIndex])
+      
+      // Insert at the same position to maintain order
+      // Redis doesn't have a direct "insert at index" command
+      // So we need to rebuild the list
+      const updatedMessages = [...messages]
+      updatedMessages[messageIndex] = message
+      
+      // Clear the list and rebuild it
+      await redis.del(key)
+      for (let i = updatedMessages.length - 1; i >= 0; i--) {
+        await redis.lpush(key, updatedMessages[i])
+      }
+      
+      // Set expiration again
+      await redis.expire(key, 60 * 60 * 24 * 30)
+      
+      return { success: true, message }
+    } catch (error) {
+      console.error('Error toggling reaction:', error)
+      return { success: false, error: 'Failed to toggle reaction' }
     }
   },
 }

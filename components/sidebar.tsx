@@ -157,7 +157,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
   if (auth.role === "student" && auth.staff) {
     // Add staff-specific navigation items for students
     const staffItems = [
-      { href: "/staff/validate", label: "Validate", icon: CheckCircle, isStaff: true },
+      // { href: "/staff/validate", label: "Validate", icon: CheckCircle, isStaff: true },
       { href: "/staff/history", label: "Staff History", icon: History, isStaff: true },
       { href: "/staff/gift", label: "Staff Gift", icon: Gift, isStaff: true },
     ]

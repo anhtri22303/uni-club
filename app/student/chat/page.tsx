@@ -19,9 +19,10 @@ import { useAuth } from "@/contexts/auth-context"
 import { useProfile, useClub, useClubs } from "@/hooks/use-query-hooks"
 import { safeLocalStorage } from "@/lib/browser-utils"
 import { useEffect, useState, useRef, useCallback } from "react"
-import { Send, MessageCircle, Users, Loader2, Building2, Trash2, X, Reply } from "lucide-react"
+import { Send, MessageCircle, Users, Loader2, Building2, Trash2, X, Reply, Smile } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import axios from "axios"
+import { EmojiPicker } from "@/components/emoji-picker"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,6 +46,12 @@ interface ChatMessage {
     id: string
     userName: string
     message: string
+  }
+  reactions?: {
+    [emoji: string]: {
+      count: number
+      userIds: number[]
+    }
   }
 }
 
@@ -338,6 +345,37 @@ export default function StudentChatPage() {
     }
   }
 
+  // Handle emoji reaction
+  const handleReaction = async (messageId: string, emoji: string) => {
+    if (!selectedClubId) return
+
+    try {
+      const response = await axios.post("/api/chat/reactions", {
+        clubId: selectedClubId,
+        messageId,
+        userId: auth.userId,
+        emoji,
+      })
+
+      // Update the message with new reactions in local state
+      if (response.data.success && response.data.message) {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === messageId ? response.data.message : msg
+          )
+        )
+      }
+    } catch (error: any) {
+      console.error("Error toggling reaction:", error)
+      setError("Failed to react to message. Please try again.")
+    }
+  }
+
+  // Handle emoji insert into message input
+  const handleEmojiInsert = (emoji: string) => {
+    setNewMessage((prev) => prev + emoji)
+  }
+
   // Handle club selection change
   const handleClubChange = (clubIdStr: string) => {
     const clubId = Number(clubIdStr)
@@ -584,12 +622,52 @@ export default function StudentChatPage() {
                                         {msg.message}
                                       </p>
                                     </div>
+                                    {/* Reactions display */}
+                                    {msg.reactions && Object.keys(msg.reactions).length > 0 && (
+                                      <div className="flex flex-wrap gap-1 mt-1.5">
+                                        {Object.entries(msg.reactions).map(([emoji, data]) => {
+                                          const hasReacted = data.userIds.includes(auth.userId)
+                                          return (
+                                            <button
+                                              key={emoji}
+                                              onClick={() => handleReaction(msg.id, emoji)}
+                                              className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs transition-colors ${
+                                                hasReacted
+                                                  ? "bg-primary/20 border border-primary/40"
+                                                  : "bg-muted border border-border hover:bg-muted/80"
+                                              }`}
+                                              title={`${data.count} reaction${data.count > 1 ? "s" : ""}`}
+                                            >
+                                              <span className="text-sm">{emoji}</span>
+                                              <span className="text-[10px] font-medium">{data.count}</span>
+                                            </button>
+                                          )
+                                        })}
+                                      </div>
+                                    )}
+                                    
                                     {/* Action buttons */}
                                     <div
                                       className={`absolute -top-2 ${
-                                        isOwnMessage ? "-left-[4.5rem]" : "-right-[4.5rem]"
+                                        isOwnMessage ? "-left-[6.5rem]" : "-right-[6.5rem]"
                                       } flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity`}
                                     >
+                                      {/* Emoji reaction picker */}
+                                      <EmojiPicker
+                                        onEmojiSelect={(emoji) => handleReaction(msg.id, emoji)}
+                                        trigger={
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-7 w-7 hover:bg-accent/50"
+                                            title="React with emoji"
+                                          >
+                                            <Smile className="h-3.5 w-3.5" />
+                                          </Button>
+                                        }
+                                        side="top"
+                                        align={isOwnMessage ? "end" : "start"}
+                                      />
                                       {/* Reply button - for all messages */}
                                       <Button
                                         variant="ghost"
@@ -653,6 +731,11 @@ export default function StudentChatPage() {
                     )}
                     
                     <div className="flex items-center gap-2">
+                      <EmojiPicker 
+                        onEmojiSelect={handleEmojiInsert}
+                        side="top"
+                        align="start"
+                      />
                       <Input
                         placeholder={replyingTo ? "Type your reply..." : "Type your message..."}
                         value={newMessage}
