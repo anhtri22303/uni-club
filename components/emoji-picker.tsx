@@ -7,7 +7,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Smile } from "lucide-react"
 import { Input } from "@/components/ui/input"
 
@@ -254,8 +253,8 @@ export function EmojiPicker({
             </div>
           )}
 
-          {/* Emoji grid */}
-          <ScrollArea className="flex-1">
+          {/* Emoji grid with scrollbar */}
+          <div className="flex-1 overflow-y-auto overflow-x-hidden">
             <div className="p-2">
               {searchQuery && filteredCategories.length === 0 ? (
                 <div className="text-center text-sm text-muted-foreground py-8">
@@ -305,7 +304,7 @@ export function EmojiPicker({
                 </div>
               )}
             </div>
-          </ScrollArea>
+          </div>
         </div>
       </PopoverContent>
     </Popover>

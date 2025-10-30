@@ -12,7 +12,7 @@ import { useAuth } from "@/contexts/auth-context"
 import { useProfile, useClub } from "@/hooks/use-query-hooks"
 import { getClubIdFromToken } from "@/service/clubApi"
 import { useEffect, useState, useRef, useCallback } from "react"
-import { Send, MessageCircle, Users, Loader2, Trash2, X, Reply, Smile } from "lucide-react"
+import { Send, MessageCircle, Users, Loader2, Trash2, X, Reply, Smile, Pin } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import axios from "axios"
 import { EmojiPicker } from "@/components/emoji-picker"
@@ -35,6 +35,9 @@ interface ChatMessage {
   userAvatar?: string
   message: string
   timestamp: number
+  isPinned?: boolean
+  pinnedBy?: number
+  pinnedAt?: number
   replyTo?: {
     id: string
     userName: string
@@ -310,6 +313,33 @@ export default function ClubLeaderChatPage() {
     }
   }
 
+  // Handle pin/unpin message
+  const handlePinMessage = async (messageId: string) => {
+    if (!clubId) return
+
+    try {
+      const response = await axios.post("/api/chat/pin", {
+        clubId,
+        messageId,
+        userId: auth.userId,
+      })
+
+      // Update the messages with the new pin status
+      if (response.data.success) {
+        // Fetch fresh messages to get the updated pin states
+        const messagesResponse = await axios.get(
+          `/api/chat/messages?clubId=${clubId}&limit=50`
+        )
+        const fetchedMessages = messagesResponse.data.messages || []
+        const reversedMessages = fetchedMessages.reverse() // Reverse to show oldest first
+        setMessages(reversedMessages)
+      }
+    } catch (error: any) {
+      console.error("Error toggling pin:", error)
+      setError("Failed to pin message. Please try again.")
+    }
+  }
+
   // Handle emoji insert into message input
   const handleEmojiInsert = (emoji: string) => {
     setNewMessage((prev) => prev + emoji)
@@ -396,6 +426,39 @@ export default function ClubLeaderChatPage() {
                 </div>
               )}
               
+              {/* Pinned Message Display */}
+              {messages.some(msg => msg.isPinned) && (
+                <div className="bg-amber-50 dark:bg-amber-950/20 border-b border-amber-200 dark:border-amber-900/30 p-3">
+                  {messages.filter(msg => msg.isPinned).map(pinnedMsg => (
+                    <div key={pinnedMsg.id} className="flex items-start gap-2">
+                      <Pin className="h-4 w-4 text-amber-600 dark:text-amber-500 shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-semibold text-amber-900 dark:text-amber-400">
+                            Pinned Message
+                          </span>
+                          <span className="text-xs text-amber-700 dark:text-amber-500">
+                            by {pinnedMsg.userName}
+                          </span>
+                        </div>
+                        <p className="text-sm text-amber-900 dark:text-amber-300 line-clamp-2 break-words whitespace-pre-wrap">
+                          {pinnedMsg.message}
+                        </p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 shrink-0 hover:bg-amber-200 dark:hover:bg-amber-900/40"
+                        onClick={() => handlePinMessage(pinnedMsg.id)}
+                        title="Unpin message"
+                      >
+                        <X className="h-3.5 w-3.5 text-amber-700 dark:text-amber-500" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {/* Messages Container with ScrollArea */}
               <div className="flex-1 overflow-hidden">
                 <ScrollArea className="h-full p-3 md:p-4" ref={scrollAreaRef}>
@@ -522,7 +585,7 @@ export default function ClubLeaderChatPage() {
                                 {/* Action buttons */}
                                 <div
                                   className={`absolute -top-2 ${
-                                    isOwnMessage ? "-left-[6.5rem]" : "-right-[6.5rem]"
+                                    isOwnMessage ? "-left-[8rem]" : "-right-[8rem]"
                                   } flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity`}
                                 >
                                   {/* Emoji reaction picker */}
@@ -550,6 +613,20 @@ export default function ClubLeaderChatPage() {
                                     title="Reply to message"
                                   >
                                     <Reply className="h-3.5 w-3.5" />
+                                  </Button>
+                                  {/* Pin button - for all messages */}
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className={`h-7 w-7 ${
+                                      msg.isPinned
+                                        ? "bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-500 hover:bg-amber-200 dark:hover:bg-amber-900/60"
+                                        : "hover:bg-amber-100 dark:hover:bg-amber-900/40 hover:text-amber-600 dark:hover:text-amber-500"
+                                    }`}
+                                    onClick={() => handlePinMessage(msg.id)}
+                                    title={msg.isPinned ? "Unpin message" : "Pin message"}
+                                  >
+                                    <Pin className="h-3.5 w-3.5" />
                                   </Button>
                                   {/* Delete button - only for own messages */}
                                   {isOwnMessage && (

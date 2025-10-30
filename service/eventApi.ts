@@ -423,3 +423,64 @@ export const eventQR = async (eventId: string | number, phase: string) => {
     throw error
   }
 }
+
+/**
+ * POST /api/events/{eventId}/settle
+ * Settle a completed event
+ * @param eventId - Event ID
+ * @returns { success: boolean, message: string, data: string }
+ */
+export const eventSettle = async (eventId: string | number) => {
+  try {
+    const response = await axiosInstance.post(`/api/events/${eventId}/settle`)
+    const data: any = response.data
+    console.log(`Settled event ${eventId}:`, data)
+    // Response structure: { success: true, message: "string", data: "string" }
+    return data
+  } catch (error) {
+    console.error(`Error settling event ${eventId}:`, error)
+    throw error
+  }
+}
+
+/**
+ * GET /api/events/settled
+ * Get all settled events
+ * @returns Array of settled events
+ */
+export const getEventSettle = async () => {
+  try {
+    const response = await axiosInstance.get(`/api/events/settled`)
+    const data: any = response.data
+    console.log(`Fetched settled events:`, data)
+    // Response structure: { success: true, message: "success", data: [...] }
+    return data.data as Array<{
+      id: number
+      name: string
+      description: string
+      type: string
+      date: string
+      startTime: string
+      endTime: string
+      status: string
+      checkInCode: string
+      budgetPoints: number
+      locationName: string
+      maxCheckInCount: number
+      currentCheckInCount: number | null
+      hostClub: {
+        id: number
+        name: string
+        coHostStatus: string
+      }
+      coHostedClubs: Array<{
+        id: number
+        name: string
+        coHostStatus: string
+      }>
+    }>
+  } catch (error) {
+    console.error(`Error fetching settled events:`, error)
+    throw error
+  }
+}

@@ -1,8 +1,14 @@
 "use client"
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
-import { useState, type ReactNode } from "react"
+import { useState, type ReactNode, lazy, Suspense } from "react"
+
+// Dynamically import ReactQueryDevtools to avoid build issues
+const ReactQueryDevtools = lazy(() =>
+  import("@tanstack/react-query-devtools").then((mod) => ({
+    default: mod.ReactQueryDevtools,
+  }))
+)
 
 export function ReactQueryProvider({ children }: { children: ReactNode }) {
   // Create a client with optimized defaults
@@ -37,7 +43,9 @@ export function ReactQueryProvider({ children }: { children: ReactNode }) {
       {children}
       {/* Show DevTools only in development */}
       {process.env.NODE_ENV === 'development' && (
-        <ReactQueryDevtools initialIsOpen={false} position="bottom" />
+        <Suspense fallback={null}>
+          <ReactQueryDevtools initialIsOpen={false} position="bottom" />
+        </Suspense>
       )}
     </QueryClientProvider>
   )

@@ -2,8 +2,6 @@
 
 import React, { forwardRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Eye, EyeOff } from "lucide-react"
 import { PatternRenderer } from "./PatternRenderer"
 import { getQrStyleClasses } from "./utils"
 import type { CardData } from "./types"
@@ -16,15 +14,12 @@ interface CardPreviewProps {
   pattern: string
   borderRadius: string
   logoUrl: string
-  backgroundImage: string
-  showQR: boolean
   qrCodeUrl: string
   qrSize: number
   qrStyle: string
   showLogo: boolean
   patternOpacity: number
   cardOpacity: number
-  onToggleQR: () => void
 }
 
 export const CardPreview = forwardRef<HTMLDivElement, CardPreviewProps>(
@@ -37,26 +32,18 @@ export const CardPreview = forwardRef<HTMLDivElement, CardPreviewProps>(
       pattern,
       borderRadius,
       logoUrl,
-      backgroundImage,
-      showQR,
       qrCodeUrl,
       qrSize,
       qrStyle,
       showLogo,
       patternOpacity,
       cardOpacity,
-      onToggleQR,
     } = props
 
     return (
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader>
           <CardTitle>Card Preview</CardTitle>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={onToggleQR}>
-              {showQR ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-            </Button>
-          </div>
         </CardHeader>
         <CardContent className="p-2 sm:p-4 md:p-6">
           <div className="flex justify-center">
@@ -66,20 +53,11 @@ export const CardPreview = forwardRef<HTMLDivElement, CardPreviewProps>(
               className={`${cardColorClass} ${gradient} ${borderRadius} shadow-2xl p-3 sm:p-6 md:p-8 w-full max-w-2xl text-white relative overflow-hidden min-h-[280px] sm:min-h-[320px]`}
               style={{ opacity: cardOpacity / 100 }}
             >
-              {/* Background Image */}
-              {backgroundImage && (
-                <img
-                  src={backgroundImage}
-                  alt="Background"
-                  className="absolute inset-0 w-full h-full object-cover opacity-30 pointer-events-none mix-blend-overlay"
-                />
-              )}
-
               {/* Pattern */}
               <PatternRenderer pattern={pattern} opacity={patternOpacity} />
 
               {/* QR Code - Fixed at center-right, responsive size */}
-              {showQR && qrCodeUrl && (
+              {qrCodeUrl && (
                 <div className="absolute top-1/2 right-1 sm:right-2 md:right-4 -translate-y-1/2 z-20">
                   <div className={getQrStyleClasses(qrStyle)}>
                     <img

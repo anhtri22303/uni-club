@@ -15,26 +15,21 @@ interface CustomizationTabsProps {
   pattern: string
   borderRadius: string
   patternOpacity: number[]
-  showQR: boolean
   qrSize: number[]
   qrStyle: string
   showLogo: boolean
   logoUrl: string
   logoSize: number
-  backgroundImage: string
   onColorTypeChange: (type: string) => void
   onColorSelect: (value: string, type: string) => void
   onCardOpacityChange: (value: number[]) => void
   onPatternChange: (value: string) => void
   onBorderRadiusChange: (value: string) => void
   onPatternOpacityChange: (value: number[]) => void
-  onShowQRChange: (value: boolean) => void
   onQRSizeChange: (value: number[]) => void
   onQRStyleChange: (value: string) => void
   onShowLogoChange: (value: boolean) => void
   onLogoUpload: (e: React.ChangeEvent<HTMLInputElement>) => void
-  onBackgroundUpload: (e: React.ChangeEvent<HTMLInputElement>) => void
-  onBackgroundRemove: () => void
 }
 
 export const CustomizationTabs: React.FC<CustomizationTabsProps> = (props) => {
@@ -84,10 +79,8 @@ export const CustomizationTabs: React.FC<CustomizationTabsProps> = (props) => {
 
           <TabsContent value="qr">
             <QRTab
-              showQR={props.showQR}
               qrSize={props.qrSize}
               qrStyle={props.qrStyle}
-              onShowQRChange={props.onShowQRChange}
               onQRSizeChange={props.onQRSizeChange}
               onQRStyleChange={props.onQRStyleChange}
             />
@@ -98,11 +91,8 @@ export const CustomizationTabs: React.FC<CustomizationTabsProps> = (props) => {
               showLogo={props.showLogo}
               logoUrl={props.logoUrl}
               logoSize={props.logoSize}
-              backgroundImage={props.backgroundImage}
               onShowLogoChange={props.onShowLogoChange}
               onLogoUpload={props.onLogoUpload}
-              onBackgroundUpload={props.onBackgroundUpload}
-              onBackgroundRemove={props.onBackgroundRemove}
             />
           </TabsContent>
         </Tabs>

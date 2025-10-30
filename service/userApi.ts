@@ -75,7 +75,8 @@ export const fetchProfile = async () => {
         bio: profileData?.bio,
         role: profileData?.role,
         wallet: profileData?.wallet,
-        memberships: profileData?.memberships || []
+        memberships: profileData?.memberships || [],
+        wallets: profileData?.wallets || []
       }
     }
 

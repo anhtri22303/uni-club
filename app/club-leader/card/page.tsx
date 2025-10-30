@@ -30,10 +30,8 @@ export default function CardEditorPage() {
   const [pattern, setPattern] = useState("circles")
   const [borderRadius, setBorderRadius] = useState("rounded-2xl")
   const [logoUrl, setLogoUrl] = useState("/images/Logo.png")
-  const [backgroundImage, setBackgroundImage] = useState("")
   
   // Advanced customization
-  const [showQR, setShowQR] = useState(true)
   const [qrSize, setQrSize] = useState([100])
   const [qrStyle, setQrStyle] = useState("default")
   const [qrCodeUrl, setQrCodeUrl] = useState("")
@@ -110,7 +108,6 @@ export default function CardEditorPage() {
     gradient,
     pattern,
     borderRadius,
-    showQR,
     qrSize,
     qrStyle,
     showLogo,
@@ -121,7 +118,6 @@ export default function CardEditorPage() {
     onCardColorClassChange: setCardColorClass,
     onPatternChange: setPattern,
     onBorderRadiusChange: setBorderRadius,
-    onShowQRChange: setShowQR,
     onQRSizeChange: setQrSize,
     onQRStyleChange: setQrStyle,
     onShowLogoChange: setShowLogo,
@@ -217,8 +213,6 @@ export default function CardEditorPage() {
       pattern,
       borderRadius,
       logoUrl,
-      backgroundImage,
-      showQR,
       qrPosition: "center-right",
       qrSize: qrSize[0],
       qrStyle,
@@ -244,8 +238,6 @@ export default function CardEditorPage() {
     setPattern("circles")
     setBorderRadius("rounded-2xl")
     setLogoUrl("/images/Logo.png")
-    setBackgroundImage("")
-    setShowQR(true)
     setQrSize([100])
     setQrStyle("default")
     setShowLogo(true)
@@ -270,17 +262,6 @@ export default function CardEditorPage() {
       const reader = new FileReader()
       reader.onloadend = () => {
         setLogoUrl(reader.result as string)
-      }
-      reader.readAsDataURL(file)
-    }
-  }
-
-  const handleBackgroundUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setBackgroundImage(reader.result as string)
       }
       reader.readAsDataURL(file)
     }
@@ -313,15 +294,12 @@ export default function CardEditorPage() {
                   pattern={pattern}
                   borderRadius={borderRadius}
                   logoUrl={logoUrl}
-                  backgroundImage={backgroundImage}
-                  showQR={showQR}
                   qrCodeUrl={qrCodeUrl}
                   qrSize={qrSize[0]}
                   qrStyle={qrStyle}
                   showLogo={showLogo}
                   patternOpacity={patternOpacity[0]}
                   cardOpacity={cardOpacity[0]}
-                  onToggleQR={() => setShowQR(!showQR)}
                 />
 
                 {/* Action Buttons */}
@@ -368,26 +346,21 @@ export default function CardEditorPage() {
                   pattern={pattern}
                   borderRadius={borderRadius}
                   patternOpacity={patternOpacity}
-                  showQR={showQR}
                   qrSize={qrSize}
                   qrStyle={qrStyle}
                   showLogo={showLogo}
                   logoUrl={logoUrl}
                   logoSize={logoSize[0]}
-                  backgroundImage={backgroundImage}
                   onColorTypeChange={setColorType}
                   onColorSelect={handleColorSelect}
                   onCardOpacityChange={setCardOpacity}
                   onPatternChange={setPattern}
                   onBorderRadiusChange={setBorderRadius}
                   onPatternOpacityChange={setPatternOpacity}
-                  onShowQRChange={setShowQR}
                   onQRSizeChange={setQrSize}
                   onQRStyleChange={setQrStyle}
                   onShowLogoChange={setShowLogo}
                   onLogoUpload={handleLogoUpload}
-                  onBackgroundUpload={handleBackgroundUpload}
-                  onBackgroundRemove={() => setBackgroundImage("")}
                 />
               </div>
             </div>

@@ -22,6 +22,9 @@ export interface ChatMessage {
   userAvatar?: string
   message: string
   timestamp: number
+  isPinned?: boolean
+  pinnedBy?: number
+  pinnedAt?: number
   replyTo?: {
     id: string
     userName: string
@@ -192,6 +195,86 @@ export const chatOperations = {
     } catch (error) {
       console.error('Error toggling reaction:', error)
       return { success: false, error: 'Failed to toggle reaction' }
+    }
+  },
+
+  // Pin or unpin a message
+  togglePin: async (clubId: number, messageId: string, userId: number): Promise<{ success: boolean; message?: ChatMessage; error?: string }> => {
+    if (!redis) {
+      throw new Error('Redis is not configured.')
+    }
+    
+    try {
+      const key = chatOperations.getChatKey(clubId)
+      const messages = await redis.lrange<ChatMessage>(key, 0, -1)
+      
+      if (!messages || messages.length === 0) {
+        return { success: false, error: 'No messages found' }
+      }
+      
+      const messageIndex = messages.findIndex(msg => msg.id === messageId)
+      
+      if (messageIndex === -1) {
+        return { success: false, error: 'Message not found' }
+      }
+      
+      const message = messages[messageIndex]
+      
+      // First, unpin any currently pinned message in this club
+      const updatedMessages = messages.map(msg => {
+        if (msg.isPinned) {
+          return {
+            id: msg.id,
+            clubId: msg.clubId,
+            userId: msg.userId,
+            userName: msg.userName,
+            userAvatar: msg.userAvatar,
+            message: msg.message,
+            timestamp: msg.timestamp,
+            replyTo: msg.replyTo,
+            reactions: msg.reactions,
+          } as ChatMessage
+        }
+        return msg
+      })
+      
+      // Toggle pin state for the target message
+      if (message.isPinned) {
+        // Unpin the message
+        updatedMessages[messageIndex] = {
+          id: message.id,
+          clubId: message.clubId,
+          userId: message.userId,
+          userName: message.userName,
+          userAvatar: message.userAvatar,
+          message: message.message,
+          timestamp: message.timestamp,
+          replyTo: message.replyTo,
+          reactions: message.reactions,
+        } as ChatMessage
+      } else {
+        // Pin the message
+        updatedMessages[messageIndex] = {
+          ...updatedMessages[messageIndex],
+          isPinned: true,
+          pinnedBy: userId,
+          pinnedAt: Date.now()
+        }
+      }
+      
+      // Rebuild the list
+      await redis.del(key)
+      for (let i = updatedMessages.length - 1; i >= 0; i--) {
+        await redis.lpush(key, updatedMessages[i])
+      }
+      
+      // Set expiration again
+      await redis.expire(key, 60 * 60 * 24 * 30)
+      
+      return { success: true, message: updatedMessages[messageIndex] }
+    } catch (error) {
+      console.error('Error toggling pin:', error)
+      return { success: false, error: 'Failed to toggle pin' }
     }
   },
 }

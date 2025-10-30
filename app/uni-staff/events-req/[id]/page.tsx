@@ -21,7 +21,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { useState, useEffect } from "react"
-import { getEventById, putEventStatus, getEventWallet, EventWallet, getEventSummary, EventSummary } from "@/service/eventApi"
+import { getEventById, putEventStatus, getEventWallet, EventWallet, getEventSummary, EventSummary, eventSettle, getEventSettle } from "@/service/eventApi"
 import { useToast } from "@/hooks/use-toast"
 import { renderTypeBadge } from "@/lib/eventUtils"
 import { getLocationById } from "@/service/locationApi"
@@ -49,6 +49,9 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
   const [walletLoading, setWalletLoading] = useState(false)
   const [eventSummary, setEventSummary] = useState<EventSummary | null>(null)
   const [summaryLoading, setSummaryLoading] = useState(false)
+  const [settling, setSettling] = useState(false)
+  const [isEventSettled, setIsEventSettled] = useState(false)
+  const [checkingSettled, setCheckingSettled] = useState(false)
 
   useEffect(() => {
     let mounted = true
@@ -83,6 +86,21 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
             // Don't show error toast for summary, it's not critical
           } finally {
             if (mounted) setSummaryLoading(false)
+          }
+        }
+
+        // Check if event is settled (if COMPLETED status)
+        if (data.status === "COMPLETED") {
+          try {
+            setCheckingSettled(true)
+            const settledEvents = await getEventSettle()
+            const isSettled = settledEvents.some((e: any) => e.id === data.id)
+            if (mounted) setIsEventSettled(isSettled)
+          } catch (settledError) {
+            console.error("Failed to check settled events:", settledError)
+            // Don't show error toast, it's not critical
+          } finally {
+            if (mounted) setCheckingSettled(false)
           }
         }
 
@@ -237,6 +255,31 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
     }).format(amount)
   }
 
+  const handleSettle = async () => {
+    if (!request) return
+    setSettling(true)
+    try {
+      const response = await eventSettle(request.id)
+      toast({ 
+        title: 'Event Settled', 
+        description: response.message || `Event ${request.name || request.id} has been settled successfully.` 
+      })
+      // Mark as settled and refetch the event data
+      setIsEventSettled(true)
+      const updatedData = await getEventById(params.id)
+      setRequest(updatedData)
+    } catch (err: any) {
+      console.error('Settle failed', err)
+      toast({ 
+        title: 'Error', 
+        description: err?.response?.data?.message || err?.message || 'Failed to settle event',
+        variant: 'destructive'
+      })
+    } finally {
+      setSettling(false)
+    }
+  }
+
   return (
     <ProtectedRoute allowedRoles={["uni_staff"]}>
       <AppShell>
@@ -256,7 +299,19 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
             <div className="flex items-center gap-2">
               {/* prefer status, fallback to type */}
               {getStatusBadge(effectiveStatus)}
-              {effectiveStatus !== "APPROVED" && effectiveStatus !== "REJECTED" && (
+              {effectiveStatus === "COMPLETED" && (
+                <Button 
+                  variant="default" 
+                  size="sm" 
+                  className={isEventSettled ? "bg-gray-400" : "bg-blue-600 hover:bg-blue-700"}
+                  onClick={handleSettle} 
+                  disabled={settling || isEventSettled || checkingSettled}
+                >
+                  <DollarSign className="h-4 w-4 mr-2" />
+                  {checkingSettled ? 'Checking...' : settling ? 'Settling...' : isEventSettled ? 'Already Settled' : 'Settle Event'}
+                </Button>
+              )}
+              {effectiveStatus !== "APPROVED" && effectiveStatus !== "REJECTED" && effectiveStatus !== "COMPLETED" && (
                 <div className="flex gap-2">
                   <Button variant="default" size="sm" className="h-8 w-8 p-0" onClick={() => updateStatus('APPROVED')} disabled={processing}>
                     <CheckCircle className="h-4 w-4" />
@@ -582,7 +637,41 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                 </CardContent>
               </Card>
 
-              {effectiveStatus !== "APPROVED" && effectiveStatus !== "REJECTED" && (
+              {effectiveStatus === "COMPLETED" && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Event Settlement</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {isEventSettled ? (
+                      <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <p className="text-sm text-green-700 font-medium flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4" />
+                          This event has already been settled.
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground mb-3">
+                        This event has been completed. Click the button below to process the final settlement.
+                      </p>
+                    )}
+                    <Button 
+                      className={`w-full ${isEventSettled ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'}`}
+                      variant="default" 
+                      onClick={handleSettle} 
+                      disabled={settling || isEventSettled || checkingSettled}
+                    >
+                      <DollarSign className="h-4 w-4 mr-2" />
+                      {checkingSettled ? 'Checking Status...' : settling ? 'Processing Settlement...' : isEventSettled ? 'Already Settled' : 'Settle Event'}
+                    </Button>
+                    <Button className="w-full bg-transparent" variant="outline">
+                      <Mail className="h-4 w-4 mr-2" />
+                      Contact Organizer
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+              {effectiveStatus !== "APPROVED" && effectiveStatus !== "REJECTED" && effectiveStatus !== "COMPLETED" && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg">Actions</CardTitle>

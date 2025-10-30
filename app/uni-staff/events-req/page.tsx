@@ -8,11 +8,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { CalendarModal } from "@/components/calendar-modal"
-import { Calendar, Users, MapPin, Search, CheckCircle, XCircle, Clock, Building, Eye, Filter } from "lucide-react"
+import { Calendar, Users, MapPin, Search, CheckCircle, XCircle, Clock, Building, Eye, Filter, DollarSign } from "lucide-react"
 import { renderTypeBadge } from "@/lib/eventUtils"
 import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
-import { putEventStatus } from "@/service/eventApi"
+import { putEventStatus, getEventSettle } from "@/service/eventApi"
 import { fetchLocation } from "@/service/locationApi"
 import { fetchClub } from "@/service/clubApi"
 import Link from "next/link"
@@ -28,7 +28,7 @@ export default function UniStaffEventRequestsPage() {
 	const [typeFilter, setTypeFilter] = useState<string>("all")
 	const [expiredFilter, setExpiredFilter] = useState<string>("hide")
 	const [dateFilter, setDateFilter] = useState<string>("")
-	const [activeTab, setActiveTab] = useState<"PENDING_UNISTAFF" | "APPROVED" | "REJECTED">("PENDING_UNISTAFF")
+	const [activeTab, setActiveTab] = useState<"PENDING_UNISTAFF" | "APPROVED" | "REJECTED" | "COMPLETED">("PENDING_UNISTAFF")
 	const [showWaitingCoClub, setShowWaitingCoClub] = useState<boolean>(false)
 
 	const [events, setEvents] = useState<any[]>([])
@@ -37,6 +37,7 @@ export default function UniStaffEventRequestsPage() {
 	const [loading, setLoading] = useState<boolean>(false)
 	const [error, setError] = useState<string | null>(null)
 	const [showCalendarModal, setShowCalendarModal] = useState(false)
+	const [settledEventIds, setSettledEventIds] = useState<Set<number>>(new Set())
 
 	const { toast } = useToast()
 	const [processingId, setProcessingId] = useState<number | string | null>(null)
@@ -122,14 +123,18 @@ export default function UniStaffEventRequestsPage() {
 			setLoading(true)
 			try {
 				console.log("🔄 Starting to fetch data for events-req page...")
-				// fetch events, locations and clubs in parallel
-				const [eventsRes, locationsRes, clubsRes] = await Promise.all([
+				// fetch events, locations, clubs, and settled events in parallel
+				const [eventsRes, locationsRes, clubsRes, settledEventsRes] = await Promise.all([
 					fetchEvent(), 
 					fetchLocation(), 
-					fetchClub()
+					fetchClub(),
+					getEventSettle().catch(err => {
+						console.warn("Failed to fetch settled events:", err)
+						return []
+					})
 				])
 				
-				console.log("✅ Received API responses:", { eventsRes, locationsRes, clubsRes })
+				console.log("✅ Received API responses:", { eventsRes, locationsRes, clubsRes, settledEventsRes })
 				
 				const eventsContent = (eventsRes as any) && Array.isArray((eventsRes as any).content) 
 					? (eventsRes as any).content 
@@ -141,11 +146,19 @@ export default function UniStaffEventRequestsPage() {
 					? (clubsRes as any).content 
 					: Array.isArray(clubsRes) ? clubsRes : []
 				
+				// Create a set of settled event IDs
+				const settledIds = new Set(
+					Array.isArray(settledEventsRes) 
+						? settledEventsRes.map((e: any) => e.id) 
+						: []
+				)
+				
 				if (mounted) {
-					console.log("📝 Setting state with data:", { eventsContent, locationsContent, clubsContent })
+					console.log("📝 Setting state with data:", { eventsContent, locationsContent, clubsContent, settledIds })
 					setEvents(eventsContent)
 					setLocations(locationsContent)
 					setClubs(clubsContent)
+					setSettledEventIds(settledIds)
 				}
 			} catch (err: any) {
 				console.error("❌ Error in events-req page:", err)
@@ -299,6 +312,7 @@ export default function UniStaffEventRequestsPage() {
 	const waitingUniStaffCount = events.filter((e) => (e.status ?? "").toUpperCase() === "PENDING_UNISTAFF").length
 	const approvedCount = events.filter((e) => (e.status ?? "").toUpperCase() === "APPROVED").length
 	const rejectedCount = events.filter((e) => (e.status ?? "").toUpperCase() === "REJECTED").length
+	const completedCount = events.filter((e) => (e.status ?? "").toUpperCase() === "COMPLETED").length
 	const waitingCoClubCount = events.filter((e) => (e.status ?? "").toUpperCase() === "PENDING_COCLUB").length
 
 	return (
@@ -316,7 +330,7 @@ export default function UniStaffEventRequestsPage() {
 					</div>
 
 					{/* Stats Cards */}
-					<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+					<div className="grid grid-cols-1 md:grid-cols-4 gap-4">
 						<Card className="border-0 shadow-md bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-950 dark:to-yellow-900">
 							<CardHeader className="pb-3 px-4 pt-3">
 								<CardTitle className="text-sm font-medium text-yellow-700 dark:text-yellow-300">
@@ -354,6 +368,27 @@ export default function UniStaffEventRequestsPage() {
 																{approvedCount}
 															</div>
 															<p className="text-sm text-green-600 dark:text-green-400">Approved events</p>
+									</div>
+								</div>
+							</CardContent>
+						</Card>
+
+						<Card className="border-0 shadow-md bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900">
+							<CardHeader className="pb-3 px-4 pt-3">
+								<CardTitle className="text-sm font-medium text-blue-700 dark:text-blue-300">
+									Completed
+								</CardTitle>
+							</CardHeader>
+							<CardContent className="pb-3 px-4">
+								<div className="flex items-center gap-2">
+									<div className="p-1.5 bg-blue-500 rounded-md">
+										<CheckCircle className="h-5 w-5 text-white" />
+									</div>
+									<div>
+										<div className="text-2xl font-bold text-blue-900 dark:text-blue-100">
+																{completedCount}
+															</div>
+															<p className="text-sm text-blue-600 dark:text-blue-400">Completed events</p>
 									</div>
 								</div>
 							</CardContent>
@@ -406,6 +441,19 @@ export default function UniStaffEventRequestsPage() {
 						>
 							<CheckCircle className="h-5 w-5 mr-2" />
 							Approved ({approvedCount})
+						</Button>
+						<Button
+							variant={activeTab === "COMPLETED" ? "default" : "ghost"}
+							size="lg"
+							className={`flex-1 rounded-b-none py-6 text-base font-semibold transition-all ${
+								activeTab === "COMPLETED"
+									? "border-b-4 border-blue-500 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-950 dark:text-blue-300"
+									: "border-b-4 border-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
+							}`}
+							onClick={() => setActiveTab("COMPLETED")}
+						>
+							<CheckCircle className="h-5 w-5 mr-2" />
+							Completed ({completedCount})
 						</Button>
 						<Button
 							variant={activeTab === "REJECTED" ? "default" : "ghost"}
@@ -533,6 +581,13 @@ export default function UniStaffEventRequestsPage() {
 														{renderTypeBadge(request.type || request.eventType)}
 														{/* category not provided by API example */}
 														{getStatusBadge(request.status || request.type, expired, isCompleted)}
+														{/* Show "Need Settle" badge if event is COMPLETED but not in settled list */}
+														{isCompleted && !settledEventIds.has(request.id) && (
+															<Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-500 font-semibold animate-pulse">
+																<DollarSign className="h-3 w-3 mr-1" />
+																Need Settle
+															</Badge>
+														)}
 													</div>
 
 													<p className="text-muted-foreground mb-3 line-clamp-2">{request.description}</p>
@@ -617,6 +672,17 @@ export default function UniStaffEventRequestsPage() {
 																<XCircle className="h-4 w-4" />
 															</Button>
 														</>
+													)}
+													{/* Show "Need Settle" button for completed events not yet settled */}
+													{isCompleted && !settledEventIds.has(request.id) && (
+														<Button 
+															size="sm" 
+															variant="default"
+															className="h-8 bg-amber-600 hover:bg-amber-700"
+														>
+															<DollarSign className="h-3 w-3 mr-1" />
+															Need Settle
+														</Button>
 													)}
 													<Button size="sm" variant="outline" className="h-8 bg-transparent">
 														<Eye className="h-3 w-3 mr-1" />

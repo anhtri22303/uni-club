@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { chatOperations, isRedisConfigured } from '@/lib/upstash'
 
+// Force dynamic rendering for this route
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 // GET - Poll for new messages (for realtime updates)
 export async function GET(request: NextRequest) {
   try {

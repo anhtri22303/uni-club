@@ -9,7 +9,6 @@ interface UseChatAssistantProps {
   gradient: string
   pattern: string
   borderRadius: string
-  showQR: boolean
   qrSize: number[]
   qrStyle: string
   showLogo: boolean
@@ -20,7 +19,6 @@ interface UseChatAssistantProps {
   onCardColorClassChange: (value: string) => void
   onPatternChange: (value: string) => void
   onBorderRadiusChange: (value: string) => void
-  onShowQRChange: (value: boolean) => void
   onQRSizeChange: (value: number[]) => void
   onQRStyleChange: (value: string) => void
   onShowLogoChange: (value: boolean) => void
@@ -86,15 +84,13 @@ AVAILABLE CUSTOMIZATIONS:
 6. QR Size: 60-150px
 7. Pattern Opacity: 0-50%
 8. Card Opacity: 50-100%
-9. Show/Hide QR Code
-10. Show/Hide Logo
+9. Show/Hide Logo
 
 CURRENT STATE:
 - Color Type: ${props.colorType}
 - Current Color: ${allColors.find(c => c.value === props.gradient)?.name || "Custom"}
 - Pattern: ${cardPatterns.find(p => p.value === props.pattern)?.name || "Unknown"}
 - Border Radius: ${borderRadiusOptions.find(b => b.value === props.borderRadius)?.name || "Unknown"}
-- QR Visible: ${props.showQR}
 - QR Size: ${props.qrSize[0]}px
 - QR Style: ${qrStyles.find(q => q.value === props.qrStyle)?.name || "Unknown"}
 - Logo Visible: ${props.showLogo}
@@ -109,7 +105,6 @@ Analyze the user's request and respond with a JSON object containing the changes
     "cardColorClass": "bg-gradient-to-r or empty string for solid colors",
     "pattern": "pattern_value or null",
     "borderRadius": "border_value or null",
-    "showQR": true/false or null,
     "qrSize": number or null,
     "qrStyle": "style_value or null",
     "showLogo": true/false or null,
@@ -190,10 +185,6 @@ Respond ONLY with valid JSON, no other text.`
       if (changes.borderRadius !== undefined && changes.borderRadius !== null) {
         props.onBorderRadiusChange(changes.borderRadius)
         appliedChanges.push("border radius")
-      }
-      if (changes.showQR !== undefined && changes.showQR !== null) {
-        props.onShowQRChange(changes.showQR)
-        appliedChanges.push("QR visibility")
       }
       if (changes.qrSize !== undefined && changes.qrSize !== null) {
         props.onQRSizeChange([changes.qrSize])

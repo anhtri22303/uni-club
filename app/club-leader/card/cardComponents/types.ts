@@ -25,7 +25,6 @@ export interface CardDesign {
   borderRadius: string
   logoUrl: string
   backgroundImage: string
-  showQR: boolean
   qrPosition: string
   qrSize: number
   qrStyle: string
