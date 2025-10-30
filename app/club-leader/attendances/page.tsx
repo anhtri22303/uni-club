@@ -105,8 +105,18 @@ export default function ClubAttendancePage() {
     const loadBaseData = async () => {
       setLoading(true)
       try {
-        const profile = await fetchProfile()
-        setUserId((profile as any)?.userId)
+        // --- ✅ THAY ĐỔI BẮT ĐẦU TỪ ĐÂY ---
+        const profile = (await fetchProfile()) as any // Thêm (as any)
+        // THÊM DÒNG DEBUG NÀY ĐỂ KIỂM TRA
+        console.log("DEBUG: Cấu trúc PROFILE THỰC SỰ:", JSON.stringify(profile, null, 2));
+        // Lấy userId chính xác từ profile.id
+        const currentUserId = profile?.id;
+
+        if (!currentUserId) {
+          console.error("Failed to extract userId from profile!");
+        }
+        setUserId(currentUserId); // Set userId = 54 (ví dụ)
+        // --- ✅ KẾT THÚC THAY ĐỔI ---
 
         const clubId = getClubIdFromToken()
         if (!clubId) throw new Error("No club information found.")
@@ -146,6 +156,8 @@ export default function ClubAttendancePage() {
         if (apiMembers.length > 0) return apiMembers; // Dùng cache nếu có
 
         const membersData = await membershipApi.getMembersByClubId(managedClub.id);
+        console.log("DEBUG: Dữ liệu apiMembers (memberships):", membersData);
+
         setApiMembers(membersData);
         return membersData;
       };
@@ -270,7 +282,8 @@ export default function ClubAttendancePage() {
     };
 
     loadMembersAndAttendance();
-  }, [managedClub, selectedDate, apiMembers]);
+    // }, [managedClub, selectedDate, apiMembers]);
+  }, [managedClub, selectedDate]);
 
   // Lọc thành viên active
   const clubMembers = useMemo(
@@ -340,6 +353,45 @@ export default function ClubAttendancePage() {
     paginatedData: paginatedMembers,
     setCurrentPage: setMembersPage,
   } = usePagination({ data: filteredMembers, initialPageSize: 6 })
+
+  // --- ✅ DÁN useEffect MỚI NÀY VÀO ĐÂY ---
+  useEffect(() => {
+    // Chúng ta cần 3 điều kiện:
+    // 1. Phải có `userId` (đã login, vd: 54)
+    // 2. Phải có `apiMembers` (đã tải danh sách member)
+    // 3. Phải có `attendance` (đã tải danh sách điểm danh)
+    if (!userId || apiMembers.length === 0 || Object.keys(attendance).length === 0) {
+      return; // Nếu chưa có đủ dữ liệu, không làm gì cả
+    }
+
+    // 1. Tìm thông tin membership của leader trong `apiMembers`
+    //    (Chúng ta cần `membershipId` từ `userId`)
+    const leaderMembership: ApiMembership | undefined = apiMembers.find(
+      (m: any) => String(m.userId) === String(userId)
+    );
+
+    // 2. Nếu tìm thấy thông tin leader...
+    if (leaderMembership && leaderMembership.membershipId) {
+      const leaderMembershipId = leaderMembership.membershipId; // vd: 44
+
+      // 3. Lấy trạng thái của leader từ state `attendance`
+      const leaderStatus = attendance[leaderMembershipId];
+
+      // 4. Nếu trạng thái là 'absent' (hoặc chưa được set)
+      if (leaderStatus === "absent" || !leaderStatus) {
+        // 5. Hiển thị thông báo!
+        toast({
+          variant: "default",
+          title: "Attendance Reminder 🔔",
+          description: "You are currently marked as 'Absent'. Please update your own status if this is incorrect.",
+          duration: 7000,
+          className: "bg-yellow-50 border-yellow-300 text-yellow-800",
+        });
+      }
+    }
+    // Chúng ta thêm `toast` vào dependency vì nó là 1 hook
+  }, [userId, apiMembers, attendance, toast]);
+  // --- ✅ KẾT THÚC Đoạn code mới ---
 
   const handleStatusChange = (memberId: number, status: PageAttendanceStatus) => {
     if (isReadOnly) return;
