@@ -22,7 +22,7 @@ export function ReactQueryProvider({ children }: { children: ReactNode }) {
             // Don't refetch on reconnect (use manual refetch if needed)
             refetchOnReconnect: false,
             // Only refetch on mount if data is stale (not every time)
-            refetchOnMount: "stale",
+            refetchOnMount: true,
           },
           mutations: {
             // Retry mutations once on failure
