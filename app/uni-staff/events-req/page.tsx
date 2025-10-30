@@ -28,7 +28,7 @@ export default function UniStaffEventRequestsPage() {
 	const [typeFilter, setTypeFilter] = useState<string>("all")
 	const [expiredFilter, setExpiredFilter] = useState<string>("hide")
 	const [dateFilter, setDateFilter] = useState<string>("")
-	const [activeTab, setActiveTab] = useState<"WAITING_UNISTAFF_APPROVAL" | "APPROVED" | "REJECTED">("WAITING_UNISTAFF_APPROVAL")
+	const [activeTab, setActiveTab] = useState<"PENDING_UNISTAFF" | "APPROVED" | "REJECTED">("PENDING_UNISTAFF")
 	const [showWaitingCoClub, setShowWaitingCoClub] = useState<boolean>(false)
 
 	const [events, setEvents] = useState<any[]>([])
@@ -164,16 +164,16 @@ export default function UniStaffEventRequestsPage() {
 	// Filter events based on active tab and search/filters
 	const filteredRequests = events
 		.filter((evt) => {
-			// Hide WAITING_COCLUB_APPROVAL events by default unless toggle is enabled
-			if (!showWaitingCoClub && (evt.status ?? "").toUpperCase() === "WAITING_COCLUB_APPROVAL") {
+			// Hide PENDING_COCLUB events by default unless toggle is enabled
+			if (!showWaitingCoClub && (evt.status ?? "").toUpperCase() === "PENDING_COCLUB") {
 				return false
 			}
 
 			// First filter by active tab status
-			// WAITING_COCLUB_APPROVAL events should appear in the WAITING_UNISTAFF_APPROVAL tab
+			// PENDING_COCLUB events should appear in the PENDING_UNISTAFF tab
 			const eventStatus = (evt.status ?? "").toUpperCase()
 			const matchTab = eventStatus === activeTab || 
-				(activeTab === "WAITING_UNISTAFF_APPROVAL" && eventStatus === "WAITING_COCLUB_APPROVAL")
+				(activeTab === "PENDING_UNISTAFF" && eventStatus === "PENDING_COCLUB")
 
 			const q = searchTerm.trim().toLowerCase()
 			const matchSearch =
@@ -254,11 +254,11 @@ export default function UniStaffEventRequestsPage() {
 		}
 
 		switch (status) {
-			case "WAITING_UNISTAFF_APPROVAL":
+			case "PENDING_UNISTAFF":
 				return (
 					<Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-500 font-semibold">
 						<span className="inline-block w-2 h-2 rounded-full bg-yellow-500 mr-1.5"></span>
-						Waiting Uni-Staff
+						Pending Uni-Staff
 					</Badge>
 				)
 			case "APPROVED":
@@ -268,7 +268,7 @@ export default function UniStaffEventRequestsPage() {
 						Approved
 					</Badge>
 				)
-			case "WAITING_COCLUB_APPROVAL":
+			case "PENDING_COCLUB":
 				return (
 					<Badge variant="outline" className="bg-orange-100 text-orange-700 border-orange-500 font-semibold">
 						<span className="inline-block w-2 h-2 rounded-full bg-orange-500 mr-1.5"></span>
@@ -296,10 +296,10 @@ export default function UniStaffEventRequestsPage() {
 
 	// Compute counts by status (prefer `status` field). Fallback to type-based heuristics when missing
 	const totalCount = events.length
-	const waitingUniStaffCount = events.filter((e) => (e.status ?? "").toUpperCase() === "WAITING_UNISTAFF_APPROVAL").length
+	const waitingUniStaffCount = events.filter((e) => (e.status ?? "").toUpperCase() === "PENDING_UNISTAFF").length
 	const approvedCount = events.filter((e) => (e.status ?? "").toUpperCase() === "APPROVED").length
 	const rejectedCount = events.filter((e) => (e.status ?? "").toUpperCase() === "REJECTED").length
-	const waitingCoClubCount = events.filter((e) => (e.status ?? "").toUpperCase() === "WAITING_COCLUB_APPROVAL").length
+	const waitingCoClubCount = events.filter((e) => (e.status ?? "").toUpperCase() === "PENDING_COCLUB").length
 
 	return (
 		<ProtectedRoute allowedRoles={["uni_staff"]}>
@@ -320,7 +320,7 @@ export default function UniStaffEventRequestsPage() {
 						<Card className="border-0 shadow-md bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-950 dark:to-yellow-900">
 							<CardHeader className="pb-3 px-4 pt-3">
 								<CardTitle className="text-sm font-medium text-yellow-700 dark:text-yellow-300">
-									Waiting Approval
+									Pending Approval
 								</CardTitle>
 							</CardHeader>
 							<CardContent className="pb-3 px-4">
@@ -382,14 +382,14 @@ export default function UniStaffEventRequestsPage() {
 					{/* Tab Buttons */}
 					<div className="flex gap-3 border-b-2 border-gray-200 dark:border-gray-700">
 						<Button
-							variant={activeTab === "WAITING_UNISTAFF_APPROVAL" ? "default" : "ghost"}
+							variant={activeTab === "PENDING_UNISTAFF" ? "default" : "ghost"}
 							size="lg"
 							className={`flex-1 rounded-b-none py-6 text-base font-semibold transition-all ${
-								activeTab === "WAITING_UNISTAFF_APPROVAL"
+								activeTab === "PENDING_UNISTAFF"
 									? "border-b-4 border-yellow-500 bg-yellow-50 text-yellow-700 hover:bg-yellow-100 dark:bg-yellow-950 dark:text-yellow-300"
 									: "border-b-4 border-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
 							}`}
-							onClick={() => setActiveTab("WAITING_UNISTAFF_APPROVAL")}
+							onClick={() => setActiveTab("PENDING_UNISTAFF")}
 						>
 							<Clock className="h-5 w-5 mr-2" />
 							Waiting ({waitingUniStaffCount})
@@ -473,7 +473,7 @@ export default function UniStaffEventRequestsPage() {
 								className="flex items-center gap-2"
 							>
 								<Filter className="h-4 w-4" />
-								{showWaitingCoClub ? "Hide" : "Show"} Waiting Co-Club
+								{showWaitingCoClub ? "Hide" : "Show"} Pending Co-Club
 								{waitingCoClubCount > 0 && (
 									<Badge 
 										variant="secondary" 
@@ -513,9 +513,9 @@ export default function UniStaffEventRequestsPage() {
 									borderClass = 'border-l-4 border-l-gray-400 opacity-60'
 								} else if (request.status === "APPROVED") {
 									borderClass = 'border-l-4 border-l-green-500'
-								} else if (request.status === "WAITING_COCLUB_APPROVAL") {
+								} else if (request.status === "PENDING_COCLUB") {
 									borderClass = 'border-l-4 border-l-orange-500'
-								} else if (request.status === "WAITING_UNISTAFF_APPROVAL") {
+								} else if (request.status === "PENDING_UNISTAFF") {
 									borderClass = 'border-l-4 border-l-yellow-500'
 								} else if (request.status === "REJECTED") {
 									borderClass = 'border-l-4 border-l-red-500'
@@ -579,7 +579,7 @@ export default function UniStaffEventRequestsPage() {
 												</div>
 
 												<div className="flex items-center gap-2 ml-4">
-													{request.status === "WAITING_UNISTAFF_APPROVAL" && !expired && (
+													{request.status === "PENDING_UNISTAFF" && !expired && (
 														<>
 															<Button size="sm" variant="default" className="h-8 w-8 p-0" onClick={async (e) => {
 																e.preventDefault()

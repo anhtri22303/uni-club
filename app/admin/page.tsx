@@ -81,8 +81,8 @@ export default function PartnerDashboard() {
   // Event statistics
   const eventStats = useMemo(() => {
     const approved = events.filter((e: any) => e.status === "APPROVED").length
-    const waitingUniStaff = events.filter((e: any) => e.status === "WAITING_UNISTAFF_APPROVAL").length
-    const waitingCoClub = events.filter((e: any) => e.status === "WAITING_COCLUB_APPROVAL").length
+    const waitingUniStaff = events.filter((e: any) => e.status === "PENDING_UNISTAFF").length
+    const waitingCoClub = events.filter((e: any) => e.status === "PENDING_COCLUB").length
     const pending = waitingUniStaff + waitingCoClub // Total pending (both types)
     const rejected = events.filter((e: any) => e.status === "REJECTED").length
     const now = events.filter((e: any) => getEventStatus(e.date, e.time) === "Now").length
@@ -716,8 +716,8 @@ export default function PartnerDashboard() {
                       <SelectContent>
                         <SelectItem value="all">All Approval</SelectItem>
                         <SelectItem value="APPROVED">Approved</SelectItem>
-                        <SelectItem value="WAITING_UNISTAFF_APPROVAL">Waiting Uni-Staff</SelectItem>
-                        <SelectItem value="WAITING_COCLUB_APPROVAL">Waiting Co-Club</SelectItem>
+                        <SelectItem value="PENDING_UNISTAFF">Pending Uni-Staff</SelectItem>
+                        <SelectItem value="PENDING_COCLUB">Pending Co-Club</SelectItem>
                         <SelectItem value="REJECTED">Rejected</SelectItem>
                       </SelectContent>
                     </Select>
@@ -782,11 +782,11 @@ export default function PartnerDashboard() {
                               {event.status === "APPROVED" && (
                                 <Badge variant="default" className="text-xs bg-green-600">Approved</Badge>
                               )}
-                              {event.status === "WAITING_COCLUB_APPROVAL" && (
-                                <Badge variant="outline" className="text-xs bg-orange-100 text-orange-700 border-orange-500">Waiting Co-Club</Badge>
+                              {event.status === "PENDING_COCLUB" && (
+                                <Badge variant="outline" className="text-xs bg-orange-100 text-orange-700 border-orange-500">Pending Co-Club</Badge>
                               )}
-                              {event.status === "WAITING_UNISTAFF_APPROVAL" && (
-                                <Badge variant="outline" className="text-xs bg-yellow-100 text-yellow-700 border-yellow-500">Waiting Uni-Staff</Badge>
+                              {event.status === "PENDING_UNISTAFF" && (
+                                <Badge variant="outline" className="text-xs bg-yellow-100 text-yellow-700 border-yellow-500">Pending Uni-Staff</Badge>
                               )}
                               {event.status === "REJECTED" && (
                                 <Badge variant="destructive" className="text-xs">Rejected</Badge>

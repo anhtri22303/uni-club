@@ -22,10 +22,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton"
 
 import clubs from "@/src/data/clubs.json"
-import { fetchEvent, timeObjectToString } from "@/service/eventApi"
+import { fetchEvent, timeObjectToString, eventQR } from "@/service/eventApi"
 import { createEvent, getEventById } from "@/service/eventApi"
-import { generateCode } from "@/service/checkinApi"
 import { safeLocalStorage } from "@/lib/browser-utils"
+import { PhaseSelectionModal } from "@/components/phase-selection-modal"
 
 export default function AdminEventsPage() {
   const router = useRouter()
@@ -136,6 +136,8 @@ export default function AdminEventsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showCalendarModal, setShowCalendarModal] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<any>(null)
+  const [showPhaseModal, setShowPhaseModal] = useState(false)
+  const [isGeneratingQR, setIsGeneratingQR] = useState(false)
   const [showQrModal, setShowQrModal] = useState(false)
   const [qrLinks, setQrLinks] = useState<{ local?: string; prod?: string; mobile?: string }>({})
   const [qrRotations, setQrRotations] = useState<{ local: string[]; prod: string[]; mobile?: string[] }>({ local: [], prod: [] })
@@ -154,57 +156,9 @@ export default function AdminEventsPage() {
       return
     }
     setCountdown(Math.floor(ROTATION_INTERVAL_MS / 1000))
-    // helper to generate and set QR variants (used immediately and on interval)
-    const generateAndSet = async () => {
-      if (!selectedEvent?.id) return
-      try {
-        const { token } = await generateCode(selectedEvent.id)
-        console.log('Generated QR token:', token)
 
-        // Create URLs with token (path parameter format)
-        const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${token}`
-        const localUrl = `http://localhost:3000/student/checkin/${token}`
-
-        const styleVariants = [
-          { color: { dark: '#000000', light: '#FFFFFF' }, margin: 1 },
-          { color: { dark: '#111111', light: '#FFFFFF' }, margin: 2 },
-          { color: { dark: '#222222', light: '#FFFFFF' }, margin: 0 },
-        ]
-
-        // Generate QR variants for local environment
-        const localQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
-          const opts = styleVariants[i % styleVariants.length]
-          return QRCode.toDataURL(localUrl, opts as any)
-        })
-        const localQrVariants = await Promise.all(localQrVariantsPromises)
-
-        // Generate QR variants for production environment
-        const prodQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
-          const opts = styleVariants[i % styleVariants.length]
-          return QRCode.toDataURL(prodUrl, opts as any)
-        })
-        const prodQrVariants = await Promise.all(prodQrVariantsPromises)
-
-        // Build mobile deep link and its QR variants
-        const mobileLink = `exp://192.168.1.50:8081/--/student/checkin/${token}`
-        const mobileVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
-          const opts = styleVariants[i % styleVariants.length]
-          return QRCode.toDataURL(mobileLink, opts as any)
-        })
-        const mobileVariants = await Promise.all(mobileVariantsPromises)
-
-        setQrRotations({ local: localQrVariants, prod: prodQrVariants, mobile: mobileVariants })
-        setQrLinks({ local: localUrl, prod: prodUrl, mobile: mobileLink })
-      } catch (err) {
-        console.error('Failed to generate QR:', err)
-      }
-    }
-
-    // generate once immediately so modal shows a QR without waiting for the first interval
-    generateAndSet()
-
+    // Just rotate the display, tokens are generated when phase is selected
     const rotId = setInterval(() => {
-      generateAndSet()
       setVisibleIndex((i) => i + 1)
       setCountdown(Math.floor(ROTATION_INTERVAL_MS / 1000))
     }, ROTATION_INTERVAL_MS)
@@ -261,7 +215,7 @@ export default function AdminEventsPage() {
     const isDefaultState = !approvalFilter && expiredFilter === "hide"
     
     if (isDefaultState) {
-      // Default: Only show future WAITING_UNISTAFF_APPROVAL and APPROVED events
+      // Default: Only show future PENDING_UNISTAFF and APPROVED events
       if (item.status === "REJECTED") return false
       if (item.status === "COMPLETED") return false
       if (isExpired) return false
@@ -336,16 +290,23 @@ export default function AdminEventsPage() {
     }
     try {
       const hostClubId = Number(formData.clubId)
+      
+      // Format time strings to HH:MM format
+      const startTime = formData.startTime.substring(0, 5)
+      const endTime = formData.endTime.substring(0, 5)
+      
       const payload: any = {
         hostClubId,
         name: formData.name,
         description: formData.description,
         type: formData.type as "PUBLIC" | "PRIVATE",
         date: formData.date,
-        startTime: formData.startTime,
-        endTime: formData.endTime,
+        startTime: startTime,
+        endTime: endTime,
         locationId: 1, // Default location - admin should select from locations
         maxCheckInCount: formData.maxCheckInCount,
+        commitPointCost: 0, // Admin creates events with 0 commit cost
+        budgetPoints: 0,    // Admin can set budget points later
       }
       const res: any = await createEvent(payload)
       toast({ title: "Event Created", description: "Event created successfully" })
@@ -365,6 +326,74 @@ export default function AdminEventsPage() {
     }
   }
 
+
+  // Helper function to handle phase confirmation
+  const handlePhaseConfirm = async (phase: string) => {
+    if (!selectedEvent?.id) return
+
+    try {
+      setIsGeneratingQR(true)
+
+      // Call new eventQR API with selected phase
+      console.log('Generating check-in token for event:', selectedEvent.id, 'with phase:', phase)
+      const { token, expiresIn } = await eventQR(selectedEvent.id, phase)
+      console.log('Generated token:', token, 'expires in:', expiresIn)
+
+      // Create URLs with token (path parameter format)
+      const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${token}`
+      const localUrl = `http://localhost:3000/student/checkin/${token}`
+      const mobileLink = `exp://192.168.1.50:8081/--/student/checkin/${token}`
+
+      // Generate QR code variants
+      const styleVariants = [
+        { color: { dark: '#000000', light: '#FFFFFF' }, margin: 1 },
+        { color: { dark: '#111111', light: '#FFFFFF' }, margin: 2 },
+        { color: { dark: '#222222', light: '#FFFFFF' }, margin: 0 },
+      ]
+
+      // Generate QR variants for local environment
+      const localQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) =>
+        QRCode.toDataURL(localUrl, styleVariants[i % styleVariants.length])
+      )
+      const localQrVariants = await Promise.all(localQrVariantsPromises)
+
+      // Generate QR variants for production environment
+      const prodQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) =>
+        QRCode.toDataURL(prodUrl, styleVariants[i % styleVariants.length])
+      )
+      const prodQrVariants = await Promise.all(prodQrVariantsPromises)
+
+      // Generate QR variants for mobile
+      const mobileVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) =>
+        QRCode.toDataURL(mobileLink, styleVariants[i % styleVariants.length])
+      )
+      const mobileVariants = await Promise.all(mobileVariantsPromises)
+
+      setQrRotations({ local: localQrVariants, prod: prodQrVariants, mobile: mobileVariants })
+      setQrLinks({ local: localUrl, prod: prodUrl, mobile: mobileLink })
+      setVisibleIndex(0)
+      setDisplayedIndex(0)
+
+      // Close phase modal and open QR modal
+      setShowPhaseModal(false)
+      setShowQrModal(true)
+
+      toast({
+        title: 'QR Code Generated',
+        description: `Check-in QR code generated for ${phase} phase`,
+        duration: 3000
+      })
+    } catch (err: any) {
+      console.error('Failed to generate QR', err)
+      toast({
+        title: 'QR Error',
+        description: err?.response?.data?.message || err?.message || 'Could not generate QR code',
+        variant: 'destructive'
+      })
+    } finally {
+      setIsGeneratingQR(false)
+    }
+  }
 
   // Helper functions for QR actions
   const handleDownloadQR = (environment: 'local' | 'prod' | 'mobile') => {
@@ -403,27 +432,14 @@ export default function AdminEventsPage() {
 
   const handleCopyLink = async (environment: 'local' | 'prod' | 'mobile') => {
     try {
-      // Generate fresh token for all environments
-      if (!selectedEvent?.id) {
-        toast({ title: 'No event', description: 'Event not available', variant: 'destructive' })
-        return
-      }
-
       let link: string | undefined
-      try {
-        const { token } = await generateCode(selectedEvent.id)
-        
-        if (environment === 'local') {
-          link = `http://localhost:3000/student/checkin/${token}`
-        } else if (environment === 'prod') {
-          link = `https://uniclub-fpt.vercel.app/student/checkin/${token}`
-        } else {
-          // mobile deep link
+      if (environment === 'mobile') {
+        const token = qrLinks.local?.split('/').pop() || qrLinks.prod?.split('/').pop()
+        if (token) {
           link = `exp://192.168.1.50:8081/--/student/checkin/${token}`
         }
-      } catch (err) {
-        toast({ title: 'Error', description: 'Could not generate link', variant: 'destructive' })
-        return
+      } else {
+        link = environment === 'local' ? qrLinks.local : qrLinks.prod
       }
 
       if (!link) return
@@ -542,8 +558,8 @@ export default function AdminEventsPage() {
                       <SelectContent>
                         <SelectItem value="all">All</SelectItem>
                         <SelectItem value="APPROVED">Approved</SelectItem>
-                        <SelectItem value="WAITING_COCLUB_APPROVAL">Waiting Co-Club</SelectItem>
-                        <SelectItem value="WAITING_UNISTAFF_APPROVAL">Waiting Uni-Staff</SelectItem>
+                        <SelectItem value="PENDING_COCLUB">Pending Co-Club</SelectItem>
+                        <SelectItem value="PENDING_UNISTAFF">Pending Uni-Staff</SelectItem>
                         <SelectItem value="REJECTED">Rejected</SelectItem>
                       </SelectContent>
                     </Select>
@@ -597,9 +613,9 @@ export default function AdminEventsPage() {
                     borderColor = "border-l-4 border-l-gray-400"
                   } else if (event.status === "APPROVED") {
                     borderColor = "border-l-4 border-l-green-500"
-                  } else if (event.status === "WAITING_COCLUB_APPROVAL") {
+                  } else if (event.status === "PENDING_COCLUB") {
                     borderColor = "border-l-4 border-l-orange-500"
-                  } else if (event.status === "WAITING_UNISTAFF_APPROVAL") {
+                  } else if (event.status === "PENDING_UNISTAFF") {
                     borderColor = "border-l-4 border-l-yellow-500"
                   } else if (event.status === "REJECTED") {
                     borderColor = "border-l-4 border-l-red-500"
@@ -662,16 +678,16 @@ export default function AdminEventsPage() {
                                   Approved
                                 </Badge>
                               )}
-                              {event.status === "WAITING_COCLUB_APPROVAL" && (
+                              {event.status === "PENDING_COCLUB" && (
                                 <Badge variant="outline" className="bg-orange-100 text-orange-700 border-orange-500 font-semibold">
                                   <span className="inline-block w-2 h-2 rounded-full bg-orange-500 mr-1.5"></span>
-                                  Waiting Co-Club Approval
+                                  Pending Co-Club Approval
                                 </Badge>
                               )}
-                              {event.status === "WAITING_UNISTAFF_APPROVAL" && (
+                              {event.status === "PENDING_UNISTAFF" && (
                                 <Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-500 font-semibold">
                                   <span className="inline-block w-2 h-2 rounded-full bg-yellow-500 mr-1.5"></span>
-                                  Waiting Uni-Staff Approval
+                                  Pending Uni-Staff Approval
                                 </Badge>
                               )}
                               {event.status === "REJECTED" && (
@@ -722,62 +738,9 @@ export default function AdminEventsPage() {
                                 variant="default"
                                 size="sm"
                                 className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium"
-                                onClick={async () => {
-                                  setSelectedEvent(event);
-                                  try {
-                                    // Generate fresh token using the new API
-                                    console.log('Generating check-in token for event:', event.id);
-                                    const { token } = await generateCode(event.id);
-                                    console.log('Generated token:', token);
-                                    
-                                    // Create URLs with token (path parameter format)
-                                    const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${token}`;
-                                    const localUrl = `http://localhost:3000/student/checkin/${token}`;
-                                    
-                                    console.log('Production URL:', prodUrl);
-                                    console.log('Development URL:', localUrl);
-                                    
-                                    // Generate QR code variants
-                                    const styleVariants = [
-                                      { color: { dark: '#000000', light: '#FFFFFF' }, margin: 1 },
-                                      { color: { dark: '#111111', light: '#FFFFFF' }, margin: 2 },
-                                      { color: { dark: '#222222', light: '#FFFFFF' }, margin: 0 },
-                                    ];
-                                    
-                                    // Generate QR variants for local environment
-                                    const localQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
-                                      const opts = styleVariants[i % styleVariants.length];
-                                      return QRCode.toDataURL(localUrl, opts as any);
-                                    });
-                                    const localQrVariants = await Promise.all(localQrVariantsPromises);
-                                    
-                                    // Generate QR variants for production environment
-                                    const prodQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => {
-                                      const opts = styleVariants[i % styleVariants.length];
-                                      return QRCode.toDataURL(prodUrl, opts as any);
-                                    });
-                                    const prodQrVariants = await Promise.all(prodQrVariantsPromises);
-                                    
-                                    // Set different URLs for local and production
-                                    setQrRotations({ local: localQrVariants, prod: prodQrVariants });
-                                    setQrLinks({ local: localUrl, prod: prodUrl });
-                                    setVisibleIndex(0);
-                                    setDisplayedIndex(0);
-                                    setShowQrModal(true);
-                                    
-                                    toast({ 
-                                      title: 'QR Code Generated', 
-                                      description: 'Check-in QR code has been generated successfully',
-                                      duration: 3000 
-                                    });
-                                  } catch (err: any) {
-                                    console.error('Failed to generate QR', err);
-                                    toast({ 
-                                      title: 'QR Error', 
-                                      description: err?.message || 'Could not generate QR code', 
-                                      variant: 'destructive' 
-                                    });
-                                  }
+                                onClick={() => {
+                                  setSelectedEvent(event)
+                                  setShowPhaseModal(true)
                                 }}
                               >
                                 <QrCode className="h-4 w-4 mr-2" />
@@ -927,6 +890,14 @@ export default function AdminEventsPage() {
               </div>
             </div>
           </Modal>
+
+          {/* Phase Selection Modal */}
+          <PhaseSelectionModal
+            open={showPhaseModal}
+            onOpenChange={setShowPhaseModal}
+            onConfirm={handlePhaseConfirm}
+            isLoading={isGeneratingQR}
+          />
 
           {/* QR Modal */}
           {selectedEvent && (

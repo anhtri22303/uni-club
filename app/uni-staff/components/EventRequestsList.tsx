@@ -16,7 +16,7 @@ interface EventRequestsListProps {
 }
 
 export function EventRequestsList({ events, eventsLoading, pendingEvents }: EventRequestsListProps) {
-  const [eventStatusFilter, setEventStatusFilter] = useState<string>("WAITING_UNISTAFF_APPROVAL")
+  const [eventStatusFilter, setEventStatusFilter] = useState<string>("PENDING_UNISTAFF")
   const [eventTypeFilter, setEventTypeFilter] = useState<string>("ALL")
 
   // Filter and check non-expired events
@@ -105,8 +105,8 @@ export function EventRequestsList({ events, eventsLoading, pendingEvents }: Even
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ALL">All Status</SelectItem>
-                  <SelectItem value="WAITING_UNISTAFF_APPROVAL">Waiting Uni-Staff</SelectItem>
-                  <SelectItem value="WAITING_COCLUB_APPROVAL">Waiting Co-Club</SelectItem>
+                  <SelectItem value="PENDING_UNISTAFF">Pending Uni-Staff</SelectItem>
+                  <SelectItem value="PENDING_COCLUB">Pending Co-Club</SelectItem>
                   <SelectItem value="APPROVED">Approved</SelectItem>
                   <SelectItem value="REJECTED">Rejected</SelectItem>
                 </SelectContent>
@@ -167,26 +167,26 @@ export function EventRequestsList({ events, eventsLoading, pendingEvents }: Even
                         variant={
                           event.status === "APPROVED"
                             ? "default"
-                            : event.status === "WAITING_UNISTAFF_APPROVAL"
+                            : event.status === "PENDING_UNISTAFF"
                             ? "secondary"
-                            : event.status === "WAITING_COCLUB_APPROVAL"
+                            : event.status === "PENDING_COCLUB"
                             ? "outline"
                             : "destructive"
                         }
                         className={`text-[10px] sm:text-xs px-2 py-0.5 ${
-                          event.status === "WAITING_UNISTAFF_APPROVAL" 
+                          event.status === "PENDING_UNISTAFF" 
                             ? "bg-yellow-100 text-yellow-700 border-yellow-500"
-                            : event.status === "WAITING_COCLUB_APPROVAL"
+                            : event.status === "PENDING_COCLUB"
                             ? "bg-orange-100 text-orange-700 border-orange-500"
                             : event.status === "APPROVED"
                             ? "bg-green-600"
                             : ""
                         }`}
                       >
-                        {event.status === "WAITING_UNISTAFF_APPROVAL" 
-                          ? "Waiting Uni-Staff" 
-                          : event.status === "WAITING_COCLUB_APPROVAL"
-                          ? "Waiting Co-Club"
+                        {event.status === "PENDING_UNISTAFF" 
+                          ? "Pending Uni-Staff" 
+                          : event.status === "PENDING_COCLUB"
+                          ? "Pending Co-Club"
                           : event.status === "APPROVED" 
                           ? "Approved" 
                           : "Rejected"}

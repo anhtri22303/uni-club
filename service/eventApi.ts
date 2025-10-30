@@ -40,16 +40,16 @@ export interface Event {
 }
 
 export interface CreateEventPayload {
+  hostClubId: number
+  coHostClubIds?: number[]
   name: string
   description: string
   type: "PUBLIC" | "PRIVATE"
-  date: string
-  startTime: string  // Form uses string format, converted to TimeObject before API call
-  endTime: string    // Form uses string format, converted to TimeObject before API call
+  date: string // Format: YYYY-MM-DD
+  startTime: string  // Format: HH:MM (e.g., "09:00")
+  endTime: string    // Format: HH:MM (e.g., "15:00")
   locationId: number
   maxCheckInCount: number
-  hostClubId: number
-  coHostClubIds?: number[]
   commitPointCost: number
   budgetPoints: number
 }
@@ -249,28 +249,23 @@ export const submitForUniversityApproval = async (eventId: string | number) => {
   // return api.put(`/events/${eventId}/submit-to-staff`)
 }
 
-export const acceptCoHostInvitation = async (eventId: string | number) => {
+/**
+ * Respond to co-host invitation (accept or reject)
+ * @param eventId - Event ID
+ * @param accept - true to accept, false to reject
+ * @returns { success: boolean, message: string, data: string }
+ */
+export const coHostRespond = async (eventId: string | number, accept: boolean) => {
   try {
-    const response = await axiosInstance.post(`/api/events/${eventId}/cohost/accept`)
+    const response = await axiosInstance.post(`/api/events/${eventId}/cohost/respond`, null, {
+      params: { accept }
+    })
     const data: any = response.data
-    console.log(`Accepted co-host invitation for event ${eventId}:`, data)
-    // Response structure: { success: true, message: "✅ Club ... accepted ...", data: null }
-    return data
-  } catch (error) {
-    console.error(`Error accepting co-host invitation for event ${eventId}:`, error)
-    throw error
-  }
-}
-
-export const rejectCoHostInvitation = async (eventId: string | number) => {
-  try {
-    const response = await axiosInstance.post(`/api/events/${eventId}/cohost/reject`)
-    const data: any = response.data
-    console.log(`Rejected co-host invitation for event ${eventId}:`, data)
+    console.log(`${accept ? 'Accepted' : 'Rejected'} co-host invitation for event ${eventId}:`, data)
     // Response structure: { success: true, message: "string", data: "string" }
     return data
   } catch (error) {
-    console.error(`Error rejecting co-host invitation for event ${eventId}:`, error)
+    console.error(`Error responding to co-host invitation for event ${eventId}:`, error)
     throw error
   }
 }
@@ -390,6 +385,41 @@ export const endEvent = async (eventId: string | number) => {
     return data
   } catch (error) {
     console.error(`Error ending event ${eventId}:`, error)
+    throw error
+  }
+}
+
+export const completeEvent = async (eventId: string | number) => {
+  try {
+    const response = await axiosInstance.post(`/api/events/${eventId}/complete`)
+    const data: any = response.data
+    console.log(`Completed event ${eventId}:`, data)
+    // Response structure: { success: true, message: "string", data: "string" }
+    return data
+  } catch (error) {
+    console.error(`Error completing event ${eventId}:`, error)
+    throw error
+  }
+}
+
+/**
+ * GET /api/events/{eventId}/attendance/qr
+ * Generate QR code with phase parameter
+ * @param eventId - Event ID
+ * @param phase - Phase of the event (START, MID, END)
+ * @returns { phase: string, token: string, expiresIn: number }
+ */
+export const eventQR = async (eventId: string | number, phase: string) => {
+  try {
+    const response = await axiosInstance.get(`/api/events/${eventId}/attendance/qr`, {
+      params: { phase }
+    })
+    const data: any = response.data
+    console.log(`Generated QR for event ${eventId} with phase ${phase}:`, data)
+    // Response structure: { success: true, message: "success", data: { phase: "START", token: "string", expiresIn: 120 } }
+    return data.data as { phase: string; token: string; expiresIn: number }
+  } catch (error) {
+    console.error(`Error generating QR for event ${eventId}:`, error)
     throw error
   }
 }

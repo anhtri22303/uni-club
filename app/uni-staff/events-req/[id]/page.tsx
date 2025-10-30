@@ -185,18 +185,18 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
             Approved
           </Badge>
         )
-      case "WAITING_COCLUB_APPROVAL":
+      case "PENDING_COCLUB":
         return (
           <Badge variant="outline" className="bg-orange-100 text-orange-700 border-orange-500">
             <Clock className="h-3 w-3 mr-1" />
-            Waiting Co-Club Approval
+            Pending Co-Club Approval
           </Badge>
         )
-      case "WAITING_UNISTAFF_APPROVAL":
+      case "PENDING_UNISTAFF":
         return (
           <Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-500">
             <Clock className="h-3 w-3 mr-1" />
-            Waiting Uni-Staff Approval
+            Pending Uni-Staff Approval
           </Badge>
         )
       case "REJECTED":

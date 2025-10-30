@@ -33,8 +33,8 @@ export function ChatbotPromptMenu({
           type="button"
           variant="outline"
           size="icon"
-          aria-label="Gợi ý nhanh"
-          title="Gợi ý nhanh"
+          aria-label="Quick suggestions"
+          title="Quick suggestions"
           className="h-9 w-9"
           disabled={disabled}
         >
@@ -58,11 +58,11 @@ export function ChatbotPromptMenu({
               }}
             >
               {key === "clubByMajor"
-                ? "CLB theo ngành"
+                ? "Clubs by Major"
                 : key === "eventsByMajor"
-                ? "Sự kiện ngành"
+                ? "Major Events"
                 : key === "newEventContent"
-                ? "Nội dung event mới"
+                ? "New Event Content"
                 : key}
             </DropdownMenuItem>
           ))}

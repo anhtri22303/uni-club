@@ -130,11 +130,11 @@ export default function UniStaffReportsPage() {
     }).length
   }, [events])
   
-  // Count pending events (non-expired only) - both WAITING_UNISTAFF_APPROVAL and WAITING_COCLUB_APPROVAL
+  // Count pending events (non-expired only) - both PENDING_UNISTAFF and PENDING_COCLUB
   const pendingEvents = useMemo(() => {
     const now = new Date()
     return events.filter((event: any) => {
-      if (event.status !== "WAITING_UNISTAFF_APPROVAL" && event.status !== "WAITING_COCLUB_APPROVAL") return false
+      if (event.status !== "PENDING_UNISTAFF" && event.status !== "PENDING_COCLUB") return false
       
       try {
         const eventDate = new Date(event.date)

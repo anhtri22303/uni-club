@@ -435,7 +435,7 @@ export default function ClubLeaderDashboardPage() {
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Pending Approval:</span>
                     <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
-                      {rawEvents.filter((e: any) => e.status === "WAITING_UNISTAFF_APPROVAL" || e.status === "WAITING_COCLUB_APPROVAL").length}
+                      {rawEvents.filter((e: any) => e.status === "PENDING_UNISTAFF" || e.status === "PENDING_COCLUB").length}
                     </Badge>
                   </div>
                   <div className="flex items-center justify-between pt-2 border-t">
@@ -821,7 +821,7 @@ export default function ClubLeaderDashboardPage() {
                             },
                             {
                               name: "Pending",
-                              count: rawEvents.filter((e: any) => e.status === "WAITING_UNISTAFF_APPROVAL" || e.status === "WAITING_COCLUB_APPROVAL").length,
+                              count: rawEvents.filter((e: any) => e.status === "PENDING_UNISTAFF" || e.status === "PENDING_COCLUB").length,
                               fill: "#eab308"
                             },
                             {
