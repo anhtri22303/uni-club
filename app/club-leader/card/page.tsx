@@ -18,6 +18,7 @@ import {
   handleColorSelection,
 } from "./cardComponents"
 import { useChatAssistant } from "./cardComponents/useChatAssistant"
+import { createCard, type CreateCardRequest } from "@/service/cardApi"
 
 export default function CardEditorPage() {
   const { toast } = useToast()
@@ -41,6 +42,7 @@ export default function CardEditorPage() {
   const [cardOpacity, setCardOpacity] = useState([100])
   const [clubId, setClubId] = useState<number | null>(null)
   const [isChatOpen, setIsChatOpen] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
   
   // Sample card data
   const cardData: CardData = {
@@ -204,31 +206,61 @@ export default function CardEditorPage() {
     })
   }
 
-  const handleSaveDesign = () => {
-    const design = {
-      clubId: clubId,
-      colorType,
-      gradient,
-      cardColorClass,
-      pattern,
-      borderRadius,
-      logoUrl,
-      qrPosition: "center-right",
-      qrSize: qrSize[0],
-      qrStyle,
-      showLogo,
-      logoSize: logoSize[0],
-      patternOpacity: patternOpacity[0],
-      cardOpacity: cardOpacity[0],
+  const handleSaveDesign = async () => {
+    // Check if clubId exists
+    if (!clubId) {
+      toast({
+        title: "❌ Error",
+        description: "Club ID not found. Please make sure you're logged in.",
+        variant: "destructive"
+      })
+      return
     }
-    console.log('Saving design:', design)
-    
-    toast({
-      title: "Design Saved",
-      description: clubId 
-        ? `Your card design has been saved successfully! (Club ID: ${clubId})` 
-        : "Your card design has been saved successfully!",
-    })
+
+    try {
+      setIsSaving(true)
+
+      // Prepare the card design data according to API spec
+      const cardDesignData: CreateCardRequest = {
+        borderRadius,
+        cardColorClass,
+        cardOpacity: cardOpacity[0],
+        colorType,
+        gradient,
+        logoSize: logoSize[0],
+        pattern,
+        patternOpacity: patternOpacity[0],
+        qrPosition: "center-right",
+        qrSize: qrSize[0],
+        qrStyle,
+        showLogo,
+        logoUrl,
+      }
+
+      console.log('Saving design for clubId:', clubId, cardDesignData)
+      
+      // Call the API
+      const savedCard = await createCard(clubId, cardDesignData)
+      
+      console.log('Card saved successfully:', savedCard)
+      
+      toast({
+        title: "✅ Design Saved!",
+        description: `Your card design has been saved successfully! (Card ID: ${savedCard.cardId})`,
+      })
+    } catch (error: any) {
+      console.error('Error saving design:', error)
+      
+      const errorMessage = error.response?.data?.message || error.message || "Failed to save card design"
+      
+      toast({
+        title: "❌ Save Failed",
+        description: errorMessage,
+        variant: "destructive"
+      })
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const handleReset = () => {
@@ -312,10 +344,25 @@ export default function CardEditorPage() {
                     <Share2 className="h-4 w-4 mr-2" />
                     <span>Share</span>
                   </Button>
-                  <Button onClick={handleSaveDesign} variant="outline" className="flex-1 w-full sm:w-auto">
-                    <Save className="h-4 w-4 mr-2" />
-                    <span className="hidden sm:inline">Save Design</span>
-                    <span className="sm:hidden">Save</span>
+                  <Button 
+                    onClick={handleSaveDesign} 
+                    variant="outline" 
+                    className="flex-1 w-full sm:w-auto"
+                    disabled={isSaving || !clubId}
+                  >
+                    {isSaving ? (
+                      <>
+                        <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                        <span className="hidden sm:inline">Saving...</span>
+                        <span className="sm:hidden">Saving</span>
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4 mr-2" />
+                        <span className="hidden sm:inline">Save Design</span>
+                        <span className="sm:hidden">Save</span>
+                      </>
+                    )}
                   </Button>
                   <Button onClick={handleReset} variant="outline" className="w-full sm:w-auto">
                     <RotateCcw className="h-4 w-4" />

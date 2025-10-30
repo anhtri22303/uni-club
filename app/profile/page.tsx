@@ -14,14 +14,11 @@ import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import {
   User, Mail, Phone, Save, Calendar, MapPin, Edit3, Clock, Users, Settings, UserCheck, FileText, BarChart3, Globe, Flame,
-  Zap, Building2, Trophy, Loader2, AlertCircle, Camera, Check, ChevronDown,
+  Zap, Building2, Trophy, Loader2, AlertCircle, Camera,
 } from "lucide-react"
 import { editProfile, fetchProfile, uploadAvatar } from "@/service/userApi"
 import { AvatarCropModal } from "@/components/avatar-crop-modal"
-import { getWallet, ApiMembershipWallet } from "@/service/walletApi"
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { ApiMembershipWallet } from "@/service/walletApi"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from "@/components/ui/select"
 import { Major, fetchMajors } from "@/service/majorApi" // Import từ majorApi
 
@@ -69,8 +66,6 @@ export default function ProfilePage() {
 
   // States for wallet memberships
   const [memberships, setMemberships] = useState<ApiMembershipWallet[]>([])
-  const [selectedWalletId, setSelectedWalletId] = useState<string>("")
-  const [displayPoints, setDisplayPoints] = useState<number>(0)
 
   //--- THÊM STATE CHO MAJORS ---
   const [allMajors, setAllMajors] = useState<Major[]>([])
@@ -165,26 +160,11 @@ export default function ProfilePage() {
         saving: false,
       })
 
-      // Load wallet memberships for students and club leaders
+      // Load wallet memberships for students and club leaders from profile response
       if (auth.role === "student" || auth.role === "club_leader") {
-        try {
-          const walletData = await getWallet()
-          const membershipsList = walletData?.memberships || []
-          setMemberships(membershipsList)
-
-          // Set first wallet as default, or 0 if no wallets
-          if (membershipsList.length > 0) {
-            setSelectedWalletId(membershipsList[0].walletId.toString())
-            setDisplayPoints(Number(membershipsList[0].balancePoints) || 0)
-          } else {
-            setSelectedWalletId("")
-            setDisplayPoints(0)
-          }
-        } catch (walletErr) {
-          console.error("Failed to load wallet:", walletErr)
-          // Fallback to profile wallet if available
-          setDisplayPoints(profileData.userPoints)
-        }
+        const walletsList = profile?.wallets || []
+        console.log("Wallets from profile:", walletsList)
+        setMemberships(walletsList)
       }
 
       // Clear file selection when profile loads
@@ -219,16 +199,6 @@ export default function ProfilePage() {
   useEffect(() => {
     loadProfile()
   }, [auth.userId])
-
-  // Update displayed points when wallet selection changes
-  useEffect(() => {
-    if (selectedWalletId && memberships.length > 0) {
-      const selectedMembership = memberships.find(m => m.walletId.toString() === selectedWalletId)
-      if (selectedMembership) {
-        setDisplayPoints(Number(selectedMembership.balancePoints) || 0)
-      }
-    }
-  }, [selectedWalletId, memberships])
 
   // Handle profile update (không bao gồm avatar)
   const handleSave = async () => {
@@ -507,8 +477,6 @@ export default function ProfilePage() {
   }
 
   const isAdminRole = ["uni_staff", "uni_admin", "admin", "staff"].includes(auth.role || "")
-
-  const pointsCardStyle = getPointsCardStyle(displayPoints)
 
   // =================================================================
   // GIAO DIỆN DÀNH CHO ADMIN
@@ -868,20 +836,22 @@ export default function ProfilePage() {
 
               {/* Right Column - Points and Statistics */}
               <div className="space-y-6">
-                {/* --- ACCUMULATED POINTS FRAME WITH FIRE ICON AND ANIMATION --- */}
-                {memberships.length >= 2 ? (
-                  // Dropdown version when 2+ wallets
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Card className={`shadow-lg border-0 transition-all duration-300 cursor-pointer hover:shadow-xl hover:scale-[1.02] ${pointsCardStyle.cardClassName}`}>
+                {/* --- WALLET CARDS - Display all wallets as separate cards --- */}
+                {memberships.length > 0 ? (
+                  memberships.map((membership) => {
+                    const pointsCardStyle = getPointsCardStyle(membership.balancePoints)
+                    return (
+                      <Card 
+                        key={membership.walletId} 
+                        className={`shadow-lg border-0 transition-all duration-300 ${pointsCardStyle.cardClassName}`}
+                      >
                         <CardContent className="p-4 flex items-center justify-between">
                           <div className="flex-1 min-w-0">
-                            <p className={`text-sm font-medium transition-colors duration-300 ${pointsCardStyle.subtitleColorClassName} flex items-center gap-1 truncate`}>
-                              {memberships.find(m => m.walletId.toString() === selectedWalletId)?.clubName || "Club Points"}
-                              <ChevronDown className={`h-3 w-3 flex-shrink-0 ${pointsCardStyle.subtitleColorClassName}`} />
+                            <p className={`text-sm font-medium transition-colors duration-300 ${pointsCardStyle.subtitleColorClassName} truncate`}>
+                              {membership.clubName}
                             </p>
                             <p className={`text-3xl font-bold transition-colors duration-300 ${pointsCardStyle.textColorClassName}`}>
-                              {displayPoints.toLocaleString()}
+                              {membership.balancePoints.toLocaleString()}
                             </p>
                           </div>
                           <div className={`p-3 rounded-full transition-colors duration-300 ${pointsCardStyle.iconBgClassName}`}>
@@ -893,67 +863,22 @@ export default function ProfilePage() {
                           </div>
                         </CardContent>
                       </Card>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-[320px] p-3">
-                      {memberships.map((membership, index) => {
-                        const colors = [
-                          { from: "from-blue-500", to: "to-cyan-500", hoverFrom: "hover:from-blue-600", hoverTo: "hover:to-cyan-600", check: "text-blue-600" },
-                          { from: "from-emerald-500", to: "to-teal-500", hoverFrom: "hover:from-emerald-600", hoverTo: "hover:to-teal-600", check: "text-emerald-600" },
-                          { from: "from-orange-500", to: "to-amber-500", hoverFrom: "hover:from-orange-600", hoverTo: "hover:to-amber-600", check: "text-orange-600" },
-                          { from: "from-rose-500", to: "to-red-500", hoverFrom: "hover:from-rose-600", hoverTo: "hover:to-red-600", check: "text-rose-600" },
-                          { from: "from-indigo-500", to: "to-purple-500", hoverFrom: "hover:from-indigo-600", hoverTo: "hover:to-purple-600", check: "text-indigo-600" },
-                          { from: "from-green-500", to: "to-lime-500", hoverFrom: "hover:from-green-600", hoverTo: "hover:to-lime-600", check: "text-green-600" },
-                        ]
-                        const colorScheme = colors[index % colors.length]
-                        const isSelected = selectedWalletId === membership.walletId.toString()
-
-                        return (
-                          <DropdownMenuItem
-                            key={membership.walletId}
-                            onClick={() => setSelectedWalletId(membership.walletId.toString())}
-                            className="cursor-pointer rounded-lg p-0 mb-2 overflow-hidden hover:shadow-md transition-all duration-200"
-                          >
-                            <div className={`flex items-center gap-3 w-full p-3 bg-gradient-to-r ${colorScheme.from} ${colorScheme.to} ${colorScheme.hoverFrom} ${colorScheme.hoverTo} transition-all`}>
-                              <div className="w-10 h-10 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center font-bold text-lg text-white">
-                                {membership.clubName.charAt(0).toUpperCase()}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="font-bold text-sm text-white truncate">{membership.clubName}</div>
-                                <div className="text-xs font-medium text-white/90">
-                                  {membership.balancePoints.toLocaleString()} pts
-                                </div>
-                              </div>
-                              {isSelected && (
-                                <div className="flex-shrink-0 w-6 h-6 rounded-full bg-white flex items-center justify-center">
-                                  <Check className={`h-4 w-4 ${colorScheme.check} font-bold`} />
-                                </div>
-                              )}
-                            </div>
-                          </DropdownMenuItem>
-                        )
-                      })}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                    )
+                  })
                 ) : (
-                  // Static card when 0 or 1 wallet
-                  <Card className={`shadow-lg border-0 transition-all duration-300 ${pointsCardStyle.cardClassName}`}>
+                  // Show empty state when no wallets
+                  <Card className="shadow-lg border-0 bg-slate-100">
                     <CardContent className="p-4 flex items-center justify-between">
                       <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-medium transition-colors duration-300 ${pointsCardStyle.subtitleColorClassName} truncate`}>
-                          {memberships.length > 0
-                            ? memberships[0].clubName
-                            : "Accumulated Points"}
+                        <p className="text-sm font-medium text-slate-500 truncate">
+                          No Club Memberships
                         </p>
-                        <p className={`text-3xl font-bold transition-colors duration-300 ${pointsCardStyle.textColorClassName}`}>
-                          {displayPoints.toLocaleString()}
+                        <p className="text-3xl font-bold text-slate-800">
+                          0
                         </p>
                       </div>
-                      <div className={`p-3 rounded-full transition-colors duration-300 ${pointsCardStyle.iconBgClassName}`}>
-                        <Flame className={
-                          `h-6 w-6 transition-colors duration-300 
-                          ${pointsCardStyle.iconColorClassName} 
-                          ${pointsCardStyle.animationClassName}`
-                        } />
+                      <div className="p-3 rounded-full bg-slate-200">
+                        <Flame className="h-6 w-6 text-slate-600" />
                       </div>
                     </CardContent>
                   </Card>

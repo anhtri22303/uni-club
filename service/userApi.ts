@@ -63,7 +63,6 @@ export const fetchProfile = async () => {
 
       // Transform the response to match expected format
       return {
-        // userId: profileData?.userId,
         id: profileData?.id,
         email: profileData?.email,
         fullName: profileData?.fullName,
@@ -74,9 +73,11 @@ export const fetchProfile = async () => {
         majorName: profileData?.majorName,
         bio: profileData?.bio,
         role: profileData?.role,
+        clubs: profileData?.clubs || [],
+        wallets: profileData?.wallets || [],
+        // Legacy support
         wallet: profileData?.wallet,
-        memberships: profileData?.memberships || [],
-        wallets: profileData?.wallets || []
+        memberships: profileData?.memberships || []
       }
     }
 

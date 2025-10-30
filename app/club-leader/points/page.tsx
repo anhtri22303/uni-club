@@ -17,7 +17,7 @@ import { Users, Award, ChevronLeft, ChevronRight, Send, Filter, X, Wallet, Histo
 import { getClubById, getClubIdFromToken } from "@/service/clubApi"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { getClubWallet, ApiClubWallet, rewardPointsToMember, ApiRewardResponse, getClubToMemberTransactions, ApiClubToMemberTransaction } from "@/service/walletApi"
+import { getClubWallet, ApiClubWallet, rewardPointsToMembers, getClubToMemberTransactions, ApiClubToMemberTransaction } from "@/service/walletApi"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription, } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea" // <-- THÊM MỚI
@@ -287,26 +287,20 @@ export default function ClubLeaderRewardDistributionPage() {
     }
 
     try {
-      // Reward points to each selected member individually
-      const rewardPromises = selectedMembersList.map(member =>
-        rewardPointsToMember(
-          member.id, // membershipId
-          rewardAmount as number,
-          "Event giving" // reason
-        )
+      // Collect all membershipIds as numbers
+      const targetIds = selectedMembersList.map(member => Number(member.id))
+
+      // Call the new batch API
+      const response = await rewardPointsToMembers(
+        targetIds,
+        rewardAmount as number,
+        "Event giving" // reason
       )
 
-      // Execute all reward API calls in parallel
-      const results = await Promise.allSettled(rewardPromises)
-
-      // Count successes and failures
-      const successCount = results.filter(r => r.status === 'fulfilled').length
-      const failureCount = results.filter(r => r.status === 'rejected').length
-
-      if (successCount > 0) {
+      if (response.success) {
         toast({
           title: "Success",
-          description: `Distributed ${rewardAmount} points to ${successCount} member(s) of ${managedClub.name}.${failureCount > 0 ? ` ${failureCount} failed.` : ''}`,
+          description: response.message || `Distributed ${rewardAmount} points to ${selectedMembersList.length} member(s) of ${managedClub.name}.`,
           variant: "default"
         })
 
@@ -320,12 +314,12 @@ export default function ClubLeaderRewardDistributionPage() {
 
         setRewardAmount('') // Reset số điểm sau khi thành công
       } else {
-        throw new Error("All reward distributions failed")
+        throw new Error(response.message || "Failed to distribute points")
       }
     } catch (err: any) {
       toast({
         title: "Delivery error",
-        description: err?.message || "An error occurred while distributing points.",
+        description: err?.response?.data?.message || err?.message || "An error occurred while distributing points.",
         variant: "destructive"
       })
     } finally {
@@ -409,7 +403,7 @@ export default function ClubLeaderRewardDistributionPage() {
                     <p className="text-sm font-medium text-muted-foreground">Club Balance</p>
                     {walletLoading ? (
                       <p className="text-3xl font-bold text-blue-600">Loading...</p>
-                    ) : clubWallet ? (
+                    ) : clubWallet && clubWallet.balancePoints !== undefined ? (
                       <p className="text-3xl font-bold text-blue-600">
                         {clubWallet.balancePoints.toLocaleString()} pts
                       </p>

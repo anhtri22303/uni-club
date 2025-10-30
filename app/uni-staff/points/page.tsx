@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 // ✨ --- IMPORT API THẬT --- ✨
 import { fetchClub } from "@/service/clubApi"
-import { postClubWalletByClubId, getUniToClubTransactions, ApiUniToClubTransaction } from "@/service/walletApi"
+import { pointsToClubs, getUniToClubTransactions, ApiUniToClubTransaction } from "@/service/walletApi"
 
 // Định nghĩa một kiểu dữ liệu cơ bản cho Club
 interface Club {
@@ -152,31 +152,25 @@ export default function UniversityStaffRewardPage() {
 
         setIsDistributing(true)
         try {
-            // Distribute points to each selected club individually
-            const distributePromises = selectedClubsList.map(club =>
-                postClubWalletByClubId(
-                    club.id,
-                    rewardAmount as number,
-                    "Giving Point Month"
-                )
+            // Collect all club IDs as numbers
+            const targetIds = selectedClubsList.map(club => Number(club.id))
+
+            // Call the new batch API
+            const response = await pointsToClubs(
+                targetIds,
+                rewardAmount as number,
+                "Giving Point Month"
             )
 
-            // Execute all distribution API calls in parallel
-            const results = await Promise.allSettled(distributePromises)
-
-            // Count successes and failures
-            const successCount = results.filter(r => r.status === 'fulfilled').length
-            const failureCount = results.filter(r => r.status === 'rejected').length
-
-            if (successCount > 0) {
+            if (response.success) {
                 toast({
                     title: "Success",
-                    description: `Distributed ${rewardAmount} points to ${successCount} club(s).${failureCount > 0 ? ` ${failureCount} failed.` : ''}`,
+                    description: response.message || `Distributed ${rewardAmount} points to ${selectedClubsList.length} club(s).`,
                     variant: "default"
                 })
                 setRewardAmount('')
             } else {
-                throw new Error("All reward distributions failed")
+                throw new Error(response.message || "Failed to distribute points")
             }
         } catch (err: any) {
             toast({
