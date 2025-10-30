@@ -98,3 +98,29 @@ export const reviewPointRequest = async (
         throw error
     }
 }
+/**
+ * 4. Lấy TẤT CẢ các yêu cầu điểm (mọi trạng thái)
+ * GET /api/point-requests
+ */
+export const fetchAllPointRequests = async (): Promise<ApiResponse<PointRequest[]>> => {
+    try {
+        const response = await axiosInstance.get<ApiResponse<PointRequest[]>>(
+            "/api/point-requests" // Giả sử đây là endpoint lấy tất cả
+        )
+        return response.data
+    } catch (error) {
+        console.error("Error fetching all point requests:", error)
+        throw error
+    }
+}
+
+// ... (bạn cũng nên tạo một hook cho tiện)
+import { useQuery } from "@tanstack/react-query"
+
+export const usePointRequests = () => {
+    return useQuery({
+        queryKey: ["point-requests"],
+        queryFn: fetchAllPointRequests,
+    })
+}
+    

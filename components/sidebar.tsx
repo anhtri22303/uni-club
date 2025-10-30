@@ -53,6 +53,7 @@ const navigationConfig = {
     { href: "/uni-staff/policies", label: "Policies", icon: FileText },
     { href: "/uni-staff/majors", label: "Majors", icon: LibraryBig },
     { href: "/uni-staff/clubs-req", label: "Club Requests", icon: FileText },
+    { href: "/uni-staff/points-req", label: "Points Requests", icon: HandCoins },
     { href: "/uni-staff/events-req", label: "Event Requests", icon: Calendar },
     { href: "/uni-staff/points", label: "Points Staff", icon: HandCoins },
     // { href: "/uni-staff/reports", label: "Reports", icon: BarChart3 },
