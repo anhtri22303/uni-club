@@ -14,10 +14,11 @@ import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import {
   User, Mail, Phone, Save, Calendar, MapPin, Edit3, Clock, Users, Settings, UserCheck, FileText, BarChart3, Globe, Flame,
-  Zap, Building2, Trophy, Loader2, AlertCircle, Camera,
+  Zap, Building2, Trophy, Loader2, AlertCircle, Camera, Lock,
 } from "lucide-react"
 import { editProfile, fetchProfile, uploadAvatar } from "@/service/userApi"
 import { AvatarCropModal } from "@/components/avatar-crop-modal"
+import { ChangePasswordModal } from "@/components/change-password"
 import { ApiMembershipWallet } from "@/service/walletApi"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from "@/components/ui/select"
 import { Major, fetchMajors } from "@/service/majorApi" // Import từ majorApi
@@ -69,6 +70,9 @@ export default function ProfilePage() {
 
   //--- THÊM STATE CHO MAJORS ---
   const [allMajors, setAllMajors] = useState<Major[]>([])
+
+  // State for change password modal
+  const [showChangePassword, setShowChangePassword] = useState(false)
   // Dữ liệu tĩnh cho hoạt động người dùng
   const userStats = {
     clubsJoined: 5,
@@ -587,14 +591,24 @@ export default function ProfilePage() {
                           className="min-h-[80px] border-slate-400"
                         />
                       </div>
-                      <Button onClick={handleSave} disabled={profileState.saving} className="w-fit">
-                        {profileState.saving ? (
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <Save className="h-4 w-4 mr-2" />
-                        )}
-                        {profileState.saving ? "Saving..." : "Save Changes"}
-                      </Button>
+                      <div className="flex gap-3">
+                        <Button onClick={handleSave} disabled={profileState.saving} className="w-fit">
+                          {profileState.saving ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <Save className="h-4 w-4 mr-2" />
+                          )}
+                          {profileState.saving ? "Saving..." : "Save Changes"}
+                        </Button>
+                        <Button 
+                          onClick={() => setShowChangePassword(true)} 
+                          variant="outline" 
+                          className="w-fit"
+                        >
+                          <Lock className="h-4 w-4 mr-2" />
+                          Change Password
+                        </Button>
+                      </div>
                     </CardContent>
                   </Card>
 
@@ -696,6 +710,12 @@ export default function ProfilePage() {
             </div>
           </div>
         </AppShell>
+
+        {/* Change Password Modal */}
+        <ChangePasswordModal
+          open={showChangePassword}
+          onOpenChange={setShowChangePassword}
+        />
       </ProtectedRoute>
     )
   }
@@ -818,18 +838,28 @@ export default function ProfilePage() {
                       />
                     </div>
 
-                    <Button
-                      onClick={handleSave}
-                      disabled={profileState.saving}
-                      className="w-fit bg-primary hover:bg-primary/90"
-                    >
-                      {profileState.saving ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        <Save className="h-4 w-4 mr-2" />
-                      )}
-                      {profileState.saving ? "Saving..." : "Save Changes"}
-                    </Button>
+                    <div className="flex gap-3">
+                      <Button
+                        onClick={handleSave}
+                        disabled={profileState.saving}
+                        className="w-fit bg-primary hover:bg-primary/90"
+                      >
+                        {profileState.saving ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Save className="h-4 w-4 mr-2" />
+                        )}
+                        {profileState.saving ? "Saving..." : "Save Changes"}
+                      </Button>
+                      <Button 
+                        onClick={() => setShowChangePassword(true)} 
+                        variant="outline" 
+                        className="w-fit"
+                      >
+                        <Lock className="h-4 w-4 mr-2" />
+                        Change Password
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               </div>
@@ -926,6 +956,12 @@ export default function ProfilePage() {
         onClose={handleCropCancel}
         imageSrc={imageToCrop}
         onCropComplete={handleCropComplete}
+      />
+
+      {/* Change Password Modal */}
+      <ChangePasswordModal
+        open={showChangePassword}
+        onOpenChange={setShowChangePassword}
       />
     </ProtectedRoute>
   )

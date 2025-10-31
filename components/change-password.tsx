@@ -80,9 +80,10 @@ export function ChangePasswordModal({ open, onOpenChange }: ChangePasswordModalP
     try {
       const response = await changePassword(oldPassword, newPassword)
       
+      // Always show English message regardless of backend response
       toast({
         title: "Password Changed Successfully",
-        description: response.message || "Password changed successfully. Please re-login.",
+        description: "Your password has been changed successfully. You will be logged out in a moment.",
       })
 
       // Clear session storage flags and close modal
@@ -101,9 +102,10 @@ export function ChangePasswordModal({ open, onOpenChange }: ChangePasswordModalP
         logout()
       }, 1500)
     } catch (error: any) {
+      // Always show English error message regardless of backend response
       toast({
         title: "Failed to Change Password",
-        description: error.response?.data?.message || "Something went wrong. Please check your current password.",
+        description: "Unable to change password. Please verify your current password is correct and try again.",
         variant: "destructive",
       })
     } finally {
