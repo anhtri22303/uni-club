@@ -289,8 +289,9 @@ export default function UniversityStaffRewardPage() {
                                                     <TableHead className="w-[80px]">ID</TableHead>
                                                     <TableHead>Type</TableHead>
                                                     <TableHead>Amount</TableHead>
-                                                    <TableHead className="w-[25%]">Receiver Club</TableHead>
-                                                    <TableHead className="w-[30%]">Description</TableHead>
+                                                    <TableHead className="w-[20%]">Sender</TableHead>
+                                                    <TableHead className="w-[20%]">Receiver Club</TableHead>
+                                                    <TableHead className="w-[25%]">Description</TableHead>
                                                     <TableHead>Date</TableHead>
                                                 </TableRow>
                                             </TableHeader>
@@ -300,6 +301,9 @@ export default function UniversityStaffRewardPage() {
                                                         <TableCell className="font-medium">#{t.id}</TableCell>
                                                         <TableCell><Badge variant="secondary">{t.type}</Badge></TableCell>
                                                         <TableCell className="font-semibold text-green-600">+{t.amount} pts</TableCell>
+                                                        <TableCell className="font-medium text-purple-600">
+                                                            {t.senderName || "—"}
+                                                        </TableCell>
                                                         <TableCell className="font-medium text-blue-600">
                                                             {t.receiverName || "—"}
                                                         </TableCell>

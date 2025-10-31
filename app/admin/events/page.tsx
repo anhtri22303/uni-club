@@ -144,6 +144,7 @@ export default function AdminEventsPage() {
   const [visibleIndex, setVisibleIndex] = useState(0)
   const [displayedIndex, setDisplayedIndex] = useState(0)
   const [isFading, setIsFading] = useState(false)
+  const [selectedPhase, setSelectedPhase] = useState<string>('')
   const ROTATION_INTERVAL_MS = 30 * 1000
   const VARIANTS = 3
   const [countdown, setCountdown] = useState(() => Math.floor(ROTATION_INTERVAL_MS / 1000))
@@ -157,19 +158,64 @@ export default function AdminEventsPage() {
     }
     setCountdown(Math.floor(ROTATION_INTERVAL_MS / 1000))
 
-    // Just rotate the display, tokens are generated when phase is selected
+    // Regenerate QR codes every 30 seconds by calling the API
+    const regenerateQR = async () => {
+      if (!selectedEvent?.id || !selectedPhase) return
+
+      try {
+        console.log('Regenerating QR code for event:', selectedEvent.id, 'with phase:', selectedPhase)
+        const { token } = await eventQR(selectedEvent.id, selectedPhase)
+        console.log('New token generated:', token)
+
+        // Create URLs with new token
+        const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${token}`
+        const localUrl = `http://localhost:3000/student/checkin/${token}`
+        const mobileLink = `exp://192.168.1.50:8081/--/student/checkin/${token}`
+
+        // Generate QR code variants
+        const styleVariants = [
+          { color: { dark: '#000000', light: '#FFFFFF' }, margin: 1 },
+          { color: { dark: '#111111', light: '#FFFFFF' }, margin: 2 },
+          { color: { dark: '#222222', light: '#FFFFFF' }, margin: 0 },
+        ]
+
+        const localQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) =>
+          QRCode.toDataURL(localUrl, styleVariants[i % styleVariants.length])
+        )
+        const localQrVariants = await Promise.all(localQrVariantsPromises)
+
+        const prodQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) =>
+          QRCode.toDataURL(prodUrl, styleVariants[i % styleVariants.length])
+        )
+        const prodQrVariants = await Promise.all(prodQrVariantsPromises)
+
+        const mobileVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) =>
+          QRCode.toDataURL(mobileLink, styleVariants[i % styleVariants.length])
+        )
+        const mobileVariants = await Promise.all(mobileVariantsPromises)
+
+        setQrRotations({ local: localQrVariants, prod: prodQrVariants, mobile: mobileVariants })
+        setQrLinks({ local: localUrl, prod: prodUrl, mobile: mobileLink })
+        setVisibleIndex((i) => i + 1)
+      } catch (err) {
+        console.error('Failed to regenerate QR code:', err)
+      }
+    }
+
     const rotId = setInterval(() => {
-      setVisibleIndex((i) => i + 1)
+      regenerateQR()
       setCountdown(Math.floor(ROTATION_INTERVAL_MS / 1000))
     }, ROTATION_INTERVAL_MS)
+    
     const cntId = setInterval(() => {
       setCountdown((s) => (s <= 1 ? Math.floor(ROTATION_INTERVAL_MS / 1000) : s - 1))
     }, 1000)
+    
     return () => {
       clearInterval(rotId)
       clearInterval(cntId)
     }
-  }, [showQrModal, selectedEvent])
+  }, [showQrModal, selectedEvent, selectedPhase])
 
   useEffect(() => {
     if (!showQrModal) return
@@ -339,10 +385,10 @@ export default function AdminEventsPage() {
       const { token, expiresIn } = await eventQR(selectedEvent.id, phase)
       console.log('Generated token:', token, 'expires in:', expiresIn)
 
-      // Create URLs with token (path parameter format)
-      const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${token}`
-      const localUrl = `http://localhost:3000/student/checkin/${token}`
-      const mobileLink = `exp://192.168.1.50:8081/--/student/checkin/${token}`
+      // Create URLs with token and phase (path parameter format)
+      const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${phase}/${token}`
+      const localUrl = `http://localhost:3000/student/checkin/${phase}/${token}`
+      const mobileLink = `exp://192.168.1.50:8081/--/student/checkin/${phase}/${token}`
 
       // Generate QR code variants
       const styleVariants = [
@@ -373,6 +419,7 @@ export default function AdminEventsPage() {
       setQrLinks({ local: localUrl, prod: prodUrl, mobile: mobileLink })
       setVisibleIndex(0)
       setDisplayedIndex(0)
+      setSelectedPhase(phase)
 
       // Close phase modal and open QR modal
       setShowPhaseModal(false)
@@ -731,8 +778,8 @@ export default function AdminEventsPage() {
                             <Eye className="h-4 w-4 mr-2" />
                             View Detail
                           </Button>
-                          {/* QR Code Section - Only show if APPROVED and not expired/completed */}
-                          {event.status === "APPROVED" && !expired && !isCompleted && (
+                          {/* QR Code Section - Show if APPROVED or ONGOING */}
+                          {(event.status === "APPROVED" || event.status === "ONGOING") && (
                             <div className="mt-3 pt-3 border-t border-muted">
                               <Button
                                 variant="default"

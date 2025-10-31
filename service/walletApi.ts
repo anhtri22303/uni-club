@@ -213,6 +213,7 @@ export type ApiClubToMemberTransaction = {
   amount: number;
   description: string;
   createdAt: string;
+  senderName: string | null;
   receiverName: string | null;
 }
 
@@ -238,6 +239,7 @@ export type ApiUniToClubTransaction = {
   amount: number;
   description: string;
   createdAt: string;
+  senderName: string | null;
   receiverName: string | null;
 }
 

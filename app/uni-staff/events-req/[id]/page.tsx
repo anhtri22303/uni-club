@@ -75,8 +75,8 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
           if (mounted) setWalletLoading(false)
         }
 
-        // Fetch event summary if APPROVED
-        if (data.status === "APPROVED") {
+        // Fetch event summary if APPROVED, ONGOING or COMPLETED
+        if (data.status === "APPROVED" || data.status === "ONGOING" || data.status === "COMPLETED") {
           try {
             setSummaryLoading(true)
             const summaryData = await getEventSummary(params.id)
@@ -447,11 +447,11 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                           <div className="flex items-center gap-2 mt-1">
                             <Users className="h-4 w-4 text-muted-foreground" />
                             <span className="font-semibold">
-                              {request.status === "APPROVED" ? (
+                              {(request.status === "APPROVED" || request.status === "ONGOING" || request.status === "COMPLETED") ? (
                                 summaryLoading ? (
                                   "Loading..."
                                 ) : eventSummary ? (
-                                  `${eventSummary.checkedInCount} / ${request.maxCheckInCount}`
+                                  `${eventSummary.registrationsCount} / ${request.maxCheckInCount}`
                                 ) : (
                                   `${request.currentCheckInCount} / ${request.maxCheckInCount}`
                                 )
@@ -466,35 +466,25 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                           <div className="flex items-center gap-2 mt-1">
                             <Users className="h-4 w-4 text-muted-foreground" />
                             <span className="font-semibold">
-                              {request.status === "APPROVED" && eventSummary
-                                ? `${request.maxCheckInCount - eventSummary.checkedInCount} remaining`
+                              {(request.status === "APPROVED" || request.status === "ONGOING" || request.status === "COMPLETED") && eventSummary
+                                ? `${request.maxCheckInCount - eventSummary.registrationsCount} remaining`
                                 : `${request.maxCheckInCount - request.currentCheckInCount} remaining`}
                             </span>
                           </div>
                         </div>
                         <div className="p-3 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-200">
                           <label className="text-sm text-green-700 font-medium">
-                            {request.status === "APPROVED" ? "Wallet Balance" : "Budget Points"}
+                            Budget Points
                           </label>
                           <div className="font-semibold text-green-800 mt-1">
-                            {request.status === "APPROVED" ? (
-                              walletLoading ? (
-                                <span className="text-muted-foreground">Loading...</span>
-                              ) : wallet ? (
-                                `${wallet.walletBalance} points`
-                              ) : (
-                                <span className="text-muted-foreground">N/A</span>
-                              )
-                            ) : (
-                              `${request.budgetPoints || 0} points`
-                            )}
+                            {request.budgetPoints || 0} points
                           </div>
                         </div>
                       </div>
 
-                      {/* Event Summary - Only shown when APPROVED */}
-                      {request.status === "APPROVED" && eventSummary && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                      {/* Event Summary - Only shown when APPROVED, ONGOING or COMPLETED */}
+                      {(request.status === "APPROVED" || request.status === "ONGOING" || request.status === "COMPLETED") && eventSummary && (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                           <div className="p-3 bg-gradient-to-br from-blue-50 to-sky-50 rounded-lg border border-blue-200">
                             <label className="text-sm text-blue-700 font-medium">Total Registrations</label>
                             <div className="font-semibold text-blue-800 mt-1">
@@ -512,6 +502,16 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                                 <span className="text-muted-foreground">Loading...</span>
                               ) : (
                                 `${eventSummary.refundedCount} refunds`
+                              )}
+                            </div>
+                          </div>
+                          <div className="p-3 bg-gradient-to-br from-purple-50 to-violet-50 rounded-lg border border-purple-200">
+                            <label className="text-sm text-purple-700 font-medium">Total Commit Points</label>
+                            <div className="font-semibold text-purple-800 mt-1">
+                              {summaryLoading ? (
+                                <span className="text-muted-foreground">Loading...</span>
+                              ) : (
+                                `${eventSummary.totalCommitPoints} points`
                               )}
                             </div>
                           </div>

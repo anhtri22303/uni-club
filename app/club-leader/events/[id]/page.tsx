@@ -80,6 +80,7 @@ export default function EventDetailPage() {
   const [isFading, setIsFading] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [activeEnvironment, setActiveEnvironment] = useState<'local' | 'prod' | 'mobile'>('prod')
+  const [selectedPhase, setSelectedPhase] = useState<string>('')
   const ROTATION_INTERVAL_MS = 30 * 1000
   const VARIANTS = 3
   const [countdown, setCountdown] = useState(() => Math.floor(ROTATION_INTERVAL_MS / 1000))
@@ -121,8 +122,8 @@ export default function EventDetailPage() {
           setWalletLoading(false)
         }
 
-        // Fetch event summary if APPROVED
-        if (data.status === "APPROVED") {
+        // Fetch event summary if APPROVED, ONGOING or COMPLETED
+        if (data.status === "APPROVED" || data.status === "ONGOING" || data.status === "COMPLETED") {
           try {
             setSummaryLoading(true)
             const summaryData = await getEventSummary(params.id as string)
@@ -160,10 +161,46 @@ export default function EventDetailPage() {
 
     setCountdown(Math.floor(ROTATION_INTERVAL_MS / 1000))
 
+    // Regenerate QR codes every 30 seconds by calling the API
+    const regenerateQR = async () => {
+      if (!event?.id || !selectedPhase) return
+
+      try {
+        console.log('Regenerating QR code for event:', event.id, 'with phase:', selectedPhase)
+        const { token } = await eventQR(event.id, selectedPhase)
+        console.log('New token generated:', token)
+
+        // Create URLs with new token
+        const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${token}`
+        const localUrl = `http://localhost:3000/student/checkin/${token}`
+
+        // Generate QR code variants
+        const styleVariants = [
+          { color: { dark: '#000000', light: '#FFFFFF' }, margin: 1 },
+          { color: { dark: '#111111', light: '#FFFFFF' }, margin: 2 },
+          { color: { dark: '#222222', light: '#FFFFFF' }, margin: 0 },
+        ]
+
+        const localQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) =>
+          QRCode.toDataURL(localUrl, styleVariants[i % styleVariants.length])
+        )
+        const localQrVariants = await Promise.all(localQrVariantsPromises)
+
+        const prodQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) =>
+          QRCode.toDataURL(prodUrl, styleVariants[i % styleVariants.length])
+        )
+        const prodQrVariants = await Promise.all(prodQrVariantsPromises)
+
+        setQrRotations({ local: localQrVariants, prod: prodQrVariants })
+        setQrLinks({ local: localUrl, prod: prodUrl })
+        setVisibleIndex((i) => i + 1)
+      } catch (err) {
+        console.error('Failed to regenerate QR code:', err)
+      }
+    }
+
     const rotId = setInterval(() => {
-      // Just rotate the display, don't generate new tokens
-      // Tokens are generated when the phase selection modal is confirmed
-      setVisibleIndex((i) => i + 1)
+      regenerateQR()
       setCountdown(Math.floor(ROTATION_INTERVAL_MS / 1000))
     }, ROTATION_INTERVAL_MS)
 
@@ -175,7 +212,7 @@ export default function EventDetailPage() {
       clearInterval(rotId)
       clearInterval(cntId)
     }
-  }, [showQrModal, event])
+  }, [showQrModal, event, selectedPhase])
 
   // Fade animation
   useEffect(() => {
@@ -283,8 +320,8 @@ export default function EventDetailPage() {
     // COMPLETED status means event has ended
     if (event.status === "COMPLETED") return false
 
-    // Must be APPROVED
-    if (event.status !== "APPROVED") return false
+    // Must be ONGOING
+    if (event.status !== "ONGOING") return false
 
     // Check if date and endTime are present
     if (!event.date || !event.endTime) return false
@@ -443,9 +480,9 @@ export default function EventDetailPage() {
       const { token, expiresIn } = await eventQR(event.id, phase)
       console.log('Generated token:', token, 'expires in:', expiresIn)
 
-      // Create URLs with token (path parameter format)
-      const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${token}`
-      const localUrl = `http://localhost:3000/student/checkin/${token}`
+      // Create URLs with token and phase (path parameter format)
+      const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${phase}/${token}`
+      const localUrl = `http://localhost:3000/student/checkin/${phase}/${token}`
 
       console.log('Production URL:', prodUrl)
       console.log('Development URL:', localUrl)
@@ -474,7 +511,8 @@ export default function EventDetailPage() {
       setQrLinks({ local: localUrl, prod: prodUrl })
       setVisibleIndex(0)
       setDisplayedIndex(0)
-      
+      setSelectedPhase(phase)
+
       // Close phase modal and open QR modal
       setShowPhaseModal(false)
       setShowQrModal(true)
@@ -827,11 +865,11 @@ export default function EventDetailPage() {
                   <div className="p-4 bg-muted/50 rounded-lg">
                     <div className="text-sm text-muted-foreground">Current Check-ins</div>
                     <div className="font-semibold text-lg">
-                      {event.status === "APPROVED" ? (
+                      {(event.status === "APPROVED" || event.status === "ONGOING" || event.status === "COMPLETED") ? (
                         summaryLoading ? (
                           <span className="text-muted-foreground">Loading...</span>
                         ) : eventSummary ? (
-                          `${eventSummary.checkedInCount} / ${event.maxCheckInCount}`
+                          `${eventSummary.registrationsCount} / ${event.maxCheckInCount}`
                         ) : (
                           `${event.currentCheckInCount} / ${event.maxCheckInCount}`
                         )
@@ -843,33 +881,23 @@ export default function EventDetailPage() {
                   <div className="p-4 bg-muted/50 rounded-lg">
                     <div className="text-sm text-muted-foreground">Available Spots</div>
                     <div className="font-semibold text-lg">
-                      {event.status === "APPROVED" && eventSummary
-                        ? `${event.maxCheckInCount - eventSummary.checkedInCount} remaining`
+                      {(event.status === "APPROVED" || event.status === "ONGOING" || event.status === "COMPLETED") && eventSummary
+                        ? `${event.maxCheckInCount - eventSummary.registrationsCount} remaining`
                         : `${event.maxCheckInCount - event.currentCheckInCount} remaining`}
                     </div>
                   </div>
                   <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-200">
                     <div className="text-sm text-green-700 font-medium">
-                      {event.status === "APPROVED" ? "Wallet Balance" : "Budget Points"}
+                      Budget Points
                     </div>
                     <div className="font-semibold text-lg text-green-800">
-                      {event.status === "APPROVED" ? (
-                        walletLoading ? (
-                          <span className="text-muted-foreground">Loading...</span>
-                        ) : wallet ? (
-                          `${wallet.walletBalance} points`
-                        ) : (
-                          <span className="text-muted-foreground">N/A</span>
-                        )
-                      ) : (
-                        `${event.budgetPoints || 0} points`
-                      )}
+                      {event.budgetPoints || 0} points
                     </div>
                   </div>
                 </div>
 
-                {/* Event Summary - Only shown when APPROVED */}
-                {event.status === "APPROVED" && eventSummary && (
+                {/* Event Summary - Only shown when APPROVED, ONGOING or COMPLETED */}
+                {(event.status === "APPROVED" || event.status === "ONGOING" || event.status === "COMPLETED") && eventSummary && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div className="p-4 bg-gradient-to-br from-blue-50 to-sky-50 rounded-lg border border-blue-200">
                       <div className="text-sm text-blue-700 font-medium">Total Registrations</div>
@@ -894,7 +922,7 @@ export default function EventDetailPage() {
                   </div>
                 )}
 
-                {/* QR Code Generation Button - Only show if APPROVED and event is still active */}
+                {/* QR Code Generation Button - Only show if ONGOING and event is still active */}
                 {isEventActive() && (
                   <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
                     <div className="flex items-center justify-between">
@@ -921,8 +949,8 @@ export default function EventDetailPage() {
                       <div>
                         <div className="font-medium text-yellow-800">QR Code Unavailable</div>
                         <div className="text-sm text-yellow-700">
-                          {event.status !== "APPROVED"
-                            ? `QR codes are only available for approved events. Current status: ${event.status}`
+                          {event.status !== "ONGOING"
+                            ? `QR codes are only available for ongoing events. Current status: ${event.status}`
                             : "This event has ended or is missing date/time information. QR codes are no longer available."
                           }
                         </div>

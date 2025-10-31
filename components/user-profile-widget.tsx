@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useRouter } from "next/navigation"
 import { User, LogOut, Award, Trophy, Gem, Star, Flame, Check, ChevronDown } from "lucide-react"
 import { useSidebarContext } from "@/components/app-shell"
-import { getWallet, ApiMembershipWallet } from "@/service/walletApi"
+import { ApiMembershipWallet } from "@/service/walletApi"
 import { fetchProfile } from "@/service/userApi"
 import {
   DropdownMenu,
@@ -92,32 +92,36 @@ export function UserProfileWidget() {
 
   if (!auth.role || !auth.user) return null
 
-  // Load wallet points and profile from API
+  // Load profile and wallet data from API
   useEffect(() => {
     let mounted = true
     const load = async () => {
       try {
-        // Load profile for avatar (all roles can have avatar)
-        try {
-          const profileData: any = await fetchProfile()
-          console.debug("UserProfileWidget.fetchProfile ->", profileData)
-          if (!mounted) return
-          setAvatarUrl(profileData?.avatarUrl || "")
-          setUserName(profileData?.fullName || auth.user?.fullName || "User")
-          setUserEmail(profileData?.email || auth.user?.email || "")
-        } catch (profileErr) {
-          console.error("Failed to load profile in UserProfileWidget:", profileErr)
-          console.log("Role:", auth.role, "Will fallback to initials for avatar")
-          // Avatar will fallback to initials if failed to load
-        }
+        // Load profile (includes avatar and wallets data)
+        const profileData: any = await fetchProfile()
+        console.debug("UserProfileWidget.fetchProfile ->", profileData)
+        if (!mounted) return
+        
+        setAvatarUrl(profileData?.avatarUrl || "")
+        setUserName(profileData?.fullName || auth.user?.fullName || "User")
+        setUserEmail(profileData?.email || auth.user?.email || "")
 
-        // Load wallet points only for eligible roles
+        // Load wallet points only for eligible roles from profile response
         if (auth.role === "club_leader" || auth.role === "student") {
-          const walletData: any = await getWallet()
-          console.debug("UserProfileWidget.getWallet ->", walletData)
-          if (!mounted) return
+          const walletsList = profileData?.wallets || []
+          console.debug("UserProfileWidget.wallets ->", walletsList)
           
-          const membershipsList = walletData?.memberships || []
+          // Map wallets to membership format for compatibility
+          const membershipsList: ApiMembershipWallet[] = walletsList.map((w: any) => ({
+            walletId: w.walletId,
+            balancePoints: w.balancePoints,
+            ownerType: w.ownerType,
+            clubId: w.clubId,
+            clubName: w.clubName,
+            userId: w.userId,
+            userFullName: w.userFullName
+          }))
+          
           setMemberships(membershipsList)
           
           // Always display first wallet by default, or 0 if no wallets
@@ -131,7 +135,9 @@ export function UserProfileWidget() {
           }
         }
       } catch (err) {
-        console.error("Failed to load data in UserProfileWidget", err)
+        console.error("Failed to load profile in UserProfileWidget", err)
+        console.log("Role:", auth.role, "Will fallback to initials for avatar")
+        // Avatar will fallback to initials if failed to load
       }
     }
     load()
