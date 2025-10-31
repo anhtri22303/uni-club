@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { ArrowLeft, Calendar, Clock, MapPin, Users, CheckCircle, AlertCircle, XCircle, Eye, QrCode, Shield } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { getEventById, timeObjectToString, getEventWallet, EventWallet, eventQR } from "@/service/eventApi"
+import { getEventById, timeObjectToString, getEventWallet, EventWallet, eventQR, getEventSummary, EventSummary } from "@/service/eventApi"
 import QRCode from "qrcode"
 import { AppShell } from "@/components/app-shell"
 import { QRModal } from "@/components/qr-modal"
@@ -55,6 +55,8 @@ export default function AdminEventDetailPage() {
   const [showCheckInCode, setShowCheckInCode] = useState(false)
   const [wallet, setWallet] = useState<EventWallet | null>(null)
   const [walletLoading, setWalletLoading] = useState(false)
+  const [eventSummary, setEventSummary] = useState<EventSummary | null>(null)
+  const [summaryLoading, setSummaryLoading] = useState(false)
 
   // Phase selection modal state
   const [showPhaseModal, setShowPhaseModal] = useState(false)
@@ -69,6 +71,7 @@ export default function AdminEventDetailPage() {
   const [isFading, setIsFading] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [activeEnvironment, setActiveEnvironment] = useState<'local' | 'prod' | 'mobile'>('prod')
+  const [selectedPhase, setSelectedPhase] = useState<string>('')
   const ROTATION_INTERVAL_MS = 30 * 1000
   const VARIANTS = 3
   const [countdown, setCountdown] = useState(() => Math.floor(ROTATION_INTERVAL_MS / 1000))
@@ -92,6 +95,20 @@ export default function AdminEventDetailPage() {
           // Don't show error toast for wallet, it's not critical
         } finally {
           setWalletLoading(false)
+        }
+
+        // Fetch event summary if APPROVED, ONGOING or COMPLETED
+        if (data.status === "APPROVED" || data.status === "ONGOING" || data.status === "COMPLETED") {
+          try {
+            setSummaryLoading(true)
+            const summaryData = await getEventSummary(params.id as string)
+            setEventSummary(summaryData)
+          } catch (summaryError) {
+            console.error("Failed to load event summary:", summaryError)
+            // Don't show error toast for summary, it's not critical
+          } finally {
+            setSummaryLoading(false)
+          }
         }
       } catch (error) {
         console.error("Failed to load event detail:", error)
@@ -119,9 +136,52 @@ export default function AdminEventDetailPage() {
 
     setCountdown(Math.floor(ROTATION_INTERVAL_MS / 1000))
 
+    // Regenerate QR codes every 30 seconds by calling the API
+    const regenerateQR = async () => {
+      if (!event?.id || !selectedPhase) return
+
+      try {
+        console.log('Regenerating QR code for event:', event.id, 'with phase:', selectedPhase)
+        const { token } = await eventQR(event.id, selectedPhase)
+        console.log('New token generated:', token)
+
+        // Create URLs with new token
+        const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${token}`
+        const localUrl = `http://localhost:3000/student/checkin/${token}`
+        const mobileLink = `exp://192.168.1.50:8081/--/student/checkin/${token}`
+
+        // Generate QR code variants
+        const styleVariants = [
+          { color: { dark: '#000000', light: '#FFFFFF' }, margin: 1 },
+          { color: { dark: '#111111', light: '#FFFFFF' }, margin: 2 },
+          { color: { dark: '#222222', light: '#FFFFFF' }, margin: 0 },
+        ]
+
+        const localQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) =>
+          QRCode.toDataURL(localUrl, styleVariants[i % styleVariants.length])
+        )
+        const localQrVariants = await Promise.all(localQrVariantsPromises)
+
+        const prodQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) =>
+          QRCode.toDataURL(prodUrl, styleVariants[i % styleVariants.length])
+        )
+        const prodQrVariants = await Promise.all(prodQrVariantsPromises)
+
+        const mobileVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) =>
+          QRCode.toDataURL(mobileLink, styleVariants[i % styleVariants.length])
+        )
+        const mobileVariants = await Promise.all(mobileVariantsPromises)
+
+        setQrRotations({ local: localQrVariants, prod: prodQrVariants, mobile: mobileVariants })
+        setQrLinks({ local: localUrl, prod: prodUrl, mobile: mobileLink })
+        setVisibleIndex((i) => i + 1)
+      } catch (err) {
+        console.error('Failed to regenerate QR code:', err)
+      }
+    }
+
     const rotId = setInterval(() => {
-      // Just rotate the display, tokens are generated when phase is selected
-      setVisibleIndex((i) => i + 1)
+      regenerateQR()
       setCountdown(Math.floor(ROTATION_INTERVAL_MS / 1000))
     }, ROTATION_INTERVAL_MS)
 
@@ -133,7 +193,7 @@ export default function AdminEventDetailPage() {
       clearInterval(rotId)
       clearInterval(cntId)
     }
-  }, [showQrModal, event])
+  }, [showQrModal, event, selectedPhase])
 
   // Fade animation
   useEffect(() => {
@@ -225,9 +285,9 @@ export default function AdminEventDetailPage() {
       const { token, expiresIn } = await eventQR(event.id, phase)
       console.log('Generated token:', token, 'expires in:', expiresIn)
       
-      // Create URLs with token (path parameter format)
-      const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${token}`
-      const localUrl = `http://localhost:3000/student/checkin/${token}`
+      // Create URLs with token and phase (path parameter format)
+      const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${phase}/${token}`
+      const localUrl = `http://localhost:3000/student/checkin/${phase}/${token}`
       
       console.log('Production URL:', prodUrl)
       console.log('Development URL:', localUrl)
@@ -256,6 +316,7 @@ export default function AdminEventDetailPage() {
       setQrLinks({ local: localUrl, prod: prodUrl })
       setVisibleIndex(0)
       setDisplayedIndex(0)
+      setSelectedPhase(phase)
       
       // Close phase modal and open QR modal
       setShowPhaseModal(false)
@@ -492,31 +553,73 @@ export default function AdminEventDetailPage() {
                   </div>
                   <div className="p-4 bg-muted/50 rounded-lg">
                     <div className="text-sm text-muted-foreground">Current Check-ins</div>
-                    <div className="font-semibold text-lg">{event.currentCheckInCount} / {event.maxCheckInCount}</div>
-                  </div>
-                  <div className="p-4 bg-muted/50 rounded-lg">
-                    <div className="text-sm text-muted-foreground">Available Spots</div>
-                    <div className="font-semibold text-lg">{event.maxCheckInCount - event.currentCheckInCount} remaining</div>
-                  </div>
-                  <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-200">
-                    <div className="text-sm text-green-700 font-medium">
-                      {event.status === "APPROVED" ? "Wallet Balance" : "Budget Points"}
-                    </div>
-                    <div className="font-semibold text-lg text-green-800">
-                      {event.status === "APPROVED" ? (
-                        walletLoading ? (
+                    <div className="font-semibold text-lg">
+                      {(event.status === "APPROVED" || event.status === "ONGOING" || event.status === "COMPLETED") ? (
+                        summaryLoading ? (
                           <span className="text-muted-foreground">Loading...</span>
-                        ) : wallet ? (
-                          `${wallet.walletBalance} points`
+                        ) : eventSummary ? (
+                          `${eventSummary.registrationsCount} / ${event.maxCheckInCount}`
                         ) : (
-                          <span className="text-muted-foreground">N/A</span>
+                          `${event.currentCheckInCount} / ${event.maxCheckInCount}`
                         )
                       ) : (
-                        `${event.budgetPoints || 0} points`
+                        `${event.currentCheckInCount} / ${event.maxCheckInCount}`
                       )}
                     </div>
                   </div>
+                  <div className="p-4 bg-muted/50 rounded-lg">
+                    <div className="text-sm text-muted-foreground">Available Spots</div>
+                    <div className="font-semibold text-lg">
+                      {(event.status === "APPROVED" || event.status === "ONGOING" || event.status === "COMPLETED") && eventSummary
+                        ? `${event.maxCheckInCount - eventSummary.registrationsCount} remaining`
+                        : `${event.maxCheckInCount - event.currentCheckInCount} remaining`}
+                    </div>
+                  </div>
+                  <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-200">
+                    <div className="text-sm text-green-700 font-medium">
+                      Budget Points
+                    </div>
+                    <div className="font-semibold text-lg text-green-800">
+                      {event.budgetPoints || 0} points
+                    </div>
+                  </div>
                 </div>
+
+                {/* Event Summary - Only shown when APPROVED, ONGOING or COMPLETED */}
+                {(event.status === "APPROVED" || event.status === "ONGOING" || event.status === "COMPLETED") && eventSummary && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div className="p-4 bg-gradient-to-br from-blue-50 to-sky-50 rounded-lg border border-blue-200">
+                      <div className="text-sm text-blue-700 font-medium">Total Registrations</div>
+                      <div className="font-semibold text-lg text-blue-800">
+                        {summaryLoading ? (
+                          <span className="text-muted-foreground">Loading...</span>
+                        ) : (
+                          `${eventSummary.registrationsCount} registered`
+                        )}
+                      </div>
+                    </div>
+                    <div className="p-4 bg-gradient-to-br from-amber-50 to-orange-50 rounded-lg border border-amber-200">
+                      <div className="text-sm text-amber-700 font-medium">Refunded</div>
+                      <div className="font-semibold text-lg text-amber-800">
+                        {summaryLoading ? (
+                          <span className="text-muted-foreground">Loading...</span>
+                        ) : (
+                          `${eventSummary.refundedCount} refunds`
+                        )}
+                      </div>
+                    </div>
+                    <div className="p-4 bg-gradient-to-br from-purple-50 to-violet-50 rounded-lg border border-purple-200">
+                      <div className="text-sm text-purple-700 font-medium">Total Commit Points</div>
+                      <div className="font-semibold text-lg text-purple-800">
+                        {summaryLoading ? (
+                          <span className="text-muted-foreground">Loading...</span>
+                        ) : (
+                          `${eventSummary.totalCommitPoints} points`
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
                   <div className="flex items-center justify-between mb-4">
@@ -539,37 +642,43 @@ export default function AdminEventDetailPage() {
                     </div>
                   </div>
                   
-                  {/* QR Code Generation Button - Admin can generate for any event */}
-                  <div className="border-t border-blue-200 pt-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-medium text-blue-900">QR Code Access</div>
-                        <div className="text-sm text-blue-700">
-                          Admin: Generate QR codes for any event status
-                        </div>
-                      </div>
-                      <Button
-                        onClick={handleGenerateQR}
-                        className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200"
-                      >
-                        <QrCode className="h-4 w-4 mr-2" />
-                        Generate QR Code
-                      </Button>
-                    </div>
-                    
-                    {/* Admin note for non-approved events */}
-                    {event.status !== "APPROVED" && (
-                      <div className="mt-3 flex items-center gap-3 p-3 bg-orange-50 rounded-lg border border-orange-200">
-                        <AlertCircle className="h-5 w-5 text-orange-600 flex-shrink-0" />
+                  {/* QR Code Generation Button - Admin can generate for APPROVED or ONGOING events */}
+                  {(event.status === "APPROVED" || event.status === "ONGOING") && (
+                    <div className="border-t border-blue-200 pt-4">
+                      <div className="flex items-center justify-between">
                         <div>
-                          <div className="font-medium text-orange-800">Administrative Override</div>
-                          <div className="text-sm text-orange-700">
-                            As admin, you can generate QR codes even for {event.status.toLowerCase()} events
+                          <div className="font-medium text-blue-900">QR Code Access</div>
+                          <div className="text-sm text-blue-700">
+                            Generate scannable QR codes for easy check-in
+                          </div>
+                        </div>
+                        <Button
+                          onClick={handleGenerateQR}
+                          className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200"
+                        >
+                          <QrCode className="h-4 w-4 mr-2" />
+                          Generate QR Code
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Status message for non-ongoing events */}
+                  {event.status !== "ONGOING" && (
+                    <div className="border-t border-blue-200 pt-4">
+                      <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                        <div className="flex items-center gap-3">
+                          <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0" />
+                          <div>
+                            <div className="font-medium text-yellow-800">QR Code Unavailable</div>
+                            <div className="text-sm text-yellow-700">
+                              QR codes are only available for ongoing events. Current status: {event.status}
+                            </div>
                           </div>
                         </div>
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
