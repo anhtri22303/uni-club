@@ -22,8 +22,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { ProductFilters, FilterState, SortState } from "@/components/ProductFilters"
-import { Separator } from "@/components/ui/separator" 
+import { ProductFilters, FilterState, SortState } from "@/components/product-filters"
+import { Separator } from "@/components/ui/separator" // 1. IMPORT THÊM
 
 // ---- Compact status badge overlay (Không thay đổi) ----
 const StatusBadge = ({ status }: { status: string }) => {
@@ -195,7 +195,7 @@ export default function ClubLeaderGiftPage() {
       // API mới trả về object Product đã tạo
       const newProduct = await addProduct(clubId, payload)
 
-      toast({ title: "Success", description: "Create successful products!", variant: "success" })
+      toast({ title: "Thành công", description: "Create successful products!", variant: "success" })
       setOpen(false)
       setForm(initialFormState) // Reset form
 
@@ -210,9 +210,9 @@ export default function ClubLeaderGiftPage() {
 
   // // 5. Cập nhật logic filter (vẫn giữ nguyên)
   // const filteredProducts = products.filter(
-  //   (p) =>
-  //     p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-  //     p.description.toLowerCase().includes(searchTerm.toLowerCase())
+  //   (p) =>
+  //     p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  //     p.description.toLowerCase().includes(searchTerm.toLowerCase())
   // )
   // 5. THAY THẾ 'filteredProducts' BẰNG 'useMemo'
   const filteredAndSortedProducts = useMemo(() => {
@@ -241,6 +241,7 @@ export default function ClubLeaderGiftPage() {
         // Tạm thời bỏ qua
       }
 
+      // Lọc "Nhu cầu sử dụng" (Tags)
       if (filters.useCases.size > 0) {
         // QUAN TRỌNG: Component 'ProductFilters' đang dùng data giả (e.g., "van_phong").
         // Bạn cần cập nhật 'ProductFilters.tsx' để nhận 'productTags' từ API
@@ -250,7 +251,7 @@ export default function ClubLeaderGiftPage() {
         // Logic ví dụ (giả sử `productTags` đã được nạp vào ProductFilters):
         // const useCaseTags = Array.from(filters.useCases);
         // filtered = filtered.filter((p) =>
-        //   useCaseTags.some(tagValue => p.tags.includes(tagValue))
+        //   useCaseTags.some(tagValue => p.tags.includes(tagValue))
         // );
       }
 
@@ -315,20 +316,20 @@ export default function ClubLeaderGiftPage() {
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogContent className="max-h-[90vh]">
               <DialogHeader>
-                <DialogTitle>Thêm sản phẩm mới</DialogTitle>
+                <DialogTitle>Add new products</DialogTitle>
               </DialogHeader>
               {/* Thêm ScrollArea cho form dài */}
               <ScrollArea className="max-h-[70vh] p-1">
                 <div className="space-y-4 py-4 pr-3">
                   <div className="space-y-1">
-                    <Label htmlFor="productType">Loại sản phẩm</Label>
+                    <Label htmlFor="productType">Product Type</Label>
                     <Select name="productType" value={form.productType} onValueChange={handleSelectChange("productType")}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Chọn loại sản phẩm" />
+                        <SelectValue placeholder="Select product type" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="CLUB_ITEM">Club Item (Vật phẩm Club)</SelectItem>
-                        <SelectItem value="EVENT_ITEM">Event Item (Vật phẩm Sự kiện)</SelectItem>
+                        <SelectItem value="CLUB_ITEM">Club Item (Club Item)</SelectItem>
+                        <SelectItem value="EVENT_ITEM">Event Item</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -343,35 +344,35 @@ export default function ClubLeaderGiftPage() {
                         type="number"
                         value={form.eventId || ""}
                         onChange={handleChange}
-                        placeholder="ID của sự kiện liên quan"
+                        placeholder="ID of the related event"
                         min={1}
                       />
                     </div>
                   )}
 
                   <div className="space-y-1">
-                    <Label htmlFor="name">Tên sản phẩm</Label>
-                    <Input id="name" name="name" value={form.name} onChange={handleChange} placeholder="e.g., Áo thun CLB F-Code" />
+                    <Label htmlFor="name">Product name</Label>
+                    <Input id="name" name="name" value={form.name} onChange={handleChange} placeholder="e.g., F-Code Club T-Shirt" />
                   </div>
 
                   <div className="space-y-1">
-                    <Label htmlFor="description">Mô tả</Label>
-                    <Textarea id="description" name="description" value={form.description} onChange={handleChange} placeholder="Mô tả chi tiết sản phẩm..." />
+                    <Label htmlFor="description">Describe</Label>
+                    <Textarea id="description" name="description" value={form.description} onChange={handleChange} placeholder="Detailed product description..." />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
-                      <Label htmlFor="price">Giá (Points)</Label>
+                      <Label htmlFor="price">Price (Points)</Label>
                       <Input id="price" name="price" type="number" value={form.price} onChange={handleChange} placeholder="0" min={0} />
                     </div>
                     <div className="space-y-1">
-                      <Label htmlFor="stockQuantity">Số lượng trong kho</Label>
+                      <Label htmlFor="stockQuantity">Quantity in stock</Label>
                       <Input id="stockQuantity" name="stockQuantity" type="number" value={form.stockQuantity} onChange={handleChange} placeholder="0" min={0} />
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Tags (Nhãn)</Label>
+                    <Label>Tags</Label>
                     {productTags.length > 0 ? (
                       <ScrollArea className="h-24 rounded-md border p-3">
                         <div className="space-y-2">
@@ -390,15 +391,15 @@ export default function ClubLeaderGiftPage() {
                         </div>
                       </ScrollArea>
                     ) : (
-                      <p className="text-sm text-muted-foreground">Không có tag nào cho club này.</p>
+                      <p className="text-sm text-muted-foreground">There are no tags for this club.</p>
                     )}
                   </div>
                 </div>
               </ScrollArea>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setOpen(false)}>Hủy</Button>
+                <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
                 <Button onClick={handleCreate} disabled={submitting}>
-                  {submitting ? "Đang tạo..." : "Tạo sản phẩm"}
+                  {submitting ? "Creating..." : "Create a product"}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -407,11 +408,11 @@ export default function ClubLeaderGiftPage() {
           {/* 7. Cập nhật Product Card Rendering */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {loading ? (
-              <div className="col-span-full text-center py-12">Đang tải sản phẩm...</div>
+              <div className="col-span-full text-center py-12">Loading products...</div>
             ) : filteredAndSortedProducts.length === 0 ? (
               <div className="col-span-full text-center py-12">
-                <h3 className="text-lg font-semibold mb-2">Không tìm thấy sản phẩm nào</h3>
-                <p className="text-sm text-muted-foreground">Hãy thử thêm sản phẩm mới!</p>
+                <h3 className="text-lg font-semibold mb-2">No products found</h3>
+                <p className="text-sm text-muted-foreground">Try adding new products!</p>
               </div>
             ) : (
               filteredAndSortedProducts.map((p) => {
@@ -438,8 +439,8 @@ export default function ClubLeaderGiftPage() {
                           <CardDescription className="mt-1 text-xs line-clamp-2">{p.description}</CardDescription>
                         </div>
                         {/* <Badge variant="outline" className="capitalize text-[10px] max-w-[6rem] truncate">
-                          Club ID: {p.clubId}
-                        </Badge> */}
+                          Club ID: {p.clubId}
+                        </Badge> */}
                       </div>
                     </CardHeader>
                     <CardContent className="pt-2 flex flex-col gap-2 grow">
@@ -457,7 +458,7 @@ export default function ClubLeaderGiftPage() {
                       {/* Giá và Tồn kho (đẩy xuống dưới) */}
                       <div className="flex items-center justify-between text-xs mt-auto pt-2">
                         <span className="font-semibold text-blue-600">{p.price} pts</span>
-                        <span className="text-muted-foreground">Kho: {p.stockQuantity}</span>
+                        <span className="text-muted-foreground">Warehouse: {p.stockQuantity}</span>
                       </div>
                     </CardContent>
                   </Card>
