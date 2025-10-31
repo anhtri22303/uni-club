@@ -18,14 +18,18 @@ import {
   ArrowLeft,
   Clock,
   DollarSign,
+  QrCode,
 } from "lucide-react"
 import Link from "next/link"
 import { useState, useEffect } from "react"
-import { getEventById, putEventStatus, getEventWallet, EventWallet, getEventSummary, EventSummary, eventSettle, getEventSettle } from "@/service/eventApi"
+import { getEventById, putEventStatus, getEventWallet, EventWallet, getEventSummary, EventSummary, eventSettle, getEventSettle, eventQR } from "@/service/eventApi"
 import { useToast } from "@/hooks/use-toast"
 import { renderTypeBadge } from "@/lib/eventUtils"
 import { getLocationById } from "@/service/locationApi"
 import { getClubById } from "@/service/clubApi"
+import { PhaseSelectionModal } from "@/components/phase-selection-modal"
+import { QRModal } from "@/components/qr-modal"
+import QRCode from "qrcode"
 
 interface EventRequestDetailPageProps {
   params: {
@@ -52,6 +56,22 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
   const [settling, setSettling] = useState(false)
   const [isEventSettled, setIsEventSettled] = useState(false)
   const [checkingSettled, setCheckingSettled] = useState(false)
+
+  // QR generation states
+  const [showPhaseModal, setShowPhaseModal] = useState(false)
+  const [isGeneratingQR, setIsGeneratingQR] = useState(false)
+  const [showQrModal, setShowQrModal] = useState(false)
+  const [qrLinks, setQrLinks] = useState<{ local?: string; prod?: string; mobile?: string }>({})
+  const [qrRotations, setQrRotations] = useState<{ local: string[]; prod: string[]; mobile?: string[] }>({ local: [], prod: [] })
+  const [visibleIndex, setVisibleIndex] = useState(0)
+  const [displayedIndex, setDisplayedIndex] = useState(0)
+  const [selectedPhase, setSelectedPhase] = useState<string>('')
+  const [checkInCode, setCheckInCode] = useState<string>('')
+  const [countdown, setCountdown] = useState(10)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [activeEnvironment, setActiveEnvironment] = useState<'local' | 'prod' | 'mobile'>('prod')
+  const [isFading, setIsFading] = useState(false)
+  const VARIANTS = 3
 
   useEffect(() => {
     let mounted = true
@@ -277,6 +297,124 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
       })
     } finally {
       setSettling(false)
+    }
+  }
+
+  // QR rotation timer effect
+  useEffect(() => {
+    if (!showQrModal) return
+    
+    const countdownInterval = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) {
+          setIsFading(true)
+          setTimeout(() => {
+            setVisibleIndex(vi => vi + 1)
+            setDisplayedIndex(di => di + 1)
+            setIsFading(false)
+          }, 300)
+          return 10
+        }
+        return prev - 1
+      })
+    }, 1000)
+    
+    return () => clearInterval(countdownInterval)
+  }, [showQrModal])
+
+  // Handler functions
+  const handleCopyLink = (env: 'local' | 'prod' | 'mobile') => {
+    const link = env === 'prod' ? qrLinks.prod : env === 'local' ? qrLinks.local : qrLinks.mobile
+    if (link) {
+      navigator.clipboard.writeText(link)
+      toast({ title: 'Link Copied', description: `${env} check-in link copied to clipboard` })
+    }
+  }
+
+  const handleDownloadQR = (env: 'local' | 'prod' | 'mobile') => {
+    const qrData = env === 'mobile' 
+      ? qrRotations.mobile?.[displayedIndex % (qrRotations.mobile?.length || 1)]
+      : qrRotations[env]?.[displayedIndex % (qrRotations[env]?.length || 1)]
+    
+    if (qrData) {
+      const link = document.createElement('a')
+      link.download = `qr-${request?.name || 'event'}-${env}-${selectedPhase}.png`
+      link.href = qrData
+      link.click()
+      toast({ title: 'QR Downloaded', description: `QR code for ${env} environment downloaded` })
+    }
+  }
+
+  const handleGenerateQR = () => {
+    setShowPhaseModal(true)
+  }
+
+  const handlePhaseConfirm = async (phase: string) => {
+    if (!request) return
+
+    try {
+      setIsGeneratingQR(true)
+      
+      // Call eventQR API with selected phase
+      console.log('Generating check-in token for event:', request.id, 'with phase:', phase)
+      const { token, expiresIn } = await eventQR(request.id, phase)
+      console.log('Generated token:', token, 'expires in:', expiresIn)
+      
+      // Create URLs with token and phase
+      const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${phase}/${token}`
+      const localUrl = `http://localhost:3000/student/checkin/${phase}/${token}`
+      const mobileLink = `exp://192.168.1.50:8081/--/student/checkin/${phase}/${token}`
+      
+      // Generate QR code variants
+      const styleVariants = [
+        { color: { dark: '#000000', light: '#FFFFFF' }, margin: 1 },
+        { color: { dark: '#111111', light: '#FFFFFF' }, margin: 2 },
+        { color: { dark: '#222222', light: '#FFFFFF' }, margin: 0 },
+      ]
+
+      // Generate QR variants for all environments
+      const localQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => 
+        QRCode.toDataURL(localUrl, styleVariants[i % styleVariants.length])
+      )
+      const localQrVariants = await Promise.all(localQrVariantsPromises)
+
+      const prodQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => 
+        QRCode.toDataURL(prodUrl, styleVariants[i % styleVariants.length])
+      )
+      const prodQrVariants = await Promise.all(prodQrVariantsPromises)
+
+      const mobileVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => 
+        QRCode.toDataURL(mobileLink, styleVariants[i % styleVariants.length])
+      )
+      const mobileVariants = await Promise.all(mobileVariantsPromises)
+
+      setQrRotations({ local: localQrVariants, prod: prodQrVariants, mobile: mobileVariants })
+      setQrLinks({ local: localUrl, prod: prodUrl, mobile: mobileLink })
+      setVisibleIndex(0)
+      setDisplayedIndex(0)
+      setSelectedPhase(phase)
+      setCheckInCode(token)
+      setCountdown(10)
+      setActiveEnvironment('prod')
+
+      // Close phase modal and open QR modal
+      setShowPhaseModal(false)
+      setShowQrModal(true)
+
+      toast({
+        title: 'QR Code Generated',
+        description: `Check-in QR code generated for ${phase} phase`,
+        duration: 3000
+      })
+    } catch (err: any) {
+      console.error('Failed to generate QR', err)
+      toast({
+        title: 'QR Error',
+        description: err?.response?.data?.message || err?.message || 'Could not generate QR code',
+        variant: 'destructive'
+      })
+    } finally {
+      setIsGeneratingQR(false)
     }
   }
 
@@ -517,6 +655,27 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                           </div>
                         </div>
                       )}
+
+                      {/* QR Code Generation Section - Show for APPROVED or ONGOING events */}
+                      {(request.status === "APPROVED" || request.status === "ONGOING") && (
+                        <div className="mt-4 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="font-medium text-blue-900">QR Code Access</div>
+                              <div className="text-sm text-blue-700">
+                                Generate scannable QR codes for easy check-in
+                              </div>
+                            </div>
+                            <Button
+                              onClick={handleGenerateQR}
+                              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200"
+                            >
+                              <QrCode className="h-4 w-4 mr-2" />
+                              Generate QR Code
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                     </>
                   )}
 
@@ -694,6 +853,33 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
               )}
             </div>
           </div>
+
+          {/* Phase Selection Modal */}
+          <PhaseSelectionModal
+            open={showPhaseModal}
+            onOpenChange={setShowPhaseModal}
+            onConfirm={handlePhaseConfirm}
+            isLoading={isGeneratingQR}
+          />
+
+          {/* QR Code Modal */}
+          <QRModal
+            open={showQrModal}
+            onOpenChange={setShowQrModal}
+            eventName={request?.name || ''}
+            checkInCode={checkInCode}
+            qrRotations={qrRotations}
+            qrLinks={qrLinks}
+            countdown={countdown}
+            isFullscreen={isFullscreen}
+            setIsFullscreen={setIsFullscreen}
+            activeEnvironment={activeEnvironment}
+            setActiveEnvironment={setActiveEnvironment}
+            displayedIndex={displayedIndex}
+            isFading={isFading}
+            handleCopyLink={handleCopyLink}
+            handleDownloadQR={handleDownloadQR}
+          />
         </div>
       </AppShell>
     </ProtectedRoute>
