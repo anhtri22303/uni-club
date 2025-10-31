@@ -1,803 +1,433 @@
 "use client"
 
-import { useState, useMemo } from "react"
 import { AppShell } from "@/components/app-shell"
 import { ProtectedRoute } from "@/contexts/protected-route"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Major, deleteMajorById, updateMajorById, createMajor } from "@/service/majorApi"
+import { useMemo, useState } from "react"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { BookMarked, Search, Eye, Trash, Plus } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { useRouter } from "next/navigation"
 import { useMajors } from "@/hooks/use-query-hooks"
 import { useQueryClient } from "@tanstack/react-query"
-import { 
-  Major, 
-  createMajor, 
-  updateMajorById, 
-  deleteMajorById,
-  CreateMajorPayload,
-  UpdateMajorPayload
-} from "@/service/majorApi"
-import { 
-  BookOpen, 
-  Search, 
-  Plus,
-  Edit,
-  Trash2,
-  GraduationCap,
-  Users,
-  CheckCircle2,
-  XCircle,
-  Grid3x3,
-  List,
-  Code,
-  FileText
-} from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-
-type ViewMode = "grid" | "list"
 
 export default function UniStaffMajorsPage() {
+    const [query, setQuery] = useState("")
+    const [selected, setSelected] = useState<Major | null>(null)
+    const [dialogOpen, setDialogOpen] = useState(false)
     const { toast } = useToast()
+    const router = useRouter()
     const queryClient = useQueryClient()
-  
-  // Fetch majors using React Query
+    // ✅ USE REACT QUERY for majors
     const { data: majors = [], isLoading: loading } = useMajors()
-  
-  // State management
-  const [searchQuery, setSearchQuery] = useState("")
-  const [viewMode, setViewMode] = useState<ViewMode>("grid")
-  const [statusFilter, setStatusFilter] = useState<string>("all")
-  
-  // Modal states
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [isCreating, setIsCreating] = useState(false)
-  const [isUpdating, setIsUpdating] = useState(false)
+    // edit form state for major detail modal
+    const [editMajorName, setEditMajorName] = useState("")
+    const [editDescription, setEditDescription] = useState("")
+    const [editActive, setEditActive] = useState<boolean>(true)
+    const [saving, setSaving] = useState(false)
+    const [editMajorCode, setEditMajorCode] = useState("")
+    // create modal state
+    const [createOpen, setCreateOpen] = useState(false)
+    const [createMajorName, setCreateMajorName] = useState("")
+    const [createDescription, setCreateDescription] = useState("")
+    const [creating, setCreating] = useState(false)
+    const [createMajorCode, setCreateMajorCode] = useState("")
+    const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+    const [majorToDelete, setMajorToDelete] = useState<Major | null>(null)
     const [isDeleting, setIsDeleting] = useState(false)
 
-  // Selected major for edit/delete
-  const [selectedMajor, setSelectedMajor] = useState<Major | null>(null)
-  
-  // Form data
-  const [createFormData, setCreateFormData] = useState<CreateMajorPayload>({
-    name: "",
-    description: "",
-    majorCode: "",
-  })
-  
-  const [editFormData, setEditFormData] = useState<UpdateMajorPayload>({
-    name: "",
-    description: "",
-    majorCode: "",
-    active: true,
-  })
-
-  // Reload majors helper
     const reloadMajors = () => {
         queryClient.invalidateQueries({ queryKey: ["majors"] })
     }
 
-  // Filter and search
-  const filteredMajors = useMemo(() => {
-    let filtered = majors
+    const filtered = useMemo(() => {
+        if (!query) return majors
+        const q = query.toLowerCase()
+        // ✅ Lọc theo tên hoặc mô tả major
+        return majors.filter((m) =>
+            (m.name || "").toLowerCase().includes(q) ||
+            (m.description || "").toLowerCase().includes(q) ||
+            (m.majorCode || "").toLowerCase().includes(q)
+        )
+    }, [majors, query])
 
-    // Status filter
-    if (statusFilter === "active") {
-      filtered = filtered.filter(m => m.active)
-    } else if (statusFilter === "inactive") {
-      filtered = filtered.filter(m => !m.active)
+    // Minimal pagination state
+    const [page, setPage] = useState(0)
+    const [pageSize, setPageSize] = useState(10)
+
+    // Ensure page is clamped when filtered data or pageSize change - auto-adjust on data change
+    const lastPage = Math.max(0, Math.ceil(filtered.length / pageSize) - 1)
+    if (page > lastPage && filtered.length > 0) {
+        setPage(lastPage)
     }
 
-    // Search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase()
-      filtered = filtered.filter(
-        m =>
-          m.name.toLowerCase().includes(query) ||
-          m.description.toLowerCase().includes(query) ||
-          m.majorCode.toLowerCase().includes(query)
-      )
+    const paginated = useMemo(() => {
+        const start = page * pageSize
+        return filtered.slice(start, start + pageSize)
+    }, [filtered, page, pageSize])
+
+    const openDetail = (m: Major) => {
+        setSelected(m)
+        // populate edit fields
+        setEditMajorName(m.name || "")
+        setEditMajorCode(m.majorCode || "")
+        setEditDescription(m.description || "")
+        setEditActive(m.active)
+        setDialogOpen(true)
     }
 
-    return filtered
-  }, [majors, statusFilter, searchQuery])
-
-  // Statistics
-  const stats = useMemo(() => {
-    const total = majors.length
-    const active = majors.filter(m => m.active).length
-    const inactive = total - active
-    
-    return { total, active, inactive }
-  }, [majors])
-
-  // Handlers
-  const handleCreateFormChange = (field: keyof CreateMajorPayload, value: string) => {
-    setCreateFormData(prev => ({ ...prev, [field]: value }))
-  }
-
-  const handleEditFormChange = (field: keyof UpdateMajorPayload, value: string | boolean) => {
-    setEditFormData(prev => ({ ...prev, [field]: value }))
-  }
-
-  const handleCreateMajor = async () => {
-    if (!createFormData.name || !createFormData.majorCode) {
-      toast({
-        title: "Validation Error",
-        description: "Please fill in all required fields (Name and Major Code).",
-        variant: "destructive",
-      })
-      return
-    }
-
-    try {
-      setIsCreating(true)
-      const newMajor = await createMajor(createFormData)
-      
-      toast({
-        title: "Success",
-        description: `Major "${newMajor.name}" has been created successfully.`,
-      })
-
-      setIsCreateModalOpen(false)
-      setCreateFormData({
-        name: "",
-        description: "",
-        majorCode: "",
-      })
-      reloadMajors()
-    } catch (error) {
-      console.error("Error creating major:", error)
-      toast({
-        title: "Error",
-        description: "Failed to create major. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsCreating(false)
-    }
-  }
-
-  const handleEditClick = (major: Major) => {
-    setSelectedMajor(major)
-    setEditFormData({
-      name: major.name,
-      description: major.description,
-      majorCode: major.majorCode,
-      active: major.active,
-    })
-    setIsEditModalOpen(true)
-  }
-
-  const handleUpdateMajor = async () => {
-    if (!selectedMajor) return
-
-    if (!editFormData.name || !editFormData.majorCode) {
-      toast({
-        title: "Validation Error",
-        description: "Please fill in all required fields (Name and Major Code).",
-        variant: "destructive",
-      })
-      return
-    }
-
-    try {
-      setIsUpdating(true)
-      await updateMajorById(selectedMajor.id, editFormData)
-      
-      toast({
-        title: "Success",
-        description: `Major "${editFormData.name}" has been updated successfully.`,
-      })
-
-      setIsEditModalOpen(false)
-      setSelectedMajor(null)
+    const handleSave = async () => {
+        if (!selected) return
+        setSaving(true)
+        try {
+            // ✅ Payload cho major
+            const payload = {
+                name: editMajorName,
+                description: editDescription,
+                majorCode: editMajorCode,
+                active: editActive,
+            }
+            // ✅ Gọi API update major
+            const res: any = await updateMajorById(selected.id, payload)
+            if (res && (res.success || res.updated || res.data)) {
+                toast({ title: (res && res.message) || 'Update successful', description: '' })
+                const updated = (res && res.data) ? res.data : { ...selected, ...payload }
+                setSelected(updated as Major)
+                // ✅ Refresh list
                 reloadMajors()
-    } catch (error) {
-      console.error("Error updating major:", error)
-      toast({
-        title: "Error",
-        description: "Failed to update major. Please try again.",
-        variant: "destructive",
-      })
+            } else {
+                toast({ title: 'Failure', description: (res && res.message) || 'Major update failed.' })
+            }
+        } catch (err) {
+            console.error('Update major failed:', err)
+            toast({ title: 'Error', description: 'Error while updating major.' })
         } finally {
-      setIsUpdating(false)
+            setSaving(false)
+        }
     }
-  }
 
-  const handleDeleteClick = (major: Major) => {
-    setSelectedMajor(major)
-    setIsDeleteDialogOpen(true)
-  }
-
-  const handleDeleteConfirm = async () => {
-    if (!selectedMajor) return
-
-    try {
+    const handleDelete = async () => {
+        if (!majorToDelete) return
         setIsDeleting(true)
-      await deleteMajorById(selectedMajor.id)
-      
-      toast({
-        title: "Success",
-        description: `Major "${selectedMajor.name}" has been deleted successfully.`,
-      })
-
-      setIsDeleteDialogOpen(false)
-      setSelectedMajor(null)
-      reloadMajors()
-    } catch (error) {
-      console.error("Error deleting major:", error)
-      toast({
-        title: "Error",
-        description: "Failed to delete major. Please try again.",
-        variant: "destructive",
-      })
+        try {
+            const res: any = await deleteMajorById(majorToDelete.id)
+            if (res && (res.success === true || res.deleted)) {
+                toast({ title: res.message || 'Deleted', description: '' })
+                if (selected?.id === majorToDelete.id) setDialogOpen(false) // Đóng dialog edit nếu đang edit
+                await reloadMajors()
+                try { router.refresh() } catch (e) { /* ignore */ }
+            } else {
+                toast({ title: 'Failure', description: (res && res.message) || 'Major deletion failed.' })
+            }
+        } catch (err) {
+            console.error('Delete major failed:', err)
+            toast({ title: 'Error', description: 'Error deleting major.' })
         } finally {
             setIsDeleting(false)
+            setDeleteConfirmOpen(false)
+            setMajorToDelete(null)
+        }
     }
-  }
-
-  const handleDeleteCancel = () => {
-    setIsDeleteDialogOpen(false)
-    setSelectedMajor(null)
-  }
-
     return (
         <ProtectedRoute allowedRoles={["uni_staff"]}>
             <AppShell>
                 <div className="space-y-6 p-6">
-          {/* Header */}
-          <div className="flex flex-col gap-4">
-            <div className="flex items-start justify-between">
+                    <div className="flex items-center justify-between gap-4">
                         <div>
-                <h1 className="text-3xl font-bold flex items-center gap-3">
-                  <GraduationCap className="h-8 w-8 text-primary" />
-                  Major Management
-                </h1>
-                <p className="text-muted-foreground mt-1">
-                  Manage university majors and programs
-                </p>
+                            <h1 className="text-3xl font-bold">Major Management</h1>
+                            <p className="text-muted-foreground">View and manage all majors</p>
                         </div>
-
-              <Button 
-                onClick={() => setIsCreateModalOpen(true)}
-                size="lg"
-                className="gap-2"
-              >
-                <Plus className="h-5 w-5" />
-                Add New Major
-              </Button>
+                        <div className="flex items-center gap-4"> {/* Nested flex for card + search */}
+                            {/* Total Majors Card */}
+                            <div className="w-24 h-24 flex-shrink-0"> {/* Added flex-shrink-0 to prevent card shrinking */}
+                                <Card className="border-0 shadow-md bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 h-full">
+                                    <CardContent className="p-2 h-full flex flex-col justify-center">
+                                        <div className="text-[10px] font-medium text-blue-700 dark:text-blue-300 mb-1">Total Majors</div>
+                                        <div className="flex items-center gap-2">
+                                            <div className="p-1 bg-blue-500 rounded-md">
+                                                <BookMarked className="h-3 w-3 text-white" />
                                             </div>
-          </div>
-
-          {/* Statistics Cards */}
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 border-blue-200 dark:border-blue-800">
-              <CardHeader className="pb-3">
-                <CardDescription className="text-blue-700 dark:text-blue-300 font-medium">
-                  Total Majors
-                </CardDescription>
-                <CardTitle className="text-4xl text-blue-900 dark:text-blue-100">
-                  {stats.total}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-xs text-blue-600 dark:text-blue-400 font-medium">
-                  All programs
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900 border-green-200 dark:border-green-800">
-              <CardHeader className="pb-3">
-                <CardDescription className="text-green-700 dark:text-green-300 font-medium">
-                  Active Majors
-                </CardDescription>
-                <CardTitle className="text-4xl text-green-900 dark:text-green-100">
-                  {stats.active}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-xs text-green-600 dark:text-green-400 font-medium">
-                  Currently available
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-950 dark:to-orange-900 border-orange-200 dark:border-orange-800">
-              <CardHeader className="pb-3">
-                <CardDescription className="text-orange-700 dark:text-orange-300 font-medium">
-                  Inactive Majors
-                </CardDescription>
-                <CardTitle className="text-4xl text-orange-900 dark:text-orange-100">
-                  {stats.inactive}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-xs text-orange-600 dark:text-orange-400 font-medium">
-                  Not available
+                                            <div>
+                                                <div className="text-base font-bold text-blue-900 dark:text-blue-100">{majors.length}</div>
+                                                <p className="text-[10px] text-blue-600 dark:text-blue-400">Majors</p>
+                                            </div>
                                         </div>
                                     </CardContent>
                                 </Card>
                             </div>
 
-          {/* Filters and Search */}
-          <Card>
-            <CardHeader>
-              <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
-                <div className="flex-1 w-full sm:w-auto">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            {/* Search Input and Buttons */}
+                            <div className="flex items-center gap-2">
                                 <Input
-                      placeholder="Search by name, code, or description..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10 w-full"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <Tabs 
-                    value={statusFilter} 
-                    onValueChange={setStatusFilter}
-                    className="w-full sm:w-auto"
-                  >
-                    <TabsList className="grid w-full grid-cols-3">
-                      <TabsTrigger value="all">All</TabsTrigger>
-                      <TabsTrigger value="active">Active</TabsTrigger>
-                      <TabsTrigger value="inactive">Inactive</TabsTrigger>
-                    </TabsList>
-                  </Tabs>
-
-                  <div className="flex items-center gap-1 border rounded-md p-1">
-                    <Button
-                      variant={viewMode === "grid" ? "secondary" : "ghost"}
-                      size="sm"
-                      onClick={() => setViewMode("grid")}
-                      className="h-8 w-8 p-0"
-                    >
-                      <Grid3x3 className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant={viewMode === "list" ? "secondary" : "ghost"}
-                      size="sm"
-                      onClick={() => setViewMode("list")}
-                      className="h-8 w-8 p-0"
-                    >
-                      <List className="h-4 w-4" />
+                                    placeholder="Search majors"
+                                    value={query}
+                                    onChange={(e) => setQuery((e.target as HTMLInputElement).value)}
+                                    className="max-w-sm bg-white dark:bg-slate-800 rounded-md px-3 py-2 shadow-sm border border-gray-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                                />
+                                <Button onClick={() => { setQuery("") }} variant="ghost">Clear</Button>
+                                <Button size="sm" className="ml-2" onClick={() => setCreateOpen(true)} title="Create major">
+                                    Create major
+                                    <Plus className="h-4 w-4 ml-1" />
                                 </Button>
                             </div>
                         </div>
-              </div>
-            </CardHeader>
-          </Card>
-
-          {/* Results count */}
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              Showing <span className="font-medium">{filteredMajors.length}</span> of{" "}
-              <span className="font-medium">{majors.length}</span> majors
-            </p>
                     </div>
 
-          {/* Loading State */}
-          {loading ? (
-            <div className={`grid gap-4 ${viewMode === "grid" ? "md:grid-cols-2 lg:grid-cols-3" : "grid-cols-1"}`}>
-              {[...Array(6)].map((_, i) => (
-                <Card key={i}>
+                    <Card>
                         <CardHeader>
-                    <Skeleton className="h-6 w-3/4" />
-                    <Skeleton className="h-4 w-1/2" />
+                            <CardTitle>Major List</CardTitle>
+                            {/* ✅ Cập nhật description */}
+                            <CardDescription>Showing {filtered.length} of {majors.length} majors</CardDescription>
                         </CardHeader>
                         <CardContent>
-                    <Skeleton className="h-20 w-full" />
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : filteredMajors.length === 0 ? (
-            <Card>
-              <CardContent className="py-12">
-                <div className="text-center">
-                  <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No majors found</h3>
-                  <p className="text-muted-foreground mb-4">
-                    {searchQuery
-                      ? "Try adjusting your search criteria"
-                      : "Get started by creating your first major"}
-                  </p>
-                  {!searchQuery && (
-                    <Button onClick={() => setIsCreateModalOpen(true)}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add New Major
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <>
-              {/* Grid View */}
-              {viewMode === "grid" && (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {filteredMajors.map((major) => (
-                    <Card 
-                      key={major.id} 
-                      className="group hover:shadow-lg transition-all duration-200 relative overflow-hidden"
-                    >
-                      {/* Status indicator stripe */}
-                      <div className={`absolute top-0 left-0 right-0 h-1 ${
-                        major.active 
-                          ? "bg-gradient-to-r from-green-500 to-emerald-500" 
-                          : "bg-gradient-to-r from-red-500 to-orange-500"
-                      }`} />
-
-                      <CardHeader className="pb-3">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
-                            <CardTitle className="text-xl mb-2 line-clamp-1">
-                              {major.name}
-                            </CardTitle>
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <Badge variant="secondary" className="gap-1">
-                                <Code className="h-3 w-3" />
-                                {major.majorCode}
-                              </Badge>
-                              <Badge variant={major.active ? "default" : "destructive"}>
-                                {major.active ? (
-                                  <>
-                                    <CheckCircle2 className="h-3 w-3 mr-1" />
-                                    Active
-                                  </>
-                                ) : (
-                                  <>
-                                    <XCircle className="h-3 w-3 mr-1" />
-                                    Inactive
-                                  </>
-                                )}
-                              </Badge>
-                            </div>
-                          </div>
-                        </div>
-                      </CardHeader>
-
-                      <CardContent>
-                        <p className="text-sm text-muted-foreground line-clamp-3 mb-4">
-                          {major.description || "No description available"}
-                        </p>
-
-                        <div className="flex items-center gap-2 pt-3 border-t">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex-1 gap-2"
-                            onClick={() => handleEditClick(major)}
-                          >
-                            <Edit className="h-4 w-4" />
-                            Edit
+                            <div className="space-y-4">
+                                <div className="w-full overflow-x-auto">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                {/* ✅ Cập nhật cột cho Major */}
+                                                <TableHead className="w-[6rem]">ID</TableHead>
+                                                <TableHead>Major Name</TableHead>
+                                                <TableHead className="w-[8rem]">Major Code</TableHead>
+                                                <TableHead>Description</TableHead>
+                                                <TableHead className="w-[6rem]">Status</TableHead>
+                                                <TableHead className="w-[6rem]">Action</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {loading ? (
+                                                <TableRow>
+                                                    {/* ✅ Cập nhật colSpan */}
+                                                    <TableCell colSpan={6} className="p-6 text-center">Loading...</TableCell>
+                                                </TableRow>
+                                            ) : filtered.length === 0 ? (
+                                                <TableRow>
+                                                    {/* ✅ Cập nhật colSpan và text */}
+                                                    <TableCell colSpan={6} className="p-6 text-center">No majors found</TableCell>
+                                                </TableRow>
+                                            ) : (
+                                                // ✅ Lặp qua m (major)
+                                                paginated.map((m, idx) => (
+                                                    <TableRow
+                                                        key={m.id}
+                                                        className={`${idx % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-slate-50 dark:bg-slate-800'} hover:bg-slate-100 dark:hover:bg-slate-700`}
+                                                    >
+                                                        <TableCell className="text-sm text-muted-foreground">{m.id}</TableCell>
+                                                        <TableCell className="font-medium text-primary/90">{m.name}</TableCell>
+                                                        <TableCell className="text-sm text-muted-foreground">{m.majorCode || "—"}</TableCell>
+                                                        <TableCell className="text-sm text-muted-foreground truncate max-w-xs">{m.description || "—"}</TableCell>
+                                                        <TableCell>
+                                                            <Badge variant={m.active ? "default" : "destructive"}>{m.active ? "Active" : "Inactive"}</Badge>
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <div className="flex gap-2">
+                                                                {/* ✅ openDetail(m) */}
+                                                                <Button size="sm" onClick={() => openDetail(m)}>
+                                                                    <Eye className="h-4 w-4" />
                                                                 </Button>
                                                                 <Button
-                            variant="outline"
                                                                     size="sm"
-                            className="gap-2 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
-                            onClick={() => handleDeleteClick(major)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            Delete
+                                                                    variant="destructive"
+                                                                    // ✅ [THAY ĐỔI] Mở dialog xác nhận
+                                                                    onClick={() => {
+                                                                        setMajorToDelete(m)
+                                                                        setDeleteConfirmOpen(true)
+                                                                    }}
+                                                                >
+                                                                    <Trash className="h-4 w-4" />
                                                                 </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
 
-              {/* List View */}
-              {viewMode === "list" && (
-                <div className="space-y-3">
-                  {filteredMajors.map((major) => (
-                    <Card 
-                      key={major.id} 
-                      className="group hover:shadow-md transition-all duration-200"
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex items-center gap-4">
-                          {/* Icon */}
-                          <div className={`p-3 rounded-lg ${
-                            major.active 
-                              ? "bg-green-100 dark:bg-green-900" 
-                              : "bg-gray-100 dark:bg-gray-800"
-                          }`}>
-                            <BookOpen className={`h-6 w-6 ${
-                              major.active 
-                                ? "text-green-600 dark:text-green-400" 
-                                : "text-gray-600 dark:text-gray-400"
-                            }`} />
                                                             </div>
-
-                          {/* Content */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h3 className="font-semibold text-lg">{major.name}</h3>
-                              <Badge variant="secondary" className="gap-1">
-                                <Code className="h-3 w-3" />
-                                {major.majorCode}
-                              </Badge>
-                              <Badge variant={major.active ? "default" : "destructive"}>
-                                {major.active ? (
-                                  <>
-                                    <CheckCircle2 className="h-3 w-3 mr-1" />
-                                    Active
-                                  </>
-                                ) : (
-                                  <>
-                                    <XCircle className="h-3 w-3 mr-1" />
-                                    Inactive
-                                  </>
-                                )}
-                              </Badge>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))
+                                            )}
+                                        </TableBody>
+                                    </Table>
                                 </div>
-                            <p className="text-sm text-muted-foreground line-clamp-2">
-                              {major.description || "No description available"}
-                            </p>
+                                {/* Pagination controls */}
+                                <div className="mt-3 flex items-center justify-between">
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                        <div>Showing</div>
+                                        <div className="font-medium">{filtered.length === 0 ? 0 : page * pageSize + 1}</div>
+                                        <div>to</div>
+                                        <div className="font-medium">{Math.min((page + 1) * pageSize, filtered.length)}</div>
+                                        <div>of</div>
+                                        <div className="font-medium">{filtered.length}</div>
+                                        <div>majors</div> {/* ✅ Cập nhật text */}
                                     </div>
 
-                          {/* Actions */}
                                     <div className="flex items-center gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="gap-2"
-                              onClick={() => handleEditClick(major)}
-                            >
-                              <Edit className="h-4 w-4" />
-                              Edit
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="gap-2 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
-                              onClick={() => handleDeleteClick(major)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              Delete
-                            </Button>
+                                        <Button size="sm" variant="outline" onClick={() => setPage(0)} disabled={page === 0}>First</Button>
+                                        <Button size="sm" variant="outline" onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}>Prev</Button>
+                                        <div className="px-2 text-sm">Page {filtered.length === 0 ? 0 : page + 1} / {Math.max(1, Math.ceil(filtered.length / pageSize))}</div>
+                                        <Button size="sm" variant="outline" onClick={() => setPage(p => Math.min(p + 1, Math.max(0, Math.ceil(filtered.length / pageSize) - 1)))} disabled={(page + 1) * pageSize >= filtered.length}>Next</Button>
+                                        <Button size="sm" variant="outline" onClick={() => setPage(Math.max(0, Math.ceil(filtered.length / pageSize) - 1))} disabled={(page + 1) * pageSize >= filtered.length}>Last</Button>
+                                        <select aria-label="Items per page" className="ml-2 rounded border px-2 py-1 text-sm" value={pageSize} onChange={(e) => { setPageSize(Number((e.target as HTMLSelectElement).value)); setPage(0) }}>
+                                            <option value={5}>5</option>
+                                            <option value={10}>10</option>
+                                            <option value={20}>20</option>
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
                         </CardContent>
                     </Card>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
 
-          {/* Create Major Dialog */}
-          <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-            <DialogContent className="sm:max-w-[550px]">
+                    {/* ✅ Edit Major Dialog */}
+                    <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                        <DialogContent>
                             <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <Plus className="h-5 w-5" />
-                  Create New Major
-                </DialogTitle>
-                <DialogDescription>
-                  Add a new major to the university program catalog.
-                </DialogDescription>
+                                <DialogTitle>Major Detail / Edit</DialogTitle>
+                                <DialogDescription>Modify major fields and press Save to persist changes.</DialogDescription>
                             </DialogHeader>
 
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="create-name">
-                    Major Name <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="create-name"
-                    placeholder="e.g., Software Engineering"
-                    value={createFormData.name}
-                    onChange={(e) => handleCreateFormChange("name", e.target.value)}
-                  />
+                            <div className="mt-2 space-y-3">
+                                <div>
+                                    <Label htmlFor="major-name">Major Name</Label>
+                                    <Input id="major-name" value={editMajorName} onChange={(e) => setEditMajorName((e.target as HTMLInputElement).value)} />
                                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="create-code">
-                    Major Code <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="create-code"
-                    placeholder="e.g., SE"
-                    value={createFormData.majorCode}
-                    onChange={(e) => handleCreateFormChange("majorCode", e.target.value)}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    A short code to identify this major
-                  </p>
+                                <div>
+                                    <Label htmlFor="major-code">Major Code</Label>
+                                    <Input id="major-code" value={editMajorCode} onChange={(e) => setEditMajorCode((e.target as HTMLInputElement).value)} />
                                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="create-description">Description</Label>
-                  <Textarea
-                    id="create-description"
-                    placeholder="Describe the major program..."
-                    value={createFormData.description}
-                    onChange={(e) => handleCreateFormChange("description", e.target.value)}
-                    rows={4}
-                  />
-                                </div>
+                                <div>
+                                    <Label htmlFor="major-desc">Description</Label>
+                                    <Textarea id="major-desc" value={editDescription} onChange={(e) => setEditDescription((e.target as HTMLTextAreaElement).value)} />
                                 </div>
 
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => setIsCreateModalOpen(false)}
-                  disabled={isCreating}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleCreateMajor}
-                  disabled={isCreating}
-                >
-                  {isCreating ? "Creating..." : "Create Major"}
-                </Button>
-              </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
-
-          {/* Edit Major Dialog */}
-          <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-            <DialogContent className="sm:max-w-[550px]">
-                            <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <Edit className="h-5 w-5" />
-                  Edit Major
-                </DialogTitle>
-                <DialogDescription>
-                  Update major information. All fields marked with * are required.
-                </DialogDescription>
-                            </DialogHeader>
-
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="edit-name">
-                    Major Name <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="edit-name"
-                    placeholder="e.g., Software Engineering"
-                    value={editFormData.name}
-                    onChange={(e) => handleEditFormChange("name", e.target.value)}
-                  />
+                                <div className="flex items-center gap-2">
+                                    <input id="major-active" title="Active" type="checkbox" checked={editActive} onChange={(e) => setEditActive(e.target.checked)} className="h-4 w-4" />
+                                    <Label htmlFor="major-active">Active</Label>
                                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="edit-code">
-                    Major Code <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="edit-code"
-                    placeholder="e.g., SE"
-                    value={editFormData.majorCode}
-                    onChange={(e) => handleEditFormChange("majorCode", e.target.value)}
-                  />
-                                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="edit-description">Description</Label>
-                  <Textarea
-                    id="edit-description"
-                    placeholder="Describe the major program..."
-                    value={editFormData.description}
-                    onChange={(e) => handleEditFormChange("description", e.target.value)}
-                    rows={4}
-                  />
-                                </div>
-
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="edit-active"
-                    checked={editFormData.active}
-                    onChange={(e) => handleEditFormChange("active", e.target.checked)}
-                    className="h-4 w-4 rounded border-gray-300"
-                  />
-                  <Label htmlFor="edit-active" className="cursor-pointer">
-                    Active (available for student enrollment)
-                  </Label>
+                                <div className="mt-4 flex gap-2 justify-end">
+                                    <Button variant="outline" onClick={() => setDialogOpen(false)}>Close</Button>
+                                    <Button onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : 'Save'}</Button>
                                 </div>
                             </div>
-
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => setIsEditModalOpen(false)}
-                  disabled={isUpdating}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleUpdateMajor}
-                  disabled={isUpdating}
-                >
-                  {isUpdating ? "Updating..." : "Update Major"}
-                </Button>
-              </DialogFooter>
                         </DialogContent>
                     </Dialog>
 
-          {/* Delete Confirmation Dialog */}
-          <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-            <DialogContent className="sm:max-w-[425px]">
+                    {/* ✅ Create Major Dialog */}
+                    <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+                        <DialogContent>
                             <DialogHeader>
-                <DialogTitle className="flex items-center gap-2 text-red-600">
-                  <Trash2 className="h-5 w-5" />
-                  Delete Major
-                </DialogTitle>
-                                <DialogDescription>
-                  Are you sure you want to delete this major? This action cannot be undone.
-                                </DialogDescription>
+                                <DialogTitle>Create Major</DialogTitle>
+                                <DialogDescription>Enter major details and press Create.</DialogDescription>
                             </DialogHeader>
 
-              {selectedMajor && (
-                <div className="py-4">
-                  <Card className="bg-muted/50">
-                    <CardContent className="p-4 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold text-lg">{selectedMajor.name}</span>
-                        <Badge variant="outline">#{selectedMajor.id}</Badge>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <Code className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">{selectedMajor.majorCode}</span>
-                      </div>
-                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                        <FileText className="h-4 w-4 mt-0.5 shrink-0" />
-                        <span className="line-clamp-2">{selectedMajor.description}</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              )}
+                            <div className="mt-2 space-y-3">
+                                <div>
+                                    <Label htmlFor="create-major-name">Major Name</Label>
+                                    <Input id="create-major-name" value={createMajorName} onChange={(e) => setCreateMajorName((e.target as HTMLInputElement).value)} />
+                                </div>
 
-              <DialogFooter>
+                                <div>
+                                    <Label htmlFor="create-major-code">Major Code</Label>
+                                    <Input id="create-major-code" value={createMajorCode} onChange={(e) => setCreateMajorCode((e.target as HTMLInputElement).value)} />
+                                </div>
+
+                                <div>
+                                    <Label htmlFor="create-desc">Description</Label>
+                                    <Textarea id="create-desc" value={createDescription} onChange={(e) => setCreateDescription((e.target as HTMLTextAreaElement).value)} />
+                                </div>
+
+                                <div className="mt-4 flex gap-2 justify-end">
+                                    <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+                                    <Button onClick={async () => {
+                                        setCreating(true)
+                                        try {
+                                            // ✅ Payload cho create major
+                                            const payload = {
+                                                id: 0,
+                                                name: createMajorName,
+                                                majorCode: createMajorCode,
+                                                description: createDescription,
+                                                active: true // Mặc định là active khi tạo mới
+                                            }
+                                            // ✅ Gọi API createMajor
+                                            const res: Major = await createMajor(payload as any)
+                                            if (res && res.id) { // Nếu có res và res.id (khác 0) nghĩa là tạo thành công
+                                                toast({ title: 'Created Successfully', description: `Major "${res.name}" created with ID: ${res.id}` })
+                                                setCreateOpen(false)
+                                                // ✅ Reset form state
+                                                setCreateMajorName("")
+                                                setCreateMajorCode("")
+                                                setCreateDescription("")
+                                                await reloadMajors()
+                                            } else {
+                                                // Trường hợp API trả về cấu trúc lỗi khác hoặc không có ID
+                                                toast({
+                                                    title: 'Failure',
+                                                    description: (res && (res as any).message) || 'Failed major creation. Invalid response from server.',
+                                                    variant: "destructive"
+                                                })
+                                            }
+                                        } catch (err: any) {
+                                            console.error('Create major failed:', err)
+                                            // toast({ title: 'Error', description: 'Error creating major.' })
+                                            const errorMessage = err.response?.data?.message || err.message || 'Error creating major.'
+                                            toast({
+                                                title: 'Error',
+                                                description: errorMessage,
+                                                variant: "destructive"
+                                            })
+                                        } finally {
+                                            setCreating(false)
+                                        }
+                                    }} disabled={creating}>{creating ? 'Creating...' : 'Create'}</Button>
+                                </div>
+                            </div>
+                        </DialogContent>
+                    </Dialog>
+
+                    {/* ✅ [MỚI] Dialog Xác Nhận Xóa */}
+                    <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Confirm Delete</DialogTitle>
+                                <DialogDescription>
+                                    Are you sure you want to delete the major:
+                                    <br />
+                                    <span className="font-bold">{majorToDelete?.name} - {majorToDelete?.majorCode}</span> (ID: {majorToDelete?.id})?
+                                    <br />
+                                    This action cannot be undone.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="mt-4 flex gap-2 justify-end">
                                 <Button
                                     variant="outline"
-                  onClick={handleDeleteCancel}
+                                    onClick={() => {
+                                        setDeleteConfirmOpen(false)
+                                        setMajorToDelete(null)
+                                    }}
                                     disabled={isDeleting}
                                 >
                                     Cancel
                                 </Button>
                                 <Button
-                  variant="destructive"
-                  onClick={handleDeleteConfirm}
+                                    variant="destructive" // Dùng màu đỏ
+                                    onClick={handleDelete} // Gọi hàm xóa
                                     disabled={isDeleting}
-                  className="gap-2"
-                >
-                  {isDeleting ? (
-                    <>Deleting...</>
-                  ) : (
-                    <>
-                      <Trash2 className="h-4 w-4" />
-                      Delete Major
-                    </>
-                  )}
+                                >
+                                    {isDeleting ? "Deleting..." : "Confirm Delete"}
                                 </Button>
-              </DialogFooter>
+                            </div>
                         </DialogContent>
                     </Dialog>
+
                 </div>
             </AppShell>
         </ProtectedRoute>

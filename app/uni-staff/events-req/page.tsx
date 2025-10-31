@@ -8,19 +8,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { CalendarModal } from "@/components/calendar-modal"
-import { PhaseSelectionModal } from "@/components/phase-selection-modal"
-import { QRModal } from "@/components/qr-modal"
-import { Calendar, Users, MapPin, Search, CheckCircle, XCircle, Clock, Building, Eye, Filter, DollarSign, QrCode } from "lucide-react"
+import { Calendar, Users, MapPin, Search, CheckCircle, XCircle, Clock, Building, Eye, Filter, DollarSign } from "lucide-react"
 import { renderTypeBadge } from "@/lib/eventUtils"
 import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
-import { putEventStatus, getEventSettle, eventQR } from "@/service/eventApi"
+import { putEventStatus, getEventSettle } from "@/service/eventApi"
 import { fetchLocation } from "@/service/locationApi"
 import { fetchClub } from "@/service/clubApi"
 import Link from "next/link"
 import { fetchEvent } from "@/service/eventApi"
 import { useRouter } from "next/navigation"
-import QRCode from "qrcode"
 
 // events will be fetched from the API. The API returns a paginated object
 // and the UI should display only the `content` array.
@@ -44,23 +41,6 @@ export default function UniStaffEventRequestsPage() {
 
 	const { toast } = useToast()
 	const [processingId, setProcessingId] = useState<number | string | null>(null)
-
-	// QR generation states
-	const [selectedEvent, setSelectedEvent] = useState<any>(null)
-	const [showPhaseModal, setShowPhaseModal] = useState(false)
-	const [isGeneratingQR, setIsGeneratingQR] = useState(false)
-	const [showQrModal, setShowQrModal] = useState(false)
-	const [qrLinks, setQrLinks] = useState<{ local?: string; prod?: string; mobile?: string }>({})
-	const [qrRotations, setQrRotations] = useState<{ local: string[]; prod: string[]; mobile?: string[] }>({ local: [], prod: [] })
-	const [visibleIndex, setVisibleIndex] = useState(0)
-	const [displayedIndex, setDisplayedIndex] = useState(0)
-	const [selectedPhase, setSelectedPhase] = useState<string>('')
-	const [checkInCode, setCheckInCode] = useState<string>('')
-	const [countdown, setCountdown] = useState(10)
-	const [isFullscreen, setIsFullscreen] = useState(false)
-	const [activeEnvironment, setActiveEnvironment] = useState<'local' | 'prod' | 'mobile'>('prod')
-	const [isFading, setIsFading] = useState(false)
-	const VARIANTS = 3
 
 	const getLocationById = (id: string | number | undefined) => {
 		if (id === undefined || id === null) return null
@@ -325,121 +305,6 @@ export default function UniStaffEventRequestsPage() {
 			style: "currency",
 			currency: "VND",
 		}).format(amount)
-	}
-
-	// QR rotation timer effect
-	useEffect(() => {
-		if (!showQrModal) return
-		
-		const countdownInterval = setInterval(() => {
-			setCountdown(prev => {
-				if (prev <= 1) {
-					setIsFading(true)
-					setTimeout(() => {
-						setVisibleIndex(vi => vi + 1)
-						setDisplayedIndex(di => di + 1)
-						setIsFading(false)
-					}, 300)
-					return 10
-				}
-				return prev - 1
-			})
-		}, 1000)
-		
-		return () => clearInterval(countdownInterval)
-	}, [showQrModal])
-
-	// Handler functions
-	const handleCopyLink = (env: 'local' | 'prod' | 'mobile') => {
-		const link = env === 'prod' ? qrLinks.prod : env === 'local' ? qrLinks.local : qrLinks.mobile
-		if (link) {
-			navigator.clipboard.writeText(link)
-			toast({ title: 'Link Copied', description: `${env} check-in link copied to clipboard` })
-		}
-	}
-
-	const handleDownloadQR = (env: 'local' | 'prod' | 'mobile') => {
-		const qrData = env === 'mobile' 
-			? qrRotations.mobile?.[displayedIndex % (qrRotations.mobile?.length || 1)]
-			: qrRotations[env]?.[displayedIndex % (qrRotations[env]?.length || 1)]
-		
-		if (qrData) {
-			const link = document.createElement('a')
-			link.download = `qr-${selectedEvent?.name || 'event'}-${env}-${selectedPhase}.png`
-			link.href = qrData
-			link.click()
-			toast({ title: 'QR Downloaded', description: `QR code for ${env} environment downloaded` })
-		}
-	}
-
-	// QR Generation Handler
-	const handlePhaseConfirm = async (phase: string) => {
-		if (!selectedEvent?.id) return
-
-		try {
-			setIsGeneratingQR(true)
-			
-			// Call eventQR API with selected phase
-			console.log('Generating check-in token for event:', selectedEvent.id, 'with phase:', phase)
-			const { token, expiresIn } = await eventQR(selectedEvent.id, phase)
-			console.log('Generated token:', token, 'expires in:', expiresIn)
-			
-			// Create URLs with token and phase
-			const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${phase}/${token}`
-			const localUrl = `http://localhost:3000/student/checkin/${phase}/${token}`
-			const mobileLink = `exp://192.168.1.50:8081/--/student/checkin/${phase}/${token}`
-			
-			// Generate QR code variants
-			const styleVariants = [
-				{ color: { dark: '#000000', light: '#FFFFFF' }, margin: 1 },
-				{ color: { dark: '#111111', light: '#FFFFFF' }, margin: 2 },
-				{ color: { dark: '#222222', light: '#FFFFFF' }, margin: 0 },
-			]
-
-			// Generate QR variants for all environments
-			const localQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => 
-				QRCode.toDataURL(localUrl, styleVariants[i % styleVariants.length])
-			)
-			const localQrVariants = await Promise.all(localQrVariantsPromises)
-
-			const prodQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => 
-				QRCode.toDataURL(prodUrl, styleVariants[i % styleVariants.length])
-			)
-			const prodQrVariants = await Promise.all(prodQrVariantsPromises)
-
-			const mobileVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) => 
-				QRCode.toDataURL(mobileLink, styleVariants[i % styleVariants.length])
-			)
-			const mobileVariants = await Promise.all(mobileVariantsPromises)
-
-			setQrRotations({ local: localQrVariants, prod: prodQrVariants, mobile: mobileVariants })
-			setQrLinks({ local: localUrl, prod: prodUrl, mobile: mobileLink })
-			setVisibleIndex(0)
-			setDisplayedIndex(0)
-			setSelectedPhase(phase)
-			setCheckInCode(token)
-			setCountdown(10)
-			setActiveEnvironment('prod')
-
-			// Close phase modal and open QR modal
-			setShowPhaseModal(false)
-			setShowQrModal(true)
-
-			toast({
-				title: 'QR Code Generated',
-				description: `Check-in QR code generated for ${phase} phase`,
-				duration: 3000
-			})
-		} catch (err: any) {
-			console.error('Failed to generate QR', err)
-			toast({
-				title: 'QR Error',
-				description: err?.response?.data?.message || err?.message || 'Could not generate QR code',
-				variant: 'destructive'
-			})
-		} finally {
-			setIsGeneratingQR(false)
-		}
 	}
 
 	// Compute counts by status (prefer `status` field). Fallback to type-based heuristics when missing
@@ -819,22 +684,6 @@ export default function UniStaffEventRequestsPage() {
 															Need Settle
 														</Button>
 													)}
-													{/* QR Code Generation Button - Show for APPROVED or ONGOING events */}
-													{(request.status === "APPROVED" || request.status === "ONGOING") && !expired && (
-														<Button 
-															size="sm" 
-															variant="default"
-															className="h-8 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white"
-															onClick={(e) => {
-																e.preventDefault()
-																setSelectedEvent(request)
-																setShowPhaseModal(true)
-															}}
-														>
-															<QrCode className="h-3 w-3 mr-1" />
-															QR Code
-														</Button>
-													)}
 													<Button size="sm" variant="outline" className="h-8 bg-transparent">
 														<Eye className="h-3 w-3 mr-1" />
 														View Details
@@ -868,45 +717,18 @@ export default function UniStaffEventRequestsPage() {
 							</div>
 						</div>
 
-					{/* Calendar Modal */}
-					<CalendarModal
-						open={showCalendarModal}
-						onOpenChange={setShowCalendarModal}
-						events={events}
-						onEventClick={(event) => {
-							setShowCalendarModal(false)
-							router.push(`/uni-staff/events-req/${event.id}`)
-						}}
-					/>
-
-					{/* Phase Selection Modal */}
-					<PhaseSelectionModal
-						open={showPhaseModal}
-						onOpenChange={setShowPhaseModal}
-						onConfirm={handlePhaseConfirm}
-						isLoading={isGeneratingQR}
-					/>
-
-					{/* QR Code Modal */}
-					<QRModal
-						open={showQrModal}
-						onOpenChange={setShowQrModal}
-						eventName={selectedEvent?.name || ''}
-						checkInCode={checkInCode}
-						qrRotations={qrRotations}
-						qrLinks={qrLinks}
-						countdown={countdown}
-						isFullscreen={isFullscreen}
-						setIsFullscreen={setIsFullscreen}
-						activeEnvironment={activeEnvironment}
-						setActiveEnvironment={setActiveEnvironment}
-						displayedIndex={displayedIndex}
-						isFading={isFading}
-						handleCopyLink={handleCopyLink}
-						handleDownloadQR={handleDownloadQR}
-					/>
-			</div>
-		</AppShell>
-	</ProtectedRoute>
+						{/* Calendar Modal */}
+						<CalendarModal
+							open={showCalendarModal}
+							onOpenChange={setShowCalendarModal}
+							events={events}
+							onEventClick={(event) => {
+								setShowCalendarModal(false)
+								router.push(`/uni-staff/events-req/${event.id}`)
+							}}
+						/>
+				</div>
+			</AppShell>
+		</ProtectedRoute>
 	)
 }
