@@ -54,8 +54,8 @@ export function ProtectedRoute({
     // Kích hoạt overlay
     setIsRedirecting(true);
 
-    // Chỉ lưu intendedPath nếu đây là trang student/checkin/[code]
-    const isCheckinCodePage = /^\/student\/checkin\/[^/]+$/.test(pathname);
+    // Chỉ lưu intendedPath nếu đây là trang student/checkin/[time]/[code]
+    const isCheckinCodePage = /^\/student\/checkin\/[^/]+\/[^/]+$/.test(pathname);
     
     if (isCheckinCodePage) {
       // Lưu đường dẫn với safe storage
