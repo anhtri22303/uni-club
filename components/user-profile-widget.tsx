@@ -109,7 +109,28 @@ export function UserProfileWidget() {
 
         // Load wallet points only for eligible roles from profile response
         if (auth.role === "club_leader" || auth.role === "student") {
-          const walletsList = profileData?.wallets || []
+          // Handle both singular wallet and plural wallets formats
+          let walletsList = profileData?.wallets || []
+          
+          // If API returns singular wallet, convert to array
+          if (!walletsList || walletsList.length === 0) {
+            if (profileData?.wallet) {
+              // For singular wallet, create entry with club name from clubs array
+              const clubName = profileData?.clubs?.[0]?.clubName || "My Wallet"
+              const clubId = profileData?.clubs?.[0]?.clubId || null
+              
+              walletsList = [{
+                walletId: profileData.wallet.walletId,
+                balancePoints: profileData.wallet.balancePoints,
+                ownerType: profileData.wallet.ownerType,
+                clubId: clubId,
+                clubName: clubName,
+                userId: profileData.wallet.userId,
+                userFullName: profileData.wallet.userFullName
+              }]
+            }
+          }
+          
           console.debug("UserProfileWidget.wallets ->", walletsList)
           
           // Map wallets to membership format for compatibility
