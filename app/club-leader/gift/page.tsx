@@ -2,12 +2,17 @@
 
 import type React from "react"
 import { useEffect, useState, useMemo } from "react"
-import { Gift, Package, Calendar, Clock, CheckCircle, XCircle, Plus, ChevronLeft, ChevronRight, } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { useQueryClient } from "@tanstack/react-query"
+import Link from "next/link"
+import { Gift, Package, Calendar, Clock, CheckCircle, XCircle, Plus, ChevronLeft, ChevronRight, Loader2, } from "lucide-react"
 // --- Service ---
-import { getProducts, addProduct, getProductTags, Product, AddProductPayload, ProductTag, } from "@/service/productApi"
+import { addProduct, Product, AddProductPayload, ProductTag, } from "@/service/productApi"
+import { getClubIdFromToken } from "@/service/clubApi"
 // --- Hooks ---
 import { usePagination } from "@/hooks/use-pagination"
 import { useToast } from "@/hooks/use-toast" // Đảm bảo import useToast đúng cách
+import { useProductsByClubId, useProductTagsByClubId, queryKeys, } from "@/hooks/use-query-hooks"
 // --- Components ---
 import { AppShell } from "@/components/app-shell"
 import { ProtectedRoute } from "@/contexts/protected-route"
@@ -23,7 +28,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from "
 import { Checkbox } from "@/components/ui/checkbox"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { ProductFilters, FilterState, SortState } from "@/components/product-filters"
-import { Separator } from "@/components/ui/separator" // 1. IMPORT THÊM
+import { Separator } from "@/components/ui/separator"
 
 // ---- Compact status badge overlay (Không thay đổi) ----
 const StatusBadge = ({ status }: { status: string }) => {
@@ -88,68 +93,28 @@ const initialFormState: AddProductPayload = {
 }
 
 export default function ClubLeaderGiftPage() {
-  const [products, setProducts] = useState<Product[]>([])
-  const [productTags, setProductTags] = useState<ProductTag[]>([])
-  const [clubId, setClubId] = useState<number | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [clubId, setClubId] = useState<number | null>(() => getClubIdFromToken())
   const [searchTerm, setSearchTerm] = useState("")
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState<AddProductPayload>(initialFormState)
   const [submitting, setSubmitting] = useState(false)
   const { toast } = useToast()
-  // 2. THÊM STATE MỚI CHO FILTER VÀ SORT
   const [filters, setFilters] = useState<FilterState | null>(null)
   const [sortBy, setSortBy] = useState<SortState>("popular")
+  const queryClient = useQueryClient() // 4. THÊM queryClient
 
-  // 1. Lấy clubId từ localStorage khi component mount
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const auth = localStorage.getItem("uniclub-auth")
-        if (auth) {
-          const parsed = JSON.parse(auth)
-          if (parsed.clubId) {
-            setClubId(parsed.clubId)
-          } else {
-            toast({ title: "Error", description: "Club ID not found in login information.", variant: "destructive" })
-          }
-        }
-      } catch (err) {
-        console.error("Failed to parse auth from localStorage", err)
-        toast({ title: "Error", description: "Unable to read Club ID information.", variant: "destructive" })
-      }
-    }
-  }, [toast])
+  // THAY THẾ useEffect/useState BẰNG REACT QUERY
+  const { data: products = [], isLoading: productsLoading } = useProductsByClubId(
+    clubId as number,
+    !!clubId // Chỉ fetch khi clubId tồn tại
+  )
+  const { data: productTags = [], isLoading: tagsLoading } = useProductTagsByClubId(
+    clubId as number,
+    !!clubId // Chỉ fetch khi clubId tồn tại
+  )
 
-  // 2. Fetch products và tags khi clubId đã được set
-  useEffect(() => {
-    // if (!clubId) return // Chưa có clubId thì không fetch
-
-    async function fetchAllData() {
-      if (!clubId) {
-        // Nếu chưa có clubId, ta nên set loading = false và không làm gì cả
-        setLoading(false)
-        return
-      }
-      setLoading(true)
-      try {
-        // Fetch song song
-        const [productsData, tagsData] = await Promise.all([
-          getProducts(clubId, { page: 0, size: 70 }),
-          getProductTags(clubId),
-        ])
-        setProducts(productsData)
-        setProductTags(tagsData)
-      } catch (err) {
-        setProducts([])
-        setProductTags([])
-        toast({ title: "Error", description: "Unable to load products or tags.", variant: "destructive" })
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchAllData()
-  }, [clubId, toast]) // Phụ thuộc vào clubId
+  // Biến loading tổng hợp (giống trang Event)
+  const isLoading = productsLoading || tagsLoading
 
   // 3. Cập nhật các hàm handlers cho form
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -193,14 +158,14 @@ export default function ClubLeaderGiftPage() {
       }
 
       // API mới trả về object Product đã tạo
-      const newProduct = await addProduct(clubId, payload)
+      await addProduct(clubId, payload)
 
-      toast({ title: "Thành công", description: "Create successful products!", variant: "success" })
+      toast({ title: "Success", description: "Create successful products!", variant: "success" })
       setOpen(false)
       setForm(initialFormState) // Reset form
-
+      // Tự động tải lại dữ liệu thay vì cập nhật thủ công
+      queryClient.invalidateQueries({ queryKey: queryKeys.productsByClubId(clubId) })
       // Thêm sản phẩm mới vào đầu danh sách, không cần reload
-      setProducts((prev) => [newProduct, ...prev])
     } catch (err: any) {
       toast({ title: "Error", description: err.message || "Create a failed product", variant: "destructive" })
     } finally {
@@ -208,13 +173,7 @@ export default function ClubLeaderGiftPage() {
     }
   }
 
-  // // 5. Cập nhật logic filter (vẫn giữ nguyên)
-  // const filteredProducts = products.filter(
-  //   (p) =>
-  //     p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-  //     p.description.toLowerCase().includes(searchTerm.toLowerCase())
-  // )
-  // 5. THAY THẾ 'filteredProducts' BẰNG 'useMemo'
+  // THAY THẾ 'filteredProducts' BẰNG 'useMemo'
   const filteredAndSortedProducts = useMemo(() => {
     let filtered: Product[] = [...products] // Bắt đầu với danh sách đầy đủ
 
@@ -226,48 +185,30 @@ export default function ClubLeaderGiftPage() {
           p.description.toLowerCase().includes(searchTerm.toLowerCase())
       )
     }
-
     // B. Lọc theo ProductFilters state (Client-side)
     if (filters) {
       // Lọc "Sẵn hàng"
       if (filters.inStock) {
-        filtered = filtered.filter((p) => p.stockQuantity > 0)
+        // Lọc cả isActive và stockQuantity
+        filtered = filtered.filter((p) => p.isActive && p.stockQuantity > 0)
       }
 
-      // Lọc "Hàng mới về"
-      if (filters.newArrivals) {
-        // TODO: Cần logic để xác định hàng mới (API không có trường này)
-        // Ví dụ: filtered = filtered.filter((p) => isNew(p.createdAt));
-        // Tạm thời bỏ qua
-      }
-
-      // Lọc "Nhu cầu sử dụng" (Tags)
-      if (filters.useCases.size > 0) {
-        // QUAN TRỌNG: Component 'ProductFilters' đang dùng data giả (e.g., "van_phong").
-        // Bạn cần cập nhật 'ProductFilters.tsx' để nhận 'productTags' từ API
-        // và hiển thị chúng làm lựa chọn. Nếu không, bộ lọc này sẽ không
-        // tìm thấy sản phẩm nào (vì tag "van_phong" không khớp với "Áo CLB").
-        //
-        // Logic ví dụ (giả sử `productTags` đã được nạp vào ProductFilters):
-        // const useCaseTags = Array.from(filters.useCases);
-        // filtered = filtered.filter((p) =>
-        //   useCaseTags.some(tagValue => p.tags.includes(tagValue))
-        // );
-      }
-
-      // Lọc "Hãng sản xuất" (Brands)
-      if (filters.brands.size > 0) {
-        // TODO: Product API không có trường 'brand'.
+      // Lọc "Tags"
+      if (filters.selectedTags.size > 0) {
+        const selectedTags = Array.from(filters.selectedTags)
+        // Lọc các sản phẩm có CHỨA BẤT KỲ tag nào được chọn
+        filtered = filtered.filter((p) =>
+          selectedTags.some(selectedTag => p.tags.includes(selectedTag))
+        )
       }
     }
-
     // C. Sắp xếp
     switch (sortBy) {
       case "price_asc":
-        filtered.sort((a, b) => a.price - b.price)
+        filtered.sort((a, b) => a.pointCost - b.pointCost)
         break
       case "price_desc":
-        filtered.sort((a, b) => b.price - a.price)
+        filtered.sort((a, b) => b.pointCost - a.pointCost)
         break
       case "hot_promo":
         // TODO: Cần logic để sort "Khuyến mãi HOT" (API không có)
@@ -277,7 +218,6 @@ export default function ClubLeaderGiftPage() {
         // TODO: Cần logic để sort "Phổ biến" (e.g., by sales, API không có)
         break
     }
-
     return filtered
   }, [products, searchTerm, filters, sortBy]) // Chạy lại khi 1 trong 4 giá trị này thay đổi
 
@@ -307,6 +247,7 @@ export default function ClubLeaderGiftPage() {
           </div>
 
           <ProductFilters
+            availableTags={productTags}
             onFilterChange={setFilters}
             onSortChange={setSortBy}
           />
@@ -405,9 +346,9 @@ export default function ClubLeaderGiftPage() {
             </DialogContent>
           </Dialog>
 
-          {/* 7. Cập nhật Product Card Rendering */}
+          {/* Product Card Rendering */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {loading ? (
+            {isLoading ? (
               <div className="col-span-full text-center py-12">Loading products...</div>
             ) : filteredAndSortedProducts.length === 0 ? (
               <div className="col-span-full text-center py-12">
@@ -416,52 +357,79 @@ export default function ClubLeaderGiftPage() {
               </div>
             ) : (
               filteredAndSortedProducts.map((p) => {
-                // Lấy thumbnail từ mảng media
+                // Lấy thumbnail (hoặc ảnh placeholder nếu không có)
                 const thumbnail = p.media?.find((m) => m.isThumbnail)?.url || "/placeholder.svg"
 
                 return (
-                  <Card key={p.productId} className="transition-all duration-200 hover:shadow-md flex flex-col h-full relative overflow-hidden">
-                    <CardHeader className="pb-2">
-                      <div className="h-28 md:h-32 w-full relative mb-2 overflow-hidden rounded-lg bg-muted">
-                        <img src={thumbnail} alt={p.name} className="object-cover w-full h-full" />
+                  // 1. Bọc thẻ Card bằng Link
+                  <Link
+                    href={`/club-leader/gift/${p.productId}`}
+                    key={p.productId}
+                    className="h-full flex" // Thêm 'flex' để Card con có thể co giãn 100%
+                  >
+                    {/* 2. Cập nhật Card styling (shadow, cursor, v.v.) */}
+                    <Card className="transition-all duration-200 hover:shadow-lg cursor-pointer flex flex-col h-full relative overflow-hidden w-full">
 
-                        {/* Badge Trạng thái Active */}
-                        <Badge
-                          variant={p.isActive ? "default" : "secondary"}
-                          className={`absolute right-2 top-2 z-10 text-xs ${p.isActive ? "bg-green-600 text-white" : ""}`}
-                        >
-                          {p.isActive ? "Active" : "Inactive"}
-                        </Badge>
-                      </div>
-                      <div className="flex items-start justify-between gap-2">
+                      {/* Phần Header (Hình ảnh) - Thay đổi để giống thiết kế */}
+                      <CardHeader className="p-0 border-b"> {/* Xóa padding */}
+                        <div className="aspect-video w-full relative overflow-hidden bg-muted">
+                          {/* Dùng placeholder nếu ảnh lỗi */}
+                          <img
+                            src={thumbnail}
+                            alt={p.name}
+                            className="object-cover w-full h-full"
+                            onError={(e) => (e.currentTarget.src = "/placeholder.svg")}
+                          />
+                          {/* Badge Active/Inactive (Giống trong ảnh) */}
+                          <Badge
+                            variant={p.isActive ? "default" : "secondary"}
+                            className={`absolute right-2 top-2 z-10 text-xs ${p.isActive ? "bg-green-600 text-white" : "bg-gray-500 text-white"
+                              }`}
+                          >
+                            {p.isActive ? "Active" : "Inactive"}
+                          </Badge>
+                        </div>
+                      </CardHeader>
+
+                      {/* Phần Content (Thông tin) - Thay đổi để giống thiết kế */}
+                      <CardContent className="p-3 flex flex-col gap-2 grow">
+                        {/* Title và Description */}
                         <div className="min-w-0">
-                          <CardTitle className="text-sm truncate">{p.name}</CardTitle>
-                          <CardDescription className="mt-1 text-xs line-clamp-2">{p.description}</CardDescription>
+                          <CardTitle className="text-base font-semibold truncate" title={p.name}>
+                            {p.name}
+                          </CardTitle>
+                          <CardDescription className="mt-1 text-sm line-clamp-2" title={p.description}>
+                            {p.description || "No description provided."}
+                          </CardDescription>
                         </div>
-                        {/* <Badge variant="outline" className="capitalize text-[10px] max-w-[6rem] truncate">
-                          Club ID: {p.clubId}
-                        </Badge> */}
-                      </div>
-                    </CardHeader>
-                    <CardContent className="pt-2 flex flex-col gap-2 grow">
-                      {/* Hiển thị Tags */}
-                      {p.tags && p.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1">
-                          {p.tags.map((tag) => (
-                            <Badge key={tag} variant="secondary" className="text-xs font-normal">
-                              {tag}
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
 
-                      {/* Giá và Tồn kho (đẩy xuống dưới) */}
-                      <div className="flex items-center justify-between text-xs mt-auto pt-2">
-                        <span className="font-semibold text-blue-600">{p.price} pts</span>
-                        <span className="text-muted-foreground">Warehouse: {p.stockQuantity}</span>
-                      </div>
-                    </CardContent>
-                  </Card>
+                        {/* Tags (Giống trong ảnh) */}
+                        {p.tags && p.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {p.tags.map((tag) => (
+                              <Badge
+                                key={tag}
+                                variant="default" // Màu xanh
+                                className="text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200"
+                              >
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Giá và Kho (Đẩy xuống dưới) */}
+                        <div className="flex items-center justify-between mt-auto pt-2">
+                          <span className="font-semibold text-blue-600 text-base">
+                            {p.pointCost} points
+                          </span>
+                          <span className="text-sm text-muted-foreground">
+                            Warehouse: {p.stockQuantity}
+                          </span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
                 )
               })
             )}

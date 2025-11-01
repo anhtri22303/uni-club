@@ -6,7 +6,7 @@ import { fetchEvent, getEventById, getEventByClubId, getEventCoHost, getMyEventR
 import { fetchUser, fetchUserById, fetchProfile } from "@/service/userApi"
 import { getMembersByClubId } from "@/service/membershipApi"
 import { fetchMajors } from "@/service/majorApi"
-import { getProduct } from "@/service/productApi"
+import { getProducts, getProductTags, Product, ProductTag, } from "@/service/productApi"
 import { getWallet } from "@/service/walletApi"
 import { fetchPolicies, fetchPolicyById } from "@/service/policyApi"
 import { fetchAttendanceByDate, fetchMemberAttendanceHistory } from "@/service/attendanceApi"
@@ -54,8 +54,12 @@ export const queryKeys = {
   majorsList: () => [...queryKeys.majors, "list"] as const,
 
   // Products
+  // products: ["products"] as const,
+  // productsList: (params?: any) => [...queryKeys.products, "list", params] as const,
   products: ["products"] as const,
-  productsList: (params?: any) => [...queryKeys.products, "list", params] as const,
+  // productsList đã bị xóa vì getProducts giờ cần clubId
+  productsByClubId: (clubId: number) => [...queryKeys.products, "club", clubId] as const,
+  productTagsByClubId: (clubId: number) => [...queryKeys.products, "tags", "club", clubId] as const,
 
   // Wallet
   wallet: ["wallet"] as const,
@@ -457,15 +461,39 @@ export function usePrefetchClub() {
 /**
  * Hook to fetch products with pagination
  */
-export function useProducts(params = { page: 0, size: 70, sort: "name" }) {
-  return useQuery({
-    queryKey: queryKeys.productsList(params),
-    queryFn: async () => {
-      const products = await getProduct(params)
-      return products
-    },
-    staleTime: 3 * 60 * 1000, // 3 minutes
-  })
+// export function useProducts(params = { page: 0, size: 70, sort: "name" }) {
+//   return useQuery({
+//     queryKey: queryKeys.productsList(params),
+//     queryFn: async () => {
+//       const products = await getProducts(params)
+//       return products
+//     },
+//     staleTime: 3 * 60 * 1000, // 3 minutes
+//   })
+// }
+/**
+ * Hook để lấy danh sách sản phẩm (gifts) CỦA MỘT CLUB
+ * (Thay thế cho useProducts cũ)
+ */
+export function useProductsByClubId(clubId: number, enabled: boolean = true) {
+  return useQuery<Product[], Error>({
+    queryKey: queryKeys.productsByClubId(clubId),
+    queryFn: () => getProducts(clubId, { page: 0, size: 70 }), // getProducts giờ yêu cầu clubId
+    enabled: enabled && !!clubId,
+    staleTime: 3 * 60 * 1000, // 3 phút
+  });
+}
+
+/**
+ * Hook để lấy danh sách tags sản phẩm CỦA MỘT CLUB
+ */
+export function useProductTagsByClubId(clubId: number, enabled: boolean = true) {
+  return useQuery<ProductTag[], Error>({
+    queryKey: queryKeys.productTagsByClubId(clubId),
+    queryFn: () => getProductTags(clubId),
+    enabled: enabled && !!clubId,
+    staleTime: 5 * 60 * 1000, // 5 phút (Tags thay đổi ít thường xuyên hơn)
+  });
 }
 
 // ============================================
@@ -545,11 +573,11 @@ export function useAttendancesByDate(date: string, enabled = true) {
  */
 export function useMemberAttendanceHistory(membershipId: number | null, enabled = true) {
   // 👇 Chỉ cần thêm <any[], Error> vào đây
-  return useQuery<any[], Error>({ 
+  return useQuery<any[], Error>({
     queryKey: queryKeys.memberAttendanceHistory(membershipId),
     queryFn: async () => {
       if (!membershipId) return []
-      
+
       // Giả sử bạn đã import 'fetchMemberAttendanceHistory' ở đầu file
       // const history = await fetchMemberAttendanceHistory(membershipId)
       const responseBody = await fetchMemberAttendanceHistory(membershipId)

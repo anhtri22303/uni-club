@@ -1,6 +1,7 @@
 "use client"
 
-import * as React from "react"
+// import * as React from "react"
+import React from "react"
 import { Archive, ArrowDownUp, ArrowUpDown, Check, ChevronDown, Filter, Flame, Sparkles, Star, X, } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -10,6 +11,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Toggle } from "@/components/ui/toggle"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { Separator } from "@/components/ui/separator"
+import { ProductTag } from "@/service/productApi"
 
 // --- Định nghĩa Types ---
 
@@ -19,38 +21,19 @@ type FilterOption = {
     label: string
 }
 
-// Định nghĩa trạng thái của tất cả bộ lọc
+// Định nghĩa trạng thái của tất cả bộ lọc (ĐÃ CẬP NHẬT)
 export interface FilterState {
     inStock: boolean
-    newArrivals: boolean
-    useCases: Set<string> // Dùng Set để quản lý các giá trị duy nhất
-    brands: Set<string>
-    // Thêm các bộ lọc khác ở đây... (e.g., priceRange: [number, number])
+    selectedTags: Set<string> // Đổi tên từ useCases, lưu trữ TÊN tag
 }
 
 // Định nghĩa trạng thái sắp xếp
 export type SortState = "popular" | "hot_promo" | "price_asc" | "price_desc"
 
-// --- Dữ liệu giả lập (bạn sẽ thay bằng API) ---
-const allUseCases: FilterOption[] = [
-    { value: "van_phong", label: "Văn phòng" },
-    { value: "gaming", label: "Gaming" },
-    { value: "do_hoa", label: "Đồ họa" },
-    { value: "hoc_tap", label: "Học tập - Giải trí" },
-]
-
-const allBrands: FilterOption[] = [
-    { value: "samsung", label: "Samsung" },
-    { value: "lg", label: "LG" },
-    { value: "dell", label: "Dell" },
-    { value: "asus", label: "Asus" },
-]
-
-// --- Prop cho component ---
+// --- Prop cho component (ĐÃ CẬP NHẬT) ---
 interface ProductFiltersProps {
-    // Callback để thông báo cho component cha khi filter thay đổi
+    availableTags: ProductTag[] // Nhận tag từ API
     onFilterChange: (filters: FilterState) => void
-    // Callback để thông báo cho component cha khi sort thay đổi
     onSortChange: (sort: SortState) => void
 }
 
@@ -84,9 +67,9 @@ function FilterPopover({ title, options, selectedValues, onSelectChange }: Filte
             </PopoverTrigger>
             <PopoverContent className="w-[220px] p-0">
                 <Command>
-                    <CommandInput placeholder={`Tìm ${title.toLowerCase()}...`} />
+                    <CommandInput placeholder={`Find ${title.toLowerCase()}...`} />
                     <CommandList>
-                        <CommandEmpty>Không tìm thấy.</CommandEmpty>
+                        <CommandEmpty>Not found.</CommandEmpty>
                         <CommandGroup>
                             {options.map((option) => {
                                 const isSelected = selectedValues.has(option.value)
@@ -114,7 +97,7 @@ function FilterPopover({ title, options, selectedValues, onSelectChange }: Filte
                                         onSelect={() => selectedValues.forEach((val) => onSelectChange(val))} // Bỏ chọn tất cả
                                         className="justify-center text-center"
                                     >
-                                        Xóa bộ lọc
+                                        Clear filter
                                     </CommandItem>
                                 </CommandGroup>
                             </>
@@ -127,16 +110,24 @@ function FilterPopover({ title, options, selectedValues, onSelectChange }: Filte
 }
 
 // --- Component chính ---
-export function ProductFilters({ onFilterChange, onSortChange }: ProductFiltersProps) {
+export function ProductFilters({ onFilterChange, onSortChange, availableTags = [], }: ProductFiltersProps) {
     const [filters, setFilters] = React.useState<FilterState>({
         inStock: false,
-        newArrivals: false,
-        useCases: new Set(),
-        brands: new Set(),
+        selectedTags: new Set(),
     })
 
     const [sortBy, setSortBy] = React.useState<SortState>("popular")
 
+    // Chuyển đổi ProductTag[] từ API thành FilterOption[]
+    // QUAN TRỌNG: value = tag.name, vì Product.tags là mảng string (tên)
+    const tagOptions: FilterOption[] = React.useMemo(
+        () =>
+            availableTags.map((tag) => ({
+                value: tag.name,
+                label: tag.name,
+            })),
+        [availableTags]
+    )
     // Thông báo cho component cha mỗi khi state thay đổi
     React.useEffect(() => {
         onFilterChange(filters)
@@ -147,14 +138,13 @@ export function ProductFilters({ onFilterChange, onSortChange }: ProductFiltersP
     }, [sortBy, onSortChange])
 
     // --- Hàm xử lý ---
-
-    // Xử lý bật/tắt filter (Sẵn hàng, Hàng mới)
-    const handleToggleChange = (key: "inStock" | "newArrivals") => (pressed: boolean) => {
+    // Xử lý bật/tắt filter (Sẵn hàng)
+    const handleToggleChange = (key: "inStock") => (pressed: boolean) => {
         setFilters((prev) => ({ ...prev, [key]: pressed }))
     }
 
     // Xử lý chọn/bỏ chọn filter trong popover
-    const handleMultiSelectChange = (key: "useCases" | "brands") => (value: string) => {
+    const handleMultiSelectChange = (key: "selectedTags") => (value: string) => {
         setFilters((prev) => {
             const newSet = new Set(prev[key])
             if (newSet.has(value)) {
@@ -167,8 +157,7 @@ export function ProductFilters({ onFilterChange, onSortChange }: ProductFiltersP
     }
 
     // Xử lý bỏ 1 tag filter
-    const removeFilterTag = (key: "useCases" | "brands", value: string) => {
-        // Chỉ cần gọi lại hàm này, nó sẽ tự động-bỏ chọn
+    const removeFilterTag = (key: "selectedTags", value: string) => {
         handleMultiSelectChange(key)(value)
     }
 
@@ -176,67 +165,40 @@ export function ProductFilters({ onFilterChange, onSortChange }: ProductFiltersP
     const clearAllFilters = () => {
         setFilters({
             inStock: false,
-            newArrivals: false,
-            useCases: new Set(),
-            brands: new Set(),
+            selectedTags: new Set(),
         })
     }
 
-    // --- Tính toán phụ ---
-    const activeUseCases = Array.from(filters.useCases).map(
-        (val) => allUseCases.find((opt) => opt.value === val)?.label || val
-    )
-    const activeBrands = Array.from(filters.brands).map(
-        (val) => allBrands.find((opt) => opt.value === val)?.label || val
-    )
-    const totalActiveFilters =
-        (filters.inStock ? 1 : 0) +
-        (filters.newArrivals ? 1 : 0) +
-        filters.useCases.size +
-        filters.brands.size
+    // --- Tính toán phụ (ĐÃ CẬP NHẬT) ---
+    const activeTags = Array.from(filters.selectedTags)
+    const totalActiveFilters = (filters.inStock ? 1 : 0) + filters.selectedTags.size
 
     return (
         <div className="space-y-6">
             {/* 1. Hàng Filter chính (CHỌN THEO TIÊU CHÍ) */}
             <div>
-                <h3 className="text-lg font-semibold mb-3">Chọn theo tiêu chí</h3>
+                <h3 className="text-lg font-semibold mb-3">Select by criteria</h3>
                 <div className="flex flex-wrap gap-3">
                     {/* <Button variant="outline" className="border-primary text-primary">
-            <Filter className="mr-2 h-4 w-4" /> Bộ lọc ({totalActiveFilters})
-          </Button> */}
-
+                    <Filter className="mr-2 h-4 w-4" /> Bộ lọc ({totalActiveFilters})
+                    </Button> */}
                     <Toggle
                         variant="outline"
                         pressed={filters.inStock}
                         onPressedChange={handleToggleChange("inStock")}
                         className="data-[state=on]:border-primary data-[state=on]:text-primary"
                     >
-                        <Archive className="mr-2 h-4 w-4" /> Sẵn hàng
+                        <Archive className="mr-2 h-4 w-4" /> Available
                     </Toggle>
 
-                    <Toggle
-                        variant="outline"
-                        pressed={filters.newArrivals}
-                        onPressedChange={handleToggleChange("newArrivals")}
-                        className="data-[state=on]:border-primary data-[state=on]:text-primary"
-                    >
-                        <Sparkles className="mr-2 h-4 w-4" /> Hàng mới về
-                    </Toggle>
-
-                    {/* Các popover filter */}
+                    {/* Popover filter cho Tags (dữ liệu thật) */}
                     <FilterPopover
-                        title="Nhu cầu sử dụng"
-                        options={allUseCases}
-                        selectedValues={filters.useCases}
-                        onSelectChange={handleMultiSelectChange("useCases")}
+                        title="Filter by Tags"
+                        options={tagOptions}
+                        selectedValues={filters.selectedTags}
+                        onSelectChange={handleMultiSelectChange("selectedTags")}
                     />
 
-                    <FilterPopover
-                        title="Hãng sản xuất"
-                        options={allBrands}
-                        selectedValues={filters.brands}
-                        onSelectChange={handleMultiSelectChange("brands")}
-                    />
                     {/* Thêm các popover khác (Giá, Kích thước, v.v.) tại đây */}
                 </div>
             </div>
@@ -244,7 +206,7 @@ export function ProductFilters({ onFilterChange, onSortChange }: ProductFiltersP
             {/* 2. Hàng Filter đang chọn (ĐANG LỌC THEO) */}
             {totalActiveFilters > 0 && (
                 <div>
-                    <h3 className="text-lg font-semibold mb-3">Đang lọc theo</h3>
+                    <h3 className="text-lg font-semibold mb-3">Filtering by</h3>
                     <div className="flex flex-wrap items-center gap-2">
                         {filters.inStock && (
                             <Badge variant="outline" className="py-1">
@@ -259,7 +221,7 @@ export function ProductFilters({ onFilterChange, onSortChange }: ProductFiltersP
                                 </Button>
                             </Badge>
                         )}
-                        {filters.newArrivals && (
+                        {/* {filters.newArrivals && (
                             <Badge variant="outline" className="py-1">
                                 Hàng mới về
                                 <Button
@@ -271,8 +233,8 @@ export function ProductFilters({ onFilterChange, onSortChange }: ProductFiltersP
                                     <X className="h-3 w-3" />
                                 </Button>
                             </Badge>
-                        )}
-                        {activeUseCases.map((label, i) => (
+                        )} */}
+                        {/* {activeUseCases.map((label, i) => (
                             <Badge variant="outline" className="py-1" key={label}>
                                 {label}
                                 <Button
@@ -284,15 +246,16 @@ export function ProductFilters({ onFilterChange, onSortChange }: ProductFiltersP
                                     <X className="h-3 w-3" />
                                 </Button>
                             </Badge>
-                        ))}
-                        {activeBrands.map((label, i) => (
-                            <Badge variant="outline" className="py-1" key={label}>
-                                {label}
+                        ))} */}
+                        {/* Hiển thị các tag đang chọn */}
+                        {activeTags.map((tag) => (
+                            <Badge variant="outline" className="py-1" key={tag}>
+                                {tag}
                                 <Button
                                     variant="ghost"
                                     size="icon"
                                     className="ml-1 h-4 w-4 rounded-full"
-                                    onClick={() => removeFilterTag("brands", Array.from(filters.brands)[i])}
+                                    onClick={() => removeFilterTag("selectedTags", tag)}
                                 >
                                     <X className="h-3 w-3" />
                                 </Button>
@@ -308,7 +271,7 @@ export function ProductFilters({ onFilterChange, onSortChange }: ProductFiltersP
 
             {/* 3. Hàng Sắp xếp (SẮP XẾP THEO) */}
             <div>
-                <h3 className="text-lg font-semibold mb-3">Sắp xếp theo</h3>
+                <h3 className="text-lg font-semibold mb-3">Sort by</h3>
                 <ToggleGroup
                     type="single"
                     variant="outline"
@@ -320,15 +283,15 @@ export function ProductFilters({ onFilterChange, onSortChange }: ProductFiltersP
                         <Star className="mr-2 h-4 w-4" />
                         Popular
                     </ToggleGroupItem>
-                    <ToggleGroupItem value="hot_promo" aria-label="Sắp xếp theo khuyến mãi HOT">
+                    <ToggleGroupItem value="hot_promo" aria-label="Sort by HOT promotions">
                         <Flame className="mr-2 h-4 w-4" />
                         HOT Promotion
                     </ToggleGroupItem>
-                    <ToggleGroupItem value="price_asc" aria-label="Sắp xếp theo giá thấp đến cao">
+                    <ToggleGroupItem value="price_asc" aria-label="Sort by price low to high">
                         <ArrowUpDown className="mr-2 h-4 w-4" />
                         Low - High Price
                     </ToggleGroupItem>
-                    <ToggleGroupItem value="price_desc" aria-label="Sắp xếp theo giá cao đến thấp">
+                    <ToggleGroupItem value="price_desc" aria-label="Sort by price high to low">
                         <ArrowDownUp className="mr-2 h-4 w-4" />
                         High - Low Price
                     </ToggleGroupItem>

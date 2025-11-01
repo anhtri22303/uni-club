@@ -1,28 +1,5 @@
 import axiosInstance from "../lib/axiosInstance"
 
-// export interface Product {
-// 	id?: number;
-// 	clubId: number;
-// 	name: string;
-// 	description: string;
-// 	pricePoints: number;
-// 	stockQuantity: number;
-// }
-
-// export async function getProduct({ page = 0, size = 70, sort = "name" } = {}): Promise<Product[]> {
-// 	const res = await axiosInstance.get("/api/products", {
-// 		params: { page, size, sort },
-// 	});
-// 	const data = res.data as { content?: Product[] };
-// 	return Array.isArray(data.content) ? data.content : [];
-// }
-
-// // POST /api/products - add a new product
-// export async function addProduct(productData: Product): Promise<any> {
-// 	const res = await axiosInstance.post("/api/products", productData);
-// 	return res.data;
-// }
-
 // --- Standard API Response Wrappers (Inferred from Swagger) ---
 
 /**
@@ -46,7 +23,6 @@ interface PageableResponse<T> {
 
 /**
  * Interface cho payload khi TẠO MỚI một product
- * Dựa trên: POST /api/clubs/{clubId}/products (Request Body)
  */
 export interface AddProductPayload {
   name: string;
@@ -60,19 +36,21 @@ export interface AddProductPayload {
 
 /**
  * Interface cho đối tượng Product đầy đủ (thường là response)
- * Dựa trên: POST /api/clubs/{clubId}/products (Response Data)
  */
 export interface Product {
   productId: number; // Đã đổi từ id
   clubId: number;
   name: string;
   description: string;
+  pointCost: number; //
   stockQuantity: number;
-  price: number; // Đã đổi từ pricePoints
+  type: string; // 👈 THÊM MỚI (e.g., "CLUB_ITEM")
+  eventId?: number; // 👈 THÊM MỚI
   isActive: boolean;
   media: {
     mediaId: number;
     url: string;
+    type?: string; // 👈 THÊM MỚI
     isThumbnail: boolean;
     displayOrder: number;
   }[];
@@ -81,7 +59,6 @@ export interface Product {
 
 /**
  * Interface cho Product Tag
- * Dựa trên: GET /api/clubs/{clubId}/products/tags (Response Data)
  */
 export interface ProductTag {
   tagId: number;
@@ -92,7 +69,6 @@ export interface ProductTag {
 
 /**
  * Lấy danh sách product của một club (phân trang)
- * MỚI: GET /api/clubs/{clubId}/products
  */
 export async function getProducts(
   clubId: number,
@@ -112,7 +88,6 @@ export async function getProducts(
 
 /**
  * Thêm một product mới cho club
- * MỚI: POST /api/clubs/{clubId}/products
  */
 export async function addProduct(
   clubId: number,
@@ -127,13 +102,26 @@ export async function addProduct(
 }
 
 /**
- * (MỚI) Lấy danh sách tag của product cho một club
- * MỚI: GET /api/clubs/{clubId}/products/tags
+ * Lấy danh sách tag của product cho một club
  */
 export async function getProductTags(clubId: number): Promise<ProductTag[]> {
   const res = await axiosInstance.get<ApiResponse<ProductTag[]>>(
     `/api/clubs/${clubId}/products/tags`
   );
   // Trả về mảng các tag từ trường 'data'
+  return res.data.data;
+}
+
+/**
+ *  Lấy thông tin chi tiết của một sản phẩm
+ */
+export async function getProductById(
+  clubId: number,
+  productId: number | string
+): Promise<Product> {
+  const res = await axiosInstance.get<ApiResponse<Product>>(
+    `/api/clubs/${clubId}/products/${productId}`
+  );
+  // Trả về đối tượng product từ trường 'data'
   return res.data.data;
 }
