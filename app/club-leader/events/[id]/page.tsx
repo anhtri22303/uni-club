@@ -73,8 +73,8 @@ export default function EventDetailPage() {
 
   // QR Code states
   const [showQrModal, setShowQrModal] = useState(false)
-  const [qrLinks, setQrLinks] = useState<{ local?: string; prod?: string }>({})
-  const [qrRotations, setQrRotations] = useState<{ local: string[]; prod: string[] }>({ local: [], prod: [] })
+  const [qrLinks, setQrLinks] = useState<{ local?: string; prod?: string; mobile?: string }>({})
+  const [qrRotations, setQrRotations] = useState<{ local: string[]; prod: string[]; mobile?: string[] }>({ local: [], prod: [] })
   const [visibleIndex, setVisibleIndex] = useState(0)
   const [displayedIndex, setDisplayedIndex] = useState(0)
   const [isFading, setIsFading] = useState(false)
@@ -158,9 +158,10 @@ export default function EventDetailPage() {
         const { token } = await eventQR(event.id, selectedPhase)
         console.log('New token generated:', token)
 
-        // Create URLs with new token
-        const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${token}`
-        const localUrl = `http://localhost:3000/student/checkin/${token}`
+        // Create URLs with new token and phase
+        const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${selectedPhase}/${token}`
+        const localUrl = `http://localhost:3000/student/checkin/${selectedPhase}/${token}`
+        const mobileLink = `exp://192.168.1.50:8081/--/student/checkin/${selectedPhase}/${token}`
 
         // Generate QR code variants
         const styleVariants = [
@@ -179,8 +180,13 @@ export default function EventDetailPage() {
         )
         const prodQrVariants = await Promise.all(prodQrVariantsPromises)
 
-        setQrRotations({ local: localQrVariants, prod: prodQrVariants })
-        setQrLinks({ local: localUrl, prod: prodUrl })
+        const mobileVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) =>
+          QRCode.toDataURL(mobileLink, styleVariants[i % styleVariants.length])
+        )
+        const mobileVariants = await Promise.all(mobileVariantsPromises)
+
+        setQrRotations({ local: localQrVariants, prod: prodQrVariants, mobile: mobileVariants })
+        setQrLinks({ local: localUrl, prod: prodUrl, mobile: mobileLink })
         setVisibleIndex((i) => i + 1)
       } catch (err) {
         console.error('Failed to regenerate QR code:', err)
@@ -245,6 +251,13 @@ export default function EventDetailPage() {
           <Badge variant="secondary" className="bg-blue-900 text-white border-blue-900">
             <CheckCircle className="h-3 w-3 mr-1" />
             Completed
+          </Badge>
+        )
+      case "ONGOING":
+        return (
+          <Badge variant="default" className="bg-purple-600 text-white border-purple-600">
+            <Clock className="h-3 w-3 mr-1" />
+            Ongoing
           </Badge>
         )
       case "APPROVED":
@@ -471,9 +484,11 @@ export default function EventDetailPage() {
       // Create URLs with token and phase (path parameter format)
       const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${phase}/${token}`
       const localUrl = `http://localhost:3000/student/checkin/${phase}/${token}`
+      const mobileLink = `exp://192.168.1.50:8081/--/student/checkin/${phase}/${token}`
 
       console.log('Production URL:', prodUrl)
       console.log('Development URL:', localUrl)
+      console.log('Mobile URL:', mobileLink)
 
       // Generate QR code variants
       const styleVariants = [
@@ -494,9 +509,15 @@ export default function EventDetailPage() {
       )
       const prodQrVariants = await Promise.all(prodQrVariantsPromises)
 
-      // Set different URLs for local and production
-      setQrRotations({ local: localQrVariants, prod: prodQrVariants })
-      setQrLinks({ local: localUrl, prod: prodUrl })
+      // Generate QR variants for mobile
+      const mobileVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) =>
+        QRCode.toDataURL(mobileLink, styleVariants[i % styleVariants.length])
+      )
+      const mobileVariants = await Promise.all(mobileVariantsPromises)
+
+      // Set different URLs for local, production, and mobile
+      setQrRotations({ local: localQrVariants, prod: prodQrVariants, mobile: mobileVariants })
+      setQrLinks({ local: localUrl, prod: prodUrl, mobile: mobileLink })
       setVisibleIndex(0)
       setDisplayedIndex(0)
       setSelectedPhase(phase)
@@ -530,14 +551,16 @@ export default function EventDetailPage() {
       } else if (environment === 'prod') {
         qrDataUrl = qrRotations.prod[displayedIndex % qrRotations.prod.length]
       } else {
-        // mobile: construct QR image using public API (fallback)
-        const token = event?.checkInCode || ''
-        if (!token) {
-          toast({ title: 'No token', description: 'Mobile token not available', variant: 'destructive' })
+        // mobile: use pre-generated QR from qrRotations.mobile, or fallback to qrLinks.mobile
+        if (qrRotations.mobile && qrRotations.mobile.length > 0) {
+          qrDataUrl = qrRotations.mobile[displayedIndex % qrRotations.mobile.length]
+        } else if (qrLinks.mobile) {
+          // Fallback: generate QR using external API with the correct mobile link (includes phase)
+          qrDataUrl = `https://api.qrserver.com/v1/create-qr-code/?size=640x640&data=${encodeURIComponent(qrLinks.mobile)}`
+        } else {
+          toast({ title: 'No QR', description: 'Mobile QR not available', variant: 'destructive' })
           return
         }
-        const mobileLink = `exp://192.168.1.50:8081/--/student/checkin/${token}`
-        qrDataUrl = `https://api.qrserver.com/v1/create-qr-code/?size=640x640&data=${encodeURIComponent(mobileLink)}`
       }
 
       if (!qrDataUrl) return
@@ -560,11 +583,7 @@ export default function EventDetailPage() {
     try {
       let link: string | undefined
       if (environment === 'mobile') {
-        // For mobile, use existing link structure if available
-        const token = qrLinks.local?.split('/').pop() || qrLinks.prod?.split('/').pop()
-        if (token) {
-          link = `exp://192.168.1.50:8081/--/student/checkin/${token}`
-        }
+        link = qrLinks.mobile
       } else {
         link = environment === 'local' ? qrLinks.local : qrLinks.prod
       }
@@ -699,7 +718,7 @@ export default function EventDetailPage() {
                 </>
               )}
               {/* Show End Event button only when status is APPROVED */}
-              {event.status === "APPROVED" && (
+              {event.status === "ONGOING" && (
                 <Button
                   onClick={handleEndEvent}
                   disabled={isEndingEvent}
@@ -857,7 +876,7 @@ export default function EventDetailPage() {
                         summaryLoading ? (
                           <span className="text-muted-foreground">Loading...</span>
                         ) : eventSummary ? (
-                          `${eventSummary.registrationsCount} / ${event.maxCheckInCount}`
+                          `${eventSummary.checkedInCount} / ${eventSummary.registrationsCount}`
                         ) : (
                           `${event.currentCheckInCount} / ${event.maxCheckInCount}`
                         )

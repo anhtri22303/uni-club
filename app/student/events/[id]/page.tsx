@@ -56,7 +56,13 @@ export default function EventDetailPage() {
       try {
         setLoading(true)
         const data = await getEventById(params.id as string)
-        setEvent(data)
+        // Normalize TimeObject to string for EventDetail type
+        const normalizedEvent: EventDetail = {
+          ...data,
+          startTime: data.startTime ? timeObjectToString(data.startTime) : null,
+          endTime: data.endTime ? timeObjectToString(data.endTime) : null,
+        }
+        setEvent(normalizedEvent)
       } catch (error) {
         console.error("Failed to load event detail:", error)
         toast({

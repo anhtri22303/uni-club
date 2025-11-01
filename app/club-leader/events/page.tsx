@@ -254,10 +254,10 @@ export default function ClubLeaderEventsPage() {
         const { token } = await eventQR(selectedEvent.id, selectedPhase)
         console.log('New token generated:', token)
 
-        // Create URLs with new token
-        const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${token}`
-        const localUrl = `http://localhost:3000/student/checkin/${token}`
-        const mobileLink = `exp://192.168.1.50:8081/--/student/checkin/${token}`
+        // Create URLs with new token and phase
+        const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${selectedPhase}/${token}`
+        const localUrl = `http://localhost:3000/student/checkin/${selectedPhase}/${token}`
+        const mobileLink = `exp://192.168.1.50:8081/--/student/checkin/${selectedPhase}/${token}`
 
         // Generate QR code variants
         const styleVariants = [
@@ -549,14 +549,16 @@ export default function ClubLeaderEventsPage() {
       } else if (environment === 'prod') {
         qrDataUrl = qrRotations.prod[displayedIndex % (qrRotations.prod.length || 1)]
       } else {
-        // mobile: construct an on-the-fly QR image using public QR API (fallback)
-        const token = selectedEvent?.checkInCode || ''
-        if (!token) {
-          toast({ title: 'No token', description: 'Mobile token not available', variant: 'destructive' })
+        // mobile: use pre-generated QR from qrRotations.mobile, or fallback to qrLinks.mobile
+        if (qrRotations.mobile && qrRotations.mobile.length > 0) {
+          qrDataUrl = qrRotations.mobile[displayedIndex % qrRotations.mobile.length]
+        } else if (qrLinks.mobile) {
+          // Fallback: generate QR using external API with the correct mobile link (includes phase)
+          qrDataUrl = `https://api.qrserver.com/v1/create-qr-code/?size=640x640&data=${encodeURIComponent(qrLinks.mobile)}`
+        } else {
+          toast({ title: 'No QR', description: 'Mobile QR not available', variant: 'destructive' })
           return
         }
-        const mobileLink = `exp://192.168.1.50:8081/--/student/checkin/${token}`
-        qrDataUrl = `https://api.qrserver.com/v1/create-qr-code/?size=640x640&data=${encodeURIComponent(mobileLink)}`
       }
 
       if (!qrDataUrl) return
@@ -647,10 +649,7 @@ export default function ClubLeaderEventsPage() {
     try {
       let link: string | undefined
       if (environment === 'mobile') {
-        const token = qrLinks.local?.split('/').pop() || qrLinks.prod?.split('/').pop()
-        if (token) {
-          link = `exp://192.168.1.50:8081/--/student/checkin/${token}`
-        }
+        link = qrLinks.mobile
       } else {
         link = environment === 'local' ? qrLinks.local : qrLinks.prod
       }
@@ -946,6 +945,12 @@ export default function ClubLeaderEventsPage() {
                             </>
                           ) : (
                             <>
+                              {event.status === "ONGOING" && (
+                                <Badge variant="default" className="bg-purple-600 text-white font-semibold">
+                                  <span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
+                                  Ongoing
+                                </Badge>
+                              )}
                               {event.status === "APPROVED" && (
                                 <Badge variant="default" className="bg-green-600 font-semibold">
                                   <span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>

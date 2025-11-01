@@ -779,6 +779,9 @@ export default function PartnerDashboard() {
                               >
                                 {status}
                               </Badge>
+                              {event.status === "ONGOING" && (
+                                <Badge variant="default" className="text-xs bg-purple-600 text-white">Ongoing</Badge>
+                              )}
                               {event.status === "APPROVED" && (
                                 <Badge variant="default" className="text-xs bg-green-600">Approved</Badge>
                               )}

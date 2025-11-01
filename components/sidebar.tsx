@@ -235,7 +235,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
             {require("@/components/theme-toggle").ThemeToggle()}
           </div>
         </div>
-        <div className="flex-1 overflow-auto py-4">
+        <div className="flex-1 overflow-auto py-4 pb-72">
           <nav className="grid gap-1 px-2">
             {navigation.map((item) => {
               const Icon = item.icon
