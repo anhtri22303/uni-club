@@ -21,11 +21,22 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { useState, useEffect } from "react"
+<<<<<<< Updated upstream
 import { getEventById, putEventStatus, getEventWallet, EventWallet, getEventSummary, EventSummary, eventSettle, getEventSettle } from "@/service/eventApi"
+=======
+import { getEventById, putEventStatus, getEventSummary, EventSummary, eventSettle, getEventSettle, eventQR } from "@/service/eventApi"
+>>>>>>> Stashed changes
 import { useToast } from "@/hooks/use-toast"
 import { renderTypeBadge } from "@/lib/eventUtils"
 import { getLocationById } from "@/service/locationApi"
 import { getClubById } from "@/service/clubApi"
+<<<<<<< Updated upstream
+=======
+import { PhaseSelectionModal } from "@/components/phase-selection-modal"
+import { QRModal } from "@/components/qr-modal"
+import { EventWalletHistoryModal } from "@/components/event-wallet-history-modal"
+import QRCode from "qrcode"
+>>>>>>> Stashed changes
 
 interface EventRequestDetailPageProps {
   params: {
@@ -45,8 +56,7 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
   const [clubError, setClubError] = useState<string | null>(null)
   const { toast } = useToast()
   const [processing, setProcessing] = useState(false)
-  const [wallet, setWallet] = useState<EventWallet | null>(null)
-  const [walletLoading, setWalletLoading] = useState(false)
+  const [showWalletHistoryModal, setShowWalletHistoryModal] = useState(false)
   const [eventSummary, setEventSummary] = useState<EventSummary | null>(null)
   const [summaryLoading, setSummaryLoading] = useState(false)
   const [settling, setSettling] = useState(false)
@@ -62,18 +72,6 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
         const data: any = await getEventById(params.id)
         if (!mounted) return
         setRequest(data)
-
-        // Fetch wallet data
-        try {
-          setWalletLoading(true)
-          const walletData = await getEventWallet(params.id)
-          if (mounted) setWallet(walletData)
-        } catch (walletError) {
-          console.error("Failed to load wallet:", walletError)
-          // Don't show error toast for wallet, it's not critical
-        } finally {
-          if (mounted) setWalletLoading(false)
-        }
 
         // Fetch event summary if APPROVED, ONGOING or COMPLETED
         if (data.status === "APPROVED" || data.status === "ONGOING" || data.status === "COMPLETED") {
@@ -473,9 +471,19 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                           </div>
                         </div>
                         <div className="p-3 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-200">
-                          <label className="text-sm text-green-700 font-medium">
-                            Budget Points
-                          </label>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="text-sm text-green-700 font-medium">
+                              Budget Points
+                            </label>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 px-2 text-xs text-green-700 hover:text-green-900 hover:bg-green-100"
+                              onClick={() => setShowWalletHistoryModal(true)}
+                            >
+                              History
+                            </Button>
+                          </div>
                           <div className="font-semibold text-green-800 mt-1">
                             {request.budgetPoints || 0} points
                           </div>
@@ -694,6 +702,43 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
               )}
             </div>
           </div>
+<<<<<<< Updated upstream
+=======
+
+          {/* Phase Selection Modal */}
+          <PhaseSelectionModal
+            open={showPhaseModal}
+            onOpenChange={setShowPhaseModal}
+            onConfirm={handlePhaseConfirm}
+            isLoading={isGeneratingQR}
+          />
+
+          {/* QR Code Modal */}
+          <QRModal
+            open={showQrModal}
+            onOpenChange={setShowQrModal}
+            eventName={request?.name || ''}
+            checkInCode={checkInCode}
+            qrRotations={qrRotations}
+            qrLinks={qrLinks}
+            countdown={countdown}
+            isFullscreen={isFullscreen}
+            setIsFullscreen={setIsFullscreen}
+            activeEnvironment={activeEnvironment}
+            setActiveEnvironment={setActiveEnvironment}
+            displayedIndex={displayedIndex}
+            isFading={isFading}
+            handleCopyLink={handleCopyLink}
+            handleDownloadQR={handleDownloadQR}
+          />
+
+          {/* Wallet History Modal */}
+          <EventWalletHistoryModal
+            open={showWalletHistoryModal}
+            onOpenChange={setShowWalletHistoryModal}
+            eventId={params.id}
+          />
+>>>>>>> Stashed changes
         </div>
       </AppShell>
     </ProtectedRoute>
