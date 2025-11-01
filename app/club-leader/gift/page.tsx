@@ -29,7 +29,8 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { ProductFilters, FilterState, SortState } from "@/components/product-filters"
 import { Separator } from "@/components/ui/separator"
-import { Tag } from "@/service/tagApi" 
+import { Tag } from "@/service/tagApi"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 
 // ---- Compact status badge overlay ----
 const StatusBadge = ({ status }: { status: string }) => {
@@ -86,11 +87,11 @@ const MinimalPager = ({
 const initialFormState: AddProductPayload = {
   name: "",
   description: "",
-  pointCost: 0, 
+  pointCost: 0,
   stockQuantity: 0,
-  type: "CLUB_ITEM", 
+  type: "CLUB_ITEM",
   tagIds: [],
-  eventId: 0, 
+  eventId: 0,
 }
 // 👈 THÊM: Định nghĩa ID cho tag cố định
 interface FixedTagIds {
@@ -115,7 +116,7 @@ export default function ClubLeaderGiftPage() {
     clubTagId: null,
     eventTagId: null,
   });
-
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
   // THAY THẾ useEffect/useState BẰNG REACT QUERY
   const { data: products = [], isLoading: productsLoading } = useProductsByClubId(
     clubId as number,
@@ -260,14 +261,18 @@ export default function ClubLeaderGiftPage() {
           p.description.toLowerCase().includes(searchTerm.toLowerCase())
       )
     }
+    // THÊM: Lọc theo Status (All / Active / Inactive)
+    if (statusFilter !== "all") {
+      const desiredStatus = statusFilter === "active" ? "ACTIVE" : "INACTIVE";
+      filtered = filtered.filter((p) => p.status === desiredStatus);
+    }
     // B. Lọc theo ProductFilters state (Client-side)
     if (filters) {
       // Lọc "Sẵn hàng"
       if (filters.inStock) {
         // Lọc cả status và stockQuantity
-        filtered = filtered.filter((p) => p.status === "ACTIVE" && p.stockQuantity > 0) 
+        filtered = filtered.filter((p) => p.status === "ACTIVE" && p.stockQuantity > 0)
       }
-
       // Lọc "Tags"
       if (filters.selectedTags.size > 0) {
         const selectedTags = Array.from(filters.selectedTags)
@@ -276,10 +281,11 @@ export default function ClubLeaderGiftPage() {
         )
       }
     }
+
     // C. Sắp xếp
     switch (sortBy) {
       case "price_asc":
-        filtered.sort((a, b) => a.pointCost - b.pointCost) 
+        filtered.sort((a, b) => a.pointCost - b.pointCost)
         break
       case "price_desc":
         filtered.sort((a, b) => b.pointCost - a.pointCost)
@@ -291,7 +297,7 @@ export default function ClubLeaderGiftPage() {
         break
     }
     return filtered
-  }, [products, searchTerm, filters, sortBy])
+  }, [products, searchTerm, filters, sortBy, statusFilter])
 
   return (
     <ProtectedRoute allowedRoles={["club_leader"]}>
@@ -326,6 +332,23 @@ export default function ClubLeaderGiftPage() {
             >
               <Plus className="h-4 w-4 mr-1" /> Add Product
             </Button>
+          </div>
+
+          {/* 👈 THÊM BỘ LỌC STATUS MỚI TẠI ĐÂY */}
+          <div className="flex items-center gap-3">
+            <Label className="text-lg font-semibold">Filter Status</Label>
+            <ToggleGroup
+              type="single"
+              value={statusFilter}
+              onValueChange={(value: "all" | "active" | "inactive") => {
+                if (value) setStatusFilter(value); // Chỉ set khi có giá trị
+              }}
+              variant="outline"
+            >
+              <ToggleGroupItem value="all" aria-label="Show all">All</ToggleGroupItem>
+              <ToggleGroupItem value="active" aria-label="Show active only">Active</ToggleGroupItem>
+              <ToggleGroupItem value="inactive" aria-label="Show inactive only">Inactive</ToggleGroupItem>
+            </ToggleGroup>
           </div>
 
           <ProductFilters
@@ -423,7 +446,7 @@ export default function ClubLeaderGiftPage() {
                                     id={`tag-${tag.tagId}`}
                                     checked={form.tagIds.includes(tag.tagId)}
                                     onCheckedChange={(checked) => handleTagChange(tag.tagId)(checked as boolean)}
-                                    disabled={isDisabled} 
+                                    disabled={isDisabled}
                                     aria-label={tag.name}
                                   />
                                   <Label
