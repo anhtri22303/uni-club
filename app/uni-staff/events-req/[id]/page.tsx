@@ -21,26 +21,12 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { useState, useEffect } from "react"
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-import { getEventById, putEventStatus, getEventWallet, EventWallet, getEventSummary, EventSummary, eventSettle, getEventSettle } from "@/service/eventApi"
-=======
-import { getEventById, putEventStatus, getEventSummary, EventSummary, eventSettle, getEventSettle, eventQR } from "@/service/eventApi"
->>>>>>> Stashed changes
-=======
-import { getEventById, putEventStatus, getEventSummary, EventSummary, eventSettle, getEventSettle, eventQR } from "@/service/eventApi"
->>>>>>> Stashed changes
+import { getEventById, putEventStatus, getEventSummary, EventSummary, eventSettle, getEventSettle } from "@/service/eventApi"
 import { useToast } from "@/hooks/use-toast"
 import { renderTypeBadge } from "@/lib/eventUtils"
 import { getLocationById } from "@/service/locationApi"
 import { getClubById } from "@/service/clubApi"
-<<<<<<< Updated upstream
-=======
-import { PhaseSelectionModal } from "@/components/phase-selection-modal"
-import { QRModal } from "@/components/qr-modal"
 import { EventWalletHistoryModal } from "@/components/event-wallet-history-modal"
-import QRCode from "qrcode"
->>>>>>> Stashed changes
 
 interface EventRequestDetailPageProps {
   params: {
@@ -706,35 +692,6 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
               )}
             </div>
           </div>
-<<<<<<< Updated upstream
-=======
-
-          {/* Phase Selection Modal */}
-          <PhaseSelectionModal
-            open={showPhaseModal}
-            onOpenChange={setShowPhaseModal}
-            onConfirm={handlePhaseConfirm}
-            isLoading={isGeneratingQR}
-          />
-
-          {/* QR Code Modal */}
-          <QRModal
-            open={showQrModal}
-            onOpenChange={setShowQrModal}
-            eventName={request?.name || ''}
-            checkInCode={checkInCode}
-            qrRotations={qrRotations}
-            qrLinks={qrLinks}
-            countdown={countdown}
-            isFullscreen={isFullscreen}
-            setIsFullscreen={setIsFullscreen}
-            activeEnvironment={activeEnvironment}
-            setActiveEnvironment={setActiveEnvironment}
-            displayedIndex={displayedIndex}
-            isFading={isFading}
-            handleCopyLink={handleCopyLink}
-            handleDownloadQR={handleDownloadQR}
-          />
 
           {/* Wallet History Modal */}
           <EventWalletHistoryModal
@@ -742,10 +699,6 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
             onOpenChange={setShowWalletHistoryModal}
             eventId={params.id}
           />
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
         </div>
       </AppShell>
     </ProtectedRoute>
