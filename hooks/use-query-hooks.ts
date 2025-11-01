@@ -27,6 +27,30 @@ import {
 import { getWallet } from "@/service/walletApi"
 
 // ============================================
+// INTERFACES
+// ============================================
+interface MembershipWallet {
+  walletId: number;
+  membershipId: number; // 👈 Đây là ID chúng ta cần
+  clubId: number;
+  clubName: string;
+  balancePoints: number;
+  // ... (Thêm các trường khác nếu có)
+}
+
+interface Profile {
+  id: number;
+  email: string;
+  fullName: string;
+  phone: string;
+  studentCode: string;
+  majorName: string;
+  bio: string;
+  avatarUrl: string;
+  wallets: MembershipWallet[]; // 👈 Định nghĩa thuộc tính 'wallets'
+  // ... (Thêm các trường khác nếu có, vd: clubs, roleName)
+}
+// ============================================
 // QUERY KEYS - Centralized for consistency
 // ============================================
 export const queryKeys = {
@@ -458,28 +482,20 @@ export function usePrefetchClub() {
 // ============================================
 // PRODUCTS QUERIES
 // ============================================
-
-/**
- * Hook to fetch products with pagination
- */
-// export function useProducts(params = { page: 0, size: 70, sort: "name" }) {
-//   return useQuery({
-//     queryKey: queryKeys.productsList(params),
-//     queryFn: async () => {
-//       const products = await getProducts(params)
-//       return products
-//     },
-//     staleTime: 3 * 60 * 1000, // 3 minutes
-//   })
-// }
 /**
  * Hook để lấy danh sách sản phẩm (gifts) CỦA MỘT CLUB
  * (Thay thế cho useProducts cũ)
  */
 export function useProductsByClubId(clubId: number, enabled: boolean = true) {
   return useQuery<Product[], Error>({
-    queryKey: queryKeys.productsByClubId(clubId),
-    queryFn: () => getProducts(clubId), // getProducts giờ yêu cầu clubId
+    // 🛑 THAY ĐỔI QUERY KEY:
+    // Thêm 'includeInactive' vào key để React Query biết đây là một query mới
+    queryKey: [...queryKeys.productsByClubId(clubId), { includeInactive: true }],
+
+    // 🛑 THAY ĐỔI QUERY FN:
+    // Luôn gửi 'includeInactive: true' để lấy TẤT CẢ sản phẩm
+    queryFn: () => getProducts(clubId, { includeInactive: true }),
+
     enabled: enabled && !!clubId,
     staleTime: 3 * 60 * 1000, // 3 phút
   });
@@ -599,11 +615,12 @@ export function useMemberAttendanceHistory(membershipId: number | null, enabled 
  * Hook to fetch current user's profile
  */
 export function useProfile(enabled = true) {
-  return useQuery({
+  // 🛑 CẬP NHẬT: Thêm <Profile, Error> vào useQuery
+  return useQuery<Profile, Error>({ 
     queryKey: queryKeys.profile,
     queryFn: async () => {
       const profile = await fetchProfile()
-      return profile
+      return profile as Profile // Ép kiểu để đảm bảo
     },
     enabled,
     staleTime: 5 * 60 * 1000,
