@@ -166,7 +166,28 @@ export default function ProfilePage() {
 
       // Load wallet memberships for students and club leaders from profile response
       if (auth.role === "student" || auth.role === "club_leader") {
-        const walletsList = profile?.wallets || []
+        // Handle both singular wallet and plural wallets formats
+        let walletsList = profile?.wallets || []
+        
+        // If API returns singular wallet, convert to array
+        if (!walletsList || walletsList.length === 0) {
+          if (profile?.wallet) {
+            // For singular wallet, create entry with club name from clubs array
+            const clubName = profile?.clubs?.[0]?.clubName || "My Wallet"
+            const clubId = profile?.clubs?.[0]?.clubId || null
+            
+            walletsList = [{
+              walletId: profile.wallet.walletId,
+              balancePoints: profile.wallet.balancePoints,
+              ownerType: profile.wallet.ownerType,
+              clubId: clubId,
+              clubName: clubName,
+              userId: profile.wallet.userId,
+              userFullName: profile.wallet.userFullName
+            }]
+          }
+        }
+        
         console.log("Wallets from profile:", walletsList)
         setMemberships(walletsList)
       }
