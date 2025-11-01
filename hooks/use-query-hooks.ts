@@ -6,8 +6,8 @@ import { fetchEvent, getEventById, getEventByClubId, getEventCoHost, getMyEventR
 import { fetchUser, fetchUserById, fetchProfile } from "@/service/userApi"
 import { getMembersByClubId } from "@/service/membershipApi"
 import { fetchMajors } from "@/service/majorApi"
-import { getProducts, getProductTags, Product, ProductTag, } from "@/service/productApi"
-import { getWallet } from "@/service/walletApi"
+import { getProducts, Product, } from "@/service/productApi"
+import { getTags, Tag as ProductTag } from "@/service/tagApi" // 👈 THÊM `Tag as ProductTag`import { getWallet } from "@/service/walletApi"
 import { fetchPolicies, fetchPolicyById } from "@/service/policyApi"
 import { fetchAttendanceByDate, fetchMemberAttendanceHistory } from "@/service/attendanceApi"
 import {
@@ -24,6 +24,7 @@ import {
   fetchAttendanceSummary,
   fetchAttendanceRanking
 } from "@/service/universityApi"
+import { getWallet } from "@/service/walletApi"
 
 // ============================================
 // QUERY KEYS - Centralized for consistency
@@ -59,7 +60,7 @@ export const queryKeys = {
   products: ["products"] as const,
   // productsList đã bị xóa vì getProducts giờ cần clubId
   productsByClubId: (clubId: number) => [...queryKeys.products, "club", clubId] as const,
-  productTagsByClubId: (clubId: number) => [...queryKeys.products, "tags", "club", clubId] as const,
+  tags: () => ["tags"] as const, // 👈 THÊM key mới này
 
   // Wallet
   wallet: ["wallet"] as const,
@@ -478,21 +479,21 @@ export function usePrefetchClub() {
 export function useProductsByClubId(clubId: number, enabled: boolean = true) {
   return useQuery<Product[], Error>({
     queryKey: queryKeys.productsByClubId(clubId),
-    queryFn: () => getProducts(clubId, { page: 0, size: 70 }), // getProducts giờ yêu cầu clubId
+    queryFn: () => getProducts(clubId), // getProducts giờ yêu cầu clubId
     enabled: enabled && !!clubId,
     staleTime: 3 * 60 * 1000, // 3 phút
   });
 }
-
 /**
- * Hook để lấy danh sách tags sản phẩm CỦA MỘT CLUB
+ * THAY BẰNG HOOK MỚI NÀY:
+ * Hook để lấy danh sách TẤT CẢ tags sản phẩm (thay thế cho getProductTags)
  */
-export function useProductTagsByClubId(clubId: number, enabled: boolean = true) {
+export function useProductTags(enabled: boolean = true) {
   return useQuery<ProductTag[], Error>({
-    queryKey: queryKeys.productTagsByClubId(clubId),
-    queryFn: () => getProductTags(clubId),
-    enabled: enabled && !!clubId,
-    staleTime: 5 * 60 * 1000, // 5 phút (Tags thay đổi ít thường xuyên hơn)
+    queryKey: queryKeys.tags(),     // 👈 Dùng key mới
+    queryFn: getTags,               // 👈 Gọi hàm getTags mới
+    enabled: enabled,
+    staleTime: 5 * 60 * 1000, // 5 phút
   });
 }
 

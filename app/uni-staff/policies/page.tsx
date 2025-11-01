@@ -17,8 +17,15 @@ import { FileText, Search, Eye, Trash, Plus } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import { usePolicies } from "@/hooks/use-query-hooks"
-import { useQueryClient } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { Major, fetchMajors } from "@/service/majorApi"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from "@/components/ui/select"
+
 
 export default function UniStaffPoliciesPage() {
   const [query, setQuery] = useState("")
@@ -30,6 +37,11 @@ export default function UniStaffPoliciesPage() {
 
   // ✅ USE REACT QUERY for policies
   const { data: policies = [], isLoading: loading } = usePolicies()
+  // [THÊM VÀO] Dùng React Query để fetch danh sách Majors
+  const { data: majors = [], isLoading: majorsLoading } = useQuery({
+    queryKey: ["majors"],
+    queryFn: fetchMajors,
+  })
 
   // edit form state for policy detail modal
   const [editPolicyName, setEditPolicyName] = useState("")
@@ -37,7 +49,6 @@ export default function UniStaffPoliciesPage() {
   const [editMajorId, setEditMajorId] = useState<number | undefined>(undefined)
   const [editMajorName, setEditMajorName] = useState<string | undefined>(undefined)
   const [editMaxClubJoin, setEditMaxClubJoin] = useState<number | undefined>(undefined)
-  // const [editRewardMultiplier, setEditRewardMultiplier] = useState<number | undefined>(undefined)
   const [editActive, setEditActive] = useState<boolean>(true)
   const [saving, setSaving] = useState(false)
 
@@ -48,7 +59,6 @@ export default function UniStaffPoliciesPage() {
   const [createMajorId, setCreateMajorId] = useState<number | undefined>(undefined)
   const [createMajorName, setCreateMajorName] = useState<string | undefined>(undefined)
   const [createMaxClubJoin, setCreateMaxClubJoin] = useState<number | undefined>(undefined)
-  // const [createRewardMultiplier, setCreateRewardMultiplier] = useState<number | undefined>(undefined)
   const [creating, setCreating] = useState(false)
 
   const reloadPolicies = () => {
@@ -88,7 +98,6 @@ export default function UniStaffPoliciesPage() {
     setEditMajorId(p.majorId ?? p.id ?? undefined)
     setEditMajorName(p.majorName)
     setEditMaxClubJoin(p.maxClubJoin ?? undefined)
-    // setEditRewardMultiplier(p.rewardMultiplier ?? undefined)
     setEditActive(p.active)
     setDialogOpen(true)
   }
@@ -97,36 +106,14 @@ export default function UniStaffPoliciesPage() {
     if (!selected) return
     setSaving(true)
     try {
-      // only send the minimal body required by backend
-      // const payload = {
-      //   policyName: editPolicyName,
-      //   description: editDescription,
-      //   // ensure majorId is present; default to the policy id when editMajorId is empty
-      //   majorId: editMajorId ?? selected.id,
-      //   maxClubJoin: editMaxClubJoin,
-      //   rewardMultiplier: editRewardMultiplier,
-      // }
       const payload: Partial<Policy> = {
         policyName: editPolicyName,
         description: editDescription,
-        // Giữ lại logic cũ của bạn (?? selected.id)
         majorId: editMajorId ?? selected.id,
         majorName: editMajorName, // Gửi cả majorName nếu có
         maxClubJoin: editMaxClubJoin,
         active: editActive, // Thêm 'active'
       }
-
-      // const res: any = await updatePolicyById(selected.id, payload)
-      // if (res && (res.success || res.updated || res.data)) {
-      //   toast({ title: (res && res.message) || 'Cập nhật thành công', description: '' })
-      //   // update local selected so modal reflects saved values
-      //   const updated = (res && res.data) ? res.data : { ...selected, ...payload }
-      //   setSelected(updated as Policy)
-      //   // refresh list with React Query
-      //   reloadPolicies()
-      // } else {
-      //   toast({ title: 'Thất bại', description: (res && res.message) || 'Cập nhật policy thất bại.' })
-      // }
       // [MODIFIED] updatePolicyById giờ trả về Policy
       const res: Policy = await updatePolicyById(selected.id, payload)
 
@@ -235,30 +222,53 @@ export default function UniStaffPoliciesPage() {
                                 <Button size="sm" onClick={() => openDetail(p)}>
                                   <Eye className="h-4 w-4" />
                                 </Button>
-                                <Button
-                                  size="sm"
-                                  variant="destructive"
-                                  onClick={async () => {
-                                    const ok = confirm('Xác nhận xóa policy này?')
-                                    if (!ok) return
-                                    try {
-                                      const res: any = await deletePolicyById(p.id)
-                                      if (res && (res.success === true || res.deleted)) {
-                                        toast({ title: res.message || 'Đã xóa', description: '' })
-                                        if (selected?.id === p.id) setDialogOpen(false)
-                                        await reloadPolicies()
-                                        try { router.refresh() } catch (e) { /* ignore */ }
-                                      } else {
-                                        toast({ title: 'Thất bại', description: (res && res.message) || 'Xóa policy thất bại.' })
-                                      }
-                                    } catch (err) {
-                                      console.error('Delete policy failed:', err)
-                                      toast({ title: 'Lỗi', description: 'Có lỗi khi xóa policy.' })
-                                    }
-                                  }}
-                                >
-                                  <Trash className="h-4 w-4" />
-                                </Button>
+
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button size="sm" variant="destructive">
+                                      <Trash className="h-4 w-4" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Bạn có chắc chắn muốn xóa?</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Hành động này không thể hoàn tác. Policy sau sẽ bị xóa vĩnh viễn:
+                                        <br />
+                                        <strong className="mt-2 block">{p.policyName}</strong>
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Hủy</AlertDialogCancel>
+
+                                      <AlertDialogAction asChild>
+                                        <Button
+                                          variant="destructive"
+                                          onClick={async () => {
+                                            try {
+                                              const res: any = await deletePolicyById(p.id)
+                                              if (res && (res.success === true || res.deleted)) {
+                                                toast({ title: res.message || 'Đã xóa', description: '' })
+                                                if (selected?.id === p.id) setDialogOpen(false)
+                                                await reloadPolicies()
+                                                try { router.refresh() } catch (e) { /* ignore */ }
+                                              } else {
+                                                toast({ title: 'Thất bại', description: (res && res.message) || 'Xóa policy thất bại.' })
+                                              }
+                                            } catch (err) {
+                                              console.error('Delete policy failed:', err)
+                                              toast({ title: 'Lỗi', description: 'Có lỗi khi xóa policy.' })
+                                            }
+                                          }}
+                                        >
+                                          Tiếp tục
+                                        </Button>
+                                      </AlertDialogAction>
+
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+
                               </div>
                             </TableCell>
                           </TableRow>
@@ -309,7 +319,7 @@ export default function UniStaffPoliciesPage() {
                   <Input id="policy-name" className="mt-2 border-slate-300" value={editPolicyName} onChange={(e) => setEditPolicyName((e.target as HTMLInputElement).value)} />
                 </div>
 
-                <div>
+                {/* <div>
                   <Label htmlFor="policy-major">Major Name</Label>
                   <Input id="policy-major" className="mt-2 border-slate-300" value={editMajorName || ''} onChange={(e) => setEditMajorName((e.target as HTMLInputElement).value || undefined)} />
                 </div>
@@ -317,7 +327,36 @@ export default function UniStaffPoliciesPage() {
                 <div>
                   <Label htmlFor="policy-major-id">Major ID</Label>
                   <Input id="policy-major-id" className="mt-2 border-slate-300" type="number" value={editMajorId ?? ''} onChange={(e) => setEditMajorId(e.target.value === '' ? undefined : Number(e.target.value))} />
+                </div> */}
+                {/* [THAY THẾ] Thay thế Input Major Name/ID bằng Select */}
+                <div>
+                  <Label htmlFor="edit-major">Major</Label>
+                  <Select
+                    value={editMajorId?.toString() ?? ""}
+                    onValueChange={(value) => {
+                      const majorId = Number(value)
+                      const selectedMajor = majors.find(m => m.id === majorId)
+                      setEditMajorId(selectedMajor?.id)
+                      setEditMajorName(selectedMajor?.name)
+                    }}
+                  >
+                    <SelectTrigger className="mt-2 border-slate-300">
+                      <SelectValue placeholder="Chọn một ngành học..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {majorsLoading ? (
+                        <SelectItem value="loading" disabled>Đang tải...</SelectItem>
+                      ) : (
+                        majors.map((major) => (
+                          <SelectItem key={major.id} value={major.id.toString()}>
+                            {major.name} ({major.majorCode})
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
                 </div>
+                {/* [KẾT THÚC THAY THẾ] */}
 
                 <div>
                   <Label htmlFor="policy-desc">Description</Label>
@@ -355,25 +394,59 @@ export default function UniStaffPoliciesPage() {
               <div className="mt-2 space-y-3">
                 <div>
                   <Label htmlFor="create-policy-name">Policy Name</Label>
-                  <Input id="create-policy-name" value={createPolicyName} onChange={(e) => setCreatePolicyName((e.target as HTMLInputElement).value)} />
+                  <Input id="create-policy-name" className="mt-2 border-slate-300" value={createPolicyName}
+                    onChange={(e) => setCreatePolicyName((e.target as HTMLInputElement).value)} />
                 </div>
                 <div>
                   <Label htmlFor="create-desc">Description</Label>
-                  <Textarea id="create-desc" value={createDescription} onChange={(e) => setCreateDescription((e.target as HTMLTextAreaElement).value)} />
+                  <Textarea id="create-desc" className="mt-2 border-slate-300" value={createDescription}
+                    onChange={(e) => setCreateDescription((e.target as HTMLTextAreaElement).value)} />
+                </div>
+                {/* <div>
+                  <Label htmlFor="create-major-id">Major ID</Label>
+                  <Input id="create-major-id" className="mt-2 border-slate-300" type="number" value={createMajorId ?? ''}
+                    onChange={(e) => setCreateMajorId(e.target.value === '' ? undefined : Number(e.target.value))} />
                 </div>
                 <div>
-                  <Label htmlFor="create-major-id">Major ID</Label>
-                  <Input id="create-major-id" type="number" value={createMajorId ?? ''} onChange={(e) => setCreateMajorId(e.target.value === '' ? undefined : Number(e.target.value))} />
+                  <Label htmlFor="create-major-name">Major Name</Label>
+                  <Input id="create-major-name" className="mt-2 border-slate-300" value={createMajorName || ''}
+                    onChange={(e) => setCreateMajorName(e.target.value === '' ? undefined : e.target.value)} />
+                </div> */}
+                {/* [THAY THẾ] Thay thế Input Major Name/ID bằng Select */}
+                <div>
+                  <Label htmlFor="create-major">Major</Label>
+                  <Select
+                    value={createMajorId?.toString() ?? ""}
+                    onValueChange={(value) => {
+                      const majorId = Number(value)
+                      const selectedMajor = majors.find(m => m.id === majorId)
+                      setCreateMajorId(selectedMajor?.id)
+                      setCreateMajorName(selectedMajor?.name)
+                    }}
+                  >
+                    <SelectTrigger className="mt-2 border-slate-300">
+                      <SelectValue placeholder="Chọn một ngành học..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {majorsLoading ? (
+                        <SelectItem value="loading" disabled>Đang tải...</SelectItem>
+                      ) : (
+                        majors.map((major) => (
+                          <SelectItem key={major.id} value={major.id.toString()}>
+                            {major.name} ({major.majorCode})
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
                 </div>
+                {/* [KẾT THÚC THAY THẾ] */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="create-max">Max Club Join</Label>
-                    <Input id="create-max" type="number" value={createMaxClubJoin ?? ''} onChange={(e) => setCreateMaxClubJoin(e.target.value === '' ? undefined : Number(e.target.value))} />
+                    <Input id="create-max" className="mt-2 border-slate-300" type="number" value={createMaxClubJoin ?? ''}
+                      onChange={(e) => setCreateMaxClubJoin(e.target.value === '' ? undefined : Number(e.target.value))} />
                   </div>
-                  {/* <div>
-                    <Label htmlFor="create-reward">Reward Multiplier</Label>
-                    <Input id="create-reward" type="number" value={createRewardMultiplier ?? ''} onChange={(e) => setCreateRewardMultiplier(e.target.value === '' ? undefined : Number(e.target.value))} />
-                  </div> */}
                 </div>
 
                 <div className="mt-4 flex gap-2 justify-end">
@@ -387,11 +460,13 @@ export default function UniStaffPoliciesPage() {
                         policyName: createPolicyName,
                         description: createDescription,
                         majorId: createMajorId,
+                        majorName: createMajorName,
                         maxClubJoin: createMaxClubJoin,
                         active: true, // Mặc định là active khi tạo mới (theo Swagger)
                       }
-
-                      // [MODIFIED] createPolicy giờ trả về Policy
+                      // [THÊM VÀO] Đây là dòng bạn yêu cầu
+                      console.log("Dữ liệu chuẩn bị gửi đi:", payload)
+                      // createPolicy giờ trả về Policy
                       const res: Policy = await createPolicy(payload)
 
                       // Nếu 'await' thành công, 'res' là policy mới
@@ -401,6 +476,7 @@ export default function UniStaffPoliciesPage() {
                       setCreatePolicyName("")
                       setCreateDescription("")
                       setCreateMajorId(undefined)
+                      setCreateMajorName(undefined)
                       setCreateMaxClubJoin(undefined)
                       // reload list
                       await reloadPolicies()

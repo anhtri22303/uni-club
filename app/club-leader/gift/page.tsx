@@ -7,12 +7,12 @@ import { useQueryClient } from "@tanstack/react-query"
 import Link from "next/link"
 import { Gift, Package, Calendar, Clock, CheckCircle, XCircle, Plus, ChevronLeft, ChevronRight, Loader2, } from "lucide-react"
 // --- Service ---
-import { addProduct, Product, AddProductPayload, ProductTag, } from "@/service/productApi"
+import { addProduct, Product, AddProductPayload, } from "@/service/productApi"
 import { getClubIdFromToken } from "@/service/clubApi"
 // --- Hooks ---
 import { usePagination } from "@/hooks/use-pagination"
 import { useToast } from "@/hooks/use-toast" // Đảm bảo import useToast đúng cách
-import { useProductsByClubId, useProductTagsByClubId, queryKeys, } from "@/hooks/use-query-hooks"
+import { useProductsByClubId, useProductTags, queryKeys, } from "@/hooks/use-query-hooks"
 // --- Components ---
 import { AppShell } from "@/components/app-shell"
 import { ProtectedRoute } from "@/contexts/protected-route"
@@ -29,8 +29,9 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { ProductFilters, FilterState, SortState } from "@/components/product-filters"
 import { Separator } from "@/components/ui/separator"
+import { Tag } from "@/service/tagApi" 
 
-// ---- Compact status badge overlay (Không thay đổi) ----
+// ---- Compact status badge overlay ----
 const StatusBadge = ({ status }: { status: string }) => {
   const base = "truncate max-w-[7.5rem] text-xs px-2 py-1 rounded-md absolute right-2 top-2 z-10"
   if (status === "coming_soon")
@@ -57,7 +58,7 @@ const StatusBadge = ({ status }: { status: string }) => {
   return null
 }
 
-// --- Minimal Pager (Không thay đổi) ---
+// --- Minimal Pager  ---
 const MinimalPager = ({
   current,
   total,
@@ -85,12 +86,18 @@ const MinimalPager = ({
 const initialFormState: AddProductPayload = {
   name: "",
   description: "",
-  price: 0,
+  pointCost: 0, 
   stockQuantity: 0,
-  productType: "CLUB_ITEM", // Giá trị mặc định
+  type: "CLUB_ITEM", 
   tagIds: [],
-  eventId: undefined,
+  eventId: 0, 
 }
+// 👈 THÊM: Định nghĩa ID cho tag cố định
+interface FixedTagIds {
+  clubTagId: number | null;
+  eventTagId: number | null;
+}
+
 
 export default function ClubLeaderGiftPage() {
   const [clubId, setClubId] = useState<number | null>(() => getClubIdFromToken())
@@ -101,71 +108,139 @@ export default function ClubLeaderGiftPage() {
   const { toast } = useToast()
   const [filters, setFilters] = useState<FilterState | null>(null)
   const [sortBy, setSortBy] = useState<SortState>("popular")
-  const queryClient = useQueryClient() // 4. THÊM queryClient
+  const queryClient = useQueryClient()
+  const [tagSearchTerm, setTagSearchTerm] = useState("")
+  // 👈 THÊM STATE ĐỂ LƯU ID CỦA TAG "CLUB" VÀ "EVENT"
+  const [fixedTagIds, setFixedTagIds] = useState<FixedTagIds>({
+    clubTagId: null,
+    eventTagId: null,
+  });
 
   // THAY THẾ useEffect/useState BẰNG REACT QUERY
   const { data: products = [], isLoading: productsLoading } = useProductsByClubId(
     clubId as number,
     !!clubId // Chỉ fetch khi clubId tồn tại
   )
-  const { data: productTags = [], isLoading: tagsLoading } = useProductTagsByClubId(
-    clubId as number,
+  const { data: productTags = [], isLoading: tagsLoading } = useProductTags(
     !!clubId // Chỉ fetch khi clubId tồn tại
   )
+  // 👈 THÊM useEffect ĐỂ TÌM VÀ SET ID CỦA TAG CỐ ĐỊNH
+  useEffect(() => {
+    if (productTags.length > 0) {
+      const clubTag = productTags.find(tag => tag.name.toLowerCase() === "club");
+      const eventTag = productTags.find(tag => tag.name.toLowerCase() === "event");
 
-  // Biến loading tổng hợp (giống trang Event)
+      const ids: FixedTagIds = {
+        clubTagId: clubTag ? clubTag.tagId : null,
+        eventTagId: eventTag ? eventTag.tagId : null,
+      };
+      setFixedTagIds(ids);
+
+      // Tự động set tag "Club" mặc định khi tải xong
+      if (ids.clubTagId) {
+        setForm(prev => ({
+          ...initialFormState,
+          tagIds: [ids.clubTagId as number]
+        }));
+      } else {
+        setForm(initialFormState); // Reset nếu không tìm thấy tag
+      }
+    }
+  }, [productTags]); // Chạy lại khi productTags tải xong
+  // Biến loading tổng hợp
   const isLoading = productsLoading || tagsLoading
 
-  // 3. Cập nhật các hàm handlers cho form
+
+  // 3. Cập nhật các hàm handlers cho form (ĐÃ CẬP NHẬT)
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setForm((prev) => ({
       ...prev,
-      [name]: name === "price" || name === "stockQuantity" || name === "eventId" ? (value === "" ? undefined : Number(value)) : value,
+      [name]: name === "pointCost" || name === "stockQuantity" || name === "eventId" ? (value === "" ? 0 : Number(value)) : value, // 👈 CẬP NHẬT (từ price sang pointCost)
     }))
   }
 
   const handleSelectChange = (name: string) => (value: string) => {
-    setForm((prev) => ({ ...prev, [name]: value }))
+    // Chỉ xử lý logic đặc biệt khi đổi 'type'
+    if (name === "type") {
+      const { clubTagId, eventTagId } = fixedTagIds;
+
+      setForm((prev) => {
+        let newTagIds = [...prev.tagIds];
+
+        // Lọc bỏ cả 2 tag cố định
+        newTagIds = newTagIds.filter(id => id !== clubTagId && id !== eventTagId);
+
+        // Thêm tag tương ứng
+        if (value === "CLUB_ITEM" && clubTagId) {
+          newTagIds.push(clubTagId);
+        } else if (value === "EVENT_ITEM" && eventTagId) {
+          newTagIds.push(eventTagId);
+        }
+
+        return { ...prev, [name]: value, tagIds: newTagIds };
+      });
+    } else {
+      // Giữ nguyên logic cũ cho các select khác (nếu có)
+      setForm((prev) => ({ ...prev, [name]: value }));
+    }
   }
 
   const handleTagChange = (tagId: number) => (checked: boolean) => {
+    const { clubTagId, eventTagId } = fixedTagIds;
+    // Nếu tag là tag cố định, không cho làm gì cả
+    if (tagId === clubTagId || tagId === eventTagId) {
+      return;
+    }
+
+    // Logic cũ cho các tag khác
     setForm((prev) => {
       const currentTags = prev.tagIds || []
       if (checked) {
-        // Add tag
         return { ...prev, tagIds: [...currentTags, tagId] }
       } else {
-        // Remove tag
         return { ...prev, tagIds: currentTags.filter((id) => id !== tagId) }
       }
     })
   }
 
-  // 4. Cập nhật hàm handleCreate
+  // 4. Cập nhật hàm handleCreate (ĐÃ CẬP NHẬT)
   const handleCreate = async () => {
     if (!clubId) {
       toast({ title: "Error", description: "Club ID does not exist.", variant: "destructive" })
       return
     }
 
+    // 👈 KIỂM TRA NGHIỆP VỤ MỚI
+    if (!form.tagIds || form.tagIds.length === 0) {
+      toast({ title: "Error", description: "Product must have at least one tag.", variant: "destructive" })
+      return;
+    }
+
     setSubmitting(true)
     try {
-      // Đảm bảo eventId là undefined nếu không phải EVENT_ITEM
+      // Đảm bảo eventId là 0 nếu không phải EVENT_ITEM
       const payload: AddProductPayload = {
         ...form,
-        eventId: form.productType === "EVENT_ITEM" ? form.eventId : undefined,
+        eventId: form.type === "EVENT_ITEM" ? form.eventId : 0, // (từ productType sang type)
       }
 
-      // API mới trả về object Product đã tạo
       await addProduct(clubId, payload)
 
       toast({ title: "Success", description: "Create successful products!", variant: "success" })
       setOpen(false)
-      setForm(initialFormState) // Reset form
-      // Tự động tải lại dữ liệu thay vì cập nhật thủ công
+      // setForm(initialFormState) // Reset form
+      // Reset form về trạng thái có tag "club"
+      if (fixedTagIds.clubTagId) {
+        setForm({
+          ...initialFormState,
+          tagIds: [fixedTagIds.clubTagId]
+        });
+      } else {
+        setForm(initialFormState);
+      }
+      setTagSearchTerm("") // Reset search tag khi tạo thành công
       queryClient.invalidateQueries({ queryKey: queryKeys.productsByClubId(clubId) })
-      // Thêm sản phẩm mới vào đầu danh sách, không cần reload
     } catch (err: any) {
       toast({ title: "Error", description: err.message || "Create a failed product", variant: "destructive" })
     } finally {
@@ -173,7 +248,7 @@ export default function ClubLeaderGiftPage() {
     }
   }
 
-  // THAY THẾ 'filteredProducts' BẰNG 'useMemo'
+  // THAY THẾ 'filteredProducts' BẰNG 'useMemo' (ĐÃ CẬP NHẬT)
   const filteredAndSortedProducts = useMemo(() => {
     let filtered: Product[] = [...products] // Bắt đầu với danh sách đầy đủ
 
@@ -189,14 +264,13 @@ export default function ClubLeaderGiftPage() {
     if (filters) {
       // Lọc "Sẵn hàng"
       if (filters.inStock) {
-        // Lọc cả isActive và stockQuantity
-        filtered = filtered.filter((p) => p.isActive && p.stockQuantity > 0)
+        // Lọc cả status và stockQuantity
+        filtered = filtered.filter((p) => p.status === "ACTIVE" && p.stockQuantity > 0) 
       }
 
       // Lọc "Tags"
       if (filters.selectedTags.size > 0) {
         const selectedTags = Array.from(filters.selectedTags)
-        // Lọc các sản phẩm có CHỨA BẤT KỲ tag nào được chọn
         filtered = filtered.filter((p) =>
           selectedTags.some(selectedTag => p.tags.includes(selectedTag))
         )
@@ -205,21 +279,19 @@ export default function ClubLeaderGiftPage() {
     // C. Sắp xếp
     switch (sortBy) {
       case "price_asc":
-        filtered.sort((a, b) => a.pointCost - b.pointCost)
+        filtered.sort((a, b) => a.pointCost - b.pointCost) 
         break
       case "price_desc":
         filtered.sort((a, b) => b.pointCost - a.pointCost)
         break
       case "hot_promo":
-        // TODO: Cần logic để sort "Khuyến mãi HOT" (API không có)
         break
       case "popular":
       default:
-        // TODO: Cần logic để sort "Phổ biến" (e.g., by sales, API không có)
         break
     }
     return filtered
-  }, [products, searchTerm, filters, sortBy]) // Chạy lại khi 1 trong 4 giá trị này thay đổi
+  }, [products, searchTerm, filters, sortBy])
 
   return (
     <ProtectedRoute allowedRoles={["club_leader"]}>
@@ -231,16 +303,26 @@ export default function ClubLeaderGiftPage() {
           </div>
           <Input placeholder="Search for products..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="max-w-sm" />
 
-          {/* Nút Add Product - Đã đơn giản hóa onClick */}
+          {/* Nút Add Product - CẬP NHẬT onClick */}
           <div className="flex justify-end mb-4">
             <Button
               size="sm"
               onClick={() => {
-                setForm(initialFormState) // Reset form khi mở
+                // setForm(initialFormState) // Reset form khi mở
+                // Reset form về trạng thái có tag "club"
+                if (fixedTagIds.clubTagId) {
+                  setForm({
+                    ...initialFormState,
+                    tagIds: [fixedTagIds.clubTagId]
+                  });
+                } else {
+                  setForm(initialFormState);
+                }
+                setTagSearchTerm("") // THÊM: Reset search tag
                 setOpen(true)
               }}
               className="bg-blue-600 hover:bg-gradient-to-r hover:from-blue-600 hover:to-purple-600 text-white border-none"
-              disabled={!clubId} // Vô hiệu hóa nếu chưa load được clubId
+              disabled={!clubId}
             >
               <Plus className="h-4 w-4 mr-1" /> Add Product
             </Button>
@@ -263,72 +345,97 @@ export default function ClubLeaderGiftPage() {
               <ScrollArea className="max-h-[70vh] p-1">
                 <div className="space-y-4 py-4 pr-3">
                   <div className="space-y-1">
-                    <Label htmlFor="productType">Product Type</Label>
-                    <Select name="productType" value={form.productType} onValueChange={handleSelectChange("productType")}>
-                      <SelectTrigger>
+                    <Label htmlFor="type">Product Type</Label>
+                    <Select name="type" value={form.type} onValueChange={handleSelectChange("type")}>
+                      <SelectTrigger className="mt-2 border-slate-300">
                         <SelectValue placeholder="Select product type" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="CLUB_ITEM">Club Item (Club Item)</SelectItem>
+                        <SelectItem value="CLUB_ITEM">Club Item</SelectItem>
                         <SelectItem value="EVENT_ITEM">Event Item</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   {/* Hiển thị có điều kiện */}
-                  {form.productType === "EVENT_ITEM" && (
+                  {form.type === "EVENT_ITEM" && (
                     <div className="space-y-1">
                       <Label htmlFor="eventId">Event ID</Label>
                       <Input
                         id="eventId"
                         name="eventId"
                         type="number"
-                        value={form.eventId || ""}
+                        value={form.eventId || 0}
                         onChange={handleChange}
                         placeholder="ID of the related event"
                         min={1}
+                        className="mt-2 border-slate-300"
                       />
                     </div>
                   )}
 
                   <div className="space-y-1">
                     <Label htmlFor="name">Product name</Label>
-                    <Input id="name" name="name" value={form.name} onChange={handleChange} placeholder="e.g., F-Code Club T-Shirt" />
+                    <Input id="name" className="mt-2 border-slate-300" name="name" value={form.name} onChange={handleChange} placeholder="e.g., F-Code Club T-Shirt" />
                   </div>
 
                   <div className="space-y-1">
                     <Label htmlFor="description">Describe</Label>
-                    <Textarea id="description" name="description" value={form.description} onChange={handleChange} placeholder="Detailed product description..." />
+                    <Textarea id="description" className="mt-2 border-slate-300" name="description" value={form.description} onChange={handleChange} placeholder="Detailed product description..." />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
-                      <Label htmlFor="price">Price (Points)</Label>
-                      <Input id="price" name="price" type="number" value={form.price} onChange={handleChange} placeholder="0" min={0} />
+                      <Label htmlFor="pointCost">Price (Points)</Label>
+                      <Input id="pointCost" className="mt-2 border-slate-300" name="pointCost" type="number" value={form.pointCost} onChange={handleChange} placeholder="0" min={0} />
                     </div>
                     <div className="space-y-1">
                       <Label htmlFor="stockQuantity">Quantity in stock</Label>
-                      <Input id="stockQuantity" name="stockQuantity" type="number" value={form.stockQuantity} onChange={handleChange} placeholder="0" min={0} />
+                      <Input id="stockQuantity" className="mt-2 border-slate-300" name="stockQuantity" type="number" value={form.stockQuantity} onChange={handleChange} placeholder="0" min={0} />
                     </div>
                   </div>
 
                   <div className="space-y-2">
                     <Label>Tags</Label>
+                    <Input
+                      placeholder="Search tags..."
+                      value={tagSearchTerm}
+                      onChange={(e) => setTagSearchTerm(e.target.value)}
+                      className="mb-2 border-slate-300"
+                    />
                     {productTags.length > 0 ? (
-                      <ScrollArea className="h-24 rounded-md border p-3">
+                      <ScrollArea className="h-24 rounded-md border p-3 2 border-slate-300">
                         <div className="space-y-2">
-                          {productTags.map((tag) => (
-                            <div key={tag.tagId} className="flex items-center space-x-2">
-                              <Checkbox
-                                id={`tag-${tag.tagId}`}
-                                checked={form.tagIds.includes(tag.tagId)}
-                                onCheckedChange={(checked) => handleTagChange(tag.tagId)(checked as boolean)}
-                              />
-                              <Label htmlFor={`tag-${tag.tagId}`} className="font-normal">
-                                {tag.name}
-                              </Label>
-                            </div>
-                          ))}
+                          {productTags
+                            .filter((tag) =>
+                              tag.name.toLowerCase().includes(tagSearchTerm.toLowerCase())
+                            )
+                            .map((tag: Tag) => { //Dùng kiểu 'Tag'
+
+                              // KIỂM TRA XEM TAG CÓ BỊ VÔ HIỆU HÓA KHÔNG
+                              const isDisabled =
+                                tag.tagId === fixedTagIds.clubTagId ||
+                                tag.tagId === fixedTagIds.eventTagId;
+
+                              return (
+                                <div key={tag.tagId} className="flex items-center space-x-2">
+                                  <Checkbox
+                                    id={`tag-${tag.tagId}`}
+                                    checked={form.tagIds.includes(tag.tagId)}
+                                    onCheckedChange={(checked) => handleTagChange(tag.tagId)(checked as boolean)}
+                                    disabled={isDisabled} 
+                                    aria-label={tag.name}
+                                  />
+                                  <Label
+                                    htmlFor={`tag-${tag.tagId}`}
+                                    className={`font-normal ${isDisabled ? 'text-muted-foreground cursor-not-allowed' : ''}`} // Style cho tag bị disable
+                                  >
+                                    {tag.name}
+                                    {isDisabled && " (Auto)"}
+                                  </Label>
+                                </div>
+                              );
+                            })}
                         </div>
                       </ScrollArea>
                     ) : (
@@ -338,7 +445,11 @@ export default function ClubLeaderGiftPage() {
                 </div>
               </ScrollArea>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+                <Button variant="outline" onClick={() => {
+                  setOpen(false)
+                  setTagSearchTerm("")
+                }
+                }>Cancel</Button>
                 <Button onClick={handleCreate} disabled={submitting}>
                   {submitting ? "Creating..." : "Create a product"}
                 </Button>
@@ -358,13 +469,13 @@ export default function ClubLeaderGiftPage() {
             ) : (
               filteredAndSortedProducts.map((p) => {
                 // Lấy thumbnail (hoặc ảnh placeholder nếu không có)
-                const thumbnail = p.media?.find((m) => m.isThumbnail)?.url || "/placeholder.svg"
+                const thumbnail = p.media?.find((m) => m.thumbnail)?.url || "/placeholder.svg"
 
                 return (
                   // 1. Bọc thẻ Card bằng Link
                   <Link
-                    href={`/club-leader/gift/${p.productId}`}
-                    key={p.productId}
+                    href={`/club-leader/gift/${p.id}`}
+                    key={p.id}
                     className="h-full flex" // Thêm 'flex' để Card con có thể co giãn 100%
                   >
                     {/* 2. Cập nhật Card styling (shadow, cursor, v.v.) */}
@@ -382,11 +493,14 @@ export default function ClubLeaderGiftPage() {
                           />
                           {/* Badge Active/Inactive (Giống trong ảnh) */}
                           <Badge
-                            variant={p.isActive ? "default" : "secondary"}
-                            className={`absolute right-2 top-2 z-10 text-xs ${p.isActive ? "bg-green-600 text-white" : "bg-gray-500 text-white"
+                            // variant={p.isActive ? "default" : "secondary"}
+                            variant={p.status === "ACTIVE" ? "default" : "secondary"}
+                            // className={`absolute right-2 top-2 z-10 text-xs ${p.isActive ? "bg-green-600 text-white" : "bg-gray-500 text-white"
+                            //   }`}
+                            className={`absolute right-2 top-2 z-10 text-xs ${p.status === "ACTIVE" ? "bg-green-600 text-white" : "bg-gray-500 text-white" // 👈 CẬP NHẬT
                               }`}
                           >
-                            {p.isActive ? "Active" : "Inactive"}
+                            {p.status === "ACTIVE" ? "Active" : p.status}
                           </Badge>
                         </div>
                       </CardHeader>
