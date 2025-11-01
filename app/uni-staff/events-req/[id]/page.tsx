@@ -22,7 +22,11 @@ import {
 import Link from "next/link"
 import { useState, useEffect } from "react"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 import { getEventById, putEventStatus, getEventWallet, EventWallet, getEventSummary, EventSummary, eventSettle, getEventSettle } from "@/service/eventApi"
+=======
+import { getEventById, putEventStatus, getEventSummary, EventSummary, eventSettle, getEventSettle, eventQR } from "@/service/eventApi"
+>>>>>>> Stashed changes
 =======
 import { getEventById, putEventStatus, getEventSummary, EventSummary, eventSettle, getEventSettle, eventQR } from "@/service/eventApi"
 >>>>>>> Stashed changes
@@ -738,6 +742,9 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
             onOpenChange={setShowWalletHistoryModal}
             eventId={params.id}
           />
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         </div>
       </AppShell>
