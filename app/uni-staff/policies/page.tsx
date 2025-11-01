@@ -37,7 +37,7 @@ export default function UniStaffPoliciesPage() {
   const [editMajorId, setEditMajorId] = useState<number | undefined>(undefined)
   const [editMajorName, setEditMajorName] = useState<string | undefined>(undefined)
   const [editMaxClubJoin, setEditMaxClubJoin] = useState<number | undefined>(undefined)
-  const [editRewardMultiplier, setEditRewardMultiplier] = useState<number | undefined>(undefined)
+  // const [editRewardMultiplier, setEditRewardMultiplier] = useState<number | undefined>(undefined)
   const [editActive, setEditActive] = useState<boolean>(true)
   const [saving, setSaving] = useState(false)
 
@@ -48,7 +48,7 @@ export default function UniStaffPoliciesPage() {
   const [createMajorId, setCreateMajorId] = useState<number | undefined>(undefined)
   const [createMajorName, setCreateMajorName] = useState<string | undefined>(undefined)
   const [createMaxClubJoin, setCreateMaxClubJoin] = useState<number | undefined>(undefined)
-  const [createRewardMultiplier, setCreateRewardMultiplier] = useState<number | undefined>(undefined)
+  // const [createRewardMultiplier, setCreateRewardMultiplier] = useState<number | undefined>(undefined)
   const [creating, setCreating] = useState(false)
 
   const reloadPolicies = () => {
@@ -58,7 +58,10 @@ export default function UniStaffPoliciesPage() {
   const filtered = useMemo(() => {
     if (!query) return policies
     const q = query.toLowerCase()
-    return policies.filter((p) => (p.policyName || p.name || "").toLowerCase().includes(q) || (p.description || "").toLowerCase().includes(q) || (p.majorName || "").toLowerCase().includes(q))
+    return policies.filter((p) =>
+      (p.policyName || "").toLowerCase().includes(q) ||
+      (p.description || "").toLowerCase().includes(q) ||
+      (p.majorName || "").toLowerCase().includes(q))
   }, [policies, query])
 
   // Minimal pagination state
@@ -79,13 +82,13 @@ export default function UniStaffPoliciesPage() {
   const openDetail = (p: Policy) => {
     setSelected(p)
     // populate edit fields
-    setEditPolicyName(p.policyName || p.name || "")
+    setEditPolicyName(p.policyName || "")
     setEditDescription(p.description || "")
     // if backend uses policy id as majorId, default to policy id when majorId is missing
     setEditMajorId(p.majorId ?? p.id ?? undefined)
     setEditMajorName(p.majorName)
     setEditMaxClubJoin(p.maxClubJoin ?? undefined)
-    setEditRewardMultiplier(p.rewardMultiplier ?? undefined)
+    // setEditRewardMultiplier(p.rewardMultiplier ?? undefined)
     setEditActive(p.active)
     setDialogOpen(true)
   }
@@ -95,25 +98,46 @@ export default function UniStaffPoliciesPage() {
     setSaving(true)
     try {
       // only send the minimal body required by backend
-      const payload = {
+      // const payload = {
+      //   policyName: editPolicyName,
+      //   description: editDescription,
+      //   // ensure majorId is present; default to the policy id when editMajorId is empty
+      //   majorId: editMajorId ?? selected.id,
+      //   maxClubJoin: editMaxClubJoin,
+      //   rewardMultiplier: editRewardMultiplier,
+      // }
+      const payload: Partial<Policy> = {
         policyName: editPolicyName,
         description: editDescription,
-        // ensure majorId is present; default to the policy id when editMajorId is empty
+        // Giữ lại logic cũ của bạn (?? selected.id)
         majorId: editMajorId ?? selected.id,
+        majorName: editMajorName, // Gửi cả majorName nếu có
         maxClubJoin: editMaxClubJoin,
-        rewardMultiplier: editRewardMultiplier,
+        active: editActive, // Thêm 'active'
       }
-      const res: any = await updatePolicyById(selected.id, payload)
-      if (res && (res.success || res.updated || res.data)) {
-        toast({ title: (res && res.message) || 'Cập nhật thành công', description: '' })
-        // update local selected so modal reflects saved values
-        const updated = (res && res.data) ? res.data : { ...selected, ...payload }
-        setSelected(updated as Policy)
-        // refresh list with React Query
-        reloadPolicies()
-      } else {
-        toast({ title: 'Thất bại', description: (res && res.message) || 'Cập nhật policy thất bại.' })
-      }
+
+      // const res: any = await updatePolicyById(selected.id, payload)
+      // if (res && (res.success || res.updated || res.data)) {
+      //   toast({ title: (res && res.message) || 'Cập nhật thành công', description: '' })
+      //   // update local selected so modal reflects saved values
+      //   const updated = (res && res.data) ? res.data : { ...selected, ...payload }
+      //   setSelected(updated as Policy)
+      //   // refresh list with React Query
+      //   reloadPolicies()
+      // } else {
+      //   toast({ title: 'Thất bại', description: (res && res.message) || 'Cập nhật policy thất bại.' })
+      // }
+      // [MODIFIED] updatePolicyById giờ trả về Policy
+      const res: Policy = await updatePolicyById(selected.id, payload)
+
+      // Nếu 'await' thành công (không ném lỗi), thì đã cập nhật
+      toast({ title: "Cập nhật thành công", description: `Đã cập nhật policy: ${res.policyName}` })
+
+      // update local selected so modal reflects saved values
+      setSelected(res) // Cập nhật state với dữ liệu mới từ server
+
+      // refresh list with React Query
+      reloadPolicies()
     } catch (err) {
       console.error('Update policy failed:', err)
       toast({ title: 'Lỗi', description: 'Có lỗi khi cập nhật policy.' })
@@ -176,23 +200,22 @@ export default function UniStaffPoliciesPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-[6rem]">ID</TableHead>
+                        <TableHead className="w-[3rem] text-center">ID</TableHead>
                         <TableHead>Policy Name</TableHead>
                         <TableHead>Major</TableHead>
-                        <TableHead className="w-[10rem]">Max Club Join</TableHead>
-                        <TableHead className="w-[8rem]">Reward Multiplier</TableHead>
-                        <TableHead className="w-[6rem]">Status</TableHead>
-                        <TableHead className="w-[6rem]">Action</TableHead>
+                        <TableHead className="w-[9rem] text-center">Max Club Join</TableHead>
+                        <TableHead className="w-[8rem] text-center">Status</TableHead>
+                        <TableHead className="w-[6rem] text-center">Action</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {loading ? (
                         <TableRow>
-                          <TableCell colSpan={7} className="p-6 text-center">Loading...</TableCell>
+                          <TableCell colSpan={6} className="p-6 text-center">Loading...</TableCell>
                         </TableRow>
                       ) : filtered.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={7} className="p-6 text-center">No policies found</TableCell>
+                          <TableCell colSpan={6} className="p-6 text-center">No policies found</TableCell>
                         </TableRow>
                       ) : (
                         paginated.map((p, idx) => (
@@ -200,16 +223,15 @@ export default function UniStaffPoliciesPage() {
                             key={p.id}
                             className={`${idx % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-slate-50 dark:bg-slate-800'} hover:bg-slate-100 dark:hover:bg-slate-700`}
                           >
-                            <TableCell className="text-sm text-muted-foreground">{p.id}</TableCell>
-                            <TableCell className="font-medium text-primary/90">{p.policyName || p.name}</TableCell>
+                            <TableCell className="text-sm text-muted-foreground text-center">{p.id}</TableCell>
+                            <TableCell className="font-medium text-primary/90">{p.policyName}</TableCell>
                             <TableCell className="text-sm text-muted-foreground">{p.majorName || "—"}</TableCell>
-                            <TableCell className="text-sm">{p.maxClubJoin ?? "—"}</TableCell>
-                            <TableCell className="text-sm">{p.rewardMultiplier ?? "—"}</TableCell>
-                            <TableCell>
+                            <TableCell className="text-sm text-center">{p.maxClubJoin ?? "—"}</TableCell>
+                            <TableCell className="text-center">
                               <Badge variant={p.active ? "default" : "destructive"}>{p.active ? "Active" : "Inactive"}</Badge>
                             </TableCell>
                             <TableCell>
-                              <div className="flex gap-2">
+                              <div className="flex gap-2 justify-center">
                                 <Button size="sm" onClick={() => openDetail(p)}>
                                   <Eye className="h-4 w-4" />
                                 </Button>
@@ -284,36 +306,33 @@ export default function UniStaffPoliciesPage() {
               <div className="mt-2 space-y-3">
                 <div>
                   <Label htmlFor="policy-name">Policy Name</Label>
-                  <Input id="policy-name" value={editPolicyName} onChange={(e) => setEditPolicyName((e.target as HTMLInputElement).value)} />
+                  <Input id="policy-name" className="mt-2 border-slate-300" value={editPolicyName} onChange={(e) => setEditPolicyName((e.target as HTMLInputElement).value)} />
                 </div>
 
                 <div>
                   <Label htmlFor="policy-major">Major Name</Label>
-                  <Input id="policy-major" value={editMajorName || ''} onChange={(e) => setEditMajorName((e.target as HTMLInputElement).value || undefined)} />
+                  <Input id="policy-major" className="mt-2 border-slate-300" value={editMajorName || ''} onChange={(e) => setEditMajorName((e.target as HTMLInputElement).value || undefined)} />
                 </div>
 
                 <div>
                   <Label htmlFor="policy-major-id">Major ID</Label>
-                  <Input id="policy-major-id" type="number" value={editMajorId ?? ''} onChange={(e) => setEditMajorId(e.target.value === '' ? undefined : Number(e.target.value))} />
+                  <Input id="policy-major-id" className="mt-2 border-slate-300" type="number" value={editMajorId ?? ''} onChange={(e) => setEditMajorId(e.target.value === '' ? undefined : Number(e.target.value))} />
                 </div>
 
                 <div>
                   <Label htmlFor="policy-desc">Description</Label>
-                  <Textarea id="policy-desc" value={editDescription} onChange={(e) => setEditDescription((e.target as HTMLTextAreaElement).value)} />
+                  <Textarea id="policy-desc" className="mt-2 border-slate-300" value={editDescription} onChange={(e) => setEditDescription((e.target as HTMLTextAreaElement).value)} />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="policy-max">Max Club Join</Label>
-                    <Input id="policy-max" type="number" value={editMaxClubJoin ?? ''} onChange={(e) => setEditMaxClubJoin(e.target.value === '' ? undefined : Number(e.target.value))} />
-                  </div>
-                  <div>
-                    <Label htmlFor="policy-reward">Reward Multiplier</Label>
-                    <Input id="policy-reward" type="number" value={editRewardMultiplier ?? ''} onChange={(e) => setEditRewardMultiplier(e.target.value === '' ? undefined : Number(e.target.value))} />
+                    <Input id="policy-max" className="mt-2 border-slate-300" type="number" value={editMaxClubJoin ?? ''} onChange={(e) => setEditMaxClubJoin(e.target.value === '' ? undefined : Number(e.target.value))} />
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2">
+                  <Label htmlFor="policy-active">Change status: </Label>
                   <input id="policy-active" title="Active" type="checkbox" checked={editActive} onChange={(e) => setEditActive(e.target.checked)} className="h-4 w-4" />
                   <Label htmlFor="policy-active">Active</Label>
                 </div>
@@ -351,10 +370,10 @@ export default function UniStaffPoliciesPage() {
                     <Label htmlFor="create-max">Max Club Join</Label>
                     <Input id="create-max" type="number" value={createMaxClubJoin ?? ''} onChange={(e) => setCreateMaxClubJoin(e.target.value === '' ? undefined : Number(e.target.value))} />
                   </div>
-                  <div>
+                  {/* <div>
                     <Label htmlFor="create-reward">Reward Multiplier</Label>
                     <Input id="create-reward" type="number" value={createRewardMultiplier ?? ''} onChange={(e) => setCreateRewardMultiplier(e.target.value === '' ? undefined : Number(e.target.value))} />
-                  </div>
+                  </div> */}
                 </div>
 
                 <div className="mt-4 flex gap-2 justify-end">
@@ -362,22 +381,29 @@ export default function UniStaffPoliciesPage() {
                   <Button onClick={async () => {
                     setCreating(true)
                     try {
-                      const payload = {
+
+                      // [MODIFIED] Cập nhật payload
+                      const payload: Partial<Policy> = {
                         policyName: createPolicyName,
                         description: createDescription,
                         majorId: createMajorId,
                         maxClubJoin: createMaxClubJoin,
-                        rewardMultiplier: createRewardMultiplier,
+                        active: true, // Mặc định là active khi tạo mới (theo Swagger)
                       }
-                      const res: any = await createPolicy(payload)
-                      if (res && (res.success || res.data || res.status === 201)) {
-                        toast({ title: res.message || 'Created', description: '' })
-                        setCreateOpen(false)
-                        // reload list
-                        await reloadPolicies()
-                      } else {
-                        toast({ title: 'Thất bại', description: (res && res.message) || 'Tạo policy thất bại.' })
-                      }
+
+                      // [MODIFIED] createPolicy giờ trả về Policy
+                      const res: Policy = await createPolicy(payload)
+
+                      // Nếu 'await' thành công, 'res' là policy mới
+                      toast({ title: "Tạo thành công", description: `Đã tạo policy: ${res.policyName}` })
+                      setCreateOpen(false)
+                      // reset fields
+                      setCreatePolicyName("")
+                      setCreateDescription("")
+                      setCreateMajorId(undefined)
+                      setCreateMaxClubJoin(undefined)
+                      // reload list
+                      await reloadPolicies()
                     } catch (err) {
                       console.error('Create policy failed:', err)
                       toast({ title: 'Lỗi', description: 'Có lỗi khi tạo policy.' })
