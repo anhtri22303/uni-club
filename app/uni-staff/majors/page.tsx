@@ -195,12 +195,12 @@ export default function UniStaffMajorsPage() {
                                         <TableHeader>
                                             <TableRow>
                                                 {/* ✅ Cập nhật cột cho Major */}
-                                                <TableHead className="w-[6rem]">ID</TableHead>
+                                                <TableHead className="w-[4rem] text-center">ID</TableHead>
                                                 <TableHead>Major Name</TableHead>
-                                                <TableHead className="w-[8rem]">Major Code</TableHead>
+                                                <TableHead className="w-[7rem] text-center">Major Code</TableHead>
                                                 <TableHead>Description</TableHead>
-                                                <TableHead className="w-[6rem]">Status</TableHead>
-                                                <TableHead className="w-[6rem]">Action</TableHead>
+                                                <TableHead className="w-[6rem] text-center">Status</TableHead>
+                                                <TableHead className="w-[6rem] text-center">Action</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
@@ -221,15 +221,15 @@ export default function UniStaffMajorsPage() {
                                                         key={m.id}
                                                         className={`${idx % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-slate-50 dark:bg-slate-800'} hover:bg-slate-100 dark:hover:bg-slate-700`}
                                                     >
-                                                        <TableCell className="text-sm text-muted-foreground">{m.id}</TableCell>
+                                                        <TableCell className="text-sm text-muted-foreground text-center">{m.id}</TableCell>
                                                         <TableCell className="font-medium text-primary/90">{m.name}</TableCell>
-                                                        <TableCell className="text-sm text-muted-foreground">{m.majorCode || "—"}</TableCell>
+                                                        <TableCell className="text-sm text-muted-foreground text-center">{m.majorCode || "—"}</TableCell>
                                                         <TableCell className="text-sm text-muted-foreground truncate max-w-xs">{m.description || "—"}</TableCell>
-                                                        <TableCell>
+                                                        <TableCell className="text-center">
                                                             <Badge variant={m.active ? "default" : "destructive"}>{m.active ? "Active" : "Inactive"}</Badge>
                                                         </TableCell>
                                                         <TableCell>
-                                                            <div className="flex gap-2">
+                                                            <div className="flex gap-2 justify-center">
                                                                 {/* ✅ openDetail(m) */}
                                                                 <Button size="sm" onClick={() => openDetail(m)}>
                                                                     <Eye className="h-4 w-4" />

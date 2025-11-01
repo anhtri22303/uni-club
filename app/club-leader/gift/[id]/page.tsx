@@ -350,18 +350,6 @@ export default function EditProductPage() {
                                     {allTags.length > 0 ? (
                                         <ScrollArea className="h-48 rounded-md border p-3">
                                             <div className="space-y-2">
-                                                {/* {allTags.map((tag) => (
-                                                    <div key={tag.tagId} className="flex items-center space-x-2">
-                                                        <Checkbox
-                                                            id={`tag-${tag.tagId}`}
-                                                            checked={form.tagIds.includes(tag.tagId)}
-                                                            onCheckedChange={(checked) => handleTagChange(tag.tagId)(checked as boolean)}
-                                                        />
-                                                        <Label htmlFor={`tag-${tag.tagId}`} className="font-normal">
-                                                            {tag.name}
-                                                        </Label>
-                                                    </div>
-                                                ))} */}
                                                 {allTags
                                                     .filter((tag) =>
                                                         tag.name.toLowerCase().includes(tagSearchTerm.toLowerCase())

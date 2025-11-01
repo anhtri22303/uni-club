@@ -534,7 +534,7 @@ export default function ProfilePage() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-1">
                           <Label htmlFor="admin-email">Email Address</Label>
-                          <Input id="admin-email" value={auth.user?.email || ""} disabled className="bg-slate-100 border-slate-400" />
+                          <Input id="admin-email" value={auth.user?.email || ""} disabled className="bg-slate-100 border-slate-300" />
                         </div>
                         <div className="space-y-1">
                           <Label htmlFor="admin-fullName">Full Name</Label>
@@ -542,12 +542,12 @@ export default function ProfilePage() {
                             id="admin-fullName"
                             value={fullName}
                             onChange={(e) => updateProfileData('fullName', e.target.value)}
-                            className="border-slate-400"
+                            className="border-slate-300"
                           />
                         </div>
                         <div className="space-y-1">
                           <Label htmlFor="admin-studentCode">Student Code</Label>
-                          <Input id="admin-studentCode" value={studentCode} disabled className="bg-slate-100 border-slate-400" />
+                          <Input id="admin-studentCode" value={studentCode} disabled className="bg-slate-100 border-slate-300" />
                         </div>
 
                         {/* --- THAY ĐỔI 4 (ADMIN): THAY THẾ INPUT BẰNG SELECT --- */}
@@ -557,7 +557,7 @@ export default function ProfilePage() {
                             value={majorName}
                             onValueChange={(value) => updateProfileData('majorName', value)}
                           >
-                            <SelectTrigger id="admin-majorName" className="w-full border-slate-400">
+                            <SelectTrigger id="admin-majorName" className="w-full border-slate-300">
                               <SelectValue placeholder="Select a major" className="truncate" />
                             </SelectTrigger>
                             <SelectContent>
@@ -577,7 +577,7 @@ export default function ProfilePage() {
                             id="admin-phone"
                             value={phone}
                             onChange={(e) => updateProfileData('phone', e.target.value)}
-                            className="border-slate-400"
+                            className="border-slate-300"
                           />
                         </div>
                         {/* location removed */}
@@ -588,7 +588,7 @@ export default function ProfilePage() {
                           id="admin-bio"
                           value={bio}
                           onChange={(e) => updateProfileData('bio', e.target.value)}
-                          className="min-h-[80px] border-slate-400"
+                          className="min-h-[80px] border-slate-300"
                         />
                       </div>
                       <div className="flex gap-3">
@@ -782,7 +782,7 @@ export default function ProfilePage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-1">
                         <Label htmlFor="user-email">Email Address</Label>
-                        <Input id="user-email" value={auth.user?.email || ""} disabled className="bg-slate-100 border-slate-400" />
+                        <Input id="user-email" value={auth.user?.email || ""} disabled className="bg-slate-100 border-slate-300" />
                       </div>
                       <div className="space-y-1">
                         <Label htmlFor="user-fullName">Full Name</Label>
@@ -790,7 +790,7 @@ export default function ProfilePage() {
                           id="user-fullName"
                           value={fullName}
                           onChange={(e) => updateProfileData('fullName', e.target.value)}
-                          className="border-slate-400"
+                          className="border-slate-300"
                         />
                       </div>
                       <div className="space-y-1">
@@ -799,12 +799,12 @@ export default function ProfilePage() {
                           id="user-phone"
                           value={phone}
                           onChange={(e) => updateProfileData('phone', e.target.value)}
-                          className="border-slate-400"
+                          className="border-slate-300"
                         />
                       </div>
                       <div className="space-y-1">
                         <Label htmlFor="user-studentCode">Student Code</Label>
-                        <Input id="user-studentCode" value={studentCode} disabled className="bg-slate-100 border-slate-400" />
+                        <Input id="user-studentCode" value={studentCode} disabled className="bg-slate-100 border-slate-300" />
                       </div>
                       {/* --- THAY ĐỔI 5 (USER): THAY THẾ INPUT BẰNG SELECT --- */}
                       <div className="space-y-1">
@@ -813,7 +813,7 @@ export default function ProfilePage() {
                           value={majorName}
                           onValueChange={(value) => updateProfileData('majorName', value)}
                         >
-                          <SelectTrigger id="user-majorName" className="w-full border-slate-400">
+                          <SelectTrigger id="user-majorName" className="w-full border-slate-300">
                             <SelectValue placeholder="Select a major" className="truncate" />
                           </SelectTrigger>
                           <SelectContent>
@@ -834,7 +834,7 @@ export default function ProfilePage() {
                         id="user-bio"
                         value={bio}
                         onChange={(e) => updateProfileData('bio', e.target.value)}
-                        className="min-h-[80px] border-slate-400"
+                        className="min-h-[80px] border-slate-300"
                       />
                     </div>
 
