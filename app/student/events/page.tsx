@@ -377,6 +377,11 @@ export default function MemberEventsPage() {
                             <span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
                             COMPLETED
                           </Badge>
+                        ) : event.status === "ONGOING" ? (
+                          <Badge variant="default" className="bg-purple-600 text-white border-purple-600 font-semibold">
+                            <span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
+                            ONGOING
+                          </Badge>
                         ) : event.status === "APPROVED" ? (
                           <Badge variant="outline" className="bg-green-100 text-green-700 border-green-500 font-semibold">
                             <span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-1.5"></span>

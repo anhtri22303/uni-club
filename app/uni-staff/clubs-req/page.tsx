@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Building, Users, Calendar, Search, CheckCircle, XCircle, Clock, Eye, Plus, CheckCheck } from "lucide-react"
+import { Building, Users, Calendar, Search, CheckCircle, XCircle, Clock, Eye, Plus, CheckCheck, Filter } from "lucide-react"
 import Link from "next/link"
 import { postClubApplication } from "@/service/clubApplicationAPI"
 import { Modal } from "@/components/modal"
@@ -51,24 +51,35 @@ export default function UniStaffClubRequestsPage() {
 	const [processedPage, setProcessedPage] = useState(0)
 	const [inProgressPage, setInProgressPage] = useState(0)
 	const [pageSize, setPageSize] = useState(10)
+	// Filter states
+	const [majorFilter, setMajorFilter] = useState<string>("all")
+	const [dateFromFilter, setDateFromFilter] = useState<string>("")
+	const [dateToFilter, setDateToFilter] = useState<string>("")
 
 	const { toast } = useToast()
 	const queryClient = useQueryClient()
 	// Use React Query hook to fetch club applications
 	const { data: applications = [], isLoading: loading, error } = useClubApplications()
-	// Map API shape to UI shape
-	const requests: UiClubRequest[] = applications.map((d: any) => ({
-		id: `req-${d.applicationId}`,
-		applicationId: d.applicationId,
-		clubName: d.clubName,
-		major: d.majorName ?? "Unknown",
-		description: d.description,
-		requestedBy: d.proposer?.fullName ?? "Unknown",
-		requestedByEmail: d.submittedBy?.email ?? "",
-		requestDate: d.submittedAt,
-		status: d.status,
-		expectedMembers: d.expectedMembers,
-	}))
+	// Map API shape to UI shape and sort by latest submittedAt
+	const requests: UiClubRequest[] = applications
+		.map((d: any) => ({
+			id: `req-${d.applicationId}`,
+			applicationId: d.applicationId,
+			clubName: d.clubName,
+			major: d.majorName ?? "Unknown",
+			description: d.description,
+			requestedBy: d.proposer?.fullName ?? "Unknown",
+			requestedByEmail: d.submittedBy?.email ?? "",
+			requestDate: d.submittedAt,
+			status: d.status,
+			expectedMembers: d.expectedMembers,
+			vision: d.vision,
+			proposerReason: d.proposerReason,
+			reviewedBy: d.reviewedBy,
+			rejectReason: d.rejectReason,
+			reviewedAt: d.reviewedAt,
+		}))
+		.sort((a, b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime())
 
 	async function handleSendNewApplication() {
 		if (!newClubName.trim() || !newDescription.trim() || !newMajor.trim() || !newProposerReason.trim() || !newVision.trim()) {
@@ -103,10 +114,13 @@ export default function UniStaffClubRequestsPage() {
 
 	const getFilteredRequests = (tabType: "pending" | "in_progress" | "processed") => {
 		return requests.filter((req) => {
+			// Search filter
 			const matchSearch =
 				req.clubName.toLowerCase().includes(searchTerm.toLowerCase()) ||
 				req.requestedBy.toLowerCase().includes(searchTerm.toLowerCase()) ||
 				req.major.toLowerCase().includes(searchTerm.toLowerCase())
+			
+			// Status filter
 			let matchStatus = false
 			if (tabType === "pending") {
 				matchStatus = req.status === "PENDING"
@@ -116,9 +130,30 @@ export default function UniStaffClubRequestsPage() {
 				matchStatus = req.status === "COMPLETE" || req.status === "REJECTED"
 			}
 
-			return matchSearch && matchStatus
+			// Major filter
+			const matchMajor = majorFilter === "all" || req.major === majorFilter
+
+			// Date range filter
+			let matchDateRange = true
+			if (dateFromFilter || dateToFilter) {
+				const reqDate = new Date(req.requestDate)
+				if (dateFromFilter) {
+					const fromDate = new Date(dateFromFilter)
+					matchDateRange = matchDateRange && reqDate >= fromDate
+				}
+				if (dateToFilter) {
+					const toDate = new Date(dateToFilter)
+					toDate.setHours(23, 59, 59, 999) // Include the entire day
+					matchDateRange = matchDateRange && reqDate <= toDate
+				}
+			}
+
+			return matchSearch && matchStatus && matchMajor && matchDateRange
 		})
 	}
+
+	// Get unique majors for filter dropdown
+	const uniqueMajors = Array.from(new Set(requests.map(req => req.major))).sort()
 
 	const pendingRequests = getFilteredRequests("pending")
 	const inProgressRequests = getFilteredRequests("in_progress")
@@ -353,16 +388,94 @@ export default function UniStaffClubRequestsPage() {
 					</div>
 
 					{/* Filters */}
-					<div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-						<div className="flex items-center gap-2 max-w-sm w-full">
-							<Search className="h-4 w-4 text-muted-foreground" />
-							<Input
-								placeholder="Search by club name or requester..."
-								value={searchTerm}
-								onChange={(e) => setSearchTerm(e.target.value)}
-							/>
+					<Card className="border-muted">
+						<CardHeader className="pb-3">
+							<CardTitle className="text-base font-medium flex items-center gap-2">
+								<Filter className="h-4 w-4" />
+								Filters & Search
+							</CardTitle>
+						</CardHeader>
+						<CardContent className="space-y-3">
+							<div className="flex flex-col gap-3 md:flex-row md:items-center">
+								<div className="flex items-center gap-2 flex-1 max-w-sm">
+									<Search className="h-4 w-4 text-muted-foreground" />
+									<Input
+										placeholder="Search by club name or requester..."
+										value={searchTerm}
+										onChange={(e) => setSearchTerm(e.target.value)}
+									/>
+								</div>
+							
+							<div className="flex items-center gap-2">
+								<label className="text-sm font-medium whitespace-nowrap">Major:</label>
+								<select
+									className="rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+									value={majorFilter}
+									onChange={(e) => {
+										setMajorFilter(e.target.value)
+										setPendingPage(0)
+										setInProgressPage(0)
+										setProcessedPage(0)
+									}}
+								>
+									<option value="all">All Majors</option>
+									{uniqueMajors.map(major => (
+										<option key={major} value={major}>{major}</option>
+									))}
+								</select>
+							</div>
 						</div>
-					</div>
+
+						<div className="flex flex-col gap-3 md:flex-row md:items-center">
+							<div className="flex items-center gap-2">
+								<label className="text-sm font-medium whitespace-nowrap">From:</label>
+								<Input
+									type="date"
+									className="w-auto"
+									value={dateFromFilter}
+									onChange={(e) => {
+										setDateFromFilter(e.target.value)
+										setPendingPage(0)
+										setInProgressPage(0)
+										setProcessedPage(0)
+									}}
+								/>
+							</div>
+							
+							<div className="flex items-center gap-2">
+								<label className="text-sm font-medium whitespace-nowrap">To:</label>
+								<Input
+									type="date"
+									className="w-auto"
+									value={dateToFilter}
+									onChange={(e) => {
+										setDateToFilter(e.target.value)
+										setPendingPage(0)
+										setInProgressPage(0)
+										setProcessedPage(0)
+									}}
+								/>
+							</div>
+
+							{(majorFilter !== "all" || dateFromFilter || dateToFilter) && (
+								<Button
+									variant="outline"
+									size="sm"
+									onClick={() => {
+										setMajorFilter("all")
+										setDateFromFilter("")
+										setDateToFilter("")
+										setPendingPage(0)
+										setInProgressPage(0)
+										setProcessedPage(0)
+									}}
+								>
+									Clear Filters
+								</Button>
+							)}
+						</div>
+					</CardContent>
+				</Card>
 
 					{/* Tabs */}
 					<Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

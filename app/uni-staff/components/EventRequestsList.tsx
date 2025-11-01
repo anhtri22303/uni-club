@@ -167,6 +167,8 @@ export function EventRequestsList({ events, eventsLoading, pendingEvents }: Even
                         variant={
                           event.status === "APPROVED"
                             ? "default"
+                            : event.status === "ONGOING"
+                            ? "default"
                             : event.status === "PENDING_UNISTAFF"
                             ? "secondary"
                             : event.status === "PENDING_COCLUB"
@@ -174,7 +176,9 @@ export function EventRequestsList({ events, eventsLoading, pendingEvents }: Even
                             : "destructive"
                         }
                         className={`text-[10px] sm:text-xs px-2 py-0.5 ${
-                          event.status === "PENDING_UNISTAFF" 
+                          event.status === "ONGOING"
+                            ? "bg-purple-600 text-white"
+                            : event.status === "PENDING_UNISTAFF" 
                             ? "bg-yellow-100 text-yellow-700 border-yellow-500"
                             : event.status === "PENDING_COCLUB"
                             ? "bg-orange-100 text-orange-700 border-orange-500"
@@ -183,7 +187,9 @@ export function EventRequestsList({ events, eventsLoading, pendingEvents }: Even
                             : ""
                         }`}
                       >
-                        {event.status === "PENDING_UNISTAFF" 
+                        {event.status === "ONGOING"
+                          ? "Ongoing"
+                          : event.status === "PENDING_UNISTAFF" 
                           ? "Pending Uni-Staff" 
                           : event.status === "PENDING_COCLUB"
                           ? "Pending Co-Club"

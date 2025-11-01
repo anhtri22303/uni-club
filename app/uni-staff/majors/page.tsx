@@ -294,20 +294,21 @@ export default function UniStaffMajorsPage() {
                             <div className="mt-2 space-y-3">
                                 <div>
                                     <Label htmlFor="major-name">Major Name</Label>
-                                    <Input id="major-name" value={editMajorName} onChange={(e) => setEditMajorName((e.target as HTMLInputElement).value)} />
+                                    <Input id="major-name" className="mt-2 border-slate-300" value={editMajorName} onChange={(e) => setEditMajorName((e.target as HTMLInputElement).value)} />
                                 </div>
 
                                 <div>
                                     <Label htmlFor="major-code">Major Code</Label>
-                                    <Input id="major-code" value={editMajorCode} onChange={(e) => setEditMajorCode((e.target as HTMLInputElement).value)} />
+                                    <Input id="major-code" className="mt-2 border-slate-300" value={editMajorCode} onChange={(e) => setEditMajorCode((e.target as HTMLInputElement).value)} />
                                 </div>
 
                                 <div>
                                     <Label htmlFor="major-desc">Description</Label>
-                                    <Textarea id="major-desc" value={editDescription} onChange={(e) => setEditDescription((e.target as HTMLTextAreaElement).value)} />
+                                    <Textarea id="major-desc" className="mt-2 border-slate-300" value={editDescription} onChange={(e) => setEditDescription((e.target as HTMLTextAreaElement).value)} />
                                 </div>
 
                                 <div className="flex items-center gap-2">
+                                    <Label htmlFor="major-active">Change status: </Label>
                                     <input id="major-active" title="Active" type="checkbox" checked={editActive} onChange={(e) => setEditActive(e.target.checked)} className="h-4 w-4" />
                                     <Label htmlFor="major-active">Active</Label>
                                 </div>

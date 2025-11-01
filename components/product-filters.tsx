@@ -11,7 +11,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Toggle } from "@/components/ui/toggle"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { Separator } from "@/components/ui/separator"
-import { ProductTag } from "@/service/productApi"
+import { Tag as ProductTag } from "@/service/tagApi"
 
 // --- Định nghĩa Types ---
 

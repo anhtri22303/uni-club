@@ -117,14 +117,16 @@ export function QRModal({
               {/* QR Code */}
               <div className="relative p-8 bg-white rounded-xl border-2 border-dashed border-muted-foreground/20 shadow-lg">
                 {activeEnvironment === 'mobile' ? (
-                  // Mobile deep link QR: prefer DataURL variants from qrRotations.mobile, fallback to external QR API using checkInCode
+                  // Mobile deep link QR: prefer DataURL variants from qrRotations.mobile, fallback to qrLinks.mobile
                   <>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={
                         qrRotations.mobile && qrRotations.mobile.length
                           ? qrRotations.mobile[displayedIndex % qrRotations.mobile.length]
-                          : `https://api.qrserver.com/v1/create-qr-code/?size=640x640&data=${encodeURIComponent(`exp://192.168.1.50:8081/--/student/checkin/${checkInCode}`)}`
+                          : qrLinks.mobile
+                            ? `https://api.qrserver.com/v1/create-qr-code/?size=640x640&data=${encodeURIComponent(qrLinks.mobile)}`
+                            : ''
                       }
                       alt={`QR Code mobile`}
                       className={`w-64 h-64 transition-opacity duration-300 ${isFading ? 'opacity-0' : 'opacity-100'}`}
@@ -264,7 +266,9 @@ export function QRModal({
                           activeEnvironment === 'mobile'
                             ? (qrRotations.mobile && qrRotations.mobile.length
                                 ? qrRotations.mobile[displayedIndex % qrRotations.mobile.length]
-                                : `https://api.qrserver.com/v1/create-qr-code/?size=960x960&data=${encodeURIComponent(`exp://192.168.1.50:8081/--/student/checkin/${checkInCode}`)}`)
+                                : qrLinks.mobile
+                                  ? `https://api.qrserver.com/v1/create-qr-code/?size=960x960&data=${encodeURIComponent(qrLinks.mobile)}`
+                                  : '')
                             : qrRotations[activeEnvironment as 'local' | 'prod'][displayedIndex % qrRotations[activeEnvironment as 'local' | 'prod'].length]
                         }
                         alt={`QR Code ${activeEnvironment}`}
@@ -316,7 +320,7 @@ export function QRModal({
               <div className="p-6 bg-white/10 rounded-xl backdrop-blur-sm">
                 <div className="text-white/70 mb-2 text-sm uppercase tracking-wide">Check-in URL:</div>
                 <div className="font-mono text-lg break-all">
-                  {activeEnvironment === 'prod' ? qrLinks.prod : activeEnvironment === 'local' ? qrLinks.local : (`exp://192.168.1.50:8081/--/student/checkin/${checkInCode}`)}
+                  {activeEnvironment === 'prod' ? qrLinks.prod : activeEnvironment === 'local' ? qrLinks.local : (qrLinks.mobile || 'Generating mobile link...')}
                 </div>
               </div>
             </div>

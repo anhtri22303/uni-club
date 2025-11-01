@@ -28,7 +28,7 @@ export default function UniStaffEventRequestsPage() {
 	const [typeFilter, setTypeFilter] = useState<string>("all")
 	const [expiredFilter, setExpiredFilter] = useState<string>("hide")
 	const [dateFilter, setDateFilter] = useState<string>("")
-	const [activeTab, setActiveTab] = useState<"PENDING_UNISTAFF" | "APPROVED" | "REJECTED" | "COMPLETED">("PENDING_UNISTAFF")
+	const [activeTab, setActiveTab] = useState<"PENDING_UNISTAFF" | "APPROVED" | "ONGOING" | "REJECTED" | "COMPLETED">("PENDING_UNISTAFF")
 	const [showWaitingCoClub, setShowWaitingCoClub] = useState<boolean>(false)
 
 	const [events, setEvents] = useState<any[]>([])
@@ -235,9 +235,13 @@ export default function UniStaffEventRequestsPage() {
 		if (page > last) setPage(last)
 	}, [filteredRequests.length, pageSize])
 
-	// Reset to page 0 when switching tabs
+	// Reset to page 0 and adjust expired filter when switching tabs
 	useEffect(() => {
 		setPage(0)
+		// When switching to COMPLETED or ONGOING tab, automatically show all events (don't hide expired)
+		if (activeTab === "COMPLETED" || activeTab === "ONGOING") {
+			setExpiredFilter("show")
+		}
 	}, [activeTab])
 
 		const paginated = (() => {
@@ -267,6 +271,13 @@ export default function UniStaffEventRequestsPage() {
 		}
 
 		switch (status) {
+			case "ONGOING":
+				return (
+					<Badge variant="default" className="bg-purple-600 text-white border-purple-600 font-semibold">
+						<span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
+						Ongoing
+					</Badge>
+				)
 			case "PENDING_UNISTAFF":
 				return (
 					<Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-500 font-semibold">
@@ -311,6 +322,7 @@ export default function UniStaffEventRequestsPage() {
 	const totalCount = events.length
 	const waitingUniStaffCount = events.filter((e) => (e.status ?? "").toUpperCase() === "PENDING_UNISTAFF").length
 	const approvedCount = events.filter((e) => (e.status ?? "").toUpperCase() === "APPROVED").length
+	const ongoingCount = events.filter((e) => (e.status ?? "").toUpperCase() === "ONGOING").length
 	const rejectedCount = events.filter((e) => (e.status ?? "").toUpperCase() === "REJECTED").length
 	const completedCount = events.filter((e) => (e.status ?? "").toUpperCase() === "COMPLETED").length
 	const waitingCoClubCount = events.filter((e) => (e.status ?? "").toUpperCase() === "PENDING_COCLUB").length
@@ -441,6 +453,19 @@ export default function UniStaffEventRequestsPage() {
 						>
 							<CheckCircle className="h-5 w-5 mr-2" />
 							Approved ({approvedCount})
+						</Button>
+						<Button
+							variant={activeTab === "ONGOING" ? "default" : "ghost"}
+							size="lg"
+							className={`flex-1 rounded-b-none py-6 text-base font-semibold transition-all ${
+								activeTab === "ONGOING"
+									? "border-b-4 border-purple-500 bg-purple-50 text-purple-700 hover:bg-purple-100 dark:bg-purple-950 dark:text-purple-300"
+									: "border-b-4 border-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
+							}`}
+							onClick={() => setActiveTab("ONGOING")}
+						>
+							<Clock className="h-5 w-5 mr-2" />
+							Ongoing ({ongoingCount})
 						</Button>
 						<Button
 							variant={activeTab === "COMPLETED" ? "default" : "ghost"}

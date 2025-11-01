@@ -184,6 +184,13 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
             Completed
           </Badge>
         )
+      case "ONGOING":
+        return (
+          <Badge variant="default" className="bg-purple-600 text-white border-purple-600">
+            <Clock className="h-3 w-3 mr-1" />
+            Ongoing
+          </Badge>
+        )
       case "APPROVED":
         return (
           <Badge variant="default" className="bg-green-100 text-green-700 border-green-500">
