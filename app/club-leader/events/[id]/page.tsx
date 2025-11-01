@@ -17,7 +17,8 @@ import { ProtectedRoute } from "@/contexts/protected-route"
 import { LoadingSkeleton } from "@/components/loading-skeleton"
 import { PhaseSelectionModal } from "@/components/phase-selection-modal"
 
-import { getEventById, submitForUniversityApproval, timeObjectToString, coHostRespond, getEventWallet, EventWallet, TimeObject, getEventSummary, EventSummary, completeEvent, eventQR } from "@/service/eventApi" // 👈 Thêm submitForUniversityApproval và eventQR
+import { getEventById, submitForUniversityApproval, timeObjectToString, coHostRespond, TimeObject, getEventSummary, EventSummary, completeEvent, eventQR } from "@/service/eventApi" // 👈 Thêm submitForUniversityApproval và eventQR
+import { EventWalletHistoryModal } from "@/components/event-wallet-history-modal"
 import { getClubIdFromToken } from "@/service/clubApi"
 import { Loader2 } from "lucide-react" // 👈 Thêm Loader2
 interface EventDetail {
@@ -56,8 +57,7 @@ export default function EventDetailPage() {
   const { toast } = useToast()
   const [event, setEvent] = useState<EventDetail | null>(null)
   const [loading, setLoading] = useState(true)
-  const [wallet, setWallet] = useState<EventWallet | null>(null)
-  const [walletLoading, setWalletLoading] = useState(false)
+  const [showWalletHistoryModal, setShowWalletHistoryModal] = useState(false)
   const [eventSummary, setEventSummary] = useState<EventSummary | null>(null)
   const [summaryLoading, setSummaryLoading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false) // 👈 THÊM STATE NÀY
@@ -108,18 +108,6 @@ export default function EventDetailPage() {
           if (myCoHost) {
             setMyCoHostStatus(myCoHost.coHostStatus)
           }
-        }
-
-        // Fetch wallet data
-        try {
-          setWalletLoading(true)
-          const walletData = await getEventWallet(params.id as string)
-          setWallet(walletData)
-        } catch (walletError) {
-          console.error("Failed to load wallet:", walletError)
-          // Don't show error toast for wallet, it's not critical
-        } finally {
-          setWalletLoading(false)
         }
 
         // Fetch event summary if APPROVED, ONGOING or COMPLETED
@@ -887,8 +875,18 @@ export default function EventDetailPage() {
                     </div>
                   </div>
                   <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-200">
-                    <div className="text-sm text-green-700 font-medium">
-                      Budget Points
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="text-sm text-green-700 font-medium">
+                        Budget Points
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 px-2 text-xs text-green-700 hover:text-green-900 hover:bg-green-100"
+                        onClick={() => setShowWalletHistoryModal(true)}
+                      >
+                        History
+                      </Button>
                     </div>
                     <div className="font-semibold text-lg text-green-800">
                       {event.budgetPoints || 0} points
@@ -1046,6 +1044,15 @@ export default function EventDetailPage() {
           handleCopyLink={handleCopyLink}
           handleDownloadQR={handleDownloadQR}
         />
+
+        {/* Wallet History Modal */}
+        {event && (
+          <EventWalletHistoryModal
+            open={showWalletHistoryModal}
+            onOpenChange={setShowWalletHistoryModal}
+            eventId={String(event.id)}
+          />
+        )}
       </AppShell>
     </ProtectedRoute>
   )

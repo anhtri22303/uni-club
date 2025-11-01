@@ -160,14 +160,14 @@ export default function MemberEventsPage() {
       // Hide rejected events
       if (event.status === "REJECTED") return false
       // Only show APPROVED or PENDING_UNISTAFF events
-      if (event.status !== "APPROVED" && event.status !== "PENDING_UNISTAFF") return false
+      if (event.status !== "APPROVED" && event.status !== "PENDING_UNISTAFF" && event.status !== "ONGOING") return false
       // Only show future or today's events
       if (!isFutureEvent) return false
     } else if (expiredFilter === "only") {
       if (!isExpired) return false
     } else if (expiredFilter === "show") {
       // Show all events regardless of expiration
-      if (event.status !== "APPROVED" && event.status !== "PENDING_UNISTAFF" && event.status !== "COMPLETED") {
+      if (event.status !== "APPROVED" && event.status !== "PENDING_UNISTAFF" && event.status !== "COMPLETED" && event.status !== "ONGOING") {
         return false
       }
     }

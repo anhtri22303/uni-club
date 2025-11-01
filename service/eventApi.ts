@@ -270,18 +270,28 @@ export const coHostRespond = async (eventId: string | number, accept: boolean) =
   }
 }
 
+export interface EventWalletTransaction {
+  id: number
+  type: string
+  amount: number
+  description: string
+  createdAt: string
+}
+
 export interface EventWallet {
-  hostClubId: number
-  eventName: string
-  walletBalance: number
-  active: boolean
   eventId: number
+  eventName: string
+  hostClubName: string
+  budgetPoints: number
+  balancePoints: number
   ownerType: string
+  createdAt: string
+  transactions: EventWalletTransaction[]
 }
 
 export const getEventWallet = async (eventId: string | number): Promise<EventWallet> => {
   try {
-    const response = await axiosInstance.get(`/api/events/${eventId}/wallet`)
+    const response = await axiosInstance.get(`/api/events/${eventId}/wallet/detail`)
     const data: any = response.data
     console.log(`Fetched wallet for event ${eventId}:`, data)
     // Response structure: { success: true, message: "success", data: {...wallet} }
