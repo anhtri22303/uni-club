@@ -51,6 +51,20 @@ interface ChatMessage {
   }
 }
 
+interface ChatMessagesResponse {
+  messages: ChatMessage[]
+  latestTimestamp?: number
+}
+
+interface ChatMessageResponse {
+  message: ChatMessage
+}
+
+interface ChatSuccessResponse {
+  success: boolean
+  message?: ChatMessage
+}
+
 export default function ClubLeaderChatPage() {
   const { auth } = useAuth()
   const [clubId, setClubId] = useState<number | null>(null)
@@ -92,7 +106,7 @@ export default function ClubLeaderChatPage() {
     if (!clubId) return
 
     try {
-      const response = await axios.get(`/api/chat/messages?clubId=${clubId}&limit=50`)
+      const response = await axios.get<ChatMessagesResponse>(`/api/chat/messages?clubId=${clubId}&limit=50`)
       const fetchedMessages = response.data.messages || []
       const reversedMessages = fetchedMessages.reverse() // Reverse to show oldest first
       setMessages(reversedMessages)
@@ -124,7 +138,7 @@ export default function ClubLeaderChatPage() {
 
     setLoadingMore(true)
     try {
-      const response = await axios.get(
+      const response = await axios.get<ChatMessagesResponse>(
         `/api/chat/messages?clubId=${clubId}&limit=30&before=${oldestTimestamp}`
       )
       const olderMessages = response.data.messages || []
@@ -155,7 +169,7 @@ export default function ClubLeaderChatPage() {
     if (!clubId || latestTimestamp === 0) return
 
     try {
-      const response = await axios.get(
+      const response = await axios.get<ChatMessagesResponse>(
         `/api/chat/poll?clubId=${clubId}&after=${latestTimestamp}`
       )
       const newMessages = response.data.messages || []
@@ -171,7 +185,9 @@ export default function ClubLeaderChatPage() {
           if (uniqueNewMessages.length === 0) return prev
           return [...prev, ...uniqueNewMessages]
         })
-        setLatestTimestamp(response.data.latestTimestamp)
+        if (response.data.latestTimestamp) {
+          setLatestTimestamp(response.data.latestTimestamp)
+        }
         setTimeout(scrollToBottom, 100)
       }
     } catch (error) {
@@ -213,7 +229,7 @@ export default function ClubLeaderChatPage() {
     setReplyingTo(null) // Clear reply state
     
     try {
-      const response = await axios.post("/api/chat/messages", {
+      const response = await axios.post<ChatMessageResponse>("/api/chat/messages", {
         clubId,
         message: messageToSend,
         userId: auth.userId,
@@ -263,7 +279,9 @@ export default function ClubLeaderChatPage() {
 
     setDeleting(true)
     try {
-      await axios.delete("/api/chat/messages", {
+      await axios({
+        method: 'delete',
+        url: "/api/chat/messages",
         data: {
           clubId: clubId,
           messageId: messageId,
@@ -292,7 +310,7 @@ export default function ClubLeaderChatPage() {
     if (!clubId) return
 
     try {
-      const response = await axios.post("/api/chat/reactions", {
+      const response = await axios.post<ChatSuccessResponse>("/api/chat/reactions", {
         clubId,
         messageId,
         userId: auth.userId,
@@ -303,7 +321,7 @@ export default function ClubLeaderChatPage() {
       if (response.data.success && response.data.message) {
         setMessages((prev) =>
           prev.map((msg) =>
-            msg.id === messageId ? response.data.message : msg
+            msg.id === messageId ? response.data.message! : msg
           )
         )
       }
@@ -318,7 +336,7 @@ export default function ClubLeaderChatPage() {
     if (!clubId) return
 
     try {
-      const response = await axios.post("/api/chat/pin", {
+      const response = await axios.post<ChatSuccessResponse>("/api/chat/pin", {
         clubId,
         messageId,
         userId: auth.userId,
@@ -327,7 +345,7 @@ export default function ClubLeaderChatPage() {
       // Update the messages with the new pin status
       if (response.data.success) {
         // Fetch fresh messages to get the updated pin states
-        const messagesResponse = await axios.get(
+        const messagesResponse = await axios.get<ChatMessagesResponse>(
           `/api/chat/messages?clubId=${clubId}&limit=50`
         )
         const fetchedMessages = messagesResponse.data.messages || []
@@ -562,7 +580,7 @@ export default function ClubLeaderChatPage() {
                                 {msg.reactions && Object.keys(msg.reactions).length > 0 && (
                                   <div className="flex flex-wrap gap-1 mt-1.5">
                                     {Object.entries(msg.reactions).map(([emoji, data]) => {
-                                      const hasReacted = data.userIds.includes(auth.userId)
+                                      const hasReacted = auth.userId ? data.userIds.includes(Number(auth.userId)) : false
                                       return (
                                         <button
                                           key={emoji}
