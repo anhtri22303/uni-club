@@ -369,10 +369,9 @@ export default function ClubLeaderGiftPage() {
             <h1 className="text-3xl font-bold">Gift Products</h1>
             <p className="text-muted-foreground">Manage club items and event products.</p>
           </div>
-          <Input placeholder="Search for products..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="max-w-sm" />
-
-          {/* Nút Add Product - CẬP NHẬT onClick */}
-          <div className="flex justify-end mb-4">
+          {/* Search and Add Product Button - Same Line */}
+          <div className="flex items-center gap-4 justify-between">
+            <Input placeholder="Search for products..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="max-w-sm" />
             <Button
               size="sm"
               onClick={() => {
@@ -389,35 +388,42 @@ export default function ClubLeaderGiftPage() {
                 setTagSearchTerm("") // THÊM: Reset search tag
                 setOpen(true)
               }}
-              className="bg-blue-600 hover:bg-gradient-to-r hover:from-blue-600 hover:to-purple-600 text-white border-none"
+              className="bg-blue-600 hover:bg-gradient-to-r hover:from-blue-600 hover:to-purple-600 text-white border-none whitespace-nowrap"
               disabled={!clubId}
             >
               <Plus className="h-4 w-4 mr-1" /> Add Product
             </Button>
           </div>
 
-          {/* BỘ LỌC STATUS */}
-          <div className="flex items-center gap-3">
-            <Label className="text-lg font-semibold">Filter Status</Label>
-            <ToggleGroup
-              type="single"
-              value={statusFilter}
-              onValueChange={(value: "all" | "active" | "inactive") => {
-                if (value) setStatusFilter(value); // Chỉ set khi có giá trị
-              }}
-              variant="outline"
-            >
-              <ToggleGroupItem value="all" aria-label="Show all">All</ToggleGroupItem>
-              <ToggleGroupItem value="active" aria-label="Show active only">Active</ToggleGroupItem>
-              <ToggleGroupItem value="inactive" aria-label="Show inactive only">Inactive</ToggleGroupItem>
-            </ToggleGroup>
-          </div>
+          {/* ProductFilters and Filter Status - Same Line with Separator */}
+          <div className="flex items-center gap-6 flex-wrap">
+            {/* SELECT BY CRITERIA SECTION (LEFT) */}
+            <ProductFilters
+              availableTags={productTags}
+              onFilterChange={setFilters}
+              onSortChange={setSortBy}
+            />
 
-          <ProductFilters
-            availableTags={productTags}
-            onFilterChange={setFilters}
-            onSortChange={setSortBy}
-          />
+            {/* VERTICAL SEPARATOR */}
+            <Separator orientation="vertical" className="h-24 bg-black" />
+
+            {/* FILTER STATUS SECTION (RIGHT) */}
+            <div className="flex items-center gap-3">
+              <Label className="text-lg font-semibold">Filter Status</Label>
+              <ToggleGroup
+                type="single"
+                value={statusFilter}
+                onValueChange={(value: "all" | "active" | "inactive") => {
+                  if (value) setStatusFilter(value); // Chỉ set khi có giá trị
+                }}
+                variant="outline"
+              >
+                <ToggleGroupItem value="all" aria-label="Show all">All</ToggleGroupItem>
+                <ToggleGroupItem value="active" aria-label="Show active only">Active</ToggleGroupItem>
+                <ToggleGroupItem value="inactive" aria-label="Show inactive only">Inactive</ToggleGroupItem>
+              </ToggleGroup>
+            </div>
+          </div>
           <Separator className="my-6" />
 
           {/* 6. Cập nhật Dialog Content */}

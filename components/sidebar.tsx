@@ -14,7 +14,7 @@ import { usePrefetchClubs, usePrefetchEvents, usePrefetchUsers } from "@/hooks/u
 import {
   LayoutDashboard, Users, Calendar, Gift, Wallet, History, BarChart3,
   Building, Home, CheckCircle, FileText, FileUser, HandCoins, CalendarDays,
-  CreditCard, LibraryBig, MessageCircle
+  CreditCard, LibraryBig, MessageCircle, MapPin, Percent, ChevronDown, ChevronRight
 } from "lucide-react"
 
 interface SidebarProps {
@@ -22,7 +22,13 @@ interface SidebarProps {
   open?: boolean
 }
 
-type NavItem = { href: string; label: string; icon: any; isStaff?: boolean }
+type NavItem = { 
+  href?: string; 
+  label: string; 
+  icon: any; 
+  isStaff?: boolean;
+  children?: NavItem[];
+}
 
 const navigationConfig = {
   student: [
@@ -42,21 +48,40 @@ const navigationConfig = {
     { href: "/club-leader/applications", label: "Applications", icon: FileUser },
     { href: "/club-leader/members", label: "Members", icon: Users },
     { href: "/club-leader/events", label: "Events", icon: Calendar },
-    { href: "/club-leader/gift", label: "Gift", icon: Gift },
-    { href: "/club-leader/points", label: "Points Club", icon: HandCoins },
     { href: "/club-leader/attendances", label: "Attendances", icon: CalendarDays },
-    { href: "/club-leader/card", label: "Card", icon: CreditCard },
-    { href: "/club-leader/chat", label: "Chat", icon: MessageCircle },
-
+    { 
+      label: "Others", 
+      icon: LayoutDashboard,
+      children: [
+        { href: "/club-leader/gift", label: "Gift", icon: Gift },
+        { href: "/club-leader/card", label: "Card", icon: CreditCard },
+        { href: "/club-leader/points", label: "Points Club", icon: HandCoins },
+        { href: "/club-leader/chat", label: "Chat", icon: MessageCircle },
+      ]
+    },
   ],
   uni_staff: [
     { href: "/uni-staff", label: "Dashboard", icon: LayoutDashboard },
     { href: "/uni-staff/clubs", label: "Clubs", icon: Building },
-    { href: "/uni-staff/policies", label: "Policies", icon: FileText },
+    { href: "/uni-staff/locations", label: "Locations", icon: MapPin },
+    { 
+      label: "Policy Management", 
+      icon: FileText,
+      children: [
+        { href: "/uni-staff/multiplier-policy", label: "Multiplier Policy", icon: Percent },
+        { href: "/uni-staff/policies", label: "Policies", icon: FileText },
+      ]
+    },
     { href: "/uni-staff/majors", label: "Majors", icon: LibraryBig },
-    { href: "/uni-staff/clubs-req", label: "Club Requests", icon: FileText },
-    { href: "/uni-staff/points-req", label: "Points Requests", icon: HandCoins },
-    { href: "/uni-staff/events-req", label: "Event Requests", icon: Calendar },
+    { 
+      label: "Requests", 
+      icon: CheckCircle,
+      children: [
+        { href: "/uni-staff/clubs-req", label: "Club Requests", icon: Building },
+        { href: "/uni-staff/points-req", label: "Points Requests", icon: HandCoins },
+        { href: "/uni-staff/events-req", label: "Event Requests", icon: Calendar },
+      ]
+    },
     { href: "/uni-staff/points", label: "Points Staff", icon: HandCoins },
     // { href: "/uni-staff/reports", label: "Reports", icon: BarChart3 },
   ],
@@ -78,6 +103,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
   const [userStatsTotal, setUserStatsTotal] = useState<number>(0)
   const [clubStatsTotal, setClubStatsTotal] = useState<number>(0)
   const [hasClubs, setHasClubs] = useState<boolean>(false)
+  const [openDropdowns, setOpenDropdowns] = useState<Record<string, boolean>>({})
 
   // Prefetch hooks for instant navigation
   const prefetchClubs = usePrefetchClubs()
@@ -192,6 +218,32 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
     }
   }
 
+  // Toggle dropdown open/close
+  const toggleDropdown = (label: string) => {
+    setOpenDropdowns(prev => ({
+      ...prev,
+      [label]: !prev[label]
+    }))
+  }
+
+  // Check if any child item is active
+  const isAnyChildActive = (children?: NavItem[]) => {
+    if (!children) return false
+    return children.some(child => child.href === pathname)
+  }
+
+  // Auto-open dropdowns if a child is active
+  useEffect(() => {
+    navigation.forEach(item => {
+      if (item.children && isAnyChildActive(item.children)) {
+        setOpenDropdowns(prev => ({
+          ...prev,
+          [item.label]: true
+        }))
+      }
+    })
+  }, [pathname])
+
   return (
     <>
       {/* Overlay for mobile when open */}
@@ -237,11 +289,16 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
         </div>
         <div className="flex-1 overflow-auto py-4 pb-72">
           <nav className="grid gap-1 px-2">
-            {navigation.map((item) => {
+            {navigation.map((item, index) => {
               const Icon = item.icon
-              const isActive = pathname === item.href
-              const isLoading = loadingPath === item.href
+              const isActive = item.href ? pathname === item.href : false
+              const isLoading = item.href ? loadingPath === item.href : false
               const isStaffItem = item.isStaff
+              const hasChildren = item.children && item.children.length > 0
+              const isDropdownOpen = openDropdowns[item.label]
+              const hasActiveChild = isAnyChildActive(item.children)
+              
+              // Badge logic
               const isEventsItem = item.label === "Events"
               const isClubsItem = item.label === "Clubs"
               const isUsersItem = item.label === "Users"
@@ -254,71 +311,153 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
               const policiesCount = policies.length
               const clubApplicationsCount = clubApplications.length
               const eventRequestsCount = eventRequests.length
-
-              // Don't show badges for admin role
               const showBadges = auth.role !== "admin"
 
+              // Calculate total badge count for dropdown groups
+              let dropdownBadgeCount = 0
+              if (hasChildren && showBadges) {
+                item.children?.forEach(child => {
+                  if (child.label === "Club Requests") dropdownBadgeCount += clubApplicationsCount
+                  if (child.label === "Points Requests") dropdownBadgeCount += 0 // Add if needed
+                  if (child.label === "Event Requests") dropdownBadgeCount += eventRequestsCount
+                })
+              }
+
               return (
-                <Button
-                  key={item.href}
-                  variant={isActive ? "secondary" : "ghost"}
-                  className={cn(
-                    "w-full justify-start gap-3 h-11 text-sm font-medium relative",
-                    isActive && "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm",
-                    // isActive && "bg-primary text-primary-foreground shadow-md",
-                    isLoading && "opacity-75 cursor-wait",
-                    isStaffItem && "text-muted-foreground bg-muted/30",
-                    isStaffItem && isActive && "bg-muted text-muted-foreground"
+                <div key={item.href || item.label}>
+                  {/* Parent Item */}
+                  <Button
+                    variant={isActive || hasActiveChild ? "secondary" : "ghost"}
+                    className={cn(
+                      "w-full justify-start gap-3 h-11 text-sm font-medium relative",
+                      (isActive || hasActiveChild) && "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm",
+                      isLoading && "opacity-75 cursor-wait",
+                      isStaffItem && "text-muted-foreground bg-muted/30",
+                      isStaffItem && isActive && "bg-muted text-muted-foreground"
+                    )}
+                    onClick={() => {
+                      if (hasChildren) {
+                        toggleDropdown(item.label)
+                      } else if (item.href) {
+                        handleNavigation(item.href)
+                      }
+                    }}
+                    onMouseEnter={() => item.href && handleMouseEnter(item.href)}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <LoadingSpinner size="sm" />
+                    ) : (
+                      <Icon className={cn(
+                        "h-4 w-4 flex-shrink-0",
+                        isStaffItem && "text-white"
+                      )} />
+                    )}
+                    <span className="truncate">{item.label}</span>
+                    
+                    {/* Dropdown indicator */}
+                    {hasChildren && (
+                      <div className="ml-auto">
+                        {isDropdownOpen ? (
+                          <ChevronDown className="h-4 w-4" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4" />
+                        )}
+                      </div>
+                    )}
+                    
+                    {/* Badges */}
+                    {isStaffItem && (
+                      <span className="ml-auto text-xs px-1.5 py-0.5 rounded bg-muted-foreground/20 text-muted-foreground">
+                        Staff
+                      </span>
+                    )}
+                    {showBadges && isEventsItem && eventsCount > 0 && (
+                      <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
+                        {eventsCount}
+                      </span>
+                    )}
+                    {showBadges && isClubsItem && clubsCount > 0 && (
+                      <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
+                        {clubsCount}
+                      </span>
+                    )}
+                    {showBadges && isUsersItem && usersCount > 0 && (
+                      <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
+                        {usersCount}
+                      </span>
+                    )}
+                    {showBadges && isPoliciesItem && policiesCount > 0 && (
+                      <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
+                        {policiesCount}
+                      </span>
+                    )}
+                    {showBadges && isClubRequestsItem && clubApplicationsCount > 0 && (
+                      <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
+                        {clubApplicationsCount}
+                      </span>
+                    )}
+                    {showBadges && isEventRequestsItem && eventRequestsCount > 0 && (
+                      <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
+                        {eventRequestsCount}
+                      </span>
+                    )}
+                    {showBadges && hasChildren && dropdownBadgeCount > 0 && (
+                      <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
+                        {dropdownBadgeCount}
+                      </span>
+                    )}
+                  </Button>
+
+                  {/* Child Items (Dropdown) */}
+                  {hasChildren && isDropdownOpen && (
+                    <div className="ml-4 mt-1 space-y-1">
+                      {item.children?.map((child) => {
+                        const ChildIcon = child.icon
+                        const isChildActive = child.href === pathname
+                        const isChildLoading = child.href ? loadingPath === child.href : false
+                        
+                        // Child badges
+                        const isChildClubRequests = child.label === "Club Requests"
+                        const isChildEventRequests = child.label === "Event Requests"
+                        
+                        return (
+                          <Button
+                            key={child.href}
+                            variant={isChildActive ? "secondary" : "ghost"}
+                            className={cn(
+                              "w-full justify-start gap-3 h-10 text-sm font-medium",
+                              isChildActive && "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm",
+                              isChildLoading && "opacity-75 cursor-wait"
+                            )}
+                            onClick={() => child.href && handleNavigation(child.href)}
+                            onMouseEnter={() => child.href && handleMouseEnter(child.href)}
+                            disabled={isChildLoading}
+                          >
+                            {isChildLoading ? (
+                              <LoadingSpinner size="sm" />
+                            ) : (
+                              <ChildIcon className="h-3.5 w-3.5 flex-shrink-0" />
+                            )}
+                            <span className="truncate text-xs">{child.label}</span>
+                            
+                            {/* Child badges */}
+                            {showBadges && isChildClubRequests && clubApplicationsCount > 0 && (
+                              <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
+                                {clubApplicationsCount}
+                              </span>
+                            )}
+                            {showBadges && isChildEventRequests && eventRequestsCount > 0 && (
+                              <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
+                                {eventRequestsCount}
+                              </span>
+                            )}
+                          </Button>
+                        )
+                      })}
+                    </div>
                   )}
-                  onClick={() => handleNavigation(item.href)}
-                  onMouseEnter={() => handleMouseEnter(item.href)}
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <LoadingSpinner size="sm" />
-                  ) : (
-                    <Icon className={cn(
-                      "h-4 w-4 flex-shrink-0",
-                      isStaffItem && "text-white"
-                    )} />
-                  )}
-                  <span className="truncate">{item.label}</span>
-                  {isStaffItem && (
-                    <span className="ml-auto text-xs px-1.5 py-0.5 rounded bg-muted-foreground/20 text-muted-foreground">
-                      Staff
-                    </span>
-                  )}
-                  {showBadges && isEventsItem && eventsCount > 0 && (
-                    <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
-                      {eventsCount}
-                    </span>
-                  )}
-                  {showBadges && isClubsItem && clubsCount > 0 && (
-                    <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
-                      {clubsCount}
-                    </span>
-                  )}
-                  {showBadges && isUsersItem && usersCount > 0 && (
-                    <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
-                      {usersCount}
-                    </span>
-                  )}
-                  {showBadges && isPoliciesItem && policiesCount > 0 && (
-                    <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
-                      {policiesCount}
-                    </span>
-                  )}
-                  {showBadges && isClubRequestsItem && clubApplicationsCount > 0 && (
-                    <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
-                      {clubApplicationsCount}
-                    </span>
-                  )}
-                  {showBadges && isEventRequestsItem && eventRequestsCount > 0 && (
-                    <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
-                      {eventRequestsCount}
-                    </span>
-                  )}
-                </Button>
+                </div>
               )
             })}
           </nav>
