@@ -180,57 +180,62 @@ export default function MemberGiftPage() {
 		setCurrentPage,
 		paginatedData: paginatedProducts,
 	} = usePagination({ data: filteredProducts, initialPageSize: 9 })
-
-	// 🛑 CẬP NHẬT: Hàm xử lý Redeem
+	// 🛑 CẬP NHẬT: Hàm xử lý Redeem với thông báo lỗi cụ thể
 	const handleRedeem = async (product: Product) => {
-		if (!selectedClubId || !wallets || wallets.length === 0) {
-			toast({ title: "Error", description: "Cannot find your membership information.", variant: "destructive" });
-			return;
-		}
-
-		// Tìm wallet (và membershipId) tương ứng với club đang chọn
-		const currentWallet = wallets.find(w => w.clubId === Number(selectedClubId));
-
-		if (!currentWallet) {
-			toast({ title: "Error", description: "Membership ID not found for this club.", variant: "destructive" });
-			return;
-		}
-
-		// Tạo payload
-		const payload: RedeemPayload = {
-			productId: product.id,
-			quantity: 1, // Mặc định là 1, vì không có ô chọn số lượng
-			membershipId: currentWallet.membershipId // 👈 Gửi ID thành viên
-		};
-
 		setRedeemingProductId(product.id);
 
 		try {
+			// 1. Kiểm tra xem profile (wallets) đã tải xong và có dữ liệu chưa
+			if (!wallets || wallets.length === 0) {
+				throw new Error("Your membership information (wallet) was not found. You cannot redeem the gift..");
+			}
+
+			// 2. Kiểm tra xem club đã được chọn chưa
+			if (!selectedClubId) {
+				throw new Error("Please select a club from the list.");
+			}
+
+			// 3. Tìm wallet (và membershipId) tương ứng với club đang chọn
+			const currentWallet = wallets.find(w => w.clubId === Number(selectedClubId));
+
+			if (!currentWallet) {
+				// Lấy tên club để hiển thị lỗi
+				const clubName = userClubsDetails.find(c => c.id === Number(selectedClubId))?.name || "this club";
+				throw new Error(`You do not have a membership wallet for ${clubName}.`);
+			}
+
+			// 4. Tạo payload
+			const payload: RedeemPayload = {
+				productId: product.id,
+				quantity: 1, // Mặc định là 1
+				membershipId: currentWallet.membershipId // Gửi ID thành viên
+			};
+
 			let order;
-			// Kiểm tra loại sản phẩm để gọi đúng API
+			// 5. Kiểm tra loại sản phẩm để gọi đúng API
 			if (product.type === "EVENT_ITEM") {
-				// Phải có eventId để đổi quà event
 				if (!product.eventId || product.eventId === 0) {
-					throw new Error("Product is missing an Event ID.");
+					throw new Error("Sản phẩm này bị lỗi: không có Event ID.");
 				}
 				order = await redeemEventProduct(product.eventId, payload);
 			} else {
-				// Mặc định là CLUB_ITEM
 				order = await redeemClubProduct(product.clubId, payload);
 			}
 
+			// 6. Thành công
 			toast({
 				title: "Redeemed Successfully",
-				description: `Your order #${order.orderCode} for "${product.name}" has been placed.`,
+				description: `Đơn hàng #${order.orderCode} cho "${product.name}" đã được đặt.`,
 				variant: "success",
 			});
 
-			// 👈 Tải lại dữ liệu (Wallet và Products)
+			// Tải lại dữ liệu (Wallet và Products)
 			queryClient.invalidateQueries({ queryKey: queryKeys.profile });
 			queryClient.invalidateQueries({ queryKey: queryKeys.productsByClubId(product.clubId) });
 
 		} catch (error: any) {
 			console.error("Redeem failed:", error);
+			// Hiển thị bất kỳ lỗi nào (từ API hoặc từ các bước kiểm tra ở trên)
 			toast({
 				title: "Redeem Failed",
 				description: error.response?.data?.message || error.message || "An error occurred.",

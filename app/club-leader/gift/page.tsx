@@ -3,7 +3,7 @@
 import type React from "react"
 import { useEffect, useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
-import { useQueryClient } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import Link from "next/link"
 import { Gift, Package, Calendar, Clock, CheckCircle, XCircle, Plus, ChevronLeft, ChevronRight, Loader2, } from "lucide-react"
 // --- Service ---
@@ -31,6 +31,7 @@ import { ProductFilters, FilterState, SortState } from "@/components/product-fil
 import { Separator } from "@/components/ui/separator"
 import { Tag } from "@/service/tagApi"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { getEventByClubId, Event } from "@/service/eventApi"
 
 // ---- Compact status badge overlay ----
 const StatusBadge = ({ status }: { status: string }) => {
@@ -93,7 +94,7 @@ const initialFormState: AddProductPayload = {
   tagIds: [],
   eventId: 0,
 }
-// 👈 THÊM: Định nghĩa ID cho tag cố định
+// Định nghĩa ID cho tag cố định
 interface FixedTagIds {
   clubTagId: number | null;
   eventTagId: number | null;
@@ -111,7 +112,7 @@ export default function ClubLeaderGiftPage() {
   const [sortBy, setSortBy] = useState<SortState>("popular")
   const queryClient = useQueryClient()
   const [tagSearchTerm, setTagSearchTerm] = useState("")
-  // 👈 THÊM STATE ĐỂ LƯU ID CỦA TAG "CLUB" VÀ "EVENT"
+  // STATE ĐỂ LƯU ID CỦA TAG "CLUB" VÀ "EVENT"
   const [fixedTagIds, setFixedTagIds] = useState<FixedTagIds>({
     clubTagId: null,
     eventTagId: null,
@@ -125,7 +126,48 @@ export default function ClubLeaderGiftPage() {
   const { data: productTags = [], isLoading: tagsLoading } = useProductTags(
     !!clubId // Chỉ fetch khi clubId tồn tại
   )
-  // 👈 THÊM useEffect ĐỂ TÌM VÀ SET ID CỦA TAG CỐ ĐỊNH
+
+  // Fetch events cho club
+  const { data: clubEvents = [], isLoading: eventsLoading } = useQuery<Event[]>({
+    // Cần queryKey duy nhất, thêm 'clubId' để nó fetch lại khi clubId thay đổi
+    queryKey: ['clubEvents', clubId],
+    queryFn: () => getEventByClubId(clubId as number),
+    // Chỉ fetch khi có clubId VÀ dialog đang mở (tối ưu)
+    enabled: !!clubId && open,
+  });
+  // Lọc các event hợp lệ (APPROVED và chưa/đang diễn ra, hoặc ON-GOING)
+  const availableEvents = useMemo(() => {
+    if (!clubEvents) return [];
+
+    // Lấy thời điểm đầu ngày hôm nay (00:00:00) theo giờ địa phương
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return clubEvents.filter(event => {
+      // Xử lý event.date (string "YYYY-MM-DD") để so sánh
+      // Phải parse thủ công để tránh lỗi timezone (new Date("YYYY-MM-DD")
+      // sẽ hiểu là UTC, có thể bị sai ngày)
+      const parts = event.date.split('-').map(Number);
+      // new Date(year, monthIndex, day)
+      const eventDate = new Date(parts[0], parts[1] - 1, parts[2]);
+
+      // Điều kiện 1: Event đang diễn ra (ON-GOING) thì luôn hiển thị
+      if (event.status === "ON-GOING") {
+        return true;
+      }
+
+      // Điều kiện 2: Event đã được duyệt (APPROVED) VÀ ngày diễn ra
+      // là hôm nay hoặc trong tương lai
+      if (event.status === "APPROVED" && eventDate >= today) {
+        return true;
+      }
+
+      // Tất cả các trường hợp khác (PENDING, REJECTED, APPROVED nhưng đã qua ngày)
+      return false;
+    });
+  }, [clubEvents]);
+
+  // useEffect ĐỂ TÌM VÀ SET ID CỦA TAG CỐ ĐỊNH
   useEffect(() => {
     if (productTags.length > 0) {
       const clubTag = productTags.find(tag => tag.name.toLowerCase() === "club");
@@ -152,12 +194,12 @@ export default function ClubLeaderGiftPage() {
   const isLoading = productsLoading || tagsLoading
 
 
-  // 3. Cập nhật các hàm handlers cho form (ĐÃ CẬP NHẬT)
+  // 3. Cập nhật các hàm handlers cho form 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setForm((prev) => ({
       ...prev,
-      [name]: name === "pointCost" || name === "stockQuantity" || name === "eventId" ? (value === "" ? 0 : Number(value)) : value, // 👈 CẬP NHẬT (từ price sang pointCost)
+      [name]: name === "pointCost" || name === "stockQuantity" || name === "eventId" ? (value === "" ? 0 : Number(value)) : value,
     }))
   }
 
@@ -179,13 +221,27 @@ export default function ClubLeaderGiftPage() {
           newTagIds.push(eventTagId);
         }
 
-        return { ...prev, [name]: value, tagIds: newTagIds };
+        const isEventItem = value === "EVENT_ITEM";
+        return {
+          ...prev,
+          [name]: value,
+          tagIds: newTagIds,
+          eventId: isEventItem ? prev.eventId : 0 // Reset nếu không phải Event Item
+        };
       });
     } else {
       // Giữ nguyên logic cũ cho các select khác (nếu có)
       setForm((prev) => ({ ...prev, [name]: value }));
     }
   }
+
+  // Handler mới cho việc chọn Event từ Select
+  const handleEventSelectChange = (value: string) => {
+    setForm((prev) => ({
+      ...prev,
+      eventId: Number(value) || 0, // Chuyển giá trị string từ Select về number
+    }));
+  };
 
   const handleTagChange = (tagId: number) => (checked: boolean) => {
     const { clubTagId, eventTagId } = fixedTagIds;
@@ -212,9 +268,15 @@ export default function ClubLeaderGiftPage() {
       return
     }
 
-    // 👈 KIỂM TRA NGHIỆP VỤ MỚI
+    // KIỂM TRA NGHIỆP VỤ MỚI
     if (!form.tagIds || form.tagIds.length === 0) {
       toast({ title: "Error", description: "Product must have at least one tag.", variant: "destructive" })
+      return;
+    }
+
+    // Kiểm tra Event ID nếu là Event Item
+    if (form.type === "EVENT_ITEM" && (!form.eventId || form.eventId === 0)) {
+      toast({ title: "Error", description: "You must select an event for an Event Item.", variant: "destructive" })
       return;
     }
 
@@ -249,7 +311,7 @@ export default function ClubLeaderGiftPage() {
     }
   }
 
-  // THAY THẾ 'filteredProducts' BẰNG 'useMemo' (ĐÃ CẬP NHẬT)
+  // THAY THẾ 'filteredProducts' BẰNG 'useMemo' 
   const filteredAndSortedProducts = useMemo(() => {
     let filtered: Product[] = [...products] // Bắt đầu với danh sách đầy đủ
 
@@ -307,10 +369,9 @@ export default function ClubLeaderGiftPage() {
             <h1 className="text-3xl font-bold">Gift Products</h1>
             <p className="text-muted-foreground">Manage club items and event products.</p>
           </div>
-          <Input placeholder="Search for products..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="max-w-sm" />
-
-          {/* Nút Add Product - CẬP NHẬT onClick */}
-          <div className="flex justify-end mb-4">
+          {/* Search and Add Product Button - Same Line */}
+          <div className="flex items-center gap-4 justify-between">
+            <Input placeholder="Search for products..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="max-w-sm" />
             <Button
               size="sm"
               onClick={() => {
@@ -327,35 +388,42 @@ export default function ClubLeaderGiftPage() {
                 setTagSearchTerm("") // THÊM: Reset search tag
                 setOpen(true)
               }}
-              className="bg-blue-600 hover:bg-gradient-to-r hover:from-blue-600 hover:to-purple-600 text-white border-none"
+              className="bg-blue-600 hover:bg-gradient-to-r hover:from-blue-600 hover:to-purple-600 text-white border-none whitespace-nowrap"
               disabled={!clubId}
             >
               <Plus className="h-4 w-4 mr-1" /> Add Product
             </Button>
           </div>
 
-          {/* 👈 THÊM BỘ LỌC STATUS MỚI TẠI ĐÂY */}
-          <div className="flex items-center gap-3">
-            <Label className="text-lg font-semibold">Filter Status</Label>
-            <ToggleGroup
-              type="single"
-              value={statusFilter}
-              onValueChange={(value: "all" | "active" | "inactive") => {
-                if (value) setStatusFilter(value); // Chỉ set khi có giá trị
-              }}
-              variant="outline"
-            >
-              <ToggleGroupItem value="all" aria-label="Show all">All</ToggleGroupItem>
-              <ToggleGroupItem value="active" aria-label="Show active only">Active</ToggleGroupItem>
-              <ToggleGroupItem value="inactive" aria-label="Show inactive only">Inactive</ToggleGroupItem>
-            </ToggleGroup>
-          </div>
+          {/* ProductFilters and Filter Status - Same Line with Separator */}
+          <div className="flex items-center gap-6 flex-wrap">
+            {/* SELECT BY CRITERIA SECTION (LEFT) */}
+            <ProductFilters
+              availableTags={productTags}
+              onFilterChange={setFilters}
+              onSortChange={setSortBy}
+            />
 
-          <ProductFilters
-            availableTags={productTags}
-            onFilterChange={setFilters}
-            onSortChange={setSortBy}
-          />
+            {/* VERTICAL SEPARATOR */}
+            <Separator orientation="vertical" className="h-24 bg-black" />
+
+            {/* FILTER STATUS SECTION (RIGHT) */}
+            <div className="flex items-center gap-3">
+              <Label className="text-lg font-semibold">Filter Status</Label>
+              <ToggleGroup
+                type="single"
+                value={statusFilter}
+                onValueChange={(value: "all" | "active" | "inactive") => {
+                  if (value) setStatusFilter(value); // Chỉ set khi có giá trị
+                }}
+                variant="outline"
+              >
+                <ToggleGroupItem value="all" aria-label="Show all">All</ToggleGroupItem>
+                <ToggleGroupItem value="active" aria-label="Show active only">Active</ToggleGroupItem>
+                <ToggleGroupItem value="inactive" aria-label="Show inactive only">Inactive</ToggleGroupItem>
+              </ToggleGroup>
+            </div>
+          </div>
           <Separator className="my-6" />
 
           {/* 6. Cập nhật Dialog Content */}
@@ -383,17 +451,32 @@ export default function ClubLeaderGiftPage() {
                   {/* Hiển thị có điều kiện */}
                   {form.type === "EVENT_ITEM" && (
                     <div className="space-y-1">
-                      <Label htmlFor="eventId">Event ID</Label>
-                      <Input
-                        id="eventId"
+                      <Label htmlFor="eventId">Event</Label>
+                      {/* Thay thế Input bằng Select */}
+                      <Select
                         name="eventId"
-                        type="number"
-                        value={form.eventId || 0}
-                        onChange={handleChange}
-                        placeholder="ID of the related event"
-                        min={1}
-                        className="mt-2 border-slate-300"
-                      />
+                        // Select value phải là string, và 0 hoặc "" để placeholder hiển thị
+                        value={form.eventId ? String(form.eventId) : ""}
+                        onValueChange={handleEventSelectChange} // Dùng handler mới
+                      >
+                        <SelectTrigger className="mt-2 border-slate-300">
+                          <SelectValue placeholder="Select an approved or on-going event" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {eventsLoading ? (
+                            <SelectItem value="loading" disabled>Loading events...</SelectItem>
+                          ) : availableEvents.length > 0 ? (
+                            // Map qua các event đã lọc
+                            availableEvents.map((event) => (
+                              <SelectItem key={event.id} value={String(event.id)}>
+                                {event.name}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="no-events" disabled>No available events found</SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
                     </div>
                   )}
 
@@ -516,11 +599,8 @@ export default function ClubLeaderGiftPage() {
                           />
                           {/* Badge Active/Inactive (Giống trong ảnh) */}
                           <Badge
-                            // variant={p.isActive ? "default" : "secondary"}
                             variant={p.status === "ACTIVE" ? "default" : "secondary"}
-                            // className={`absolute right-2 top-2 z-10 text-xs ${p.isActive ? "bg-green-600 text-white" : "bg-gray-500 text-white"
-                            //   }`}
-                            className={`absolute right-2 top-2 z-10 text-xs ${p.status === "ACTIVE" ? "bg-green-600 text-white" : "bg-gray-500 text-white" // 👈 CẬP NHẬT
+                            className={`absolute right-2 top-2 z-10 text-xs ${p.status === "ACTIVE" ? "bg-green-600 text-white" : "bg-gray-500 text-white"
                               }`}
                           >
                             {p.status === "ACTIVE" ? "Active" : p.status}
