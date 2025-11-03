@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Gift, Package, ChevronLeft, ChevronRight, Layers, Loader2 } from "lucide-react"
+import { Gift, Package, ChevronLeft, ChevronRight, Layers, Loader2, Eye } from "lucide-react"
 import { usePagination } from "@/hooks/use-pagination"
 import { useClubs, useProductsByClubId, useProfile, queryKeys } from "@/hooks/use-query-hooks"
 import { Product } from "@/service/productApi"
@@ -17,15 +17,9 @@ import { safeLocalStorage } from "@/lib/browser-utils"
 import { useToast } from "@/hooks/use-toast"
 import { useQueryClient } from "@tanstack/react-query"
 import { redeemClubProduct, redeemEventProduct, RedeemPayload } from "@/service/redeemApi"
+import { useRouter, useSearchParams } from "next/navigation"
+import { ApiMembership } from "@/service/membershipApi"
 
-// Định nghĩa (hoặc import) kiểu dữ liệu cho Wallet từ Profile
-// interface MembershipWallet {
-// 	walletId: number;
-// 	membershipId: number; // 👈 Đây là ID chúng ta cần
-// 	clubId: number;
-// 	clubName: string;
-// 	balancePoints: number;
-// }
 // ========== Minimal Pager ==========
 const MinimalPager = ({
 	current,
@@ -67,19 +61,22 @@ const MinimalPager = ({
 // ========== COMPONENT ==========
 export default function MemberGiftPage() {
 	const [searchTerm, setSearchTerm] = useState("")
-	const { toast } = useToast() // 👈 Thêm toast
+	const { toast } = useToast()
+	const router = useRouter()
+	const searchParams = useSearchParams()
+	const clubIdFromQuery = searchParams.get('clubId') // Lấy clubId từ URL
 	// ✅ MỚI: Thêm state cho logic chọn club
 	const [userClubIds, setUserClubIds] = useState<number[]>([])
 	const [userClubsDetails, setUserClubsDetails] = useState<any[]>([])
-	const [selectedClubId, setSelectedClubId] = useState<string | null>(null) // Bắt đầu là null
+	const [selectedClubId, setSelectedClubId] = useState<string | null>(null)// Bắt đầu là null
 	const [redeemingProductId, setRedeemingProductId] = useState<number | null>(null)
 	const queryClient = useQueryClient()
-	// const [wallets, setWallets] = useState<MembershipWallet[]>([])
-	const [wallets, setWallets] = useState<any[]>([]) // Dùng 'any[]' hoặc import 'MembershipWallet'
-	const { data: profile, isLoading: profileLoading } = useProfile(true)
-
-	// Fetch all clubs để lấy tên
+	// const [wallets, setWallets] = useState<any[]>([]) // Dùng 'any[]' hoặc import 'MembershipWallet'
+	// const { data: profile, isLoading: profileLoading } = useProfile(true)
+	const { data: profile, isLoading: profileLoading } = useProfile(true) as { data: ApiMembership[], isLoading: boolean }
 	const { data: clubsData = [], isLoading: clubsLoading } = useClubs()
+
+
 
 	// Dùng useProductsByClubId thay vì useProducts
 	const {
@@ -94,11 +91,11 @@ export default function MemberGiftPage() {
 	const isLoading = clubsLoading || profileLoading || (productsLoading && !selectedClubId); // Chỉ loading chính khi đang tải club hoặc chưa chọn club
 
 
-	useEffect(() => {
-		if (profile && profile.wallets) {
-			setWallets(profile.wallets) // 👈 Xóa "as MembershipWallet[]"
-		}
-	}, [profile])
+	// useEffect(() => {
+	// 	if (profile && profile.wallets) {
+	// 		setWallets(profile.wallets)
+	// 	}
+	// }, [profile])
 	// Lấy club IDs của user từ localStorage
 	useEffect(() => {
 		try {
@@ -117,9 +114,8 @@ export default function MemberGiftPage() {
 		} catch (error) {
 			console.error("Failed to get clubIds from localStorage:", error)
 		}
-	}, []) // Chạy 1 lần
+	}, [])
 
-	// Lấy club IDs của user từ localStorage (Giữ nguyên)
 	useEffect(() => {
 		try {
 			const saved = safeLocalStorage.getItem("uniclub-auth")
@@ -138,35 +134,42 @@ export default function MemberGiftPage() {
 		} catch (error) {
 			console.error("Failed to get clubIds from localStorage:", error)
 		}
-	}, []) // Chạy 1 lần
+	}, [])
 
-	// Lấy chi tiết club cho dropdown VÀ set default (Giữ nguyên)
 	useEffect(() => {
 		if (userClubIds.length > 0 && clubsData.length > 0) {
+
 			const details = userClubIds
 				.map((id) => clubsData.find((club: any) => club.id === id))
-				.filter(Boolean)
+				.filter(Boolean);
 
-			setUserClubsDetails(details as any[])
+			setUserClubsDetails(details as any[]);
+			const validClubIds = details.map(c => String(c.id));
 
-			// Tự động chọn club đầu tiên nếu chưa có gì được chọn
-			if (details.length > 0 && selectedClubId === null) {
-				setSelectedClubId(String(details[0].id))
+			if (clubIdFromQuery && validClubIds.includes(clubIdFromQuery)) {
+				if (selectedClubId !== clubIdFromQuery) {
+					setSelectedClubId(clubIdFromQuery);
+				}
+				return;
+			}
+			if (selectedClubId && validClubIds.includes(selectedClubId)) {
+				return;
+			}
+			if (validClubIds.length > 0) {
+				setSelectedClubId(validClubIds[0]);
 			}
 		}
-	}, [userClubIds, clubsData, selectedClubId]) // Thêm selectedClubId để tránh re-render vô hạn
+	}, [userClubIds, clubsData, clubIdFromQuery, selectedClubId]);
+	//
 
 	// Logic lọc (Luôn lọc 'ACTIVE' trước)
 	const filteredProducts = useMemo(() => {
-		// Bước 1: Luôn luôn chỉ lấy sản phẩm ACTIVE
 		const activeProducts = products.filter(p => p.status === "ACTIVE");
 
-		// Bước 2: Nếu không có tìm kiếm, trả về tất cả sản phẩm ACTIVE
 		if (!searchTerm) {
 			return activeProducts;
 		}
 
-		// Bước 3: Nếu có tìm kiếm, lọc tiếp trên danh sách ACTIVE
 		const searchLower = searchTerm.toLowerCase()
 		return activeProducts.filter((p) => {
 			return p.name.toLowerCase().includes(searchLower) ||
@@ -180,14 +183,14 @@ export default function MemberGiftPage() {
 		setCurrentPage,
 		paginatedData: paginatedProducts,
 	} = usePagination({ data: filteredProducts, initialPageSize: 9 })
-	// 🛑 CẬP NHẬT: Hàm xử lý Redeem với thông báo lỗi cụ thể
+	// Hàm xử lý Redeem với thông báo lỗi cụ thể
 	const handleRedeem = async (product: Product) => {
 		setRedeemingProductId(product.id);
 
 		try {
 			// 1. Kiểm tra xem profile (wallets) đã tải xong và có dữ liệu chưa
-			if (!wallets || wallets.length === 0) {
-				throw new Error("Your membership information (wallet) was not found. You cannot redeem the gift..");
+			if (!profile || profile.length === 0) {
+				throw new Error("Your membership information was not found. You cannot redeem the gift.");
 			}
 
 			// 2. Kiểm tra xem club đã được chọn chưa
@@ -196,20 +199,19 @@ export default function MemberGiftPage() {
 			}
 
 			// 3. Tìm wallet (và membershipId) tương ứng với club đang chọn
-			const currentWallet = wallets.find(w => w.clubId === Number(selectedClubId));
+			const currentMembership = profile.find(m => m.clubId === Number(selectedClubId));
 
-			if (!currentWallet) {
-				// Lấy tên club để hiển thị lỗi
-				const clubName = userClubsDetails.find(c => c.id === Number(selectedClubId))?.name || "this club";
-				throw new Error(`You do not have a membership wallet for ${clubName}.`);
-			}
+			if (!currentMembership) {
+                const clubName = userClubsDetails.find(c => c.id === Number(selectedClubId))?.name || "this club";
+                throw new Error(`You are not a member of ${clubName}.`);
+            }
 
 			// 4. Tạo payload
 			const payload: RedeemPayload = {
-				productId: product.id,
-				quantity: 1, // Mặc định là 1
-				membershipId: currentWallet.membershipId // Gửi ID thành viên
-			};
+                productId: product.id,
+                quantity: 1, 
+                membershipId: currentMembership.membershipId // Gửi ID thành viên
+            };
 
 			let order;
 			// 5. Kiểm tra loại sản phẩm để gọi đúng API
@@ -252,7 +254,7 @@ export default function MemberGiftPage() {
 				<div className="space-y-6">
 					<div>
 						<h1 className="text-3xl font-bold">Gift Products</h1>
-						{/* ✅ CẬP NHẬT: Thêm thông tin club */}
+						{/* Thêm thông tin club */}
 						<p className="text-muted-foreground">
 							Browse and redeem products from your clubs
 							{userClubIds.length > 0 && (
@@ -263,7 +265,7 @@ export default function MemberGiftPage() {
 						</p>
 					</div>
 
-					{/* ✅ MỚI: Thêm Flex container cho Input và Select */}
+					{/* Thêm Flex container cho Input và Select */}
 					<div className="flex flex-wrap gap-4">
 						<Input
 							placeholder="Search products..."
@@ -275,13 +277,15 @@ export default function MemberGiftPage() {
 							className="max-w-sm flex-1 min-w-[200px]"
 						/>
 
-						{/* ✅ MỚI: Dropdown chọn Club */}
+						{/*  Dropdown chọn Club */}
 						{userClubIds.length > 0 && (
 							<Select
-								value={selectedClubId || ""} // Xử lý giá trị null
+								value={selectedClubId || ""}
 								onValueChange={(value) => {
 									setSelectedClubId(value)
-									setCurrentPage(1) // Reset về trang 1 khi đổi filter
+									// ❗️ Dòng này rất quan trọng
+									router.push(`/student/gift?clubId=${value}`, { scroll: false })
+									setCurrentPage(1)
 								}}
 							>
 								<SelectTrigger className="w-full sm:w-[240px]">
@@ -309,7 +313,7 @@ export default function MemberGiftPage() {
 								<Package className="h-12 w-12 text-muted-foreground mx-auto mb-4 animate-pulse" />
 								<p className="text-muted-foreground">Loading clubs...</p>
 							</div>
-						) : isFetching ? ( // 👈 THÊM: Loading khi đổi club
+						) : isFetching ? ( //Loading khi đổi club
 							<div className="col-span-full text-center py-12">
 								<Package className="h-12 w-12 text-muted-foreground mx-auto mb-4 animate-pulse" />
 								<p className="text-muted-foreground">Loading products for this club...</p>
@@ -332,25 +336,29 @@ export default function MemberGiftPage() {
 							</div>
 						) : (
 							paginatedProducts.map((p) => {
-								// 👈 LẤY ẢNH THUMBNAIL
+								// LẤY ẢNH THUMBNAIL
 								const thumbnail = p.media?.find((m) => m.thumbnail)?.url || "/placeholder.svg";
 								const isRedeeming = redeemingProductId === p.id;
 								const isOutOfStock = p.stockQuantity === 0;
+								const detailUrl = `/student/gift/${p.id}?clubId=${selectedClubId}`;
 
 								return (
 									<Card
 										key={p.id}
 										className="transition-all duration-200 hover:shadow-md flex flex-col h-full relative overflow-hidden"
 									>
-										<CardHeader className="p-0 border-b"> {/* 👈 Sửa Padding */}
-											<div className="aspect-video w-full relative overflow-hidden bg-muted">
+										<CardHeader className="p-0 border-b">
+											<div
+												className="aspect-video w-full relative overflow-hidden bg-muted cursor-pointer"
+												onClick={() => router.push(detailUrl)}
+											>
 												<img
-													src={thumbnail} // 👈 Dùng thumbnail
+													src={thumbnail}
 													alt={p.name}
 													className="object-cover w-full h-full"
 													onError={(e) => (e.currentTarget.src = "/placeholder.svg")}
 												/>
-												{/* 👈 Badge Club Name */}
+												{/* Badge Club Name */}
 												<Badge
 													variant="secondary"
 													className="absolute right-2 top-2 z-10 text-xs"
@@ -360,17 +368,21 @@ export default function MemberGiftPage() {
 											</div>
 										</CardHeader>
 
-										<CardContent className="p-3 flex flex-col gap-2 grow"> {/* 👈 Sửa Padding */}
+										<CardContent className="p-3 flex flex-col gap-2 grow">
 											<div className="min-w-0">
-												<CardTitle className="text-base font-semibold truncate" title={p.name}> {/* 👈 Sửa Cỡ chữ */}
+												<CardTitle
+													className="text-base font-semibold truncate cursor-pointer hover:text-primary"
+													title={p.name}
+													onClick={() => router.push(detailUrl)}
+												>
 													{p.name}
 												</CardTitle>
-												<CardDescription className="mt-1 text-sm line-clamp-2" title={p.description}> {/* 👈 Sửa Cỡ chữ */}
+												<CardDescription className="mt-1 text-sm line-clamp-2" title={p.description}>
 													{p.description || "No description."}
 												</CardDescription>
 											</div>
 
-											{/* 👈 THÊM: Hiển thị Tags */}
+											{/*Hiển thị Tags */}
 											{p.tags && p.tags.length > 0 && (
 												<div className="flex flex-wrap gap-1 mt-1">
 													{p.tags.map((tag) => (
@@ -385,7 +397,7 @@ export default function MemberGiftPage() {
 												</div>
 											)}
 
-											{/* 👈 Sửa: Đẩy giá và kho xuống dưới */}
+											{/* Đẩy giá và kho xuống dưới */}
 											<div className="flex items-center justify-between mt-auto pt-2">
 												<span className="font-semibold text-blue-600 text-base">
 													{p.pointCost} points
@@ -395,10 +407,21 @@ export default function MemberGiftPage() {
 												</span>
 											</div>
 
-											{/* 👈 Sửa: Nút Redeem */}
-											<div className="mt-2">
+											{/* Nút Redeem và Nút Details */}
+											<div className="mt-2 grid grid-cols-2 gap-2">
+												{/* Nút View Details */}
 												<Button
-													className="w-full"
+													variant="outline"
+													size="sm"
+													onClick={() => router.push(detailUrl)}
+													disabled={isRedeeming} // Vô hiệu hóa khi đang redeem
+												>
+													<Eye className="h-4 w-4 mr-2 flex-shrink-0" />
+													<span className="truncate">Details</span>
+												</Button>
+
+												{/* Nút Redeem */}
+												<Button
 													variant={isOutOfStock ? "secondary" : "default"}
 													size="sm"
 													disabled={isOutOfStock || isRedeeming}
