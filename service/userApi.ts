@@ -69,6 +69,7 @@ export const fetchProfile = async () => {
         phone: profileData?.phone,
         status: profileData?.status,
         avatarUrl: profileData?.avatarUrl,
+        backgroundUrl: profileData?.backgroundUrl,
         studentCode: profileData?.studentCode,
         majorName: profileData?.majorName,
         bio: profileData?.bio,
@@ -168,6 +169,31 @@ export const uploadAvatar = async (file: File) => {
     return body as any
   } catch (error) {
     console.error("Error uploading avatar:", error)
+    throw error
+  }
+}
+
+// New: uploadBackground - upload background image file directly to backend
+export const uploadBackground = async (file: File) => {
+  try {
+    console.log("Uploading background file:", file.name)
+
+    const formData = new FormData()
+    formData.append('file', file)
+
+    // Call API to upload background with multipart/form-data
+    const response = await axiosInstance.post(`api/users/profile/background`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      }
+    })
+
+    const body = response.data
+    console.log("Upload background response:", body)
+
+    return body as any
+  } catch (error) {
+    console.error("Error uploading background:", error)
     throw error
   }
 }

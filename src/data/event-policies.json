@@ -1,0 +1,38 @@
+{
+  "title": "Event Policy",
+  "sections": [
+    {
+      "heading": "Points & Budget",
+      "items": [
+        {
+          "text": "Point Cost: The commitment points students must spend to register for the event",
+          "important": true
+        },
+        {
+          "text": "Higher point costs indicate more important or exclusive events"
+        },
+        {
+          "text": "Students earn points back upon successful event check-in"
+        },
+        {
+          "text": "Budget Points: The total budget allocated from your club's budget pool for event expenses",
+          "important": true
+        },
+        {
+          "text": "Budget points cover event costs like venues, materials, refreshments, and rewards"
+        },
+        {
+          "text": "Unused budget points will be returned to the club after the event"
+        },
+        {
+          "text": "Budget must be justified with detailed expense breakdown for approval"
+        }
+      ]
+    }
+  ],
+  "footer": {
+    "text": "For questions or clarifications, please contact University Staff or refer to the full event management handbook.",
+    "important": false
+  }
+}
+

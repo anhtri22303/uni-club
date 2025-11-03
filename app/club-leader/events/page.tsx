@@ -28,6 +28,9 @@ import { fetchClub, getClubIdFromToken } from "@/service/clubApi"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useQueryClient } from "@tanstack/react-query"
 import { queryKeys } from "@/hooks/use-query-hooks"
+import eventPolicies from "@/src/data/event-policies.json"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { AlertCircle } from "lucide-react"
 
 export default function ClubLeaderEventsPage() {
   const router = useRouter()
@@ -108,9 +111,8 @@ export default function ClubLeaderEventsPage() {
     if (!event.date || !event.endTime) return false
 
     try {
-      // Get current date/time in Vietnam timezone (UTC+7)
+      // Get current date/time
       const now = new Date()
-      const vnTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }))
 
       // Parse event date (format: YYYY-MM-DD)
       const [year, month, day] = event.date.split('-').map(Number)
@@ -121,11 +123,11 @@ export default function ClubLeaderEventsPage() {
       // Parse endTime (format: HH:MM:SS or HH:MM)
       const [hours, minutes] = endTimeStr.split(':').map(Number)
 
-      // Create event end datetime in Vietnam timezone
+      // Create event end datetime (using local timezone consistently)
       const eventEndDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0)
 
-      // Event is expired if current VN time is past the end time
-      return vnTime > eventEndDateTime
+      // Event is expired if current time is past the end time
+      return now > eventEndDateTime
     } catch (error) {
       console.error('Error checking event expiration:', error)
       return false
@@ -221,6 +223,7 @@ export default function ClubLeaderEventsPage() {
   }, [viewMode, rawEvents, rawCoHostEvents, userClubId])
 
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showPolicyModal, setShowPolicyModal] = useState(false)
   const [showCalendarModal, setShowCalendarModal] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<any>(null)
   const [showPhaseModal, setShowPhaseModal] = useState(false)
@@ -344,31 +347,39 @@ export default function ClubLeaderEventsPage() {
   const [showFilters, setShowFilters] = useState(false)
 
   // Helper to get event status based on date and time
-  const getEventStatus = (eventDate: string, eventTime: string | any) => {
-    if (!eventDate) return "Finished"
-    // Get current time in Vietnam timezone (UTC+7)
+  const getEventStatus = (event: any) => {
+    if (!event.date) return "Finished"
+    // Get current time
     const now = new Date()
-    const vnTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }))
 
     // Convert TimeObject to string if needed
-    const eventTimeStr = timeObjectToString(eventTime)
+    const startTimeStr = timeObjectToString(event.startTime || event.time)
+    const endTimeStr = timeObjectToString(event.endTime)
     
-    // Parse event date and time
-    const [hour = "00", minute = "00"] = (eventTimeStr || "00:00").split(":")
-    const [year, month, day] = eventDate.split('-').map(Number)
-    const event = new Date(year, month - 1, day, Number(hour), Number(minute), 0, 0)
+    // Parse event date and start time
+    const [startHour = "00", startMinute = "00"] = (startTimeStr || "00:00").split(":")
+    const [year, month, day] = event.date.split('-').map(Number)
+    const eventStart = new Date(year, month - 1, day, Number(startHour), Number(startMinute), 0, 0)
 
-    // Event duration: assume 2 hours for "Now" window (customize as needed)
-    const EVENT_DURATION_MS = 2 * 60 * 60 * 1000
-    const start = event.getTime()
-    const end = start + EVENT_DURATION_MS
+    // Parse event end time
+    let eventEnd = eventStart
+    if (endTimeStr) {
+      const [endHour = "00", endMinute = "00"] = endTimeStr.split(":")
+      eventEnd = new Date(year, month - 1, day, Number(endHour), Number(endMinute), 0, 0)
+    } else {
+      // If no end time, assume 2 hours duration
+      eventEnd = new Date(eventStart.getTime() + (2 * 60 * 60 * 1000))
+    }
 
-    if (vnTime.getTime() < start) {
+    const start = eventStart.getTime()
+    const end = eventEnd.getTime()
+
+    if (now.getTime() < start) {
       // If event starts within next 7 days, it's "Soon"
-      if (start - vnTime.getTime() < 7 * 24 * 60 * 60 * 1000) return "Soon"
+      if (start - now.getTime() < 7 * 24 * 60 * 60 * 1000) return "Soon"
       return "Future"
     }
-    if (vnTime.getTime() >= start && vnTime.getTime() <= end) return "Now"
+    if (now.getTime() >= start && now.getTime() <= end) return "Now"
     return "Finished"
   }
 
@@ -425,7 +436,7 @@ export default function ClubLeaderEventsPage() {
       } 
       // Handle time-based status options (Soon, Finished)
       else if (expiredFilter === "Soon" || expiredFilter === "Finished") {
-        const status = getEventStatus(item.date, item.time)
+        const status = getEventStatus(item)
         if (String(status).toLowerCase() !== String(expiredFilter).toLowerCase()) return false
       }
       // "show" means show all - no filtering needed
@@ -828,7 +839,7 @@ export default function ClubLeaderEventsPage() {
                   // COMPLETED status means event has ended, regardless of date/time
                   const isCompleted = event.status === "COMPLETED"
                   const expired = isCompleted || isEventExpired(event)
-                  const status = expired ? "Finished" : getEventStatus(event.date, event.time)
+                  const status = expired ? "Finished" : getEventStatus(event)
                   
                   // Border color logic
                   let borderColor = ""
@@ -931,16 +942,6 @@ export default function ClubLeaderEventsPage() {
                                   <span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
                                   Co-Host Rejected
                                 </Badge>
-                              )}
-                              {/* Also show overall event status */}
-                              {event.status === "APPROVED" && (
-                                <Badge variant="secondary" className="bg-green-100 text-green-700 border-green-500">Event Approved</Badge>
-                              )}
-                              {event.status === "PENDING_COCLUB" && (
-                                <Badge variant="outline" className="border-orange-500 text-orange-700 bg-orange-100">Event Pending Co-Club</Badge>
-                              )}
-                              {event.status === "PENDING_UNISTAFF" && (
-                                <Badge variant="outline" className="border-yellow-500 text-yellow-700 bg-yellow-100">Event Pending Uni-Staff</Badge>
                               )}
                             </>
                           ) : (
@@ -1067,15 +1068,96 @@ export default function ClubLeaderEventsPage() {
             </>
           )}
 
-          {/* Create Event Modal */}
+          {/* Event Policy Modal - Right Side */}
+          <Modal
+            open={showPolicyModal && showCreateModal}
+            onOpenChange={() => {}}
+            title={eventPolicies.title}
+            description="Important guidelines for Points & Budget"
+            className="sm:max-w-[500px] max-h-[90vh] overflow-hidden !fixed !left-[calc(50%+400px)] !top-[50%] !translate-x-0 !translate-y-[-50%] z-[60] border-2 border-blue-300/60 dark:border-blue-700/60 shadow-2xl pointer-events-auto"
+            showCloseButton={false}
+            noOverlay={true}
+            style={{ pointerEvents: 'auto' }}
+          >
+            {/* Animated background gradient */}
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-indigo-50 to-violet-50 dark:from-slate-900 dark:via-blue-950 dark:to-indigo-950 -z-10" />
+            <div className="absolute top-0 right-0 w-72 h-72 bg-blue-400/20 dark:bg-blue-500/20 rounded-full blur-3xl -z-10 animate-pulse" />
+            <div className="absolute bottom-0 left-0 w-72 h-72 bg-indigo-400/20 dark:bg-indigo-500/20 rounded-full blur-3xl -z-10 animate-pulse" style={{ animationDelay: '1s' }} />
+            
+            <ScrollArea className="h-[calc(75vh-4rem)]">
+              <div className="space-y-4 pr-4">
+                {eventPolicies.sections.map((section, sectionIndex) => (
+                  <div 
+                    key={sectionIndex} 
+                    className="group bg-white/80 dark:bg-slate-800/50 backdrop-blur-md rounded-2xl p-5 border border-blue-200/60 dark:border-blue-800/40 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.01]"
+                  >
+                    {/* Section Header with Icon */}
+                    <div className="flex items-center gap-3 mb-4 pb-3 border-b border-blue-100 dark:border-blue-900/50">
+                      <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 via-indigo-500 to-violet-500 shadow-lg">
+                        <Trophy className="h-5 w-5 text-white" />
+                      </div>
+                      <h4 className="font-bold text-base bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 dark:from-blue-400 dark:via-indigo-400 dark:to-violet-400 bg-clip-text text-transparent">
+                        {section.heading}
+                      </h4>
+                    </div>
+                    
+                    {/* Items List */}
+                    <ul className="space-y-3">
+                      {section.items.map((item, itemIndex) => (
+                        <li
+                          key={itemIndex}
+                          className={`text-sm leading-relaxed flex items-start gap-3 rounded-xl transition-all duration-200 ${
+                            item.important 
+                              ? 'bg-gradient-to-r from-amber-50 via-yellow-50 to-orange-50 dark:from-amber-900/20 dark:via-yellow-900/20 dark:to-orange-900/20 border-l-4 border-amber-500 dark:border-amber-400 pl-4 pr-3 py-3 font-semibold text-amber-950 dark:text-amber-200 shadow-md hover:shadow-lg' 
+                              : 'text-gray-700 dark:text-gray-300 pl-1 pr-2 py-1 hover:pl-2 hover:bg-blue-50/50 dark:hover:bg-blue-900/20 rounded-lg'
+                          }`}
+                        >
+                          {item.important ? (
+                            <>
+                              <div className="flex items-center justify-center w-5 h-5 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex-shrink-0 mt-0.5 shadow-md">
+                                <AlertCircle className="h-3 w-3 text-white" />
+                              </div>
+                              <span className="flex-1">{item.text}</span>
+                            </>
+                          ) : (
+                            <>
+                              <div className="flex items-center justify-center w-2 h-2 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex-shrink-0 mt-2 shadow-sm" />
+                              <span className="flex-1">{item.text}</span>
+                            </>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+                
+                {/* Footer Section */}
+                {eventPolicies.footer && (
+                  <div className="mt-5 p-5 bg-gradient-to-r from-blue-100/80 via-indigo-100/80 to-violet-100/80 dark:from-blue-900/30 dark:via-indigo-900/30 dark:to-violet-900/30 rounded-2xl border-2 border-blue-300/50 dark:border-blue-700/50 backdrop-blur-md shadow-lg">
+                    <div className="flex items-start gap-4">
+                      <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 via-indigo-500 to-violet-500 shadow-lg flex-shrink-0">
+                        <span className="text-white text-xl">💡</span>
+                      </div>
+                      <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed italic flex-1 pt-1.5 font-medium">
+                        {eventPolicies.footer.text}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          </Modal>
+
+          {/* Create Event Modal - Left Side */}
           <Modal
             open={showCreateModal}
             onOpenChange={setShowCreateModal}
             title="Create New Event"
             description="Add a new event for your club members"
-            className="sm:max-w-3xl max-h-[90vh] overflow-y-auto"
+            className="sm:max-w-[880px] max-h-[85vh] overflow-hidden !fixed !left-[calc(50%-620px)] !top-[50%] !translate-x-0 !translate-y-[-50%] z-[60]"
           >
-            <div className="space-y-3">
+            <ScrollArea className="h-[calc(75vh-4rem)] pr-4">
+              <div className="space-y-3">
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="name" className="text-sm">Event Name *</Label>
@@ -1184,13 +1266,25 @@ export default function ClubLeaderEventsPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="commitPointCost" className="text-sm">Point Cost</Label>
+                  <Label htmlFor="commitPointCost" className="text-sm flex items-center gap-1.5">
+                    Point Cost
+                    <button
+                      type="button"
+                      onClick={() => setShowPolicyModal(!showPolicyModal)}
+                      className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                      title="View policy guidelines"
+                    >
+                      <AlertCircle className="h-3.5 w-3.5" />
+                    </button>
+                  </Label>
                   <Input
                     id="commitPointCost"
                     type="number"
                     value={formData.commitPointCost}
                     onChange={(e) => setFormData({ ...formData, commitPointCost: Number.parseInt(e.target.value) || 0 })}
-                    className="h-9"
+                    onClick={() => setShowPolicyModal(true)}
+                    onFocus={() => setShowPolicyModal(true)}
+                    className="h-9 transition-all duration-200 focus:ring-2 focus:ring-blue-500 cursor-pointer"
                     placeholder="0"
                     min="0"
                   />
@@ -1199,13 +1293,25 @@ export default function ClubLeaderEventsPage() {
 
               <div className="grid grid-cols-1 gap-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="budgetPoints" className="text-sm">Budget Points</Label>
+                  <Label htmlFor="budgetPoints" className="text-sm flex items-center gap-1.5">
+                    Budget Points
+                    <button
+                      type="button"
+                      onClick={() => setShowPolicyModal(!showPolicyModal)}
+                      className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                      title="View policy guidelines"
+                    >
+                      <AlertCircle className="h-3.5 w-3.5" />
+                    </button>
+                  </Label>
                   <Input
                     id="budgetPoints"
                     type="number"
                     value={formData.budgetPoints}
                     onChange={(e) => setFormData({ ...formData, budgetPoints: Number.parseInt(e.target.value) || 0 })}
-                    className="h-9"
+                    onClick={() => setShowPolicyModal(true)}
+                    onFocus={() => setShowPolicyModal(true)}
+                    className="h-9 transition-all duration-200 focus:ring-2 focus:ring-blue-500 cursor-pointer"
                     placeholder="0"
                     min="0"
                   />
@@ -1234,7 +1340,7 @@ export default function ClubLeaderEventsPage() {
                     <SelectTrigger id="locationName" className="h-9">
                       <SelectValue placeholder={locationsLoading ? "Loading locations..." : "Select a location"} />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="z-[70]">
                       {locations.map((location) => (
                         <SelectItem key={location.id} value={String(location.id)}>
                           {location.name} {location.capacity && `(${location.capacity})`}
@@ -1345,7 +1451,8 @@ export default function ClubLeaderEventsPage() {
                   )}
                 </Button>
               </div>
-            </div>
+              </div>
+            </ScrollArea>
           </Modal>
 
           {/* QR Modal */}

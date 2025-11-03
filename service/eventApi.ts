@@ -22,6 +22,7 @@ export interface Event {
   maxCheckInCount: number
   currentCheckInCount: number
   budgetPoints: number
+  commitPointCost: number
   hostClub: {
     id: number
     name: string
@@ -90,6 +91,12 @@ export const fetchEvent = async ({ page = 0, size = 70, sort = "name" } = {}): P
     });
     const data: any = response.data;
     console.log(`fetchEvent at ${new Date().toISOString()}:`, data);
+    
+    // Log first event to check structure
+    if (data?.content?.[0]) {
+      console.log("First event in response:", data.content[0]);
+      console.log("commitPointCost in first event:", data.content[0].commitPointCost);
+    }
 
     // Response structure: { content: [...], pageable: {...}, ... }
     // Always return the content array for event list

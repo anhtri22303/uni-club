@@ -447,7 +447,7 @@ export default function VirtualCardPage() {
             </div>
 
             {/* Card Display */}
-            <div className="max-w-4xl mx-auto">
+            <div className="max-w-5xl mx-auto">
               <CardPreview
                 ref={cardRef}
                 cardData={cardData}
@@ -463,6 +463,7 @@ export default function VirtualCardPage() {
                 showLogo={showLogo}
                 patternOpacity={patternOpacity}
                 cardOpacity={cardOpacity}
+                showFrame={false}
               />
             </div>
           </div>

@@ -12,6 +12,8 @@ interface AvatarCropModalProps {
   onClose: () => void
   imageSrc: string
   onCropComplete: (croppedBlob: Blob) => void | Promise<void>
+  aspectRatio?: number // Optional: defaults to 1 (square) for avatars
+  title?: string // Optional: custom title for the modal
 }
 
 function getCroppedImg(
@@ -56,7 +58,14 @@ function getCroppedImg(
   })
 }
 
-export function AvatarCropModal({ isOpen, onClose, imageSrc, onCropComplete }: AvatarCropModalProps) {
+export function AvatarCropModal({ 
+  isOpen, 
+  onClose, 
+  imageSrc, 
+  onCropComplete,
+  aspectRatio = 1, // Default to square for avatars
+  title = "Crop Avatar" // Default title
+}: AvatarCropModalProps) {
   const [crop, setCrop] = useState<Crop>({
     unit: '%',
     width: 80,
@@ -71,19 +80,39 @@ export function AvatarCropModal({ isOpen, onClose, imageSrc, onCropComplete }: A
   const onImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
     const { width, height } = e.currentTarget
     
-    // Set initial crop to be square in the center
-    const size = Math.min(width, height) * 0.8
-    const x = (width - size) / 2
-    const y = (height - size) / 2
+    // Calculate initial crop based on aspect ratio
+    let cropWidth: number
+    let cropHeight: number
+    
+    if (aspectRatio === 1) {
+      // Square crop (avatar)
+      const size = Math.min(width, height) * 0.8
+      cropWidth = size
+      cropHeight = size
+    } else {
+      // Rectangular crop (background) - use aspect ratio
+      if (width / height > aspectRatio) {
+        // Image is wider than desired aspect ratio
+        cropHeight = height * 0.8
+        cropWidth = cropHeight * aspectRatio
+      } else {
+        // Image is taller than desired aspect ratio
+        cropWidth = width * 0.8
+        cropHeight = cropWidth / aspectRatio
+      }
+    }
+    
+    const x = (width - cropWidth) / 2
+    const y = (height - cropHeight) / 2
     
     setCrop({
       unit: 'px',
-      width: size,
-      height: size,
+      width: cropWidth,
+      height: cropHeight,
       x,
       y,
     })
-  }, [])
+  }, [aspectRatio])
 
   const handleCropComplete = async () => {
     if (!completedCrop || !imgRef.current) {
@@ -112,7 +141,7 @@ export function AvatarCropModal({ isOpen, onClose, imageSrc, onCropComplete }: A
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CropIcon className="h-5 w-5" />
-            Crop Avatar
+            {title}
           </DialogTitle>
         </DialogHeader>
         
@@ -123,7 +152,7 @@ export function AvatarCropModal({ isOpen, onClose, imageSrc, onCropComplete }: A
                 crop={crop}
                 onChange={(_, percentCrop) => setCrop(percentCrop)}
                 onComplete={(c) => setCompletedCrop(c)}
-                aspect={1} // Square aspect ratio for avatar
+                aspect={aspectRatio}
                 minWidth={100}
                 minHeight={100}
               >
@@ -139,7 +168,7 @@ export function AvatarCropModal({ isOpen, onClose, imageSrc, onCropComplete }: A
           </div>
           
           <div className="text-sm text-muted-foreground text-center">
-            Drag to move and resize the crop area. The image will be cropped to a square for the avatar.
+            Drag to move and resize the crop area. {aspectRatio === 1 ? 'The image will be cropped to a square.' : 'Adjust the frame to fit your desired area.'}
           </div>
           
           <div className="flex justify-end gap-3 pt-4 border-t">
