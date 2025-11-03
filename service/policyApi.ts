@@ -14,40 +14,62 @@ export interface Policy {
 
 const API_PATH = "api/university/major-policies"
 
+// export const fetchPolicies = async (): Promise<Policy[]> => {
+//     try {
+//         // Path đã được cập nhật
+//         const response = await axiosInstance.get(API_PATH)
+//         const body = response.data
+//         // Giữ lại logic kiểm tra wrapper để đảm bảo an toàn
+//         if (body && typeof body === "object" && "content" in body && Array.isArray(body.content)) {
+//             return body.content
+//         }
+//         if (Array.isArray(body)) return body
+//         if (body && typeof body === "object" && "data" in body && Array.isArray(body.data)) {
+//             return body.data
+//         }
+//         return []
+//     } catch (error) {
+//         console.error("Error fetching policies:", error)
+//         throw error
+//     }
+// }
 export const fetchPolicies = async (): Promise<Policy[]> => {
     try {
-        // Path đã được cập nhật
         const response = await axiosInstance.get(API_PATH)
-        const body = response.data
-        // Giữ lại logic kiểm tra wrapper để đảm bảo an toàn
-        if (body && typeof body === "object" && "content" in body && Array.isArray(body.content)) {
-            return body.content
-        }
-        if (Array.isArray(body)) return body
-        if (body && typeof body === "object" && "data" in body && Array.isArray(body.data)) {
-            return body.data
-        }
-        return []
+        // Cập nhật: Swagger (image_4286a7.png) cho thấy response là một mảng Policy[] trực tiếp
+        // Loại bỏ logic kiểm tra wrapper 'content' hoặc 'data'
+        return response.data as Policy[]
     } catch (error) {
         console.error("Error fetching policies:", error)
         throw error
     }
 }
 
+// export const fetchPolicyById = async (id: number): Promise<Policy> => {
+//     try {
+//         // Path đã được cập nhật
+//         const response = await axiosInstance.get(`${API_PATH}/${id}`)
+//         const body: any = response.data
+//         // Giữ lại logic kiểm tra wrapper
+//         if (body && typeof body === "object" && "data" in body) {
+//             return body.data
+//         }
+//         return body
+//     } catch (error) {
+//         console.error(`Error fetching policy ${id}:`, error)
+//         throw error
+//     }
+// }
 export const fetchPolicyById = async (id: number): Promise<Policy> => {
         try {
-            // Path đã được cập nhật
             const response = await axiosInstance.get(`${API_PATH}/${id}`)
-            const body: any = response.data
-            // Giữ lại logic kiểm tra wrapper
-            if (body && typeof body === "object" && "data" in body) {
-                return body.data
-            }
-            return body
+            // Cập nhật: Swagger (image_4286e5.png) cho thấy response là một object Policy trực tiếp
+            // Loại bỏ logic kiểm tra wrapper 'data'
+            return response.data as Policy
         } catch (error) {
             console.error(`Error fetching policy ${id}:`, error)
             throw error
-    }
+        }
 }
 
 export const createPolicy = async (payload: Partial<Policy>): Promise<Policy> => {
@@ -75,11 +97,11 @@ export const updatePolicyById = async (id: number, payload: Partial<Policy>): Pr
     }
 }
 
-export const deletePolicyById = async (id: number) => {
+export const deletePolicyById = async (id: number): Promise<void> => {
     try {
-        // Path đã được cập nhật
-        const response = await axiosInstance.delete(`${API_PATH}/${id}`)
-        return response.data as any
+        // Cập nhật: Swagger (image_428dca.png) cho thấy response 200 OK không có body
+        await axiosInstance.delete(`${API_PATH}/${id}`)
+        // Không return gì cả
     } catch (error) {
         console.error(`Error deleting policy ${id}:`, error)
         throw error

@@ -118,7 +118,7 @@ export default function UniStaffPoliciesPage() {
       const res: Policy = await updatePolicyById(selected.id, payload)
 
       // Nếu 'await' thành công (không ném lỗi), thì đã cập nhật
-      toast({ title: "Cập nhật thành công", description: `Đã cập nhật policy: ${res.policyName}` })
+      toast({ title: "Update successful", description: `Policy updated: ${res.policyName}` })
 
       // update local selected so modal reflects saved values
       setSelected(res) // Cập nhật state với dữ liệu mới từ server
@@ -127,7 +127,7 @@ export default function UniStaffPoliciesPage() {
       reloadPolicies()
     } catch (err) {
       console.error('Update policy failed:', err)
-      toast({ title: 'Lỗi', description: 'Có lỗi khi cập nhật policy.' })
+      toast({ title: 'Error', description: 'Error updating policy.' })
     } finally {
       setSaving(false)
     }
@@ -231,9 +231,9 @@ export default function UniStaffPoliciesPage() {
                                   </AlertDialogTrigger>
                                   <AlertDialogContent>
                                     <AlertDialogHeader>
-                                      <AlertDialogTitle>Bạn có chắc chắn muốn xóa?</AlertDialogTitle>
+                                      <AlertDialogTitle>Are you sure you want to delete??</AlertDialogTitle>
                                       <AlertDialogDescription>
-                                        Hành động này không thể hoàn tác. Policy sau sẽ bị xóa vĩnh viễn:
+                                        This action cannot be undone. The following policy will be permanently deleted:
                                         <br />
                                         <strong className="mt-2 block">{p.policyName}</strong>
                                       </AlertDialogDescription>
@@ -248,16 +248,16 @@ export default function UniStaffPoliciesPage() {
                                             try {
                                               const res: any = await deletePolicyById(p.id)
                                               if (res && (res.success === true || res.deleted)) {
-                                                toast({ title: res.message || 'Đã xóa', description: '' })
+                                                toast({ title: res.message || 'Deleted', description: '' })
                                                 if (selected?.id === p.id) setDialogOpen(false)
                                                 await reloadPolicies()
                                                 try { router.refresh() } catch (e) { /* ignore */ }
                                               } else {
-                                                toast({ title: 'Thất bại', description: (res && res.message) || 'Xóa policy thất bại.' })
+                                                toast({ title: 'Failure', description: (res && res.message) || 'Delete policy failed.' })
                                               }
                                             } catch (err) {
                                               console.error('Delete policy failed:', err)
-                                              toast({ title: 'Lỗi', description: 'Có lỗi khi xóa policy.' })
+                                              toast({ title: 'Error', description: 'Error deleting policy.' })
                                             }
                                           }}
                                         >
@@ -341,11 +341,11 @@ export default function UniStaffPoliciesPage() {
                     }}
                   >
                     <SelectTrigger className="mt-2 border-slate-300">
-                      <SelectValue placeholder="Chọn một ngành học..." />
+                      <SelectValue placeholder="Choose a major..." />
                     </SelectTrigger>
                     <SelectContent>
                       {majorsLoading ? (
-                        <SelectItem value="loading" disabled>Đang tải...</SelectItem>
+                        <SelectItem value="loading" disabled>Loading...</SelectItem>
                       ) : (
                         majors.map((major) => (
                           <SelectItem key={major.id} value={major.id.toString()}>
@@ -425,7 +425,7 @@ export default function UniStaffPoliciesPage() {
                     }}
                   >
                     <SelectTrigger className="mt-2 border-slate-300">
-                      <SelectValue placeholder="Chọn một ngành học..." />
+                      <SelectValue placeholder="Choose a major..." />
                     </SelectTrigger>
                     <SelectContent>
                       {majorsLoading ? (
@@ -465,12 +465,12 @@ export default function UniStaffPoliciesPage() {
                         active: true, // Mặc định là active khi tạo mới (theo Swagger)
                       }
                       // [THÊM VÀO] Đây là dòng bạn yêu cầu
-                      console.log("Dữ liệu chuẩn bị gửi đi:", payload)
+                      console.log("Data to be sent:", payload)
                       // createPolicy giờ trả về Policy
                       const res: Policy = await createPolicy(payload)
 
                       // Nếu 'await' thành công, 'res' là policy mới
-                      toast({ title: "Tạo thành công", description: `Đã tạo policy: ${res.policyName}` })
+                      toast({ title: "Create success", description: `Policy created: ${res.policyName}` })
                       setCreateOpen(false)
                       // reset fields
                       setCreatePolicyName("")
@@ -480,9 +480,11 @@ export default function UniStaffPoliciesPage() {
                       setCreateMaxClubJoin(undefined)
                       // reload list
                       await reloadPolicies()
-                    } catch (err) {
+                    } catch (err: any) { // Thêm ': any'
                       console.error('Create policy failed:', err)
-                      toast({ title: 'Lỗi', description: 'Có lỗi khi tạo policy.' })
+                      // Lấy thông báo lỗi chi tiết từ response của server
+                      const errorMsg = err.response?.data?.message || 'Error creating policy.'
+                      toast({ title: 'Error', description: errorMsg }) // Hiển thị lỗi thật
                     } finally {
                       setCreating(false)
                     }
