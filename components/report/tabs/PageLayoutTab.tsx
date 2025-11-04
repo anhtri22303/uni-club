@@ -226,6 +226,7 @@ export function PageLayoutTab({ pageSettings, onPageSettingsChange, onSync }: Pa
                           marginLeft: 25.4,
                           marginRight: 25.4
                         })
+                        onSync?.()
                       }}
                       className="h-8 text-xs"
                     >
@@ -242,6 +243,7 @@ export function PageLayoutTab({ pageSettings, onPageSettingsChange, onSync }: Pa
                           marginLeft: 12.7,
                           marginRight: 12.7
                         })
+                        onSync?.()
                       }}
                       className="h-8 text-xs"
                     >
@@ -258,6 +260,7 @@ export function PageLayoutTab({ pageSettings, onPageSettingsChange, onSync }: Pa
                           marginLeft: 50.8,
                           marginRight: 25.4
                         })
+                        onSync?.()
                       }}
                       className="h-8 text-xs"
                     >
@@ -429,6 +432,7 @@ export function PageLayoutTab({ pageSettings, onPageSettingsChange, onSync }: Pa
                         onClick={() => {
                           updateSetting('watermark', undefined)
                           setCustomWatermark('')
+                          // Don't close popover - let user click outside to close
                         }}
                         className="h-6 text-xs"
                       >

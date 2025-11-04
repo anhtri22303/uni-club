@@ -148,9 +148,111 @@ export default function ReportPage() {
     }
   }, [clubData, pageSettings])
 
+  // Helper: Save cursor position
+  const saveCursorPosition = () => {
+    try {
+      const selection = window.getSelection()
+      if (!selection || selection.rangeCount === 0) return null
+
+      const range = selection.getRangeAt(0)
+      const preSelectionRange = range.cloneRange()
+      
+      // Find the contentEditable ancestor
+      let container = range.startContainer
+      while (container && container.nodeType !== Node.ELEMENT_NODE) {
+        container = container.parentNode
+      }
+      
+      if (!container) return null
+      
+      const editableElement = (container as Element).closest('[contenteditable="true"]')
+      if (!editableElement || !pagesContainerRef.current?.contains(editableElement)) return null
+
+      // Get the page number
+      const page = editableElement.closest('.a4-page')
+      const pages = Array.from(pagesContainerRef.current.querySelectorAll('.a4-page'))
+      const pageIndex = pages.indexOf(page as Element)
+      
+      if (pageIndex === -1) return null
+
+      // Calculate offset within the page content
+      preSelectionRange.selectNodeContents(editableElement)
+      preSelectionRange.setEnd(range.startContainer, range.startOffset)
+      const offset = preSelectionRange.toString().length
+
+      return { pageIndex, offset, collapsed: range.collapsed }
+    } catch (error) {
+      console.error('Error saving cursor position:', error)
+      return null
+    }
+  }
+
+  // Helper: Restore cursor position
+  const restoreCursorPosition = (savedPosition: { pageIndex: number; offset: number; collapsed: boolean } | null) => {
+    if (!savedPosition || !pagesContainerRef.current) return
+
+    try {
+      const pages = pagesContainerRef.current.querySelectorAll('.a4-page')
+      if (savedPosition.pageIndex >= pages.length) return
+
+      const page = pages[savedPosition.pageIndex]
+      const contentDiv = page.querySelector('.page-content')
+      if (!contentDiv) return
+
+      // Find the text node and offset
+      const walker = document.createTreeWalker(
+        contentDiv,
+        NodeFilter.SHOW_TEXT,
+        null
+      )
+
+      let currentOffset = 0
+      let targetNode: Node | null = null
+      let targetOffset = 0
+
+      while (walker.nextNode()) {
+        const node = walker.currentNode
+        const nodeLength = node.textContent?.length || 0
+        
+        if (currentOffset + nodeLength >= savedPosition.offset) {
+          targetNode = node
+          targetOffset = savedPosition.offset - currentOffset
+          break
+        }
+        
+        currentOffset += nodeLength
+      }
+
+      if (targetNode) {
+        const range = document.createRange()
+        const selection = window.getSelection()
+        
+        // Ensure offset doesn't exceed node length
+        const maxOffset = targetNode.textContent?.length || 0
+        targetOffset = Math.min(targetOffset, maxOffset)
+        
+        range.setStart(targetNode, targetOffset)
+        if (savedPosition.collapsed) {
+          range.collapse(true)
+        }
+        
+        selection?.removeAllRanges()
+        selection?.addRange(range)
+        
+        // Focus the content div
+        ;(contentDiv as HTMLElement).focus()
+      }
+    } catch (error) {
+      console.error('Error restoring cursor position:', error)
+    }
+  }
+
   // Paginate content into multiple A4 pages
   const paginateContent = () => {
     if (!editorRef.current || !pagesContainerRef.current) return
+
+    // Save cursor position before repaginating
+    const savedCursor = saveCursorPosition()
 
     const content = editorRef.current.innerHTML
     pagesContainerRef.current.innerHTML = ""
@@ -205,6 +307,11 @@ export default function ReportPage() {
 
     document.body.removeChild(tempDiv)
     setPageCount(currentPage)
+
+    // Restore cursor position after repaginating
+    if (savedCursor) {
+      setTimeout(() => restoreCursorPosition(savedCursor), 0)
+    }
   }
 
   // Sync content from pages back to editor
