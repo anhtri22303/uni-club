@@ -43,11 +43,14 @@ export default function EditProductPage() {
     const [clubId, setClubId] = useState<number | null>(null)
     const productId = params.id as string
     const [tagSearchTerm, setTagSearchTerm] = useState("")
-    // STATE MỚI CHO MEDIA DIALOG
+    // STATE MEDIA DIALOG
+    // const [isMediaDialogOpen, setIsMediaDialogOpen] = useState(false)
+    // const [newMediaUrl, setNewMediaUrl] = useState("")
+    // const [isMediaLoading, setIsMediaLoading] = useState(false)
+    // const [newMediaIsThumbnail, setNewMediaIsThumbnail] = useState(false)
     const [isMediaDialogOpen, setIsMediaDialogOpen] = useState(false)
-    const [newMediaUrl, setNewMediaUrl] = useState("")
     const [isMediaLoading, setIsMediaLoading] = useState(false)
-    const [newMediaIsThumbnail, setNewMediaIsThumbnail] = useState(false)
+    const [newMediaFile, setNewMediaFile] = useState<File | null>(null); // 👈 State cho file
     // 👈 THÊM STATE ĐỂ LƯU ID CỦA TAG "CLUB" VÀ "EVENT"
     const [fixedTagIds, setFixedTagIds] = useState<FixedTagIds>({
         clubTagId: null,
@@ -311,20 +314,7 @@ export default function EditProductPage() {
         }
     }
 
-    // 5. HÀM TẢI LẠI SẢN PHẨM (MỚI)
-    // const refetchProduct = async () => {
-    //     if (!clubId || !productId) return
-    //     try {
-    //         setLoading(true) // Hiển thị loading nhẹ
-    //         await fetchProductData(clubId, productId)
-    //         toast({ title: "Success", description: "Media updated.", variant: "success" })
-    //     } catch (error) {
-    //         toast({ title: "Error", description: "Failed to reload product.", variant: "destructive" })
-    //     } finally {
-    //         setLoading(false)
-    //     }
-    // }
-    // 6. HÀM TẢI LẠI SẢN PHẨM (Dùng cho Media)
+    // HÀM TẢI LẠI SẢN PHẨM (Dùng cho Media)
     const refetchProduct = async () => {
         if (!clubId || !productId) return
         try {
@@ -338,43 +328,87 @@ export default function EditProductPage() {
         }
     }
 
+    // ❗️ THÊM HÀM MỚI NÀY
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            setNewMediaFile(e.target.files[0]);
+        } else {
+            setNewMediaFile(null);
+        }
+    };
+
+
+
+    // const handleAddMedia = async () => {
+    //     if (!clubId || !productId || !newMediaUrl) {
+    //         toast({ title: "Error", description: "URL is required.", variant: "destructive" })
+    //         return
+    //     }
+
+    //     setIsMediaLoading(true)
+
+    //     // Lấy thumbnail cũ TRƯỚC KHI GỌI API
+    //     const oldThumbnail = product?.media.find(m => m.thumbnail);
+
+    //     try {
+    //         // Bước 1: Thêm ảnh mới
+    //         await addMediaToProduct(clubId, productId, {
+    //             urls: [newMediaUrl],
+    //             type: "IMAGE",
+    //             thumbnail: newMediaIsThumbnail, // Gửi trạng thái thumbnail
+    //         })
+
+    //         // Bước 2: Nếu ta vừa set ảnh mới làm thumbnail VÀ có ảnh thumbnail cũ
+    //         if (newMediaIsThumbnail && oldThumbnail) {
+    //             // ... thì gỡ thumbnail cũ
+    //             await updateMedia(clubId, productId, oldThumbnail.mediaId, { thumbnail: false });
+    //         }
+
+    //         // Reset state của dialog
+    //         setIsMediaDialogOpen(false)
+    //         setNewMediaUrl("")
+    //         setNewMediaIsThumbnail(false)
+
+    //         await refetchProduct() // Tải lại dữ liệu
+    //     } catch (error: any) {
+    //         toast({ title: "Error", description: error.message || "Failed to add media.", variant: "destructive" })
+    //     } finally {
+    //         setIsMediaLoading(false)
+    //     }
+    // }
+    // ❗️ VIẾT LẠI HOÀN TOÀN handleAddMedia
     const handleAddMedia = async () => {
-        if (!clubId || !productId || !newMediaUrl) {
-            toast({ title: "Error", description: "URL is required.", variant: "destructive" })
-            return
+        if (!clubId || !productId || !newMediaFile) {
+            toast({
+                title: "Error",
+                description: "Please select a file to upload.",
+                variant: "destructive"
+            });
+            return;
         }
 
-        setIsMediaLoading(true)
-
-        // Lấy thumbnail cũ TRƯỚC KHI GỌI API
-        const oldThumbnail = product?.media.find(m => m.thumbnail);
+        setIsMediaLoading(true);
 
         try {
-            // Bước 1: Thêm ảnh mới
-            await addMediaToProduct(clubId, productId, {
-                urls: [newMediaUrl],
-                type: "IMAGE",
-                thumbnail: newMediaIsThumbnail, // Gửi trạng thái thumbnail
-            })
-
-            // Bước 2: Nếu ta vừa set ảnh mới làm thumbnail VÀ có ảnh thumbnail cũ
-            if (newMediaIsThumbnail && oldThumbnail) {
-                // ... thì gỡ thumbnail cũ
-                await updateMedia(clubId, productId, oldThumbnail.mediaId, { thumbnail: false });
-            }
+            // Gọi API mới, chỉ cần truyền File
+            await addMediaToProduct(clubId, productId, newMediaFile);
 
             // Reset state của dialog
-            setIsMediaDialogOpen(false)
-            setNewMediaUrl("")
-            setNewMediaIsThumbnail(false)
+            setIsMediaDialogOpen(false);
+            setNewMediaFile(null);
 
-            await refetchProduct() // Tải lại dữ liệu
+            await refetchProduct(); // Tải lại dữ liệu
         } catch (error: any) {
-            toast({ title: "Error", description: error.message || "Failed to add media.", variant: "destructive" })
+            toast({
+                title: "Error",
+                description: error.message || "Failed to add media.",
+                variant: "destructive"
+            });
         } finally {
-            setIsMediaLoading(false)
+            setIsMediaLoading(false);
         }
     }
+
 
     const handleDeleteMedia = async (mediaId: number) => {
         if (!clubId || !productId) return
@@ -722,7 +756,7 @@ export default function EditProductPage() {
 
                 <Dialog open={isMediaDialogOpen} onOpenChange={setIsMediaDialogOpen}>
                     <DialogContent className="sm:max-w-[425px]">
-                        <DialogHeader>
+                        {/* <DialogHeader>
                             <DialogTitle>Add New Media</DialogTitle>
                             <DialogDescription>
                                 Paste a URL to an image. The image will be added to the product.
@@ -768,6 +802,42 @@ export default function EditProductPage() {
                                 setNewMediaIsThumbnail(false);
                             }}>Cancel</Button>
                             <Button onClick={handleAddMedia} disabled={isMediaLoading}>
+                                {isMediaLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                                Add Image
+                            </Button>
+                        </DialogFooter> */}
+                        <DialogHeader>
+                            <DialogTitle>Add New Media</DialogTitle>
+                            <DialogDescription>
+                                {/* ❗️ Sửa mô tả */}
+                                Choose an image file to upload. It will be added to the product.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="media-file" className="text-right">
+                                    Image File
+                                </Label>
+                                <Input
+                                    id="media-file"
+                                    type="file" // 👈 Sửa type
+                                    accept="image/*" // 👈 Thêm accept
+                                    onChange={handleFileChange} // 👈 Sửa onChange
+                                    className="col-span-3"
+                                />
+                            </div>
+
+                            {/* ❗️ Xóa phần Checkbox "Thumbnail" */}
+                            {/* API POST mới không hỗ trợ set thumbnail khi upload */}
+
+                        </div>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => {
+                                setIsMediaDialogOpen(false); // Reset khi cancel
+                                setNewMediaFile(null); // 👈 Sửa
+                            }}>Cancel</Button>
+                            {/* ❗️ Sửa disable logic */}
+                            <Button onClick={handleAddMedia} disabled={isMediaLoading || !newMediaFile}>
                                 {isMediaLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
                                 Add Image
                             </Button>
