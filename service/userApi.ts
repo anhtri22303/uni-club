@@ -233,6 +233,38 @@ export const getUserStats = async () => {
   }
 }
 
+// Type for profile statistics
+export interface ProfileStats {
+  totalClubsJoined: number
+  totalEventsJoined: number
+  totalPointsEarned: number
+  totalAttendanceDays: number
+}
+
+// New: getProfileStats - get current user's profile statistics
+export const getProfileStats = async (): Promise<ProfileStats | null> => {
+  try {
+    const response = await axiosInstance.get("api/users/profile/stats")
+    const body = response.data
+    console.log("Fetched profile stats response:", body)
+
+    // If backend uses { success, message, data }
+    if (body && typeof body === "object" && "data" in body && "success" in body && (body as any).success) {
+      return (body as any).data as ProfileStats
+    }
+
+    // If the endpoint returns the stats object directly
+    if (body && typeof body === "object") {
+      return body as ProfileStats
+    }
+
+    return null
+  } catch (error) {
+    console.error("Error fetching profile stats:", error)
+    throw error
+  }
+}
+
 // Force Reset Password API (for admin/system forced password resets)
 export interface ForceResetPasswordRequest {
   userId: number | string

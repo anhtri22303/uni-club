@@ -501,3 +501,30 @@ export const getEventSettle = async () => {
     throw error
   }
 }
+
+/**
+ * PUT /api/events/{eventId}/extend
+ * Extend event time
+ * @param eventId - Event ID
+ * @param payload - Extended time data
+ * @returns Updated event data
+ */
+export interface EventTimeExtendPayload {
+  newEndDate: string  // Format: YYYY-MM-DD
+  newEndTime: string  // Format: HH:MM
+  reason: string      // Reason for extension
+}
+
+export const eventTimeExtend = async (eventId: string | number, payload: EventTimeExtendPayload): Promise<Event> => {
+  try {
+    const response = await axiosInstance.put(`/api/events/${eventId}/extend`, payload)
+    const data: any = response.data
+    console.log(`Extended time for event ${eventId}:`, data)
+    // Response structure: { success: true, message: "success", data: {...event} }
+    if (data?.data) return data.data
+    return data
+  } catch (error) {
+    console.error(`Error extending time for event ${eventId}:`, error)
+    throw error
+  }
+}
