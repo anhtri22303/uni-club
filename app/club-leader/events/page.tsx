@@ -475,9 +475,68 @@ export default function ClubLeaderEventsPage() {
   }
 
   const handleCreate = async () => {
-    // validate required
-    if (!formData.name || !formData.date || !formData.startTime || !formData.endTime || !formData.locationId) {
-      toast({ title: "Missing Information", description: "Please fill in all required fields including location", variant: "destructive" })
+    // Comprehensive validation for all required fields (except coHostedClubs which is optional)
+    const validationErrors: string[] = []
+    
+    if (!formData.name || formData.name.trim() === "") {
+      validationErrors.push("Event Name is required")
+    }
+    
+    if (!formData.description || formData.description.trim() === "") {
+      validationErrors.push("Description is required")
+    }
+    
+    if (!formData.type) {
+      validationErrors.push("Event Type is required")
+    }
+    
+    if (!formData.date) {
+      validationErrors.push("Date is required")
+    }
+    
+    if (!formData.startTime) {
+      validationErrors.push("Start Time is required")
+    }
+    
+    if (!formData.endTime) {
+      validationErrors.push("End Time is required")
+    }
+    
+    if (!formData.locationId || formData.locationId === 0) {
+      validationErrors.push("Location is required")
+    }
+    
+    if (!formData.maxCheckInCount || formData.maxCheckInCount <= 0) {
+      validationErrors.push("Max Check-ins must be greater than 0")
+    }
+    
+    if (formData.commitPointCost < 0) {
+      validationErrors.push("Point Cost cannot be negative")
+    }
+    
+    if (formData.budgetPoints < 0) {
+      validationErrors.push("Budget Points cannot be negative")
+    }
+    
+    // Validate time range
+    if (formData.startTime && formData.endTime) {
+      const [startHour, startMin] = formData.startTime.split(':').map(Number)
+      const [endHour, endMin] = formData.endTime.split(':').map(Number)
+      const startMinutes = startHour * 60 + startMin
+      const endMinutes = endHour * 60 + endMin
+      
+      if (endMinutes <= startMinutes) {
+        validationErrors.push("End Time must be after Start Time")
+      }
+    }
+    
+    // Show validation errors if any
+    if (validationErrors.length > 0) {
+      toast({ 
+        title: "Validation Error", 
+        description: validationErrors.join(", "),
+        variant: "destructive" 
+      })
       return
     }
 
@@ -499,6 +558,17 @@ export default function ClubLeaderEventsPage() {
       const startTime = formData.startTime.substring(0, 5) // Convert HH:MM:SS to HH:MM
       const endTime = formData.endTime.substring(0, 5)     // Convert HH:MM:SS to HH:MM
       
+      // Ensure numeric values are properly converted (not NaN or null)
+      const budgetPoints = Number(formData.budgetPoints) || 0
+      const commitPointCost = Number(formData.commitPointCost) || 0
+      
+      console.log('📊 Form data before sending:', {
+        budgetPoints: formData.budgetPoints,
+        commitPointCost: formData.commitPointCost,
+        convertedBudgetPoints: budgetPoints,
+        convertedCommitPointCost: commitPointCost
+      })
+      
       const payload: any = {
         hostClubId,
         name: formData.name,
@@ -509,9 +579,11 @@ export default function ClubLeaderEventsPage() {
         endTime: endTime,
         locationId: formData.locationId,
         maxCheckInCount: formData.maxCheckInCount,
-        commitPointCost: formData.commitPointCost,
-        budgetPoints: formData.budgetPoints,
+        commitPointCost: commitPointCost,
+        budgetPoints: budgetPoints,
       }
+      
+      console.log('📤 Payload being sent to API:', payload)
 
       // Add coHostClubIds if any are selected
       if (selectedCoHostClubIds.length > 0) {
@@ -1167,6 +1239,7 @@ export default function ClubLeaderEventsPage() {
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     placeholder="Enter event name"
                     className="h-9"
+                    required
                   />
                 </div>
 
@@ -1178,14 +1251,16 @@ export default function ClubLeaderEventsPage() {
                     value={formData.date}
                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                     className="h-9"
+                    required
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="type" className="text-sm">Type</Label>
+                  <Label htmlFor="type" className="text-sm">Type *</Label>
                   <Select
                     value={formData.type}
                     onValueChange={(value) => setFormData({ ...formData, type: value })}
+                    required
                   >
                     <SelectTrigger id="type" className="h-9">
                       <SelectValue placeholder="Select type" />
@@ -1199,7 +1274,7 @@ export default function ClubLeaderEventsPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="description" className="text-sm">Description</Label>
+                <Label htmlFor="description" className="text-sm">Description *</Label>
                 <Textarea
                   id="description"
                   value={formData.description}
@@ -1207,6 +1282,7 @@ export default function ClubLeaderEventsPage() {
                   placeholder="Describe your event..."
                   rows={2}
                   className="resize-none"
+                  required
                 />
               </div>
 
@@ -1219,6 +1295,7 @@ export default function ClubLeaderEventsPage() {
                     value={formData.startTime.substring(0, 5)}
                     onChange={(e) => setFormData({ ...formData, startTime: e.target.value + ":00" })}
                     className="h-9"
+                    required
                   />
                 </div>
 
@@ -1230,6 +1307,7 @@ export default function ClubLeaderEventsPage() {
                     value={formData.endTime.substring(0, 5)}
                     onChange={(e) => setFormData({ ...formData, endTime: e.target.value + ":00" })}
                     className="h-9"
+                    required
                   />
                 </div>
 
@@ -1250,6 +1328,7 @@ export default function ClubLeaderEventsPage() {
                     placeholder="100"
                     min="1"
                     max={selectedLocationCapacity || undefined}
+                    required
                   />
                   {selectedLocationCapacity && formData.maxCheckInCount > selectedLocationCapacity && (
                     <p className="text-xs text-red-600 font-medium mt-1 flex items-center gap-1">
@@ -1267,7 +1346,7 @@ export default function ClubLeaderEventsPage() {
 
                 <div className="space-y-1.5">
                   <Label htmlFor="commitPointCost" className="text-sm flex items-center gap-1.5">
-                    Point Cost
+                    Point Cost *
                     <button
                       type="button"
                       onClick={() => setShowPolicyModal(!showPolicyModal)}
@@ -1281,12 +1360,16 @@ export default function ClubLeaderEventsPage() {
                     id="commitPointCost"
                     type="number"
                     value={formData.commitPointCost}
-                    onChange={(e) => setFormData({ ...formData, commitPointCost: Number.parseInt(e.target.value) || 0 })}
+                    onChange={(e) => {
+                      const value = e.target.value === '' ? 0 : Number(e.target.value)
+                      setFormData({ ...formData, commitPointCost: isNaN(value) ? 0 : value })
+                    }}
                     onClick={() => setShowPolicyModal(true)}
                     onFocus={() => setShowPolicyModal(true)}
                     className="h-9 transition-all duration-200 focus:ring-2 focus:ring-blue-500 cursor-pointer"
                     placeholder="0"
                     min="0"
+                    required
                   />
                 </div>
               </div>
@@ -1294,7 +1377,7 @@ export default function ClubLeaderEventsPage() {
               <div className="grid grid-cols-1 gap-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="budgetPoints" className="text-sm flex items-center gap-1.5">
-                    Budget Points
+                    Budget Points *
                     <button
                       type="button"
                       onClick={() => setShowPolicyModal(!showPolicyModal)}
@@ -1308,12 +1391,16 @@ export default function ClubLeaderEventsPage() {
                     id="budgetPoints"
                     type="number"
                     value={formData.budgetPoints}
-                    onChange={(e) => setFormData({ ...formData, budgetPoints: Number.parseInt(e.target.value) || 0 })}
+                    onChange={(e) => {
+                      const value = e.target.value === '' ? 0 : Number(e.target.value)
+                      setFormData({ ...formData, budgetPoints: isNaN(value) ? 0 : value })
+                    }}
                     onClick={() => setShowPolicyModal(true)}
                     onFocus={() => setShowPolicyModal(true)}
                     className="h-9 transition-all duration-200 focus:ring-2 focus:ring-blue-500 cursor-pointer"
                     placeholder="0"
                     min="0"
+                    required
                   />
                 </div>
               </div>
@@ -1336,6 +1423,7 @@ export default function ClubLeaderEventsPage() {
                       }
                     }}
                     disabled={locationsLoading}
+                    required
                   >
                     <SelectTrigger id="locationName" className="h-9">
                       <SelectValue placeholder={locationsLoading ? "Loading locations..." : "Select a location"} />
@@ -1429,27 +1517,32 @@ export default function ClubLeaderEventsPage() {
                 </details>
               )}
 
-              <div className="flex gap-2 justify-end pt-2">
-                <Button variant="outline" onClick={() => setShowCreateModal(false)} disabled={isCreating} className="h-9">
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={handleCreate} 
-                  disabled={
-                    isCreating || 
-                    (selectedLocationCapacity !== null && formData.maxCheckInCount > selectedLocationCapacity)
-                  } 
-                  className="h-9"
-                >
-                  {isCreating ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Creating...
-                    </>
-                  ) : (
-                    'Send'
-                  )}
-                </Button>
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground italic border-t pt-2 pb-0">
+                  * Required fields - All fields except Co-Host Clubs must be filled
+                </p>
+                <div className="flex gap-2 justify-end">
+                  <Button variant="outline" onClick={() => setShowCreateModal(false)} disabled={isCreating} className="h-9">
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={handleCreate} 
+                    disabled={
+                      isCreating || 
+                      (selectedLocationCapacity !== null && formData.maxCheckInCount > selectedLocationCapacity)
+                    } 
+                    className="h-9"
+                  >
+                    {isCreating ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      'Send'
+                    )}
+                  </Button>
+                </div>
               </div>
               </div>
             </ScrollArea>

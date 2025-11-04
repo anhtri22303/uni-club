@@ -447,6 +447,7 @@ export default function UniStaffPoliciesPage() {
                       // [MODIFIED] Cập nhật payload
                       const payload: Partial<Policy> = {
                         policyName: createPolicyName,
+                        // name: createPolicyName,
                         description: createDescription,
                         majorId: createMajorId,
                         majorName: createMajorName,

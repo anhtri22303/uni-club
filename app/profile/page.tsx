@@ -16,7 +16,7 @@ import {
   User, Mail, Phone, Save, Calendar, MapPin, Edit3, Clock, Users, Settings, UserCheck, FileText, BarChart3, Globe, Flame,
   Zap, Building2, Trophy, Loader2, AlertCircle, Camera, Lock,
 } from "lucide-react"
-import { editProfile, fetchProfile, uploadAvatar, uploadBackground } from "@/service/userApi"
+import { editProfile, fetchProfile, uploadAvatar, uploadBackground, getProfileStats, ProfileStats } from "@/service/userApi"
 import { AvatarCropModal } from "@/components/avatar-crop-modal"
 import { ChangePasswordModal } from "@/components/change-password"
 import { ApiMembershipWallet } from "@/service/walletApi"
@@ -82,13 +82,10 @@ export default function ProfilePage() {
 
   // State for change password modal
   const [showChangePassword, setShowChangePassword] = useState(false)
-  // Dữ liệu tĩnh cho hoạt động người dùng
-  const userStats = {
-    clubsJoined: 5,
-    eventsAttended: 12,
-    monthsActive: 6,
-    achievements: 3,
-  }
+  
+  // State for user profile statistics (real data from API)
+  const [userStats, setUserStats] = useState<ProfileStats | null>(null)
+  const [statsLoading, setStatsLoading] = useState(true)
 
   // Static data for administrators
   const adminStats = {
@@ -205,6 +202,25 @@ export default function ProfilePage() {
       // Clear file selection when profile loads
       setSelectedFile(null)
       setPreviewAvatarUrl("")
+
+      // Load profile statistics for students and club leaders
+      if (auth.role === "student" || auth.role === "club_leader") {
+        try {
+          setStatsLoading(true)
+          const stats = await getProfileStats()
+          if (stats) {
+            setUserStats(stats)
+          }
+        } catch (statsErr) {
+          console.error("Failed to load profile stats:", statsErr)
+          // Don't show error toast for stats - just keep loading state or show 0s
+        } finally {
+          setStatsLoading(false)
+        }
+      } else {
+        // For non-student/club_leader roles, set loading to false
+        setStatsLoading(false)
+      }
 
       // } catch (err) {
       //   console.error("Failed to load profile:", err)
@@ -1137,26 +1153,66 @@ export default function ProfilePage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="grid grid-cols-2 gap-4">
-                    <div className="text-center p-4 bg-slate-100 rounded-lg">
-                      <Users className="h-7 w-7 text-blue-600 mx-auto mb-1" />
-                      <div className="text-2xl font-bold text-blue-800">{userStats.clubsJoined}</div>
-                      <div className="text-xs text-slate-600">Clubs Joined</div>
-                    </div>
-                    <div className="text-center p-4 bg-slate-100 rounded-lg">
-                      <Calendar className="h-7 w-7 text-green-600 mx-auto mb-1" />
-                      <div className="text-2xl font-bold text-green-800">{userStats.eventsAttended}</div>
-                      <div className="text-xs text-slate-600">Events Attended</div>
-                    </div>
-                    <div className="text-center p-4 bg-slate-100 rounded-lg">
-                      <Clock className="h-7 w-7 text-purple-600 mx-auto mb-1" />
-                      <div className="text-2xl font-bold text-purple-800">{userStats.monthsActive}</div>
-                      <div className="text-xs text-slate-600">Months Active</div>
-                    </div>
-                    <div className="text-center p-4 bg-slate-100 rounded-lg">
-                      <Trophy className="h-7 w-7 text-amber-600 mx-auto mb-1" />
-                      <div className="text-2xl font-bold text-amber-800">{userStats.achievements}</div>
-                      <div className="text-xs text-slate-600">Achievements</div>
-                    </div>
+                    {statsLoading ? (
+                      // Loading state for stats
+                      <>
+                        {[1, 2, 3, 4].map((i) => (
+                          <div key={i} className="text-center p-4 bg-slate-100 rounded-lg animate-pulse">
+                            <div className="h-7 w-7 bg-slate-300 rounded mx-auto mb-1" />
+                            <div className="h-6 w-12 bg-slate-300 rounded mx-auto mb-1" />
+                            <div className="h-3 w-20 bg-slate-300 rounded mx-auto" />
+                          </div>
+                        ))}
+                      </>
+                    ) : userStats ? (
+                      // Real data from API
+                      <>
+                        <div className="text-center p-4 bg-slate-100 rounded-lg">
+                          <Users className="h-7 w-7 text-blue-600 mx-auto mb-1" />
+                          <div className="text-2xl font-bold text-blue-800">{userStats.totalClubsJoined}</div>
+                          <div className="text-xs text-slate-600">Clubs Joined</div>
+                        </div>
+                        <div className="text-center p-4 bg-slate-100 rounded-lg">
+                          <Calendar className="h-7 w-7 text-green-600 mx-auto mb-1" />
+                          <div className="text-2xl font-bold text-green-800">{userStats.totalEventsJoined}</div>
+                          <div className="text-xs text-slate-600">Events Joined</div>
+                        </div>
+                        <div className="text-center p-4 bg-slate-100 rounded-lg">
+                          <Zap className="h-7 w-7 text-purple-600 mx-auto mb-1" />
+                          <div className="text-2xl font-bold text-purple-800">{userStats.totalPointsEarned.toLocaleString()}</div>
+                          <div className="text-xs text-slate-600">Points Earned</div>
+                        </div>
+                        <div className="text-center p-4 bg-slate-100 rounded-lg">
+                          <Clock className="h-7 w-7 text-amber-600 mx-auto mb-1" />
+                          <div className="text-2xl font-bold text-amber-800">{userStats.totalAttendanceDays}</div>
+                          <div className="text-xs text-slate-600">Attendance Days</div>
+                        </div>
+                      </>
+                    ) : (
+                      // Empty state if no stats available
+                      <>
+                        <div className="text-center p-4 bg-slate-100 rounded-lg">
+                          <Users className="h-7 w-7 text-blue-600 mx-auto mb-1" />
+                          <div className="text-2xl font-bold text-blue-800">0</div>
+                          <div className="text-xs text-slate-600">Clubs Joined</div>
+                        </div>
+                        <div className="text-center p-4 bg-slate-100 rounded-lg">
+                          <Calendar className="h-7 w-7 text-green-600 mx-auto mb-1" />
+                          <div className="text-2xl font-bold text-green-800">0</div>
+                          <div className="text-xs text-slate-600">Events Joined</div>
+                        </div>
+                        <div className="text-center p-4 bg-slate-100 rounded-lg">
+                          <Zap className="h-7 w-7 text-purple-600 mx-auto mb-1" />
+                          <div className="text-2xl font-bold text-purple-800">0</div>
+                          <div className="text-xs text-slate-600">Points Earned</div>
+                        </div>
+                        <div className="text-center p-4 bg-slate-100 rounded-lg">
+                          <Clock className="h-7 w-7 text-amber-600 mx-auto mb-1" />
+                          <div className="text-2xl font-bold text-amber-800">0</div>
+                          <div className="text-xs text-slate-600">Attendance Days</div>
+                        </div>
+                      </>
+                    )}
                   </CardContent>
                 </Card>
               </div>

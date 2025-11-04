@@ -17,10 +17,14 @@ import { ProtectedRoute } from "@/contexts/protected-route"
 import { LoadingSkeleton } from "@/components/loading-skeleton"
 import { PhaseSelectionModal } from "@/components/phase-selection-modal"
 
-import { getEventById, submitForUniversityApproval, timeObjectToString, coHostRespond, TimeObject, getEventSummary, EventSummary, completeEvent, eventQR } from "@/service/eventApi" // 👈 Thêm submitForUniversityApproval và eventQR
+import { getEventById, submitForUniversityApproval, timeObjectToString, coHostRespond, TimeObject, getEventSummary, EventSummary, completeEvent, eventQR, eventTimeExtend } from "@/service/eventApi" // 👈 Thêm submitForUniversityApproval, eventQR và eventTimeExtend
 import { EventWalletHistoryModal } from "@/components/event-wallet-history-modal"
 import { getClubIdFromToken } from "@/service/clubApi"
-import { Loader2 } from "lucide-react" // 👈 Thêm Loader2
+import { Loader2, Star, Filter, ClockIcon } from "lucide-react" // 👈 Thêm Loader2, Star, Filter, ClockIcon
+import { getFeedback, Feedback } from "@/service/feedbackApi"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ChevronLeft, ChevronRight } from "lucide-react"
+import { TimeExtensionModal } from "@/components/time-extension-modal"
 interface EventDetail {
   id: number
   name: string
@@ -66,10 +70,21 @@ export default function EventDetailPage() {
   const [isEndingEvent, setIsEndingEvent] = useState(false) // State for ending event
   const [userClubId, setUserClubId] = useState<number | null>(null)
   const [myCoHostStatus, setMyCoHostStatus] = useState<string | null>(null)
+  
+  // Feedback states
+  const [feedbacks, setFeedbacks] = useState<Feedback[]>([])
+  const [feedbackLoading, setFeedbackLoading] = useState(false)
+  const [ratingFilter, setRatingFilter] = useState<string>("all")
+  const [currentPage, setCurrentPage] = useState(1)
+  const FEEDBACKS_PER_PAGE = 5
 
   // Phase selection modal state
   const [showPhaseModal, setShowPhaseModal] = useState(false)
   const [isGeneratingQR, setIsGeneratingQR] = useState(false)
+
+  // Time extension modal state
+  const [showTimeExtensionModal, setShowTimeExtensionModal] = useState(false)
+  const [isExtendingTime, setIsExtendingTime] = useState(false)
 
   // QR Code states
   const [showQrModal, setShowQrModal] = useState(false)
@@ -121,6 +136,20 @@ export default function EventDetailPage() {
             // Don't show error toast for summary, it's not critical
           } finally {
             setSummaryLoading(false)
+          }
+        }
+
+        // Fetch feedback for COMPLETED events
+        if (data.status === "COMPLETED") {
+          try {
+            setFeedbackLoading(true)
+            const feedbackData = await getFeedback(params.id as string)
+            setFeedbacks(feedbackData)
+          } catch (feedbackError) {
+            console.error("Failed to load feedback:", feedbackError)
+            // Don't show error toast for feedback, it's not critical
+          } finally {
+            setFeedbackLoading(false)
           }
         }
       } catch (error) {
@@ -314,6 +343,54 @@ export default function EventDetailPage() {
     return timeString
   }
 
+  // Helper function to render star rating
+  const renderStars = (rating: number) => {
+    return (
+      <div className="flex items-center gap-1">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <Star
+            key={star}
+            className={`h-4 w-4 ${
+              star <= rating
+                ? "fill-yellow-400 text-yellow-400"
+                : "text-gray-300"
+            }`}
+          />
+        ))}
+      </div>
+    )
+  }
+
+  // Filter feedbacks by rating
+  const filteredFeedbacks = ratingFilter === "all" 
+    ? feedbacks 
+    : feedbacks.filter(fb => fb.rating === parseInt(ratingFilter))
+
+  // Calculate average rating
+  const averageRating = feedbacks.length > 0
+    ? (feedbacks.reduce((sum, fb) => sum + fb.rating, 0) / feedbacks.length).toFixed(1)
+    : "0.0"
+
+  // Count feedbacks by rating
+  const ratingCounts = {
+    5: feedbacks.filter(fb => fb.rating === 5).length,
+    4: feedbacks.filter(fb => fb.rating === 4).length,
+    3: feedbacks.filter(fb => fb.rating === 3).length,
+    2: feedbacks.filter(fb => fb.rating === 2).length,
+    1: feedbacks.filter(fb => fb.rating === 1).length,
+  }
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredFeedbacks.length / FEEDBACKS_PER_PAGE)
+  const startIndex = (currentPage - 1) * FEEDBACKS_PER_PAGE
+  const endIndex = startIndex + FEEDBACKS_PER_PAGE
+  const paginatedFeedbacks = filteredFeedbacks.slice(startIndex, endIndex)
+
+  // Reset to page 1 when filter changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [ratingFilter])
+
   // Check if the event is currently active (within date and time range)
   const isEventActive = () => {
     if (!event) return false
@@ -462,6 +539,41 @@ export default function EventDetailPage() {
         variant: 'destructive'
       })
       setIsEndingEvent(false)
+    }
+  }
+
+  const handleExtendTime = async (newEndDate: string, newEndTime: string, reason: string) => {
+    if (!event) return
+
+    try {
+      setIsExtendingTime(true)
+      const response = await eventTimeExtend(event.id, {
+        newEndDate,
+        newEndTime,
+        reason
+      })
+      
+      // Show success message
+      toast({
+        title: 'Success',
+        description: 'Event time has been extended successfully',
+      })
+      
+      // Close modal
+      setShowTimeExtensionModal(false)
+      
+      // Reload the page to get updated event data
+      window.location.reload()
+      
+    } catch (err: any) {
+      console.error('Failed to extend event time', err)
+      toast({
+        title: 'Error',
+        description: err?.response?.data?.message || 'Failed to extend event time',
+        variant: 'destructive'
+      })
+      setIsExtendingTime(false)
+      throw err // Re-throw to prevent modal from closing
     }
   }
 
@@ -717,26 +829,45 @@ export default function EventDetailPage() {
                   </Button>
                 </>
               )}
-              {/* Show End Event button only when status is APPROVED */}
+              {/* Show More Time and End Event buttons only when status is ONGOING */}
               {event.status === "ONGOING" && (
-                <Button
-                  onClick={handleEndEvent}
-                  disabled={isEndingEvent}
-                  variant="destructive"
-                  className="bg-red-600 hover:bg-red-700"
-                >
-                  {isEndingEvent ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Ending Event...
-                    </>
-                  ) : (
-                    <>
-                      <XCircle className="h-4 w-4 mr-2" />
-                      End Event
-                    </>
-                  )}
-                </Button>
+                <>
+                  <Button
+                    onClick={() => setShowTimeExtensionModal(true)}
+                    disabled={isExtendingTime || isEndingEvent}
+                    className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700"
+                  >
+                    {isExtendingTime ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Extending...
+                      </>
+                    ) : (
+                      <>
+                        <ClockIcon className="h-4 w-4 mr-2" />
+                        More Time
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    onClick={handleEndEvent}
+                    disabled={isEndingEvent || isExtendingTime}
+                    variant="destructive"
+                    className="bg-red-600 hover:bg-red-700"
+                  >
+                    {isEndingEvent ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Ending Event...
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="h-4 w-4 mr-2" />
+                        End Event
+                      </>
+                    )}
+                  </Button>
+                </>
               )}
               <div className="flex items-center gap-2">
                 <Eye className="h-5 w-5 text-muted-foreground" />
@@ -1037,6 +1168,167 @@ export default function EventDetailPage() {
               {/* ✅ KẾT THÚC KHU VỰC MỚI */}
             </CardContent>
           </Card>
+
+          {/* Feedback Section - Only show for COMPLETED events */}
+          {event.status === "COMPLETED" && (
+            <Card className="shadow-lg">
+              <CardHeader className="pb-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-2xl font-bold">Event Feedback</CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      See what participants thought about this event
+                    </p>
+                  </div>
+                  {feedbacks.length > 0 && (
+                    <div className="text-center">
+                      <div className="flex items-center gap-2">
+                        <Star className="h-6 w-6 fill-yellow-400 text-yellow-400" />
+                        <span className="text-3xl font-bold">{averageRating}</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {feedbacks.length} {feedbacks.length === 1 ? 'review' : 'reviews'}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </CardHeader>
+
+              <CardContent className="space-y-6">
+                {feedbackLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    <span className="ml-2 text-muted-foreground">Loading feedback...</span>
+                  </div>
+                ) : feedbacks.length === 0 ? (
+                  <div className="text-center py-8">
+                    <div className="text-muted-foreground">No feedback available for this event yet.</div>
+                  </div>
+                ) : (
+                  <>
+                    {/* Rating Filter */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <Filter className="h-5 w-5 text-muted-foreground" />
+                        <span className="text-sm font-medium">Filter by rating:</span>
+                        <Select value={ratingFilter} onValueChange={setRatingFilter}>
+                          <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="All ratings" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All ratings ({feedbacks.length})</SelectItem>
+                            <SelectItem value="5">5 stars ({ratingCounts[5]})</SelectItem>
+                            <SelectItem value="4">4 stars ({ratingCounts[4]})</SelectItem>
+                            <SelectItem value="3">3 stars ({ratingCounts[3]})</SelectItem>
+                            <SelectItem value="2">2 stars ({ratingCounts[2]})</SelectItem>
+                            <SelectItem value="1">1 star ({ratingCounts[1]})</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Showing {filteredFeedbacks.length} of {feedbacks.length} {feedbacks.length === 1 ? 'feedback' : 'feedbacks'}
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    {/* Feedback List */}
+                    {filteredFeedbacks.length === 0 ? (
+                      <div className="text-center py-8">
+                        <div className="text-muted-foreground">No feedback found for the selected rating.</div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="space-y-4">
+                          {paginatedFeedbacks.map((feedback) => (
+                            <div
+                              key={feedback.feedbackId}
+                              className="p-4 bg-muted/30 rounded-lg border border-muted hover:bg-muted/50 transition-colors"
+                            >
+                              <div className="flex items-start justify-between mb-3">
+                                <div className="flex items-center gap-3">
+                                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                                    <Users className="h-5 w-5 text-primary" />
+                                  </div>
+                                  <div>
+                                    <div className="font-medium">Member #{feedback.membershipId}</div>
+                                    <div className="text-sm text-muted-foreground">
+                                      {new Date(feedback.createdAt).toLocaleDateString("en-US", {
+                                        year: "numeric",
+                                        month: "long",
+                                        day: "numeric",
+                                        hour: "2-digit",
+                                        minute: "2-digit"
+                                      })}
+                                    </div>
+                                  </div>
+                                </div>
+                                {renderStars(feedback.rating)}
+                              </div>
+                              <p className="text-sm leading-relaxed pl-13">
+                                {feedback.comment}
+                              </p>
+                              {feedback.updatedAt && (
+                                <div className="text-xs text-muted-foreground mt-2 pl-13">
+                                  Updated: {new Date(feedback.updatedAt).toLocaleDateString("en-US", {
+                                    year: "numeric",
+                                    month: "short",
+                                    day: "numeric"
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Pagination Controls */}
+                        {totalPages > 1 && (
+                          <div className="flex items-center justify-between pt-4 border-t">
+                            <div className="text-sm text-muted-foreground">
+                              Showing {startIndex + 1}-{Math.min(endIndex, filteredFeedbacks.length)} of {filteredFeedbacks.length}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                disabled={currentPage === 1}
+                              >
+                                <ChevronLeft className="h-4 w-4 mr-1" />
+                                Previous
+                              </Button>
+                              <div className="flex items-center gap-1">
+                                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                                  <Button
+                                    key={page}
+                                    variant={currentPage === page ? "default" : "outline"}
+                                    size="sm"
+                                    onClick={() => setCurrentPage(page)}
+                                    className="min-w-[40px]"
+                                  >
+                                    {page}
+                                  </Button>
+                                ))}
+                              </div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                disabled={currentPage === totalPages}
+                              >
+                                Next
+                                <ChevronRight className="h-4 w-4 ml-1" />
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         <PhaseSelectionModal
@@ -1070,6 +1362,19 @@ export default function EventDetailPage() {
             open={showWalletHistoryModal}
             onOpenChange={setShowWalletHistoryModal}
             eventId={String(event.id)}
+          />
+        )}
+
+        {/* Time Extension Modal */}
+        {event && (
+          <TimeExtensionModal
+            open={showTimeExtensionModal}
+            onOpenChange={setShowTimeExtensionModal}
+            onSubmit={handleExtendTime}
+            currentEndDate={event.date}
+            currentEndTime={timeObjectToString(event.endTime)}
+            eventName={event.name}
+            isSubmitting={isExtendingTime}
           />
         )}
       </AppShell>

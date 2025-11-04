@@ -448,20 +448,29 @@ export default function MemberEventsPage() {
                           </div>
                         )}
 
-                          <Button
-                            className="w-full"
-                            variant="default"
-                            disabled={registeringEventId === event.id || event.status === "COMPLETED" || isEventRegistered(event.id)}
-                            onClick={() => handleRegisterClick(event)}
-                          >
-                            {registeringEventId === event.id 
-                              ? "Registering..." 
-                              : isEventRegistered(event.id) 
-                                ? "Already Registered" 
-                                : event.status === "COMPLETED" 
-                                  ? "Ended" 
-                                  : "Register"}
-                          </Button>
+                          <div className="flex gap-2">
+                            <Button
+                              className="flex-1"
+                              variant="outline"
+                              onClick={() => handleEventDetail(String(event.id))}
+                            >
+                              View Detail
+                            </Button>
+                            <Button
+                              className="flex-1"
+                              variant="default"
+                              disabled={registeringEventId === event.id || event.status === "COMPLETED" || isEventRegistered(event.id)}
+                              onClick={() => handleRegisterClick(event)}
+                            >
+                              {registeringEventId === event.id 
+                                ? "Registering..." 
+                                : isEventRegistered(event.id) 
+                                  ? "Already Registered" 
+                                  : event.status === "COMPLETED" 
+                                    ? "Ended" 
+                                    : "Register"}
+                            </Button>
+                          </div>
                       </div>
                     </CardContent>
                   </Card>

@@ -6,9 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { ArrowLeft, Calendar, Clock, MapPin, Users, Eye, XCircle } from "lucide-react"
+import { ArrowLeft, Calendar, Clock, MapPin, Users, Eye, XCircle, Loader2, Star, Filter, ChevronLeft, ChevronRight, MessageSquare } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { getEventById, timeObjectToString } from "@/service/eventApi"
+import { getFeedback, Feedback, postFeedback } from "@/service/feedbackApi"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { FeedbackModal } from "@/components/feedback-modal"
 import { AppShell } from "@/components/app-shell"
 import { ProtectedRoute } from "@/contexts/protected-route"
 import { LoadingSkeleton } from "@/components/loading-skeleton"
@@ -49,6 +52,17 @@ export default function EventDetailPage() {
   const [event, setEvent] = useState<EventDetail | null>(null)
   const [loading, setLoading] = useState(true)
 
+  // Feedback states
+  const [feedbacks, setFeedbacks] = useState<Feedback[]>([])
+  const [feedbackLoading, setFeedbackLoading] = useState(false)
+  const [ratingFilter, setRatingFilter] = useState<string>("all")
+  const [currentPage, setCurrentPage] = useState(1)
+  const FEEDBACKS_PER_PAGE = 5
+
+  // Feedback modal states
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false)
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false)
+
   useEffect(() => {
     const loadEventDetail = async () => {
       if (!params.id) return
@@ -63,6 +77,20 @@ export default function EventDetailPage() {
           endTime: data.endTime ? timeObjectToString(data.endTime) : null,
         }
         setEvent(normalizedEvent)
+
+        // Fetch feedback for COMPLETED events
+        if (data.status === "COMPLETED") {
+          try {
+            setFeedbackLoading(true)
+            const feedbackData = await getFeedback(params.id as string)
+            setFeedbacks(feedbackData)
+          } catch (feedbackError) {
+            console.error("Failed to load feedback:", feedbackError)
+            // Don't show error toast for feedback, it's not critical
+          } finally {
+            setFeedbackLoading(false)
+          }
+        }
       } catch (error) {
         console.error("Failed to load event detail:", error)
         toast({
@@ -97,6 +125,85 @@ export default function EventDetailPage() {
 
   const formatTime = (timeString: string) => {
     return timeString
+  }
+
+  // Helper function to render star rating
+  const renderStars = (rating: number) => {
+    return (
+      <div className="flex items-center gap-1">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <Star
+            key={star}
+            className={`h-4 w-4 ${
+              star <= rating
+                ? "fill-yellow-400 text-yellow-400"
+                : "text-gray-300"
+            }`}
+          />
+        ))}
+      </div>
+    )
+  }
+
+  // Filter feedbacks by rating
+  const filteredFeedbacks = ratingFilter === "all" 
+    ? feedbacks 
+    : feedbacks.filter(fb => fb.rating === parseInt(ratingFilter))
+
+  // Calculate average rating
+  const averageRating = feedbacks.length > 0
+    ? (feedbacks.reduce((sum, fb) => sum + fb.rating, 0) / feedbacks.length).toFixed(1)
+    : "0.0"
+
+  // Count feedbacks by rating
+  const ratingCounts = {
+    5: feedbacks.filter(fb => fb.rating === 5).length,
+    4: feedbacks.filter(fb => fb.rating === 4).length,
+    3: feedbacks.filter(fb => fb.rating === 3).length,
+    2: feedbacks.filter(fb => fb.rating === 2).length,
+    1: feedbacks.filter(fb => fb.rating === 1).length,
+  }
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredFeedbacks.length / FEEDBACKS_PER_PAGE)
+  const startIndex = (currentPage - 1) * FEEDBACKS_PER_PAGE
+  const endIndex = startIndex + FEEDBACKS_PER_PAGE
+  const paginatedFeedbacks = filteredFeedbacks.slice(startIndex, endIndex)
+
+  // Reset to page 1 when filter changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [ratingFilter])
+
+  // Handle feedback submission
+  const handleFeedbackSubmit = async (rating: number, comment: string) => {
+    if (!event) return
+
+    try {
+      setIsSubmittingFeedback(true)
+      await postFeedback(event.id, { rating, comment })
+      
+      toast({
+        title: "Success",
+        description: "Your feedback has been submitted successfully!",
+      })
+
+      // Close modal
+      setShowFeedbackModal(false)
+
+      // Reload the page to show updated feedback
+      window.location.reload()
+    } catch (error: any) {
+      console.error("Failed to submit feedback:", error)
+      toast({
+        title: "Error",
+        description: error?.response?.data?.message || "Failed to submit feedback. Please try again.",
+        variant: "destructive"
+      })
+      throw error // Re-throw to prevent modal from closing
+    } finally {
+      setIsSubmittingFeedback(false)
+    }
   }
 
   if (loading) {
@@ -153,9 +260,21 @@ export default function EventDetailPage() {
                 Back to Events
               </Button>
             </div>
-            <div className="flex items-center gap-2">
-              <Eye className="h-5 w-5 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Event Details</span>
+            <div className="flex items-center gap-3">
+              {/* Show Feedback button for APPROVED, ONGOING, or COMPLETED events */}
+              {event && (event.status === "APPROVED" || event.status === "ONGOING" || event.status === "COMPLETED") && (
+                <Button
+                  onClick={() => setShowFeedbackModal(true)}
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200"
+                >
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Give Feedback
+                </Button>
+              )}
+              <div className="flex items-center gap-2">
+                <Eye className="h-5 w-5 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Event Details</span>
+              </div>
             </div>
           </div>
 
@@ -285,7 +404,179 @@ export default function EventDetailPage() {
 
             </CardContent>
           </Card>
+
+          {/* Feedback Section - Only show for COMPLETED events */}
+          {event.status === "COMPLETED" && (
+            <Card className="shadow-lg">
+              <CardHeader className="pb-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-2xl font-bold">Event Feedback</CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      See what participants thought about this event
+                    </p>
+                  </div>
+                  {feedbacks.length > 0 && (
+                    <div className="text-center">
+                      <div className="flex items-center gap-2">
+                        <Star className="h-6 w-6 fill-yellow-400 text-yellow-400" />
+                        <span className="text-3xl font-bold">{averageRating}</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {feedbacks.length} {feedbacks.length === 1 ? 'review' : 'reviews'}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </CardHeader>
+
+              <CardContent className="space-y-6">
+                {feedbackLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    <span className="ml-2 text-muted-foreground">Loading feedback...</span>
+                  </div>
+                ) : feedbacks.length === 0 ? (
+                  <div className="text-center py-8">
+                    <div className="text-muted-foreground">No feedback available for this event yet.</div>
+                  </div>
+                ) : (
+                  <>
+                    {/* Rating Filter */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <Filter className="h-5 w-5 text-muted-foreground" />
+                        <span className="text-sm font-medium">Filter by rating:</span>
+                        <Select value={ratingFilter} onValueChange={setRatingFilter}>
+                          <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="All ratings" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All ratings ({feedbacks.length})</SelectItem>
+                            <SelectItem value="5">5 stars ({ratingCounts[5]})</SelectItem>
+                            <SelectItem value="4">4 stars ({ratingCounts[4]})</SelectItem>
+                            <SelectItem value="3">3 stars ({ratingCounts[3]})</SelectItem>
+                            <SelectItem value="2">2 stars ({ratingCounts[2]})</SelectItem>
+                            <SelectItem value="1">1 star ({ratingCounts[1]})</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Showing {filteredFeedbacks.length} of {feedbacks.length} {feedbacks.length === 1 ? 'feedback' : 'feedbacks'}
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    {/* Feedback List */}
+                    {filteredFeedbacks.length === 0 ? (
+                      <div className="text-center py-8">
+                        <div className="text-muted-foreground">No feedback found for the selected rating.</div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="space-y-4">
+                          {paginatedFeedbacks.map((feedback) => (
+                            <div
+                              key={feedback.feedbackId}
+                              className="p-4 bg-muted/30 rounded-lg border border-muted hover:bg-muted/50 transition-colors"
+                            >
+                              <div className="flex items-start justify-between mb-3">
+                                <div className="flex items-center gap-3">
+                                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                                    <Users className="h-5 w-5 text-primary" />
+                                  </div>
+                                  <div>
+                                    <div className="font-medium">Member #{feedback.membershipId}</div>
+                                    <div className="text-sm text-muted-foreground">
+                                      {new Date(feedback.createdAt).toLocaleDateString("en-US", {
+                                        year: "numeric",
+                                        month: "long",
+                                        day: "numeric",
+                                        hour: "2-digit",
+                                        minute: "2-digit"
+                                      })}
+                                    </div>
+                                  </div>
+                                </div>
+                                {renderStars(feedback.rating)}
+                              </div>
+                              <p className="text-sm leading-relaxed pl-13">
+                                {feedback.comment}
+                              </p>
+                              {feedback.updatedAt && (
+                                <div className="text-xs text-muted-foreground mt-2 pl-13">
+                                  Updated: {new Date(feedback.updatedAt).toLocaleDateString("en-US", {
+                                    year: "numeric",
+                                    month: "short",
+                                    day: "numeric"
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Pagination Controls */}
+                        {totalPages > 1 && (
+                          <div className="flex items-center justify-between pt-4 border-t">
+                            <div className="text-sm text-muted-foreground">
+                              Showing {startIndex + 1}-{Math.min(endIndex, filteredFeedbacks.length)} of {filteredFeedbacks.length}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                disabled={currentPage === 1}
+                              >
+                                <ChevronLeft className="h-4 w-4 mr-1" />
+                                Previous
+                              </Button>
+                              <div className="flex items-center gap-1">
+                                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                                  <Button
+                                    key={page}
+                                    variant={currentPage === page ? "default" : "outline"}
+                                    size="sm"
+                                    onClick={() => setCurrentPage(page)}
+                                    className="min-w-[40px]"
+                                  >
+                                    {page}
+                                  </Button>
+                                ))}
+                              </div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                disabled={currentPage === totalPages}
+                              >
+                                Next
+                                <ChevronRight className="h-4 w-4 ml-1" />
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
+
+        {/* Feedback Modal */}
+        {event && (
+          <FeedbackModal
+            open={showFeedbackModal}
+            onOpenChange={setShowFeedbackModal}
+            onSubmit={handleFeedbackSubmit}
+            eventName={event.name}
+            isSubmitting={isSubmittingFeedback}
+          />
+        )}
       </AppShell>
     </ProtectedRoute>
   )
