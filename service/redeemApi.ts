@@ -1,4 +1,5 @@
 import axiosInstance from "../lib/axiosInstance";
+
 /**
  * Cấu trúc response API chuẩn
  */
@@ -12,7 +13,7 @@ interface ApiResponse<T> {
 
 /**
  * Interface cho đối tượng Order (Đơn hàng đổi quà)
- * Dùng chung cho cả 3 API
+ * Dùng chung cho tất cả API
  */
 export interface RedeemOrder {
   orderId: number;
@@ -20,7 +21,7 @@ export interface RedeemOrder {
   productName: string;
   quantity: number;
   totalPoints: number;
-  status: string;
+  status: string; // (PENDING, COMPLETED, CANCELLED, REFUNDED)
   createdAt: string;
   completedAt: string;
   clubName: string;
@@ -38,6 +39,8 @@ export interface RedeemPayload {
 }
 
 // --- API Functions ---
+
+// === POST (Tạo đơn) ===
 
 /**
  * Đổi một sản phẩm của Club (Club Item)
@@ -69,6 +72,8 @@ export async function redeemEventProduct(
   return res.data.data;
 }
 
+// === GET (Lấy danh sách đơn) ===
+
 /**
  * Lấy lịch sử các đơn hàng đổi quà của một Club
  * (GET /api/redeem/orders/club/{clubId})
@@ -78,6 +83,74 @@ export async function getClubRedeemOrders(
 ): Promise<RedeemOrder[]> {
   const res = await axiosInstance.get<ApiResponse<RedeemOrder[]>>(
     `/api/redeem/orders/club/${clubId}`
+  );
+  return res.data.data;
+}
+
+/**
+ * (MỚI) Lấy lịch sử các đơn hàng đổi quà của một Event
+ * (GET /api/redeem/orders/event/{eventId})
+ */
+export async function getEventRedeemOrders(
+  eventId: number | string
+): Promise<RedeemOrder[]> {
+  const res = await axiosInstance.get<ApiResponse<RedeemOrder[]>>(
+    `/api/redeem/orders/event/${eventId}`
+  );
+  return res.data.data;
+}
+
+/**
+ * (MỚI) Lấy lịch sử các đơn hàng đổi quà của chính member đang đăng nhập
+ * (GET /api/redeem/orders/member)
+ */
+export async function getMemberRedeemOrders(): Promise<RedeemOrder[]> {
+  const res = await axiosInstance.get<ApiResponse<RedeemOrder[]>>(
+    `/api/redeem/orders/member`
+  );
+  return res.data.data;
+}
+
+// === PUT (Cập nhật trạng thái đơn) ===
+
+/**
+ * (MỚI) Hoàn thành một đơn hàng (chuyển status sang COMPLETED)
+ * (PUT /api/redeem/order/{orderId}/complete)
+ */
+export async function completeRedeemOrder(
+  orderId: number | string
+): Promise<RedeemOrder> {
+  const res = await axiosInstance.put<ApiResponse<RedeemOrder>>(
+    `/api/redeem/order/${orderId}/complete`
+  );
+  return res.data.data;
+}
+
+/**
+ * (MỚI) Hoàn trả toàn bộ đơn hàng (chuyển status sang REFUNDED)
+ * (PUT /api/redeem/order/{orderId}/refund)
+ */
+export async function refundRedeemOrder(
+  orderId: number | string
+): Promise<RedeemOrder> {
+  const res = await axiosInstance.put<ApiResponse<RedeemOrder>>(
+    `/api/redeem/order/${orderId}/refund`
+  );
+  return res.data.data;
+}
+
+/**
+ * (MỚI) Hoàn trả một phần đơn hàng
+ * (PUT /api/redeem/order/{orderId}/refund-partial)
+ */
+export async function refundPartialRedeemOrder(
+  orderId: number | string,
+  quantity: number
+): Promise<RedeemOrder> {
+  const res = await axiosInstance.put<ApiResponse<RedeemOrder>>(
+    `/api/redeem/order/${orderId}/refund-partial`,
+    null, // Không có body
+    { params: { quantity } } // Gửi `quantity` dưới dạng query param
   );
   return res.data.data;
 }

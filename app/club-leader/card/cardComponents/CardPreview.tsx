@@ -20,6 +20,7 @@ interface CardPreviewProps {
   showLogo: boolean
   patternOpacity: number
   cardOpacity: number
+  showFrame?: boolean // Optional prop to control frame visibility
 }
 
 export const CardPreview = forwardRef<HTMLDivElement, CardPreviewProps>(
@@ -38,21 +39,17 @@ export const CardPreview = forwardRef<HTMLDivElement, CardPreviewProps>(
       showLogo,
       patternOpacity,
       cardOpacity,
+      showFrame = true, // Default to true for backward compatibility
     } = props
 
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Card Preview</CardTitle>
-        </CardHeader>
-        <CardContent className="p-2 sm:p-4 md:p-6">
-          <div className="flex justify-center">
-            <div
-              ref={ref}
-              data-card-element="true"
-              className={`${cardColorClass} ${gradient} ${borderRadius} shadow-2xl p-3 sm:p-6 md:p-8 w-full max-w-2xl text-white relative overflow-hidden min-h-[280px] sm:min-h-[320px]`}
-              style={{ opacity: cardOpacity / 100 }}
-            >
+    const cardElement = (
+      <div className="flex justify-center">
+        <div
+          ref={ref}
+          data-card-element="true"
+          className={`${cardColorClass} ${gradient} ${borderRadius} shadow-2xl p-3 sm:p-6 md:p-8 w-full ${showFrame ? 'max-w-2xl' : 'max-w-4xl'} text-white relative overflow-hidden min-h-[280px] sm:min-h-[320px]`}
+          style={{ opacity: cardOpacity / 100 }}
+        >
               {/* Pattern */}
               <PatternRenderer pattern={pattern} opacity={patternOpacity} />
 
@@ -163,6 +160,21 @@ export const CardPreview = forwardRef<HTMLDivElement, CardPreviewProps>(
               </div>
             </div>
           </div>
+    )
+
+    // If showFrame is false, return just the card element
+    if (!showFrame) {
+      return cardElement
+    }
+
+    // Otherwise, wrap in Card component with header
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Card Preview</CardTitle>
+        </CardHeader>
+        <CardContent className="p-2 sm:p-4 md:p-6">
+          {cardElement}
         </CardContent>
       </Card>
     )

@@ -14,7 +14,8 @@ import { usePrefetchClubs, usePrefetchEvents, usePrefetchUsers } from "@/hooks/u
 import {
   LayoutDashboard, Users, Calendar, Gift, Wallet, History, BarChart3,
   Building, Home, CheckCircle, FileText, FileUser, HandCoins, CalendarDays,
-  CreditCard, LibraryBig, MessageCircle, MapPin, Percent, ChevronDown, ChevronRight
+  CreditCard, LibraryBig, MessageCircle, MapPin, Percent, ChevronDown, ChevronRight, ListOrdered,
+  FileBarChart
 } from "lucide-react"
 
 interface SidebarProps {
@@ -22,10 +23,10 @@ interface SidebarProps {
   open?: boolean
 }
 
-type NavItem = { 
-  href?: string; 
-  label: string; 
-  icon: any; 
+type NavItem = {
+  href?: string;
+  label: string;
+  icon: any;
   isStaff?: boolean;
   children?: NavItem[];
 }
@@ -49,13 +50,22 @@ const navigationConfig = {
     { href: "/club-leader/members", label: "Members", icon: Users },
     { href: "/club-leader/events", label: "Events", icon: Calendar },
     { href: "/club-leader/attendances", label: "Attendances", icon: CalendarDays },
-    { 
-      label: "Others", 
+    {
+      label: "Gifts",
       icon: LayoutDashboard,
       children: [
-        { href: "/club-leader/gift", label: "Gift", icon: Gift },
+        { href: "/club-leader/gift", label: "Gift list", icon: Gift },
+        { href: "/club-leader/order-list", label: "Orders list", icon: ListOrdered  },
+      ]
+    },
+    {
+      label: "Others",
+      icon: LayoutDashboard,
+      children: [
+        // { href: "/club-leader/gift", label: "Gift", icon: Gift },
         { href: "/club-leader/card", label: "Card", icon: CreditCard },
         { href: "/club-leader/points", label: "Points Club", icon: HandCoins },
+        { href: "/club-leader/report", label: "Report", icon: FileBarChart },
         { href: "/club-leader/chat", label: "Chat", icon: MessageCircle },
       ]
     },
@@ -64,8 +74,8 @@ const navigationConfig = {
     { href: "/uni-staff", label: "Dashboard", icon: LayoutDashboard },
     { href: "/uni-staff/clubs", label: "Clubs", icon: Building },
     { href: "/uni-staff/locations", label: "Locations", icon: MapPin },
-    { 
-      label: "Policy Management", 
+    {
+      label: "Policy Management",
       icon: FileText,
       children: [
         { href: "/uni-staff/multiplier-policy", label: "Multiplier Policy", icon: Percent },
@@ -73,8 +83,8 @@ const navigationConfig = {
       ]
     },
     { href: "/uni-staff/majors", label: "Majors", icon: LibraryBig },
-    { 
-      label: "Requests", 
+    {
+      label: "Requests",
       icon: CheckCircle,
       children: [
         { href: "/uni-staff/clubs-req", label: "Club Requests", icon: Building },
@@ -287,7 +297,8 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
             {require("@/components/theme-toggle").ThemeToggle()}
           </div>
         </div>
-        <div className="flex-1 overflow-auto py-4 pb-72">
+        {/* <div className="flex-1 overflow-auto py-4 pb-72"> */}
+        <div className="flex-1 overflow-auto py-4">
           <nav className="grid gap-1 px-2">
             {navigation.map((item, index) => {
               const Icon = item.icon
@@ -297,7 +308,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
               const hasChildren = item.children && item.children.length > 0
               const isDropdownOpen = openDropdowns[item.label]
               const hasActiveChild = isAnyChildActive(item.children)
-              
+
               // Badge logic
               const isEventsItem = item.label === "Events"
               const isClubsItem = item.label === "Clubs"
@@ -354,7 +365,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                       )} />
                     )}
                     <span className="truncate">{item.label}</span>
-                    
+
                     {/* Dropdown indicator */}
                     {hasChildren && (
                       <div className="ml-auto">
@@ -365,7 +376,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                         )}
                       </div>
                     )}
-                    
+
                     {/* Badges */}
                     {isStaffItem && (
                       <span className="ml-auto text-xs px-1.5 py-0.5 rounded bg-muted-foreground/20 text-muted-foreground">
@@ -416,11 +427,11 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                         const ChildIcon = child.icon
                         const isChildActive = child.href === pathname
                         const isChildLoading = child.href ? loadingPath === child.href : false
-                        
+
                         // Child badges
                         const isChildClubRequests = child.label === "Club Requests"
                         const isChildEventRequests = child.label === "Event Requests"
-                        
+
                         return (
                           <Button
                             key={child.href}
@@ -440,7 +451,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                               <ChildIcon className="h-3.5 w-3.5 flex-shrink-0" />
                             )}
                             <span className="truncate text-xs">{child.label}</span>
-                            
+
                             {/* Child badges */}
                             {showBadges && isChildClubRequests && clubApplicationsCount > 0 && (
                               <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">

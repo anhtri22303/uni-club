@@ -16,7 +16,7 @@ import {
   User, Mail, Phone, Save, Calendar, MapPin, Edit3, Clock, Users, Settings, UserCheck, FileText, BarChart3, Globe, Flame,
   Zap, Building2, Trophy, Loader2, AlertCircle, Camera, Lock,
 } from "lucide-react"
-import { editProfile, fetchProfile, uploadAvatar } from "@/service/userApi"
+import { editProfile, fetchProfile, uploadAvatar, uploadBackground, getProfileStats, ProfileStats } from "@/service/userApi"
 import { AvatarCropModal } from "@/components/avatar-crop-modal"
 import { ChangePasswordModal } from "@/components/change-password"
 import { ApiMembershipWallet } from "@/service/walletApi"
@@ -32,6 +32,7 @@ interface ProfileData {
   studentCode: string
   bio: string
   avatarUrl: string
+  backgroundUrl: string
   userPoints: number
 }
 
@@ -47,6 +48,7 @@ export default function ProfilePage() {
   const { toast } = useToast()
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const backgroundFileInputRef = useRef<HTMLInputElement>(null)
 
   // State management for profile data
   const [profileState, setProfileState] = useState<ProfileState>({
@@ -65,6 +67,13 @@ export default function ProfilePage() {
   const [imageToCrop, setImageToCrop] = useState<string>("")
   const [croppedFile, setCroppedFile] = useState<File | null>(null)
 
+  // States for background image
+  const [previewBackgroundUrl, setPreviewBackgroundUrl] = useState<string>("")
+  const [selectedBackgroundFile, setSelectedBackgroundFile] = useState<File | null>(null)
+  const [showBackgroundCropModal, setShowBackgroundCropModal] = useState<boolean>(false)
+  const [backgroundImageToCrop, setBackgroundImageToCrop] = useState<string>("")
+  const [croppedBackgroundFile, setCroppedBackgroundFile] = useState<File | null>(null)
+
   // States for wallet memberships
   const [memberships, setMemberships] = useState<ApiMembershipWallet[]>([])
 
@@ -73,13 +82,10 @@ export default function ProfilePage() {
 
   // State for change password modal
   const [showChangePassword, setShowChangePassword] = useState(false)
-  // Dữ liệu tĩnh cho hoạt động người dùng
-  const userStats = {
-    clubsJoined: 5,
-    eventsAttended: 12,
-    monthsActive: 6,
-    achievements: 3,
-  }
+  
+  // State for user profile statistics (real data from API)
+  const [userStats, setUserStats] = useState<ProfileStats | null>(null)
+  const [statsLoading, setStatsLoading] = useState(true)
 
   // Static data for administrators
   const adminStats = {
@@ -133,6 +139,7 @@ export default function ProfilePage() {
         studentCode: profile?.studentCode ?? profile?.student_code ?? "",
         bio: profile?.bio ?? "",
         avatarUrl: profile?.avatarUrl ?? "",
+        backgroundUrl: profile?.backgroundUrl ?? "",
         userPoints: Number(profile?.wallet?.balancePoints ?? 0),
       }
 
@@ -195,6 +202,25 @@ export default function ProfilePage() {
       // Clear file selection when profile loads
       setSelectedFile(null)
       setPreviewAvatarUrl("")
+
+      // Load profile statistics for students and club leaders
+      if (auth.role === "student" || auth.role === "club_leader") {
+        try {
+          setStatsLoading(true)
+          const stats = await getProfileStats()
+          if (stats) {
+            setUserStats(stats)
+          }
+        } catch (statsErr) {
+          console.error("Failed to load profile stats:", statsErr)
+          // Don't show error toast for stats - just keep loading state or show 0s
+        } finally {
+          setStatsLoading(false)
+        }
+      } else {
+        // For non-student/club_leader roles, set loading to false
+        setStatsLoading(false)
+      }
 
       // } catch (err) {
       //   console.error("Failed to load profile:", err)
@@ -382,6 +408,106 @@ export default function ProfilePage() {
     }
   }
 
+  // Handle background image click to open file picker
+  const handleBackgroundClick = () => {
+    backgroundFileInputRef.current?.click()
+  }
+
+  // Handle background file selection and preview
+  const handleBackgroundFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Error",
+        description: "Please select an image file (jpg, png, gif, etc.)",
+        variant: "destructive"
+      })
+      return
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "Error",
+        description: "File size must be smaller than 5MB",
+        variant: "destructive"
+      })
+      return
+    }
+
+    // Create preview URL and open crop modal
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const result = e.target?.result as string
+      setBackgroundImageToCrop(result)
+      setShowBackgroundCropModal(true)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  // Handle background crop complete - convert blob to file and upload immediately
+  const handleBackgroundCropComplete = async (croppedBlob: Blob) => {
+    // Convert blob to file
+    const croppedFile = new File([croppedBlob], 'cropped-background.jpg', {
+      type: 'image/jpeg',
+      lastModified: Date.now()
+    })
+
+    // Upload background immediately
+    try {
+      toast({
+        title: "Uploading...",
+        description: "Uploading background image, please wait...",
+      })
+
+      // Call API to upload background directly with cropped file
+      const backgroundRes = await uploadBackground(croppedFile)
+      if (backgroundRes && backgroundRes.success) {
+        // Clear all background upload states
+        setSelectedBackgroundFile(null)
+        setCroppedBackgroundFile(null)
+        setPreviewBackgroundUrl("")
+        setBackgroundImageToCrop("")
+
+        // Clear file input
+        if (backgroundFileInputRef.current) {
+          backgroundFileInputRef.current.value = ""
+        }
+
+        toast({
+          title: "Background Updated Successfully",
+          description: "Your profile background has been changed.",
+        })
+
+        // Reload profile data to get updated background
+        await loadProfile()
+      } else {
+        throw new Error(backgroundRes?.message || "Unable to update background")
+      }
+    } catch (err) {
+      console.error("Upload background failed:", err)
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : "An error occurred while updating background image",
+        variant: "destructive"
+      })
+      throw err // Re-throw to let modal know upload failed
+    }
+  }
+
+  // Handle background crop cancel
+  const handleBackgroundCropCancel = () => {
+    setShowBackgroundCropModal(false)
+    setBackgroundImageToCrop("")
+    // Reset file input
+    if (backgroundFileInputRef.current) {
+      backgroundFileInputRef.current.value = ""
+    }
+  }
+
   const getInitials = (name: string) => {
     return name
       .split(" ")
@@ -455,7 +581,7 @@ export default function ProfilePage() {
   }
 
   // Destructure profile data for easier access
-  const { fullName, email, phone, majorName, studentCode, bio, avatarUrl, userPoints } = profileState.data
+  const { fullName, email, phone, majorName, studentCode, bio, avatarUrl, backgroundUrl, userPoints } = profileState.data
 
   // --- HÀM ĐÃ CẬP NHẬT: Thêm logic trả về lớp animation ---
   const getPointsCardStyle = (points: number) => {
@@ -512,8 +638,43 @@ export default function ProfilePage() {
         <AppShell>
           <div className="min-h-screen bg-slate-50">
             {/* Header chuyên nghiệp */}
-            <div className="bg-gradient-to-r from-primary to-secondary text-white">
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div className="bg-gradient-to-r from-primary to-secondary text-white relative overflow-hidden">
+              {/* Background Image - Full Header Background */}
+              {(previewBackgroundUrl || backgroundUrl) && (
+                <div 
+                  className="absolute inset-0 bg-cover bg-center z-0"
+                  style={{ 
+                    backgroundImage: `url(${previewBackgroundUrl || backgroundUrl || "/placeholder.jpg"})`,
+                  }}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-primary/50 to-secondary/50" />
+                </div>
+              )}
+
+              {/* Hidden file input for background */}
+              <input
+                ref={backgroundFileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleBackgroundFileChange}
+                className="hidden"
+                aria-label="Upload background image"
+              />
+
+              {/* Change Background Button - Upper Right Corner */}
+              <div className="absolute top-4 right-4 z-20">
+                <Button
+                  onClick={handleBackgroundClick}
+                  variant="secondary"
+                  size="sm"
+                  className="bg-white/90 hover:bg-white text-slate-700 font-medium shadow-lg"
+                >
+                  <Camera className="h-4 w-4 mr-2" />
+                  Change Background
+                </Button>
+              </div>
+
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 relative z-10">
                 <div className="flex items-center space-x-6">
                   <div className="relative">
                     <Avatar
@@ -732,6 +893,24 @@ export default function ProfilePage() {
           </div>
         </AppShell>
 
+        {/* Avatar Crop Modal */}
+        <AvatarCropModal
+          isOpen={showCropModal}
+          onClose={handleCropCancel}
+          imageSrc={imageToCrop}
+          onCropComplete={handleCropComplete}
+        />
+
+        {/* Background Crop Modal */}
+        <AvatarCropModal
+          isOpen={showBackgroundCropModal}
+          onClose={handleBackgroundCropCancel}
+          imageSrc={backgroundImageToCrop}
+          onCropComplete={handleBackgroundCropComplete}
+          aspectRatio={3} // 3:1 aspect ratio for wide background
+          title="Crop Background Image"
+        />
+
         {/* Change Password Modal */}
         <ChangePasswordModal
           open={showChangePassword}
@@ -749,9 +928,40 @@ export default function ProfilePage() {
       <AppShell>
         <div className="min-h-screen bg-slate-50">
           {/* Header với ảnh đại diện */}
-          <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 pb-20 relative">
-            {/* View Card Button - Upper Right Corner */}
-            <div className="absolute top-4 right-4 z-10">
+          <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 pb-20 relative overflow-hidden">
+            {/* Background Image - Full Header Background */}
+            {(previewBackgroundUrl || backgroundUrl) && (
+              <div 
+                className="absolute inset-0 bg-cover bg-center z-0"
+                style={{ 
+                  backgroundImage: `url(${previewBackgroundUrl || backgroundUrl || "/placeholder.jpg"})`,
+                }}
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-indigo-600/50 via-purple-600/50 to-pink-600/50" />
+              </div>
+            )}
+
+            {/* Hidden file input for background */}
+            <input
+              ref={backgroundFileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleBackgroundFileChange}
+              className="hidden"
+              aria-label="Upload background image"
+            />
+
+            {/* Buttons - Upper Right Corner */}
+            <div className="absolute top-4 right-4 z-20 flex gap-2">
+              <Button
+                onClick={handleBackgroundClick}
+                variant="secondary"
+                size="sm"
+                className="bg-white/90 hover:bg-white text-indigo-600 font-medium shadow-lg"
+              >
+                <Camera className="h-4 w-4 mr-2" />
+                Change Background
+              </Button>
               <Button
                 onClick={() => router.push('/virtual-card')}
                 className="bg-white text-indigo-600 hover:bg-white/90 font-semibold shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
@@ -763,7 +973,7 @@ export default function ProfilePage() {
               </Button>
             </div>
 
-            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 text-center">
+            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 text-center relative z-10">
               <div className="relative">
                 <Avatar
                   className="w-28 h-28 mx-auto border-4 border-white/50 shadow-xl cursor-pointer hover:opacity-80 transition-opacity"
@@ -943,26 +1153,66 @@ export default function ProfilePage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="grid grid-cols-2 gap-4">
-                    <div className="text-center p-4 bg-slate-100 rounded-lg">
-                      <Users className="h-7 w-7 text-blue-600 mx-auto mb-1" />
-                      <div className="text-2xl font-bold text-blue-800">{userStats.clubsJoined}</div>
-                      <div className="text-xs text-slate-600">Clubs Joined</div>
-                    </div>
-                    <div className="text-center p-4 bg-slate-100 rounded-lg">
-                      <Calendar className="h-7 w-7 text-green-600 mx-auto mb-1" />
-                      <div className="text-2xl font-bold text-green-800">{userStats.eventsAttended}</div>
-                      <div className="text-xs text-slate-600">Events Attended</div>
-                    </div>
-                    <div className="text-center p-4 bg-slate-100 rounded-lg">
-                      <Clock className="h-7 w-7 text-purple-600 mx-auto mb-1" />
-                      <div className="text-2xl font-bold text-purple-800">{userStats.monthsActive}</div>
-                      <div className="text-xs text-slate-600">Months Active</div>
-                    </div>
-                    <div className="text-center p-4 bg-slate-100 rounded-lg">
-                      <Trophy className="h-7 w-7 text-amber-600 mx-auto mb-1" />
-                      <div className="text-2xl font-bold text-amber-800">{userStats.achievements}</div>
-                      <div className="text-xs text-slate-600">Achievements</div>
-                    </div>
+                    {statsLoading ? (
+                      // Loading state for stats
+                      <>
+                        {[1, 2, 3, 4].map((i) => (
+                          <div key={i} className="text-center p-4 bg-slate-100 rounded-lg animate-pulse">
+                            <div className="h-7 w-7 bg-slate-300 rounded mx-auto mb-1" />
+                            <div className="h-6 w-12 bg-slate-300 rounded mx-auto mb-1" />
+                            <div className="h-3 w-20 bg-slate-300 rounded mx-auto" />
+                          </div>
+                        ))}
+                      </>
+                    ) : userStats ? (
+                      // Real data from API
+                      <>
+                        <div className="text-center p-4 bg-slate-100 rounded-lg">
+                          <Users className="h-7 w-7 text-blue-600 mx-auto mb-1" />
+                          <div className="text-2xl font-bold text-blue-800">{userStats.totalClubsJoined}</div>
+                          <div className="text-xs text-slate-600">Clubs Joined</div>
+                        </div>
+                        <div className="text-center p-4 bg-slate-100 rounded-lg">
+                          <Calendar className="h-7 w-7 text-green-600 mx-auto mb-1" />
+                          <div className="text-2xl font-bold text-green-800">{userStats.totalEventsJoined}</div>
+                          <div className="text-xs text-slate-600">Events Joined</div>
+                        </div>
+                        <div className="text-center p-4 bg-slate-100 rounded-lg">
+                          <Zap className="h-7 w-7 text-purple-600 mx-auto mb-1" />
+                          <div className="text-2xl font-bold text-purple-800">{userStats.totalPointsEarned.toLocaleString()}</div>
+                          <div className="text-xs text-slate-600">Points Earned</div>
+                        </div>
+                        <div className="text-center p-4 bg-slate-100 rounded-lg">
+                          <Clock className="h-7 w-7 text-amber-600 mx-auto mb-1" />
+                          <div className="text-2xl font-bold text-amber-800">{userStats.totalAttendanceDays}</div>
+                          <div className="text-xs text-slate-600">Attendance Days</div>
+                        </div>
+                      </>
+                    ) : (
+                      // Empty state if no stats available
+                      <>
+                        <div className="text-center p-4 bg-slate-100 rounded-lg">
+                          <Users className="h-7 w-7 text-blue-600 mx-auto mb-1" />
+                          <div className="text-2xl font-bold text-blue-800">0</div>
+                          <div className="text-xs text-slate-600">Clubs Joined</div>
+                        </div>
+                        <div className="text-center p-4 bg-slate-100 rounded-lg">
+                          <Calendar className="h-7 w-7 text-green-600 mx-auto mb-1" />
+                          <div className="text-2xl font-bold text-green-800">0</div>
+                          <div className="text-xs text-slate-600">Events Joined</div>
+                        </div>
+                        <div className="text-center p-4 bg-slate-100 rounded-lg">
+                          <Zap className="h-7 w-7 text-purple-600 mx-auto mb-1" />
+                          <div className="text-2xl font-bold text-purple-800">0</div>
+                          <div className="text-xs text-slate-600">Points Earned</div>
+                        </div>
+                        <div className="text-center p-4 bg-slate-100 rounded-lg">
+                          <Clock className="h-7 w-7 text-amber-600 mx-auto mb-1" />
+                          <div className="text-2xl font-bold text-amber-800">0</div>
+                          <div className="text-xs text-slate-600">Attendance Days</div>
+                        </div>
+                      </>
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -977,6 +1227,16 @@ export default function ProfilePage() {
         onClose={handleCropCancel}
         imageSrc={imageToCrop}
         onCropComplete={handleCropComplete}
+      />
+
+      {/* Background Crop Modal */}
+      <AvatarCropModal
+        isOpen={showBackgroundCropModal}
+        onClose={handleBackgroundCropCancel}
+        imageSrc={backgroundImageToCrop}
+        onCropComplete={handleBackgroundCropComplete}
+        aspectRatio={3} // 3:1 aspect ratio for wide background
+        title="Crop Background Image"
       />
 
       {/* Change Password Modal */}

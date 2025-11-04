@@ -36,6 +36,8 @@ export default function MemberEventsPage() {
   const [showHistoryModal, setShowHistoryModal] = useState(false)
   const [registeringEventId, setRegisteringEventId] = useState<number | null>(null)
   const [showRegisteredOnly, setShowRegisteredOnly] = useState(false)
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
+  const [selectedEventForRegistration, setSelectedEventForRegistration] = useState<any>(null)
   const { toast } = useToast()
   const queryClient = useQueryClient()
 
@@ -200,8 +202,20 @@ export default function MemberEventsPage() {
     router.push(`/student/events/${eventId}`)
   }
 
-  const handleRegister = async (eventId: number) => {
+  const handleRegisterClick = (event: any) => {
+    console.log("Selected event for registration:", event)
+    console.log("commitPointCost:", event.commitPointCost)
+    setSelectedEventForRegistration(event)
+    setShowConfirmModal(true)
+  }
+
+  const handleConfirmRegister = async () => {
+    if (!selectedEventForRegistration) return
+    
+    const eventId = selectedEventForRegistration.id
     setRegisteringEventId(eventId)
+    setShowConfirmModal(false)
+    
     try {
       const result = await registerForEvent(eventId)
       toast({
@@ -219,6 +233,7 @@ export default function MemberEventsPage() {
       })
     } finally {
       setRegisteringEventId(null)
+      setSelectedEventForRegistration(null)
     }
   }
 
@@ -308,7 +323,15 @@ export default function MemberEventsPage() {
             <Button
               variant={showRegisteredOnly ? "default" : "outline"}
               onClick={() => {
-                setShowRegisteredOnly(!showRegisteredOnly)
+                const newShowRegisteredOnly = !showRegisteredOnly
+                setShowRegisteredOnly(newShowRegisteredOnly)
+                // When switching to "My Registrations", change filter to "show all"
+                // When switching back to "All Events", change filter to "hide expired"
+                if (newShowRegisteredOnly) {
+                  setActiveFilters({ ...activeFilters, expired: "show" })
+                } else {
+                  setActiveFilters({ ...activeFilters, expired: "hide" })
+                }
                 setCurrentPage(1)
               }}
               className="whitespace-nowrap"
@@ -425,20 +448,29 @@ export default function MemberEventsPage() {
                           </div>
                         )}
 
-                          <Button
-                            className="w-full"
-                            variant="default"
-                            disabled={registeringEventId === event.id || event.status === "COMPLETED" || isEventRegistered(event.id)}
-                            onClick={() => handleRegister(event.id)}
-                          >
-                            {registeringEventId === event.id 
-                              ? "Registering..." 
-                              : isEventRegistered(event.id) 
-                                ? "Already Registered" 
-                                : event.status === "COMPLETED" 
-                                  ? "Ended" 
-                                  : "Register"}
-                          </Button>
+                          <div className="flex gap-2">
+                            <Button
+                              className="flex-1"
+                              variant="outline"
+                              onClick={() => handleEventDetail(String(event.id))}
+                            >
+                              View Detail
+                            </Button>
+                            <Button
+                              className="flex-1"
+                              variant="default"
+                              disabled={registeringEventId === event.id || event.status === "COMPLETED" || isEventRegistered(event.id)}
+                              onClick={() => handleRegisterClick(event)}
+                            >
+                              {registeringEventId === event.id 
+                                ? "Registering..." 
+                                : isEventRegistered(event.id) 
+                                  ? "Already Registered" 
+                                  : event.status === "COMPLETED" 
+                                    ? "Ended" 
+                                    : "Register"}
+                            </Button>
+                          </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -473,12 +505,141 @@ export default function MemberEventsPage() {
 
           {/* History Modal */}
           <Dialog open={showHistoryModal} onOpenChange={setShowHistoryModal}>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Event History</DialogTitle>
+                <DialogTitle>My Event Registrations</DialogTitle>
               </DialogHeader>
-              <div className="py-8 text-center text-muted-foreground">
-                hello
+              <div className="space-y-4 py-4">
+                {myRegistrations.length === 0 ? (
+                  <div className="py-12 text-center text-muted-foreground">
+                    <History className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">No registrations yet</h3>
+                    <p className="text-muted-foreground">You haven't registered for any events yet</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {myRegistrations.map((registration) => (
+                      <Card key={registration.eventId} className="hover:shadow-md transition-shadow">
+                        <CardHeader className="pb-3">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <CardTitle className="text-base mb-1">{registration.eventName}</CardTitle>
+                              <CardDescription className="flex items-center gap-1">
+                                <Users className="h-3 w-3" />
+                                {registration.clubName}
+                              </CardDescription>
+                            </div>
+                            <div className="flex flex-col items-end gap-2">
+                              <Badge 
+                                variant="outline" 
+                                className={
+                                  registration.status === "ATTENDED" 
+                                    ? "bg-green-100 text-green-700 border-green-500" 
+                                    : registration.status === "REGISTERED"
+                                    ? "bg-blue-100 text-blue-700 border-blue-500"
+                                    : registration.status === "ABSENT"
+                                    ? "bg-red-100 text-red-700 border-red-500"
+                                    : "bg-gray-100 text-gray-700 border-gray-400"
+                                }
+                              >
+                                {registration.status}
+                              </Badge>
+                              {registration.attendanceLevel && registration.attendanceLevel !== "NONE" && (
+                                <Badge variant="secondary" className="text-xs">
+                                  {registration.attendanceLevel}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="pt-0">
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                              <Calendar className="h-4 w-4" />
+                              {new Date(registration.date).toLocaleDateString("en-US", {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                              })}
+                            </div>
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                              <Trophy className="h-4 w-4" />
+                              {registration.committedPoints} points committed
+                            </div>
+                            <div className="col-span-2 text-xs text-muted-foreground">
+                              Registered: {new Date(registration.registeredAt).toLocaleString("en-US", {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Registration Confirmation Modal */}
+          <Dialog open={showConfirmModal} onOpenChange={setShowConfirmModal}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Confirm Event Registration</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                {selectedEventForRegistration && (
+                  <>
+                    <div className="text-center">
+                      <h3 className="font-semibold text-lg mb-2">
+                        {selectedEventForRegistration.name}
+                      </h3>
+                      <div className="text-muted-foreground text-sm mb-4">
+                        {selectedEventForRegistration.hostClub?.name}
+                      </div>
+                    </div>
+                    
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 space-y-3">
+                      <div className="flex items-start gap-3">
+                        <Trophy className="h-5 w-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+                        <div className="space-y-2 text-sm">
+                          <p className="font-semibold text-yellow-900">
+                            Point Cost: {selectedEventForRegistration.commitPointCost || 0} points
+                          </p>
+                          <p className="text-yellow-800">
+                            <strong>{selectedEventForRegistration.commitPointCost || 0} points</strong> will be received back along with bonus points if you fully participate in the event.
+                          </p>
+                          <p className="text-yellow-800">
+                            Otherwise, they will be <strong>lost and not refunded</strong>.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+                
+                <div className="flex gap-3 pt-2">
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => {
+                      setShowConfirmModal(false)
+                      setSelectedEventForRegistration(null)
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    className="flex-1"
+                    onClick={handleConfirmRegister}
+                  >
+                    Confirm Registration
+                  </Button>
+                </div>
               </div>
             </DialogContent>
           </Dialog>

@@ -69,6 +69,7 @@ export const fetchProfile = async () => {
         phone: profileData?.phone,
         status: profileData?.status,
         avatarUrl: profileData?.avatarUrl,
+        backgroundUrl: profileData?.backgroundUrl,
         studentCode: profileData?.studentCode,
         majorName: profileData?.majorName,
         bio: profileData?.bio,
@@ -172,6 +173,31 @@ export const uploadAvatar = async (file: File) => {
   }
 }
 
+// New: uploadBackground - upload background image file directly to backend
+export const uploadBackground = async (file: File) => {
+  try {
+    console.log("Uploading background file:", file.name)
+
+    const formData = new FormData()
+    formData.append('file', file)
+
+    // Call API to upload background with multipart/form-data
+    const response = await axiosInstance.post(`api/users/profile/background`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      }
+    })
+
+    const body = response.data
+    console.log("Upload background response:", body)
+
+    return body as any
+  } catch (error) {
+    console.error("Error uploading background:", error)
+    throw error
+  }
+}
+
 export const deleteUserById = async (id: string | number) => {
   try {
     const response = await axiosInstance.delete(`api/users/${id}`)
@@ -203,6 +229,38 @@ export const getUserStats = async () => {
     return null
   } catch (error) {
     console.error("Error fetching user stats:", error)
+    throw error
+  }
+}
+
+// Type for profile statistics
+export interface ProfileStats {
+  totalClubsJoined: number
+  totalEventsJoined: number
+  totalPointsEarned: number
+  totalAttendanceDays: number
+}
+
+// New: getProfileStats - get current user's profile statistics
+export const getProfileStats = async (): Promise<ProfileStats | null> => {
+  try {
+    const response = await axiosInstance.get("api/users/profile/stats")
+    const body = response.data
+    console.log("Fetched profile stats response:", body)
+
+    // If backend uses { success, message, data }
+    if (body && typeof body === "object" && "data" in body && "success" in body && (body as any).success) {
+      return (body as any).data as ProfileStats
+    }
+
+    // If the endpoint returns the stats object directly
+    if (body && typeof body === "object") {
+      return body as ProfileStats
+    }
+
+    return null
+  } catch (error) {
+    console.error("Error fetching profile stats:", error)
     throw error
   }
 }

@@ -15,6 +15,7 @@ import { Users, ShieldCheck, ChevronLeft, ChevronRight, Send, UserCircle, Histor
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group" // ✨ THÊM DÒNG NÀY
 // ✨ --- IMPORT API THẬT --- ✨
 import { fetchClub } from "@/service/clubApi"
 import { pointsToClubs, getUniToClubTransactions, ApiUniToClubTransaction } from "@/service/walletApi"
@@ -42,6 +43,9 @@ export default function UniversityStaffRewardPage() {
     const [showHistoryModal, setShowHistoryModal] = useState(false)
     const [transactions, setTransactions] = useState<ApiUniToClubTransaction[]>([])
     const [transactionsLoading, setTransactionsLoading] = useState(false)
+    // ✨ --- STATE MỚI CHO LÝ DO --- ✨
+    const [reasonType, setReasonType] = useState<"monthly" | "other">("monthly") // Mặc định là 'monthly'
+    const [customReason, setCustomReason] = useState<string>("")
 
     // Tải danh sách tất cả các CLB khi component được mount bằng API thật
     useEffect(() => {
@@ -131,10 +135,10 @@ export default function UniversityStaffRewardPage() {
 
     const handleDistributeRewards = async () => {
         if (rewardAmount === '' || rewardAmount <= 0) {
-            toast({ 
-                title: "Error", 
-                description: "Please enter a valid reward amount.", 
-                variant: "destructive" 
+            toast({
+                title: "Error",
+                description: "Please enter a valid reward amount.",
+                variant: "destructive"
             })
             return
         }
@@ -142,13 +146,31 @@ export default function UniversityStaffRewardPage() {
         // Get selected clubs
         const selectedClubsList = allClubs.filter(club => selectedClubs[String(club.id)])
         if (selectedClubsList.length === 0) {
-            toast({ 
-                title: "No clubs selected", 
-                description: "Please select at least one club to distribute rewards.", 
-                variant: "destructive" 
+            toast({
+                title: "No clubs selected",
+                description: "Please select at least one club to distribute rewards.",
+                variant: "destructive"
             })
             return
         }
+
+        // ✨ --- KIỂM TRA LÝ DO --- ✨
+        let finalReason = ""
+        if (reasonType === "monthly") {
+            finalReason = "Monthly club points" // Lý do theo yêu cầu
+        } else {
+            finalReason = customReason.trim()
+        }
+
+        if (!finalReason) {
+            toast({
+                title: "Reason Required",
+                description: "Please select a reason or enter a custom reason for the distribution.",
+                variant: "destructive"
+            })
+            return
+        }
+        // ✨ ------------------------- ✨
 
         setIsDistributing(true)
         try {
@@ -159,7 +181,8 @@ export default function UniversityStaffRewardPage() {
             const response = await pointsToClubs(
                 targetIds,
                 rewardAmount as number,
-                "Giving Point Month"
+                //"Giving Point Month"
+                finalReason // ✨ THAY ĐỔI: Sử dụng lý do động
             )
 
             if (response.success) {
@@ -227,6 +250,8 @@ export default function UniversityStaffRewardPage() {
                 </Button>
             </div>
         ) : null
+
+    const isReasonInvalid = (reasonType === 'other' && !customReason.trim())
 
     return (
         <ProtectedRoute allowedRoles={["uni_staff"]}>
@@ -326,27 +351,74 @@ export default function UniversityStaffRewardPage() {
                             <CardTitle>Set Reward Parameters</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="reward-amount">Reward Points (per club)</Label>
-                                <Input
-                                    id="reward-amount"
-                                    type="number"
-                                    placeholder="Enter reward points..."
-                                    value={rewardAmount}
-                                    onChange={handleRewardAmountChange}
-                                    disabled={isDistributing}
-                                    min="1"
-                                />
+                            {/* Grid 2 cột */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Cột 1: Số điểm */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="reward-amount">Reward Points (per club)</Label>
+                                    <Input
+                                        id="reward-amount"
+                                        type="number"
+                                        placeholder="Enter reward points..."
+                                        value={rewardAmount}
+                                        onChange={handleRewardAmountChange}
+                                        disabled={isDistributing}
+                                        min="1"
+                                        className="mt-2 border-slate-300"
+                                    />
+                                </div>
+                                {/* Cột 2: Lý do */}
+                                <div className="space-y-2">
+                                    <Label>Reason for Distribution (Required)</Label>
+                                    <RadioGroup
+                                        value={reasonType}
+                                        onValueChange={(value) => setReasonType(value as "monthly" | "other")}
+                                        disabled={isDistributing}
+                                        className="mt-2 space-y-2" // Thêm space-y-2
+                                    >
+                                        <div className="flex items-center space-x-2">
+                                            <RadioGroupItem value="monthly" id="r-monthly" />
+                                            <Label htmlFor="r-monthly" className="font-normal cursor-pointer">
+                                                Monthly club points
+                                            </Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <RadioGroupItem value="other" id="r-other" />
+                                            <Label htmlFor="r-other" className="font-normal cursor-pointer">
+                                                Khác
+                                            </Label>
+                                        </div>
+                                    </RadioGroup>
+
+                                    {/* Ô nhập lý do "Khác" */}
+                                    {reasonType === 'other' && (
+                                        <Input
+                                            id="custom-reason"
+                                            placeholder="Enter specific reason..."
+                                            value={customReason}
+                                            onChange={(e) => setCustomReason(e.target.value)}
+                                            disabled={isDistributing}
+                                            className="mt-2 border-slate-300" // Thêm margin top
+                                        />
+                                    )}
+                                </div>
                             </div>
-                            <p className="text-sm text-muted-foreground">
+
+                            {/* Số CLB đã chọn */}
+                            <p className="text-sm text-muted-foreground pt-2">
                                 Selected clubs: <strong>{selectedCount} club(s)</strong>
                             </p>
                         </CardContent>
-                        <CardFooter>
+                        <CardFooter className="pt-0 justify-end ">
                             <Button
                                 onClick={handleDistributeRewards}
-                                disabled={isDistributing || rewardAmount === '' || rewardAmount <= 0 || selectedCount === 0}
-                                className="w-full"
+                                disabled={
+                                    isDistributing ||
+                                    rewardAmount === '' ||
+                                    rewardAmount <= 0 ||
+                                    selectedCount === 0 ||
+                                    isReasonInvalid // ✨ THÊM ĐIỀU KIỆN VÔ HIỆU HÓA
+                                }
                             >
                                 {isDistributing ? "Distributing..." : (
                                     <>
@@ -387,10 +459,10 @@ export default function UniversityStaffRewardPage() {
                                     return (
                                         <Card
                                             key={club.id}
-                                            className={`transition-all duration-200 border-2 ${isSelected 
-                                                ? "border-primary/70 bg-primary/5 shadow-sm" 
+                                            className={`transition-all duration-200 border-2 ${isSelected
+                                                ? "border-primary/70 bg-primary/5 shadow-sm"
                                                 : "border-transparent hover:border-muted"
-                                            }`}
+                                                }`}
                                         >
                                             <CardContent className="py-3 flex items-center justify-between">
                                                 <div className="flex items-center gap-4">

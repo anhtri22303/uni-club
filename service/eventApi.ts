@@ -22,6 +22,7 @@ export interface Event {
   maxCheckInCount: number
   currentCheckInCount: number
   budgetPoints: number
+  commitPointCost: number
   hostClub: {
     id: number
     name: string
@@ -90,6 +91,12 @@ export const fetchEvent = async ({ page = 0, size = 70, sort = "name" } = {}): P
     });
     const data: any = response.data;
     console.log(`fetchEvent at ${new Date().toISOString()}:`, data);
+    
+    // Log first event to check structure
+    if (data?.content?.[0]) {
+      console.log("First event in response:", data.content[0]);
+      console.log("commitPointCost in first event:", data.content[0].commitPointCost);
+    }
 
     // Response structure: { content: [...], pageable: {...}, ... }
     // Always return the content array for event list
@@ -491,6 +498,33 @@ export const getEventSettle = async () => {
     }>
   } catch (error) {
     console.error(`Error fetching settled events:`, error)
+    throw error
+  }
+}
+
+/**
+ * PUT /api/events/{eventId}/extend
+ * Extend event time
+ * @param eventId - Event ID
+ * @param payload - Extended time data
+ * @returns Updated event data
+ */
+export interface EventTimeExtendPayload {
+  newEndDate: string  // Format: YYYY-MM-DD
+  newEndTime: string  // Format: HH:MM
+  reason: string      // Reason for extension
+}
+
+export const eventTimeExtend = async (eventId: string | number, payload: EventTimeExtendPayload): Promise<Event> => {
+  try {
+    const response = await axiosInstance.put(`/api/events/${eventId}/extend`, payload)
+    const data: any = response.data
+    console.log(`Extended time for event ${eventId}:`, data)
+    // Response structure: { success: true, message: "success", data: {...event} }
+    if (data?.data) return data.data
+    return data
+  } catch (error) {
+    console.error(`Error extending time for event ${eventId}:`, error)
     throw error
   }
 }

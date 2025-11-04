@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { fetchClub, getClubById, getClubMemberCount } from "@/service/clubApi"
 import { fetchEvent, getEventById, getEventByClubId, getEventCoHost, getMyEventRegistrations } from "@/service/eventApi"
 import { fetchUser, fetchUserById, fetchProfile } from "@/service/userApi"
-import { getMembersByClubId } from "@/service/membershipApi"
+import { getMembersByClubId, ApiMembership, getMyClubs, } from "@/service/membershipApi"
 import { fetchMajors } from "@/service/majorApi"
 import { getProducts, Product, } from "@/service/productApi"
 import { getTags, Tag as ProductTag } from "@/service/tagApi" // 👈 THÊM `Tag as ProductTag`import { getWallet } from "@/service/walletApi"
@@ -29,26 +29,59 @@ import { getWallet } from "@/service/walletApi"
 // ============================================
 // INTERFACES
 // ============================================
-interface MembershipWallet {
+// interface MembershipWallet {
+//   walletId: number;
+//   membershipId: number; // 👈 Đây là ID chúng ta cần
+//   clubId: number;
+//   clubName: string;
+//   balancePoints: number;
+//   // ... (Thêm các trường khác nếu có)
+// }
+
+// interface Profile {
+//   id: number;
+//   email: string;
+//   fullName: string;
+//   phone: string;
+//   studentCode: string;
+//   majorName: string;
+//   bio: string;
+//   avatarUrl: string;
+//   wallets: MembershipWallet[]; // 👈 Định nghĩa thuộc tính 'wallets'
+//   // ... (Thêm các trường khác nếu có, vd: clubs, roleName)
+// }
+// (Interface này mô tả object 'wallet' (dựa trên image_131d0f.png))
+interface ProfileWallet {
   walletId: number;
-  membershipId: number; // 👈 Đây là ID chúng ta cần
+  balancePoints: number;
+  ownerType: string;
   clubId: number;
   clubName: string;
-  balancePoints: number;
-  // ... (Thêm các trường khác nếu có)
+  userId?: number;
+  userFullName?: string;
 }
 
+// (Interface này mô tả object 'club' bên trong mảng 'clubs' (dựa trên image_131d0f.png))
+interface ProfileClub {
+  clubId: number;
+  clubName: string;
+}
+
+// (Interface 'Profile' đã sửa)
 interface Profile {
   id: number;
   email: string;
   fullName: string;
-  phone: string;
+  phone: string | null;
+  roleName: string;
+  status: string;
   studentCode: string;
   majorName: string;
-  bio: string;
-  avatarUrl: string;
-  wallets: MembershipWallet[]; // 👈 Định nghĩa thuộc tính 'wallets'
-  // ... (Thêm các trường khác nếu có, vd: clubs, roleName)
+  bio: string | null;
+  avatarUrl: string | null;
+  backgroundUrl: string | null;
+  clubs: ProfileClub[];   // 👈 Đã thêm 'clubs' (array)
+  wallet: ProfileWallet;
 }
 // ============================================
 // QUERY KEYS - Centralized for consistency
@@ -614,19 +647,31 @@ export function useMemberAttendanceHistory(membershipId: number | null, enabled 
 /**
  * Hook to fetch current user's profile
  */
+// export function useProfile(enabled = true) {
+//   // 🛑 CẬP NHẬT: Thêm <Profile, Error> vào useQuery
+//   return useQuery<Profile, Error>({
+//     queryKey: queryKeys.profile,
+//     queryFn: async () => {
+//       const profile = await fetchProfile()
+//       return profile as Profile // Ép kiểu để đảm bảo
+//     },
+//     enabled,
+//     staleTime: 5 * 60 * 1000,
+//   })
+// }
 export function useProfile(enabled = true) {
-  // 🛑 CẬP NHẬT: Thêm <Profile, Error> vào useQuery
-  return useQuery<Profile, Error>({ 
+  // ❗️ Sửa kiểu dữ liệu trả về: là một MẢNG ApiMembership[]
+  return useQuery<ApiMembership[], Error>({
     queryKey: queryKeys.profile,
+    // ❗️ Sửa hàm gọi API
     queryFn: async () => {
-      const profile = await fetchProfile()
-      return profile as Profile // Ép kiểu để đảm bảo
+      const myClubs = await getMyClubs(); // 👈 Gọi API có 'membershipId'
+      return myClubs;
     },
     enabled,
     staleTime: 5 * 60 * 1000,
-  })
+  });
 }
-
 // ============================================
 // LOCATIONS QUERIES
 // ============================================

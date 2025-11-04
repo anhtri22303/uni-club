@@ -11,7 +11,7 @@ import axios from "axios"
 import { fetchEvent, getEventByClubId, type Event } from "@/service/eventApi"
 import { fetchClub, getClubMemberCount } from "@/service/clubApi"
 import { postClubApplication } from "@/service/clubApplicationAPI"
-import { getProduct } from "@/service/productApi"
+import { getProducts } from "@/service/productApi"
 import { fetchLocation } from "@/service/locationApi"
 import { getClubWallet } from "@/service/walletApi"
 import { getMembersByClubId } from "@/service/membershipApi"
@@ -69,19 +69,33 @@ export function ChatbotWidget() {
       const authDataString = localStorage.getItem("uniclub-auth")
       if (authDataString) {
         const authData = JSON.parse(authDataString)
-        const role = authData.role || "STUDENT"
+        const role = authData.role || authData.userRole || "STUDENT"
         setUserRole(role)
 
-        // Get clubIds from memberships
-        const memberships = authData.memberships || []
-        const extractedClubIds = memberships.map((m: any) => m.clubId).filter(Boolean)
-        setClubIds(extractedClubIds)
+        // Collect clubIds from multiple possible sources
+        let extractedClubIds: number[] = []
 
-        // Also check for single clubId (for CLUB_LEADER)
+        // 1. Check for clubIds array (direct property)
+        if (authData.clubIds && Array.isArray(authData.clubIds)) {
+          extractedClubIds = [...authData.clubIds]
+        }
+
+        // 2. Get clubIds from memberships
+        const memberships = authData.memberships || []
+        const membershipClubIds = memberships.map((m: any) => m.clubId).filter(Boolean)
+        membershipClubIds.forEach((id: number) => {
+          if (!extractedClubIds.includes(id)) {
+            extractedClubIds.push(id)
+          }
+        })
+
+        // 3. Also check for single clubId (for CLUB_LEADER)
         if (authData.clubId && !extractedClubIds.includes(authData.clubId)) {
           extractedClubIds.push(authData.clubId)
-          setClubIds(extractedClubIds)
         }
+
+        setClubIds(extractedClubIds)
+        console.log("Loaded clubIds:", extractedClubIds)
 
         // Set prompts based on role
         if (role === "CLUB_LEADER") {
@@ -280,33 +294,72 @@ Please present all events from my clubs in a clean, organized format.`
       }
       // 4. My Club Gifts (STUDENT/CLUB_LEADER)
       else if (inputLower.includes("my club") && inputLower.includes("gift")) {
-        try {
-          const products = await getProduct({ page: 0, size: 100 })
+        if (clubIds.length === 0) {
+          systemContent = "You are a helpful assistant."
+          userContent = "The user has not joined any clubs yet. Please inform them politely that they need to join a club first to see available gifts."
+        } else {
+          try {
+            // Fetch products from all user's clubs
+            const productsByClub: Record<string, any> = {}
+            
+            for (const clubId of clubIds) {
+              try {
+                const products = await getProducts(clubId, {
+                  includeInactive: false,
+                  includeArchived: false
+                })
+                
+                if (products.length > 0) {
+                  // Get club name from first product or fetch it
+                  const clubName = products[0]?.clubName || `Club ${clubId}`
+                  productsByClub[clubName] = {
+                    clubId,
+                    products
+                  }
+                }
+              } catch (error) {
+                console.error(`Error fetching products for club ${clubId}:`, error)
+              }
+            }
 
-          systemContent = `You are an AI assistant for a university club and event management system.
-Present the products/gifts in this BEAUTIFUL format:
+            systemContent = `You are an AI assistant for a university club and event management system.
+Present the products/gifts GROUPED BY CLUB in this BEAUTIFUL format:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎁 AVAILABLE GIFTS
+🎁 MY CLUB GIFTS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-For each product:
+For each club, format like this:
 
-🏆 [Product Name]
-• Price: [X] Points
-• Stock: [X] items
-• Description: [Description]
+🏛️ [CLUB NAME]
+━━━━━━━━━━━━━━━━━━━━━━━━
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`
+1. 🏆 [Product Name]
+   • Price: [X] Points
+   • Stock: [X] items
+   • Status: [Status]
+   • Description: [Description]
 
-          userContent = `${userMessage.text}
+2. 🏆 [Product Name]
+   • Price: [X] Points
+   • Stock: [X] items
+   • Status: [Status]
+   • Description: [Description]
 
-AVAILABLE PRODUCTS:
-${JSON.stringify(products, null, 2)}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Please present all available products/gifts in a clean format.`
-        } catch (error) {
-          console.error("Error fetching products:", error)
+If no products are available, inform the user that their clubs don't have any gifts yet.
+Make the presentation clean, easy to read, and well-organized by club.`
+
+            userContent = `${userMessage.text}
+
+PRODUCTS BY CLUB:
+${JSON.stringify(productsByClub, null, 2)}
+
+Please present all available products/gifts grouped by club in a clean, organized format.`
+          } catch (error) {
+            console.error("Error fetching products:", error)
+          }
         }
       }
       // 5. New Event Content (CLUB_LEADER)
