@@ -14,7 +14,8 @@ import { usePrefetchClubs, usePrefetchEvents, usePrefetchUsers } from "@/hooks/u
 import {
   LayoutDashboard, Users, Calendar, Gift, Wallet, History, BarChart3,
   Building, Home, CheckCircle, FileText, FileUser, HandCoins, CalendarDays,
-  CreditCard, LibraryBig, MessageCircle, MapPin, Percent, ChevronDown, ChevronRight, ListOrdered 
+  CreditCard, LibraryBig, MessageCircle, MapPin, Percent, ChevronDown, ChevronRight, ListOrdered,
+  FileBarChart
 } from "lucide-react"
 
 interface SidebarProps {
@@ -64,6 +65,7 @@ const navigationConfig = {
         // { href: "/club-leader/gift", label: "Gift", icon: Gift },
         { href: "/club-leader/card", label: "Card", icon: CreditCard },
         { href: "/club-leader/points", label: "Points Club", icon: HandCoins },
+        { href: "/club-leader/report", label: "Report", icon: FileBarChart },
         { href: "/club-leader/chat", label: "Chat", icon: MessageCircle },
       ]
     },
