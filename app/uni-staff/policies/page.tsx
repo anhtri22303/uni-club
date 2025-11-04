@@ -402,17 +402,6 @@ export default function UniStaffPoliciesPage() {
                   <Textarea id="create-desc" className="mt-2 border-slate-300" value={createDescription}
                     onChange={(e) => setCreateDescription((e.target as HTMLTextAreaElement).value)} />
                 </div>
-                {/* <div>
-                  <Label htmlFor="create-major-id">Major ID</Label>
-                  <Input id="create-major-id" className="mt-2 border-slate-300" type="number" value={createMajorId ?? ''}
-                    onChange={(e) => setCreateMajorId(e.target.value === '' ? undefined : Number(e.target.value))} />
-                </div>
-                <div>
-                  <Label htmlFor="create-major-name">Major Name</Label>
-                  <Input id="create-major-name" className="mt-2 border-slate-300" value={createMajorName || ''}
-                    onChange={(e) => setCreateMajorName(e.target.value === '' ? undefined : e.target.value)} />
-                </div> */}
-                {/* [THAY THẾ] Thay thế Input Major Name/ID bằng Select */}
                 <div>
                   <Label htmlFor="create-major">Major</Label>
                   <Select

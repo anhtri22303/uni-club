@@ -33,7 +33,6 @@ export default function StudentProductViewPage() {
     const [quantity, setQuantity] = useState(1)
     const queryClient = useQueryClient()
     const productId = params.id as string
-    // const tempClubIdForFetch = 1;
     const { data: profile, isLoading: profileLoading } = useProfile(true)
     const searchParams = useSearchParams()
     const clubIdFromQuery = searchParams.get('clubId')
@@ -47,7 +46,7 @@ export default function StudentProductViewPage() {
 
         setLoading(true)
         try {
-            // ❗️ SỬA LỖI: Chuyển đổi clubIdFromQuery (string) thành số (number)
+            //  Chuyển đổi clubIdFromQuery (string) thành số (number)
             const numericClubId = Number(clubIdFromQuery);
 
             // Kiểm tra xem việc chuyển đổi có thành công không
@@ -72,10 +71,10 @@ export default function StudentProductViewPage() {
         } finally {
             setLoading(false)
         }
-        // ❗️ BƯỚC 3: Thêm clubIdFromQuery vào dependencies
+        //  Thêm clubIdFromQuery vào dependencies
     }, [productId, clubIdFromQuery, router, toast])
 
-    // ❗️ BƯỚC 4: Sửa useEffect để lắng nghe clubIdFromQuery
+    //  Sửa useEffect để lắng nghe clubIdFromQuery
     useEffect(() => {
         // Chỉ chạy khi clubIdFromQuery đã sẵn sàng
         if (clubIdFromQuery) {
@@ -83,37 +82,9 @@ export default function StudentProductViewPage() {
         }
     }, [fetchProduct, clubIdFromQuery]) // 👈 Thêm clubIdFromQuery
 
-    // Đổi tên 'currentWallet' -> 'currentMembership' cho rõ nghĩa
-    // const currentMembership = useMemo(() => {
-    //     // 1. Chờ product VÀ profile VỚI MẢNG 'clubs'
-    //     if (!product || !profile) {
-    //         console.log("Đang chờ dữ liệu sản phẩm hoặc profile...");
-    //         return null;
-    //     }
-
-    //     console.log("ĐANG KIỂM TRA MEMBERSHIP:");
-    //     console.log("Sản phẩm này thuộc clubId:", product.clubId);
-    //     console.log("Tất cả memberships của bạn (từ profile):", profile);
-
-    //     const foundMembership = profile.find((membership: any) => membership.clubId === product.clubId);
-
-    //     if (!foundMembership) {
-    //         console.error(`%c[LỖI LOGIC] Bạn không phải là thành viên của clubId: ${product.clubId}`, 'color: red; font-weight: bold;');
-    //         return null; // Trả về null -> sẽ hiển thị thông báo "You must be a member..."
-    //     }
-
-    //     if (!foundMembership.membershipId) {
-    //         console.error(`%c[LỖI API] Dữ liệu 'profile.clubs' BỊ THIẾU 'membershipId' cho club ${product.clubId}!`, 'color: orange; font-weight: bold;');
-    //         // Vẫn trả về object, nhưng handleRedeem sẽ thất bại
-    //     } else {
-    //         console.log(`%c[THÀNH CÔNG] Đã tìm thấy membership:`, 'color: green;', foundMembership);
-    //     }
-
-    //     return foundMembership;
-    // }, [product, profile]);
-    // ❗️ BƯỚC 3: SỬA LẠI useMemo
+    // SỬA LẠI useMemo
     const currentMembership = useMemo(() => {
-        // ❗️ SỬA LẠI: Chờ product VÀ profile (profile là MẢNG)
+        // Chờ product VÀ profile (profile là MẢNG)
         if (!product || !profile) {
             console.log("Đang chờ dữ liệu sản phẩm hoặc profile...");
             return null;
@@ -121,10 +92,10 @@ export default function StudentProductViewPage() {
 
         console.log("ĐANG KIỂM TRA MEMBERSHIP:");
         console.log("Sản phẩm này thuộc clubId:", product.clubId);
-        // ❗️ SỬA LẠI: profile chính là mảng memberships (từ getMyClubs)
+        // : profile chính là mảng memberships (từ getMyClubs)
         console.log("Tất cả memberships của bạn (từ profile):", profile);
 
-        // ❗️ SỬA LẠI: Tìm trực tiếp trên mảng `profile`
+        //  Tìm trực tiếp trên mảng `profile`
         const foundMembership = profile.find((membership: any) => membership.clubId === product.clubId);
 
         if (!foundMembership) {
