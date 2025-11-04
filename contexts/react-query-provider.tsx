@@ -1,7 +1,7 @@
 "use client"
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { useState, type ReactNode, lazy, Suspense } from "react"
+import { type ReactNode, lazy, Suspense } from "react"
 
 // Dynamically import ReactQueryDevtools to avoid build issues
 const ReactQueryDevtools = lazy(() =>
@@ -10,33 +10,53 @@ const ReactQueryDevtools = lazy(() =>
   }))
 )
 
-export function ReactQueryProvider({ children }: { children: ReactNode }) {
-  // Create a client with optimized defaults
-  const [queryClient] = useState(
-    () =>
-      new QueryClient({
+// Create a single shared QueryClient instance
+let browserQueryClient: QueryClient | undefined = undefined
+
+function getQueryClient() {
+  if (typeof window === 'undefined') {
+    // Server: always make a new query client
+    return new QueryClient({
+      defaultOptions: {
+        queries: {
+          staleTime: 5 * 60 * 1000,
+          gcTime: 10 * 60 * 1000,
+          retry: 1,
+          refetchOnWindowFocus: false,
+          refetchOnReconnect: false,
+          refetchOnMount: true,
+        },
+        mutations: {
+          retry: 1,
+        },
+      },
+    })
+  } else {
+    // Browser: make a new query client if we don't already have one
+    if (!browserQueryClient) {
+      browserQueryClient = new QueryClient({
         defaultOptions: {
           queries: {
-            // Cache data for 5 minutes
             staleTime: 5 * 60 * 1000,
-            // Keep unused data in cache for 10 minutes
             gcTime: 10 * 60 * 1000,
-            // Only retry once on failure
             retry: 1,
-            // Don't refetch on window focus (causes unnecessary API calls)
             refetchOnWindowFocus: false,
-            // Don't refetch on reconnect (use manual refetch if needed)
             refetchOnReconnect: false,
-            // Only refetch on mount if data is stale (not every time)
             refetchOnMount: true,
           },
           mutations: {
-            // Retry mutations once on failure
             retry: 1,
           },
         },
       })
-  )
+    }
+    return browserQueryClient
+  }
+}
+
+export function ReactQueryProvider({ children }: { children: ReactNode }) {
+  // Get or create the query client
+  const queryClient = getQueryClient()
 
   return (
     <QueryClientProvider client={queryClient}>

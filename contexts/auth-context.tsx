@@ -245,6 +245,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       "intendedPath",
       "requirePasswordReset",
       "resetEmail",
+      "clubly-report-editor-content",
+      "clubly-report-page-settings",
     ];
 
     console.log("Logout: Bắt đầu quá trình dọn dẹp storage...");

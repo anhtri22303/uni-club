@@ -14,9 +14,7 @@ axiosInstance.interceptors.request.use(
     if (typeof window !== "undefined") {
       const token = localStorage.getItem("jwtToken")
       if (token) {
-        if (!config.headers) {
-          config.headers = {};
-        }
+        config.headers = config.headers || {};
         config.headers.Authorization = `Bearer ${token}`;
       }
     }
