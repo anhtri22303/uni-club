@@ -8,8 +8,6 @@ import {
   Clock,
   FileImage,
   Shapes,
-  Sparkles,
-  Box,
   Type,
   Minus
 } from 'lucide-react'
@@ -32,9 +30,10 @@ import * as EditorUtils from '../utils/editorUtils'
 
 interface InsertTabProps {
   onSync?: () => void
+  compact?: boolean
 }
 
-export function InsertTab({ onSync }: InsertTabProps) {
+export function InsertTab({ onSync, compact = false }: InsertTabProps) {
   const [tableRows, setTableRows] = useState(3)
   const [tableCols, setTableCols] = useState(3)
   const [linkUrl, setLinkUrl] = useState('')
@@ -45,6 +44,30 @@ export function InsertTab({ onSync }: InsertTabProps) {
   const [showLinkPopover, setShowLinkPopover] = useState(false)
   const [showImagePopover, setShowImagePopover] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const savedRangeRef = useRef<Range | null>(null)
+
+  // Save selection when popover opens
+  const saveSelection = () => {
+    const selection = window.getSelection()
+    if (selection && selection.rangeCount > 0) {
+      savedRangeRef.current = selection.getRangeAt(0)
+    }
+  }
+
+  // Restore selection before inserting
+  const restoreSelection = () => {
+    const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
+    if (editor && savedRangeRef.current) {
+      editor.focus()
+      const selection = window.getSelection()
+      if (selection) {
+        selection.removeAllRanges()
+        selection.addRange(savedRangeRef.current)
+      }
+      return true
+    }
+    return false
+  }
 
   const handleAction = (action: () => void) => {
     action()
@@ -52,42 +75,95 @@ export function InsertTab({ onSync }: InsertTabProps) {
   }
 
   const insertTable = () => {
-    // Focus the editor before inserting
-    const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
-    if (editor) {
-      editor.focus()
-      
-      // Small delay to ensure focus is set
-      setTimeout(() => {
-        EditorUtils.insertTable(tableRows, tableCols)
-        // Don't close popover - let user click outside to close
-        onSync?.()
-      }, 50)
-    } else {
-      // Fallback: insert without focus (might not work)
+    // Restore the saved selection
+    if (restoreSelection()) {
       EditorUtils.insertTable(tableRows, tableCols)
-      // Don't close popover - let user click outside to close
+      setShowTablePopover(false)
       onSync?.()
+    } else {
+      // Fallback: try to insert at end of editor
+      const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
+      if (editor) {
+        editor.focus()
+        // Move cursor to end
+        const range = document.createRange()
+        const selection = window.getSelection()
+        range.selectNodeContents(editor)
+        range.collapse(false)
+        if (selection) {
+          selection.removeAllRanges()
+          selection.addRange(range)
+        }
+        EditorUtils.insertTable(tableRows, tableCols)
+        setShowTablePopover(false)
+        onSync?.()
+      }
     }
   }
 
   const insertLink = () => {
     if (linkUrl) {
-      EditorUtils.insertLink(linkUrl, linkText || undefined)
-      // Don't close popover - let user click outside to close
-      setLinkUrl('')
-      setLinkText('')
-      onSync?.()
+      // Restore the saved selection
+      if (restoreSelection()) {
+        EditorUtils.insertLink(linkUrl, linkText || undefined)
+        setLinkUrl('')
+        setLinkText('')
+        setShowLinkPopover(false)
+        onSync?.()
+      } else {
+        // Fallback: try to insert at end of editor
+        const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
+        if (editor) {
+          editor.focus()
+          // Move cursor to end
+          const range = document.createRange()
+          const selection = window.getSelection()
+          range.selectNodeContents(editor)
+          range.collapse(false)
+          if (selection) {
+            selection.removeAllRanges()
+            selection.addRange(range)
+          }
+          EditorUtils.insertLink(linkUrl, linkText || undefined)
+          setLinkUrl('')
+          setLinkText('')
+          setShowLinkPopover(false)
+          onSync?.()
+        }
+      }
     }
   }
 
   const insertImageFromUrl = () => {
     if (imageUrl) {
-      EditorUtils.insertImage(imageUrl, imageAlt || undefined)
-      // Don't close popover - let user click outside to close
-      setImageUrl('')
-      setImageAlt('')
-      onSync?.()
+      // Restore the saved selection
+      if (restoreSelection()) {
+        EditorUtils.insertImage(imageUrl, imageAlt || undefined)
+        setImageUrl('')
+        setImageAlt('')
+        setShowImagePopover(false)
+        onSync?.()
+      } else {
+        // Fallback: try to insert at end of editor
+        const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
+        if (editor) {
+          editor.focus()
+          // Move cursor to end
+          const range = document.createRange()
+          const selection = window.getSelection()
+          range.selectNodeContents(editor)
+          range.collapse(false)
+          if (selection) {
+            selection.removeAllRanges()
+            selection.addRange(range)
+          }
+          EditorUtils.insertImage(imageUrl, imageAlt || undefined)
+          setImageUrl('')
+          setImageAlt('')
+          setShowImagePopover(false)
+          onSync?.()
+        }
+      }
     }
   }
 
@@ -97,17 +173,51 @@ export function InsertTab({ onSync }: InsertTabProps) {
       const reader = new FileReader()
       reader.onload = (event) => {
         const dataUrl = event.target?.result as string
-        EditorUtils.insertImage(dataUrl, file.name)
-        // Don't close popover - let user click outside to close
-        onSync?.()
+        // Restore the saved selection
+        if (restoreSelection()) {
+          EditorUtils.insertImage(dataUrl, file.name)
+          setShowImagePopover(false)
+          onSync?.()
+        } else {
+          // Fallback: try to insert at end of editor
+          const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
+          if (editor) {
+            editor.focus()
+            // Move cursor to end
+            const range = document.createRange()
+            const selection = window.getSelection()
+            range.selectNodeContents(editor)
+            range.collapse(false)
+            if (selection) {
+              selection.removeAllRanges()
+              selection.addRange(range)
+            }
+            EditorUtils.insertImage(dataUrl, file.name)
+            setShowImagePopover(false)
+            onSync?.()
+          }
+        }
       }
       reader.readAsDataURL(file)
     }
   }
 
   const insertDateTime = (format: 'date' | 'time' | 'datetime') => {
-    EditorUtils.insertDateTime(format)
-    onSync?.()
+    // Focus the editor before inserting
+    const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
+    if (editor) {
+      editor.focus()
+      
+      // Small delay to ensure focus is set
+      setTimeout(() => {
+        EditorUtils.insertDateTime(format)
+        onSync?.()
+      }, 50)
+    } else {
+      // Fallback: insert without focus
+      EditorUtils.insertDateTime(format)
+      onSync?.()
+    }
   }
 
   // Table preview grid
@@ -121,22 +231,29 @@ export function InsertTab({ onSync }: InsertTabProps) {
       setTableRows(rows)
       setTableCols(cols)
       
-      // Focus the editor before inserting
-      const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
-      if (editor) {
-        editor.focus()
-        
-        // Small delay to ensure focus is set
-        setTimeout(() => {
-          EditorUtils.insertTable(rows, cols)
-          // Don't close popover - let user click outside to close
-          onSync?.()
-        }, 50)
-      } else {
-        // Fallback: insert without focus
+      // Restore the saved selection
+      if (restoreSelection()) {
         EditorUtils.insertTable(rows, cols)
-        // Don't close popover - let user click outside to close
+        setShowTablePopover(false)
         onSync?.()
+      } else {
+        // Fallback: try to insert at end of editor
+        const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
+        if (editor) {
+          editor.focus()
+          // Move cursor to end
+          const range = document.createRange()
+          const selection = window.getSelection()
+          range.selectNodeContents(editor)
+          range.collapse(false)
+          if (selection) {
+            selection.removeAllRanges()
+            selection.addRange(range)
+          }
+          EditorUtils.insertTable(rows, cols)
+          setShowTablePopover(false)
+          onSync?.()
+        }
       }
     }
 
@@ -180,10 +297,13 @@ export function InsertTab({ onSync }: InsertTabProps) {
   return (
     <TooltipProvider>
       <div className="overflow-x-auto overflow-y-hidden scrollbar-hide">
-        <div className="flex items-center gap-1 p-1.5 sm:p-2 bg-gray-50 border-b min-w-max">
+        <div className={`flex items-center gap-1 ${compact ? 'p-1' : 'p-1.5 sm:p-2 bg-gray-50 border-b'} min-w-max`}>
         {/* Insert Table */}
         <div className="flex items-center gap-0.5 pr-2 border-r">
-          <Popover open={showTablePopover} onOpenChange={setShowTablePopover}>
+          <Popover open={showTablePopover} onOpenChange={(open) => {
+            if (open) saveSelection()
+            setShowTablePopover(open)
+          }}>
             <PopoverTrigger asChild>
               <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" title="Insert Table">
                 <Table2 className="h-4 w-4" />
@@ -239,7 +359,10 @@ export function InsertTab({ onSync }: InsertTabProps) {
 
         {/* Insert Image */}
         <div className="flex items-center gap-0.5 pr-2 border-r">
-          <Popover open={showImagePopover} onOpenChange={setShowImagePopover}>
+          <Popover open={showImagePopover} onOpenChange={(open) => {
+            if (open) saveSelection()
+            setShowImagePopover(open)
+          }}>
             <PopoverTrigger asChild>
               <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" title="Insert Image">
                 <ImageIcon className="h-4 w-4" />
@@ -305,55 +428,160 @@ export function InsertTab({ onSync }: InsertTabProps) {
             </PopoverContent>
           </Popover>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
+          <Popover>
+            <PopoverTrigger asChild>
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => handleAction(() => {})}
                 className="h-8 w-8 p-0"
               >
                 <Shapes className="h-4 w-4" />
               </Button>
-            </TooltipTrigger>
-            <TooltipContent>Shapes</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => handleAction(() => {})}
-                className="h-8 w-8 p-0"
-              >
-                <Sparkles className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>SmartArt</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => handleAction(() => {})}
-                className="h-8 w-8 p-0"
-              >
-                <Box className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>3D Models</TooltipContent>
-          </Tooltip>
+            </PopoverTrigger>
+            <PopoverContent className="w-64">
+              <div className="space-y-3">
+                <h4 className="font-semibold text-sm">Insert Shape</h4>
+                <div className="grid grid-cols-3 gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
+                      if (editor) {
+                        editor.focus()
+                        setTimeout(() => {
+                          EditorUtils.execCommand('insertHTML', 
+                            '<div style="width: 100px; height: 100px; background-color: #3b82f6; margin: 10px; display: inline-block;"></div>'
+                          )
+                          onSync?.()
+                        }, 50)
+                      }
+                    }}
+                    className="h-16 flex flex-col items-center justify-center"
+                  >
+                    <div className="w-8 h-8 bg-blue-500 mb-1"></div>
+                    <span className="text-xs">Rectangle</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
+                      if (editor) {
+                        editor.focus()
+                        setTimeout(() => {
+                          EditorUtils.execCommand('insertHTML', 
+                            '<div style="width: 100px; height: 100px; background-color: #10b981; border-radius: 50%; margin: 10px; display: inline-block;"></div>'
+                          )
+                          onSync?.()
+                        }, 50)
+                      }
+                    }}
+                    className="h-16 flex flex-col items-center justify-center"
+                  >
+                    <div className="w-8 h-8 bg-green-500 rounded-full mb-1"></div>
+                    <span className="text-xs">Circle</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
+                      if (editor) {
+                        editor.focus()
+                        setTimeout(() => {
+                          EditorUtils.execCommand('insertHTML', 
+                            '<div style="width: 0; height: 0; border-left: 50px solid transparent; border-right: 50px solid transparent; border-bottom: 100px solid #f59e0b; margin: 10px; display: inline-block;"></div>'
+                          )
+                          onSync?.()
+                        }, 50)
+                      }
+                    }}
+                    className="h-16 flex flex-col items-center justify-center"
+                  >
+                    <div className="w-0 h-0 border-l-16 border-l-transparent border-r-16 border-r-transparent border-b-32 border-b-amber-500 mb-1"></div>
+                    <span className="text-xs">Triangle</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
+                      if (editor) {
+                        editor.focus()
+                        setTimeout(() => {
+                          EditorUtils.execCommand('insertHTML', 
+                            '<div style="width: 120px; height: 60px; background-color: #ef4444; border-radius: 50px; margin: 10px; display: inline-block;"></div>'
+                          )
+                          onSync?.()
+                        }, 50)
+                      }
+                    }}
+                    className="h-16 flex flex-col items-center justify-center"
+                  >
+                    <div className="w-10 h-5 bg-red-500 rounded-full mb-1"></div>
+                    <span className="text-xs">Oval</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
+                      if (editor) {
+                        editor.focus()
+                        setTimeout(() => {
+                          EditorUtils.execCommand('insertHTML', 
+                            '<div style="width: 120px; height: 80px; background-color: #8b5cf6; clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%); margin: 10px; display: inline-block;"></div>'
+                          )
+                          onSync?.()
+                        }, 50)
+                      }
+                    }}
+                    className="h-16 flex flex-col items-center justify-center"
+                  >
+                    <div className="w-8 h-8 bg-violet-500 rotate-45 mb-1"></div>
+                    <span className="text-xs">Diamond</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
+                      if (editor) {
+                        editor.focus()
+                        setTimeout(() => {
+                          EditorUtils.execCommand('insertHTML', 
+                            '<div style="width: 100px; height: 60px; background-color: #ec4899; border-radius: 10px; margin: 10px; display: inline-block;"></div>'
+                          )
+                          onSync?.()
+                        }, 50)
+                      }
+                    }}
+                    className="h-16 flex flex-col items-center justify-center"
+                  >
+                    <div className="w-8 h-5 bg-pink-500 rounded mb-1"></div>
+                    <span className="text-xs">Rounded</span>
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">Click a shape to insert it into your document</p>
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
 
         {/* Insert Link */}
         <div className="flex items-center gap-0.5 pr-2 border-r">
-          <Popover open={showLinkPopover} onOpenChange={setShowLinkPopover}>
+          <Popover open={showLinkPopover} onOpenChange={(open) => {
+            if (open) saveSelection()
+            setShowLinkPopover(open)
+          }}>
             <PopoverTrigger asChild>
               <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" title="Insert Hyperlink">
                 <Link2 className="h-4 w-4" />
@@ -405,11 +633,26 @@ export function InsertTab({ onSync }: InsertTabProps) {
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => handleAction(() => {
-                  EditorUtils.execCommand('insertHTML', 
-                    '<div style="border: 2px solid #000; padding: 10px; display: inline-block; margin: 10px;">Text Box</div>'
-                  )
-                })}
+                onClick={() => {
+                  // Focus the editor before inserting
+                  const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
+                  if (editor) {
+                    editor.focus()
+                    
+                    // Small delay to ensure focus is set
+                    setTimeout(() => {
+                      EditorUtils.execCommand('insertHTML', 
+                        '<div style="border: 2px solid #000; padding: 10px; display: inline-block; margin: 10px;">Text Box</div>'
+                      )
+                      onSync?.()
+                    }, 50)
+                  } else {
+                    EditorUtils.execCommand('insertHTML', 
+                      '<div style="border: 2px solid #000; padding: 10px; display: inline-block; margin: 10px;">Text Box</div>'
+                    )
+                    onSync?.()
+                  }
+                }}
                 className="h-8 w-8 p-0"
               >
                 <Type className="h-4 w-4" />
@@ -475,7 +718,22 @@ export function InsertTab({ onSync }: InsertTabProps) {
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => handleAction(EditorUtils.insertHorizontalLine)}
+                onClick={() => {
+                  // Focus the editor before inserting
+                  const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
+                  if (editor) {
+                    editor.focus()
+                    
+                    // Small delay to ensure focus is set
+                    setTimeout(() => {
+                      EditorUtils.insertHorizontalLine()
+                      onSync?.()
+                    }, 50)
+                  } else {
+                    EditorUtils.insertHorizontalLine()
+                    onSync?.()
+                  }
+                }}
                 className="h-8 w-8 p-0"
               >
                 <Minus className="h-4 w-4" />

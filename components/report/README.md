@@ -7,6 +7,9 @@ A comprehensive Word-like text editor with 4 tabbed toolbars for creating and fo
 ```
 components/report/
 ├── RichTextEditorToolbar.tsx    # Main toolbar component with tabs
+├── ContextMenu.tsx               # Smart right-click context menu
+├── HistoryNotification.tsx       # Toast notifications for history
+├── ImageResizer.tsx              # Image resize component
 ├── types.ts                      # TypeScript interfaces and types
 ├── index.ts                      # Export file
 ├── tabs/
@@ -14,8 +17,13 @@ components/report/
 │   ├── PageLayoutTab.tsx        # Tab 2: Page layout & design
 │   ├── InsertTab.tsx            # Tab 3: Insert elements
 │   └── TableToolsTab.tsx        # Tab 4: Table tools & data
-└── utils/
-    └── editorUtils.ts           # Utility functions for editor operations
+├── utils/
+│   ├── editorUtils.ts           # Utility functions for editor operations
+│   ├── contextMenuUtils.ts      # Context menu element detection utilities
+│   └── historyManager.ts        # Circular buffer history system (5 slots)
+└── docs/
+    ├── HISTORY_SYSTEM.md        # History system documentation
+    └── HISTORY_TESTING.md       # History system testing guide
 ```
 
 ## 🎨 Features by Tab
@@ -24,7 +32,11 @@ components/report/
 **Icon:** Type (✎)
 
 #### Basic Operations
-- **Undo/Redo** - Ctrl+Z, Ctrl+Y
+- **Undo/Redo** - Circular buffer with 5 history states (see [History System](./HISTORY_SYSTEM.md))
+  - Smart tooltips showing available states
+  - Visual notifications at boundaries
+  - Disabled states when no undo/redo available
+  - Session Storage persistence
 - **Copy/Cut/Paste** - Ctrl+C, Ctrl+X, Ctrl+V
 
 #### Font Formatting
@@ -99,9 +111,13 @@ components/report/
 #### Images & Graphics
 - **Insert Image** - From URL or upload from computer
 - **Alt Text** - Add description for accessibility
-- **Shapes** - (Placeholder for future implementation)
-- **SmartArt** - (Placeholder for future implementation)
-- **3D Models** - (Placeholder for future implementation)
+- **Shapes** - Insert geometric shapes:
+  - Rectangle (blue)
+  - Circle (green)
+  - Triangle (amber)
+  - Oval (red)
+  - Diamond (violet)
+  - Rounded Rectangle (pink)
 
 #### Links
 - **Hyperlink** - Insert clickable links
@@ -158,13 +174,31 @@ components/report/
 
 ---
 
+## 🖱️ Context Menu (NEW!)
+
+**Right-click anywhere in the editor** to access context-sensitive commands:
+
+### Context-Aware Menus
+
+| Context | Available Actions |
+|---------|------------------|
+| **On Text** | Cut, Copy, Paste, Format (Bold/Italic/Underline), Styles (H1/H2/H3/Code/Quote), Align (Left/Center/Right/Justify), Insert Link |
+| **On Image** | Copy Image, Image Properties (width, alt text), Delete Image |
+| **On Table** | Insert Row (Above/Below), Insert Column (Left/Right), Cell Background, Delete Row/Column/Table |
+| **On Link** | Copy Link, Edit Link, Remove Link, Open in New Tab |
+
+**Learn more:** See [CONTEXT_MENU.md](./CONTEXT_MENU.md) for full documentation.
+
+---
+
 ## 💡 Usage Example
 
 ```tsx
-import { RichTextEditorToolbar } from '@/components/report'
+import { RichTextEditorToolbar, ContextMenu } from '@/components/report'
 import { PageSettings } from '@/components/report/types'
 
 function MyReportPage() {
+  const editorRef = useRef<HTMLDivElement>(null)
   const [pageSettings, setPageSettings] = useState<PageSettings>({
     marginTop: 20,
     marginBottom: 20,
@@ -189,11 +223,22 @@ function MyReportPage() {
   }
 
   return (
-    <RichTextEditorToolbar
-      pageSettings={pageSettings}
-      onPageSettingsChange={handlePageSettingsChange}
-      onSync={handleSync}
-    />
+    <>
+      {/* Context Menu - smart right-click menu */}
+      <ContextMenu editorRef={editorRef} />
+      
+      {/* Toolbar */}
+      <RichTextEditorToolbar
+        pageSettings={pageSettings}
+        onPageSettingsChange={handlePageSettingsChange}
+        onSync={handleSync}
+      />
+      
+      {/* Editor */}
+      <div ref={editorRef} contentEditable>
+        Your content here...
+      </div>
+    </>
   )
 }
 ```
@@ -201,25 +246,28 @@ function MyReportPage() {
 ## 🎯 Key Features
 
 1. **Tab-based UI** - Organized like Microsoft Word
-2. **Icon-driven** - Hover to see function names (tooltips)
-3. **Responsive** - Works on mobile with collapsed labels
-4. **Accessible** - ARIA labels and keyboard shortcuts
-5. **Real-time** - All changes apply immediately
-6. **Auto-sync** - Content syncs after formatting
+2. **Context Menu** - Smart right-click menus based on what you click
+3. **Icon-driven** - Hover to see function names (tooltips)
+4. **Responsive** - Works on mobile with collapsed labels
+5. **Accessible** - ARIA labels and keyboard shortcuts
+6. **Real-time** - All changes apply immediately
+7. **Auto-sync** - Content syncs after formatting
 
 ## ⌨️ Keyboard Shortcuts
 
-| Shortcut | Action |
-|----------|--------|
-| Ctrl+B | Bold |
-| Ctrl+I | Italic |
-| Ctrl+U | Underline |
-| Ctrl+Z | Undo |
-| Ctrl+Y | Redo |
-| Ctrl+C | Copy |
-| Ctrl+X | Cut |
-| Ctrl+V | Paste |
-| Ctrl+P | Print |
+| Shortcut | Action | Notes |
+|----------|--------|-------|
+| Ctrl+B | Bold | Format selection |
+| Ctrl+I | Italic | Format selection |
+| Ctrl+U | Underline | Format selection |
+| Ctrl+Z | Undo | Uses circular buffer (5 states) |
+| Ctrl+Y | Redo | Restore undone changes |
+| Ctrl+C | Copy | Copy selection |
+| Ctrl+X | Cut | Cut selection |
+| Ctrl+V | Paste | Paste from clipboard |
+| Ctrl+P | Print | Print document |
+
+> **Note:** Undo/Redo use a custom history system with 5 memory slots. See [History System Documentation](./HISTORY_SYSTEM.md) for details.
 
 ## 🔧 Technical Details
 

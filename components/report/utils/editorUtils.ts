@@ -56,6 +56,8 @@ export const formatSubscript = () => execCommand('subscript')
 
 /**
  * Undo/Redo
+ * Note: These are kept for compatibility but the main history system
+ * is now in historyManager.ts which uses session storage with 25-slot circular buffer
  */
 export const undo = () => execCommand('undo')
 export const redo = () => execCommand('redo')
@@ -274,12 +276,12 @@ export const insertImage = (url: string, alt?: string) => {
  * Insert table
  */
 export const insertTable = (rows: number, cols: number) => {
-  let tableHTML = '<table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; width: 100%;">'
+  let tableHTML = '<table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; width: 100%; border: 1px solid #d1d5db;">'
   
   for (let i = 0; i < rows; i++) {
     tableHTML += '<tr>'
     for (let j = 0; j < cols; j++) {
-      tableHTML += '<td>&nbsp;</td>'
+      tableHTML += '<td style="border: 1px solid #d1d5db; padding: 8px;">&nbsp;</td>'
     }
     tableHTML += '</tr>'
   }
