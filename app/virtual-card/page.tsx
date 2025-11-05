@@ -447,24 +447,26 @@ export default function VirtualCardPage() {
             </div>
 
             {/* Card Display */}
-            <div className="max-w-5xl mx-auto">
-              <CardPreview
-                ref={cardRef}
-                cardData={cardData}
-                colorType={colorType}
-                gradient={gradient}
-                cardColorClass={cardColorClass}
-                pattern={pattern}
-                borderRadius={borderRadius}
-                logoUrl={logoUrl}
-                qrCodeUrl={qrCodeUrl}
-                qrSize={qrSize}
-                qrStyle={qrStyle}
-                showLogo={showLogo}
-                patternOpacity={patternOpacity}
-                cardOpacity={cardOpacity}
-                showFrame={false}
-              />
+            <div className="max-w-5xl mx-auto px-4">
+              <div className="flex items-center justify-center">
+                <CardPreview
+                  ref={cardRef}
+                  cardData={cardData}
+                  colorType={colorType}
+                  gradient={gradient}
+                  cardColorClass={cardColorClass}
+                  pattern={pattern}
+                  borderRadius={borderRadius}
+                  logoUrl={logoUrl}
+                  qrCodeUrl={qrCodeUrl}
+                  qrSize={qrSize}
+                  qrStyle={qrStyle}
+                  showLogo={showLogo}
+                  patternOpacity={patternOpacity}
+                  cardOpacity={cardOpacity}
+                  showFrame={false}
+                />
+              </div>
             </div>
           </div>
         </div>

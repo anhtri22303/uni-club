@@ -6,6 +6,144 @@ import { PatternRenderer } from "./PatternRenderer"
 import { getQrStyleClasses } from "./utils"
 import type { CardData } from "./types"
 
+// Helper function to convert Tailwind gradient classes to inline CSS
+const getGradientStyle = (gradient: string, cardColorClass: string): React.CSSProperties => {
+  const style: React.CSSProperties = {}
+  
+  // Check if it's a solid color (bg-{color}-{shade})
+  if (gradient.startsWith('bg-')) {
+    // Solid colors - extract the color value
+    const colorMap: Record<string, string> = {
+      'bg-blue-600': '#2563eb',
+      'bg-red-600': '#dc2626',
+      'bg-emerald-600': '#059669',
+      'bg-purple-600': '#9333ea',
+      'bg-amber-600': '#d97706',
+      'bg-teal-600': '#0d9488',
+      'bg-indigo-600': '#4f46e5',
+      'bg-rose-600': '#e11d48',
+      'bg-sky-600': '#0284c7',
+      'bg-violet-600': '#7c3aed',
+      'bg-gray-900': '#111827',
+      'bg-gray-800': '#1f2937',
+      'bg-gray-700': '#374151',
+      'bg-gray-600': '#4b5563',
+      'bg-gray-500': '#6b7280',
+      'bg-gray-400': '#9ca3af',
+      'bg-slate-300': '#cbd5e1',
+      'bg-gray-200': '#e5e7eb',
+    }
+    
+    if (colorMap[gradient]) {
+      style.background = colorMap[gradient]
+    }
+  } else if (gradient.includes('from-') && gradient.includes('to-')) {
+    // It's a gradient - parse the gradient classes
+    const parts = gradient.split(' ')
+    const fromColor = parts.find(p => p.startsWith('from-'))
+    const viaColor = parts.find(p => p.startsWith('via-'))
+    const toColor = parts.find(p => p.startsWith('to-'))
+    
+    // Map Tailwind color classes to actual hex values
+    const colorValues: Record<string, string> = {
+      // Gradient colors
+      'from-blue-400': '#60a5fa',
+      'via-purple-500': '#a855f7',
+      'to-purple-600': '#9333ea',
+      'from-pink-400': '#f472b6',
+      'via-rose-400': '#fb7185',
+      'to-orange-400': '#fb923c',
+      'from-emerald-400': '#34d399',
+      'via-teal-500': '#14b8a6',
+      'to-cyan-500': '#06b6d4',
+      'from-amber-400': '#fbbf24',
+      'via-orange-500': '#f97316',
+      'to-red-500': '#ef4444',
+      'from-indigo-400': '#818cf8',
+      'via-blue-500': '#3b82f6',
+      'to-sky-500': '#0ea5e9',
+      'from-purple-400': '#c084fc',
+      'via-pink-500': '#ec4899',
+      'to-rose-500': '#f43f5e',
+      'from-teal-400': '#2dd4bf',
+      'via-cyan-500': '#06b6d4',
+      'to-blue-500': '#3b82f6',
+      'from-rose-400': '#fb7185',
+      'via-red-500': '#ef4444',
+      'to-orange-500': '#f97316',
+      'from-violet-400': '#a78bfa',
+      'via-purple-500': '#a855f7',
+      'to-fuchsia-500': '#d946ef',
+      'from-lime-400': '#a3e635',
+      'via-green-500': '#22c55e',
+      'to-emerald-500': '#10b981',
+      // Pastel colors
+      'from-pink-200': '#fbcfe8',
+      'via-rose-200': '#fecdd3',
+      'to-pink-300': '#f9a8d4',
+      'from-blue-200': '#bfdbfe',
+      'via-sky-200': '#bae6fd',
+      'to-cyan-200': '#a5f3fc',
+      'from-purple-200': '#e9d5ff',
+      'via-violet-200': '#ddd6fe',
+      'to-purple-300': '#d8b4fe',
+      'from-green-200': '#bbf7d0',
+      'via-emerald-200': '#a7f3d0',
+      'to-teal-200': '#99f6e4',
+      'from-yellow-200': '#fef08a',
+      'via-amber-200': '#fde68a',
+      'to-orange-200': '#fed7aa',
+      'from-rose-200': '#fecdd3',
+      'via-pink-200': '#fbcfe8',
+      'to-fuchsia-200': '#f5d0fe',
+      'from-indigo-200': '#c7d2fe',
+      'via-blue-200': '#bfdbfe',
+      'to-purple-200': '#e9d5ff',
+      'from-teal-200': '#99f6e4',
+      'via-cyan-200': '#a5f3fc',
+      'to-sky-200': '#bae6fd',
+      // Neon colors
+      'from-blue-500': '#3b82f6',
+      'to-cyan-400': '#22d3ee',
+      'from-pink-500': '#ec4899',
+      'to-purple-500': '#a855f7',
+      'from-green-500': '#22c55e',
+      'to-lime-400': '#a3e635',
+      'from-orange-500': '#f97316',
+      'to-yellow-400': '#facc15',
+      'from-red-500': '#ef4444',
+      'to-pink-400': '#f472b6',
+      'from-purple-500': '#a855f7',
+      'to-indigo-400': '#818cf8',
+      'from-teal-500': '#14b8a6',
+      'to-emerald-400': '#34d399',
+      'from-fuchsia-500': '#d946ef',
+      'to-rose-400': '#fb7185',
+    }
+    
+    let direction = 'to right'
+    if (cardColorClass.includes('to-br')) direction = 'to bottom right'
+    else if (cardColorClass.includes('to-bl')) direction = 'to bottom left'
+    else if (cardColorClass.includes('to-tr')) direction = 'to top right'
+    else if (cardColorClass.includes('to-tl')) direction = 'to top left'
+    else if (cardColorClass.includes('to-b')) direction = 'to bottom'
+    else if (cardColorClass.includes('to-t')) direction = 'to top'
+    else if (cardColorClass.includes('to-l')) direction = 'to left'
+    else if (cardColorClass.includes('to-r')) direction = 'to right'
+    
+    const colors: string[] = []
+    if (fromColor && colorValues[fromColor]) colors.push(colorValues[fromColor])
+    if (viaColor && colorValues[viaColor]) colors.push(colorValues[viaColor])
+    if (toColor && colorValues[toColor]) colors.push(colorValues[toColor])
+    
+    if (colors.length >= 2) {
+      style.background = `linear-gradient(${direction}, ${colors.join(', ')})`
+    }
+  }
+  
+  return style
+}
+
 interface CardPreviewProps {
   cardData: CardData
   colorType: string
@@ -42,13 +180,22 @@ export const CardPreview = forwardRef<HTMLDivElement, CardPreviewProps>(
       showFrame = true, // Default to true for backward compatibility
     } = props
 
+    // Get inline styles for the gradient/color (for better html-to-image support)
+    const gradientStyle = getGradientStyle(gradient, cardColorClass)
+    
+    // Debug: Log card data being rendered
+    console.log('CardPreview rendering with data:', cardData)
+    
     const cardElement = (
-      <div className="flex justify-center">
+      <div className="flex justify-center w-full">
         <div
           ref={ref}
           data-card-element="true"
-          className={`${cardColorClass} ${gradient} ${borderRadius} shadow-2xl p-3 sm:p-6 md:p-8 w-full ${showFrame ? 'max-w-2xl' : 'max-w-4xl'} text-white relative overflow-hidden min-h-[280px] sm:min-h-[320px]`}
-          style={{ opacity: cardOpacity / 100 }}
+          className={`${cardColorClass} ${gradient} ${borderRadius} shadow-2xl p-3 sm:p-6 md:p-8 w-full ${showFrame ? 'max-w-2xl' : 'max-w-3xl lg:max-w-4xl'} text-white relative overflow-hidden min-h-[280px] sm:min-h-[320px] md:min-h-[400px]`}
+          style={{ 
+            opacity: cardOpacity / 100,
+            ...gradientStyle  // Apply inline style as fallback for html-to-image
+          }}
         >
               {/* Pattern */}
               <PatternRenderer pattern={pattern} opacity={patternOpacity} />
@@ -84,7 +231,7 @@ export const CardPreview = forwardRef<HTMLDivElement, CardPreviewProps>(
               )}
 
               {/* Card Content */}
-              <div className="relative z-10 overflow-hidden">
+              <div className="relative z-10">
                 {/* Card Header */}
                 <div className="mb-4 sm:mb-6 md:mb-8 pr-14 sm:pr-16">
                   <h1 className="text-lg sm:text-xl md:text-2xl font-bold mb-1 truncate">

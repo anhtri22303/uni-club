@@ -11,4 +11,5 @@ export * from "./ColorsTab"
 export * from "./StyleTab"
 export * from "./QRTab"
 export * from "./ImagesTab"
+export * from "./DownloadModal"
 
