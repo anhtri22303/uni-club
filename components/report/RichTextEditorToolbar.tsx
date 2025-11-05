@@ -21,12 +21,16 @@ interface RichTextEditorToolbarProps {
   pageSettings: PageSettings
   onPageSettingsChange: (settings: Partial<PageSettings>) => void
   onSync?: () => void
+  compact?: boolean
+  editorRef?: React.RefObject<HTMLDivElement>
 }
 
 export function RichTextEditorToolbar({ 
   pageSettings, 
   onPageSettingsChange, 
-  onSync 
+  onSync,
+  compact = false,
+  editorRef
 }: RichTextEditorToolbarProps) {
   const [activeTab, setActiveTab] = useState('editing')
   const [isCollapsed, setIsCollapsed] = useState(false)
@@ -115,13 +119,13 @@ export function RichTextEditorToolbar({
   }, [isInTable, activeTab])
 
   return (
-    <div className="border rounded-lg bg-white shadow-sm overflow-hidden">
+    <div className={compact ? "" : "border rounded-lg bg-white shadow-sm overflow-hidden"}>
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <div className="relative">
-          <TabsList className="w-full justify-start rounded-none border-b bg-gray-100 h-auto sm:h-10 p-0 flex overflow-x-auto scrollbar-hide">
+          <TabsList className={`w-full justify-start ${compact ? 'rounded-none border-0 bg-transparent' : 'rounded-none border-b bg-gray-100'} h-auto sm:h-10 p-0 flex overflow-x-auto scrollbar-hide`}>
             <TabsTrigger 
               value="editing" 
-              className="gap-1.5 sm:gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm h-9 sm:h-10 px-3 sm:px-4 text-xs sm:text-sm whitespace-nowrap shrink-0"
+              className={`gap-1.5 sm:gap-2 ${compact ? 'data-[state=active]:bg-gray-200/70 dark:data-[state=active]:bg-gray-700' : 'data-[state=active]:bg-white data-[state=active]:shadow-sm'} h-9 sm:h-10 px-3 sm:px-4 text-xs sm:text-sm whitespace-nowrap shrink-0`}
             >
               <Type className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               <span className="hidden md:inline">Editing & Formatting</span>
@@ -130,7 +134,7 @@ export function RichTextEditorToolbar({
             
             <TabsTrigger 
               value="layout" 
-              className="gap-1.5 sm:gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm h-9 sm:h-10 px-3 sm:px-4 text-xs sm:text-sm whitespace-nowrap shrink-0"
+              className={`gap-1.5 sm:gap-2 ${compact ? 'data-[state=active]:bg-gray-200/70 dark:data-[state=active]:bg-gray-700' : 'data-[state=active]:bg-white data-[state=active]:shadow-sm'} h-9 sm:h-10 px-3 sm:px-4 text-xs sm:text-sm whitespace-nowrap shrink-0`}
             >
               <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               <span className="hidden md:inline">Page Layout</span>
@@ -139,7 +143,7 @@ export function RichTextEditorToolbar({
             
             <TabsTrigger 
               value="insert" 
-              className="gap-1.5 sm:gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm h-9 sm:h-10 px-3 sm:px-4 text-xs sm:text-sm whitespace-nowrap shrink-0"
+              className={`gap-1.5 sm:gap-2 ${compact ? 'data-[state=active]:bg-gray-200/70 dark:data-[state=active]:bg-gray-700' : 'data-[state=active]:bg-white data-[state=active]:shadow-sm'} h-9 sm:h-10 px-3 sm:px-4 text-xs sm:text-sm whitespace-nowrap shrink-0`}
             >
               <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               <span>Insert</span>
@@ -149,7 +153,7 @@ export function RichTextEditorToolbar({
             {isInTable && (
               <TabsTrigger 
                 value="table" 
-                className="gap-1.5 sm:gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm h-9 sm:h-10 px-3 sm:px-4 text-xs sm:text-sm whitespace-nowrap shrink-0 animate-in fade-in slide-in-from-left-2 duration-200"
+                className={`gap-1.5 sm:gap-2 ${compact ? 'data-[state=active]:bg-gray-200/70 dark:data-[state=active]:bg-gray-700' : 'data-[state=active]:bg-white data-[state=active]:shadow-sm'} h-9 sm:h-10 px-3 sm:px-4 text-xs sm:text-sm whitespace-nowrap shrink-0 animate-in fade-in slide-in-from-left-2 duration-200`}
               >
                 <Table2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 <span className="hidden md:inline">Table Tools</span>
@@ -157,32 +161,36 @@ export function RichTextEditorToolbar({
               </TabsTrigger>
             )}
 
-            {/* Spacer to push toggle button to right */}
-            <div className="grow"></div>
+            {/* Spacer to push toggle button to right - hide in compact mode */}
+            {!compact && <div className="grow"></div>}
 
-            {/* Toggle Button */}
-            <div className="pr-1.5 sm:pr-2 flex items-center shrink-0 sticky right-0 bg-gray-100">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsCollapsed(!isCollapsed)}
-                className="h-7 w-7 sm:h-8 sm:w-8 p-0 hover:bg-gray-200"
-                title={isCollapsed ? "Expand toolbar" : "Collapse toolbar"}
-              >
-                {isCollapsed ? (
-                  <ChevronDown className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                ) : (
-                  <ChevronUp className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                )}
-              </Button>
-            </div>
+            {/* Toggle Button - hide in compact mode */}
+            {!compact && (
+              <div className="pr-1.5 sm:pr-2 flex items-center shrink-0 sticky right-0 bg-gray-100">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsCollapsed(!isCollapsed)}
+                  className="h-7 w-7 sm:h-8 sm:w-8 p-0 hover:bg-gray-200"
+                  title={isCollapsed ? "Expand toolbar" : "Collapse toolbar"}
+                >
+                  {isCollapsed ? (
+                    <ChevronDown className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  ) : (
+                    <ChevronUp className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  )}
+                </Button>
+              </div>
+            )}
           </TabsList>
         </div>
 
-        {!isCollapsed && (
+        {/* In compact mode, always show content. In normal mode, respect isCollapsed */}
+        {(compact || !isCollapsed) && (
           <>
             <TabsContent value="editing" className="m-0 p-0">
-              <TextEditingTab onSync={onSync} />
+              <TextEditingTab onSync={onSync} compact={compact} editorRef={editorRef} />
             </TabsContent>
 
             <TabsContent value="layout" className="m-0 p-0">
@@ -190,17 +198,18 @@ export function RichTextEditorToolbar({
                 pageSettings={pageSettings}
                 onPageSettingsChange={onPageSettingsChange}
                 onSync={onSync}
+                compact={compact}
               />
             </TabsContent>
 
             <TabsContent value="insert" className="m-0 p-0">
-              <InsertTab onSync={onSync} />
+              <InsertTab onSync={onSync} compact={compact} />
             </TabsContent>
 
             {/* Table Tools Content - Only render when cursor is in a table */}
             {isInTable && (
               <TabsContent value="table" className="m-0 p-0">
-                <TableToolsTab onSync={onSync} />
+                <TableToolsTab onSync={onSync} compact={compact} />
               </TabsContent>
             )}
           </>

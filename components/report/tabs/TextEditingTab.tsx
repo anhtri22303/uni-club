@@ -52,12 +52,16 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import * as EditorUtils from '../utils/editorUtils'
 import { FontFamily, FontSize, TextAlignment, StyleType } from '../types'
+import * as HistoryManager from '../utils/historyManager'
+import { HistoryNotification, useHistoryNotification } from '../HistoryNotification'
 
 interface TextEditingTabProps {
   onSync?: () => void
+  compact?: boolean
+  editorRef?: React.RefObject<HTMLDivElement>
 }
 
 const FONT_FAMILIES: FontFamily[] = [
@@ -82,7 +86,7 @@ const PRESET_COLORS = [
   '#A61C00', '#CC0000', '#E69138', '#F1C232', '#6AA84F', '#45818E', '#3C78D8', '#3D85C6', '#674EA7', '#A64D79'
 ]
 
-export function TextEditingTab({ onSync }: TextEditingTabProps) {
+export function TextEditingTab({ onSync, compact = false, editorRef }: TextEditingTabProps) {
   const [selectedFont, setSelectedFont] = useState<FontFamily>('Times New Roman')
   const [selectedSize, setSelectedSize] = useState<FontSize>('12')
   const [textColor, setTextColor] = useState('#000000')
@@ -90,10 +94,74 @@ export function TextEditingTab({ onSync }: TextEditingTabProps) {
   const [searchText, setSearchText] = useState('')
   const [replaceText, setReplaceText] = useState('')
   const [showFindReplacePopover, setShowFindReplacePopover] = useState(false)
+  const [historyStatus, setHistoryStatus] = useState(HistoryManager.getHistoryStatus())
+  const { notification, showNotification, hideNotification } = useHistoryNotification()
+
+  // Update history status whenever it changes
+  useEffect(() => {
+    const updateStatus = () => {
+      setHistoryStatus(HistoryManager.getHistoryStatus())
+    }
+    
+    // Update status on mount
+    updateStatus()
+
+    // Listen for keyboard undo/redo events to update toolbar state
+    const handleHistoryChange = () => {
+      updateStatus()
+    }
+    
+    window.addEventListener('history-change', handleHistoryChange)
+    
+    return () => {
+      window.removeEventListener('history-change', handleHistoryChange)
+    }
+  }, [])
 
   const handleAction = (action: () => void) => {
     action()
     onSync?.()
+    
+    // Update history status after action
+    setHistoryStatus(HistoryManager.getHistoryStatus())
+  }
+  
+  const handleUndo = () => {
+    const result = HistoryManager.undo()
+    
+    if (result.content && editorRef?.current) {
+      editorRef.current.innerHTML = result.content
+      onSync?.()
+    }
+    
+    if (result.message) {
+      showNotification({
+        message: result.message,
+        type: result.status.canUndo ? 'warning' : 'info',
+        duration: 2500
+      })
+    }
+    
+    setHistoryStatus(result.status)
+  }
+  
+  const handleRedo = () => {
+    const result = HistoryManager.redo()
+    
+    if (result.content && editorRef?.current) {
+      editorRef.current.innerHTML = result.content
+      onSync?.()
+    }
+    
+    if (result.message) {
+      showNotification({
+        message: result.message,
+        type: 'info',
+        duration: 2500
+      })
+    }
+    
+    setHistoryStatus(result.status)
   }
 
   const handleFontChange = (font: FontFamily) => {
@@ -143,35 +211,47 @@ export function TextEditingTab({ onSync }: TextEditingTabProps) {
   return (
     <TooltipProvider>
       <div className="overflow-x-auto overflow-y-hidden scrollbar-hide">
-        <div className="flex items-center gap-1 p-1.5 sm:p-2 bg-gray-50 border-b min-w-max">
+        <div className={`flex items-center gap-1 ${compact ? 'p-1' : 'p-1.5 sm:p-2 bg-gray-50 border-b'} min-w-max`}>
         {/* Undo/Redo */}
         <div className="flex items-center gap-0.5 pr-1.5 sm:pr-2 border-r">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => handleAction(EditorUtils.undo)}
-                className="h-7 w-7 sm:h-8 sm:w-8 p-0"
+                onClick={handleUndo}
+                disabled={!historyStatus.canUndo}
+                className="h-7 w-7 sm:h-8 sm:w-8 p-0 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <Undo className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Undo (Ctrl+Z)</TooltipContent>
+            <TooltipContent>
+              {historyStatus.canUndo 
+                ? `Undo (Ctrl+Z) - ${historyStatus.totalStates} state${historyStatus.totalStates !== 1 ? 's' : ''} available` 
+                : 'No undo available'}
+            </TooltipContent>
           </Tooltip>
 
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => handleAction(EditorUtils.redo)}
-                className="h-7 w-7 sm:h-8 sm:w-8 p-0"
+                onClick={handleRedo}
+                disabled={!historyStatus.canRedo}
+                className="h-7 w-7 sm:h-8 sm:w-8 p-0 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <Redo className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Redo (Ctrl+Y)</TooltipContent>
+            <TooltipContent>
+              {historyStatus.canRedo 
+                ? 'Redo (Ctrl+Y)' 
+                : 'No redo available'}
+            </TooltipContent>
           </Tooltip>
         </div>
 
@@ -180,6 +260,7 @@ export function TextEditingTab({ onSync }: TextEditingTabProps) {
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => handleAction(EditorUtils.copy)}
@@ -194,6 +275,7 @@ export function TextEditingTab({ onSync }: TextEditingTabProps) {
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => handleAction(EditorUtils.cut)}
@@ -208,6 +290,7 @@ export function TextEditingTab({ onSync }: TextEditingTabProps) {
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => handleAction(EditorUtils.paste)}
@@ -254,6 +337,7 @@ export function TextEditingTab({ onSync }: TextEditingTabProps) {
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => handleAction(EditorUtils.formatBold)}
@@ -268,6 +352,7 @@ export function TextEditingTab({ onSync }: TextEditingTabProps) {
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => handleAction(EditorUtils.formatItalic)}
@@ -282,6 +367,7 @@ export function TextEditingTab({ onSync }: TextEditingTabProps) {
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => handleAction(EditorUtils.formatUnderline)}
@@ -296,6 +382,7 @@ export function TextEditingTab({ onSync }: TextEditingTabProps) {
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => handleAction(EditorUtils.formatStrikethrough)}
@@ -310,6 +397,7 @@ export function TextEditingTab({ onSync }: TextEditingTabProps) {
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => handleAction(EditorUtils.formatSubscript)}
@@ -324,6 +412,7 @@ export function TextEditingTab({ onSync }: TextEditingTabProps) {
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => handleAction(EditorUtils.formatSuperscript)}
@@ -428,6 +517,7 @@ export function TextEditingTab({ onSync }: TextEditingTabProps) {
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => handleAction(() => EditorUtils.alignText('left'))}
@@ -442,6 +532,7 @@ export function TextEditingTab({ onSync }: TextEditingTabProps) {
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => handleAction(() => EditorUtils.alignText('center'))}
@@ -456,6 +547,7 @@ export function TextEditingTab({ onSync }: TextEditingTabProps) {
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => handleAction(() => EditorUtils.alignText('right'))}
@@ -470,6 +562,7 @@ export function TextEditingTab({ onSync }: TextEditingTabProps) {
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => handleAction(() => EditorUtils.alignText('justify'))}
@@ -487,6 +580,7 @@ export function TextEditingTab({ onSync }: TextEditingTabProps) {
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => handleAction(() => EditorUtils.createList('bullet'))}
@@ -501,6 +595,7 @@ export function TextEditingTab({ onSync }: TextEditingTabProps) {
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => handleAction(() => EditorUtils.createList('numbered'))}
@@ -515,6 +610,7 @@ export function TextEditingTab({ onSync }: TextEditingTabProps) {
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => handleAction(EditorUtils.outdent)}
@@ -529,6 +625,7 @@ export function TextEditingTab({ onSync }: TextEditingTabProps) {
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => handleAction(EditorUtils.indent)}
@@ -546,6 +643,7 @@ export function TextEditingTab({ onSync }: TextEditingTabProps) {
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => handleAction(() => EditorUtils.applyStyle('heading1'))}
@@ -560,6 +658,7 @@ export function TextEditingTab({ onSync }: TextEditingTabProps) {
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => handleAction(() => EditorUtils.applyStyle('heading2'))}
@@ -574,6 +673,7 @@ export function TextEditingTab({ onSync }: TextEditingTabProps) {
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => handleAction(() => EditorUtils.applyStyle('heading3'))}
@@ -588,6 +688,7 @@ export function TextEditingTab({ onSync }: TextEditingTabProps) {
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => handleAction(() => EditorUtils.applyStyle('quote'))}
@@ -602,6 +703,7 @@ export function TextEditingTab({ onSync }: TextEditingTabProps) {
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => handleAction(() => EditorUtils.applyStyle('code'))}
@@ -667,6 +769,7 @@ export function TextEditingTab({ onSync }: TextEditingTabProps) {
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => handleAction(EditorUtils.removeFormatting)}
@@ -680,6 +783,16 @@ export function TextEditingTab({ onSync }: TextEditingTabProps) {
         </div>
       </div>
       </div>
+      
+      {/* History Notification */}
+      {notification && (
+        <HistoryNotification
+          message={notification.message}
+          type={notification.type}
+          duration={notification.duration}
+          onClose={hideNotification}
+        />
+      )}
     </TooltipProvider>
   )
 }
