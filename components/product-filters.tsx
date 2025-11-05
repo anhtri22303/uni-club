@@ -2,7 +2,7 @@
 
 // import * as React from "react"
 import React from "react"
-import { Archive, ArrowDownUp, ArrowUpDown, Check, ChevronDown, Filter, Flame, Sparkles, Star, X, } from "lucide-react"
+import { ArrowDownUp, ArrowUpDown, Check, ChevronDown, Filter, Flame, Sparkles, Star, Store, X, } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -188,7 +188,7 @@ export function ProductFilters({ onFilterChange, onSortChange, availableTags = [
                         onPressedChange={handleToggleChange("inStock")}
                         className="data-[state=on]:border-primary data-[state=on]:text-primary"
                     >
-                        <Archive className="mr-2 h-4 w-4" /> Available
+                        <Store className="mr-2 h-4 w-4" /> Available
                     </Toggle>
 
                     {/* Popover filter cho Tags (dữ liệu thật) */}

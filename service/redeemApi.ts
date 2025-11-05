@@ -21,6 +21,7 @@ export interface RedeemOrder {
   productName: string;
   quantity: number;
   totalPoints: number;
+  productType?: string; // 👈 HÃY THÊM DÒNG NÀY (nếu chưa có)
   status: string; // (PENDING, COMPLETED, CANCELLED, REFUNDED)
   createdAt: string;
   completedAt: string;

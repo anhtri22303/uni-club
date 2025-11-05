@@ -55,7 +55,8 @@ const navigationConfig = {
       icon: LayoutDashboard,
       children: [
         { href: "/club-leader/gift", label: "Gift list", icon: Gift },
-        { href: "/club-leader/order-list", label: "Orders list", icon: ListOrdered  },
+        { href: "/club-leader/club-order-list", label: "Club orders list", icon: ListOrdered },
+        { href: "/club-leader/event-order-list", label: "Event orders list", icon: ListOrdered },
       ]
     },
     {

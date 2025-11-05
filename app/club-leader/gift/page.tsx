@@ -2,10 +2,10 @@
 
 import type React from "react"
 import { useEffect, useState, useMemo } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import Link from "next/link"
-import { Gift, Package, Calendar, Clock, CheckCircle, XCircle, Plus, ChevronLeft, ChevronRight, Loader2, } from "lucide-react"
+import { Gift, Package, Calendar, Clock, CheckCircle, XCircle, Plus, ChevronLeft, ChevronRight, Loader2, Archive, } from "lucide-react"
 // --- Service ---
 import { addProduct, Product, AddProductPayload, } from "@/service/productApi"
 import { getClubIdFromToken } from "@/service/clubApi"
@@ -100,7 +100,6 @@ interface FixedTagIds {
   eventTagId: number | null;
 }
 
-
 export default function ClubLeaderGiftPage() {
   const [clubId, setClubId] = useState<number | null>(() => getClubIdFromToken())
   const [searchTerm, setSearchTerm] = useState("")
@@ -117,7 +116,18 @@ export default function ClubLeaderGiftPage() {
     clubTagId: null,
     eventTagId: null,
   });
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive" | "archived">("all");
+
+  useEffect(() => {
+    const id = getClubIdFromToken();
+    if (id) {
+      setClubId(id);
+    } else {
+      toast({ title: "Error", description: "Club ID not found.", variant: "destructive" });
+      // có thể thêm router.push('/login') ở đây
+    }
+  }, [toast]); // 👈 Chỉ chạy 1 lần
+
   // THAY THẾ useEffect/useState BẰNG REACT QUERY
   const { data: products = [], isLoading: productsLoading } = useProductsByClubId(
     clubId as number,
@@ -144,9 +154,6 @@ export default function ClubLeaderGiftPage() {
     today.setHours(0, 0, 0, 0);
 
     return clubEvents.filter(event => {
-      // Xử lý event.date (string "YYYY-MM-DD") để so sánh
-      // Phải parse thủ công để tránh lỗi timezone (new Date("YYYY-MM-DD")
-      // sẽ hiểu là UTC, có thể bị sai ngày)
       const parts = event.date.split('-').map(Number);
       // new Date(year, monthIndex, day)
       const eventDate = new Date(parts[0], parts[1] - 1, parts[2]);
@@ -155,9 +162,6 @@ export default function ClubLeaderGiftPage() {
       if (event.status === "ON-GOING") {
         return true;
       }
-
-      // Điều kiện 2: Event đã được duyệt (APPROVED) VÀ ngày diễn ra
-      // là hôm nay hoặc trong tương lai
       if (event.status === "APPROVED" && eventDate >= today) {
         return true;
       }
@@ -310,56 +314,63 @@ export default function ClubLeaderGiftPage() {
       setSubmitting(false)
     }
   }
-
-  // THAY THẾ 'filteredProducts' BẰNG 'useMemo' 
   const filteredAndSortedProducts = useMemo(() => {
-    let filtered: Product[] = [...products] // Bắt đầu với danh sách đầy đủ
+    let filtered: Product[] = [...products] // 1. Bắt đầu với TẤT CẢ (gồm cả Archived)
 
-    // A. Lọc theo SearchTerm (từ Input)
-    if (searchTerm) {
-      filtered = filtered.filter(
-        (p) =>
-          p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          p.description.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    }
-    // THÊM: Lọc theo Status (All / Active / Inactive)
-    if (statusFilter !== "all") {
-      const desiredStatus = statusFilter === "active" ? "ACTIVE" : "INACTIVE";
-      filtered = filtered.filter((p) => p.status === desiredStatus);
-    }
-    // B. Lọc theo ProductFilters state (Client-side)
-    if (filters) {
-      // Lọc "Sẵn hàng"
-      if (filters.inStock) {
-        // Lọc cả status và stockQuantity
-        filtered = filtered.filter((p) => p.status === "ACTIVE" && p.stockQuantity > 0)
-      }
-      // Lọc "Tags"
-      if (filters.selectedTags.size > 0) {
-        const selectedTags = Array.from(filters.selectedTags)
-        filtered = filtered.filter((p) =>
-          selectedTags.some(selectedTag => p.tags.includes(selectedTag))
-        )
-      }
-    }
+    // --- LỌC BƯỚC 1: LỌC THEO STATUS (Tab) ---
+    if (statusFilter === "active") {
+      filtered = filtered.filter((p) => p.status === "ACTIVE");
+    } else if (statusFilter === "inactive") {
+      filtered = filtered.filter((p) => p.status === "INACTIVE");
+    } else if (statusFilter === "archived") { 
+      filtered = filtered.filter((p) => p.status === "ARCHIVED");
+    }
+    // Nếu statusFilter === "all", bỏ qua bước này, giữ nguyên TẤT CẢ
 
-    // C. Sắp xếp
-    switch (sortBy) {
-      case "price_asc":
-        filtered.sort((a, b) => a.pointCost - b.pointCost)
-        break
-      case "price_desc":
-        filtered.sort((a, b) => b.pointCost - a.pointCost)
-        break
-      case "hot_promo":
-        break
-      case "popular":
-      default:
-        break
-    }
-    return filtered
-  }, [products, searchTerm, filters, sortBy, statusFilter])
+    // --- LỌC BƯỚC 2: LỌC THEO SEARCH TERM ---
+    if (searchTerm) {
+      filtered = filtered.filter(
+        (p) =>
+          p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          p.description.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    }
+    
+    // --- LỌC BƯỚC 3: LỌC THEO CRITERIA (Checkbox và Tags) ---
+    if (filters) {
+      // Lọc "Available" (Sẵn hàng)
+      if (filters.inStock) {
+        // Lọc này chỉ có ý nghĩa với các sản phẩm ACTIVE
+        filtered = filtered.filter((p) => p.status === "ACTIVE" && p.stockQuantity > 0)
+      }
+
+      // Lọc "Tags"
+      if (filters.selectedTags.size > 0) {
+        const selectedTags = Array.from(filters.selectedTags)
+        filtered = filtered.filter((p) =>
+          selectedTags.some(selectedTag => p.tags.includes(selectedTag))
+        )
+      }
+    }
+
+    // --- BƯỚC 4: SẮP XẾP ---
+    switch (sortBy) {
+      case "price_asc":
+        filtered.sort((a, b) => a.pointCost - b.pointCost)
+        break
+      case "price_desc":
+        filtered.sort((a, b) => b.pointCost - a.pointCost)
+        break
+      case "hot_promo":
+        // (chưa có logic)
+        break
+      case "popular":
+      default:
+        // (chưa có logic)
+        break
+    }
+    return filtered
+  }, [products, searchTerm, filters, sortBy, statusFilter])
 
   return (
     <ProtectedRoute allowedRoles={["club_leader"]}>
@@ -413,7 +424,7 @@ export default function ClubLeaderGiftPage() {
               <ToggleGroup
                 type="single"
                 value={statusFilter}
-                onValueChange={(value: "all" | "active" | "inactive") => {
+                onValueChange={(value: "all" | "active" | "inactive" | "archived") => {
                   if (value) setStatusFilter(value); // Chỉ set khi có giá trị
                 }}
                 variant="outline"
@@ -421,6 +432,7 @@ export default function ClubLeaderGiftPage() {
                 <ToggleGroupItem value="all" aria-label="Show all">All</ToggleGroupItem>
                 <ToggleGroupItem value="active" aria-label="Show active only">Active</ToggleGroupItem>
                 <ToggleGroupItem value="inactive" aria-label="Show inactive only">Inactive</ToggleGroupItem>
+                <ToggleGroupItem value="archived" aria-label="Show archived only">Archived</ToggleGroupItem>
               </ToggleGroup>
             </div>
           </div>
@@ -570,19 +582,19 @@ export default function ClubLeaderGiftPage() {
             ) : filteredAndSortedProducts.length === 0 ? (
               <div className="col-span-full text-center py-12">
                 <h3 className="text-lg font-semibold mb-2">No products found</h3>
-                <p className="text-sm text-muted-foreground">Try adding new products!</p>
+                <p className="text-sm text-muted-foreground">
+                  {statusFilter === "archived" ? "Empty archive." : "Try adjusting your filters or add a new product."}
+                </p>
               </div>
             ) : (
               filteredAndSortedProducts.map((p) => {
-                // Lấy thumbnail (hoặc ảnh placeholder nếu không có)
                 const thumbnail = p.media?.find((m) => m.thumbnail)?.url || "/placeholder.svg"
 
                 return (
-                  // 1. Bọc thẻ Card bằng Link
                   <Link
                     href={`/club-leader/gift/${p.id}`}
                     key={p.id}
-                    className="h-full flex" // Thêm 'flex' để Card con có thể co giãn 100%
+                    className="h-full flex"
                   >
                     {/* 2. Cập nhật Card styling (shadow, cursor, v.v.) */}
                     <Card className="transition-all duration-200 hover:shadow-lg cursor-pointer flex flex-col h-full relative overflow-hidden w-full">
@@ -598,12 +610,22 @@ export default function ClubLeaderGiftPage() {
                             onError={(e) => (e.currentTarget.src = "/placeholder.svg")}
                           />
                           {/* Badge Active/Inactive (Giống trong ảnh) */}
-                          <Badge
+                          {/* <Badge
                             variant={p.status === "ACTIVE" ? "default" : "secondary"}
                             className={`absolute right-2 top-2 z-10 text-xs ${p.status === "ACTIVE" ? "bg-green-600 text-white" : "bg-gray-500 text-white"
                               }`}
                           >
                             {p.status === "ACTIVE" ? "Active" : p.status}
+                          </Badge> */}
+                          <Badge
+                            variant="default"
+                            className={`absolute right-2 top-2 z-10 text-xs
+                              ${p.status === "ACTIVE" ? "bg-green-600 text-white" : ""}
+                              ${p.status === "INACTIVE" ? "bg-gray-500 text-white" : ""}
+                              ${p.status === "ARCHIVED" ? "bg-red-700 text-white" : ""}
+                              `}
+                          >
+                            {p.status}
                           </Badge>
                         </div>
                       </CardHeader>

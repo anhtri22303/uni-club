@@ -4,9 +4,9 @@ import React, { useEffect, useState, useCallback } from "react"
 import { useRouter, useParams } from "next/navigation"
 import {
     getProductById, Product, AddProductPayload, updateProduct, UpdateProductPayload, addMediaToProduct, deleteMediaFromProduct,
-    updateMedia, UpdateMediaPayload,
+    setMediaThumbnail,
 } from "@/service/productApi"
-import { getTags, Tag as ProductTag } from "@/service/tagApi" // 👈 THÊM DÒNG NÀY
+import { getTags, Tag as ProductTag } from "@/service/tagApi"
 import { useToast } from "@/hooks/use-toast"
 import { AppShell } from "@/components/app-shell"
 import { ProtectedRoute } from "@/contexts/protected-route"
@@ -25,6 +25,10 @@ import { Switch } from "@/components/ui/switch"
 import { LoadingSkeleton } from "@/components/loading-skeleton"
 import { getClubIdFromToken } from "@/service/clubApi"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, } from "@/components/ui/dialog"
+import {
+    AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 type ProductEditForm = UpdateProductPayload
 interface FixedTagIds {
@@ -43,19 +47,17 @@ export default function EditProductPage() {
     const [clubId, setClubId] = useState<number | null>(null)
     const productId = params.id as string
     const [tagSearchTerm, setTagSearchTerm] = useState("")
+    const [isDeleting, setIsDeleting] = useState(false) // State cho việc xóa
     // STATE MEDIA DIALOG
-    // const [isMediaDialogOpen, setIsMediaDialogOpen] = useState(false)
-    // const [newMediaUrl, setNewMediaUrl] = useState("")
-    // const [isMediaLoading, setIsMediaLoading] = useState(false)
-    // const [newMediaIsThumbnail, setNewMediaIsThumbnail] = useState(false)
     const [isMediaDialogOpen, setIsMediaDialogOpen] = useState(false)
     const [isMediaLoading, setIsMediaLoading] = useState(false)
-    const [newMediaFile, setNewMediaFile] = useState<File | null>(null); // 👈 State cho file
+    const [newMediaFile, setNewMediaFile] = useState<File | null>(null);
     // 👈 THÊM STATE ĐỂ LƯU ID CỦA TAG "CLUB" VÀ "EVENT"
     const [fixedTagIds, setFixedTagIds] = useState<FixedTagIds>({
         clubTagId: null,
         eventTagId: null,
     });
+
 
     // 1. Lấy clubId
     useEffect(() => {
@@ -68,40 +70,7 @@ export default function EditProductPage() {
         }
     }, [router, toast])
 
-    // TÁCH HÀM FETCH GỐC 
-    // const fetchProductData = useCallback(async (cId: number, pId: string) => {
-    //     try {
-    //         const [productData, tagsData] = await Promise.all([
-    //             getProductById(cId, pId),
-    //             getTags()
-    //         ])
 
-    //         setProduct(productData)
-    //         setAllTags(tagsData)
-
-    //         const loadedTagIds = tagsData
-    //             .filter((tag) => productData.tags.includes(tag.name))
-    //             .map((tag) => tag.tagId)
-
-    //         setForm({
-    //             name: productData.name,
-    //             description: productData.description,
-    //             pointCost: productData.pointCost,
-    //             stockQuantity: productData.stockQuantity,
-    //             type: productData.type || "CLUB_ITEM",
-    //             eventId: productData.eventId,
-    //             tagIds: loadedTagIds,
-    //             status: productData.status,
-    //         })
-    //     } catch (error) {
-    //         console.error("Failed to load product details:", error)
-    //         toast({
-    //             title: "Error",
-    //             description: "Unable to load product details.",
-    //             variant: "destructive",
-    //         })
-    //         router.back()
-    //     }
     // }, [router, toast]) // Thêm dependencies
     const fetchProductData = useCallback(async (cId: number, pId: string) => {
         try {
@@ -172,10 +141,6 @@ export default function EditProductPage() {
         })
     }
 
-    // const handleSelectChange = (name: string) => (value: string) => {
-    //     if (!form) return
-    //     setForm({ ...form, [name]: value })
-    // }
     const handleSelectChange = (name: string) => (value: string) => {
         if (!form) return;
 
@@ -206,18 +171,7 @@ export default function EditProductPage() {
         }
     }
 
-    // const handleTagChange = (tagId: number) => (checked: boolean) => {
-    //     if (!form) return
-    //     const currentTags = form.tagIds || []
-    //     let newTagIds: number[]
-    //     if (checked) {
-    //         newTagIds = [...currentTags, tagId]
-    //     } else {
-    //         newTagIds = currentTags.filter((id) => id !== tagId)
-    //     }
-    //     setForm({ ...form, tagIds: newTagIds })
-    // }
-    // 🛑 CẬP NHẬT: handleTagChange (Không cho phép bỏ chọn tag cố định)
+    // handleTagChange (Không cho phép bỏ chọn tag cố định)
     const handleTagChange = (tagId: number) => (checked: boolean) => {
         if (!form) return;
         const { clubTagId, eventTagId } = fixedTagIds;
@@ -238,47 +192,6 @@ export default function EditProductPage() {
         setForm({ ...form, tagIds: newTagIds })
     }
 
-
-    // // 4. Handler LƯU (ĐÃ CẬP NHẬT và KÍCH HOẠT)
-    // const handleSave = async () => {
-    //     if (!form || !clubId || !productId) return
-
-    //     setIsSaving(true)
-    //     try {
-    //         // KÍCH HOẠT: Dùng hàm updateProduct
-    //         const updatedProduct = await updateProduct(clubId, productId, form)
-    //         // Cập nhật lại state gốc và form
-    //         setProduct(updatedProduct)
-    //         // Cập nhật lại form state (để đồng bộ nếu có logic nào đó từ server)
-    //         const loadedTagIds = allTags
-    //             .filter((tag) => updatedProduct.tags.includes(tag.name))
-    //             .map((tag) => tag.tagId)
-    //         setForm({
-    //             name: updatedProduct.name,
-    //             description: updatedProduct.description,
-    //             pointCost: updatedProduct.pointCost,
-    //             stockQuantity: updatedProduct.stockQuantity,
-    //             type: updatedProduct.type,
-    //             eventId: updatedProduct.eventId,
-    //             tagIds: loadedTagIds,
-    //             status: updatedProduct.status,
-    //         })
-    //         toast({
-    //             title: "Success",
-    //             description: "Product updated successfully.",
-    //             variant: "success",
-    //         })
-    //     } catch (error: any) {
-    //         toast({
-    //             title: "Error",
-    //             description: error.message || "Failed to update product.",
-    //             variant: "destructive",
-    //         })
-    //     } finally {
-    //         setIsSaving(false)
-    //     }
-    // }
-    // 5. Handler LƯU (Cập nhật để dùng refetch)
     const handleSave = async () => {
         if (!form || !clubId || !productId) return
         // 👈 KIỂM TRA NGHIỆP VỤ MỚI
@@ -289,18 +202,14 @@ export default function EditProductPage() {
 
         setIsSaving(true)
         try {
-            // Bước 1: Gọi API updateProduct
             await updateProduct(clubId, productId, form)
 
-            // Bước 2: Báo thành công
             toast({
                 title: "Success",
                 description: "Product updated successfully.",
                 variant: "success",
             })
-
-            // Bước 3: Tải lại toàn bộ dữ liệu (an toàn nhất)
-            // (refetchProduct đã bao gồm setLoading(true/false) và toast)
+        
             await fetchProductData(clubId, productId); // Gọi trực tiếp để tránh toast "Media updated"
 
         } catch (error: any) {
@@ -328,7 +237,6 @@ export default function EditProductPage() {
         }
     }
 
-    // ❗️ THÊM HÀM MỚI NÀY
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             setNewMediaFile(e.target.files[0]);
@@ -337,46 +245,6 @@ export default function EditProductPage() {
         }
     };
 
-
-
-    // const handleAddMedia = async () => {
-    //     if (!clubId || !productId || !newMediaUrl) {
-    //         toast({ title: "Error", description: "URL is required.", variant: "destructive" })
-    //         return
-    //     }
-
-    //     setIsMediaLoading(true)
-
-    //     // Lấy thumbnail cũ TRƯỚC KHI GỌI API
-    //     const oldThumbnail = product?.media.find(m => m.thumbnail);
-
-    //     try {
-    //         // Bước 1: Thêm ảnh mới
-    //         await addMediaToProduct(clubId, productId, {
-    //             urls: [newMediaUrl],
-    //             type: "IMAGE",
-    //             thumbnail: newMediaIsThumbnail, // Gửi trạng thái thumbnail
-    //         })
-
-    //         // Bước 2: Nếu ta vừa set ảnh mới làm thumbnail VÀ có ảnh thumbnail cũ
-    //         if (newMediaIsThumbnail && oldThumbnail) {
-    //             // ... thì gỡ thumbnail cũ
-    //             await updateMedia(clubId, productId, oldThumbnail.mediaId, { thumbnail: false });
-    //         }
-
-    //         // Reset state của dialog
-    //         setIsMediaDialogOpen(false)
-    //         setNewMediaUrl("")
-    //         setNewMediaIsThumbnail(false)
-
-    //         await refetchProduct() // Tải lại dữ liệu
-    //     } catch (error: any) {
-    //         toast({ title: "Error", description: error.message || "Failed to add media.", variant: "destructive" })
-    //     } finally {
-    //         setIsMediaLoading(false)
-    //     }
-    // }
-    // ❗️ VIẾT LẠI HOÀN TOÀN handleAddMedia
     const handleAddMedia = async () => {
         if (!clubId || !productId || !newMediaFile) {
             toast({
@@ -409,7 +277,6 @@ export default function EditProductPage() {
         }
     }
 
-
     const handleDeleteMedia = async (mediaId: number) => {
         if (!clubId || !productId) return
         if (!window.confirm("Are you sure you want to delete this image?")) return
@@ -428,34 +295,61 @@ export default function EditProductPage() {
     const handleSetThumbnail = async (newMediaId: number) => {
         if (!clubId || !productId || !product) return
 
+        // Kiểm tra xem đã là thumbnail chưa
+        const currentMedia = product.media.find(m => m.mediaId === newMediaId);
+        if (currentMedia && currentMedia.thumbnail) {
+            toast({ title: "Info", description: "This is already the thumbnail." });
+            return; // Không làm gì cả
+        }
+
         setIsMediaLoading(true)
 
         try {
-            // Tìm thumbnail cũ
-            const oldThumbnail = product.media.find(m => m.thumbnail);
+            // Chỉ cần gọi API mới
+            // Backend sẽ tự động gỡ thumbnail cũ (theo Swagger)
+            await setMediaThumbnail(clubId, productId, newMediaId);
 
-            const operations = [];
+            await refetchProduct() // Tải lại để cập nhật UI
 
-            // Thao tác 1: Đặt thumbnail MỚI
-            operations.push(
-                updateMedia(clubId, productId, newMediaId, { thumbnail: true })
-            );
-
-            // Thao tác 2: Gỡ thumbnail CŨ (nếu có)
-            if (oldThumbnail) {
-                operations.push(
-                    updateMedia(clubId, productId, oldThumbnail.mediaId, { thumbnail: false })
-                );
-            }
-
-            // Chạy song song cả hai
-            await Promise.all(operations);
-
-            await refetchProduct() // Tải lại
         } catch (error: any) {
-            toast({ title: "Error", description: error.message || "Failed to set thumbnail.", variant: "destructive" })
+            toast({
+                title: "Error",
+                description: error.message || "Failed to set thumbnail.",
+                variant: "destructive"
+            })
         } finally {
             setIsMediaLoading(false)
+        }
+    }
+
+    const handleDeleteProduct = async () => {
+        if (!form || !clubId || !productId) return;
+
+        setIsDeleting(true);
+        try {
+            // Gọi API updateProduct, nhưng GHI ĐÈ status thành "ARCHIVED"
+            await updateProduct(clubId, productId, {
+                ...form, // Gửi tất cả dữ liệu form hiện tại
+                status: "ARCHIVED", // 👈 Ghi đè trạng thái
+            });
+
+            toast({
+                title: "Product Archived",
+                description: "The product has been successfully archived.",
+                variant: "success",
+            });
+
+            // Chuyển hướng về trang danh sách
+            router.push('/club-leader/gift');
+
+        } catch (error: any) {
+            toast({
+                title: "Error",
+                description: error.message || "Failed to archive product.",
+                variant: "destructive",
+            });
+        } finally {
+            setIsDeleting(false);
         }
     }
 
@@ -502,6 +396,42 @@ export default function EditProductPage() {
                         </div>
                         <div className="flex items-center gap-3">
                             <span className="text-sm text-muted-foreground">ID: #{product.id}</span>
+                            {/* ❗️ BƯỚC 4: THÊM NÚT DELETE VÀ DIALOG */}
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button
+                                        variant="destructive"
+                                        size="sm"
+                                        disabled={isSaving || isDeleting}
+                                    >
+                                        <Trash className="h-4 w-4 mr-2" />
+                                        Archive
+                                    </Button>
+                                </AlertDialogTrigger>
+
+                                {/* Đây là nội dung của Dialog */}
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            This action will archive the product by setting its
+                                            status to **ARCHIVED**. It will be hidden from all students
+                                            and can no longer be redeemed.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction
+                                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                            onClick={handleDeleteProduct}
+                                            disabled={isDeleting}
+                                        >
+                                            {isDeleting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                                            Continue & Archive
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
 
                             {/* Nút Save (Đã kích hoạt) */}
                             <Button onClick={handleSave} disabled={isSaving}>
@@ -756,61 +686,10 @@ export default function EditProductPage() {
 
                 <Dialog open={isMediaDialogOpen} onOpenChange={setIsMediaDialogOpen}>
                     <DialogContent className="sm:max-w-[425px]">
-                        {/* <DialogHeader>
-                            <DialogTitle>Add New Media</DialogTitle>
-                            <DialogDescription>
-                                Paste a URL to an image. The image will be added to the product.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <div className="grid gap-4 py-4">
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="media-url" className="text-right">
-                                    Image URL
-                                </Label>
-                                <Input
-                                    id="media-url"
-                                    value={newMediaUrl}
-                                    onChange={(e) => setNewMediaUrl(e.target.value)}
-                                    className="col-span-3"
-                                    placeholder="https://example.com/image.png"
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="thumbnail" className="text-right">
-                                    Thumbnail
-                                </Label>
-                                <div className="col-span-3 flex items-center space-x-2">
-                                    <Checkbox
-                                        id="thumbnail"
-                                        checked={newMediaIsThumbnail}
-                                        onCheckedChange={(checked) => setNewMediaIsThumbnail(checked as boolean)}
-                                    />
-                                    <Label
-                                        htmlFor="thumbnail"
-                                        className="text-sm font-normal text-muted-foreground"
-                                    >
-                                        Set this image as the product thumbnail (cover image).
-                                    </Label>
-                                </div>
-                            </div>
-                        </div>
-                        <DialogFooter>
-                            <Button variant="outline" onClick={() => {
-                                setIsMediaDialogOpen(false); // Reset khi cancel
-                                setNewMediaUrl("");
-                                setNewMediaIsThumbnail(false);
-                            }}>Cancel</Button>
-                            <Button onClick={handleAddMedia} disabled={isMediaLoading}>
-                                {isMediaLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                                Add Image
-                            </Button>
-                        </DialogFooter> */}
                         <DialogHeader>
                             <DialogTitle>Add New Media</DialogTitle>
                             <DialogDescription>
-                                {/* ❗️ Sửa mô tả */}
-                                Choose an image file to upload. It will be added to the product.
+                                Choose an image or video file to upload.
                             </DialogDescription>
                         </DialogHeader>
                         <div className="grid gap-4 py-4">
@@ -820,30 +699,26 @@ export default function EditProductPage() {
                                 </Label>
                                 <Input
                                     id="media-file"
-                                    type="file" // 👈 Sửa type
-                                    accept="image/*" // 👈 Thêm accept
-                                    onChange={handleFileChange} // 👈 Sửa onChange
-                                    className="col-span-3"
+                                    type="file"
+                                    accept="image/*,video/*"
+                                    onChange={handleFileChange}
+                                    className="col-span-3 border-slate-300"
                                 />
                             </div>
-
-                            {/* ❗️ Xóa phần Checkbox "Thumbnail" */}
-                            {/* API POST mới không hỗ trợ set thumbnail khi upload */}
-
                         </div>
                         <DialogFooter>
                             <Button variant="outline" onClick={() => {
-                                setIsMediaDialogOpen(false); // Reset khi cancel
-                                setNewMediaFile(null); // 👈 Sửa
+                                setIsMediaDialogOpen(false);
+                                setNewMediaFile(null);
                             }}>Cancel</Button>
-                            {/* ❗️ Sửa disable logic */}
                             <Button onClick={handleAddMedia} disabled={isMediaLoading || !newMediaFile}>
                                 {isMediaLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                                Add Image
+                                Add Image / Video
                             </Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
+                
             </AppShell>
         </ProtectedRoute>
     )
