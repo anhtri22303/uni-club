@@ -554,7 +554,7 @@ function RenderOrderList({
           className="hover:shadow-md transition-shadow"
         >
           {/* Link to detail page */}
-          <Link href={`/club-leader/orders/${order.orderId}`}>
+          <Link href={`/club-leader/club-order-list/${order.orderId}`}>
             <CardContent className="p-4">
               <div className="flex items-start justify-between">
                 {/* Chi tiết đơn hàng */}

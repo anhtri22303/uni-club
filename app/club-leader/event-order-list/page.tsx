@@ -9,26 +9,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
-  ShoppingCart,
-  Search,
-  CheckCircle,
-  XCircle,
-  Clock,
-  Eye,
-  Filter,
-  DollarSign,
-  Package,
-  User,
-  Hash,
-  Calendar,
-  Undo2, // Icon cho Refunded
+  ShoppingCart, Search, CheckCircle, XCircle, Clock, Eye, Filter, DollarSign, Package, User, Hash, Calendar, Undo2, // Icon cho Refunded
 } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { getClubIdFromToken } from "@/service/clubApi"
 // 👈 Giả định RedeemOrder có chứa 'productType'
-import { getClubRedeemOrders, RedeemOrder } from "@/service/redeemApi" 
+import { getClubRedeemOrders, RedeemOrder } from "@/service/redeemApi"
 import { Skeleton } from "@/components/ui/skeleton"
 
 // 👈 Đổi tên Key
@@ -49,7 +37,7 @@ export default function ClubLeaderEventOrdersPage() {
   const [pendingPage, setPendingPage] = useState(0)
   const [completedPage, setCompletedPage] = useState(0)
   const [cancelledPage, setCancelledPage] = useState(0)
-  const [pageSize, setPageSize] = useState(6) 
+  const [pageSize, setPageSize] = useState(6)
 
   // Filter states
   const [dateFromFilter, setDateFromFilter] = useState<string>("")
@@ -80,8 +68,8 @@ export default function ClubLeaderEventOrdersPage() {
   } = useQuery<UiOrder[], Error>({
     queryKey: queryKeys.eventOrders(clubId!), // 👈 Đổi Key
     queryFn: () => getClubRedeemOrders(clubId!), // Vẫn dùng API cũ để lấy tất cả
-    enabled: !!clubId, 
-    staleTime: 3 * 60 * 1000, 
+    enabled: !!clubId,
+    staleTime: 3 * 60 * 1000,
   })
 
   // 3. 🛑 HÀM LỌC (ĐÃ CẬP NHẬT) 🛑
@@ -94,7 +82,7 @@ export default function ClubLeaderEventOrdersPage() {
       if (!isEventItem) {
         return false;
       }
-      
+
       // Search filter (Tên sản phẩm, Tên thành viên, Mã đơn)
       const matchSearch =
         searchTerm === "" ||
@@ -153,16 +141,90 @@ export default function ClubLeaderEventOrdersPage() {
   const totalPointsCompleted = isLoading
     ? "-"
     : completedOrders
-        .reduce((sum, order) => sum + order.totalPoints, 0)
-        .toLocaleString()
+      .reduce((sum, order) => sum + order.totalPoints, 0)
+      .toLocaleString()
 
-  // 6. Logic phân trang (Giữ nguyên)
+  // 6. Logic phân trang (Giữ nguyên từ file mẫu)
+  // (Phần này dài, giữ logic từ file gốc, chỉ đổi tên biến)
   const [prevPendingLength, setPrevPendingLength] = useState(0)
-  // ... (Toàn bộ logic phân trang giữ nguyên) ...
+  const [prevCompletedLength, setPrevCompletedLength] = useState(0)
+  const [prevCancelledLength, setPrevCancelledLength] = useState(0)
 
-  // 7. Hàm hiển thị Badge (Giữ nguyên)
+  if (pendingOrders.length !== prevPendingLength) {
+    setPrevPendingLength(pendingOrders.length)
+    const lastPage = Math.max(0, Math.ceil(pendingOrders.length / pageSize) - 1)
+    if (pendingPage > lastPage) setPendingPage(lastPage)
+  }
+  if (completedOrders.length !== prevCompletedLength) {
+    setPrevCompletedLength(completedOrders.length)
+    const lastPage = Math.max(0, Math.ceil(completedOrders.length / pageSize) - 1)
+    if (completedPage > lastPage) setCompletedPage(lastPage)
+  }
+  if (cancelledOrders.length !== prevCancelledLength) {
+    setPrevCancelledLength(cancelledOrders.length)
+    const lastPage = Math.max(0, Math.ceil(cancelledOrders.length / pageSize) - 1)
+    if (cancelledPage > lastPage) setCancelledPage(lastPage)
+  }
+
+  const paginatedPending = pendingOrders.slice(
+    pendingPage * pageSize,
+    pendingPage * pageSize + pageSize
+  )
+  const paginatedCompleted = completedOrders.slice(
+    completedPage * pageSize,
+    completedPage * pageSize + pageSize
+  )
+  const paginatedCancelled = cancelledOrders.slice(
+    cancelledPage * pageSize,
+    cancelledPage * pageSize + pageSize
+  )
+
+  // 7. Hàm hiển thị Badge (Huy hiệu) theo trạng thái
   const getStatusBadge = (status: string) => {
-    // ... (Toàn bộ switch/case giữ nguyên) ...
+    switch (status) {
+      case "PENDING":
+        return (
+          <Badge
+            variant="outline"
+            className="bg-yellow-50 text-yellow-700 border-yellow-300"
+          >
+            <Clock className="h-3 w-3 mr-1" />
+            Pending
+          </Badge>
+        )
+      case "COMPLETED":
+        return (
+          <Badge
+            variant="default"
+            className="bg-green-100 text-green-700 border-green-300"
+          >
+            <CheckCircle className="h-3 w-3 mr-1" />
+            Completed
+          </Badge>
+        )
+      case "CANCELLED":
+        return (
+          <Badge
+            variant="destructive"
+            className="bg-red-100 text-red-700 border-red-300"
+          >
+            <XCircle className="h-3 w-3 mr-1" />
+            Cancelled
+          </Badge>
+        )
+      case "REFUNDED":
+        return (
+          <Badge
+            variant="outline"
+            className="bg-blue-50 text-blue-700 border-blue-300"
+          >
+            <Undo2 className="h-3 w-3 mr-1" />
+            Refunded
+          </Badge>
+        )
+      default:
+        return <Badge variant="outline">{status}</Badge>
+    }
   }
 
   // 8. Render JSX
@@ -172,10 +234,8 @@ export default function ClubLeaderEventOrdersPage() {
         <div className="space-y-6">
           <div>
             <div className="flex items-center gap-3">
-              {/* 👈 ĐỔI TIÊU ĐỀ */}
-              <h1 className="text-3xl font-bold">Event Redeem Orders</h1>
+              <h1 className="text-3xl font-bold">Redeem Orders in Event</h1>
             </div>
-            {/* 👈 ĐỔI MÔ TẢ */}
             <p className="text-muted-foreground">
               Manage event product redemption orders from members
             </p>
@@ -183,12 +243,137 @@ export default function ClubLeaderEventOrdersPage() {
 
           {/* Stats Cards (Giữ nguyên) */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {/* ... (Toàn bộ 4 Card Stats giữ nguyên) ... */}
+            <Card className="border-0 shadow-md bg-gradient-to-br from-yellow-50 to-yellow-100">
+              <CardHeader className="pb-1 px-4 pt-3">
+                <CardTitle className="text-xs font-medium text-yellow-700">
+                  Pending Orders
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pb-3 px-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-yellow-500 rounded-md">
+                    <Clock className="h-4 w-4 text-white" />
+                  </div>
+                  <div className="text-lg font-bold text-yellow-900">
+                    {isLoading ? <Skeleton className="h-6 w-10" /> : pendingCount}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-md bg-gradient-to-br from-green-50 to-green-100">
+              <CardHeader className="pb-1 px-4 pt-3">
+                <CardTitle className="text-xs font-medium text-green-700">
+                  Completed Orders
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pb-3 px-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-green-500 rounded-md">
+                    <CheckCircle className="h-4 w-4 text-white" />
+                  </div>
+                  <div className="text-lg font-bold text-green-900">
+                    {isLoading ? <Skeleton className="h-6 w-10" /> : completedCount}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-md bg-gradient-to-br from-red-50 to-red-100">
+              <CardHeader className="pb-1 px-4 pt-3">
+                <CardTitle className="text-xs font-medium text-red-700">
+                  Cancelled/Refunded
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pb-3 px-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-red-500 rounded-md">
+                    <XCircle className="h-4 w-4 text-white" />
+                  </div>
+                  <div className="text-lg font-bold text-red-900">
+                    {isLoading ? <Skeleton className="h-6 w-10" /> : cancelledCount}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card className="border-0 shadow-md bg-gradient-to-br from-blue-50 to-blue-100">
+              <CardHeader className="pb-1 px-4 pt-3">
+                <CardTitle className="text-xs font-medium text-blue-700">
+                  Points Redeemed
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pb-3 px-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-blue-500 rounded-md">
+                    <DollarSign className="h-4 w-4 text-white" />
+                  </div>
+                  <div className="text-lg font-bold text-blue-900">
+                    {isLoading ? <Skeleton className="h-6 w-16" /> : totalPointsCompleted}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Filters (Giữ nguyên) */}
           <Card className="border-muted">
-            {/* ... (Toàn bộ Card Filters giữ nguyên) ... */}
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-medium flex items-center gap-2">
+                <Filter className="h-4 w-4" />
+                Filters & Search
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center">
+                <div className="flex items-center gap-2 flex-1 max-w-sm">
+                  <Search className="h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by product, member, or code..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+                {/* <div> (Phần Major filter đã bị xóa) </div> */}
+              </div>
+
+              <div className="flex flex-col gap-3 md:flex-row md:items-center">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium whitespace-nowrap">
+                    From:
+                  </label>
+                  <Input
+                    type="date"
+                    className="w-auto"
+                    value={dateFromFilter}
+                    onChange={(e) => setDateFromFilter(e.target.value)}
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium whitespace-nowrap">
+                    To:
+                  </label>
+                  <Input
+                    type="date"
+                    className="w-auto"
+                    value={dateToFilter}
+                    onChange={(e) => setDateToFilter(e.target.value)}
+                  />
+                </div>
+                {(dateFromFilter || dateToFilter) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setDateFromFilter("")
+                      setDateToFilter("")
+                    }}
+                  >
+                    Clear Dates
+                  </Button>
+                )}
+              </div>
+            </CardContent>
           </Card>
 
           {/* Tabs (Giữ nguyên) */}
@@ -241,7 +426,7 @@ export default function ClubLeaderEventOrdersPage() {
                 setPageSize={setPageSize}
               />
             </TabsContent>
-            
+
             {/* Tab Content: CANCELLED */}
             <TabsContent value="cancelled" className="space-y-4 mt-6">
               <RenderOrderList
@@ -362,7 +547,7 @@ function RenderOrderList({
           className="hover:shadow-md transition-shadow"
         >
           {/* 👈 ĐỔI LINK DẪN ĐẾN TRANG CHI TIẾT EVENT ORDER */}
-          <Link href={`/club-leader/event-orders/${order.orderId}`}> 
+          <Link href={`/club-leader/event-orders/${order.orderId}`}>
             <CardContent className="p-4">
               <div className="flex items-start justify-between">
                 {/* Chi tiết đơn hàng */}
@@ -385,11 +570,11 @@ function RenderOrderList({
                       <span className="line-clamp-1">{order.memberName}</span>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center gap-6 text-sm text-muted-foreground">
-                     <div className="flex items-center gap-1.5" title="Quantity">
-                        <ShoppingCart className="h-4 w-4" />
-                        <span>Quantity: {order.quantity}</span>
+                    <div className="flex items-center gap-1.5" title="Quantity">
+                      <ShoppingCart className="h-4 w-4" />
+                      <span>Quantity: {order.quantity}</span>
                     </div>
                     <div className="flex items-center gap-1.5" title="Total Points">
                       <DollarSign className="h-4 w-4" />
