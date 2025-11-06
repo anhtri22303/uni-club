@@ -1,12 +1,12 @@
 /**
  * History Manager for Undo/Redo with Circular Buffer (25 slots)
  * 
- * This system uses Session Storage to maintain a circular buffer of 25 history states.
+ * This system uses Local Storage to maintain a circular buffer of 25 history states.
  * When saving state 26, it overwrites state 1, creating a rolling history window.
  * 
  * Features:
  * - Circular buffer with 25 slots
- * - Session storage persistence
+ * - Local storage persistence (survives browser restarts)
  * - Undo/Redo navigation
  * - Boundary detection (can't undo/redo beyond limits)
  */
@@ -61,7 +61,7 @@ export function saveToHistory(content: string): void {
     index: nextIndex
   }
   
-  sessionStorage.setItem(
+  localStorage.setItem(
     `${HISTORY_KEY_PREFIX}${nextIndex}`,
     JSON.stringify(state)
   )
@@ -74,7 +74,7 @@ export function saveToHistory(content: string): void {
     size: newSize
   }
   
-  sessionStorage.setItem(HISTORY_META_KEY, JSON.stringify(newMeta))
+  localStorage.setItem(HISTORY_META_KEY, JSON.stringify(newMeta))
 }
 
 /**
@@ -114,7 +114,7 @@ export function undo(): { content: string | null; status: HistoryStatus; message
       
       // Update current index
       const newMeta: HistoryMeta = { ...meta, currentIndex: prevIndex }
-      sessionStorage.setItem(HISTORY_META_KEY, JSON.stringify(newMeta))
+      localStorage.setItem(HISTORY_META_KEY, JSON.stringify(newMeta))
       
       return {
         content: state?.content || null,
@@ -137,7 +137,7 @@ export function undo(): { content: string | null; status: HistoryStatus; message
   
   // Update current index
   const newMeta: HistoryMeta = { ...meta, currentIndex: prevIndex }
-  sessionStorage.setItem(HISTORY_META_KEY, JSON.stringify(newMeta))
+  localStorage.setItem(HISTORY_META_KEY, JSON.stringify(newMeta))
   
   const newStatus = getHistoryStatus()
   const message = newStatus.isAtOldest 
@@ -192,7 +192,7 @@ export function redo(): { content: string | null; status: HistoryStatus; message
   
   // Update current index
   const newMeta: HistoryMeta = { ...meta, currentIndex: nextIndex }
-  sessionStorage.setItem(HISTORY_META_KEY, JSON.stringify(newMeta))
+  localStorage.setItem(HISTORY_META_KEY, JSON.stringify(newMeta))
   
   return {
     content: state.content,
@@ -246,7 +246,7 @@ export function getHistoryStatus(): HistoryStatus {
 export function clearHistory(): void {
   // Remove all history states
   for (let i = 0; i < MAX_HISTORY_SIZE; i++) {
-    sessionStorage.removeItem(`${HISTORY_KEY_PREFIX}${i}`)
+    localStorage.removeItem(`${HISTORY_KEY_PREFIX}${i}`)
   }
   
   // Reset metadata
@@ -257,7 +257,7 @@ export function clearHistory(): void {
     size: 0
   }
   
-  sessionStorage.setItem(HISTORY_META_KEY, JSON.stringify(initialMeta))
+  localStorage.setItem(HISTORY_META_KEY, JSON.stringify(initialMeta))
 }
 
 /**
@@ -285,10 +285,10 @@ export function initializeHistory(initialContent: string): void {
 // ========== PRIVATE HELPERS ==========
 
 /**
- * Get history metadata from session storage
+ * Get history metadata from local storage
  */
 function getHistoryMeta(): HistoryMeta {
-  const metaStr = sessionStorage.getItem(HISTORY_META_KEY)
+  const metaStr = localStorage.getItem(HISTORY_META_KEY)
   
   if (!metaStr) {
     // Initialize with default values
@@ -318,7 +318,7 @@ function getHistoryMeta(): HistoryMeta {
  * Get state at specific index
  */
 function getStateAtIndex(index: number): HistoryState | null {
-  const stateStr = sessionStorage.getItem(`${HISTORY_KEY_PREFIX}${index}`)
+  const stateStr = localStorage.getItem(`${HISTORY_KEY_PREFIX}${index}`)
   
   if (!stateStr) {
     return null

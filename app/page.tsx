@@ -247,10 +247,10 @@ export default function LoginPage() {
       setShowLoginError(false) // Reset error state on success
       
       // Check if CLUB_LEADER logged in with default password "123"
-      const userRole = localStorage.getItem("userRole")
+      const userRole = sessionStorage.getItem("userRole")
       if (userRole === "CLUB_LEADER" && password === "123") {
         // Get userId from auth data
-        const authData = localStorage.getItem("uniclub-auth")
+        const authData = sessionStorage.getItem("uniclub-auth")
         let userId = null
         if (authData) {
           try {

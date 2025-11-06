@@ -57,7 +57,7 @@ export const formatSubscript = () => execCommand('subscript')
 /**
  * Undo/Redo
  * Note: These are kept for compatibility but the main history system
- * is now in historyManager.ts which uses session storage with 25-slot circular buffer
+ * is now in historyManager.ts which uses local storage with 25-slot circular buffer
  */
 export const undo = () => execCommand('undo')
 export const redo = () => execCommand('redo')

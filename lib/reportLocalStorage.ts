@@ -1,7 +1,7 @@
 /**
- * Session Storage utility for Report Page
- * Manages temporary storage of report edits that persist across page reloads
- * but are cleared on logout or manual clear action
+ * Local Storage utility for Report Page
+ * Manages persistent storage of report edits that survive browser restarts
+ * and persist across sessions until manually cleared
  */
 
 import { PageSettings } from '@/components/report/types'
@@ -16,7 +16,7 @@ interface ReportStorageData {
 }
 
 /**
- * Save report content to session storage
+ * Save report content to local storage
  */
 export function saveReportToSession(content: string, clubId: number): void {
   try {
@@ -25,19 +25,19 @@ export function saveReportToSession(content: string, clubId: number): void {
       clubId,
       lastModified: new Date().toISOString()
     }
-    sessionStorage.setItem(REPORT_STORAGE_KEY, JSON.stringify(data))
+    localStorage.setItem(REPORT_STORAGE_KEY, JSON.stringify(data))
   } catch (error) {
-    console.error('Failed to save report to session storage:', error)
+    console.error('Failed to save report to local storage:', error)
   }
 }
 
 /**
- * Load report content from session storage
+ * Load report content from local storage
  * Returns null if no saved data or if data is for a different club
  */
 export function loadReportFromSession(clubId: number): string | null {
   try {
-    const savedData = sessionStorage.getItem(REPORT_STORAGE_KEY)
+    const savedData = localStorage.getItem(REPORT_STORAGE_KEY)
     if (!savedData) return null
 
     const data: ReportStorageData = JSON.parse(savedData)
@@ -51,13 +51,13 @@ export function loadReportFromSession(clubId: number): string | null {
 
     return data.content
   } catch (error) {
-    console.error('Failed to load report from session storage:', error)
+    console.error('Failed to load report from local storage:', error)
     return null
   }
 }
 
 /**
- * Save page settings to session storage
+ * Save page settings to local storage
  */
 export function savePageSettingsToSession(settings: PageSettings, clubId: number): void {
   try {
@@ -66,18 +66,18 @@ export function savePageSettingsToSession(settings: PageSettings, clubId: number
       clubId,
       lastModified: new Date().toISOString()
     }
-    sessionStorage.setItem(REPORT_SETTINGS_KEY, JSON.stringify(data))
+    localStorage.setItem(REPORT_SETTINGS_KEY, JSON.stringify(data))
   } catch (error) {
-    console.error('Failed to save page settings to session storage:', error)
+    console.error('Failed to save page settings to local storage:', error)
   }
 }
 
 /**
- * Load page settings from session storage
+ * Load page settings from local storage
  */
 export function loadPageSettingsFromSession(clubId: number): PageSettings | null {
   try {
-    const savedData = sessionStorage.getItem(REPORT_SETTINGS_KEY)
+    const savedData = localStorage.getItem(REPORT_SETTINGS_KEY)
     if (!savedData) return null
 
     const data = JSON.parse(savedData)
@@ -89,30 +89,30 @@ export function loadPageSettingsFromSession(clubId: number): PageSettings | null
 
     return data.settings
   } catch (error) {
-    console.error('Failed to load page settings from session storage:', error)
+    console.error('Failed to load page settings from local storage:', error)
     return null
   }
 }
 
 /**
- * Clear report content from session storage
+ * Clear report content from local storage
  */
 export function clearReportFromSession(): void {
   try {
-    sessionStorage.removeItem(REPORT_STORAGE_KEY)
-    sessionStorage.removeItem(REPORT_SETTINGS_KEY)
-    console.log('Report session storage cleared')
+    localStorage.removeItem(REPORT_STORAGE_KEY)
+    localStorage.removeItem(REPORT_SETTINGS_KEY)
+    console.log('Report local storage cleared')
   } catch (error) {
-    console.error('Failed to clear report from session storage:', error)
+    console.error('Failed to clear report from local storage:', error)
   }
 }
 
 /**
- * Check if there is saved report data in session storage
+ * Check if there is saved report data in local storage
  */
 export function hasReportInSession(clubId: number): boolean {
   try {
-    const savedData = sessionStorage.getItem(REPORT_STORAGE_KEY)
+    const savedData = localStorage.getItem(REPORT_STORAGE_KEY)
     if (!savedData) return false
 
     const data: ReportStorageData = JSON.parse(savedData)
@@ -127,7 +127,7 @@ export function hasReportInSession(clubId: number): boolean {
  */
 export function getReportLastModified(clubId: number): Date | null {
   try {
-    const savedData = sessionStorage.getItem(REPORT_STORAGE_KEY)
+    const savedData = localStorage.getItem(REPORT_STORAGE_KEY)
     if (!savedData) return null
 
     const data: ReportStorageData = JSON.parse(savedData)

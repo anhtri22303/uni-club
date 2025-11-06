@@ -259,7 +259,7 @@ export function UserProfileWidget() {
                     className="cursor-pointer rounded-lg p-0 mb-2 overflow-hidden hover:shadow-md transition-all duration-200"
                   >
                     <div className={`flex items-center gap-3 w-full p-3 bg-gradient-to-r ${colorScheme.from} ${colorScheme.to} ${colorScheme.hoverFrom} ${colorScheme.hoverTo} transition-all overflow-hidden`}>
-                      <div className="w-10 h-10 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center font-bold text-lg text-white flex-shrink-0">
+                      <div className="w-10 h-10 rounded-lg bg-white/10 dark:bg-black/20 backdrop-blur-sm flex items-center justify-center font-bold text-lg text-white flex-shrink-0">
                         {membership.clubName.charAt(0).toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0 overflow-hidden">
@@ -269,7 +269,7 @@ export function UserProfileWidget() {
                         </div>
                       </div>
                       {isSelected && (
-                        <div className="flex-shrink-0 w-6 h-6 rounded-full bg-white flex items-center justify-center">
+                        <div className="flex-shrink-0 w-6 h-6 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center">
                           <Check className={`h-4 w-4 ${colorScheme.check} font-bold`} />
                         </div>
                       )}

@@ -121,7 +121,7 @@ export function TopupModal({ isOpen, onClose, selectedAmountVND }: TopupModalPro
 
                   <div className="flex items-center gap-2 pt-1">
                     <span className="text-sm">Liên hệ hỗ trợ:</span>
-                    <Badge variant="secondary" className="bg-white text-emerald-700">Meiying</Badge>
+                    <Badge variant="secondary" className="bg-white dark:bg-emerald-700 text-emerald-700 dark:text-white">Meiying</Badge>
                   </div>
                 </CardContent>
               </Card>
@@ -149,7 +149,7 @@ export function TopupModal({ isOpen, onClose, selectedAmountVND }: TopupModalPro
                   </p>
 
                   <div className="flex justify-center">
-                    <div className="relative bg-white rounded-lg p-4">
+                    <div className="relative bg-white dark:bg-gray-800 rounded-lg p-4">
                       <img
                         src="/images/design-mode/image(1).png"
                         alt="QR Code for top-up"

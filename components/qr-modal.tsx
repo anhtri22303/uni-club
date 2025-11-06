@@ -46,13 +46,13 @@ export function QRModal({
         <Modal open={open} onOpenChange={onOpenChange} title="Event QR Code">
           <div className="space-y-6">
             {/* Header Controls */}
-            <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+            <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/50 dark:to-indigo-950/50 rounded-lg border border-blue-200 dark:border-blue-800">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 rounded-full">
-                  <QrCode className="h-5 w-5 text-blue-600" />
+                <div className="p-2 bg-blue-100 dark:bg-blue-900/50 rounded-full">
+                  <QrCode className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
-                  <div className="font-semibold text-blue-900">{eventName}</div>
+                  <div className="font-semibold text-blue-900 dark:text-blue-300">{eventName}</div>
                   
                 </div>
               </div>
@@ -74,7 +74,7 @@ export function QRModal({
                   onClick={() => setActiveEnvironment('prod')}
                   className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
                     activeEnvironment === 'prod' 
-                      ? 'bg-white shadow-sm text-blue-600' 
+                      ? 'bg-background shadow-sm text-blue-600 dark:text-blue-400' 
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
@@ -85,7 +85,7 @@ export function QRModal({
                   onClick={() => setActiveEnvironment('local')}
                   className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
                     activeEnvironment === 'local' 
-                      ? 'bg-white shadow-sm text-blue-600' 
+                      ? 'bg-background shadow-sm text-blue-600 dark:text-blue-400' 
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
@@ -96,7 +96,7 @@ export function QRModal({
                   onClick={() => setActiveEnvironment('mobile')}
                   className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
                     activeEnvironment === 'mobile' 
-                      ? 'bg-white shadow-sm text-blue-600' 
+                      ? 'bg-background shadow-sm text-blue-600 dark:text-blue-400' 
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
@@ -115,7 +115,7 @@ export function QRModal({
               </div>
 
               {/* QR Code */}
-              <div className="relative p-8 bg-white rounded-xl border-2 border-dashed border-muted-foreground/20 shadow-lg">
+              <div className="relative p-8 bg-white dark:bg-gray-800 rounded-xl border-2 border-dashed border-muted-foreground/20 shadow-lg">
                 {activeEnvironment === 'mobile' ? (
                   // Mobile deep link QR: prefer DataURL variants from qrRotations.mobile, fallback to qrLinks.mobile
                   <>
@@ -210,13 +210,13 @@ export function QRModal({
 
             {/* Environment Tabs */}
             <div className="absolute top-24 left-1/2 transform -translate-x-1/2">
-              <div className="flex bg-white/10 rounded-lg p-1 backdrop-blur-sm">
+              <div className="flex bg-white/10 dark:bg-gray-800/50 rounded-lg p-1 backdrop-blur-sm">
                 <button
                   onClick={() => setActiveEnvironment('prod')}
                   className={`flex items-center gap-2 px-6 py-3 rounded-md font-medium transition-all ${
                     activeEnvironment === 'prod' 
-                      ? 'bg-white text-black shadow-sm' 
-                      : 'text-white/70 hover:text-white hover:bg-white/10'
+                      ? 'bg-white dark:bg-gray-700 text-black dark:text-white shadow-sm' 
+                      : 'text-white/70 hover:text-white hover:bg-white/10 dark:hover:bg-gray-700/50'
                   }`}
                 >
                   <Monitor className="h-5 w-5" />
@@ -226,8 +226,8 @@ export function QRModal({
                   onClick={() => setActiveEnvironment('local')}
                   className={`flex items-center gap-2 px-6 py-3 rounded-md font-medium transition-all ${
                     activeEnvironment === 'local' 
-                      ? 'bg-white text-black shadow-sm' 
-                      : 'text-white/70 hover:text-white hover:bg-white/10'
+                      ? 'bg-white dark:bg-gray-700 text-black dark:text-white shadow-sm' 
+                      : 'text-white/70 hover:text-white hover:bg-white/10 dark:hover:bg-gray-700/50'
                   }`}
                 >
                   <Smartphone className="h-5 w-5" />
@@ -237,8 +237,8 @@ export function QRModal({
                   onClick={() => setActiveEnvironment('mobile')}
                   className={`flex items-center gap-2 px-6 py-3 rounded-md font-medium transition-all ${
                     activeEnvironment === 'mobile' 
-                      ? 'bg-white text-black shadow-sm' 
-                      : 'text-white/70 hover:text-white hover:bg-white/10'
+                      ? 'bg-white dark:bg-gray-700 text-black dark:text-white shadow-sm' 
+                      : 'text-white/70 hover:text-white hover:bg-white/10 dark:hover:bg-gray-700/50'
                   }`}
                 >
                   <Smartphone className="h-5 w-5" />
@@ -259,7 +259,7 @@ export function QRModal({
               <div className="relative">
                 {(activeEnvironment === 'mobile' && qrRotations.mobile && qrRotations.mobile.length) || (activeEnvironment !== 'mobile' && qrRotations[activeEnvironment as 'local' | 'prod']?.length) ? (
                   <>
-                    <div className="p-12 bg-white rounded-2xl shadow-2xl">
+                    <div className="p-12 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={
@@ -281,8 +281,8 @@ export function QRModal({
                     </div>
                   </>
                 ) : (
-                  <div className="w-96 h-96 flex items-center justify-center bg-white rounded-2xl">
-                    <div className="text-center text-black">
+                  <div className="w-96 h-96 flex items-center justify-center bg-white dark:bg-gray-800 rounded-2xl">
+                    <div className="text-center text-black dark:text-gray-200">
                       <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-blue-600 mx-auto mb-4"></div>
                       <div className="text-lg font-medium">Generating QR Code...</div>
                     </div>
