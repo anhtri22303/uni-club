@@ -58,7 +58,7 @@ export function InsertTab({ onSync, compact = false }: InsertTabProps) {
   const restoreSelection = () => {
     const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
     if (editor && savedRangeRef.current) {
-      editor.focus()
+      editor.focus({ preventScroll: true })
       const selection = window.getSelection()
       if (selection) {
         selection.removeAllRanges()
@@ -84,7 +84,7 @@ export function InsertTab({ onSync, compact = false }: InsertTabProps) {
       // Fallback: try to insert at end of editor
       const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
       if (editor) {
-        editor.focus()
+        editor.focus({ preventScroll: true })
         // Move cursor to end
         const range = document.createRange()
         const selection = window.getSelection()
@@ -114,7 +114,7 @@ export function InsertTab({ onSync, compact = false }: InsertTabProps) {
         // Fallback: try to insert at end of editor
         const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
         if (editor) {
-          editor.focus()
+          editor.focus({ preventScroll: true })
           // Move cursor to end
           const range = document.createRange()
           const selection = window.getSelection()
@@ -147,7 +147,7 @@ export function InsertTab({ onSync, compact = false }: InsertTabProps) {
         // Fallback: try to insert at end of editor
         const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
         if (editor) {
-          editor.focus()
+          editor.focus({ preventScroll: true })
           // Move cursor to end
           const range = document.createRange()
           const selection = window.getSelection()
@@ -182,7 +182,7 @@ export function InsertTab({ onSync, compact = false }: InsertTabProps) {
           // Fallback: try to insert at end of editor
           const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
           if (editor) {
-            editor.focus()
+            editor.focus({ preventScroll: true })
             // Move cursor to end
             const range = document.createRange()
             const selection = window.getSelection()
@@ -206,7 +206,7 @@ export function InsertTab({ onSync, compact = false }: InsertTabProps) {
     // Focus the editor before inserting
     const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
     if (editor) {
-      editor.focus()
+      editor.focus({ preventScroll: true })
       
       // Small delay to ensure focus is set
       setTimeout(() => {
@@ -240,7 +240,7 @@ export function InsertTab({ onSync, compact = false }: InsertTabProps) {
         // Fallback: try to insert at end of editor
         const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
         if (editor) {
-          editor.focus()
+          editor.focus({ preventScroll: true })
           // Move cursor to end
           const range = document.createRange()
           const selection = window.getSelection()
@@ -349,7 +349,11 @@ export function InsertTab({ onSync, compact = false }: InsertTabProps) {
                     />
                   </div>
                 </div>
-                <Button type="button" onClick={insertTable} className="w-full h-8" size="sm">
+                <Button type="button" onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  insertTable()
+                }} className="w-full h-8" size="sm">
                   Insert {tableRows} x {tableCols} Table
                 </Button>
               </div>
@@ -392,7 +396,11 @@ export function InsertTab({ onSync, compact = false }: InsertTabProps) {
                   />
                 </div>
 
-                <Button type="button" onClick={insertImageFromUrl} className="w-full h-8" size="sm">
+                <Button type="button" onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  insertImageFromUrl()
+                }} className="w-full h-8" size="sm">
                   Insert from URL
                 </Button>
 
@@ -416,7 +424,11 @@ export function InsertTab({ onSync, compact = false }: InsertTabProps) {
                 />
                 <Button 
                   type="button"
-                  onClick={() => fileInputRef.current?.click()} 
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    fileInputRef.current?.click()
+                  }} 
                   variant="outline"
                   className="w-full h-8" 
                   size="sm"
@@ -447,10 +459,12 @@ export function InsertTab({ onSync, compact = false }: InsertTabProps) {
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
                       const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
                       if (editor) {
-                        editor.focus()
+                        editor.focus({ preventScroll: true })
                         setTimeout(() => {
                           EditorUtils.execCommand('insertHTML', 
                             '<div style="width: 100px; height: 100px; background-color: #3b82f6; margin: 10px; display: inline-block;"></div>'
@@ -468,10 +482,12 @@ export function InsertTab({ onSync, compact = false }: InsertTabProps) {
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
                       const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
                       if (editor) {
-                        editor.focus()
+                        editor.focus({ preventScroll: true })
                         setTimeout(() => {
                           EditorUtils.execCommand('insertHTML', 
                             '<div style="width: 100px; height: 100px; background-color: #10b981; border-radius: 50%; margin: 10px; display: inline-block;"></div>'
@@ -489,10 +505,12 @@ export function InsertTab({ onSync, compact = false }: InsertTabProps) {
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
                       const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
                       if (editor) {
-                        editor.focus()
+                        editor.focus({ preventScroll: true })
                         setTimeout(() => {
                           EditorUtils.execCommand('insertHTML', 
                             '<div style="width: 0; height: 0; border-left: 50px solid transparent; border-right: 50px solid transparent; border-bottom: 100px solid #f59e0b; margin: 10px; display: inline-block;"></div>'
@@ -510,10 +528,12 @@ export function InsertTab({ onSync, compact = false }: InsertTabProps) {
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
                       const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
                       if (editor) {
-                        editor.focus()
+                        editor.focus({ preventScroll: true })
                         setTimeout(() => {
                           EditorUtils.execCommand('insertHTML', 
                             '<div style="width: 120px; height: 60px; background-color: #ef4444; border-radius: 50px; margin: 10px; display: inline-block;"></div>'
@@ -531,10 +551,12 @@ export function InsertTab({ onSync, compact = false }: InsertTabProps) {
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
                       const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
                       if (editor) {
-                        editor.focus()
+                        editor.focus({ preventScroll: true })
                         setTimeout(() => {
                           EditorUtils.execCommand('insertHTML', 
                             '<div style="width: 120px; height: 80px; background-color: #8b5cf6; clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%); margin: 10px; display: inline-block;"></div>'
@@ -552,10 +574,12 @@ export function InsertTab({ onSync, compact = false }: InsertTabProps) {
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
                       const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
                       if (editor) {
-                        editor.focus()
+                        editor.focus({ preventScroll: true })
                         setTimeout(() => {
                           EditorUtils.execCommand('insertHTML', 
                             '<div style="width: 100px; height: 60px; background-color: #ec4899; border-radius: 10px; margin: 10px; display: inline-block;"></div>'
@@ -613,7 +637,11 @@ export function InsertTab({ onSync, compact = false }: InsertTabProps) {
 
                 <Button 
                   type="button"
-                  onClick={insertLink} 
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    insertLink()
+                  }} 
                   className="w-full h-8" 
                   size="sm"
                   disabled={!linkUrl}
@@ -633,11 +661,13 @@ export function InsertTab({ onSync, compact = false }: InsertTabProps) {
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => {
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
                   // Focus the editor before inserting
                   const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
                   if (editor) {
-                    editor.focus()
+                    editor.focus({ preventScroll: true })
                     
                     // Small delay to ensure focus is set
                     setTimeout(() => {
@@ -670,7 +700,11 @@ export function InsertTab({ onSync, compact = false }: InsertTabProps) {
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => insertDateTime('date')}
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  insertDateTime('date')
+                }}
                 className="h-8 w-8 p-0"
               >
                 <Calendar className="h-4 w-4" />
@@ -685,7 +719,11 @@ export function InsertTab({ onSync, compact = false }: InsertTabProps) {
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => insertDateTime('time')}
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  insertDateTime('time')
+                }}
                 className="h-8 w-8 p-0"
               >
                 <Clock className="h-4 w-4" />
@@ -700,7 +738,11 @@ export function InsertTab({ onSync, compact = false }: InsertTabProps) {
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => insertDateTime('datetime')}
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  insertDateTime('datetime')
+                }}
                 className="h-8 px-2 text-xs"
               >
                 Date & Time
@@ -718,11 +760,13 @@ export function InsertTab({ onSync, compact = false }: InsertTabProps) {
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => {
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
                   // Focus the editor before inserting
                   const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
                   if (editor) {
-                    editor.focus()
+                    editor.focus({ preventScroll: true })
                     
                     // Small delay to ensure focus is set
                     setTimeout(() => {

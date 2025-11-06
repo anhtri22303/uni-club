@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/contexts/auth-context"
 import { useData } from "@/contexts/data-context"
-import { Users, Calendar, UserCheck, Clock, TrendingUp } from "lucide-react"
+import { Users, Calendar, UserCheck, Clock, TrendingUp, Gift, ShoppingCart, Wallet, BarChart2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useProfile, useClub, useClubMembers, useMemberApplicationsByClub, useEventsByClubId, useEventCoHostByClubId } from "@/hooks/use-query-hooks"
 import { getClubIdFromToken } from "@/service/clubApi"
@@ -18,6 +18,10 @@ import { ApiMembership } from "@/service/membershipApi"
 import { BarChart3 } from "lucide-react"
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line } from "recharts"
 import { timeObjectToString } from "@/service/eventApi"
+import { getProducts } from "@/service/productApi"
+import { getClubRedeemOrders } from "@/service/redeemApi"
+import { getClubWallet, getClubToMemberTransactions } from "@/service/walletApi"
+import { fetchClubAttendanceHistory } from "@/service/attendanceApi"
 
 
 // Define a type for the club based on the Swagger definition
@@ -66,6 +70,40 @@ export default function ClubLeaderDashboardPage() {
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
+  // ✅ NEW: Fetch additional data (products, orders, wallet, attendance)
+  useEffect(() => {
+    const fetchAdditionalData = async () => {
+      if (!clubId) return
+      
+      setAdditionalDataLoading(true)
+      try {
+        // Fetch all data in parallel
+        const today = new Date().toISOString().split('T')[0] // Get today's date in YYYY-MM-DD format
+        const [productsData, ordersData, walletDataResponse, transactionsData, attendanceData] = await Promise.all([
+          getProducts(clubId, { includeInactive: true }).catch(() => []),
+          getClubRedeemOrders(clubId).catch(() => []),
+          getClubWallet(clubId).catch(() => null),
+          getClubToMemberTransactions().catch(() => []),
+          fetchClubAttendanceHistory({ clubId, date: today }).catch(() => [])
+        ])
+
+        setProducts(productsData)
+        setOrders(ordersData)
+        setWalletData(walletDataResponse)
+        setTransactions(transactionsData)
+        // Ensure attendanceHistory is always an array
+        const attendance = (attendanceData as any)?.data || attendanceData || []
+        setAttendanceHistory(Array.isArray(attendance) ? attendance : [])
+      } catch (error) {
+        console.error('Error fetching additional data:', error)
+      } finally {
+        setAdditionalDataLoading(false)
+      }
+    }
+
+    fetchAdditionalData()
+  }, [clubId])
+
   // ✅ USE REACT QUERY for profile, club, members, applications, and events
   const { data: profile, isLoading: profileLoading } = useProfile()
   const { data: managedClub, isLoading: clubLoading } = useClub(clubId || 0, !!clubId)
@@ -76,6 +114,14 @@ export default function ClubLeaderDashboardPage() {
   )
   const { data: rawEvents = [], isLoading: eventsLoading } = useEventsByClubId(clubId || 0, !!clubId)
   const { data: rawCoHostEvents = [], isLoading: coHostEventsLoading } = useEventCoHostByClubId(clubId || 0, !!clubId)
+
+  // ✅ NEW: State for additional data (products, orders, wallet, attendance)
+  const [products, setProducts] = useState<any[]>([])
+  const [orders, setOrders] = useState<any[]>([])
+  const [walletData, setWalletData] = useState<any>(null)
+  const [transactions, setTransactions] = useState<any[]>([])
+  const [attendanceHistory, setAttendanceHistory] = useState<any[]>([])
+  const [additionalDataLoading, setAdditionalDataLoading] = useState(false)
 
   const loading = profileLoading || clubLoading
 
@@ -133,6 +179,32 @@ export default function ClubLeaderDashboardPage() {
   const pendingApplicationsCount = applications.filter((a: any) => a.status === "PENDING").length
   const approvedApplicationsCount = applications.filter((a: any) => a.status === "APPROVED").length
   const rejectedApplicationsCount = applications.filter((a: any) => a.status === "REJECTED").length
+
+  // ✅ NEW: PRODUCT/GIFT STATISTICS
+  const totalProducts = products.length
+  const activeProducts = products.filter((p: any) => p.status === "ACTIVE").length
+  const inactiveProducts = products.filter((p: any) => p.status === "INACTIVE").length
+  const totalStock = products.reduce((sum: number, p: any) => sum + (p.stockQuantity || 0), 0)
+  const totalProductValue = products.reduce((sum: number, p: any) => sum + ((p.pointPrice || 0) * (p.stockQuantity || 0)), 0)
+
+  // ✅ NEW: ORDER STATISTICS
+  const totalOrders = orders.length
+  const completedOrders = orders.filter((o: any) => o.status === "COMPLETED").length
+  const pendingOrders = orders.filter((o: any) => o.status === "PENDING").length
+  const cancelledOrders = orders.filter((o: any) => o.status === "CANCELLED").length
+  const totalPointsRedeemed = orders
+    .filter((o: any) => o.status === "COMPLETED")
+    .reduce((sum: number, o: any) => sum + (o.totalPoints || 0), 0)
+
+  // ✅ NEW: WALLET STATISTICS
+  const walletBalance = walletData?.balancePoints || 0
+  const totalTransactions = transactions.length
+  const totalPointsGiven = transactions.reduce((sum: number, t: any) => sum + (t.amount || 0), 0)
+  const avgTransaction = totalTransactions > 0 ? Math.round(totalPointsGiven / totalTransactions) : 0
+
+  // ✅ NEW: ATTENDANCE STATISTICS
+  const totalAttendanceRecords = attendanceHistory.length
+  const uniqueAttendees = new Set(attendanceHistory.map((a: any) => a.userId)).size
 
   // ✅ EVENT STATISTICS from API
   // Helper function to check if event has expired (past endTime)
@@ -442,6 +514,141 @@ export default function ClubLeaderDashboardPage() {
                     <span className="text-muted-foreground font-medium">Approval Rate:</span>
                     <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
                       {rawEvents.length > 0 ? Math.round((totalApprovedEvents / rawEvents.length) * 100) : 0}%
+                    </Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* ✅ NEW: 3 MORE LARGE HORIZONTAL STATS FRAMES */}
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+            <Card className="border-4 border-purple-500/30 bg-purple-500/5 hover:border-purple-500/50 transition-all shadow-lg hover:shadow-xl">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-xl sm:text-2xl font-bold text-purple-600">
+                      {additionalDataLoading ? "..." : totalProducts}
+                    </CardTitle>
+                    <CardDescription className="text-sm sm:text-base font-medium mt-1">Products/Gifts</CardDescription>
+                  </div>
+                  <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-full bg-purple-500/10 flex items-center justify-center">
+                    <Gift className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600" />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Active Products:</span>
+                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                      {activeProducts}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Inactive Products:</span>
+                    <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
+                      {inactiveProducts}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Total Stock:</span>
+                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                      {totalStock.toLocaleString()}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t">
+                    <span className="text-muted-foreground font-medium">Total Value:</span>
+                    <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                      {totalProductValue.toLocaleString()} pts
+                    </Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-4 border-orange-500/30 bg-orange-500/5 hover:border-orange-500/50 transition-all shadow-lg hover:shadow-xl">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-xl sm:text-2xl font-bold text-orange-600">
+                      {additionalDataLoading ? "..." : totalOrders}
+                    </CardTitle>
+                    <CardDescription className="text-sm sm:text-base font-medium mt-1">Redeem Orders</CardDescription>
+                  </div>
+                  <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-full bg-orange-500/10 flex items-center justify-center">
+                    <ShoppingCart className="h-6 w-6 sm:h-8 sm:w-8 text-orange-600" />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Completed:</span>
+                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                      {completedOrders}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Pending:</span>
+                    <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+                      {pendingOrders}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Cancelled:</span>
+                    <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+                      {cancelledOrders}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t">
+                    <span className="text-muted-foreground font-medium">Points Redeemed:</span>
+                    <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
+                      {totalPointsRedeemed.toLocaleString()} pts
+                    </Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-4 border-cyan-500/30 bg-cyan-500/5 hover:border-cyan-500/50 transition-all shadow-lg hover:shadow-xl">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-xl sm:text-2xl font-bold text-cyan-600">
+                      {additionalDataLoading ? "..." : walletBalance.toLocaleString()}
+                    </CardTitle>
+                    <CardDescription className="text-sm sm:text-base font-medium mt-1">Wallet Balance (pts)</CardDescription>
+                  </div>
+                  <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-full bg-cyan-500/10 flex items-center justify-center">
+                    <Wallet className="h-6 w-6 sm:h-8 sm:w-8 text-cyan-600" />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Total Transactions:</span>
+                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                      {totalTransactions}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Points Given:</span>
+                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                      {totalPointsGiven.toLocaleString()}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Avg Transaction:</span>
+                    <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                      {avgTransaction.toLocaleString()} pts
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t">
+                    <span className="text-muted-foreground font-medium">Attendance Records:</span>
+                    <Badge variant="outline" className="bg-cyan-50 text-cyan-700 border-cyan-200">
+                      {totalAttendanceRecords}
                     </Badge>
                   </div>
                 </div>
@@ -917,7 +1124,173 @@ export default function ClubLeaderDashboardPage() {
                 </Card>
               </div>
 
-              {/* Third Row: Membership Growth Trend */}
+              {/* Third Row: Products, Orders, Wallet Charts */}
+              <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-3">
+                {/* Products Chart - Pie */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+                      <Gift className="h-5 w-5 text-purple-600" />
+                      Products Status
+                    </CardTitle>
+                    <CardDescription className="text-xs sm:text-sm">{totalProducts} total products</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {additionalDataLoading ? (
+                      <Skeleton className="h-[250px] sm:h-[300px] w-full" />
+                    ) : totalProducts === 0 ? (
+                      <div className="h-[250px] sm:h-[300px] flex items-center justify-center">
+                        <p className="text-muted-foreground text-sm">No product data available</p>
+                      </div>
+                    ) : (
+                      <ResponsiveContainer width="100%" height={window.innerWidth < 640 ? 250 : 300}>
+                        <PieChart>
+                          <Pie
+                            data={[
+                              { name: "Active", value: activeProducts, color: "#22c55e" },
+                              { name: "Inactive", value: inactiveProducts, color: "#94a3b8" },
+                            ].filter(item => item.value > 0)}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={({ name, percent }) => {
+                              const isMobile = window.innerWidth < 640
+                              return isMobile ? `${(percent * 100).toFixed(0)}%` : `${name}: ${(percent * 100).toFixed(0)}%`
+                            }}
+                            outerRadius={window.innerWidth < 640 ? 60 : 80}
+                            fill="#8884d8"
+                            dataKey="value"
+                          >
+                            {[
+                              { name: "Active", value: activeProducts, color: "#22c55e" },
+                              { name: "Inactive", value: inactiveProducts, color: "#94a3b8" },
+                            ].filter(item => item.value > 0).map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip />
+                          <Legend wrapperStyle={{ fontSize: window.innerWidth < 640 ? '12px' : '14px' }} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Orders Chart - Pie */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+                      <ShoppingCart className="h-5 w-5 text-orange-600" />
+                      Order Status
+                    </CardTitle>
+                    <CardDescription className="text-xs sm:text-sm">{totalOrders} total orders</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {additionalDataLoading ? (
+                      <Skeleton className="h-[250px] sm:h-[300px] w-full" />
+                    ) : totalOrders === 0 ? (
+                      <div className="h-[250px] sm:h-[300px] flex items-center justify-center">
+                        <p className="text-muted-foreground text-sm">No order data available</p>
+                      </div>
+                    ) : (
+                      <ResponsiveContainer width="100%" height={window.innerWidth < 640 ? 250 : 300}>
+                        <PieChart>
+                          <Pie
+                            data={[
+                              { name: "Completed", value: completedOrders, color: "#22c55e" },
+                              { name: "Pending", value: pendingOrders, color: "#eab308" },
+                              { name: "Cancelled", value: cancelledOrders, color: "#ef4444" },
+                            ].filter(item => item.value > 0)}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={({ name, percent }) => {
+                              const isMobile = window.innerWidth < 640
+                              return isMobile ? `${(percent * 100).toFixed(0)}%` : `${name}: ${(percent * 100).toFixed(0)}%`
+                            }}
+                            outerRadius={window.innerWidth < 640 ? 60 : 80}
+                            fill="#8884d8"
+                            dataKey="value"
+                          >
+                            {[
+                              { name: "Completed", value: completedOrders, color: "#22c55e" },
+                              { name: "Pending", value: pendingOrders, color: "#eab308" },
+                              { name: "Cancelled", value: cancelledOrders, color: "#ef4444" },
+                            ].filter(item => item.value > 0).map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip />
+                          <Legend wrapperStyle={{ fontSize: window.innerWidth < 640 ? '12px' : '14px' }} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Wallet Transactions - Bar Chart */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+                      <Wallet className="h-5 w-5 text-cyan-600" />
+                      Wallet Overview
+                    </CardTitle>
+                    <CardDescription className="text-xs sm:text-sm">Points distribution</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {additionalDataLoading ? (
+                      <Skeleton className="h-[250px] sm:h-[300px] w-full" />
+                    ) : (
+                      <ResponsiveContainer width="100%" height={window.innerWidth < 640 ? 250 : 300}>
+                        <BarChart
+                          data={[
+                            {
+                              name: "Balance",
+                              points: walletBalance,
+                              fill: "#06b6d4"
+                            },
+                            {
+                              name: "Given",
+                              points: totalPointsGiven,
+                              fill: "#22c55e"
+                            },
+                            {
+                              name: "Redeemed",
+                              points: totalPointsRedeemed,
+                              fill: "#f97316"
+                            },
+                          ]}
+                          margin={{ 
+                            top: 20, 
+                            right: window.innerWidth < 640 ? 10 : 30, 
+                            left: window.innerWidth < 640 ? 0 : 20, 
+                            bottom: 5 
+                          }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis 
+                            dataKey="name" 
+                            tick={{ fontSize: window.innerWidth < 640 ? 11 : 14 }}
+                          />
+                          <YAxis tick={{ fontSize: window.innerWidth < 640 ? 11 : 14 }} />
+                          <Tooltip />
+                          <Bar dataKey="points" fill="#8884d8" radius={[8, 8, 0, 0]}>
+                            {[
+                              { fill: "#06b6d4" },
+                              { fill: "#22c55e" },
+                              { fill: "#f97316" },
+                            ].map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.fill} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Fourth Row: Key Metrics Summary */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">

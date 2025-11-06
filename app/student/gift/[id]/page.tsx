@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import {
     ArrowLeft, Loader2, Package, DollarSign, Tag, Info, ShoppingCart, AlertCircle, Minus, Plus, ChevronLeft, ChevronRight,
-    WalletCards,
+    WalletCards, Play,
 } from "lucide-react"
 import { LoadingSkeleton } from "@/components/loading-skeleton"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, } from "@/components/ui/dialog"
@@ -277,229 +277,397 @@ export default function StudentProductViewPage() {
     return (
         <ProtectedRoute allowedRoles={["student"]}>
             <AppShell>
-                <div className="space-y-4">
-                    {/* Nút Back */}
+                <div className="space-y-6">
+                    {/* Back Button with gradient hover */}
                     <div>
-                        <Button variant="ghost" onClick={handleBack}>
-                            <ArrowLeft className="h-4 w-4 mr-2" />
+                        <Button 
+                            variant="ghost" 
+                            onClick={handleBack}
+                            className="group hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 transition-all duration-300"
+                        >
+                            <ArrowLeft className="h-4 w-4 mr-2 group-hover:-translate-x-1 transition-transform" />
                             Back to Gift Shop
                         </Button>
                     </div>
 
-                    {/* Layout chính: 2 cột */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-12">
-                        {/* CỘT TRÁI: HÌNH ẢNH */}
-                        <div className="space-y-4">
-                            <Card className="overflow-hidden">
+                    {/* Layout chính: 2 cột với shadow và rounded */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {/* CỘT TRÁI: HÌNH ẢNH - Enhanced with modern styling */}
+                        <div className="space-y-4 lg:sticky lg:top-6 lg:self-start">
+                            {/* Main Image Card */}
+                            <Card className="overflow-hidden border-0 shadow-2xl bg-gradient-to-br from-white to-gray-50">
                                 <CardContent className="p-0">
-                                    {/* 'relative group' */}
-                                    <div className="aspect-square bg-muted flex items-center justify-center relative group">
+                                    <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center relative group">
                                         {selectedImage ? (
-                                            <img
-                                                src={selectedImage}
-                                                alt={product.name}
-                                                className="object-cover w-full h-full"
-                                            />
+                                            <>
+                                                {/* Check if selected media is a video */}
+                                                {sortedMedia.find(m => m.url === selectedImage)?.type === 'VIDEO' ? (
+                                                    <video
+                                                        src={selectedImage}
+                                                        controls
+                                                        className="object-cover w-full h-full"
+                                                        autoPlay
+                                                        loop
+                                                        muted
+                                                    >
+                                                        Your browser does not support the video tag.
+                                                    </video>
+                                                ) : (
+                                                    <>
+                                                        <img
+                                                            src={selectedImage}
+                                                            alt={product.name}
+                                                            className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105"
+                                                        />
+                                                        {/* Gradient overlay on hover */}
+                                                        <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                                    </>
+                                                )}
+                                            </>
                                         ) : (
-                                            <Package className="h-24 w-24 text-muted-foreground" />
+                                            <div className="flex flex-col items-center gap-4">
+                                                <div className="p-6 bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl">
+                                                    <Package className="h-24 w-24 text-primary" />
+                                                </div>
+                                                <p className="text-muted-foreground font-medium">No image available</p>
+                                            </div>
                                         )}
 
-                                        {/* NÚT CAROUSEL */}
+                                        {/* Navigation Buttons */}
                                         {sortedMedia.length > 1 && (
                                             <>
-                                                {/* Nút Previous */}
                                                 <Button
                                                     variant="outline"
                                                     size="icon"
-                                                    className="absolute left-4 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    className="absolute left-4 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 bg-white/90 backdrop-blur-sm border-2 hover:scale-110 shadow-lg"
                                                     onClick={() => handleImageNavigation('prev')}
                                                 >
-                                                    <ChevronLeft className="h-4 w-4" />
+                                                    <ChevronLeft className="h-5 w-5" />
                                                 </Button>
-                                                {/* Nút Next */}
                                                 <Button
                                                     variant="outline"
                                                     size="icon"
-                                                    className="absolute right-4 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    className="absolute right-4 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 bg-white/90 backdrop-blur-sm border-2 hover:scale-110 shadow-lg"
                                                     onClick={() => handleImageNavigation('next')}
                                                 >
-                                                    <ChevronRight className="h-4 w-4" />
+                                                    <ChevronRight className="h-5 w-5" />
                                                 </Button>
                                             </>
+                                        )}
+
+                                        {/* Image Counter Badge */}
+                                        {sortedMedia.length > 1 && (
+                                            <Badge 
+                                                variant="secondary" 
+                                                className="absolute bottom-4 right-4 bg-black/60 text-white border-0 backdrop-blur-sm"
+                                            >
+                                                {sortedMedia.findIndex(m => m.url === selectedImage) + 1} / {sortedMedia.length}
+                                            </Badge>
                                         )}
                                     </div>
                                 </CardContent>
                             </Card>
 
-                            {/* ❗️ SỬ DỤNG `sortedMedia` ĐỂ MAP */}
+                            {/* Thumbnail Grid */}
                             {sortedMedia.length > 1 && (
-                                <div className="grid grid-cols-5 gap-2">
+                                <div className="grid grid-cols-5 gap-3">
                                     {sortedMedia.map((m) => (
                                         <button
                                             key={m.mediaId}
-                                            className={`aspect-square rounded-md overflow-hidden border-2 ${selectedImage === m.url ? 'border-primary' : 'border-transparent'}`}
+                                            className={`aspect-square rounded-xl overflow-hidden border-3 transition-all duration-300 hover:scale-105 hover:shadow-lg relative ${
+                                                selectedImage === m.url 
+                                                    ? 'border-primary ring-2 ring-primary ring-offset-2 shadow-lg' 
+                                                    : 'border-gray-200 hover:border-primary/50'
+                                            }`}
                                             onClick={() => setSelectedImage(m.url)}
                                         >
-                                            <img
-                                                src={m.url}
-                                                alt="Product thumbnail"
-                                                className="object-cover w-full h-full"
-                                            />
+                                            {m.type === 'VIDEO' ? (
+                                                <>
+                                                    <video
+                                                        src={m.url}
+                                                        className="object-cover w-full h-full"
+                                                        muted
+                                                    />
+                                                    {/* Play icon overlay for videos */}
+                                                    <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                                        <div className="bg-white/90 rounded-full p-2">
+                                                            <Play className="h-4 w-4 text-primary fill-primary" />
+                                                        </div>
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <img
+                                                    src={m.url}
+                                                    alt="Product thumbnail"
+                                                    className="object-cover w-full h-full"
+                                                />
+                                            )}
                                         </button>
                                     ))}
                                 </div>
                             )}
-
                         </div>
 
-                        {/* CỘT PHẢI: THÔNG TIN & HÀNH ĐỘNG */}
+                        {/* CỘT PHẢI: THÔNG TIN & HÀNH ĐỘNG - Enhanced */}
                         <div className="space-y-6">
-                            {/* Tên sản phẩm */}
-                            <h1 className="text-3xl font-bold tracking-tight">{product.name}</h1>
-
-                            {/* Giá và Tồn kho */}
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                                <div className="text-3xl font-bold text-primary flex items-center gap-2">
-                                    <WalletCards className="h-7 w-7" />
-                                    <span>{product.pointCost.toLocaleString('en-US')} Points</span>
-                                </div>
-
-                                <Badge variant={isAvailable ? "default" : "destructive"} className="text-sm px-4 py-1">
-                                    <Package className="h-4 w-4 mr-2" />
-                                    {isAvailable ? `${product.stockQuantity.toLocaleString('en-US')} in stock` : "Out of Stock"}
-                                </Badge>
+                            {/* Product Name with gradient */}
+                            <div className="space-y-3">
+                                <h1 className="text-4xl md:text-5xl font-bold tracking-tight bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+                                    {product.name}
+                                </h1>
+                                <div className="h-1 w-24 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full"></div>
                             </div>
 
-                            {/* Nút Đổi quà & Chọn số lượng */}
-                            <Card className="bg-muted/30">
-                                <CardContent className="p-4 space-y-4">
-                                    {/*  Bộ chọn số lượng */}
-                                    <div className="space-y-2">
-                                        <Label htmlFor="quantity">Quantity</Label>
-                                        <div className="flex items-center gap-2">
+                            {/* Price and Stock - Enhanced Card */}
+                            <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+                                <CardContent className="p-6">
+                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+                                        <div className="space-y-2">
+                                            <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Redemption Cost</p>
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-3 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl shadow-lg">
+                                                    <WalletCards className="h-6 w-6 text-white" />
+                                                </div>
+                                                <span className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
+                                                    {product.pointCost.toLocaleString('en-US')}
+                                                </span>
+                                                <span className="text-2xl font-semibold text-muted-foreground">pts</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex flex-col items-start sm:items-end gap-2">
+                                            <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Availability</p>
+                                            <Badge 
+                                                variant={isAvailable ? "default" : "destructive"} 
+                                                className={`text-base px-5 py-2 shadow-md ${
+                                                    isAvailable 
+                                                        ? 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600' 
+                                                        : ''
+                                                }`}
+                                            >
+                                                <Package className="h-5 w-5 mr-2" />
+                                                {isAvailable ? `${product.stockQuantity.toLocaleString('en-US')} in stock` : "Out of Stock"}
+                                            </Badge>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            {/* Redemption Section - Enhanced */}
+                            <Card className="border-0 shadow-xl bg-gradient-to-br from-white via-gray-50 to-white">
+                                <CardContent className="p-6 space-y-6">
+                                    {/* Quantity Selector */}
+                                    <div className="space-y-3">
+                                        <Label htmlFor="quantity" className="text-base font-semibold">Select Quantity</Label>
+                                        <div className="flex items-center gap-4">
                                             <Button
                                                 variant="outline"
                                                 size="icon"
                                                 onClick={() => handleQuantityChange(-1)}
                                                 disabled={quantity <= 1 || !canRedeem}
+                                                className="h-12 w-12 rounded-xl border-2 hover:bg-gradient-to-br hover:from-blue-50 hover:to-purple-50 transition-all duration-300 hover:scale-110 disabled:hover:scale-100"
                                             >
-                                                <Minus className="h-4 w-4" />
+                                                <Minus className="h-5 w-5" />
                                             </Button>
                                             <Input
                                                 id="quantity"
                                                 type="number"
                                                 value={quantity}
                                                 readOnly
-                                                className="w-16 text-center"
+                                                className="w-24 h-12 text-center text-2xl font-bold border-2 rounded-xl"
                                             />
                                             <Button
                                                 variant="outline"
                                                 size="icon"
                                                 onClick={() => handleQuantityChange(1)}
                                                 disabled={quantity >= product.stockQuantity || !canRedeem}
+                                                className="h-12 w-12 rounded-xl border-2 hover:bg-gradient-to-br hover:from-blue-50 hover:to-purple-50 transition-all duration-300 hover:scale-110 disabled:hover:scale-100"
                                             >
-                                                <Plus className="h-4 w-4" />
+                                                <Plus className="h-5 w-5" />
                                             </Button>
                                         </div>
                                     </div>
 
-                                    {/* Thông báo lỗi */}
+                                    {/* Total Cost Display */}
+                                    <div className="p-4 bg-gradient-to-r from-blue-100 via-purple-100 to-pink-100 rounded-xl border-2 border-primary/20">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-base font-semibold text-gray-700">Total Cost:</span>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
+                                                    {(product.pointCost * quantity).toLocaleString('en-US')}
+                                                </span>
+                                                <span className="text-xl font-semibold text-gray-600">points</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Warning Messages */}
                                     {!isAvailable && (
-                                        <p className="text-sm text-center text-destructive-foreground bg-destructive p-2 rounded-md">
-                                            This item is currently unavailable.
-                                        </p>
+                                        <div className="p-4 bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-200 rounded-xl">
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 bg-red-500 rounded-lg">
+                                                    <AlertCircle className="h-5 w-5 text-white" />
+                                                </div>
+                                                <p className="font-semibold text-red-900">This item is currently unavailable.</p>
+                                            </div>
+                                        </div>
                                     )}
-                                    {/* Dùng `!currentMembership` */}
                                     {isAvailable && !currentMembership && !profileLoading && (
-                                        <p className="text-sm text-center text-yellow-800 bg-yellow-100 p-2 rounded-md">
-                                            You must be a member of this club to redeem this item.
-                                        </p>
+                                        <div className="p-4 bg-gradient-to-r from-yellow-50 to-amber-50 border-2 border-yellow-200 rounded-xl">
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 bg-yellow-500 rounded-lg">
+                                                    <AlertCircle className="h-5 w-5 text-white" />
+                                                </div>
+                                                <p className="font-semibold text-yellow-900">You must be a member of this club to redeem this item.</p>
+                                            </div>
+                                        </div>
                                     )}
 
-                                    {/* Logic disable nút */}
-
+                                    {/* Redeem Button */}
                                     <Button
                                         size="lg"
-                                        className="w-full text-lg"
+                                        className="w-full h-14 text-lg font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] disabled:hover:scale-100"
                                         onClick={() => setIsConfirmOpen(true)}
-                                        disabled={!canRedeem || isRedeeming || profileLoading} // Thêm profileLoading
+                                        disabled={!canRedeem || isRedeeming || profileLoading}
                                     >
                                         {profileLoading ? (
-                                            <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                                            <>
+                                                <Loader2 className="h-6 w-6 mr-3 animate-spin" />
+                                                Loading membership...
+                                            </>
                                         ) : isRedeeming ? (
-                                            <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                                            <>
+                                                <Loader2 className="h-6 w-6 mr-3 animate-spin" />
+                                                Processing...
+                                            </>
                                         ) : (
-                                            <ShoppingCart className="h-5 w-5 mr-2" />
+                                            <>
+                                                <ShoppingCart className="h-6 w-6 mr-3" />
+                                                Redeem Now
+                                            </>
                                         )}
-                                        {/* Text nút */}
-                                        {profileLoading ? "Loading membership..." : (isRedeeming ? "Processing..." : "Redeem Now")}
                                     </Button>
-                                    <p className="text-md text-center text-muted-foreground">
-                                        Total: {(product.pointCost * quantity).toLocaleString('en-US')} points
-                                    </p>
-
-
                                 </CardContent>
                             </Card>
 
-                            <Separator />
-
-                            {/* Chi tiết sản phẩm */}
-                            <div className="space-y-4">
-                                <div>
-                                    <h3 className="text-lg font-semibold flex items-center gap-2">
-                                        <Info className="h-5 w-5" />
-                                        Description
-                                    </h3>
-                                    <p className="text-muted-foreground mt-2 whitespace-pre-line">
-                                        {product.description || "No description provided."}
+                            {/* Description Section - Enhanced */}
+                            <Card className="border-0 shadow-lg">
+                                <CardHeader className="pb-4">
+                                    <CardTitle className="flex items-center gap-3 text-2xl">
+                                        <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg">
+                                            <Info className="h-5 w-5 text-white" />
+                                        </div>
+                                        Product Description
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <p className="text-base text-gray-700 leading-relaxed whitespace-pre-line">
+                                        {product.description || "No description provided for this amazing product. Contact the club for more details!"}
                                     </p>
-                                </div>
+                                </CardContent>
+                            </Card>
 
-                                <div>
-                                    <h3 className="text-lg font-semibold flex items-center gap-2">
-                                        <Tag className="h-5 w-5" />
-                                        Tags
-                                    </h3>
-                                    <div className="flex flex-wrap gap-2 mt-2">
+                            {/* Tags Section - Enhanced */}
+                            <Card className="border-0 shadow-lg">
+                                <CardHeader className="pb-4">
+                                    <CardTitle className="flex items-center gap-3 text-2xl">
+                                        <div className="p-2 bg-gradient-to-br from-pink-500 to-orange-500 rounded-lg">
+                                            <Tag className="h-5 w-5 text-white" />
+                                        </div>
+                                        Product Tags
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="flex flex-wrap gap-3">
                                         {product.tags.length > 0 ? (
                                             product.tags.map((tag) => (
-                                                <Badge key={tag} variant="secondary">
+                                                <Badge 
+                                                    key={tag} 
+                                                    variant="outline"
+                                                    className="text-base px-4 py-2 border-2 border-primary/30 bg-gradient-to-r from-blue-50 to-purple-50 hover:from-blue-100 hover:to-purple-100 transition-all duration-300 hover:scale-105 font-semibold"
+                                                >
+                                                    <Tag className="h-3 w-3 mr-2" />
                                                     {tag}
                                                 </Badge>
                                             ))
                                         ) : (
-                                            <p className="text-sm text-muted-foreground">No tags.</p>
+                                            <p className="text-sm text-muted-foreground italic">No tags available for this product.</p>
                                         )}
                                     </div>
-                                </div>
-                            </div>
+                                </CardContent>
+                            </Card>
                         </div>
                     </div>
                 </div>
 
-                {/* Dialog Xác nhận */}
+                {/* Enhanced Confirmation Dialog */}
                 <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
-                    <DialogContent>
+                    <DialogContent className="sm:max-w-md">
                         <DialogHeader>
-                            <DialogTitle>Confirm Redemption</DialogTitle>
-                            <DialogDescription>
-                                Are you sure you want to redeem the product: <strong>{product.name}</strong>
-                                <br />
-                                Quantity: <strong>{quantity.toLocaleString('en-US')}</strong>
-                                <br />
-                                Total points will cost: <strong>{(product.pointCost * quantity).toLocaleString('en-US')}</strong> points 
-                                <br />
-                                <strong>------ This action cannot be undone !!! ------</strong>
+                            <DialogTitle className="text-2xl font-bold flex items-center gap-3">
+                                <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg">
+                                    <ShoppingCart className="h-6 w-6 text-white" />
+                                </div>
+                                Confirm Redemption
+                            </DialogTitle>
+                            <DialogDescription className="text-base space-y-4 pt-4">
+                                <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg space-y-3">
+                                    <div className="flex items-start gap-3">
+                                        <Package className="h-5 w-5 text-primary mt-0.5" />
+                                        <div>
+                                            <p className="text-sm text-muted-foreground">Product</p>
+                                            <p className="font-bold text-gray-900">{product.name}</p>
+                                        </div>
+                                    </div>
+                                    <Separator />
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <p className="text-sm text-muted-foreground">Quantity</p>
+                                            <p className="font-bold text-gray-900 text-lg">{quantity.toLocaleString('en-US')}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm text-muted-foreground">Total Cost</p>
+                                            <p className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 text-lg">
+                                                {(product.pointCost * quantity).toLocaleString('en-US')} pts
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="p-4 bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-200 rounded-lg">
+                                    <div className="flex items-start gap-3">
+                                        <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+                                        <p className="text-sm font-semibold text-yellow-900">
+                                            This action cannot be undone! Points will be deducted from your wallet immediately.
+                                        </p>
+                                    </div>
+                                </div>
                             </DialogDescription>
                         </DialogHeader>
-                        <DialogFooter>
-                            <Button variant="ghost" onClick={() => setIsConfirmOpen(false)} disabled={isRedeeming}>
+                        <DialogFooter className="gap-2 sm:gap-0">
+                            <Button 
+                                variant="outline" 
+                                onClick={() => setIsConfirmOpen(false)} 
+                                disabled={isRedeeming}
+                                className="flex-1"
+                            >
                                 Cancel
                             </Button>
-                            <Button onClick={handleRedeem} disabled={isRedeeming}>
-                                {isRedeeming && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                                Confirm
+                            <Button 
+                                onClick={handleRedeem} 
+                                disabled={isRedeeming}
+                                className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                            >
+                                {isRedeeming ? (
+                                    <>
+                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                        Processing...
+                                    </>
+                                ) : (
+                                    <>
+                                        <ShoppingCart className="h-4 w-4 mr-2" />
+                                        Confirm Redemption
+                                    </>
+                                )}
                             </Button>
                         </DialogFooter>
                     </DialogContent>

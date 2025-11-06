@@ -286,7 +286,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
           {/* Logo căn giữa header, xích qua phải */}
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
             <img
-              src="/images/Logo.png"
+              src="/images/LogoSidebar.png"
               alt="UniClub Logo"
               // className="h-16 w-auto object-contain drop-shadow"
               className="h-16 w-16 object-cover drop-shadow border-1 border-primary rounded" // <-- THAY ĐỔI Ở ĐÂY
