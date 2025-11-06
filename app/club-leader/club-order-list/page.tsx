@@ -9,19 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
-  ShoppingCart,
-  Search,
-  CheckCircle,
-  XCircle,
-  Clock,
-  Eye,
-  Filter,
-  DollarSign,
-  Package,
-  User,
-  Hash,
-  Calendar,
-  Undo2, // Icon cho Refunded
+  ShoppingCart, Search, CheckCircle, XCircle, Clock, Eye, Filter, DollarSign, Package, User, Hash, Calendar, Undo2, 
+  WalletCards,
 } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
@@ -145,8 +134,8 @@ export default function ClubLeaderOrdersPage() {
   const totalPointsCompleted = isLoading
     ? "-"
     : completedOrders
-        .reduce((sum, order) => sum + order.totalPoints, 0)
-        .toLocaleString()
+      .reduce((sum, order) => sum + order.totalPoints, 0)
+      .toLocaleString()
 
   // 6. Logic phân trang (Giữ nguyên từ file mẫu)
   // (Phần này dài, giữ logic từ file gốc, chỉ đổi tên biến)
@@ -303,7 +292,7 @@ export default function ClubLeaderOrdersPage() {
                 </div>
               </CardContent>
             </Card>
-            
+
             <Card className="border-0 shadow-md bg-gradient-to-br from-blue-50 to-blue-100">
               <CardHeader className="pb-1 px-4 pt-3">
                 <CardTitle className="text-xs font-medium text-blue-700">
@@ -313,7 +302,7 @@ export default function ClubLeaderOrdersPage() {
               <CardContent className="pb-3 px-4">
                 <div className="flex items-center gap-2">
                   <div className="p-1.5 bg-blue-500 rounded-md">
-                    <DollarSign className="h-4 w-4 text-white" />
+                    <WalletCards className="h-4 w-4 text-white" />
                   </div>
                   <div className="text-lg font-bold text-blue-900">
                     {isLoading ? <Skeleton className="h-6 w-16" /> : totalPointsCompleted}
@@ -433,7 +422,7 @@ export default function ClubLeaderOrdersPage() {
                 setPageSize={setPageSize}
               />
             </TabsContent>
-            
+
             {/* Tab Content: CANCELLED */}
             <TabsContent value="cancelled" className="space-y-4 mt-6">
               <RenderOrderList
@@ -577,14 +566,14 @@ function RenderOrderList({
                       <span className="line-clamp-1">{order.memberName}</span>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center gap-6 text-sm text-muted-foreground">
-                     <div className="flex items-center gap-1.5" title="Quantity">
-                        <ShoppingCart className="h-4 w-4" />
-                        <span>Quantity: {order.quantity}</span>
+                    <div className="flex items-center gap-1.5" title="Quantity">
+                      <ShoppingCart className="h-4 w-4" />
+                      <span>Quantity: {order.quantity}</span>
                     </div>
                     <div className="flex items-center gap-1.5" title="Total Points">
-                      <DollarSign className="h-4 w-4" />
+                      <WalletCards className="h-4 w-4" />
                       <span>{order.totalPoints} points</span>
                     </div>
                   </div>

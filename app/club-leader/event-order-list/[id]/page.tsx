@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import {
     CheckCircle, XCircle, ArrowLeft, Clock,
-    Package, DollarSign, ShoppingCart, User, Hash, Calendar, Undo2, Loader2
+    Package, DollarSign, ShoppingCart, User, Hash, Calendar, Undo2, Loader2, WalletCards
 } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
@@ -259,7 +259,7 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                         <div>
                                             <label className="text-sm font-medium text-muted-foreground">Total Points</label>
                                             <div className="flex items-center gap-2 mt-1">
-                                                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                                                <WalletCards className="h-4 w-4 text-muted-foreground" />
                                                 <span className="font-semibold text-blue-600">{order.totalPoints} points</span>
                                             </div>
                                         </div>

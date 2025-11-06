@@ -9,7 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
-  ShoppingCart, Search, CheckCircle, XCircle, Clock, Eye, Filter, DollarSign, Package, User, Hash, Calendar, Undo2, // Icon cho Refunded
+  ShoppingCart, Search, CheckCircle, XCircle, Clock, Eye, Filter, DollarSign, Package, User, Hash, Calendar, Undo2,
+  WalletCards,
 } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
@@ -306,7 +307,7 @@ export default function ClubLeaderEventOrdersPage() {
               <CardContent className="pb-3 px-4">
                 <div className="flex items-center gap-2">
                   <div className="p-1.5 bg-blue-500 rounded-md">
-                    <DollarSign className="h-4 w-4 text-white" />
+                    <WalletCards className="h-4 w-4 text-white" />
                   </div>
                   <div className="text-lg font-bold text-blue-900">
                     {isLoading ? <Skeleton className="h-6 w-16" /> : totalPointsCompleted}
@@ -577,7 +578,7 @@ function RenderOrderList({
                       <span>Quantity: {order.quantity}</span>
                     </div>
                     <div className="flex items-center gap-1.5" title="Total Points">
-                      <DollarSign className="h-4 w-4" />
+                      <WalletCards className="h-4 w-4" />
                       <span>{order.totalPoints} points</span>
                     </div>
                   </div>

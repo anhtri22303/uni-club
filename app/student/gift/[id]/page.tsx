@@ -11,7 +11,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { ArrowLeft, Loader2, Package, DollarSign, Tag, Info, ShoppingCart, AlertCircle, Minus, Plus, ChevronLeft, ChevronRight } from "lucide-react"
+import {
+    ArrowLeft, Loader2, Package, DollarSign, Tag, Info, ShoppingCart, AlertCircle, Minus, Plus, ChevronLeft, ChevronRight,
+    WalletCards,
+} from "lucide-react"
 import { LoadingSkeleton } from "@/components/loading-skeleton"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -357,7 +360,7 @@ export default function StudentProductViewPage() {
                             {/* Giá và Tồn kho */}
                             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                                 <div className="text-3xl font-bold text-primary flex items-center gap-2">
-                                    <DollarSign className="h-7 w-7" />
+                                    <WalletCards className="h-7 w-7" />
                                     <span>{product.pointCost} Points</span>
                                 </div>
 
