@@ -152,20 +152,6 @@ export default function EditProductPage() {
         }
     }, [clubId, productId, fetchProductData]) // Thêm fetchProductData
 
-
-
-    // 3. Handlers cho form 
-    // const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    //     const { name, value } = e.target
-    //     if (!form) return
-
-    //     setForm({
-    //         ...form,
-    //         [name]: name === "pointCost" || name === "eventId"
-    //             ? (value === "" ? 0 : Number(value)) // Sửa (default 0)
-    //             : value,
-    //     })
-    // }
     // HANDLERS CHO FORM
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target
@@ -391,34 +377,7 @@ export default function EditProductPage() {
     // Handler cho Nhập kho
     const handleUpdateStock = async () => {
         if (!clubId || !productId) return;
-
-        // const delta = parseInt(stockChange);
-        // if (isNaN(delta) || delta === 0) {
-        //     toast({ title: "Error", description: "Please enter a valid number to add or remove stock (e.g. 50 or -10).", variant: "destructive" });
-        //     return;
-        // }
-        // if (!stockNote.trim()) {
-        //     toast({ title: "Error", description: "Please provide a note for this stock change.", variant: "destructive" });
-        //     return;
-        // }
-
-        // setIsStockLoading(true);
-        // try {
-        //     // Gọi API
-        //     await updateStock(clubId, productId, delta, stockNote);
-
-        //     toast({ title: "Success", description: "Stock updated successfully!" });
-
-        //     // Đóng dialog và reset
-        //     setIsStockDialogOpen(false);
-        //     setStockChange("");
-        //     setStockNote("");
-
-        //     // Tải lại dữ liệu sản phẩm (để cập nhật 'stockQuantity' mới)
-        //     await fetchProductData(clubId, productId);
-        //     // Tải lại lịch sử (nếu dialog lịch sử đang mở)
-        //     queryClient.invalidateQueries({ queryKey: ['stockHistory', clubId, productId] });
-        // 👈 SỬ DỤNG HÀM PARSE MỚI
+        // SỬ DỤNG HÀM PARSE MỚI
         const delta = parseFormattedNumber(stockChange);
 
         if (isNaN(delta) || delta === 0) {
@@ -439,7 +398,7 @@ export default function EditProductPage() {
 
             // Đóng dialog và reset
             setIsStockDialogOpen(false);
-            setStockChange(""); // 👈 Reset về rỗng
+            setStockChange(""); // Reset về rỗng
             setStockNote("");
 
             await fetchProductData(clubId, productId);
@@ -711,7 +670,7 @@ export default function EditProductPage() {
                                             >
                                                 <SelectTrigger className="mt-2 border-slate-300">
                                                     <SelectValue placeholder="Select status" />
-                                                </SelectTrigger>HANDLER
+                                                </SelectTrigger>
                                                 <SelectContent>
                                                     <SelectItem value="ACTIVE">Active (On sale)</SelectItem>
                                                     <SelectItem value="INACTIVE">Inactive (Hidden)</SelectItem>

@@ -417,7 +417,7 @@ export default function StudentProductViewPage() {
                                     )}
 
                                     {/* Logic disable nút */}
-                                    
+
                                     <Button
                                         size="lg"
                                         className="w-full text-lg"
@@ -434,7 +434,7 @@ export default function StudentProductViewPage() {
                                         {/* Text nút */}
                                         {profileLoading ? "Loading membership..." : (isRedeeming ? "Processing..." : "Redeem Now")}
                                     </Button>
-                                    <p className="text-xs text-center text-muted-foreground">
+                                    <p className="text-md text-center text-muted-foreground">
                                         Total: {(product.pointCost * quantity).toLocaleString('en-US')} points
                                     </p>
 
@@ -484,9 +484,13 @@ export default function StudentProductViewPage() {
                         <DialogHeader>
                             <DialogTitle>Confirm Redemption</DialogTitle>
                             <DialogDescription>
-                                Are you sure you want to redeem <strong>{quantity} x {product.name}</strong>
-                                {" "}for a total of <strong>{(product.pointCost * quantity).toLocaleString('en-US')}</strong> points?
-                                This action cannot be undone.
+                                Are you sure you want to redeem the product: <strong>{product.name}</strong>
+                                <br />
+                                Quantity: <strong>{quantity.toLocaleString('en-US')}</strong>
+                                <br />
+                                Total points will cost: <strong>{(product.pointCost * quantity).toLocaleString('en-US')}</strong> points 
+                                <br />
+                                <strong>------ This action cannot be undone !!! ------</strong>
                             </DialogDescription>
                         </DialogHeader>
                         <DialogFooter>

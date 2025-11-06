@@ -65,7 +65,7 @@ export default function MemberGiftPage() {
 	const router = useRouter()
 	const searchParams = useSearchParams()
 	const clubIdFromQuery = searchParams.get('clubId') // Lấy clubId từ URL
-	// ✅ MỚI: Thêm state cho logic chọn club
+	// state cho logic chọn club
 	const [userClubIds, setUserClubIds] = useState<number[]>([])
 	const [userClubsDetails, setUserClubsDetails] = useState<any[]>([])
 	const [selectedClubId, setSelectedClubId] = useState<string | null>(null)// Bắt đầu là null
@@ -276,7 +276,6 @@ export default function MemberGiftPage() {
 								value={selectedClubId || ""}
 								onValueChange={(value) => {
 									setSelectedClubId(value)
-									// ❗️ Dòng này rất quan trọng
 									router.push(`/student/gift?clubId=${value}`, { scroll: false })
 									setCurrentPage(1)
 								}}
@@ -403,32 +402,17 @@ export default function MemberGiftPage() {
 											</div>
 
 											{/* Nút Redeem và Nút Details */}
-											<div className="mt-2 grid grid-cols-2 gap-2">
+											<div className="mt-2 grid grid-cols-1 gap-2">
 												{/* Nút View Details */}
 												<Button
-													variant="outline"
-													size="sm"
-													onClick={() => router.push(detailUrl)}
-													disabled={isRedeeming} // Vô hiệu hóa khi đang redeem
-												>
-													<Eye className="h-4 w-4 mr-2 flex-shrink-0" />
-													<span className="truncate">Details</span>
-												</Button>
-
-												{/* Nút Redeem */}
-												<Button
-													variant={isOutOfStock ? "secondary" : "default"}
-													size="sm"
-													disabled={isOutOfStock || isRedeeming}
-													onClick={() => handleRedeem(p)}
-												>
-													{isRedeeming ? (
-														<Loader2 className="h-4 w-4 mr-2 animate-spin" />
-													) : (
-														<Gift className="h-4 w-4 mr-2" />
-													)}
-													{isOutOfStock ? "Out of Stock" : (isRedeeming ? "Processing..." : "Redeem")}
-												</Button>
+                                                    variant="default"
+                                                    size="sm"
+                                                    onClick={() => router.push(detailUrl)}
+                                                    disabled={isRedeeming} // Vô hiệu hóa khi đang redeem
+                                                >
+                                                    <Eye className="h-4 w-4 mr-2 flex-shrink-0" />
+                                                    <span className="truncate">Redeem Details</span>
+                                                </Button>
 											</div>
 										</CardContent>
 									</Card>

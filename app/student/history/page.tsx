@@ -12,8 +12,8 @@ import { useData } from "@/contexts/data-context"
 import { useMyMemberApplications, useMyClubApplications, useMyRedeemOrders } from "@/hooks/use-query-hooks"
 import { Skeleton } from "@/components/ui/skeleton"
 import { History, UserPlus, Gift, CheckCircle, Users, Building2, Package, } from "lucide-react"
-import { useState } from "react"
-
+import { useState, useMemo } from "react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 // Removed static `src/data` imports — use empty fallbacks. Prefer remote `clubName` from activity data when available.
 const clubs: any[] = []
@@ -22,18 +22,20 @@ const offers: any[] = []
 export default function MemberHistoryPage() {
   const { auth } = useAuth()
   const { membershipApplications, vouchers } = useData()
-  const [activeTab, setActiveTab] = useState<"member" | "club" | "order">(
-    "member"
-  )
-
-  // ✅ USE REACT QUERY for applications
+  const [activeTab, setActiveTab] = useState<"member" | "club" | "order">("member")
+  // USE REACT QUERY for applications
   const { data: remoteApps, isLoading: memberLoading, error: memberError } = useMyMemberApplications()
   const { data: clubApps, isLoading: clubLoading, error: clubError } = useMyClubApplications()
-  // ❗️ GỌI HOOK MỚI
   const { data: remoteOrdersData, isLoading: orderLoading, error: orderError, } = useMyRedeemOrders()
   // Ensure arrays (API may return wrapped response)
   const remoteApplications: any[] = Array.isArray(remoteApps) ? remoteApps : ((remoteApps as any)?.data || [])
   const clubApplications: any[] = Array.isArray(clubApps) ? clubApps : ((clubApps as any)?.data || [])
+  // FILTER
+  const [filter, setFilter] = useState<string>("all")
+  const handleTabChange = (tab: "member" | "club" | "order") => {
+    setActiveTab(tab)
+    setFilter("all") // Reset filter khi đổi tab
+  }
 
   const remoteOrders: any[] = Array.isArray(remoteOrdersData)
     ? remoteOrdersData
@@ -41,7 +43,7 @@ export default function MemberHistoryPage() {
 
   // const loading = activeTab === "member" ? memberLoading : clubLoading
   // const error = activeTab === "member" ? memberError : clubError
-  // ❗️ CẬP NHẬT LOGIC LOADING VÀ ERROR
+  // LOGIC LOADING VÀ ERROR
   const loading =
     activeTab === "member"
       ? memberLoading
@@ -54,6 +56,38 @@ export default function MemberHistoryPage() {
       : activeTab === "club"
         ? clubError
         : orderError
+
+  // LOGIC ĐỂ CHỌN FILTER CHO TỪNG TAB
+  const filterOptions = useMemo(() => {
+    switch (activeTab) {
+      case "member":
+        return [
+          { value: "all", label: "All Statuses" },
+          { value: "PENDING", label: "Pending" },
+          { value: "APPROVED", label: "Approved" },
+          { value: "REJECTED", label: "Rejected" },
+        ]
+      case "club":
+        return [
+          { value: "all", label: "All Statuses" },
+          { value: "PENDING", label: "Pending" },
+          { value: "APPROVED", label: "Approved" },
+          { value: "REJECTED", label: "Rejected" },
+          { value: "COMPLETE", label: "Complete" },
+        ]
+      case "order":
+        return [
+          { value: "all", label: "All Statuses" },
+          { value: "PENDING", label: "Pending" },
+          { value: "COMPLETED", label: "Completed" },
+          { value: "REFUNDED", label: "Refunded" },
+          { value: "PARTIALLY_REFUNDED", label: "Partially Refunded" },
+          { value: "CANCELLED", label: "Cancelled" },
+        ]
+      default:
+        return [{ value: "all", label: "All Statuses" }]
+    }
+  }, [activeTab])
 
   // Get user's activity history
   const userApplications = membershipApplications.filter((a) => a.userId === auth.userId)
@@ -106,10 +140,10 @@ export default function MemberHistoryPage() {
     },
   })).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
-  // ❗️ THÊM MẢNG MỚI CHO ORDER HISTORY
+  // ORDER HISTORY
   const orderActivities = (remoteOrders || [])
     .map((order: any) => ({
-      type: "redeemOrder" as const, // Dùng type mới để phân biệt
+      type: "redeemOrder" as const,
       date: order.createdAt || new Date().toISOString(),
       data: {
         orderId: order.orderId,
@@ -117,10 +151,15 @@ export default function MemberHistoryPage() {
         productName: order.productName,
         quantity: order.quantity,
         totalPoints: order.totalPoints,
-        status: order.status, // (PENDING, COMPLETED, CANCELLED, REFUNDED)
+        status: order.status,
         createdAt: order.createdAt,
+        completedAt: order.completedAt,
         clubName: order.clubName,
         memberName: order.memberName,
+        productType: order.productType,
+        reasonRefund: order.reasonRefund,
+        clubId: order.clubId,
+        eventId: order.eventId,
       },
     }))
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
@@ -132,13 +171,30 @@ export default function MemberHistoryPage() {
       ? memberActivities
       : activeTab === "club"
         ? clubActivitiesData
-        : orderActivities // 👈 Thêm dòng này
+        : orderActivities
+
+  // LOGIC LỌC
+  const filteredActivities = useMemo(() => {
+    if (filter === "all") {
+      return activities
+    }
+    return activities.filter((activity) => {
+      // 'redemption' (voucher cũ) không có status, luôn hiển thị
+      if (activity.type === "redemption") {
+        return true
+      }
+      // Lọc các loại khác theo status
+      return activity.data.status === filter
+    })
+  }, [activities, filter])
 
   // dedupe by applicationId (when available), otherwise by clubId+userId+date
   const activitiesToDisplay = (() => {
     const out: any[] = []
     const seen = new Set<string>()
-    for (const act of activities) {
+
+    // for (const act of activities) {
+    for (const act of filteredActivities) {
       if (act.type === "redemption" || act.type === "clubApplication" || act.type === "redeemOrder") {
         out.push(act)
         continue
@@ -164,7 +220,7 @@ export default function MemberHistoryPage() {
     setPageSize,
   } = usePagination({
     data: activitiesToDisplay,
-    initialPageSize: 4, // ↓ để hiện phân trang khi > 4 activity
+    initialPageSize: 10, // ↓ để hiện phân trang khi > 4 activity
   })
 
   const getClubName = (clubId: string) => {
@@ -192,7 +248,8 @@ export default function MemberHistoryPage() {
           <div className="flex gap-2 border-b">
             {/* (Button Member Applications) */}
             <button
-              onClick={() => setActiveTab("member")}
+              // onClick={() => setActiveTab("member")}
+              onClick={() => handleTabChange("member")}
               className={`px-4 py-2 font-medium transition-colors relative ${activeTab === "member"
                 ? "text-blue-600 dark:text-blue-400"
                 : "text-muted-foreground hover:text-foreground"
@@ -213,7 +270,8 @@ export default function MemberHistoryPage() {
             </button>
             {/* (Button Club Applications) */}
             <button
-              onClick={() => setActiveTab("club")}
+              // onClick={() => setActiveTab("club")}
+              onClick={() => handleTabChange("club")}
               className={`px-4 py-2 font-medium transition-colors relative ${activeTab === "club"
                 ? "text-blue-600 dark:text-blue-400"
                 : "text-muted-foreground hover:text-foreground"
@@ -234,14 +292,15 @@ export default function MemberHistoryPage() {
             </button>
             {/* Order History */}
             <button
-              onClick={() => setActiveTab("order")}
+              // onClick={() => setActiveTab("order")}
+              onClick={() => handleTabChange("order")}
               className={`px-4 py-2 font-medium transition-colors relative ${activeTab === "order"
                 ? "text-blue-600 dark:text-blue-400"
                 : "text-muted-foreground hover:text-foreground"
                 }`}
             >
               <div className="flex items-center gap-2">
-                <Package className="h-4 w-4" /> {/* 👈 Icon mới */}
+                <Package className="h-4 w-4" />
                 Order History
                 {remoteOrders.length > 0 && (
                   <Badge variant="secondary" className="ml-1">
@@ -255,6 +314,22 @@ export default function MemberHistoryPage() {
             </button>
           </div>
 
+          {/* Filter */}
+          <div className="flex justify-end">
+            <Select value={filter} onValueChange={setFilter}>
+              <SelectTrigger className="w-full sm:w-[240px]">
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                {filterOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Loading State */}
           {loading ? (
             <div className="text-center text-sm text-muted-foreground py-8">Loading applications...</div>
@@ -264,51 +339,46 @@ export default function MemberHistoryPage() {
             <EmptyState
               icon={History}
               title="No activity yet"
-              // description={
-              //   activeTab === "member"
-              //     ? "Your member applications and voucher redemptions will appear here"
-              //     : "Your club creation applications will appear here"
-              // }
               description={
                 activeTab === "member"
                   ? "Your member applications and voucher redemptions will appear here"
                   : activeTab === "club"
                     ? "Your club creation applications will appear here"
-                    : "Your product order history will appear here" // 👈 Thêm
+                    : "Your product order history will appear here"
               }
               action={{
-                // label: activeTab === "member" ? "Browse Clubs" : "Create Club",
                 label:
                   activeTab === "member"
                     ? "Browse Clubs"
                     : activeTab === "club"
                       ? "Create Club"
-                      : "Browse Gift", // 👈 Thêm
-                //onClick: () => (window.location.href = activeTab === "member" ? "/student/clubs" : "/student/clubs"),
+                      : "Browse Gift",
                 onClick: () =>
                 (window.location.href =
                   activeTab === "member"
                     ? "/student/clubs"
                     : activeTab === "club"
-                      ? "/student/clubs" // (Bạn có thể đổi link này nếu muốn)
-                      : "/student/gift"), // 👈 Thêm (Giả sử bạn có trang /student/rewards)
+                      ? "/student/clubs"
+                      : "/student/gift"),
               }}
             />
           ) : (
-            <div className="space-y-4">
+            // <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {paginatedActivities.map((activity, index) => {
                 // Determine border color based on status
                 const getBorderColor = () => {
                   if (activity.type === "redemption") return "border-l-purple-500"
 
-                  // ❗️ THÊM LOGIC MÀU CHO ORDER
+                  // LOGIC MÀU CHO ORDER
                   if (activity.type === "redeemOrder") {
                     const orderStatus = activity.data.status
                     if (orderStatus === "COMPLETED") return "border-l-green-500"
                     if (orderStatus === "PENDING") return "border-l-yellow-500"
                     if (
                       orderStatus === "CANCELLED" ||
-                      orderStatus === "REFUNDED"
+                      orderStatus === "REFUNDED" ||
+                      orderStatus === "PARTIALLY_REFUNDED"
                     )
                       return "border-l-red-500"
                     return "border-l-gray-300"
@@ -335,7 +405,7 @@ export default function MemberHistoryPage() {
                             <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900 rounded-full flex items-center justify-center">
                               <Building2 className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                             </div>
-                            // ❗️ THÊM ICON CHO ORDER
+                            //  ICON CHO ORDER
                           ) : activity.type === "redeemOrder" ? (
                             <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center">
                               <Package className="h-5 w-5 text-purple-600 dark:text-purple-400" />
@@ -368,89 +438,160 @@ export default function MemberHistoryPage() {
                                     Category: {activity.data.category}
                                   </p>
                                 </>
-                                // ❗️ THÊM NỘI DUNG CHO ORDER
+                                //  NỘI DUNG CHO ORDER
                               ) : activity.type === "redeemOrder" ? (
                                 <>
-                                  <h3 className="font-medium">Product Order</h3>
+                                  <h3 className="font-medium">
+                                    Product Order
+                                  </h3>
                                   <p className="text-sm text-muted-foreground">
-                                    {activity.data.productName} (x
-                                    {activity.data.quantity})
+                                    Product name: {activity.data.productName}
+                                    <br />
+                                    Quantity: {activity.data.quantity}
                                   </p>
-                                  <p className="text-xs text-muted-foreground mt-1">
-                                    From: {activity.data.clubName}
+                                  {/* Hiển thị điểm đã tiêu */}
+                                  <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                                    Total points: {activity.data.totalPoints} points
                                   </p>
                                 </>
                               ) : (
                                 <>
-                                  <h3 className="font-medium">Voucher Redeemed</h3>
+                                  <h3 className="font-medium">
+                                    Voucher Redeemed
+                                  </h3>
                                   <p className="text-sm text-muted-foreground">
-                                    {getOfferTitle(activity.data.offerId)} - Code: {activity.data.code}
+                                    {getOfferTitle(activity.data.offerId)} -
+                                    Code: {activity.data.code}
                                   </p>
                                 </>
                               )}
                             </div>
 
+                            {/* Thêm Badge cho Order */}
                             <div className="flex items-center gap-2">
-                              {(activity.type === "application" || activity.type === "clubApplication") && (
+                              {(activity.type === "application" ||
+                                activity.type === "clubApplication") && (
+                                  <Badge
+                                    variant={
+                                      activity.data.status === "APPROVED"
+                                        ? "default"
+                                        : activity.data.status === "COMPLETE"
+                                          ? "default"
+                                          : activity.data.status === "PENDING"
+                                            ? "secondary"
+                                            : "destructive"
+                                    }
+                                    className={
+                                      activity.data.status === "APPROVED"
+                                        ? "bg-green-100 text-green-800 border-green-300 hover:bg-green-100"
+                                        : activity.data.status === "COMPLETE"
+                                          ? "bg-blue-100 text-blue-800 border-blue-300 hover:bg-blue-100"
+                                          : activity.data.status === "PENDING"
+                                            ? "bg-yellow-100 text-yellow-800 border-yellow-300 hover:bg-yellow-100"
+                                            : "bg-red-100 text-red-800 border-red-300 hover:bg-red-100"
+                                    }
+                                  >
+                                    {activity.data.status}
+                                  </Badge>
+                                )}
+                              {/* Badge cho Order */}
+                              {activity.type === "redeemOrder" && (
                                 <Badge
                                   variant={
-                                    activity.data.status === "APPROVED"
+                                    activity.data.status === "COMPLETED"
                                       ? "default"
-                                      : activity.data.status === "COMPLETE"
-                                        ? "default"
-                                        : activity.data.status === "PENDING"
-                                          ? "secondary"
-                                          : "destructive"
+                                      : activity.data.status === "PENDING"
+                                        ? "secondary"
+                                        : "destructive"
                                   }
                                   className={
-                                    activity.data.status === "APPROVED"
+                                    activity.data.status === "COMPLETED"
                                       ? "bg-green-100 text-green-800 border-green-300 hover:bg-green-100"
-                                      : activity.data.status === "COMPLETE"
-                                        ? "bg-blue-100 text-blue-800 border-blue-300 hover:bg-blue-100"
-                                        : activity.data.status === "PENDING"
-                                          ? "bg-yellow-100 text-yellow-800 border-yellow-300 hover:bg-yellow-100"
-                                          : "bg-red-100 text-red-800 border-red-300 hover:bg-red-100"
+                                      : activity.data.status === "PENDING"
+                                        ? "bg-yellow-100 text-yellow-800 border-yellow-300 hover:bg-yellow-100"
+                                        : "bg-red-100 text-red-800 border-red-300 hover:bg-red-100" // Áp dụng cho CANCELLED, REFUNDED, PARTIALLY_REFUNDED
                                   }
                                 >
                                   {activity.data.status}
                                 </Badge>
                               )}
-                              {activity.type === "redemption" && activity.data.used && (
-                                <Badge variant="outline">
-                                  <CheckCircle className="h-3 w-3 mr-1" />
-                                  Used
-                                </Badge>
-                              )}
+                              {activity.type === "redemption" &&
+                                activity.data.used && (
+                                  <Badge variant="outline">
+                                    <CheckCircle className="h-3 w-3 mr-1" />
+                                    Used
+                                  </Badge>
+                                )}
                             </div>
                           </div>
 
+                          {/* Hiển thị chi tiết cho từng loại */}
                           <div className="mt-2">
-                            {activity.type === "clubApplication" ? (
+                            {activity.type === "application" ? (
+                              <p className="text-sm text-muted-foreground">
+                                {activity.data.reason}
+                              </p>
+                            ) : activity.type === "clubApplication" ? (
                               <>
-                                <p className="text-sm text-muted-foreground">{activity.data.description}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  {activity.data.description}
+                                </p>
                                 {activity.data.rejectReason && (
                                   <p className="text-sm text-red-600 dark:text-red-400 mt-1">
-                                    Reject reason: {activity.data.rejectReason}
+                                    Reject reason:{" "}
+                                    {activity.data.rejectReason}
                                   </p>
                                 )}
                               </>
-                            ) : (
-                              <p className="text-sm text-muted-foreground">{activity.data.reason}</p>
-                            )}
+                            ) : activity.type === "redeemOrder" ? (
+                              <>
+                                <p className="text-sm text-muted-foreground">
+                                  Order Code:{" "}
+                                  <span className="font-medium text-foreground">
+                                    {activity.data.orderCode}
+                                  </span>
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  From: {activity.data.clubName}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  Type product: {activity.data.productType}
+                                </p>
+                                {/* Hiển thị lý do refund NẾU CÓ */}
+                                {activity.data.reasonRefund && (
+                                  <p className="text-sm text-red-600 dark:text-red-400 mt-1">
+                                    Refund reason:{" "}
+                                    {activity.data.reasonRefund}
+                                  </p>
+                                )}
+                              </>
+                            ) : activity.type === "redemption" ? (
+                              <p className="text-sm text-muted-foreground">
+                                {activity.data.reason}
+                              </p>
+                            ) : null}
+
+                            {/* Common fields */}
                             {activity.data.reviewedBy && (
-                              <p className="text-xs text-muted-foreground mt-1">Reviewed by: {activity.data.reviewedBy}</p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Reviewed by: {activity.data.reviewedBy}
+                              </p>
                             )}
 
                             <p className="text-xs text-muted-foreground mt-2">
-                              {new Date(activity.date).toLocaleDateString("en-US", {
-                                year: "numeric",
-                                month: "long",
-                                day: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
+                              {new Date(activity.date).toLocaleDateString(
+                                "en-US",
+                                {
+                                  year: "numeric",
+                                  month: "long",
+                                  day: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                }
+                              )}
                             </p>
                           </div>
+
                         </div>
                       </div>
                     </CardContent>
@@ -472,7 +613,7 @@ export default function MemberHistoryPage() {
                 setPageSize(size)
                 setCurrentPage(1) // reset về trang 1 khi đổi số dòng/trang
               }}
-              pageSizeOptions={[4, 12, 24, 48]}
+              pageSizeOptions={[10, 30, 50]}
             />
           )}
         </div>
