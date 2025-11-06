@@ -5,7 +5,10 @@ import { useEffect, useState, useMemo } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import Link from "next/link"
-import { Gift, Package, Calendar, Clock, CheckCircle, XCircle, Plus, ChevronLeft, ChevronRight, Loader2, Archive, } from "lucide-react"
+import {
+  Gift, Package, Calendar, Clock, CheckCircle, XCircle, Plus, ChevronLeft, ChevronRight, Loader2, Archive,
+  WalletCards,
+} from "lucide-react"
 // --- Service ---
 import { addProduct, Product, AddProductPayload, } from "@/service/productApi"
 import { getClubIdFromToken } from "@/service/clubApi"
@@ -126,7 +129,7 @@ export default function ClubLeaderGiftPage() {
       toast({ title: "Error", description: "Club ID not found.", variant: "destructive" });
       // có thể thêm router.push('/login') ở đây
     }
-  }, [toast]); // 👈 Chỉ chạy 1 lần
+  }, [toast]); // Chỉ chạy 1 lần
 
   // THAY THẾ useEffect/useState BẰNG REACT QUERY
   const { data: products = [], isLoading: productsLoading } = useProductsByClubId(
@@ -254,7 +257,6 @@ export default function ClubLeaderGiftPage() {
       return;
     }
 
-    // Logic cũ cho các tag khác
     setForm((prev) => {
       const currentTags = prev.tagIds || []
       if (checked) {
@@ -265,7 +267,7 @@ export default function ClubLeaderGiftPage() {
     })
   }
 
-  // 4. Cập nhật hàm handleCreate (ĐÃ CẬP NHẬT)
+  // 4. Cập nhật hàm handleCreate 
   const handleCreate = async () => {
     if (!clubId) {
       toast({ title: "Error", description: "Club ID does not exist.", variant: "destructive" })
@@ -315,62 +317,62 @@ export default function ClubLeaderGiftPage() {
     }
   }
   const filteredAndSortedProducts = useMemo(() => {
-    let filtered: Product[] = [...products] // 1. Bắt đầu với TẤT CẢ (gồm cả Archived)
+    let filtered: Product[] = [...products] // 1. Bắt đầu với TẤT CẢ (gồm cả Archived)
 
-    // --- LỌC BƯỚC 1: LỌC THEO STATUS (Tab) ---
-    if (statusFilter === "active") {
-      filtered = filtered.filter((p) => p.status === "ACTIVE");
-    } else if (statusFilter === "inactive") {
-      filtered = filtered.filter((p) => p.status === "INACTIVE");
-    } else if (statusFilter === "archived") { 
-      filtered = filtered.filter((p) => p.status === "ARCHIVED");
-    }
+    // --- LỌC BƯỚC 1: LỌC THEO STATUS (Tab) ---
+    if (statusFilter === "active") {
+      filtered = filtered.filter((p) => p.status === "ACTIVE");
+    } else if (statusFilter === "inactive") {
+      filtered = filtered.filter((p) => p.status === "INACTIVE");
+    } else if (statusFilter === "archived") {
+      filtered = filtered.filter((p) => p.status === "ARCHIVED");
+    }
     // Nếu statusFilter === "all", bỏ qua bước này, giữ nguyên TẤT CẢ
 
-    // --- LỌC BƯỚC 2: LỌC THEO SEARCH TERM ---
-    if (searchTerm) {
-      filtered = filtered.filter(
-        (p) =>
-          p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          p.description.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    }
-    
-    // --- LỌC BƯỚC 3: LỌC THEO CRITERIA (Checkbox và Tags) ---
-    if (filters) {
-      // Lọc "Available" (Sẵn hàng)
-      if (filters.inStock) {
+    // --- LỌC BƯỚC 2: LỌC THEO SEARCH TERM ---
+    if (searchTerm) {
+      filtered = filtered.filter(
+        (p) =>
+          p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          p.description.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    }
+
+    // --- LỌC BƯỚC 3: LỌC THEO CRITERIA (Checkbox và Tags) ---
+    if (filters) {
+      // Lọc "Available" (Sẵn hàng)
+      if (filters.inStock) {
         // Lọc này chỉ có ý nghĩa với các sản phẩm ACTIVE
-        filtered = filtered.filter((p) => p.status === "ACTIVE" && p.stockQuantity > 0)
-      }
+        filtered = filtered.filter((p) => p.status === "ACTIVE" && p.stockQuantity > 0)
+      }
 
-      // Lọc "Tags"
-      if (filters.selectedTags.size > 0) {
-        const selectedTags = Array.from(filters.selectedTags)
-        filtered = filtered.filter((p) =>
-          selectedTags.some(selectedTag => p.tags.includes(selectedTag))
-        )
-      }
-    }
+      // Lọc "Tags"
+      if (filters.selectedTags.size > 0) {
+        const selectedTags = Array.from(filters.selectedTags)
+        filtered = filtered.filter((p) =>
+          selectedTags.some(selectedTag => p.tags.includes(selectedTag))
+        )
+      }
+    }
 
-    // --- BƯỚC 4: SẮP XẾP ---
-    switch (sortBy) {
-      case "price_asc":
-        filtered.sort((a, b) => a.pointCost - b.pointCost)
-        break
-      case "price_desc":
-        filtered.sort((a, b) => b.pointCost - a.pointCost)
-        break
-      case "hot_promo":
+    // --- BƯỚC 4: SẮP XẾP ---
+    switch (sortBy) {
+      case "price_asc":
+        filtered.sort((a, b) => a.pointCost - b.pointCost)
+        break
+      case "price_desc":
+        filtered.sort((a, b) => b.pointCost - a.pointCost)
+        break
+      case "hot_promo":
         // (chưa có logic)
-        break
-      case "popular":
-      default:
+        break
+      case "popular":
+      default:
         // (chưa có logic)
-        break
-    }
-    return filtered
-  }, [products, searchTerm, filters, sortBy, statusFilter])
+        break
+    }
+    return filtered
+  }, [products, searchTerm, filters, sortBy, statusFilter])
 
   return (
     <ProtectedRoute allowedRoles={["club_leader"]}>
@@ -599,7 +601,7 @@ export default function ClubLeaderGiftPage() {
                     {/* 2. Cập nhật Card styling (shadow, cursor, v.v.) */}
                     <Card className="transition-all duration-200 hover:shadow-lg cursor-pointer flex flex-col h-full relative overflow-hidden w-full">
 
-                      {/* Phần Header (Hình ảnh) - Thay đổi để giống thiết kế */}
+                      {/* Phần Header */}
                       <CardHeader className="p-0 border-b"> {/* Xóa padding */}
                         <div className="aspect-video w-full relative overflow-hidden bg-muted">
                           {/* Dùng placeholder nếu ảnh lỗi */}
@@ -609,14 +611,7 @@ export default function ClubLeaderGiftPage() {
                             className="object-cover w-full h-full"
                             onError={(e) => (e.currentTarget.src = "/placeholder.svg")}
                           />
-                          {/* Badge Active/Inactive (Giống trong ảnh) */}
-                          {/* <Badge
-                            variant={p.status === "ACTIVE" ? "default" : "secondary"}
-                            className={`absolute right-2 top-2 z-10 text-xs ${p.status === "ACTIVE" ? "bg-green-600 text-white" : "bg-gray-500 text-white"
-                              }`}
-                          >
-                            {p.status === "ACTIVE" ? "Active" : p.status}
-                          </Badge> */}
+                          {/* Badge Active/Inactive */}
                           <Badge
                             variant="default"
                             className={`absolute right-2 top-2 z-10 text-xs
@@ -630,7 +625,7 @@ export default function ClubLeaderGiftPage() {
                         </div>
                       </CardHeader>
 
-                      {/* Phần Content (Thông tin) - Thay đổi để giống thiết kế */}
+                      {/* Phần Content (Thông tin) */}
                       <CardContent className="p-3 flex flex-col gap-2 grow">
                         {/* Title và Description */}
                         <div className="min-w-0">
@@ -658,12 +653,15 @@ export default function ClubLeaderGiftPage() {
                         )}
 
                         {/* Giá và Kho (Đẩy xuống dưới) */}
-                        <div className="flex items-center justify-between mt-auto pt-2">
-                          <span className="font-semibold text-blue-600 text-base">
-                            {p.pointCost} points
-                          </span>
+                        <div className="flex items-center justify-between mt-auto pt-3">
+                          <div className="flex items-center gap-2"> {/* Thêm 'gap-2' để có khoảng cách */}
+                            <WalletCards className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-semibold text-blue-600 text-base">
+                              {p.pointCost.toLocaleString('en-US')} points
+                            </span>
+                          </div>
                           <span className="text-sm text-muted-foreground">
-                            Warehouse: {p.stockQuantity}
+                            Warehouse: {p.stockQuantity.toLocaleString('en-US')}
                           </span>
                         </div>
                       </CardContent>

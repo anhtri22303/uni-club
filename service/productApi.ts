@@ -106,7 +106,7 @@ export interface UpdateProductPayload {
 }
 
 /**
- * ❗️ MỚI: Interface cho payload khi CẬP NHẬT metadata media
+ *  Interface cho payload khi CẬP NHẬT metadata media
  * (PUT /.../media/{mediaId}) - Gửi qua Query Params
  */
 export interface UpdateMediaMetadataPayload {
@@ -117,7 +117,7 @@ export interface UpdateMediaMetadataPayload {
 }
 
 /**
- * ❗️ MỚI: Interface cho payload khi SẮP XẾP LẠI media
+ *  Interface cho payload khi SẮP XẾP LẠI media
  * (PUT /.../media/reorder) - Gửi qua Body
  */
 export interface ReorderMediaPayload {
@@ -203,7 +203,7 @@ export async function addProduct(
  * (Khớp Swagger image_28bdbe.png)
  */
 export async function getProductById(
-  clubId: number | string, // ❗️ Đã sửa: cho phép string để nhận từ URL
+  clubId: number | string,
   productId: number | string
 ): Promise<Product> {
   const res = await axiosInstance.get<ApiResponse<Product>>(
@@ -335,25 +335,25 @@ export async function addMediaToProduct(
 }
 
 /**
- * ❗️ MỚI: Thêm nhiều media (Upload bulk)
+ * Thêm nhiều media (Upload bulk)
  * (POST /api/clubs/{clubId}/products/{productId}/media/bulk)
  * (Khớp Swagger image_28c566.png)
  */
 export async function addBulkMediaToProduct(
   clubId: number | string,
   productId: number | string,
-  files: File[] // 👈 Nhận vào một MẢNG File
-): Promise<ProductMedia[]> { // 👈 Trả về một MẢNG media
+  files: File[] 
+): Promise<ProductMedia[]> { 
   
   const formData = new FormData();
   // Lặp qua mảng files và append từng file
   files.forEach((file) => {
-    formData.append("files", file); // 👈 Key là "files" (số nhiều)
+    formData.append("files", file);
   });
 
   const res = await axiosInstance.post<ApiResponse<ProductMedia[]>>(
     `/api/clubs/{clubId}/products/${productId}/media/bulk`,
-    formData, // 👈 Gửi FormData
+    formData, 
     {
       headers: {
         "Content-Type": "multipart/form-data",
@@ -397,7 +397,6 @@ export async function setMediaThumbnail(
 /**
  * Cập nhật metadata của một media (hoặc thay thế file)
  * (PUT /.../media/{mediaId})
- * (Khớp Swagger image_28ba03.png)
  */
 export async function updateMediaMetadata(
   clubId: number | string,

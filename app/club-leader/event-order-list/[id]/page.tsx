@@ -8,20 +8,21 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import {
-    CheckCircle, XCircle, ArrowLeft, Clock,
-    Package, DollarSign, ShoppingCart, User, Hash, Calendar, Undo2, Loader2, WalletCards
+    CheckCircle, XCircle, ArrowLeft, Clock, Package, DollarSign, ShoppingCart, User, Hash, Calendar, Undo2, Loader2, Info, WalletCards 
 } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { getClubIdFromToken } from "@/service/clubApi"
-import { getClubRedeemOrders, RedeemOrder, completeRedeemOrder, refundRedeemOrder } from "@/service/redeemApi"
+import { getClubRedeemOrders, RedeemOrder, completeRedeemOrder, refundRedeemOrder, refundPartialRedeemOrder, RefundPayload } from "@/service/redeemApi"
 import {
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger,
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { useRouter } from "next/navigation"
+import { Input } from "@/components/ui/input"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 
 // Props cho trang chi tiết
 interface OrderDetailPageProps {
@@ -35,10 +36,8 @@ export const queryKeys = {
     eventOrders: (clubId: number) => ["clubOrders", clubId] as const,
 }
 
-// Định nghĩa kiểu dữ liệu cho UI
 type UiOrder = RedeemOrder
 
-// 👈 ĐỔI TÊN COMPONENT
 export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
     const router = useRouter()
     const { toast } = useToast()
@@ -47,9 +46,12 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
     const [clubId, setClubId] = useState<number | null>(null)
     const [isProcessing, setIsProcessing] = useState<boolean>(false)
 
-    // State cho modal (Giống trang mẫu)
+    // CHO LOGIC REFUND
     const [isRefundModalOpen, setIsRefundModalOpen] = useState<boolean>(false)
-    const [refundReason, setRefundReason] = useState<string>("") // Mặc dù API ko cần, nhưng nên có
+    const [refundReason, setRefundReason] = useState<string>("")
+    const [refundType, setRefundType] = useState<"full" | "partial">("full")
+    const [partialQuantity, setPartialQuantity] = useState<string>("1")
+
 
     // 1. Lấy clubId của leader (Giữ nguyên)
     useEffect(() => {
@@ -65,7 +67,7 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
         }
     }, [toast])
 
-    // 2. 👈 Lấy TẤT CẢ đơn hàng (giống logic trang chi tiết CLB)
+    // Lấy TẤT CẢ đơn hàng (giống logic trang chi tiết CLB)
     const {
         data: orders = [],
         isLoading: loading,
@@ -76,7 +78,7 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
         enabled: !!clubId,
     })
 
-    // 3. 👈 Tìm đơn hàng cụ thể
+    // Tìm đơn hàng cụ thể
     const order: UiOrder | undefined = useMemo(() => {
         if (loading || !params.id) return undefined
         // params.id là string, orderId là number
@@ -84,7 +86,7 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
     }, [orders, loading, params.id])
 
 
-    // 4. 👈 Xử lý "Delivered"
+    //: Xử lý "Delivered"
     const handleDeliver = async () => {
         if (!order || !clubId) return;
 
@@ -110,33 +112,74 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
         }
     };
 
-    // 5. 👈 HÀM MỚI: Xử lý "Cancel/Refund"
-    const handleCancel = async () => {
+    // Xử lý "Cancel/Refund"
+    const handleRefund = async () => {
         if (!order || !clubId) return
 
-        // (Tùy chọn: Bắt buộc nhập lý do)
-        // if (!refundReason.trim()) {
-        //   toast({ title: "Validation Error", ... });
-        //   return
-        // }
+        // Kiểm tra Reason
+        if (!refundReason.trim()) {
+            toast({
+                title: "Validation Error",
+                description: "Please provide a reason for the refund.",
+                variant: "destructive",
+            })
+            return;
+        }
 
         setIsProcessing(true)
         try {
-            // API của bạn dùng 'refundRedeemOrder'
-            await refundRedeemOrder(order.orderId)
+            if (refundType === "full") {
+                // --- Logic Full Refund ---
+                const payload: RefundPayload = {
+                    orderId: order.orderId,
+                    quantityToRefund: order.quantity, // Hoàn trả toàn bộ
+                    reason: refundReason,
+                };
+                await refundRedeemOrder(payload) // Gửi payload
+
+                toast({
+                    title: "Success",
+                    description: "Order has been successfully cancelled and refunded.",
+                    variant: "success",
+                })
+            } else {
+                // --- Logic Partial Refund ---
+                const qty = parseInt(partialQuantity);
+
+                if (!qty || qty <= 0) {
+                    throw new Error("Quantity to refund must be greater than 0.");
+                }
+                if (qty >= order.quantity) {
+                    throw new Error("Quantity is too high. Use 'Full Refund' instead.");
+                }
+
+                // 👈 Tạo payload mới
+                const payload: RefundPayload = {
+                    orderId: order.orderId,
+                    quantityToRefund: qty,
+                    reason: refundReason,
+                };
+                await refundPartialRedeemOrder(payload) // Gửi payload
+
+                toast({
+                    title: "Success",
+                    description: `Successfully refunded ${qty} item(s).`,
+                    variant: "success",
+                })
+            }
+
             queryClient.invalidateQueries({ queryKey: queryKeys.eventOrders(clubId) })
-            toast({
-                title: "Success",
-                description: "Order has been successfully cancelled and refunded.",
-                variant: "success",
-            })
+            // Đóng modal và reset state
             setIsRefundModalOpen(false)
-            setRefundReason("")
-        } catch (error) {
+            setRefundType("full")
+            setPartialQuantity("1")
+            setRefundReason("") // Reset reason
+
+        } catch (error: any) {
             console.error("Failed to refund order:", error)
             toast({
                 title: "Error",
-                description: (error as Error).message || "Failed to refund order",
+                description: error.response?.data?.message || error.message || "Failed to refund order",
                 variant: "destructive",
             })
         } finally {
@@ -144,14 +187,14 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
         }
     }
 
-    // 6. Hàm hiển thị Badge (Giữ nguyên từ file order-list)
+    // Hàm hiển thị Badge (ĐÃ CẬP NHẬT)
     const getStatusBadge = (status: string) => {
         switch (status) {
             case "PENDING":
                 return (
                     <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300">
                         <Clock className="h-3 w-3 mr-1" />
-                        Pending (Paid)
+                        Pending
                     </Badge>
                 )
             case "COMPLETED":
@@ -161,26 +204,29 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                         Delivered
                     </Badge>
                 )
-            case "CANCELLED":
-                return (
-                    <Badge variant="destructive" className="bg-red-100 text-red-700 border-red-300">
-                        <XCircle className="h-3 w-3 mr-1" />
-                        Cancelled
-                    </Badge>
-                )
-            case "REFUNDED":
+            case "REFUNDED": // Hoàn tiền toàn bộ
                 return (
                     <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300">
                         <Undo2 className="h-3 w-3 mr-1" />
                         Refunded
                     </Badge>
                 )
-            default:
-                return <Badge variant="outline">{status}</Badge>
+            case "PARTIALLY_REFUNDED": // Hoàn tiền 1 phần
+                return (
+                    <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-300">
+                        <Undo2 className="h-3 w-3 mr-1" />
+                        Partially Refunded
+                    </Badge>
+                )
+            default: // Bao gồm cả CANCELLED (nếu có)
+                return <Badge variant="destructive" className="bg-red-100 text-red-700 border-red-300">
+                    <XCircle className="h-3 w-3 mr-1" />
+                    {status}
+                </Badge>
         }
     }
 
-    // 7. Loading / Error States (Giữ nguyên)
+    // Loading / Error States
     if (loading) {
         return (
             <ProtectedRoute allowedRoles={["club_leader"]}>
@@ -212,21 +258,20 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
         )
     }
 
-    // 8. JSX (Đã cập nhật)
     return (
         <ProtectedRoute allowedRoles={["club_leader"]}>
             <AppShell>
                 <div className="space-y-6">
                     {/* Header */}
                     <div>
-                        {/* 👈 Đổi link back */}
+                        {/* link back */}
                         <Link href="/club-leader/event-order-list">
                             <Button variant="ghost" size="sm" className="mb-2">
                                 <ArrowLeft className="h-4 w-4 mr-2" />
                                 Back to Event Order List
                             </Button>
                         </Link>
-                        {/* 👈 Đổi tiêu đề */}
+                        {/* tiêu đề */}
                         <h1 className="text-3xl font-bold">Order #{order.orderCode}</h1>
                         <p className="text-muted-foreground">Order Details & Actions</p>
                     </div>
@@ -234,7 +279,7 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         {/* Main Information */}
                         <div className="lg:col-span-2 space-y-6">
-                            {/* 👈 THAY THẾ: Card thông tin đơn hàng */}
+                            {/* Card thông tin đơn hàng */}
                             <Card>
                                 <CardHeader>
                                     <CardTitle className="flex items-center gap-2">
@@ -253,26 +298,61 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                             <label className="text-sm font-medium text-muted-foreground">Quantity</label>
                                             <div className="flex items-center gap-2 mt-1">
                                                 <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-                                                <span className="font-semibold">{order.quantity}</span>
+                                                <span className="font-semibold">{order.quantity.toLocaleString('en-US')}</span>
                                             </div>
                                         </div>
                                         <div>
                                             <label className="text-sm font-medium text-muted-foreground">Total Points</label>
                                             <div className="flex items-center gap-2 mt-1">
                                                 <WalletCards className="h-4 w-4 text-muted-foreground" />
-                                                <span className="font-semibold text-blue-600">{order.totalPoints} points</span>
+                                                <span className="font-semibold text-blue-600">{order.totalPoints.toLocaleString('en-US')} points</span>
                                             </div>
                                         </div>
                                     </div>
                                 </CardContent>
                             </Card>
+                            {/* HIỂN THỊ LOG TRẠNG THÁI */}
+                            {order.status !== "PENDING" && (
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className="flex items-center gap-2 text-lg">
+                                            <Info className="h-5 w-5" />
+                                            Order Status Log
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="space-y-3">
+                                        {/* Chỉ hiển thị khi đã Giao hàng */}
+                                        {order.status === "COMPLETED" && (
+                                            <div className="text-sm text-green-700 font-medium flex items-center gap-2">
+                                                <CheckCircle className="h-4 w-4" />
+                                                This order was successfully delivered on {new Date(order.completedAt).toLocaleString()}.
+                                            </div>
+                                        )}
 
-                            {/* 👈 XÓA Card "Proposer Reason" */}
+                                        {/* Chỉ hiển thị khi đã Hoàn tiền 1 phần */}
+                                        {order.status === "PARTIALLY_REFUNDED" && (
+                                            <div className="text-sm text-orange-700 font-medium flex items-center gap-2">
+                                                <Undo2 className="h-4 w-4" />
+                                                This order was partially refunded on {new Date(order.completedAt).toLocaleString()}.
+                                            </div>
+                                        )}
+
+                                        {/* Chỉ hiển thị khi đã Hoàn tiền Toàn bộ */}
+                                        {order.status === "REFUNDED" && (
+                                            <div className="text-sm text-blue-700 font-medium flex items-center gap-2">
+                                                <Undo2 className="h-4 w-4" />
+                                                This order was fully refunded on {new Date(order.completedAt).toLocaleString()}.
+                                            </div>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            )}
+
                         </div>
 
                         {/* Sidebar Information */}
                         <div className="space-y-6">
-                            {/* 👈 THAY THẾ: Card chi tiết đơn hàng */}
+                            {/* Card chi tiết đơn hàng */}
                             <Card>
                                 <CardHeader>
                                     <CardTitle className="text-lg">Member Details</CardTitle>
@@ -312,14 +392,22 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                         <label className="text-sm font-medium text-muted-foreground">Current Status</label>
                                         <div className="mt-2">{getStatusBadge(order.status)}</div>
                                     </div>
-                                    {/* (Hiển thị lý do refund nếu có) */}
-                                    {order.status === "REFUNDED" && (
-                                        <p className="text-sm text-muted-foreground">This order has been refunded.</p>
+
+                                    {/* Hiển thị lý do refund */}
+                                    {(order.status === "REFUNDED" || order.status === "PARTIALLY_REFUNDED") && order.reasonRefund && (
+                                        <>
+                                            <Separator />
+                                            <div>
+                                                <label className="text-sm font-medium text-muted-foreground">Refund Reason</label>
+                                                <p className="mt-1 text-sm text-gray-700">{order.reasonRefund}</p>
+                                            </div>
+                                        </>
                                     )}
                                 </CardContent>
                             </Card>
 
-                            {/* 👈 THAY THẾ: Card Actions */}
+                            {/* CARD ACTIONS */}
+                            {/* Chỉ hiển thị nút "Delivered" khi đang PENDING */}
                             {order.status === "PENDING" && (
                                 <Card>
                                     <CardHeader>
@@ -335,7 +423,18 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                             {isProcessing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
                                             {isProcessing ? "Processing..." : "Mark as Delivered"}
                                         </Button>
+                                        {/* Nút refund sẽ được hiển thị ở card dưới */}
+                                    </CardContent>
+                                </Card>
+                            )}
 
+                            {/* Hiển thị nút "Refund" khi COMPLETED */}
+                            {(order.status === "COMPLETED" || order.status === "PARTIALLY_REFUNDED") && (
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className="text-lg">Actions</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
                                         <Dialog open={isRefundModalOpen} onOpenChange={setIsRefundModalOpen}>
                                             <DialogTrigger asChild>
                                                 <Button
@@ -344,17 +443,84 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                                     disabled={isProcessing}
                                                 >
                                                     <XCircle className="h-4 w-4 mr-2" />
-                                                    Cancel / Refund Order
+                                                    Refund Order
                                                 </Button>
                                             </DialogTrigger>
-                                            <DialogContent className="sm:max-w-[425px]">
+
+                                            {/* DIALOG REFUND */}
+                                            <DialogContent className="sm:max-w-md">
                                                 <DialogHeader>
-                                                    <DialogTitle>Cancel / Refund Order</DialogTitle>
+                                                    <DialogTitle>Refund Order</DialogTitle>
                                                     <DialogDescription>
-                                                        Are you sure you want to cancel this order? This action will refund {order.totalPoints} points to {order.memberName}.
+                                                        Select a refund type for {order.memberName}'s order.
                                                     </DialogDescription>
                                                 </DialogHeader>
-                                                {/* (Bạn có thể thêm ô nhập lý do ở đây nếu cần) */}
+
+                                                <RadioGroup value={refundType} onValueChange={(v) => setRefundType(v as any)} className="py-4 space-y-3">
+                                                    <div>
+                                                        <RadioGroupItem value="full" id="r-full" className="peer sr-only" />
+                                                        <Label
+                                                            htmlFor="r-full"
+                                                            className="flex flex-col items-start gap-1 rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
+                                                        >
+                                                            <span className="font-semibold">Full Refund</span>
+                                                            <span className="text-sm text-muted-foreground">
+                                                                Cancel the entire order and refund all {order.totalPoints.toLocaleString('en-US')} points for {order.quantity.toLocaleString('en-US')} item(s).
+                                                            </span>
+                                                        </Label>
+                                                    </div>
+                                                    <div>
+                                                        <RadioGroupItem value="partial" id="r-partial" className="peer sr-only" disabled={order.quantity <= 1} />
+                                                        <Label
+                                                            htmlFor="r-partial"
+                                                            className={`flex flex-col items-start gap-1 rounded-md border-2 border-muted bg-popover p-4 ${order.quantity > 1 ? 'cursor-pointer hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary' : 'cursor-not-allowed opacity-50'}`}
+                                                        >
+                                                            <span className="font-semibold">Partial Refund</span>
+                                                            <span className="text-sm text-muted-foreground">
+                                                                Refund a specific quantity. Only available for orders with more than 1 item.
+                                                            </span>
+                                                        </Label>
+                                                    </div>
+                                                </RadioGroup>
+
+                                                {/* Hiển thị ô nhập số lượng khi chọn Partial */}
+                                                {refundType === "partial" && (() => {
+                                                    // Tính toán an toàn bên trong JSX
+                                                    // 'order' chắc chắn tồn tại vì Dialog chỉ mở khi order có
+                                                    const pointsPerItem = order!.totalPoints / order!.quantity;
+                                                    const partialPoints = (pointsPerItem * (parseInt(partialQuantity) || 0)).toFixed(0);
+
+                                                    return (
+                                                        <div className="space-y-2 pt-2">
+                                                            <Label htmlFor="partialQuantity">Quantity to Refund</Label>
+                                                            <Input
+                                                                id="partialQuantity"
+                                                                type="number"
+                                                                value={partialQuantity}
+                                                                onChange={(e) => setPartialQuantity(e.target.value)}
+                                                                min={1}
+                                                                max={order!.quantity - 1} // '!' an toàn ở đây
+                                                            />
+                                                            <p className="text-sm text-muted-foreground">
+                                                                This will refund approx. <span className="font-bold text-blue-600">{partialPoints} points</span>.
+                                                            </p>
+                                                        </div>
+                                                    );
+                                                })()}
+
+                                                {/* Ô nhập Reason */}
+                                                <div className="space-y-2 pt-2">
+                                                    <Label htmlFor="refundReason">
+                                                        Reason for Refund <span className="text-red-500">*</span>
+                                                    </Label>
+                                                    <Textarea
+                                                        id="refundReason"
+                                                        value={refundReason}
+                                                        onChange={(e) => setRefundReason(e.target.value)}
+                                                        placeholder="e.g., Product out of stock, member request..."
+                                                    />
+                                                </div>
+
                                                 <DialogFooter>
                                                     <Button
                                                         variant="outline"
@@ -366,25 +532,14 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                                     <Button
                                                         type="submit"
                                                         variant="destructive"
-                                                        onClick={handleCancel}
-                                                        disabled={isProcessing}
+                                                        onClick={handleRefund}
+                                                        disabled={isProcessing || !refundReason.trim()}
                                                     >
                                                         {isProcessing ? "Refunding..." : "Confirm Refund"}
                                                     </Button>
                                                 </DialogFooter>
                                             </DialogContent>
                                         </Dialog>
-                                    </CardContent>
-                                </Card>
-                            )}
-
-                            {/* Hiển thị khi đã hoàn thành */}
-                            {order.status === "COMPLETED" && (
-                                <Card>
-                                    <CardContent className="p-4">
-                                        <p className="text-sm text-green-700 font-medium text-center">
-                                            This order was successfully delivered on {new Date(order.completedAt).toLocaleString()}.
-                                        </p>
                                     </CardContent>
                                 </Card>
                             )}

@@ -52,8 +52,8 @@ export default function ClubLeaderOrdersPage() {
       setClubId(id)
     } else {
       toast({
-        title: "Lỗi",
-        description: "Không tìm thấy Club ID của bạn.",
+        title: "Error",
+        description: "Can't find your Club ID?.",
         variant: "destructive",
       })
     }
@@ -570,11 +570,11 @@ function RenderOrderList({
                   <div className="flex items-center gap-6 text-sm text-muted-foreground">
                     <div className="flex items-center gap-1.5" title="Quantity">
                       <ShoppingCart className="h-4 w-4" />
-                      <span>Quantity: {order.quantity}</span>
+                      <span>Quantity: {order.quantity.toLocaleString('en-US')}</span>
                     </div>
                     <div className="flex items-center gap-1.5" title="Total Points">
                       <WalletCards className="h-4 w-4" />
-                      <span>{order.totalPoints} points</span>
+                      <span>{order.totalPoints.toLocaleString('en-US')} points</span>
                     </div>
                   </div>
 

@@ -143,11 +143,11 @@ export async function completeRedeemOrder(
  * (PUT /api/redeem/order/{orderId}/refund)
  */
 export async function refundRedeemOrder(
-  payload: RefundPayload // 👈 THAY ĐỔI: Nhận payload
+  payload: RefundPayload 
 ): Promise<RedeemOrder> {
   const res = await axiosInstance.put<ApiResponse<RedeemOrder>>(
-    `/api/redeem/order/refund`, // 👈 THAY ĐỔI: Xóa {orderId}
-    payload // 👈 THAY ĐỔI: Gửi body
+    `/api/redeem/order/refund`, 
+    payload 
   );
   return res.data.data;
 }
@@ -157,11 +157,11 @@ export async function refundRedeemOrder(
  * (PUT /api/redeem/order/{orderId}/refund-partial)
  */
 export async function refundPartialRedeemOrder(
-  payload: RefundPayload // 👈 THAY ĐỔI: Nhận payload
+  payload: RefundPayload
 ): Promise<RedeemOrder> {
   const res = await axiosInstance.put<ApiResponse<RedeemOrder>>(
-    `/api/redeem/order/refund-partial`, // 👈 THAY ĐỔI: Xóa {orderId}
-    payload // 👈 THAY ĐỔI: Gửi body
+    `/api/redeem/order/refund-partial`, 
+    payload 
   );
   return res.data.data;
 }

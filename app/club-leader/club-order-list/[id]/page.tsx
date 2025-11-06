@@ -298,14 +298,14 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
                                             <label className="text-sm font-medium text-muted-foreground">Quantity</label>
                                             <div className="flex items-center gap-2 mt-1">
                                                 <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-                                                <span className="font-semibold">{order.quantity}</span>
+                                                <span className="font-semibold">{order.quantity.toLocaleString('en-US')}</span>
                                             </div>
                                         </div>
                                         <div>
                                             <label className="text-sm font-medium text-muted-foreground">Total Points</label>
                                             <div className="flex items-center gap-2 mt-1">
                                                 <WalletCards className="h-4 w-4 text-muted-foreground" />
-                                                <span className="font-semibold text-blue-600">{order.totalPoints} points</span>
+                                                <span className="font-semibold text-blue-600">{order.totalPoints.toLocaleString('en-US')} points</span>
                                             </div>
                                         </div>
                                     </div>
@@ -465,7 +465,7 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
                                                         >
                                                             <span className="font-semibold">Full Refund</span>
                                                             <span className="text-sm text-muted-foreground">
-                                                                Cancel the entire order and refund all {order.totalPoints} points for {order.quantity} item(s).
+                                                                Cancel the entire order and refund all {order.totalPoints.toLocaleString('en-US')} points for {order.quantity.toLocaleString('en-US')} item(s).
                                                             </span>
                                                         </Label>
                                                     </div>

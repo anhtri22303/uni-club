@@ -395,10 +395,10 @@ export default function MemberGiftPage() {
 
 												<span className="font-semibold text-blue-600 text-base flex items-center">
 													<WalletCards className="h-4 w-4 text-muted-foreground mr-2" />
-													{p.pointCost} points
+													{p.pointCost.toLocaleString('en-US')} points
 												</span>
 												<span className={`text-sm ${isOutOfStock ? 'text-red-500 font-medium' : 'text-muted-foreground'}`}>
-													Stock: {p.stockQuantity}
+													Stock: {p.stockQuantity.toLocaleString('en-US')}
 												</span>
 											</div>
 
