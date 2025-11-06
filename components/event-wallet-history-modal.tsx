@@ -63,19 +63,19 @@ export function EventWalletHistoryModal({ open, onOpenChange, eventId }: EventWa
 
   const getTransactionIcon = (amount: number) => {
     if (amount > 0) {
-      return <ArrowDownCircle className="h-5 w-5 text-green-600" />
+      return <ArrowDownCircle className="h-5 w-5 text-green-600 dark:text-green-500" />
     }
-    return <ArrowUpCircle className="h-5 w-5 text-red-600" />
+    return <ArrowUpCircle className="h-5 w-5 text-red-600 dark:text-red-500" />
   }
 
   const getTransactionBadge = (type: string) => {
     switch (type.toUpperCase()) {
       case "TRANSFER":
-        return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300">Transfer</Badge>
+        return <Badge variant="outline" className="bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border-blue-300 dark:border-blue-700">Transfer</Badge>
       case "DEPOSIT":
-        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">Deposit</Badge>
+        return <Badge variant="outline" className="bg-green-50 dark:bg-green-950/50 text-green-700 dark:text-green-400 border-green-300 dark:border-green-700">Deposit</Badge>
       case "WITHDRAWAL":
-        return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300">Withdrawal</Badge>
+        return <Badge variant="outline" className="bg-red-50 dark:bg-red-950/50 text-red-700 dark:text-red-400 border-red-300 dark:border-red-700">Withdrawal</Badge>
       default:
         return <Badge variant="outline">{type}</Badge>
     }
@@ -98,33 +98,33 @@ export function EventWalletHistoryModal({ open, onOpenChange, eventId }: EventWa
         ) : wallet ? (
           <div className="space-y-6">
             {/* Wallet Summary */}
-            <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50">
+            <Card className="border-2 border-blue-200 dark:border-blue-800 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/50 dark:to-indigo-950/50">
               <CardContent className="pt-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Event Name</label>
-                    <p className="text-lg font-semibold text-blue-900">{wallet.eventName}</p>
+                    <p className="text-lg font-semibold text-blue-900 dark:text-blue-300">{wallet.eventName}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Host Club</label>
-                    <p className="text-lg font-semibold text-blue-900">{wallet.hostClubName}</p>
+                    <p className="text-lg font-semibold text-blue-900 dark:text-blue-300">{wallet.hostClubName}</p>
                   </div>
                 </div>
 
                 <Separator className="my-4" />
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="p-3 bg-white rounded-lg border border-blue-200">
+                  <div className="p-3 bg-white dark:bg-gray-800 rounded-lg border border-blue-200 dark:border-blue-700">
                     <label className="text-sm font-medium text-muted-foreground">Budget Points</label>
-                    <p className="text-2xl font-bold text-blue-900 mt-1">{wallet.budgetPoints}</p>
+                    <p className="text-2xl font-bold text-blue-900 dark:text-blue-300 mt-1">{wallet.budgetPoints}</p>
                   </div>
-                  <div className="p-3 bg-white rounded-lg border border-blue-200">
+                  <div className="p-3 bg-white dark:bg-gray-800 rounded-lg border border-blue-200 dark:border-blue-700">
                     <label className="text-sm font-medium text-muted-foreground">Balance Points</label>
-                    <p className="text-2xl font-bold text-green-700 mt-1">{wallet.balancePoints}</p>
+                    <p className="text-2xl font-bold text-green-700 dark:text-green-400 mt-1">{wallet.balancePoints}</p>
                   </div>
-                  <div className="p-3 bg-white rounded-lg border border-blue-200">
+                  <div className="p-3 bg-white dark:bg-gray-800 rounded-lg border border-blue-200 dark:border-blue-700">
                     <label className="text-sm font-medium text-muted-foreground">Owner Type</label>
-                    <p className="text-lg font-semibold text-blue-900 mt-1">{wallet.ownerType}</p>
+                    <p className="text-lg font-semibold text-blue-900 dark:text-blue-300 mt-1">{wallet.ownerType}</p>
                   </div>
                 </div>
 
@@ -162,8 +162,8 @@ export function EventWalletHistoryModal({ open, onOpenChange, eventId }: EventWa
                         key={transaction.id} 
                         className={`transition-all hover:shadow-md ${
                           transaction.amount > 0 
-                            ? 'border-l-4 border-l-green-500 bg-green-50/30' 
-                            : 'border-l-4 border-l-red-500 bg-red-50/30'
+                            ? 'border-l-4 border-l-green-500 bg-green-50/30 dark:bg-green-950/20' 
+                            : 'border-l-4 border-l-red-500 bg-red-50/30 dark:bg-red-950/20'
                         }`}
                       >
                         <CardContent className="p-4">
@@ -179,7 +179,7 @@ export function EventWalletHistoryModal({ open, onOpenChange, eventId }: EventWa
                                     #{transaction.id}
                                   </span>
                                 </div>
-                                <p className="text-sm font-medium text-gray-900 break-words">
+                                <p className="text-sm font-medium text-gray-900 dark:text-gray-100 break-words">
                                   {transaction.description}
                                 </p>
                                 <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
@@ -190,7 +190,7 @@ export function EventWalletHistoryModal({ open, onOpenChange, eventId }: EventWa
                             </div>
                             <div className="text-right flex-shrink-0">
                               <p className={`text-xl font-bold ${
-                                transaction.amount > 0 ? 'text-green-700' : 'text-red-700'
+                                transaction.amount > 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'
                               }`}>
                                 {transaction.amount > 0 ? '+' : ''}{transaction.amount}
                               </p>

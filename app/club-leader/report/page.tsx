@@ -6,6 +6,7 @@ import { ProtectedRoute } from "@/contexts/protected-route"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   FileText,
   Download,
@@ -15,15 +16,31 @@ import {
   Gift,
   Check,
   Save,
+  ClipboardList,
+  Clock,
+  Wallet,
+  ShoppingCart,
+  UserCheck,
+  TrendingUp,
+  ChevronUp,
+  ChevronDown,
+  BarChart3,
+  PieChart as PieChartIcon,
 } from "lucide-react"
 import { getClubIdFromToken, getClubById } from "@/service/clubApi"
 import { getMembersByClubId } from "@/service/membershipApi"
 import { getEventByClubId } from "@/service/eventApi"
 import { getProducts } from "@/service/productApi"
+import { fetchTodayClubAttendance, fetchClubAttendanceHistory } from "@/service/attendanceApi"
+import { getClubWallet, getClubToMemberTransactions } from "@/service/walletApi"
+import { getClubRedeemOrders } from "@/service/redeemApi"
+import { getMemberApplyByClubId } from "@/service/memberApplicationApi"
 import jsPDF from "jspdf"
 import html2canvas from "html2canvas"
 import { toast } from "sonner"
 import { RichTextEditorToolbar } from "@/components/report/RichTextEditorToolbar"
+import { ContextMenu } from "@/components/report/ContextMenu"
+import { ImageResizer } from "@/components/report/ImageResizer"
 import { PageSettings } from "@/components/report/types"
 import { 
   saveReportToSession, 
@@ -33,7 +50,8 @@ import {
   clearReportFromSession,
   hasReportInSession,
   getReportLastModified
-} from "@/lib/reportSessionStorage"
+} from "@/lib/reportLocalStorage"
+import * as HistoryManager from "@/components/report/utils/historyManager"
 
 interface ClubData {
   id: number
@@ -47,11 +65,13 @@ interface ClubData {
 export default function ReportPage() {
   const [clubData, setClubData] = useState<ClubData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isDownloading, setIsDownloading] = useState(false)
+  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false)
   const editorRef = useRef<HTMLDivElement>(null)
   const pagesContainerRef = useRef<HTMLDivElement>(null)
   const [pageCount, setPageCount] = useState(1)
   const [lastAutoSave, setLastAutoSave] = useState<Date | null>(null)
-  const [, setTick] = useState(0) // Force re-render every second to update time display
+  const [, setTick] = useState(0) // Force re-render every 30 seconds to update time display
   const [pageSettings, setPageSettings] = useState<PageSettings>({
     marginTop: 20,
     marginBottom: 20,
@@ -85,11 +105,11 @@ export default function ReportPage() {
     return `${diffInHours} hours ago`
   }
 
-  // Update time display every second
+  // Update time display every 30 seconds
   useEffect(() => {
     const timer = setInterval(() => {
       setTick(prev => prev + 1)
-    }, 1000)
+    }, 30000) // 30 seconds = 30,000 milliseconds
 
     return () => clearInterval(timer)
   }, [])
@@ -109,7 +129,7 @@ export default function ReportPage() {
         if (response.success && response.data) {
           setClubData(response.data)
           
-          // Restore page settings from session storage if available
+          // Restore page settings from local storage if available
           const savedSettings = loadPageSettingsFromSession(clubId)
           if (savedSettings) {
             setPageSettings(savedSettings)
@@ -128,7 +148,7 @@ export default function ReportPage() {
     fetchClubData()
   }, [])
 
-  // Auto-save to session storage every 30 seconds
+  // Auto-save to local storage every 1 minute
   useEffect(() => {
     if (!clubData) return
 
@@ -141,12 +161,95 @@ export default function ReportPage() {
         setLastAutoSave(saveTime)
         console.log(`[Auto-save] Report saved at ${saveTime.toLocaleTimeString()}`)
       }
-    }, 30000) // 30 seconds = 30,000 milliseconds
+    }, 60000) // 1 minute = 60,000 milliseconds
 
     return () => {
       clearInterval(autoSaveInterval)
     }
   }, [clubData, pageSettings])
+
+  // Keyboard shortcuts for undo/redo (Ctrl+Z, Ctrl+Y)
+  useEffect(() => {
+    const handleKeyboardShortcuts = (e: KeyboardEvent) => {
+      console.log('[Keyboard] Key pressed:', e.key, 'Ctrl:', e.ctrlKey, 'Meta:', e.metaKey)
+      
+      // Only handle if Ctrl (or Cmd on Mac) is pressed
+      if (!e.ctrlKey && !e.metaKey) return
+
+      // Ctrl+Z - Undo
+      if (e.key === 'z' || e.key === 'Z') {
+        console.log('[Keyboard] Ctrl+Z detected, preventing default and calling undo()')
+        e.preventDefault() // Prevent browser's native undo
+        e.stopPropagation()
+        
+        if (!editorRef.current) {
+          console.log('[Keyboard] editorRef.current is null!')
+          return
+        }
+        
+        console.log('[Keyboard] Calling HistoryManager.undo()')
+        const result = HistoryManager.undo()
+        console.log('[Keyboard] Undo result:', result)
+        
+        if (result.content) {
+          editorRef.current.innerHTML = result.content
+          console.log('[Undo] Restored previous state')
+          
+          // Re-paginate after undo
+          setTimeout(() => paginateContent(), 100)
+        }
+        
+        // Show notification if at boundary
+        if (result.message) {
+          toast.info(result.message)
+        }
+
+        // Dispatch custom event to update toolbar state
+        window.dispatchEvent(new CustomEvent('history-change'))
+      }
+      
+      // Ctrl+Y - Redo
+      if (e.key === 'y' || e.key === 'Y') {
+        console.log('[Keyboard] Ctrl+Y detected, preventing default and calling redo()')
+        e.preventDefault() // Prevent browser's native redo
+        e.stopPropagation()
+        
+        if (!editorRef.current) {
+          console.log('[Keyboard] editorRef.current is null!')
+          return
+        }
+        
+        console.log('[Keyboard] Calling HistoryManager.redo()')
+        const result = HistoryManager.redo()
+        console.log('[Keyboard] Redo result:', result)
+        
+        if (result.content) {
+          editorRef.current.innerHTML = result.content
+          console.log('[Redo] Restored next state')
+          
+          // Re-paginate after redo
+          setTimeout(() => paginateContent(), 100)
+        }
+        
+        // Show notification if at boundary
+        if (result.message) {
+          toast.info(result.message)
+        }
+
+        // Dispatch custom event to update toolbar state
+        window.dispatchEvent(new CustomEvent('history-change'))
+      }
+    }
+
+    // Attach keyboard listener
+    console.log('[Keyboard] Attaching keyboard event listener')
+    document.addEventListener('keydown', handleKeyboardShortcuts)
+
+    return () => {
+      console.log('[Keyboard] Removing keyboard event listener')
+      document.removeEventListener('keydown', handleKeyboardShortcuts)
+    }
+  }, []) // Empty deps - this handler doesn't need to change
 
   // Helper: Save cursor position
   const saveCursorPosition = () => {
@@ -327,7 +430,7 @@ export default function ReportPage() {
 
     editorRef.current.innerHTML = combinedContent
     
-    // Save to session storage after syncing
+    // Save to local storage after syncing
     if (clubData) {
       saveReportToSession(combinedContent, clubData.id)
       setLastAutoSave(new Date())
@@ -338,6 +441,7 @@ export default function ReportPage() {
   const createPage = (pageNumber: number) => {
     const pageDiv = document.createElement("div")
     pageDiv.className = "a4-page"
+    pageDiv.setAttribute("data-page", String(pageNumber - 1)) // 0-indexed for matching loop
     
     // Check if mobile (screen width < 768px)
     const isMobile = window.innerWidth < 768
@@ -389,6 +493,12 @@ export default function ReportPage() {
       inputTimeout = setTimeout(() => {
         syncPagesToEditor()
         paginateContent()
+        
+        // Save to history after user stops typing
+        if (editorRef.current) {
+          HistoryManager.saveToHistory(editorRef.current.innerHTML)
+          console.log('[History] Saved state after user input')
+        }
       }, 1500) // Wait 1.5 seconds after user stops typing
     })
 
@@ -404,23 +514,44 @@ export default function ReportPage() {
       }
     })
 
-    const pageNumberDiv = document.createElement("div")
-    pageNumberDiv.className = "page-number"
-    pageNumberDiv.contentEditable = "false"
-    pageNumberDiv.style.cssText = `
-      position: absolute;
-      bottom: 15mm;
-      right: 20mm;
-      font-size: 12pt;
-      color: #666;
-      font-family: Times New Roman, serif;
-      user-select: none;
-      pointer-events: none;
-    `
-    pageNumberDiv.textContent = `${pageNumber}`
+    // Add page number if enabled in settings
+    if (pageSettings.showPageNumbers) {
+      const pageNumberDiv = document.createElement("div")
+      pageNumberDiv.className = "page-number"
+      pageNumberDiv.contentEditable = "false"
+      
+      // Position based on settings
+      const position = pageSettings.pageNumberPosition === 'top' ? 'top: 10mm;' : 'bottom: 15mm;'
+      let alignment = ''
+      switch (pageSettings.pageNumberAlignment) {
+        case 'left':
+          alignment = 'left: 20mm;'
+          break
+        case 'center':
+          alignment = 'left: 50%; transform: translateX(-50%);'
+          break
+        case 'right':
+        default:
+          alignment = 'right: 20mm;'
+          break
+      }
+      
+      pageNumberDiv.style.cssText = `
+        position: absolute;
+        ${position}
+        ${alignment}
+        font-size: 12pt;
+        color: #666;
+        font-family: Times New Roman, serif;
+        user-select: none;
+        pointer-events: none;
+      `
+      pageNumberDiv.textContent = `${pageNumber}`
+      
+      pageDiv.appendChild(pageNumberDiv)
+    }
 
     pageDiv.appendChild(contentDiv)
-    pageDiv.appendChild(pageNumberDiv)
 
     return pageDiv
   }
@@ -428,12 +559,15 @@ export default function ReportPage() {
   // Initialize default template
   const initializeDefaultTemplate = (club: ClubData, forceDefault: boolean = false) => {
     if (editorRef.current) {
-      // Check if there's saved content in session storage
+      // Check if there's saved content in local storage
       const savedContent = !forceDefault ? loadReportFromSession(club.id) : null
       
       if (savedContent) {
         // Restore saved content
         editorRef.current.innerHTML = savedContent
+        
+        // Initialize history with restored content
+        HistoryManager.initializeHistory(savedContent)
         
         // Show toast notification about restored content
         const lastModified = getReportLastModified(club.id)
@@ -483,6 +617,9 @@ export default function ReportPage() {
             <p style="color: #888; font-style: italic;">Click the buttons on the right to insert Members, Events, or Gifts data...</p>
           </div>
         `
+        
+        // Initialize history with default template
+        HistoryManager.initializeHistory(editorRef.current.innerHTML)
       }
       
       // Trigger pagination after content is set
@@ -495,7 +632,7 @@ export default function ReportPage() {
     const newSettings = { ...pageSettings, ...settings }
     setPageSettings(newSettings)
     
-    // Save to session storage
+    // Save to local storage
     if (clubData) {
       savePageSettingsToSession(newSettings, clubData.id)
     }
@@ -509,6 +646,12 @@ export default function ReportPage() {
     setTimeout(() => {
       syncPagesToEditor()
       paginateContent()
+      
+      // Save current state to history after toolbar action
+      if (editorRef.current) {
+        HistoryManager.saveToHistory(editorRef.current.innerHTML)
+        console.log('[History] Saved state after toolbar action')
+      }
     }, 100)
   }
 
@@ -518,6 +661,12 @@ export default function ReportPage() {
       if (!clubData) return
       
       const members = await getMembersByClubId(clubData.id)
+      
+      // Calculate metrics
+      const totalMembers = members.length
+      const activeMembers = members.filter((m: any) => m.state === 'ACTIVE').length
+      const leaderCount = members.filter((m: any) => m.clubRole === 'LEADER' || m.clubRole === 'VICE_LEADER').length
+      const staffCount = members.filter((m: any) => m.staff === true).length
       
       let membersHTML = `
         <div style="margin: 20px 0; page-break-inside: avoid;">
@@ -535,15 +684,15 @@ export default function ReportPage() {
             <tbody>
       `
 
-      members.forEach((member, index) => {
+      members.forEach((member: any, index: number) => {
         const bgColor = index % 2 === 0 ? "#ffffff" : "#f9fafb"
         membersHTML += `
           <tr style="background-color: ${bgColor};">
-            <td style="border: 1px solid #d1d5db; padding: 8px;">${index + 1}</td>
-            <td style="border: 1px solid #d1d5db; padding: 8px;">${member.fullName}</td>
-            <td style="border: 1px solid #d1d5db; padding: 8px;">${member.studentCode}</td>
-            <td style="border: 1px solid #d1d5db; padding: 8px;">${member.clubRole}</td>
-            <td style="border: 1px solid #d1d5db; padding: 8px;">${member.state}</td>
+            <td style="border: 1px solid #d1d5db; padding: 8px; white-space: nowrap;">${index + 1}</td>
+            <td style="border: 1px solid #d1d5db; padding: 8px; word-wrap: break-word; max-width: 150px;">${member.fullName}</td>
+            <td style="border: 1px solid #d1d5db; padding: 8px; white-space: nowrap;">${member.studentCode}</td>
+            <td style="border: 1px solid #d1d5db; padding: 8px; white-space: nowrap;">${member.clubRole}</td>
+            <td style="border: 1px solid #d1d5db; padding: 8px; white-space: nowrap;">${member.state}</td>
           </tr>
         `
       })
@@ -551,13 +700,26 @@ export default function ReportPage() {
       membersHTML += `
             </tbody>
           </table>
-          <p style="font-style: italic; color: #666; font-size: 14px;">Total Members: ${members.length}</p>
+          <div style="margin-top: 20px; padding-left: 15px; border-left: 3px solid #000000;">
+            <h3 style="font-size: 16px; font-weight: bold; margin-bottom: 10px; color: #000000;">Membership Metrics</h3>
+            <p style="margin: 5px 0; font-size: 14px;"><strong>Total Members:</strong> ${totalMembers}</p>
+            <p style="margin: 5px 0; font-size: 14px;"><strong>Active Members:</strong> ${activeMembers}</p>
+            <p style="margin: 5px 0; font-size: 14px;"><strong>Leadership Team:</strong> ${leaderCount}</p>
+            <p style="margin: 5px 0; font-size: 14px;"><strong>Staff Members:</strong> ${staffCount}</p>
+          </div>
         </div>
       `
 
       if (editorRef.current) {
         editorRef.current.innerHTML += membersHTML
-        setTimeout(() => paginateContent(), 100)
+        setTimeout(() => {
+          paginateContent()
+          // Save to history after inserting members
+          if (editorRef.current) {
+            HistoryManager.saveToHistory(editorRef.current.innerHTML)
+            console.log('[History] Saved state after inserting members')
+          }
+        }, 100)
       }
 
       toast.success(`${members.length} members inserted`)
@@ -573,6 +735,14 @@ export default function ReportPage() {
       if (!clubData) return
       
       const events = await getEventByClubId(clubData.id)
+      
+      // Calculate metrics
+      const totalEvents = events.length
+      const approvedEvents = events.filter((e: any) => e.status === 'APPROVED').length
+      const ongoingEvents = events.filter((e: any) => e.status === 'ONGOING').length
+      const completedEvents = events.filter((e: any) => e.status === 'COMPLETED').length
+      const publicEvents = events.filter((e: any) => e.type === 'PUBLIC').length
+      const totalBudget = events.reduce((sum: number, e: any) => sum + (e.budgetPoints || 0), 0)
       
       let eventsHTML = `
         <div style="margin: 20px 0; page-break-inside: avoid;">
@@ -591,16 +761,16 @@ export default function ReportPage() {
             <tbody>
       `
 
-      events.forEach((event, index) => {
+      events.forEach((event: any, index: number) => {
         const bgColor = index % 2 === 0 ? "#ffffff" : "#f9fafb"
         eventsHTML += `
           <tr style="background-color: ${bgColor};">
-            <td style="border: 1px solid #d1d5db; padding: 8px;">${index + 1}</td>
-            <td style="border: 1px solid #d1d5db; padding: 8px;">${event.name}</td>
-            <td style="border: 1px solid #d1d5db; padding: 8px;">${event.date}</td>
-            <td style="border: 1px solid #d1d5db; padding: 8px;">${event.type}</td>
+            <td style="border: 1px solid #d1d5db; padding: 8px; white-space: nowrap;">${index + 1}</td>
+            <td style="border: 1px solid #d1d5db; padding: 8px; word-wrap: break-word; max-width: 150px;">${event.name}</td>
+            <td style="border: 1px solid #d1d5db; padding: 8px; white-space: nowrap;">${event.date}</td>
+            <td style="border: 1px solid #d1d5db; padding: 8px; white-space: nowrap;">${event.type}</td>
             <td style="border: 1px solid #d1d5db; padding: 8px;">${event.status}</td>
-            <td style="border: 1px solid #d1d5db; padding: 8px;">${event.locationName}</td>
+            <td style="border: 1px solid #d1d5db; padding: 8px; word-wrap: break-word; max-width: 120px;">${event.locationName}</td>
           </tr>
         `
       })
@@ -608,7 +778,15 @@ export default function ReportPage() {
       eventsHTML += `
             </tbody>
           </table>
-          <p style="font-style: italic; color: #666; font-size: 14px;">Total Events: ${events.length}</p>
+          <div style="margin-top: 20px; padding-left: 15px; border-left: 3px solid #000000;">
+            <h3 style="font-size: 16px; font-weight: bold; margin-bottom: 10px; color: #000000;">Event Metrics</h3>
+            <p style="margin: 5px 0; font-size: 14px;"><strong>Total Events:</strong> ${totalEvents}</p>
+            <p style="margin: 5px 0; font-size: 14px;"><strong>Approved Events:</strong> ${approvedEvents}</p>
+            <p style="margin: 5px 0; font-size: 14px;"><strong>Ongoing Events:</strong> ${ongoingEvents}</p>
+            <p style="margin: 5px 0; font-size: 14px;"><strong>Completed Events:</strong> ${completedEvents}</p>
+            <p style="margin: 5px 0; font-size: 14px;"><strong>Public Events:</strong> ${publicEvents}</p>
+            <p style="margin: 5px 0; font-size: 14px;"><strong>Total Budget:</strong> ${totalBudget.toLocaleString()} points</p>
+          </div>
         </div>
       `
 
@@ -631,6 +809,12 @@ export default function ReportPage() {
       
       const products = await getProducts(clubData.id, { includeInactive: true })
       
+      // Calculate metrics
+      const totalProducts = products.length
+      const activeProducts = products.filter(p => p.status === 'ACTIVE').length
+      const totalStock = products.reduce((sum, p) => sum + p.stockQuantity, 0)
+      const avgPrice = products.length > 0 ? (products.reduce((sum, p) => sum + p.pointCost, 0) / products.length).toFixed(2) : 0
+      
       let giftsHTML = `
         <div style="margin: 20px 0; page-break-inside: avoid;">
           <h2 style="font-size: 20px; font-weight: bold; margin-bottom: 15px; color: #1a1a1a;">Club Gifts/Products</h2>
@@ -652,12 +836,12 @@ export default function ReportPage() {
         const bgColor = index % 2 === 0 ? "#ffffff" : "#f9fafb"
         giftsHTML += `
           <tr style="background-color: ${bgColor};">
-            <td style="border: 1px solid #d1d5db; padding: 8px;">${index + 1}</td>
-            <td style="border: 1px solid #d1d5db; padding: 8px;">${product.name}</td>
-            <td style="border: 1px solid #d1d5db; padding: 8px;">${product.type}</td>
-            <td style="border: 1px solid #d1d5db; padding: 8px;">${product.pointCost}</td>
-            <td style="border: 1px solid #d1d5db; padding: 8px;">${product.stockQuantity}</td>
-            <td style="border: 1px solid #d1d5db; padding: 8px;">${product.status}</td>
+            <td style="border: 1px solid #d1d5db; padding: 8px; white-space: nowrap;">${index + 1}</td>
+            <td style="border: 1px solid #d1d5db; padding: 8px; word-wrap: break-word; max-width: 150px;">${product.name}</td>
+            <td style="border: 1px solid #d1d5db; padding: 8px; white-space: nowrap;">${product.type}</td>
+            <td style="border: 1px solid #d1d5db; padding: 8px; white-space: nowrap;">${product.pointCost}</td>
+            <td style="border: 1px solid #d1d5db; padding: 8px; white-space: nowrap;">${product.stockQuantity}</td>
+            <td style="border: 1px solid #d1d5db; padding: 8px; white-space: nowrap;">${product.status}</td>
           </tr>
         `
       })
@@ -665,7 +849,13 @@ export default function ReportPage() {
       giftsHTML += `
             </tbody>
           </table>
-          <p style="font-style: italic; color: #666; font-size: 14px;">Total Products: ${products.length}</p>
+          <div style="margin-top: 20px; padding-left: 15px; border-left: 3px solid #000000;">
+            <h3 style="font-size: 16px; font-weight: bold; margin-bottom: 10px; color: #000000;">Product Metrics</h3>
+            <p style="margin: 5px 0; font-size: 14px;"><strong>Total Products:</strong> ${totalProducts}</p>
+            <p style="margin: 5px 0; font-size: 14px;"><strong>Active Products:</strong> ${activeProducts}</p>
+            <p style="margin: 5px 0; font-size: 14px;"><strong>Total Stock:</strong> ${totalStock} units</p>
+            <p style="margin: 5px 0; font-size: 14px;"><strong>Average Price:</strong> ${avgPrice} points</p>
+          </div>
         </div>
       `
 
@@ -678,6 +868,582 @@ export default function ReportPage() {
     } catch (error) {
       console.error("Error inserting gifts:", error)
       toast.error("Failed to insert gifts data")
+    }
+  }
+
+  // Insert Applications data
+  const insertApplicationsData = async () => {
+    try {
+      if (!clubData) return
+      
+      const applications = await getMemberApplyByClubId(clubData.id)
+      
+      // Calculate metrics
+      const totalApplications = applications.length
+      const pendingCount = applications.filter((a: any) => a.status === 'PENDING').length
+      const approvedCount = applications.filter((a: any) => a.status === 'APPROVED').length
+      const rejectedCount = applications.filter((a: any) => a.status === 'REJECTED').length
+      const approvalRate = totalApplications > 0 ? ((approvedCount / totalApplications) * 100).toFixed(1) : 0
+      
+      let applicationsHTML = `
+        <div style="margin: 20px 0; page-break-inside: avoid;">
+          <h2 style="font-size: 20px; font-weight: bold; margin-bottom: 15px; color: #1a1a1a;">Membership Applications</h2>
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+            <thead>
+              <tr style="background-color: #f3f4f6;">
+                <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left; font-weight: 600;">No.</th>
+                <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left; font-weight: 600;">Applicant Name</th>
+                <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left; font-weight: 600;">Student Code</th>
+                <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left; font-weight: 600;">Status</th>
+                <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left; font-weight: 600;">Applied Date</th>
+              </tr>
+            </thead>
+            <tbody>
+      `
+
+      applications.forEach((app: any, index: number) => {
+        const bgColor = index % 2 === 0 ? "#ffffff" : "#f9fafb"
+        applicationsHTML += `
+          <tr style="background-color: ${bgColor};">
+            <td style="border: 1px solid #d1d5db; padding: 8px;">${index + 1}</td>
+            <td style="border: 1px solid #d1d5db; padding: 8px;">${app.applicantName}</td>
+            <td style="border: 1px solid #d1d5db; padding: 8px;">${app.studentCode || 'N/A'}</td>
+            <td style="border: 1px solid #d1d5db; padding: 8px;">${app.status}</td>
+            <td style="border: 1px solid #d1d5db; padding: 8px;">${new Date(app.createdAt).toLocaleDateString()}</td>
+          </tr>
+        `
+      })
+
+      applicationsHTML += `
+            </tbody>
+          </table>
+          <div style="margin-top: 20px; padding-left: 15px; border-left: 3px solid #000000;">
+            <h3 style="font-size: 16px; font-weight: bold; margin-bottom: 10px; color: #000000;">Application Metrics</h3>
+            <p style="margin: 5px 0; font-size: 14px;"><strong>Total Applications:</strong> ${totalApplications}</p>
+            <p style="margin: 5px 0; font-size: 14px;"><strong>Pending:</strong> ${pendingCount}</p>
+            <p style="margin: 5px 0; font-size: 14px;"><strong>Approved:</strong> ${approvedCount}</p>
+            <p style="margin: 5px 0; font-size: 14px;"><strong>Rejected:</strong> ${rejectedCount}</p>
+            <p style="margin: 5px 0; font-size: 14px;"><strong>Approval Rate:</strong> ${approvalRate}%</p>
+          </div>
+        </div>
+      `
+
+      if (editorRef.current) {
+        editorRef.current.innerHTML += applicationsHTML
+        setTimeout(() => paginateContent(), 100)
+      }
+
+      toast.success(`${applications.length} applications inserted`)
+    } catch (error) {
+      console.error("Error inserting applications:", error)
+      toast.error("Failed to insert applications data")
+    }
+  }
+
+  // Insert Orders data
+  const insertOrdersData = async () => {
+    try {
+      if (!clubData) return
+      
+      const orders = await getClubRedeemOrders(clubData.id)
+      
+      // Calculate metrics
+      const totalOrders = orders.length
+      const completedOrders = orders.filter((o: any) => o.status === 'COMPLETED').length
+      const pendingOrders = orders.filter((o: any) => o.status === 'PENDING').length
+      const totalPointsRedeemed = orders.reduce((sum: number, o: any) => sum + o.totalPoints, 0)
+      const avgOrderValue = totalOrders > 0 ? (totalPointsRedeemed / totalOrders).toFixed(2) : 0
+      
+      let ordersHTML = `
+        <div style="margin: 20px 0; page-break-inside: avoid;">
+          <h2 style="font-size: 20px; font-weight: bold; margin-bottom: 15px; color: #1a1a1a;">Redeem Orders</h2>
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+            <thead>
+              <tr style="background-color: #f3f4f6;">
+                <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left; font-weight: 600;">Order Code</th>
+                <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left; font-weight: 600;">Product</th>
+                <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left; font-weight: 600;">Member</th>
+                <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left; font-weight: 600;">Quantity</th>
+                <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left; font-weight: 600;">Total Points</th>
+                <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left; font-weight: 600;">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+      `
+
+      orders.forEach((order: any, index: number) => {
+        const bgColor = index % 2 === 0 ? "#ffffff" : "#f9fafb"
+        ordersHTML += `
+          <tr style="background-color: ${bgColor};">
+            <td style="border: 1px solid #d1d5db; padding: 8px;">${order.orderCode}</td>
+            <td style="border: 1px solid #d1d5db; padding: 8px;">${order.productName}</td>
+            <td style="border: 1px solid #d1d5db; padding: 8px;">${order.memberName}</td>
+            <td style="border: 1px solid #d1d5db; padding: 8px;">${order.quantity}</td>
+            <td style="border: 1px solid #d1d5db; padding: 8px;">${order.totalPoints}</td>
+            <td style="border: 1px solid #d1d5db; padding: 8px;">${order.status}</td>
+          </tr>
+        `
+      })
+
+      ordersHTML += `
+            </tbody>
+          </table>
+          <div style="margin-top: 20px; padding-left: 15px; border-left: 3px solid #000000;">
+            <h3 style="font-size: 16px; font-weight: bold; margin-bottom: 10px; color: #000000;">Order Metrics</h3>
+            <p style="margin: 5px 0; font-size: 14px;"><strong>Total Orders:</strong> ${totalOrders}</p>
+            <p style="margin: 5px 0; font-size: 14px;"><strong>Completed:</strong> ${completedOrders}</p>
+            <p style="margin: 5px 0; font-size: 14px;"><strong>Pending:</strong> ${pendingOrders}</p>
+            <p style="margin: 5px 0; font-size: 14px;"><strong>Total Points Redeemed:</strong> ${totalPointsRedeemed.toLocaleString()}</p>
+            <p style="margin: 5px 0; font-size: 14px;"><strong>Average Order Value:</strong> ${avgOrderValue} points</p>
+          </div>
+        </div>
+      `
+
+      if (editorRef.current) {
+        editorRef.current.innerHTML += ordersHTML
+        setTimeout(() => paginateContent(), 100)
+      }
+
+      toast.success(`${orders.length} orders inserted`)
+    } catch (error) {
+      console.error("Error inserting orders:", error)
+      toast.error("Failed to insert orders data")
+    }
+  }
+
+  // Insert Wallet data
+  const insertWalletData = async () => {
+    try {
+      if (!clubData) return
+      
+      const wallet = await getClubWallet(clubData.id)
+      const transactions = await getClubToMemberTransactions()
+      
+      // Calculate metrics from transactions
+      const totalTransactions = transactions.length
+      const totalPointsGiven = transactions.reduce((sum: number, t: any) => sum + t.amount, 0)
+      const avgTransaction = totalTransactions > 0 ? (totalPointsGiven / totalTransactions).toFixed(2) : 0
+      
+      let walletHTML = `
+        <div style="margin: 20px 0; page-break-inside: avoid;">
+          <h2 style="font-size: 20px; font-weight: bold; margin-bottom: 15px; color: #1a1a1a;">Club Wallet & Transactions</h2>
+          
+          <div style="margin-bottom: 20px; padding-left: 15px; border-left: 3px solid #000000;">
+            <h3 style="font-size: 18px; font-weight: bold; margin-bottom: 10px; color: #000000;">Wallet Balance</h3>
+            <p style="font-size: 32px; font-weight: bold; color: #000000; margin: 10px 0;">${wallet.balancePoints.toLocaleString()} points</p>
+            <p style="margin: 5px 0; font-size: 14px;"><strong>Wallet ID:</strong> ${wallet.walletId}</p>
+          </div>
+
+          <h3 style="font-size: 18px; font-weight: 600; margin: 20px 0 10px 0;">Recent Transactions</h3>
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+            <thead>
+              <tr style="background-color: #f3f4f6;">
+                <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left; font-weight: 600;">Transaction ID</th>
+                <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left; font-weight: 600;">Type</th>
+                <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left; font-weight: 600;">Amount</th>
+                <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left; font-weight: 600;">Receiver</th>
+                <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left; font-weight: 600;">Date</th>
+              </tr>
+            </thead>
+            <tbody>
+      `
+
+      transactions.slice(0, 10).forEach((txn: any, index: number) => {
+        const bgColor = index % 2 === 0 ? "#ffffff" : "#f9fafb"
+        walletHTML += `
+          <tr style="background-color: ${bgColor};">
+            <td style="border: 1px solid #d1d5db; padding: 8px;">#${txn.id}</td>
+            <td style="border: 1px solid #d1d5db; padding: 8px;">${txn.type}</td>
+            <td style="border: 1px solid #d1d5db; padding: 8px;">+${txn.amount}</td>
+            <td style="border: 1px solid #d1d5db; padding: 8px;">${txn.receiverName}</td>
+            <td style="border: 1px solid #d1d5db; padding: 8px;">${new Date(txn.createdAt).toLocaleDateString()}</td>
+          </tr>
+        `
+      })
+
+      walletHTML += `
+            </tbody>
+          </table>
+          <div style="margin-top: 20px; padding-left: 15px; border-left: 3px solid #000000;">
+            <h3 style="font-size: 16px; font-weight: bold; margin-bottom: 10px; color: #000000;">Transaction Metrics</h3>
+            <p style="margin: 5px 0; font-size: 14px;"><strong>Total Transactions:</strong> ${totalTransactions}</p>
+            <p style="margin: 5px 0; font-size: 14px;"><strong>Total Points Distributed:</strong> ${totalPointsGiven.toLocaleString()}</p>
+            <p style="margin: 5px 0; font-size: 14px;"><strong>Average Transaction:</strong> ${avgTransaction} points</p>
+            <p style="margin: 5px 0; font-size: 14px;"><strong>Current Balance:</strong> ${wallet.balancePoints.toLocaleString()} points</p>
+          </div>
+        </div>
+      `
+
+      if (editorRef.current) {
+        editorRef.current.innerHTML += walletHTML
+        setTimeout(() => paginateContent(), 100)
+      }
+
+      toast.success("Wallet data inserted")
+    } catch (error) {
+      console.error("Error inserting wallet data:", error)
+      toast.error("Failed to insert wallet data")
+    }
+  }
+
+  // ========== CHART INSERTION FUNCTIONS ==========
+  
+  // Helper function to generate SVG pie chart
+  const generatePieChartSVG = (data: Array<{name: string, value: number, color: string}>, title: string) => {
+    const total = data.reduce((sum, item) => sum + item.value, 0)
+    if (total === 0) return `<p style="text-align: center; color: #888;">No data available</p>`
+    
+    const cx = 120
+    const cy = 120
+    const radius = 90
+    let currentAngle = -90 // Start from top
+    
+    const slices = data.map(item => {
+      const percentage = item.value / total
+      const angle = percentage * 360
+      const startAngle = currentAngle * (Math.PI / 180)
+      const endAngle = (currentAngle + angle) * (Math.PI / 180)
+      
+      const x1 = cx + radius * Math.cos(startAngle)
+      const y1 = cy + radius * Math.sin(startAngle)
+      const x2 = cx + radius * Math.cos(endAngle)
+      const y2 = cy + radius * Math.sin(endAngle)
+      
+      const largeArcFlag = angle > 180 ? 1 : 0
+      
+      const path = `M ${cx} ${cy} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2} Z`
+      
+      currentAngle += angle
+      
+      return { path, color: item.color, name: item.name, value: item.value, percentage: (percentage * 100).toFixed(1) }
+    })
+    
+    const legend = data.map(item => 
+      `<div style="display: flex; align-items: center; margin: 4px 0;">
+        <div style="width: 14px; height: 14px; background: ${item.color}; margin-right: 8px; border-radius: 2px;"></div>
+        <span style="font-size: 13px; color: #374151;">${item.name}: <strong>${item.value}</strong> (${((item.value/total)*100).toFixed(1)}%)</span>
+      </div>`
+    ).join('')
+    
+    return `
+      <div style="display: flex; align-items: center; gap: 25px; margin: 12px 0;">
+        <svg width="240" height="240" viewBox="0 0 240 240" style="flex-shrink: 0;">
+          ${slices.map(slice => `<path d="${slice.path}" fill="${slice.color}" stroke="white" stroke-width="2"/>`).join('')}
+        </svg>
+        <div style="flex: 1;">
+          ${legend}
+        </div>
+      </div>
+    `
+  }
+  
+  // Helper function to generate SVG bar chart
+  const generateBarChartSVG = (data: Array<{name: string, value: number, color: string}>, title: string) => {
+    if (data.length === 0) return `<p style="text-align: center; color: #888;">No data available</p>`
+    
+    const maxValue = Math.max(...data.map(d => d.value))
+    const barWidth = 70
+    const barSpacing = 100
+    const chartHeight = 200
+    const chartWidth = Math.max(data.length * barSpacing + 60, 300)
+    
+    const bars = data.map((item, index) => {
+      const barHeight = maxValue > 0 ? (item.value / maxValue) * (chartHeight - 70) : 0
+      const x = 40 + index * barSpacing
+      const y = chartHeight - barHeight - 35
+      
+      return `
+        <rect x="${x}" y="${y}" width="${barWidth}" height="${barHeight}" fill="${item.color}" rx="4"/>
+        <text x="${x + barWidth/2}" y="${chartHeight - 15}" text-anchor="middle" font-size="11" fill="#6b7280" transform="rotate(-30 ${x + barWidth/2} ${chartHeight - 15})">${item.name}</text>
+        <text x="${x + barWidth/2}" y="${y - 8}" text-anchor="middle" font-size="15" font-weight="bold" fill="#1f2937">${item.value.toLocaleString()}</text>
+      `
+    })
+    
+    return `
+      <div style="margin: 10px 0;">
+        <svg width="${chartWidth}" height="${chartHeight}" viewBox="0 0 ${chartWidth} ${chartHeight}" style="display: block; max-width: 100%;">
+          <line x1="30" y1="${chartHeight - 35}" x2="${chartWidth - 20}" y2="${chartHeight - 35}" stroke="#d1d5db" stroke-width="1.5"/>
+          ${bars.join('')}
+        </svg>
+      </div>
+    `
+  }
+
+  // Insert Members Chart
+  const insertMembersChart = async () => {
+    try {
+      if (!clubData) return
+      
+      const members = await getMembersByClubId(clubData.id)
+      
+      // Count by role
+      const leaderCount = members.filter((m: any) => m.clubRole === 'LEADER').length
+      const viceLeaderCount = members.filter((m: any) => m.clubRole === 'VICE_LEADER').length
+      const regularMembers = members.filter((m: any) => m.clubRole === 'MEMBER').length
+      const staffMembers = members.filter((m: any) => m.staff === true).length
+      
+      const chartData = [
+        { name: "Leaders", value: leaderCount + viceLeaderCount, color: "#8b5cf6" },
+        { name: "Members", value: regularMembers, color: "#22c55e" },
+        { name: "Staff", value: staffMembers, color: "#3b82f6" },
+      ].filter(item => item.value > 0)
+      
+      const chartHTML = `
+        <div style="margin: 25px 0; page-break-inside: avoid;">
+          <h2 style="font-size: 18px; font-weight: bold; margin-bottom: 10px; color: #111827;">Member Distribution by Role</h2>
+          ${generatePieChartSVG(chartData, "Member Distribution")}
+          <div style="margin-top: 12px; padding: 12px; background: #f9fafb; border-radius: 6px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Total Members:</strong> ${members.length}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Leadership:</strong> ${leaderCount + viceLeaderCount}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Regular:</strong> ${regularMembers}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Staff:</strong> ${staffMembers}</p>
+            </div>
+          </div>
+        </div>
+      `
+      
+      if (editorRef.current) {
+        editorRef.current.innerHTML += chartHTML
+        setTimeout(() => paginateContent(), 100)
+      }
+      
+      toast.success("Members chart inserted")
+    } catch (error) {
+      console.error("Error inserting members chart:", error)
+      toast.error("Failed to insert members chart")
+    }
+  }
+
+  // Insert Events Chart
+  const insertEventsChart = async () => {
+    try {
+      if (!clubData) return
+      
+      const events = await getEventByClubId(clubData.id)
+      
+      const approvedCount = events.filter((e: any) => e.status === 'APPROVED').length
+      const pendingCount = events.filter((e: any) => e.status === 'PENDING_UNISTAFF' || e.status === 'PENDING_COCLUB').length
+      const rejectedCount = events.filter((e: any) => e.status === 'REJECTED').length
+      
+      const chartData = [
+        { name: "Approved", value: approvedCount, color: "#22c55e" },
+        { name: "Pending", value: pendingCount, color: "#eab308" },
+        { name: "Rejected", value: rejectedCount, color: "#ef4444" },
+      ].filter(item => item.value > 0)
+      
+      const chartHTML = `
+        <div style="margin: 25px 0; page-break-inside: avoid;">
+          <h2 style="font-size: 18px; font-weight: bold; margin-bottom: 10px; color: #111827;">Events Overview</h2>
+          ${generateBarChartSVG(chartData, "Events Status")}
+          <div style="margin-top: 12px; padding: 12px; background: #f9fafb; border-radius: 6px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Total Events:</strong> ${events.length}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Approved:</strong> ${approvedCount}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Pending:</strong> ${pendingCount}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Rejected:</strong> ${rejectedCount}</p>
+            </div>
+          </div>
+        </div>
+      `
+      
+      if (editorRef.current) {
+        editorRef.current.innerHTML += chartHTML
+        setTimeout(() => paginateContent(), 100)
+      }
+      
+      toast.success("Events chart inserted")
+    } catch (error) {
+      console.error("Error inserting events chart:", error)
+      toast.error("Failed to insert events chart")
+    }
+  }
+
+  // Insert Applications Chart
+  const insertApplicationsChart = async () => {
+    try {
+      if (!clubData) return
+      
+      const applications = await getMemberApplyByClubId(clubData.id)
+      
+      const approvedCount = applications.filter((a: any) => a.status === 'APPROVED').length
+      const pendingCount = applications.filter((a: any) => a.status === 'PENDING').length
+      const rejectedCount = applications.filter((a: any) => a.status === 'REJECTED').length
+      
+      const chartData = [
+        { name: "Approved", value: approvedCount, color: "#22c55e" },
+        { name: "Pending", value: pendingCount, color: "#eab308" },
+        { name: "Rejected", value: rejectedCount, color: "#ef4444" },
+      ].filter(item => item.value > 0)
+      
+      const approvalRate = applications.length > 0 ? ((approvedCount / applications.length) * 100).toFixed(1) : 0
+      
+      const chartHTML = `
+        <div style="margin: 25px 0; page-break-inside: avoid;">
+          <h2 style="font-size: 18px; font-weight: bold; margin-bottom: 10px; color: #111827;">Application Status Distribution</h2>
+          ${generatePieChartSVG(chartData, "Applications")}
+          <div style="margin-top: 12px; padding: 12px; background: #f9fafb; border-radius: 6px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Total:</strong> ${applications.length}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Approved:</strong> ${approvedCount}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Pending:</strong> ${pendingCount}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Rejected:</strong> ${rejectedCount}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151; grid-column: 1 / -1;"><strong>Approval Rate:</strong> ${approvalRate}%</p>
+            </div>
+          </div>
+        </div>
+      `
+      
+      if (editorRef.current) {
+        editorRef.current.innerHTML += chartHTML
+        setTimeout(() => paginateContent(), 100)
+      }
+      
+      toast.success("Applications chart inserted")
+    } catch (error) {
+      console.error("Error inserting applications chart:", error)
+      toast.error("Failed to insert applications chart")
+    }
+  }
+
+  // Insert Gifts/Products Chart
+  const insertGiftsChart = async () => {
+    try {
+      if (!clubData) return
+      
+      const products = await getProducts(clubData.id, { includeInactive: true })
+      
+      const activeCount = products.filter((p: any) => p.status === 'ACTIVE').length
+      const inactiveCount = products.filter((p: any) => p.status === 'INACTIVE').length
+      
+      const chartData = [
+        { name: "Active", value: activeCount, color: "#22c55e" },
+        { name: "Inactive", value: inactiveCount, color: "#94a3b8" },
+      ].filter(item => item.value > 0)
+      
+      const totalStock = products.reduce((sum: number, p: any) => sum + p.stockQuantity, 0)
+      const avgPrice = products.length > 0 ? (products.reduce((sum: number, p: any) => sum + p.pointCost, 0) / products.length).toFixed(2) : 0
+      
+      const chartHTML = `
+        <div style="margin: 25px 0; page-break-inside: avoid;">
+          <h2 style="font-size: 18px; font-weight: bold; margin-bottom: 10px; color: #111827;">Products Status Overview</h2>
+          ${generatePieChartSVG(chartData, "Products")}
+          <div style="margin-top: 12px; padding: 12px; background: #f9fafb; border-radius: 6px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Total Products:</strong> ${products.length}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Active:</strong> ${activeCount}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Inactive:</strong> ${inactiveCount}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Total Stock:</strong> ${totalStock}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151; grid-column: 1 / -1;"><strong>Avg Price:</strong> ${avgPrice} points</p>
+            </div>
+          </div>
+        </div>
+      `
+      
+      if (editorRef.current) {
+        editorRef.current.innerHTML += chartHTML
+        setTimeout(() => paginateContent(), 100)
+      }
+      
+      toast.success("Products chart inserted")
+    } catch (error) {
+      console.error("Error inserting products chart:", error)
+      toast.error("Failed to insert products chart")
+    }
+  }
+
+  // Insert Orders Chart
+  const insertOrdersChart = async () => {
+    try {
+      if (!clubData) return
+      
+      const orders = await getClubRedeemOrders(clubData.id)
+      
+      const completedCount = orders.filter((o: any) => o.status === 'COMPLETED').length
+      const pendingCount = orders.filter((o: any) => o.status === 'PENDING').length
+      const cancelledCount = orders.filter((o: any) => o.status === 'CANCELLED').length
+      
+      const chartData = [
+        { name: "Completed", value: completedCount, color: "#22c55e" },
+        { name: "Pending", value: pendingCount, color: "#eab308" },
+        { name: "Cancelled", value: cancelledCount, color: "#ef4444" },
+      ].filter(item => item.value > 0)
+      
+      const totalPointsRedeemed = orders.reduce((sum: number, o: any) => sum + o.totalPoints, 0)
+      const avgOrderValue = orders.length > 0 ? (totalPointsRedeemed / orders.length).toFixed(2) : 0
+      
+      const chartHTML = `
+        <div style="margin: 25px 0; page-break-inside: avoid;">
+          <h2 style="font-size: 18px; font-weight: bold; margin-bottom: 10px; color: #111827;">Redeem Orders Status</h2>
+          ${generatePieChartSVG(chartData, "Orders")}
+          <div style="margin-top: 12px; padding: 12px; background: #f9fafb; border-radius: 6px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Total Orders:</strong> ${orders.length}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Completed:</strong> ${completedCount}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Pending:</strong> ${pendingCount}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Cancelled:</strong> ${cancelledCount}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Points Redeemed:</strong> ${totalPointsRedeemed.toLocaleString()}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Avg Value:</strong> ${avgOrderValue} pts</p>
+            </div>
+          </div>
+        </div>
+      `
+      
+      if (editorRef.current) {
+        editorRef.current.innerHTML += chartHTML
+        setTimeout(() => paginateContent(), 100)
+      }
+      
+      toast.success("Orders chart inserted")
+    } catch (error) {
+      console.error("Error inserting orders chart:", error)
+      toast.error("Failed to insert orders chart")
+    }
+  }
+
+  // Insert Wallet Chart
+  const insertWalletChart = async () => {
+    try {
+      if (!clubData) return
+      
+      const wallet = await getClubWallet(clubData.id)
+      const transactions = await getClubToMemberTransactions()
+      
+      const totalTransactions = transactions.length
+      const totalPointsGiven = transactions.reduce((sum: number, t: any) => sum + t.amount, 0)
+      const avgTransaction = totalTransactions > 0 ? (totalPointsGiven / totalTransactions).toFixed(2) : 0
+      
+      // Create a visual representation of wallet balance vs points given
+      const chartData = [
+        { name: "Current Balance", value: wallet.balancePoints, color: "#3b82f6" },
+        { name: "Points Distributed", value: totalPointsGiven, color: "#8b5cf6" },
+      ]
+      
+      const chartHTML = `
+        <div style="margin: 25px 0; page-break-inside: avoid;">
+          <h2 style="font-size: 18px; font-weight: bold; margin-bottom: 10px; color: #111827;">Wallet & Points Overview</h2>
+          ${generateBarChartSVG(chartData, "Wallet")}
+          <div style="margin-top: 12px; padding: 12px; background: #f9fafb; border-radius: 6px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Current Balance:</strong> ${wallet.balancePoints.toLocaleString()}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Transactions:</strong> ${totalTransactions}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Distributed:</strong> ${totalPointsGiven.toLocaleString()}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Avg Transaction:</strong> ${avgTransaction}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151; grid-column: 1 / -1;"><strong>Wallet ID:</strong> ${wallet.walletId}</p>
+            </div>
+          </div>
+        </div>
+      `
+      
+      if (editorRef.current) {
+        editorRef.current.innerHTML += chartHTML
+        setTimeout(() => paginateContent(), 100)
+      }
+      
+      toast.success("Wallet chart inserted")
+    } catch (error) {
+      console.error("Error inserting wallet chart:", error)
+      toast.error("Failed to insert wallet chart")
     }
   }
 
@@ -697,10 +1463,10 @@ export default function ReportPage() {
   // Clear and reset to default template
   const handleClear = () => {
     if (clubData) {
-      // Clear session storage
+      // Clear local storage
       clearReportFromSession()
       
-      // Reset to default template (force default, don't restore from session)
+      // Reset to default template (force default, don't restore from local storage)
       initializeDefaultTemplate(clubData, true)
       
       // Reset last save indicator
@@ -710,11 +1476,80 @@ export default function ReportPage() {
     }
   }
 
+  // Helper: Fix oklch colors by replacing problematic stylesheets
+  const fixOklchColors = (clonedDoc: Document) => {
+    try {
+      // Remove only external stylesheets that might have oklch
+      const links = clonedDoc.querySelectorAll('link[rel="stylesheet"]')
+      links.forEach(link => link.remove())
+      
+      // Remove style tags that contain oklch
+      const styles = clonedDoc.querySelectorAll('style')
+      styles.forEach(style => {
+        if (style.textContent?.includes('oklch')) {
+          style.remove()
+        }
+      })
+      
+      // Add minimal safe CSS to ensure basic styling works
+      const styleEl = clonedDoc.createElement('style')
+      styleEl.id = 'html2canvas-safe-colors'
+      
+      const safeCSS = `
+        /* Ensure html2canvas can parse all colors */
+        :root, html, body {
+          --background: 255 255 255;
+          --foreground: 0 0 0;
+          color: #000000;
+          background: #ffffff;
+        }
+        
+        /* Minimal page structure */
+        .a4-page {
+          background: white;
+          color: #000000;
+        }
+        
+        .page-content {
+          color: #000000;
+        }
+        
+        /* Ensure all text is visible */
+        * {
+          color: inherit;
+        }
+        
+        /* Make sure table borders are always visible */
+        table {
+          border-collapse: collapse;
+        }
+        
+        table, th, td {
+          border-color: #d1d5db;
+        }
+      `
+      
+      styleEl.textContent = safeCSS
+      
+      // Insert the style element
+      if (!clonedDoc.head) {
+        const head = clonedDoc.createElement('head')
+        clonedDoc.documentElement.insertBefore(head, clonedDoc.body)
+      }
+      clonedDoc.head.appendChild(styleEl)
+      
+      console.log('oklch colors fixed successfully')
+    } catch (err) {
+      console.error('Error fixing oklch colors:', err)
+    }
+  }
+
   // Download as PDF
   const handleDownloadPDF = async () => {
     if (!pagesContainerRef.current) return
 
     try {
+      setIsDownloading(true)
       toast.loading("Generating PDF...")
       
       const pdf = new jsPDF({
@@ -731,11 +1566,20 @@ export default function ReportPage() {
         }
 
         const page = pages[i] as HTMLElement
+        
         const canvas = await html2canvas(page, {
           scale: 2,
           useCORS: true,
           logging: false,
           backgroundColor: '#ffffff',
+          onclone: (clonedDoc) => {
+            // Fix oklch colors before rendering
+            try {
+              fixOklchColors(clonedDoc)
+            } catch (err) {
+              console.warn('Failed to fix oklch colors:', err)
+            }
+          }
         })
 
         const imgData = canvas.toDataURL("image/png")
@@ -753,7 +1597,9 @@ export default function ReportPage() {
     } catch (error) {
       console.error("Error generating PDF:", error)
       toast.dismiss()
-      toast.error("Failed to generate PDF")
+      toast.error(`Failed to generate PDF: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setIsDownloading(false)
     }
   }
 
@@ -775,44 +1621,140 @@ export default function ReportPage() {
   return (
     <ProtectedRoute allowedRoles={["club_leader"]}>
       <AppShell>
+        {/* Context Menu - attached to pages container */}
+        <ContextMenu editorRef={pagesContainerRef} />
+        
+        {/* Image Resizer - for interactive image resizing */}
+        <ImageResizer editorRef={pagesContainerRef} />
+        
         <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6">
-        {/* Header */}
-        <div className="mb-4 sm:mb-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-2">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <FileText className="h-6 w-6 sm:h-8 sm:w-8 text-primary shrink-0" />
-              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 min-w-0">
-                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold truncate">Club Report</h1>
-                {lastAutoSave && (
-                  <div className="flex items-center gap-1.5 text-xs sm:text-sm text-muted-foreground bg-green-50 dark:bg-green-950 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full border border-green-200 dark:border-green-800 w-fit">
-                    <Check className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-green-600 dark:text-green-400 shrink-0" />
-                    <span className="text-green-700 dark:text-green-300 whitespace-nowrap">
-                      Saved {getTimeSinceLastSave()}
+        {/* Sticky Top Bar - Only visible when collapsed */}
+        {isHeaderCollapsed && (
+          <div className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60 border-b mb-3">
+            <div className="flex items-start gap-2 py-2 px-2">
+              {/* Scrollable Toolbar Section */}
+              <div className="overflow-x-auto overflow-y-hidden flex-1 min-w-0" style={{ scrollbarWidth: 'thin' }}>
+                <div className="shrink-0">
+                  <RichTextEditorToolbar
+                    pageSettings={pageSettings}
+                    onPageSettingsChange={handlePageSettingsChange}
+                    onSync={handleToolbarSync}
+                    compact={true}
+                    editorRef={editorRef}
+                  />
+                </div>
+              </div>
+              
+              {/* Right Side: Action Buttons + Status */}
+              <div className="flex flex-col gap-1.5 shrink-0 pl-2 border-l">
+                {/* Action Buttons Row */}
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <Button type="button" onClick={handleManualSave} variant="default" size="sm">
+                    <Save className="h-3.5 w-3.5 sm:mr-2" />
+                    <span className="hidden sm:inline">Save</span>
+                  </Button>
+                  <Button type="button" onClick={handleClear} variant="outline" size="sm">
+                    <Trash2 className="h-3.5 w-3.5 sm:mr-2" />
+                    <span className="hidden sm:inline">Clear</span>
+                  </Button>
+                  <Button 
+                    type="button"
+                    onClick={handleDownloadPDF} 
+                    size="sm"
+                    disabled={isDownloading}
+                  >
+                    <Download className="h-3.5 w-3.5 sm:mr-2" />
+                    <span className="hidden sm:inline">
+                      {isDownloading ? "Downloading..." : "PDF"}
                     </span>
+                  </Button>
+                  <Button 
+                    type="button"
+                    onClick={() => setIsHeaderCollapsed(!isHeaderCollapsed)}
+                    variant="ghost" 
+                    size="sm"
+                  >
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                {/* Status Indicators Row */}
+                <div className="flex justify-end gap-2">
+                  {lastAutoSave && (
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-green-50 dark:bg-green-950 px-2 py-1 rounded border border-green-200 dark:border-green-800">
+                      <Check className="h-3 w-3 text-green-600 dark:text-green-400 shrink-0" />
+                      <span className="text-green-700 dark:text-green-300 whitespace-nowrap">
+                        Saved {getTimeSinceLastSave()}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-center text-xs text-muted-foreground bg-muted px-2 py-1 rounded border">
+                    {pageCount} {pageCount === 1 ? 'page' : 'pages'}
                   </div>
-                )}
+                </div>
               </div>
             </div>
-            <div className="flex gap-1.5 sm:gap-2">
-              <Button onClick={handleManualSave} variant="default" size="sm" className="flex-1 sm:flex-none">
-                <Save className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Save</span>
-              </Button>
-              <Button onClick={handleClear} variant="outline" size="sm" className="flex-1 sm:flex-none">
-                <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Clear</span>
-              </Button>
-              <Button onClick={handleDownloadPDF} size="sm" className="flex-1 sm:flex-none">
-                <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
-                <span className="hidden md:inline">Download PDF</span>
-                <span className="md:hidden">PDF</span>
-              </Button>
-            </div>
           </div>
-          <p className="text-xs sm:text-sm text-muted-foreground">
-            Create and customize your club activity report
-          </p>
-        </div>
+        )}
+
+        {/* Full Header - Only visible when expanded */}
+        {!isHeaderCollapsed && (
+          <div className="mb-4 sm:mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-2">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <FileText className="h-6 w-6 sm:h-8 sm:w-8 text-primary shrink-0" />
+                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 min-w-0">
+                  <h1 className="text-xl sm:text-2xl md:text-3xl font-bold truncate">Club Report</h1>
+                  {lastAutoSave && (
+                    <div className="flex items-center gap-1.5 text-xs sm:text-sm text-muted-foreground bg-green-50 dark:bg-green-950 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full border border-green-200 dark:border-green-800 w-fit">
+                      <Check className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-green-600 dark:text-green-400 shrink-0" />
+                      <span className="text-green-700 dark:text-green-300 whitespace-nowrap">
+                        Saved {getTimeSinceLastSave()}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="flex gap-1.5 sm:gap-2">
+                <Button type="button" onClick={handleManualSave} variant="default" size="sm" className="flex-1 sm:flex-none">
+                  <Save className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Save</span>
+                </Button>
+                <Button type="button" onClick={handleClear} variant="outline" size="sm" className="flex-1 sm:flex-none">
+                  <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Clear</span>
+                </Button>
+                <Button 
+                  type="button"
+                  onClick={handleDownloadPDF} 
+                  size="sm" 
+                  className="flex-1 sm:flex-none"
+                  disabled={isDownloading}
+                >
+                  <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
+                  <span className="hidden md:inline">
+                    {isDownloading ? "Downloading..." : "PDF"}
+                  </span>
+                  <span className="md:hidden">
+                    {isDownloading ? "..." : "PDF"}
+                  </span>
+                </Button>
+                <Button 
+                  type="button"
+                  onClick={() => setIsHeaderCollapsed(!isHeaderCollapsed)}
+                  variant="ghost" 
+                  size="sm"
+                  className="shrink-0"
+                >
+                  <ChevronUp className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <p className="text-xs sm:text-sm text-muted-foreground">
+              Create and customize your club activity report
+            </p>
+          </div>
+        )}
 
         {/* Mobile Data Insertion Buttons - Show at top on mobile */}
         <div className="lg:hidden mb-3">
@@ -820,6 +1762,7 @@ export default function ReportPage() {
             <h3 className="font-semibold mb-2 text-sm">Quick Insert</h3>
             <div className="flex gap-2 overflow-x-auto pb-1">
               <Button
+                type="button"
                 variant="outline"
                 size="sm"
                 className="shrink-0"
@@ -829,6 +1772,7 @@ export default function ReportPage() {
                 Members
               </Button>
               <Button
+                type="button"
                 variant="outline"
                 size="sm"
                 className="shrink-0"
@@ -838,13 +1782,44 @@ export default function ReportPage() {
                 Events
               </Button>
               <Button
+                type="button"
                 variant="outline"
                 size="sm"
                 className="shrink-0"
                 onClick={insertGiftsData}
               >
                 <Gift className="h-3.5 w-3.5 mr-1.5" />
-                Gifts
+                Products
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="shrink-0"
+                onClick={insertOrdersData}
+              >
+                <ShoppingCart className="h-3.5 w-3.5 mr-1.5" />
+                Orders
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="shrink-0"
+                onClick={insertApplicationsData}
+              >
+                <UserCheck className="h-3.5 w-3.5 mr-1.5" />
+                Applications
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="shrink-0"
+                onClick={insertWalletData}
+              >
+                <Wallet className="h-3.5 w-3.5 mr-1.5" />
+                Wallet
               </Button>
             </div>
           </Card>
@@ -853,21 +1828,16 @@ export default function ReportPage() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 sm:gap-4">
           {/* Main Editor Area */}
           <div className="lg:col-span-3 space-y-3 sm:space-y-4">
-            {/* Rich Text Editor Toolbar */}
-            <RichTextEditorToolbar
-              pageSettings={pageSettings}
-              onPageSettingsChange={handlePageSettingsChange}
-              onSync={handleToolbarSync}
-            />
+            {/* Rich Text Editor Toolbar - Only show when expanded */}
+            {!isHeaderCollapsed && (
+              <RichTextEditorToolbar
+                pageSettings={pageSettings}
+                onPageSettingsChange={handlePageSettingsChange}
+                onSync={handleToolbarSync}
+                editorRef={editorRef}
+              />
+            )}
 
-            {/* Page Counter */}
-            <div className="flex justify-end">
-              <Card className="px-3 sm:px-4 py-1.5 sm:py-2">
-                <div className="text-xs sm:text-sm text-muted-foreground">
-                  {pageCount} {pageCount === 1 ? 'page' : 'pages'}
-                </div>
-              </Card>
-            </div>
 
             {/* Hidden Editor for Content Editing */}
             <div style={{ display: 'none' }}>
@@ -879,7 +1849,7 @@ export default function ReportPage() {
             </div>
 
             {/* Paginated Pages Container */}
-            <div className="bg-gray-100 dark:bg-gray-900 p-2 sm:p-4 rounded-lg max-h-[calc(100vh-200px)] sm:max-h-[calc(100vh-200px)] overflow-y-auto overflow-x-auto">
+            <div className="bg-gray-100 dark:bg-gray-800/50 p-2 sm:p-4 rounded-lg max-h-[calc(100vh-200px)] sm:max-h-[calc(100vh-200px)] overflow-y-auto overflow-x-auto">
               <div ref={pagesContainerRef} className="space-y-3 sm:space-y-4 min-w-fit sm:min-w-0">
                 {/* Pages will be dynamically inserted here */}
               </div>
@@ -889,36 +1859,189 @@ export default function ReportPage() {
           {/* Sticky Sidebar with Data Insertion Buttons - Desktop only */}
           <div className="hidden lg:block lg:col-span-1">
             <div className="sticky top-20 z-10">
-              <Card className="p-4 shadow-lg">
-                <h3 className="font-semibold mb-4 text-sm">Insert Data</h3>
-                <div className="space-y-2">
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start"
-                    onClick={insertMembersData}
-                  >
-                    <Users className="h-4 w-4 mr-2" />
-                    Members
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start"
-                    onClick={insertEventsData}
-                  >
-                    <Calendar className="h-4 w-4 mr-2" />
-                    Events
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start"
-                    onClick={insertGiftsData}
-                  >
-                    <Gift className="h-4 w-4 mr-2" />
-                    Gifts
-                  </Button>
-                </div>
+              <Card className="p-4 shadow-lg max-h-[calc(100vh-100px)] overflow-y-auto">
+                <h3 className="font-semibold mb-3 text-sm">Insert Data</h3>
+                
+                <Tabs defaultValue="tables" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2 mb-3">
+                    <TabsTrigger value="tables" className="text-xs">
+                      <ClipboardList className="h-3 w-3 mr-1" />
+                      Tables
+                    </TabsTrigger>
+                    <TabsTrigger value="charts" className="text-xs">
+                      <BarChart3 className="h-3 w-3 mr-1" />
+                      Charts
+                    </TabsTrigger>
+                  </TabsList>
+                  
+                  {/* Tables Tab */}
+                  <TabsContent value="tables" className="mt-0">
+                    {/* Core Data Section */}
+                    <div className="space-y-2 mb-2">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase">Core</p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full justify-start text-sm"
+                        onClick={insertMembersData}
+                      >
+                        <Users className="h-4 w-4 mr-2" />
+                        Members
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full justify-start text-sm"
+                        onClick={insertEventsData}
+                      >
+                        <Calendar className="h-4 w-4 mr-2" />
+                        Events
+                      </Button>
+                    </div>
 
-                <Separator className="my-4" />
+                    <Separator className="my-2" />
+
+                    {/* Products & Orders Section */}
+                    <div className="space-y-2 mb-2">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase">Products & Orders</p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full justify-start text-sm"
+                        onClick={insertGiftsData}
+                      >
+                        <Gift className="h-4 w-4 mr-2" />
+                        Gifts/Products
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full justify-start text-sm"
+                        onClick={insertOrdersData}
+                      >
+                        <ShoppingCart className="h-4 w-4 mr-2" />
+                        Redeem Orders
+                      </Button>
+                    </div>
+
+                    <Separator className="my-2" />
+
+                    {/* Applications & Recruitment Section */}
+                    <div className="space-y-2 mb-2">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase">Recruitment</p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full justify-start text-sm"
+                        onClick={insertApplicationsData}
+                      >
+                        <UserCheck className="h-4 w-4 mr-2" />
+                        Applications
+                      </Button>
+                    </div>
+
+                    <Separator className="my-2" />
+
+                    {/* Financial Section */}
+                    <div className="space-y-2 mb-2">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase">Financial</p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full justify-start text-sm"
+                        onClick={insertWalletData}
+                      >
+                        <Wallet className="h-4 w-4 mr-2" />
+                        Wallet & Points
+                      </Button>
+                    </div>
+                  </TabsContent>
+                  
+                  {/* Charts Tab */}
+                  <TabsContent value="charts" className="mt-0">
+                    {/* Core Data Section */}
+                    <div className="space-y-2 mb-2">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase">Core</p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full justify-start text-sm"
+                        onClick={insertMembersChart}
+                      >
+                        <PieChartIcon className="h-4 w-4 mr-2" />
+                        Members Chart
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full justify-start text-sm"
+                        onClick={insertEventsChart}
+                      >
+                        <BarChart3 className="h-4 w-4 mr-2" />
+                        Events Chart
+                      </Button>
+                    </div>
+
+                    <Separator className="my-2" />
+
+                    {/* Products & Orders Section */}
+                    <div className="space-y-2 mb-2">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase">Products & Orders</p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full justify-start text-sm"
+                        onClick={insertGiftsChart}
+                      >
+                        <PieChartIcon className="h-4 w-4 mr-2" />
+                        Products Chart
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full justify-start text-sm"
+                        onClick={insertOrdersChart}
+                      >
+                        <PieChartIcon className="h-4 w-4 mr-2" />
+                        Orders Chart
+                      </Button>
+                    </div>
+
+                    <Separator className="my-2" />
+
+                    {/* Applications & Recruitment Section */}
+                    <div className="space-y-2 mb-2">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase">Recruitment</p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full justify-start text-sm"
+                        onClick={insertApplicationsChart}
+                      >
+                        <PieChartIcon className="h-4 w-4 mr-2" />
+                        Applications Chart
+                      </Button>
+                    </div>
+
+                    <Separator className="my-2" />
+
+                    {/* Financial Section */}
+                    <div className="space-y-2 mb-2">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase">Financial</p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full justify-start text-sm"
+                        onClick={insertWalletChart}
+                      >
+                        <BarChart3 className="h-4 w-4 mr-2" />
+                        Wallet Chart
+                      </Button>
+                    </div>
+                  </TabsContent>
+                </Tabs>
+
+                <Separator className="my-2" />
 
                 <div className="space-y-2 text-xs text-muted-foreground">
                   <p className="font-semibold text-foreground">Tips:</p>
@@ -935,6 +2058,17 @@ export default function ReportPage() {
           </div>
         </div>
       </div>
+
+      {/* Download overlay */}
+      {isDownloading && (
+        <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-[9999] flex items-center justify-center">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 flex flex-col items-center gap-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            <p className="text-lg font-semibold text-foreground">Downloading PDF...</p>
+            <p className="text-sm text-muted-foreground">Please wait while we generate your report</p>
+          </div>
+        </div>
+      )}
       </AppShell>
     </ProtectedRoute>
   )

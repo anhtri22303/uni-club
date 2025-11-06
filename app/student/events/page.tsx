@@ -14,7 +14,7 @@ import { useState } from "react"
 import { Calendar, Users, Trophy, Layers, History } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
-import { safeLocalStorage } from "@/lib/browser-utils"
+import { safeSessionStorage } from "@/lib/browser-utils"
 import { useClubEvents, useClubs, useMyEventRegistrations } from "@/hooks/use-query-hooks"
 import { timeObjectToString, registerForEvent } from "@/service/eventApi"
 import { useToast } from "@/hooks/use-toast"
@@ -43,14 +43,14 @@ export default function MemberEventsPage() {
 
 
 
-  // Get user's club IDs from localStorage
+  // Get user's club IDs from sessionStorage
   useEffect(() => {
     try {
-      const saved = safeLocalStorage.getItem("uniclub-auth")
-      console.log("Events page - Raw localStorage data:", saved)
+      const saved = safeSessionStorage.getItem("uniclub-auth")
+      console.log("Events page - Raw sessionStorage data:", saved)
       if (saved) {
         const parsed = JSON.parse(saved)
-        console.log("Events page - Parsed localStorage data:", parsed)
+        console.log("Events page - Parsed sessionStorage data:", parsed)
 
         if (parsed.clubIds && Array.isArray(parsed.clubIds)) {
           const clubIdNumbers = parsed.clubIds.map((id: any) => Number(id)).filter((id: number) => !isNaN(id))
@@ -63,7 +63,7 @@ export default function MemberEventsPage() {
         }
       }
     } catch (error) {
-      console.error("Failed to get clubIds from localStorage:", error)
+      console.error("Failed to get clubIds from sessionStorage:", error)
     }
   }, [])
 
@@ -421,7 +421,7 @@ export default function MemberEventsPage() {
                             REJECTED
                           </Badge>
                         ) : (
-                          <Badge variant="outline" className="bg-gray-100 text-gray-700 border-gray-400">
+                          <Badge variant="outline" className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-400 dark:border-gray-600">
                             {event.status}
                           </Badge>
                         )}
@@ -531,15 +531,15 @@ export default function MemberEventsPage() {
                             </div>
                             <div className="flex flex-col items-end gap-2">
                               <Badge 
-                                variant="outline" 
+                                variant="outline"
                                 className={
                                   registration.status === "ATTENDED" 
-                                    ? "bg-green-100 text-green-700 border-green-500" 
+                                    ? "bg-green-100 dark:bg-green-950/50 text-green-700 dark:text-green-400 border-green-500 dark:border-green-700" 
                                     : registration.status === "REGISTERED"
-                                    ? "bg-blue-100 text-blue-700 border-blue-500"
+                                    ? "bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border-blue-500 dark:border-blue-700"
                                     : registration.status === "ABSENT"
-                                    ? "bg-red-100 text-red-700 border-red-500"
-                                    : "bg-gray-100 text-gray-700 border-gray-400"
+                                    ? "bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-400 border-red-500 dark:border-red-700"
+                                    : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-400 dark:border-gray-600"
                                 }
                               >
                                 {registration.status}

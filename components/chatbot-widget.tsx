@@ -63,10 +63,10 @@ export function ChatbotWidget() {
   const [clubIds, setClubIds] = useState<number[]>([])
   const [activePrompts, setActivePrompts] = useState<Record<string, string>>(STUDENT_PROMPTS)
 
-  // Load user role and clubIds from localStorage
+  // Load user role and clubIds from sessionStorage
   useEffect(() => {
     try {
-      const authDataString = localStorage.getItem("uniclub-auth")
+      const authDataString = sessionStorage.getItem("uniclub-auth")
       if (authDataString) {
         const authData = JSON.parse(authDataString)
         const role = authData.role || authData.userRole || "STUDENT"

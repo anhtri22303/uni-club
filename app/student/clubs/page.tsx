@@ -17,7 +17,7 @@ import { Users, PlusIcon, Calendar, Loader2 } from "lucide-react"
 import { Loading } from "@/components/ui/loading"
 import { fetchClub, getClubMemberCount } from "@/service/clubApi"
 import { postMemAppli } from "@/service/memberApplicationApi"
-import { safeLocalStorage } from "@/lib/browser-utils"
+import { safeSessionStorage } from "@/lib/browser-utils"
 import { fetchMajors, Major } from "@/service/majorApi"
 import { useClubs, useClubMemberCounts, useMyMemberApplications, queryKeys } from "@/hooks/use-query-hooks"
 import { useQueryClient } from "@tanstack/react-query"
@@ -93,14 +93,14 @@ export default function MemberClubsPage() {
   const userMemberships = clubMemberships.filter((m) => m.userId === auth.userId)
   const userApplications = membershipApplications.filter((a) => a.userId === auth.userId)
 
-  // Get user's club IDs from localStorage
+  // Get user's club IDs from sessionStorage
   useEffect(() => {
     try {
-      const saved = safeLocalStorage.getItem("uniclub-auth")
-      console.log("Raw localStorage data:", saved)
+      const saved = safeSessionStorage.getItem("uniclub-auth")
+      console.log("Raw sessionStorage data:", saved)
       if (saved) {
         const parsed = JSON.parse(saved)
-        console.log("Parsed localStorage data:", parsed)
+        console.log("Parsed sessionStorage data:", parsed)
 
         // Check for clubIds array first, then fallback to single clubId
         if (parsed.clubIds && Array.isArray(parsed.clubIds)) {
@@ -119,7 +119,7 @@ export default function MemberClubsPage() {
         }
       }
     } catch (error) {
-      console.error("Failed to get clubId from localStorage:", error)
+      console.error("Failed to get clubId from sessionStorage:", error)
     }
   }, [])
 

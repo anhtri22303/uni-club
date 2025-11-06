@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { useToast } from "@/hooks/use-toast"
 import { usePagination } from "@/hooks/use-pagination"
-import { Users, ShieldCheck, ChevronLeft, ChevronRight, Send, UserCircle, History } from "lucide-react"
+import { Users, ShieldCheck, ChevronLeft, ChevronRight, Send, UserCircle, History, Search } from "lucide-react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -43,9 +43,9 @@ export default function UniversityStaffRewardPage() {
     const [showHistoryModal, setShowHistoryModal] = useState(false)
     const [transactions, setTransactions] = useState<ApiUniToClubTransaction[]>([])
     const [transactionsLoading, setTransactionsLoading] = useState(false)
-    // ✨ --- STATE MỚI CHO LÝ DO --- ✨
     const [reasonType, setReasonType] = useState<"monthly" | "other">("monthly") // Mặc định là 'monthly'
     const [customReason, setCustomReason] = useState<string>("")
+    const [searchQuery, setSearchQuery] = useState<string>("")
 
     // Tải danh sách tất cả các CLB khi component được mount bằng API thật
     useEffect(() => {
@@ -103,19 +103,14 @@ export default function UniversityStaffRewardPage() {
             setRewardAmount(value === '' ? '' : parseInt(value, 10))
         }
     }
-
-    const allSelected = useMemo(() => {
-        if (allClubs.length === 0) {
-            return false
-        }
-        return allClubs.every((club) => selectedClubs[String(club.id)] === true)
-    }, [allClubs, selectedClubs])
-
     const handleToggleSelectAll = () => {
         const newSelectionState = !allSelected
         setSelectedClubs((prevSelected) => {
             const newSelected = { ...prevSelected }
-            allClubs.forEach((club) => {
+            // allClubs.forEach((club) => {
+            //     newSelected[String(club.id)] = newSelectionState
+            // })
+            filteredClubs.forEach((club) => { // ✨ THAY ĐỔI
                 newSelected[String(club.id)] = newSelectionState
             })
             return newSelected
@@ -126,12 +121,38 @@ export default function UniversityStaffRewardPage() {
         return Object.values(selectedClubs).filter(v => v === true).length
     }, [selectedClubs])
 
+    // ✨ --- TẠO DANH SÁCH CLB ĐÃ LỌC --- ✨
+    const filteredClubs = useMemo(() => {
+        if (!searchQuery) {
+            return allClubs // Trả về tất cả nếu không tìm kiếm
+        }
+        return allClubs.filter(club =>
+            club.name.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+    }, [allClubs, searchQuery])
+    // ✨ --------------------------------- ✨
+
+    // const allSelected = useMemo(() => {
+    //     if (allClubs.length === 0) {
+    //         return false
+    //     }
+    //     return allClubs.every((club) => selectedClubs[String(club.id)] === true)
+    // }, [allClubs, selectedClubs])
+    const allSelected = useMemo(() => {
+        if (filteredClubs.length === 0) { // ✨ THAY ĐỔI
+            return false
+        }
+        return filteredClubs.every((club) => selectedClubs[String(club.id)] === true) // ✨ THAY ĐỔI
+    }, [filteredClubs, selectedClubs]) // ✨ THAY ĐỔI
+
+
+
     const {
         currentPage,
         totalPages,
         paginatedData: paginatedClubs,
         setCurrentPage,
-    } = usePagination({ data: allClubs, initialPageSize: 8 })
+    } = usePagination({ data: filteredClubs, initialPageSize: 8 })
 
     const handleDistributeRewards = async () => {
         if (rewardAmount === '' || rewardAmount <= 0) {
@@ -352,7 +373,7 @@ export default function UniversityStaffRewardPage() {
                         </CardHeader>
                         <CardContent className="space-y-4">
                             {/* Grid 2 cột */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 {/* Cột 1: Số điểm */}
                                 <div className="space-y-2">
                                     <Label htmlFor="reward-amount">Reward Points (per club)</Label>
@@ -445,13 +466,36 @@ export default function UniversityStaffRewardPage() {
                             </Button>
                         )}
                     </div>
+
+                    {/* ✨ --- THÊM THANH SEARCH --- ✨ */}
+                    {allClubs.length > 0 && ( // Chỉ hiển thị search nếu có CLB
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                            <Input
+                                type="search"
+                                placeholder="Search by club name..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="pl-10" // Thêm padding trái cho icon
+                            />
+                        </div>
+                    )}
+                    {/* ✨ ------------------------- ✨ */}
+
                     <div className="space-y-4">
                         {loading ? (
                             <p>Loading clubs...</p>
+                            // ) : error ? (
+                            //     <p className="text-red-500">{error}</p>
+                            // ) : allClubs.length === 0 ? (
+                            //     <p>No active clubs found.</p>
+                            // ) : (
                         ) : error ? (
                             <p className="text-red-500">{error}</p>
-                        ) : allClubs.length === 0 ? (
+                        ) : allClubs.length === 0 ? ( // ✨ Cập nhật logic hiển thị
                             <p>No active clubs found.</p>
+                        ) : filteredClubs.length === 0 ? ( // ✨ Thêm trường hợp không có kết quả search
+                            <p>No clubs match your search.</p>
                         ) : (
                             <>
                                 {paginatedClubs.map((club) => {

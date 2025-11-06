@@ -24,7 +24,7 @@ import {
   X,
 } from "lucide-react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
-import { safeLocalStorage } from "@/lib/browser-utils"
+import { safeSessionStorage } from "@/lib/browser-utils"
 import { type ApiMembership } from "@/service/membershipApi"
 import { getClubById } from "@/service/clubApi"
 
@@ -60,15 +60,15 @@ export default function MyClubPage() {
   )
   const membersError = membersQueryError ? String(membersQueryError) : null
 
-  // Get user's club IDs from localStorage and load club details
+  // Get user's club IDs from sessionStorage and load club details
   useEffect(() => {
     const loadUserClubs = async () => {
       try {
-        const saved = safeLocalStorage.getItem("uniclub-auth")
-        console.log("MyClub - Raw localStorage data:", saved)
+        const saved = safeSessionStorage.getItem("uniclub-auth")
+        console.log("MyClub - Raw sessionStorage data:", saved)
         if (saved) {
           const parsed = JSON.parse(saved)
-          console.log("MyClub - Parsed localStorage data:", parsed)
+          console.log("MyClub - Parsed sessionStorage data:", parsed)
           
           let clubIdNumbers: number[] = []
           
@@ -87,7 +87,7 @@ export default function MyClubPage() {
           }
         }
       } catch (error) {
-        console.error("Failed to get clubIds from localStorage:", error)
+        console.error("Failed to get clubIds from sessionStorage:", error)
       }
     }
     

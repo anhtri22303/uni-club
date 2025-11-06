@@ -41,9 +41,10 @@ import { useState } from 'react'
 
 interface TableToolsTabProps {
   onSync?: () => void
+  compact?: boolean
 }
 
-export function TableToolsTab({ onSync }: TableToolsTabProps) {
+export function TableToolsTab({ onSync, compact = false }: TableToolsTabProps) {
   const [borderColor, setBorderColor] = useState('#000000')
   const [borderWidth, setBorderWidth] = useState(1)
   const [bgColor, setBgColor] = useState('#FFFFFF')
@@ -90,9 +91,16 @@ export function TableToolsTab({ onSync }: TableToolsTabProps) {
     return null
   }
 
-  const insertRowAbove = () => {
+  const insertRowAbove = (e?: React.MouseEvent) => {
+    e?.preventDefault()
+    e?.stopPropagation()
+    
     const cell = getSelectedCell()
     if (!cell) return
+
+    // Save scroll position
+    const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
+    const scrollTop = editor?.scrollTop || window.scrollY
 
     const row = cell.parentElement as HTMLTableRowElement
     const table = row.parentElement as HTMLTableSectionElement
@@ -104,12 +112,32 @@ export function TableToolsTab({ onSync }: TableToolsTabProps) {
     })
     
     table.insertBefore(newRow, row)
+    
+    // Close popover
+    setShowInsertPopover(false)
+    
+    // Restore scroll position
+    setTimeout(() => {
+      if (editor) {
+        editor.scrollTop = scrollTop
+      } else {
+        window.scrollTo(window.scrollX, scrollTop)
+      }
+    }, 0)
+    
     onSync?.()
   }
 
-  const insertRowBelow = () => {
+  const insertRowBelow = (e?: React.MouseEvent) => {
+    e?.preventDefault()
+    e?.stopPropagation()
+    
     const cell = getSelectedCell()
     if (!cell) return
+
+    // Save scroll position
+    const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
+    const scrollTop = editor?.scrollTop || window.scrollY
 
     const row = cell.parentElement as HTMLTableRowElement
     const table = row.parentElement as HTMLTableSectionElement
@@ -125,68 +153,152 @@ export function TableToolsTab({ onSync }: TableToolsTabProps) {
     } else {
       table.appendChild(newRow)
     }
+    
+    // Close popover
+    setShowInsertPopover(false)
+    
+    // Restore scroll position
+    setTimeout(() => {
+      if (editor) {
+        editor.scrollTop = scrollTop
+      } else {
+        window.scrollTo(window.scrollX, scrollTop)
+      }
+    }, 0)
+    
     onSync?.()
   }
 
-  const insertColumnLeft = () => {
+  const insertColumnLeft = (e?: React.MouseEvent) => {
+    e?.preventDefault()
+    e?.stopPropagation()
+    
     const cell = getSelectedCell()
     if (!cell) return
 
     const table = getSelectedTable()
     if (!table) return
 
+    // Save scroll position
+    const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
+    const scrollTop = editor?.scrollTop || window.scrollY
+
     const cellIndex = cell.cellIndex
     const rows = table.querySelectorAll('tr')
     
     rows.forEach(row => {
-      const newCell = document.createElement('td')
-      newCell.innerHTML = '&nbsp;'
       const targetCell = row.cells[cellIndex]
       if (targetCell) {
+        // Clone the cell to preserve styles
+        const newCell = targetCell.cloneNode(false) as HTMLTableCellElement
+        newCell.innerHTML = '&nbsp;'
         row.insertBefore(newCell, targetCell)
       }
     })
+    
+    // Close popover
+    setShowInsertPopover(false)
+    
+    // Restore scroll position
+    setTimeout(() => {
+      if (editor) {
+        editor.scrollTop = scrollTop
+      } else {
+        window.scrollTo(window.scrollX, scrollTop)
+      }
+    }, 0)
+    
     onSync?.()
   }
 
-  const insertColumnRight = () => {
+  const insertColumnRight = (e?: React.MouseEvent) => {
+    e?.preventDefault()
+    e?.stopPropagation()
+    
     const cell = getSelectedCell()
     if (!cell) return
 
     const table = getSelectedTable()
     if (!table) return
+
+    // Save scroll position
+    const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
+    const scrollTop = editor?.scrollTop || window.scrollY
 
     const cellIndex = cell.cellIndex
     const rows = table.querySelectorAll('tr')
     
     rows.forEach(row => {
-      const newCell = document.createElement('td')
-      newCell.innerHTML = '&nbsp;'
       const targetCell = row.cells[cellIndex]
-      if (targetCell && targetCell.nextSibling) {
-        row.insertBefore(newCell, targetCell.nextSibling)
-      } else {
-        row.appendChild(newCell)
+      if (targetCell) {
+        // Clone the cell to preserve styles
+        const newCell = targetCell.cloneNode(false) as HTMLTableCellElement
+        newCell.innerHTML = '&nbsp;'
+        if (targetCell.nextSibling) {
+          row.insertBefore(newCell, targetCell.nextSibling)
+        } else {
+          row.appendChild(newCell)
+        }
       }
     })
+    
+    // Close popover
+    setShowInsertPopover(false)
+    
+    // Restore scroll position
+    setTimeout(() => {
+      if (editor) {
+        editor.scrollTop = scrollTop
+      } else {
+        window.scrollTo(window.scrollX, scrollTop)
+      }
+    }, 0)
+    
     onSync?.()
   }
 
-  const deleteRow = () => {
+  const deleteRow = (e?: React.MouseEvent) => {
+    e?.preventDefault()
+    e?.stopPropagation()
+    
     const cell = getSelectedCell()
     if (!cell) return
 
+    // Save scroll position
+    const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
+    const scrollTop = editor?.scrollTop || window.scrollY
+
     const row = cell.parentElement as HTMLTableRowElement
     row.remove()
+    
+    // Close popover
+    setShowDeletePopover(false)
+    
+    // Restore scroll position
+    setTimeout(() => {
+      if (editor) {
+        editor.scrollTop = scrollTop
+      } else {
+        window.scrollTo(window.scrollX, scrollTop)
+      }
+    }, 0)
+    
     onSync?.()
   }
 
-  const deleteColumn = () => {
+  const deleteColumn = (e?: React.MouseEvent) => {
+    e?.preventDefault()
+    e?.stopPropagation()
+    
     const cell = getSelectedCell()
     if (!cell) return
 
     const table = getSelectedTable()
     if (!table) return
+
+    // Save scroll position
+    const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
+    const scrollTop = editor?.scrollTop || window.scrollY
 
     const cellIndex = cell.cellIndex
     const rows = table.querySelectorAll('tr')
@@ -197,13 +309,46 @@ export function TableToolsTab({ onSync }: TableToolsTabProps) {
         targetCell.remove()
       }
     })
+    
+    // Close popover
+    setShowDeletePopover(false)
+    
+    // Restore scroll position
+    setTimeout(() => {
+      if (editor) {
+        editor.scrollTop = scrollTop
+      } else {
+        window.scrollTo(window.scrollX, scrollTop)
+      }
+    }, 0)
+    
     onSync?.()
   }
 
-  const deleteTable = () => {
+  const deleteTable = (e?: React.MouseEvent) => {
+    e?.preventDefault()
+    e?.stopPropagation()
+    
     const table = getSelectedTable()
     if (table) {
+      // Save scroll position
+      const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
+      const scrollTop = editor?.scrollTop || window.scrollY
+
       table.remove()
+      
+      // Close popover
+      setShowDeletePopover(false)
+      
+      // Restore scroll position
+      setTimeout(() => {
+        if (editor) {
+          editor.scrollTop = scrollTop
+        } else {
+          window.scrollTo(window.scrollX, scrollTop)
+        }
+      }, 0)
+      
       onSync?.()
     }
   }
@@ -217,15 +362,20 @@ export function TableToolsTab({ onSync }: TableToolsTabProps) {
     const cell = getSelectedCell()
     if (!cell) return
 
+    // Save scroll position
+    const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
+    const scrollTop = editor?.scrollTop || window.scrollY
+
     const colspan = cell.colSpan
     const rowspan = cell.rowSpan
     
     if (colspan > 1) {
       cell.colSpan = 1
-      // Add new cells
+      // Add new cells with same styling
       const row = cell.parentElement as HTMLTableRowElement
       for (let i = 1; i < colspan; i++) {
-        const newCell = document.createElement('td')
+        // Clone the cell to preserve styles
+        const newCell = cell.cloneNode(false) as HTMLTableCellElement
         newCell.innerHTML = '&nbsp;'
         if (cell.nextSibling) {
           row.insertBefore(newCell, cell.nextSibling)
@@ -240,12 +390,25 @@ export function TableToolsTab({ onSync }: TableToolsTabProps) {
       // Would need to add cells to rows below
     }
     
+    // Restore scroll position
+    setTimeout(() => {
+      if (editor) {
+        editor.scrollTop = scrollTop
+      } else {
+        window.scrollTo(window.scrollX, scrollTop)
+      }
+    }, 0)
+    
     onSync?.()
   }
 
   const applyTableBorder = () => {
     const table = getSelectedTable()
     if (!table) return
+
+    // Save scroll position
+    const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
+    const scrollTop = editor?.scrollTop || window.scrollY
 
     table.style.borderCollapse = 'collapse'
     table.style.border = `${borderWidth}px solid ${borderColor}`
@@ -254,13 +417,36 @@ export function TableToolsTab({ onSync }: TableToolsTabProps) {
       (cell as HTMLElement).style.border = `${borderWidth}px solid ${borderColor}`
     })
     
+    // Restore scroll position
+    setTimeout(() => {
+      if (editor) {
+        editor.scrollTop = scrollTop
+      } else {
+        window.scrollTo(window.scrollX, scrollTop)
+      }
+    }, 0)
+    
     onSync?.()
   }
 
   const applyCellBackground = () => {
     const cell = getSelectedCell()
     if (cell) {
+      // Save scroll position
+      const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
+      const scrollTop = editor?.scrollTop || window.scrollY
+
       cell.style.backgroundColor = bgColor
+      
+      // Restore scroll position
+      setTimeout(() => {
+        if (editor) {
+          editor.scrollTop = scrollTop
+        } else {
+          window.scrollTo(window.scrollX, scrollTop)
+        }
+      }, 0)
+      
       onSync?.()
     }
   }
@@ -269,9 +455,22 @@ export function TableToolsTab({ onSync }: TableToolsTabProps) {
     const table = getSelectedTable()
     if (!table) return
 
+    // Save scroll position
+    const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
+    const scrollTop = editor?.scrollTop || window.scrollY
+
     table.querySelectorAll('td, th').forEach(cell => {
       (cell as HTMLElement).style.padding = `${cellPadding}px`
     })
+    
+    // Restore scroll position
+    setTimeout(() => {
+      if (editor) {
+        editor.scrollTop = scrollTop
+      } else {
+        window.scrollTo(window.scrollX, scrollTop)
+      }
+    }, 0)
     
     onSync?.()
   }
@@ -279,7 +478,21 @@ export function TableToolsTab({ onSync }: TableToolsTabProps) {
   const alignCellContent = (alignment: 'left' | 'center' | 'right') => {
     const cell = getSelectedCell()
     if (cell) {
+      // Save scroll position
+      const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
+      const scrollTop = editor?.scrollTop || window.scrollY
+
       cell.style.textAlign = alignment
+      
+      // Restore scroll position
+      setTimeout(() => {
+        if (editor) {
+          editor.scrollTop = scrollTop
+        } else {
+          window.scrollTo(window.scrollX, scrollTop)
+        }
+      }, 0)
+      
       onSync?.()
     }
   }
@@ -287,6 +500,10 @@ export function TableToolsTab({ onSync }: TableToolsTabProps) {
   const sortTable = (ascending: boolean) => {
     const table = getSelectedTable()
     if (!table) return
+
+    // Save scroll position
+    const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
+    const scrollTop = editor?.scrollTop || window.scrollY
 
     const tbody = table.querySelector('tbody') || table
     const rows = Array.from(tbody.querySelectorAll('tr'))
@@ -316,6 +533,16 @@ export function TableToolsTab({ onSync }: TableToolsTabProps) {
 
     // Re-append sorted rows
     rows.forEach(row => tbody.appendChild(row))
+    
+    // Restore scroll position
+    setTimeout(() => {
+      if (editor) {
+        editor.scrollTop = scrollTop
+      } else {
+        window.scrollTo(window.scrollX, scrollTop)
+      }
+    }, 0)
+    
     onSync?.()
   }
 
@@ -373,7 +600,7 @@ export function TableToolsTab({ onSync }: TableToolsTabProps) {
   return (
     <TooltipProvider>
       <div className="overflow-x-auto overflow-y-hidden scrollbar-hide">
-        <div className="flex items-center gap-1 p-1.5 sm:p-2 bg-gray-50 border-b min-w-max">
+        <div className={`flex items-center gap-1 ${compact ? 'p-1' : 'p-1.5 sm:p-2 bg-gray-50 dark:bg-gray-800/50 border-b'} min-w-max`}>
         {/* Insert Row/Column */}
         <div className="flex items-center gap-0.5 pr-2 border-r">
           <Popover open={showInsertPopover} onOpenChange={setShowInsertPopover}>

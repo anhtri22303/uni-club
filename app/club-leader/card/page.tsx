@@ -11,9 +11,11 @@ import {
   CardPreview,
   ChatAssistant,
   CustomizationTabs,
+  DownloadModal,
   gradientPresets,
   type CardData,
   downloadCardAsImage,
+  downloadCardAsFormat,
   shareCardAsImage,
   handleColorSelection,
 } from "./cardComponents"
@@ -43,6 +45,8 @@ export default function CardEditorPage() {
   const [clubId, setClubId] = useState<number | null>(null)
   const [isChatOpen, setIsChatOpen] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false)
+  const [isDownloading, setIsDownloading] = useState(false)
   
   // Sample card data
   const cardData: CardData = {
@@ -55,10 +59,10 @@ export default function CardEditorPage() {
     memberId: "001234",
   }
 
-  // Load clubId from localStorage
+  // Load clubId from sessionStorage
   useEffect(() => {
     try {
-      const authDataString = localStorage.getItem("uniclub-auth")
+      const authDataString = sessionStorage.getItem("uniclub-auth")
       if (authDataString) {
         const authData = JSON.parse(authDataString)
         if (authData.clubId) {
@@ -128,26 +132,61 @@ export default function CardEditorPage() {
     toast,
   })
 
-  const handleDownloadCard = () => {
-    downloadCardAsImage(
-      cardRef,
-      cardData.clubName,
-      cardData.studentCode,
-      () => {
-      toast({
-          title: "✅ Downloaded!",
-          description: "Your card has been downloaded successfully!",
-      })
-      },
-      (error) => {
-      console.error('Error downloading card:', error)
-      toast({
-        title: "Error",
-          description: "Failed to download card. Please try again.",
-          variant: "destructive"
-        })
-      }
-    )
+  const handleDownloadCard = (
+    quality: 'standard' | 'high' | 'ultra' = 'high',
+    format: 'png' | 'jpeg' | 'svg' = 'png'
+  ) => {
+    setIsDownloading(true)
+    
+    if (format === 'png') {
+      downloadCardAsImage(
+        cardRef,
+        cardData.clubName,
+        cardData.studentCode,
+        () => {
+          setIsDownloading(false)
+          setIsDownloadModalOpen(false)
+          toast({
+            title: "✅ Downloaded!",
+            description: `Your card has been downloaded in ${quality} quality!`,
+          })
+        },
+        (error) => {
+          setIsDownloading(false)
+          console.error('Error downloading card:', error)
+          toast({
+            title: "Error",
+            description: "Failed to download card. Please try again.",
+            variant: "destructive"
+          })
+        },
+        quality
+      )
+    } else {
+      downloadCardAsFormat(
+        cardRef,
+        cardData.clubName,
+        cardData.studentCode,
+        format,
+        () => {
+          setIsDownloading(false)
+          setIsDownloadModalOpen(false)
+          toast({
+            title: "✅ Downloaded!",
+            description: `Your card has been downloaded as ${format.toUpperCase()}!`,
+          })
+        },
+        (error) => {
+          setIsDownloading(false)
+          console.error('Error downloading card:', error)
+          toast({
+            title: "Error",
+            description: "Failed to download card. Please try again.",
+            variant: "destructive"
+          })
+        }
+      )
+    }
   }
 
   const handleShareCard = () => {
@@ -336,7 +375,7 @@ export default function CardEditorPage() {
 
                 {/* Action Buttons */}
                 <div className="flex flex-col sm:flex-row gap-2">
-                  <Button onClick={handleDownloadCard} className="flex-1 w-full sm:w-auto">
+                  <Button onClick={() => setIsDownloadModalOpen(true)} className="flex-1 w-full sm:w-auto">
                     <Download className="h-4 w-4 mr-2" />
                     <span>Download</span>
                   </Button>
@@ -411,6 +450,14 @@ export default function CardEditorPage() {
                 />
               </div>
             </div>
+
+            {/* Download Modal */}
+            <DownloadModal
+              isOpen={isDownloadModalOpen}
+              onClose={() => setIsDownloadModalOpen(false)}
+              onDownload={handleDownloadCard}
+              isDownloading={isDownloading}
+            />
           </div>
         </div>
       </AppShell>

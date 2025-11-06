@@ -11,7 +11,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { ArrowLeft, Loader2, Package, DollarSign, Tag, Info, ShoppingCart, AlertCircle, Minus, Plus, ChevronLeft, ChevronRight } from "lucide-react"
+import {
+    ArrowLeft, Loader2, Package, DollarSign, Tag, Info, ShoppingCart, AlertCircle, Minus, Plus, ChevronLeft, ChevronRight,
+    WalletCards,
+} from "lucide-react"
 import { LoadingSkeleton } from "@/components/loading-skeleton"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -357,13 +360,13 @@ export default function StudentProductViewPage() {
                             {/* Giá và Tồn kho */}
                             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                                 <div className="text-3xl font-bold text-primary flex items-center gap-2">
-                                    <DollarSign className="h-7 w-7" />
-                                    <span>{product.pointCost} Points</span>
+                                    <WalletCards className="h-7 w-7" />
+                                    <span>{product.pointCost.toLocaleString('en-US')} Points</span>
                                 </div>
 
                                 <Badge variant={isAvailable ? "default" : "destructive"} className="text-sm px-4 py-1">
                                     <Package className="h-4 w-4 mr-2" />
-                                    {isAvailable ? `${product.stockQuantity} in stock` : "Out of Stock"}
+                                    {isAvailable ? `${product.stockQuantity.toLocaleString('en-US')} in stock` : "Out of Stock"}
                                 </Badge>
                             </div>
 
@@ -414,6 +417,7 @@ export default function StudentProductViewPage() {
                                     )}
 
                                     {/* Logic disable nút */}
+                                    
                                     <Button
                                         size="lg"
                                         className="w-full text-lg"
@@ -431,7 +435,7 @@ export default function StudentProductViewPage() {
                                         {profileLoading ? "Loading membership..." : (isRedeeming ? "Processing..." : "Redeem Now")}
                                     </Button>
                                     <p className="text-xs text-center text-muted-foreground">
-                                        Total: {product.pointCost * quantity} points
+                                        Total: {(product.pointCost * quantity).toLocaleString('en-US')} points
                                     </p>
 
 
@@ -481,7 +485,7 @@ export default function StudentProductViewPage() {
                             <DialogTitle>Confirm Redemption</DialogTitle>
                             <DialogDescription>
                                 Are you sure you want to redeem <strong>{quantity} x {product.name}</strong>
-                                {" "}for a total of <strong>{product.pointCost * quantity}</strong> points?
+                                {" "}for a total of <strong>{(product.pointCost * quantity).toLocaleString('en-US')}</strong> points?
                                 This action cannot be undone.
                             </DialogDescription>
                         </DialogHeader>

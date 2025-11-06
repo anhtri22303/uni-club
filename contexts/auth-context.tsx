@@ -48,7 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Phần useEffect này giữ nguyên nhưng dùng safe storage
-    const saved = safeLocalStorage.getItem("uniclub-auth");
+    const saved = safeSessionStorage.getItem("uniclub-auth");
 
     if (saved) {
       try {
@@ -84,9 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           },
         });
 
-        safeLocalStorage.setItem("jwtToken", parsed.token);
-
-        localStorage.setItem("jwtToken", parsed.token);
+        safeSessionStorage.setItem("jwtToken", parsed.token);
       } catch (err) {
         console.warn("Failed to parse stored auth", err);
       }
@@ -96,11 +94,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Helper function để xử lý login response chung
   const processLoginResponse = (res: LoginResponse) => {
-    safeLocalStorage.setItem("uniclub-auth", JSON.stringify(res));
-    safeLocalStorage.setItem("jwtToken", res.token);
-
-    localStorage.setItem("uniclub-auth", JSON.stringify(res));
-    localStorage.setItem("jwtToken", res.token);
+    safeSessionStorage.setItem("uniclub-auth", JSON.stringify(res));
+    safeSessionStorage.setItem("jwtToken", res.token);
 
     const normalizeRole = (r?: string | null) => {
       if (!r) return null;
@@ -123,7 +118,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Save role for password reset check
     if (normalizedRole) {
-      localStorage.setItem("userRole", normalizedRole.toUpperCase());
+      sessionStorage.setItem("userRole", normalizedRole.toUpperCase());
     }
 
     setAuth({
@@ -240,13 +235,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       "clubly-club-applications",
       "clubly-policies",
       "clubly-event-requests",
+      "resetUserId",
+      
+      // Report Editor Local Storage keys (now using localStorage instead of sessionStorage)
+      "clubly-report-editor-content",
+      "clubly-report-page-settings",
+      "editor_history_meta",
+      // History slots (0-24)
+      ...Array.from({ length: 25 }, (_, i) => `editor_history_${i}`),
       
       // Session Storage keys
       "intendedPath",
       "requirePasswordReset",
       "resetEmail",
-      "clubly-report-editor-content",
-      "clubly-report-page-settings",
     ];
 
     console.log("Logout: Bắt đầu quá trình dọn dẹp storage...");

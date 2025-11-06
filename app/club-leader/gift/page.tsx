@@ -2,10 +2,13 @@
 
 import type React from "react"
 import { useEffect, useState, useMemo } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import Link from "next/link"
-import { Gift, Package, Calendar, Clock, CheckCircle, XCircle, Plus, ChevronLeft, ChevronRight, Loader2, } from "lucide-react"
+import {
+  Gift, Package, Calendar, Clock, CheckCircle, XCircle, Plus, ChevronLeft, ChevronRight, Loader2, Archive,
+  WalletCards,
+} from "lucide-react"
 // --- Service ---
 import { addProduct, Product, AddProductPayload, } from "@/service/productApi"
 import { getClubIdFromToken } from "@/service/clubApi"
@@ -100,7 +103,6 @@ interface FixedTagIds {
   eventTagId: number | null;
 }
 
-
 export default function ClubLeaderGiftPage() {
   const [clubId, setClubId] = useState<number | null>(() => getClubIdFromToken())
   const [searchTerm, setSearchTerm] = useState("")
@@ -117,7 +119,18 @@ export default function ClubLeaderGiftPage() {
     clubTagId: null,
     eventTagId: null,
   });
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive" | "archived">("all");
+
+  useEffect(() => {
+    const id = getClubIdFromToken();
+    if (id) {
+      setClubId(id);
+    } else {
+      toast({ title: "Error", description: "Club ID not found.", variant: "destructive" });
+      // có thể thêm router.push('/login') ở đây
+    }
+  }, [toast]); // Chỉ chạy 1 lần
+
   // THAY THẾ useEffect/useState BẰNG REACT QUERY
   const { data: products = [], isLoading: productsLoading } = useProductsByClubId(
     clubId as number,
@@ -144,9 +157,6 @@ export default function ClubLeaderGiftPage() {
     today.setHours(0, 0, 0, 0);
 
     return clubEvents.filter(event => {
-      // Xử lý event.date (string "YYYY-MM-DD") để so sánh
-      // Phải parse thủ công để tránh lỗi timezone (new Date("YYYY-MM-DD")
-      // sẽ hiểu là UTC, có thể bị sai ngày)
       const parts = event.date.split('-').map(Number);
       // new Date(year, monthIndex, day)
       const eventDate = new Date(parts[0], parts[1] - 1, parts[2]);
@@ -155,9 +165,6 @@ export default function ClubLeaderGiftPage() {
       if (event.status === "ON-GOING") {
         return true;
       }
-
-      // Điều kiện 2: Event đã được duyệt (APPROVED) VÀ ngày diễn ra
-      // là hôm nay hoặc trong tương lai
       if (event.status === "APPROVED" && eventDate >= today) {
         return true;
       }
@@ -250,7 +257,6 @@ export default function ClubLeaderGiftPage() {
       return;
     }
 
-    // Logic cũ cho các tag khác
     setForm((prev) => {
       const currentTags = prev.tagIds || []
       if (checked) {
@@ -261,7 +267,7 @@ export default function ClubLeaderGiftPage() {
     })
   }
 
-  // 4. Cập nhật hàm handleCreate (ĐÃ CẬP NHẬT)
+  // 4. Cập nhật hàm handleCreate 
   const handleCreate = async () => {
     if (!clubId) {
       toast({ title: "Error", description: "Club ID does not exist.", variant: "destructive" })
@@ -310,12 +316,20 @@ export default function ClubLeaderGiftPage() {
       setSubmitting(false)
     }
   }
-
-  // THAY THẾ 'filteredProducts' BẰNG 'useMemo' 
   const filteredAndSortedProducts = useMemo(() => {
-    let filtered: Product[] = [...products] // Bắt đầu với danh sách đầy đủ
+    let filtered: Product[] = [...products] // 1. Bắt đầu với TẤT CẢ (gồm cả Archived)
 
-    // A. Lọc theo SearchTerm (từ Input)
+    // --- LỌC BƯỚC 1: LỌC THEO STATUS (Tab) ---
+    if (statusFilter === "active") {
+      filtered = filtered.filter((p) => p.status === "ACTIVE");
+    } else if (statusFilter === "inactive") {
+      filtered = filtered.filter((p) => p.status === "INACTIVE");
+    } else if (statusFilter === "archived") {
+      filtered = filtered.filter((p) => p.status === "ARCHIVED");
+    }
+    // Nếu statusFilter === "all", bỏ qua bước này, giữ nguyên TẤT CẢ
+
+    // --- LỌC BƯỚC 2: LỌC THEO SEARCH TERM ---
     if (searchTerm) {
       filtered = filtered.filter(
         (p) =>
@@ -323,18 +337,15 @@ export default function ClubLeaderGiftPage() {
           p.description.toLowerCase().includes(searchTerm.toLowerCase())
       )
     }
-    // THÊM: Lọc theo Status (All / Active / Inactive)
-    if (statusFilter !== "all") {
-      const desiredStatus = statusFilter === "active" ? "ACTIVE" : "INACTIVE";
-      filtered = filtered.filter((p) => p.status === desiredStatus);
-    }
-    // B. Lọc theo ProductFilters state (Client-side)
+
+    // --- LỌC BƯỚC 3: LỌC THEO CRITERIA (Checkbox và Tags) ---
     if (filters) {
-      // Lọc "Sẵn hàng"
+      // Lọc "Available" (Sẵn hàng)
       if (filters.inStock) {
-        // Lọc cả status và stockQuantity
+        // Lọc này chỉ có ý nghĩa với các sản phẩm ACTIVE
         filtered = filtered.filter((p) => p.status === "ACTIVE" && p.stockQuantity > 0)
       }
+
       // Lọc "Tags"
       if (filters.selectedTags.size > 0) {
         const selectedTags = Array.from(filters.selectedTags)
@@ -344,7 +355,7 @@ export default function ClubLeaderGiftPage() {
       }
     }
 
-    // C. Sắp xếp
+    // --- BƯỚC 4: SẮP XẾP ---
     switch (sortBy) {
       case "price_asc":
         filtered.sort((a, b) => a.pointCost - b.pointCost)
@@ -353,9 +364,11 @@ export default function ClubLeaderGiftPage() {
         filtered.sort((a, b) => b.pointCost - a.pointCost)
         break
       case "hot_promo":
+        // (chưa có logic)
         break
       case "popular":
       default:
+        // (chưa có logic)
         break
     }
     return filtered
@@ -413,7 +426,7 @@ export default function ClubLeaderGiftPage() {
               <ToggleGroup
                 type="single"
                 value={statusFilter}
-                onValueChange={(value: "all" | "active" | "inactive") => {
+                onValueChange={(value: "all" | "active" | "inactive" | "archived") => {
                   if (value) setStatusFilter(value); // Chỉ set khi có giá trị
                 }}
                 variant="outline"
@@ -421,6 +434,7 @@ export default function ClubLeaderGiftPage() {
                 <ToggleGroupItem value="all" aria-label="Show all">All</ToggleGroupItem>
                 <ToggleGroupItem value="active" aria-label="Show active only">Active</ToggleGroupItem>
                 <ToggleGroupItem value="inactive" aria-label="Show inactive only">Inactive</ToggleGroupItem>
+                <ToggleGroupItem value="archived" aria-label="Show archived only">Archived</ToggleGroupItem>
               </ToggleGroup>
             </div>
           </div>
@@ -570,24 +584,24 @@ export default function ClubLeaderGiftPage() {
             ) : filteredAndSortedProducts.length === 0 ? (
               <div className="col-span-full text-center py-12">
                 <h3 className="text-lg font-semibold mb-2">No products found</h3>
-                <p className="text-sm text-muted-foreground">Try adding new products!</p>
+                <p className="text-sm text-muted-foreground">
+                  {statusFilter === "archived" ? "Empty archive." : "Try adjusting your filters or add a new product."}
+                </p>
               </div>
             ) : (
               filteredAndSortedProducts.map((p) => {
-                // Lấy thumbnail (hoặc ảnh placeholder nếu không có)
                 const thumbnail = p.media?.find((m) => m.thumbnail)?.url || "/placeholder.svg"
 
                 return (
-                  // 1. Bọc thẻ Card bằng Link
                   <Link
                     href={`/club-leader/gift/${p.id}`}
                     key={p.id}
-                    className="h-full flex" // Thêm 'flex' để Card con có thể co giãn 100%
+                    className="h-full flex"
                   >
                     {/* 2. Cập nhật Card styling (shadow, cursor, v.v.) */}
                     <Card className="transition-all duration-200 hover:shadow-lg cursor-pointer flex flex-col h-full relative overflow-hidden w-full">
 
-                      {/* Phần Header (Hình ảnh) - Thay đổi để giống thiết kế */}
+                      {/* Phần Header */}
                       <CardHeader className="p-0 border-b"> {/* Xóa padding */}
                         <div className="aspect-video w-full relative overflow-hidden bg-muted">
                           {/* Dùng placeholder nếu ảnh lỗi */}
@@ -597,18 +611,21 @@ export default function ClubLeaderGiftPage() {
                             className="object-cover w-full h-full"
                             onError={(e) => (e.currentTarget.src = "/placeholder.svg")}
                           />
-                          {/* Badge Active/Inactive (Giống trong ảnh) */}
+                          {/* Badge Active/Inactive */}
                           <Badge
-                            variant={p.status === "ACTIVE" ? "default" : "secondary"}
-                            className={`absolute right-2 top-2 z-10 text-xs ${p.status === "ACTIVE" ? "bg-green-600 text-white" : "bg-gray-500 text-white"
-                              }`}
+                            variant="default"
+                            className={`absolute right-2 top-2 z-10 text-xs
+                              ${p.status === "ACTIVE" ? "bg-green-600 text-white" : ""}
+                              ${p.status === "INACTIVE" ? "bg-gray-500 text-white" : ""}
+                              ${p.status === "ARCHIVED" ? "bg-red-700 text-white" : ""}
+                              `}
                           >
-                            {p.status === "ACTIVE" ? "Active" : p.status}
+                            {p.status}
                           </Badge>
                         </div>
                       </CardHeader>
 
-                      {/* Phần Content (Thông tin) - Thay đổi để giống thiết kế */}
+                      {/* Phần Content (Thông tin) */}
                       <CardContent className="p-3 flex flex-col gap-2 grow">
                         {/* Title và Description */}
                         <div className="min-w-0">
@@ -636,12 +653,15 @@ export default function ClubLeaderGiftPage() {
                         )}
 
                         {/* Giá và Kho (Đẩy xuống dưới) */}
-                        <div className="flex items-center justify-between mt-auto pt-2">
-                          <span className="font-semibold text-blue-600 text-base">
-                            {p.pointCost} points
-                          </span>
+                        <div className="flex items-center justify-between mt-auto pt-3">
+                          <div className="flex items-center gap-2"> {/* Thêm 'gap-2' để có khoảng cách */}
+                            <WalletCards className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-semibold text-blue-600 text-base">
+                              {p.pointCost.toLocaleString('en-US')} points
+                            </span>
+                          </div>
                           <span className="text-sm text-muted-foreground">
-                            Warehouse: {p.stockQuantity}
+                            Warehouse: {p.stockQuantity.toLocaleString('en-US')}
                           </span>
                         </div>
                       </CardContent>

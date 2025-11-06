@@ -9,10 +9,10 @@ const axiosInstance = axios.create({
 
 axiosInstance.interceptors.request.use(
   (config) => {
-    // localStorage is only available in the browser. Guard access so this
+    // sessionStorage is only available in the browser. Guard access so this
     // module can be imported on the server without throwing ReferenceError.
     if (typeof window !== "undefined") {
-      const token = localStorage.getItem("jwtToken")
+      const token = sessionStorage.getItem("jwtToken")
       if (token) {
         config.headers = config.headers || {};
         config.headers.Authorization = `Bearer ${token}`;

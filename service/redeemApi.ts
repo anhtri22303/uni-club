@@ -21,11 +21,13 @@ export interface RedeemOrder {
   productName: string;
   quantity: number;
   totalPoints: number;
-  status: string; // (PENDING, COMPLETED, CANCELLED, REFUNDED)
+  productType?: string;
+  status: string; // (PENDING, COMPLETED, REFUNDED, PARTIALLY_REFUNDED)
   createdAt: string;
   completedAt: string;
   clubName: string;
   memberName: string;
+  reasonRefund?: string;
 }
 
 /**
@@ -36,6 +38,16 @@ export interface RedeemPayload {
   productId: number;
   quantity: number;
   membershipId: number;
+}
+
+/**
+ * Interface cho payload (dữ liệu gửi đi) khi HOÀN TRẢ
+ * Dùng cho cả Full và Partial Refund
+ */
+export interface RefundPayload {
+  orderId: number | string;
+  quantityToRefund: number;
+  reason: string;
 }
 
 // --- API Functions ---
@@ -127,30 +139,30 @@ export async function completeRedeemOrder(
 }
 
 /**
- * (MỚI) Hoàn trả toàn bộ đơn hàng (chuyển status sang REFUNDED)
+ * (CẬP NHẬT) Hoàn trả toàn bộ đơn hàng (chuyển status sang REFUNDED)
  * (PUT /api/redeem/order/{orderId}/refund)
  */
 export async function refundRedeemOrder(
-  orderId: number | string
+  payload: RefundPayload 
 ): Promise<RedeemOrder> {
   const res = await axiosInstance.put<ApiResponse<RedeemOrder>>(
-    `/api/redeem/order/${orderId}/refund`
+    `/api/redeem/order/refund`, 
+    payload 
   );
   return res.data.data;
 }
 
 /**
- * (MỚI) Hoàn trả một phần đơn hàng
+ * (CẬP NHẬT) Hoàn trả một phần đơn hàng
  * (PUT /api/redeem/order/{orderId}/refund-partial)
  */
 export async function refundPartialRedeemOrder(
-  orderId: number | string,
-  quantity: number
+  payload: RefundPayload
 ): Promise<RedeemOrder> {
   const res = await axiosInstance.put<ApiResponse<RedeemOrder>>(
-    `/api/redeem/order/${orderId}/refund-partial`,
-    null, // Không có body
-    { params: { quantity } } // Gửi `quantity` dưới dạng query param
+    `/api/redeem/order/refund-partial`, 
+    payload 
   );
   return res.data.data;
 }
+

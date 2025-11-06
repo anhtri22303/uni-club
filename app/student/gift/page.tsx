@@ -7,13 +7,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Gift, Package, ChevronLeft, ChevronRight, Layers, Loader2, Eye } from "lucide-react"
+import { Gift, Package, ChevronLeft, ChevronRight, Layers, Loader2, Eye, WalletCards } from "lucide-react"
 import { usePagination } from "@/hooks/use-pagination"
 import { useClubs, useProductsByClubId, useProfile, queryKeys } from "@/hooks/use-query-hooks"
 import { Product } from "@/service/productApi"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { safeLocalStorage } from "@/lib/browser-utils"
+import { safeSessionStorage } from "@/lib/browser-utils"
 import { useToast } from "@/hooks/use-toast"
 import { useQueryClient } from "@tanstack/react-query"
 import { redeemClubProduct, redeemEventProduct, RedeemPayload } from "@/service/redeemApi"
@@ -90,16 +90,9 @@ export default function MemberGiftPage() {
 	// Kết hợp trạng thái loading
 	const isLoading = clubsLoading || profileLoading || (productsLoading && !selectedClubId); // Chỉ loading chính khi đang tải club hoặc chưa chọn club
 
-
-	// useEffect(() => {
-	// 	if (profile && profile.wallets) {
-	// 		setWallets(profile.wallets)
-	// 	}
-	// }, [profile])
-	// Lấy club IDs của user từ localStorage
 	useEffect(() => {
 		try {
-			const saved = safeLocalStorage.getItem("uniclub-auth")
+			const saved = safeSessionStorage.getItem("uniclub-auth")
 			if (saved) {
 				const parsed = JSON.parse(saved)
 				let clubIdNumbers: number[] = []
@@ -112,13 +105,13 @@ export default function MemberGiftPage() {
 				setUserClubIds(clubIdNumbers)
 			}
 		} catch (error) {
-			console.error("Failed to get clubIds from localStorage:", error)
+			console.error("Failed to get clubIds from sessionStorage:", error)
 		}
 	}, [])
 
 	useEffect(() => {
 		try {
-			const saved = safeLocalStorage.getItem("uniclub-auth")
+			const saved = safeSessionStorage.getItem("uniclub-auth")
 			if (saved) {
 				const parsed = JSON.parse(saved)
 				let clubIdNumbers: number[] = []
@@ -132,7 +125,7 @@ export default function MemberGiftPage() {
 				setUserClubIds(clubIdNumbers)
 			}
 		} catch (error) {
-			console.error("Failed to get clubIds from localStorage:", error)
+			console.error("Failed to get clubIds from sessionStorage:", error)
 		}
 	}, [])
 
@@ -202,16 +195,16 @@ export default function MemberGiftPage() {
 			const currentMembership = profile.find(m => m.clubId === Number(selectedClubId));
 
 			if (!currentMembership) {
-                const clubName = userClubsDetails.find(c => c.id === Number(selectedClubId))?.name || "this club";
-                throw new Error(`You are not a member of ${clubName}.`);
-            }
+				const clubName = userClubsDetails.find(c => c.id === Number(selectedClubId))?.name || "this club";
+				throw new Error(`You are not a member of ${clubName}.`);
+			}
 
 			// 4. Tạo payload
 			const payload: RedeemPayload = {
-                productId: product.id,
-                quantity: 1, 
-                membershipId: currentMembership.membershipId // Gửi ID thành viên
-            };
+				productId: product.id,
+				quantity: 1,
+				membershipId: currentMembership.membershipId // Gửi ID thành viên
+			};
 
 			let order;
 			// 5. Kiểm tra loại sản phẩm để gọi đúng API
@@ -399,11 +392,13 @@ export default function MemberGiftPage() {
 
 											{/* Đẩy giá và kho xuống dưới */}
 											<div className="flex items-center justify-between mt-auto pt-2">
-												<span className="font-semibold text-blue-600 text-base">
-													{p.pointCost} points
+
+												<span className="font-semibold text-blue-600 text-base flex items-center">
+													<WalletCards className="h-4 w-4 text-muted-foreground mr-2" />
+													{p.pointCost.toLocaleString('en-US')} points
 												</span>
 												<span className={`text-sm ${isOutOfStock ? 'text-red-500 font-medium' : 'text-muted-foreground'}`}>
-													Stock: {p.stockQuantity}
+													Stock: {p.stockQuantity.toLocaleString('en-US')}
 												</span>
 											</div>
 

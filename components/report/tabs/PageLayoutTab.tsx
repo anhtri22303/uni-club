@@ -44,6 +44,7 @@ interface PageLayoutTabProps {
   pageSettings: PageSettings
   onPageSettingsChange: (settings: Partial<PageSettings>) => void
   onSync?: () => void
+  compact?: boolean
 }
 
 const PAPER_SIZES = [
@@ -62,7 +63,7 @@ const WATERMARK_PRESETS = [
   'ORIGINAL'
 ]
 
-export function PageLayoutTab({ pageSettings, onPageSettingsChange, onSync }: PageLayoutTabProps) {
+export function PageLayoutTab({ pageSettings, onPageSettingsChange, onSync, compact = false }: PageLayoutTabProps) {
   const [showMarginsPopover, setShowMarginsPopover] = useState(false)
   const [showWatermarkPopover, setShowWatermarkPopover] = useState(false)
   const [customWatermark, setCustomWatermark] = useState('')
@@ -90,7 +91,7 @@ export function PageLayoutTab({ pageSettings, onPageSettingsChange, onSync }: Pa
   return (
     <TooltipProvider>
       <div className="overflow-x-auto overflow-y-hidden scrollbar-hide">
-        <div className="flex items-center gap-1 p-1.5 sm:p-2 bg-gray-50 border-b min-w-max">
+        <div className={`flex items-center gap-1 ${compact ? 'p-1' : 'p-1.5 sm:p-2 bg-gray-50 dark:bg-gray-800/50 border-b'} min-w-max`}>
         {/* Paper Size */}
         <div className="flex items-center gap-1 pr-1.5 sm:pr-2 border-r">
           <Tooltip>

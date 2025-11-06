@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils"
 import { usePathname, useRouter } from "next/navigation"
 import { useState, useEffect } from "react"
 import { LoadingSpinner } from "@/components/loading-spinner"
-import { safeLocalStorage } from "@/lib/browser-utils"
+import { safeSessionStorage } from "@/lib/browser-utils"
 import { getUserStats } from "@/service/userApi"
 import { getClubStats } from "@/service/clubApi"
 import { usePrefetchClubs, usePrefetchEvents, usePrefetchUsers } from "@/hooks/use-query-hooks"
@@ -55,7 +55,8 @@ const navigationConfig = {
       icon: LayoutDashboard,
       children: [
         { href: "/club-leader/gift", label: "Gift list", icon: Gift },
-        { href: "/club-leader/order-list", label: "Orders list", icon: ListOrdered  },
+        { href: "/club-leader/club-order-list", label: "Club orders list", icon: ListOrdered },
+        { href: "/club-leader/event-order-list", label: "Event orders list", icon: ListOrdered },
       ]
     },
     {
@@ -124,7 +125,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
   useEffect(() => {
     if (auth.role === "student") {
       try {
-        const storedAuth = safeLocalStorage.getItem("uniclub-auth")
+        const storedAuth = safeSessionStorage.getItem("uniclub-auth")
         if (storedAuth) {
           const parsedAuth = JSON.parse(storedAuth)
           const clubIds = parsedAuth.clubIds
@@ -139,7 +140,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
           console.log("Sidebar check - No auth data found, hasClubs: false")
         }
       } catch (error) {
-        console.warn("Failed to parse localStorage auth data:", error)
+        console.warn("Failed to parse sessionStorage auth data:", error)
         setHasClubs(false)
       }
     }

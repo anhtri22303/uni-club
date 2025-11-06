@@ -201,7 +201,7 @@ export default function MemberWalletPage() {
                           <div className="space-y-1">
                             <div className="text-xs font-medium opacity-90">UNICLUB POINTS</div>
                             <div
-                              className={`text-3xl font-extrabold tracking-tight px-5 py-2 rounded-2xl mx-auto text-white drop-shadow-2xl border-4 border-white shadow-2xl ${[
+                              className={`text-3xl font-extrabold tracking-tight px-5 py-2 rounded-2xl mx-auto text-white drop-shadow-2xl border-4 border-white/90 dark:border-white/70 shadow-2xl ${[
                                 "bg-blue-700",
                                 "bg-blue-800",
                                 "bg-blue-900",
@@ -251,9 +251,9 @@ export default function MemberWalletPage() {
             </div>
 
             {/* Trust & Security Footer */}
-            <Card className="border-0 bg-gray-50 shadow-lg">
+            <Card className="border-0 bg-gray-50 dark:bg-gray-900 shadow-lg">
               <CardContent className="p-6">
-                <div className="flex items-center justify-center gap-8 text-gray-700">
+                <div className="flex items-center justify-center gap-8 text-gray-700 dark:text-gray-300">
                   <div className="flex items-center gap-2">
                     <Shield className="h-5 w-5 text-green-600" />
                     <span className="font-semibold">100% Secure</span>

@@ -126,26 +126,26 @@ export default function VirtualCardPage() {
         console.log('Memberships:', memberships)
         setProfileData(safeProfile)
         
-        // Load clubIds from localStorage (priority) or use profile memberships
+        // Load clubIds from sessionStorage (priority) or use profile memberships
         let clubIds: number[] = []
         try {
-          const authDataString = localStorage.getItem("uniclub-auth")
+          const authDataString = sessionStorage.getItem("uniclub-auth")
           if (authDataString) {
             const authData = JSON.parse(authDataString)
             if (authData.clubIds && Array.isArray(authData.clubIds) && authData.clubIds.length > 0) {
               clubIds = authData.clubIds
-              console.log('Loaded clubIds from localStorage:', clubIds)
+              console.log('Loaded clubIds from sessionStorage:', clubIds)
             } else if (authData.clubId) {
-              // Single clubId in localStorage
+              // Single clubId in sessionStorage
               clubIds = [authData.clubId]
-              console.log('Loaded single clubId from localStorage:', clubIds)
+              console.log('Loaded single clubId from sessionStorage:', clubIds)
             }
           }
         } catch (error) {
-          console.error("Error loading clubIds from localStorage:", error)
+          console.error("Error loading clubIds from sessionStorage:", error)
         }
         
-        // Fallback to profile memberships if no clubIds in localStorage
+        // Fallback to profile memberships if no clubIds in sessionStorage
         if (clubIds.length === 0) {
           clubIds = clubIdsFromProfile
           console.log('Using clubIds from profile memberships:', clubIds)
@@ -350,6 +350,10 @@ export default function VirtualCardPage() {
   // Find current club membership info
   const currentMembership = profileData.memberships?.find(m => m.clubId === selectedClubId)
   
+  // Debug: Log membership and role info
+  console.log('Current membership:', currentMembership)
+  console.log('Role being used:', currentMembership?.level || profileData.role || "Member")
+  
   // Map profile data to CardData format
   const cardData: CardData = {
     clubName: cardDesign?.clubName || currentMembership?.clubName || "UniClub System",
@@ -447,24 +451,26 @@ export default function VirtualCardPage() {
             </div>
 
             {/* Card Display */}
-            <div className="max-w-5xl mx-auto">
-              <CardPreview
-                ref={cardRef}
-                cardData={cardData}
-                colorType={colorType}
-                gradient={gradient}
-                cardColorClass={cardColorClass}
-                pattern={pattern}
-                borderRadius={borderRadius}
-                logoUrl={logoUrl}
-                qrCodeUrl={qrCodeUrl}
-                qrSize={qrSize}
-                qrStyle={qrStyle}
-                showLogo={showLogo}
-                patternOpacity={patternOpacity}
-                cardOpacity={cardOpacity}
-                showFrame={false}
-              />
+            <div className="max-w-5xl mx-auto px-4">
+              <div className="flex items-center justify-center">
+                <CardPreview
+                  ref={cardRef}
+                  cardData={cardData}
+                  colorType={colorType}
+                  gradient={gradient}
+                  cardColorClass={cardColorClass}
+                  pattern={pattern}
+                  borderRadius={borderRadius}
+                  logoUrl={logoUrl}
+                  qrCodeUrl={qrCodeUrl}
+                  qrSize={qrSize}
+                  qrStyle={qrStyle}
+                  showLogo={showLogo}
+                  patternOpacity={patternOpacity}
+                  cardOpacity={cardOpacity}
+                  showFrame={false}
+                />
+              </div>
             </div>
           </div>
         </div>

@@ -9,7 +9,7 @@ interface ApiResponse<T> {
   data: T;
 }
 /**
- *  Cấu trúc response phân trang (cho API _all)
+ *  Cấu trúc response phân trang (cho API _all)
  */
 export interface PageableResponse<T> {
   content: T[];
@@ -18,7 +18,6 @@ export interface PageableResponse<T> {
   totalElements: number;
   totalPages: number;
   last: boolean;
-  // ... các thuộc tính phân trang khác nếu có
 }
 // --- Interfaces for Product ---
 
@@ -68,12 +67,11 @@ export interface StockHistory {
 
 /**
  * Interface cho payload filter của API _all
- * (Dựa trên Swagger cho GET /_all)
  */
 export interface ProductFilterPayload {
   page?: number;
   size?: number;
-  sort?: string; // Gửi dạng string "field,asc" or "field,desc"
+  sort?: string; 
   status?: string;
   type?: string;
   tag?: string;
@@ -108,17 +106,24 @@ export interface UpdateProductPayload {
 }
 
 /**
- *  AddMediaPayload (vì API đã thay đổi, không dùng URL nữa)
+ *  Interface cho payload khi CẬP NHẬT metadata media
+ * (PUT /.../media/{mediaId}) - Gửi qua Query Params
  */
+export interface UpdateMediaMetadataPayload {
+  newFile: string;
+  isThumbnail: boolean;
+  displayOrder: number;
+  type: string;
+}
 
 /**
- * Interface cho payload khi CẬP NHẬT một media (PATCH .../media/{mediaId})
+ *  Interface cho payload khi SẮP XẾP LẠI media
+ * (PUT /.../media/reorder) - Gửi qua Body
  */
-export interface UpdateMediaPayload {
-  url?: string;
-  thumbnail?: boolean;
-  displayOrder?: number;
+export interface ReorderMediaPayload {
+  orderedMediaIds: number[];
 }
+
 
 // --- API Functions (Grouped) ---
 
@@ -126,6 +131,7 @@ export interface UpdateMediaPayload {
 
 /**
  * Lấy danh sách product của một club (GET /api/clubs/{clubId}/products)
+ * (Khớp Swagger image_28c4c3.png)
  */
 export async function getProducts(
   clubId: number,
@@ -145,16 +151,13 @@ export async function getProducts(
 }
 
 /**
- * ❗️ MỚI: Lấy danh sách sản phẩm (có phân trang) của club với bộ lọc
+ * Lấy danh sách sản phẩm (có phân trang) của club với bộ lọc
  * (GET /api/clubs/{clubId}/products/_all)
  */
 export async function getAllProductsPaginated(
   clubId: number | string,
   filters: ProductFilterPayload
 ): Promise<PageableResponse<Product>> {
-
-  // Gửi filters trực tiếp_dưới dạng params
-  // (Axios sẽ chuyển { page: 0, size: 10 } thành ?page=0&size=10)
   const res = await axiosInstance.get<ApiResponse<PageableResponse<Product>>>(
     `/api/clubs/${clubId}/products/_all`,
     { params: filters }
@@ -163,7 +166,7 @@ export async function getAllProductsPaginated(
 }
 
 /**
- * ❗️ MỚI: Tìm kiếm sản phẩm theo tags
+ * Tìm kiếm sản phẩm theo tags
  * (GET /api/clubs/{clubId}/products/search)
  */
 export async function searchProductsByTags(
@@ -173,7 +176,7 @@ export async function searchProductsByTags(
   const res = await axiosInstance.get<ApiResponse<Product[]>>(
     `/api/clubs/${clubId}/products/search`,
     {
-      params: { tags } // Gửi mảng tags. Axios sẽ_serialize thành ?tags=a&tags=b
+      params: { tags }
     }
   );
   const data = res.data.data;
@@ -182,6 +185,7 @@ export async function searchProductsByTags(
 
 /**
  * Thêm một product mới cho club (POST /api/clubs/{clubId}/products)
+ * (Khớp Swagger image_28c4c9.png)
  */
 export async function addProduct(
   clubId: number,
@@ -196,9 +200,10 @@ export async function addProduct(
 
 /**
  * Lấy thông tin chi tiết của một sản phẩm (GET /api/clubs/{clubId}/products/{id})
+ * (Khớp Swagger image_28bdbe.png)
  */
 export async function getProductById(
-  clubId: number,
+  clubId: number | string,
   productId: number | string
 ): Promise<Product> {
   const res = await axiosInstance.get<ApiResponse<Product>>(
@@ -209,6 +214,7 @@ export async function getProductById(
 
 /**
  * Cập nhật (Toàn bộ) thông tin sản phẩm (PUT /api/clubs/{clubId}/products/{id})
+ * (Khớp Swagger image_28bdde.png)
  */
 export async function updateProduct(
   clubId: number,
@@ -228,7 +234,7 @@ export async function updateProduct(
 export async function patchProduct(
   clubId: number | string,
   productId: number | string,
-  productData: Partial<UpdateProductPayload> // Dùng Partial để cho phép cập nhật 1 phần
+  productData: Partial<UpdateProductPayload>
 ): Promise<Product> {
   const res = await axiosInstance.patch<ApiResponse<Product>>(
     `/api/clubs/${clubId}/products/${productId}`,
@@ -238,7 +244,8 @@ export async function patchProduct(
 }
 
 /**
- * Xóa một sản phẩm (DELETE /api/clubs/{clubId}/products/{id})
+ * Xóa (Soft Delete) một sản phẩm (DELETE /api/clubs/{clubId}/products/{id})
+ * (Khớp Swagger image_28bdfd.png)
  */
 export async function deleteProduct(
   clubId: number | string,
@@ -247,7 +254,7 @@ export async function deleteProduct(
   const res = await axiosInstance.delete<ApiResponse<string>>(
     `/api/clubs/${clubId}/products/${productId}`
   );
-  return res.data.data; // Thường trả về message
+  return res.data.data;
 }
 
 // === Stock Management ===
@@ -260,12 +267,12 @@ export async function updateStock(
   productId: number | string,
   delta: number,
   note: string = ""
-): Promise<Product> { // Giả định trả về Product đã cập nhật
+): Promise<Product> {
   const res = await axiosInstance.patch<ApiResponse<Product>>(
     `/api/clubs/${clubId}/products/${productId}/stock`,
-    null, // Không có body
+    null,
     {
-      params: { delta, note }, // Dữ liệu gửi qua query params
+      params: { delta, note },
     }
   );
   return res.data.data;
@@ -289,6 +296,7 @@ export async function getStockHistory(
 
 /**
  * Lấy danh sách media của sản phẩm (GET /api/clubs/{clubId}/products/{productId}/media)
+ * (Khớp Swagger image_28c4e9.png)
  */
 export async function getMediaForProduct(
   clubId: number | string,
@@ -302,24 +310,53 @@ export async function getMediaForProduct(
 }
 
 /**
- * Thêm media (Upload file) (POST /api/clubs/{clubId}/products/{productId}/media)
- * API này đã thay đổi từ "gửi URL" (dạng query) sang "upload file" (dạng FormData).
+ * Thêm 1 media (Upload file) (POST /api/clubs/{clubId}/products/{productId}/media)
+ * (Khớp Swagger image_28c546.png)
  */
 export async function addMediaToProduct(
   clubId: number | string,
   productId: number | string,
-  file: File // 👈 Nhận vào một đối tượng File
-): Promise<ProductMedia> { // Giả định trả về media vừa tạo
-
+  file: File
+): Promise<ProductMedia> {
+  
   const formData = new FormData();
-  formData.append("file", file); // Tên key là "file" theo Swagger
+  formData.append("file", file); // Tên key là "file"
 
   const res = await axiosInstance.post<ApiResponse<ProductMedia>>(
     `/api/clubs/${clubId}/products/${productId}/media`,
-    formData, // 👈 Gửi FormData
+    formData,
     {
       headers: {
-        "Content-Type": "multipart/form-data", // 👈 Bắt buộc cho upload file
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
+  return res.data.data;
+}
+
+/**
+ * Thêm nhiều media (Upload bulk)
+ * (POST /api/clubs/{clubId}/products/{productId}/media/bulk)
+ * (Khớp Swagger image_28c566.png)
+ */
+export async function addBulkMediaToProduct(
+  clubId: number | string,
+  productId: number | string,
+  files: File[] 
+): Promise<ProductMedia[]> { 
+  
+  const formData = new FormData();
+  // Lặp qua mảng files và append từng file
+  files.forEach((file) => {
+    formData.append("files", file);
+  });
+
+  const res = await axiosInstance.post<ApiResponse<ProductMedia[]>>(
+    `/api/clubs/{clubId}/products/${productId}/media/bulk`,
+    formData, 
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
       },
     }
   );
@@ -328,7 +365,7 @@ export async function addMediaToProduct(
 
 /**
  * Xóa một media khỏi sản phẩm (DELETE .../media/{mediaId})
- * (Hàm này có trong file gốc của bạn, được giữ lại)
+ * (Khớp Swagger image_28ba3a.png)
  */
 export async function deleteMediaFromProduct(
   clubId: number,
@@ -342,21 +379,54 @@ export async function deleteMediaFromProduct(
 }
 
 /**
- * Cập nhật media (vd: set làm thumbnail) (PATCH .../media/{mediaId})
- * (Hàm này có trong file gốc của bạn, được giữ lại)
+ * Đặt một ảnh làm thumbnail chính
+ * (PUT /.../media/{mediaId}/thumbnail)
+ * (Khớp Swagger image_28bd26.png)
  */
-export async function updateMedia(
-  clubId: number,
+export async function setMediaThumbnail(
+  clubId: number | string,
+  productId: number | string,
+  mediaId: number | string
+): Promise<string> { 
+  const res = await axiosInstance.put<ApiResponse<string>>(
+    `/api/clubs/${clubId}/products/${productId}/media/${mediaId}/thumbnail`
+  );
+  return res.data.data;
+}
+
+/**
+ * Cập nhật metadata của một media (hoặc thay thế file)
+ * (PUT /.../media/{mediaId})
+ */
+export async function updateMediaMetadata(
+  clubId: number | string,
   productId: number | string,
   mediaId: number | string,
-  payload: UpdateMediaPayload // 👈 Nhận payload động
-): Promise<ProductMedia> {
-  const res = await axiosInstance.patch<ApiResponse<ProductMedia>>(
+  payload: UpdateMediaMetadataPayload
+): Promise<ProductMedia> { 
+  const res = await axiosInstance.put<ApiResponse<ProductMedia>>(
     `/api/clubs/${clubId}/products/${productId}/media/${mediaId}`,
-    null, // Không có body
+    null, 
     {
-      params: payload // 👈 Gửi payload (ví dụ: { thumbnail: true })
+      params: payload 
     }
+  );
+  return res.data.data;
+}
+
+/**
+ * Sắp xếp lại thứ tự hiển thị của media
+ * (PUT /.../media/reorder)
+ * (Khớp Swagger image_28bd44.png)
+ */
+export async function reorderMedia(
+  clubId: number | string,
+  productId: number | string,
+  payload: ReorderMediaPayload
+): Promise<ProductMedia[]> { 
+  const res = await axiosInstance.put<ApiResponse<ProductMedia[]>>(
+    `/api/clubs/${clubId}/products/${productId}/media/reorder`,
+    payload
   );
   return res.data.data;
 }

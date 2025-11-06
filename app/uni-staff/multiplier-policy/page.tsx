@@ -298,8 +298,8 @@ export default function AdminMultiplierPolicyPage() {
   }
 
   const handleOpenEditModal = (policy: MultiplierPolicy) => {
-    // Get userId from localStorage
-    const authData = localStorage.getItem("uniclub-auth")
+    // Get userId from sessionStorage
+    const authData = sessionStorage.getItem("uniclub-auth")
     let userId = "unknown"
     
     if (authData) {

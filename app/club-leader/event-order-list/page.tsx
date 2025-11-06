@@ -9,36 +9,27 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
-  ShoppingCart,
-  Search,
-  CheckCircle,
-  XCircle,
-  Clock,
-  Eye,
-  Filter,
-  DollarSign,
-  Package,
-  User,
-  Hash,
-  Calendar,
-  Undo2, // Icon cho Refunded
+  ShoppingCart, Search, CheckCircle, XCircle, Clock, Eye, Filter, DollarSign, Package, User, Hash, Calendar, Undo2,
+  WalletCards,
 } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { getClubIdFromToken } from "@/service/clubApi"
+// 👈 Giả định RedeemOrder có chứa 'productType'
 import { getClubRedeemOrders, RedeemOrder } from "@/service/redeemApi"
 import { Skeleton } from "@/components/ui/skeleton"
 
-// Đặt key cho react-query
+// 👈 Đổi tên Key
 export const queryKeys = {
-  clubOrders: (clubId: number) => ["clubOrders", clubId] as const,
+  eventOrders: (clubId: number) => ["eventOrders", clubId] as const,
 }
 
 // Định nghĩa kiểu dữ liệu cho UI (dùng trực tiếp từ API)
 type UiOrder = RedeemOrder
 
-export default function ClubLeaderOrdersPage() {
+// 👈 Đổi tên Component
+export default function ClubLeaderEventOrdersPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [activeTab, setActiveTab] = useState<string>("pending")
   const [clubId, setClubId] = useState<number | null>(null)
@@ -47,7 +38,7 @@ export default function ClubLeaderOrdersPage() {
   const [pendingPage, setPendingPage] = useState(0)
   const [completedPage, setCompletedPage] = useState(0)
   const [cancelledPage, setCancelledPage] = useState(0)
-  const [pageSize, setPageSize] = useState(6) // Giảm xuống 6 cho đẹp hơn
+  const [pageSize, setPageSize] = useState(6)
 
   // Filter states
   const [dateFromFilter, setDateFromFilter] = useState<string>("")
@@ -56,7 +47,7 @@ export default function ClubLeaderOrdersPage() {
   const { toast } = useToast()
   const queryClient = useQueryClient()
 
-  // 1. Lấy clubId của leader
+  // 1. Lấy clubId của leader (Giữ nguyên)
   useEffect(() => {
     const id = getClubIdFromToken()
     if (id) {
@@ -76,17 +67,23 @@ export default function ClubLeaderOrdersPage() {
     isLoading,
     error,
   } = useQuery<UiOrder[], Error>({
-    queryKey: queryKeys.clubOrders(clubId!),
-    queryFn: () => getClubRedeemOrders(clubId!),
-    enabled: !!clubId, // Chỉ chạy khi clubId đã được set
-    staleTime: 3 * 60 * 1000, // 3 phút
+    queryKey: queryKeys.eventOrders(clubId!), // 👈 Đổi Key
+    queryFn: () => getClubRedeemOrders(clubId!), // Vẫn dùng API cũ để lấy tất cả
+    enabled: !!clubId,
+    staleTime: 3 * 60 * 1000,
   })
 
-  // 3. Hàm lọc (Đã cập nhật cho đơn hàng)
+  // 3. 🛑 HÀM LỌC (ĐÃ CẬP NHẬT) 🛑
   const getFilteredOrders = (
     tabType: "pending" | "completed" | "cancelled"
   ) => {
     return orders.filter((order) => {
+      // 👈 THÊM BỘ LỌC MỚI: Chỉ lấy Event Items
+      const isEventItem = (order as any).productType === "EVENT_ITEM";
+      if (!isEventItem) {
+        return false;
+      }
+
       // Search filter (Tên sản phẩm, Tên thành viên, Mã đơn)
       const matchSearch =
         searchTerm === "" ||
@@ -124,7 +121,7 @@ export default function ClubLeaderOrdersPage() {
     })
   }
 
-  // 4. Phân loại đơn hàng
+  // 4. Phân loại đơn hàng (Giữ nguyên)
   const pendingOrders = useMemo(
     () => getFilteredOrders("pending"),
     [orders, searchTerm, dateFromFilter, dateToFilter]
@@ -138,15 +135,15 @@ export default function ClubLeaderOrdersPage() {
     [orders, searchTerm, dateFromFilter, dateToFilter]
   )
 
-  // 5. Logic cho Stats Cards (Thẻ thống kê)
+  // 5. Logic cho Stats Cards (Giữ nguyên)
   const pendingCount = isLoading ? "-" : pendingOrders.length
   const completedCount = isLoading ? "-" : completedOrders.length
   const cancelledCount = isLoading ? "-" : cancelledOrders.length
   const totalPointsCompleted = isLoading
     ? "-"
     : completedOrders
-        .reduce((sum, order) => sum + order.totalPoints, 0)
-        .toLocaleString()
+      .reduce((sum, order) => sum + order.totalPoints, 0)
+      .toLocaleString()
 
   // 6. Logic phân trang (Giữ nguyên từ file mẫu)
   // (Phần này dài, giữ logic từ file gốc, chỉ đổi tên biến)
@@ -235,20 +232,17 @@ export default function ClubLeaderOrdersPage() {
   return (
     <ProtectedRoute allowedRoles={["club_leader"]}>
       <AppShell>
-        {/* Xóa nút + (floating button) */}
         <div className="space-y-6">
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-bold">Redeem Orders</h1>
+              <h1 className="text-3xl font-bold">Redeem Orders in Event</h1>
             </div>
             <p className="text-muted-foreground">
-              Manage product redemption orders from members
+              Manage event product redemption orders from members
             </p>
           </div>
 
-          {/* Xóa Modal (vì đã xóa nút +) */}
-
-          {/* Stats Cards (Đã cập nhật) */}
+          {/* Stats Cards (Giữ nguyên) */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Card className="border-0 shadow-md bg-gradient-to-br from-yellow-50 to-yellow-100">
               <CardHeader className="pb-1 px-4 pt-3">
@@ -313,7 +307,7 @@ export default function ClubLeaderOrdersPage() {
               <CardContent className="pb-3 px-4">
                 <div className="flex items-center gap-2">
                   <div className="p-1.5 bg-blue-500 rounded-md">
-                    <DollarSign className="h-4 w-4 text-white" />
+                    <WalletCards className="h-4 w-4 text-white" />
                   </div>
                   <div className="text-lg font-bold text-blue-900">
                     {isLoading ? <Skeleton className="h-6 w-16" /> : totalPointsCompleted}
@@ -323,7 +317,7 @@ export default function ClubLeaderOrdersPage() {
             </Card>
           </div>
 
-          {/* Filters (Đã cập nhật - Bỏ Major) */}
+          {/* Filters (Giữ nguyên) */}
           <Card className="border-muted">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-medium flex items-center gap-2">
@@ -383,7 +377,7 @@ export default function ClubLeaderOrdersPage() {
             </CardContent>
           </Card>
 
-          {/* Tabs (Đã cập nhật) */}
+          {/* Tabs (Giữ nguyên) */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-3 gap-3">
               <TabsTrigger value="pending" className="flex items-center gap-2">
@@ -406,7 +400,7 @@ export default function ClubLeaderOrdersPage() {
                 isLoading={isLoading}
                 error={error}
                 orders={paginatedPending}
-                emptyMessage="No pending orders found."
+                emptyMessage="No pending event orders found." // 👈 Đổi text
               />
               <PaginationControls
                 currentPage={pendingPage}
@@ -423,7 +417,7 @@ export default function ClubLeaderOrdersPage() {
                 isLoading={isLoading}
                 error={error}
                 orders={paginatedCompleted}
-                emptyMessage="No completed orders found."
+                emptyMessage="No completed event orders found." // 👈 Đổi text
               />
               <PaginationControls
                 currentPage={completedPage}
@@ -433,14 +427,14 @@ export default function ClubLeaderOrdersPage() {
                 setPageSize={setPageSize}
               />
             </TabsContent>
-            
+
             {/* Tab Content: CANCELLED */}
             <TabsContent value="cancelled" className="space-y-4 mt-6">
               <RenderOrderList
                 isLoading={isLoading}
                 error={error}
                 orders={paginatedCancelled}
-                emptyMessage="No cancelled or refunded orders found."
+                emptyMessage="No cancelled or refunded event orders found." // 👈 Đổi text
               />
               <PaginationControls
                 currentPage={cancelledPage}
@@ -457,7 +451,7 @@ export default function ClubLeaderOrdersPage() {
   )
 }
 
-// --- Component con để render danh sách (cho gọn) ---
+// --- Component con để render danh sách (Giữ nguyên) ---
 function RenderOrderList({
   isLoading,
   error,
@@ -553,8 +547,8 @@ function RenderOrderList({
           key={order.orderId}
           className="hover:shadow-md transition-shadow"
         >
-          {/* Link to detail page */}
-          <Link href={`/club-leader/orders/${order.orderId}`}>
+          {/* 👈 ĐỔI LINK DẪN ĐẾN TRANG CHI TIẾT EVENT ORDER */}
+          <Link href={`/club-leader/event-orders/${order.orderId}`}>
             <CardContent className="p-4">
               <div className="flex items-start justify-between">
                 {/* Chi tiết đơn hàng */}
@@ -577,15 +571,15 @@ function RenderOrderList({
                       <span className="line-clamp-1">{order.memberName}</span>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center gap-6 text-sm text-muted-foreground">
-                     <div className="flex items-center gap-1.5" title="Quantity">
-                        <ShoppingCart className="h-4 w-4" />
-                        <span>Quantity: {order.quantity}</span>
+                    <div className="flex items-center gap-1.5" title="Quantity">
+                      <ShoppingCart className="h-4 w-4" />
+                      <span>Quantity: {order.quantity}</span>
                     </div>
                     <div className="flex items-center gap-1.5" title="Total Points">
-                      <DollarSign className="h-4 w-4" />
-                      <span>{order.totalPoints} points</span>
+                      <WalletCards className="h-4 w-4" />
+                      <span>{order.totalPoints.toLocaleString('en-US')} points</span>
                     </div>
                   </div>
 

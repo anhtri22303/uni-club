@@ -4,9 +4,9 @@ import React, { useEffect, useState, useCallback } from "react"
 import { useRouter, useParams } from "next/navigation"
 import {
     getProductById, Product, AddProductPayload, updateProduct, UpdateProductPayload, addMediaToProduct, deleteMediaFromProduct,
-    updateMedia, UpdateMediaPayload,
+    setMediaThumbnail, getStockHistory, StockHistory, updateStock,
 } from "@/service/productApi"
-import { getTags, Tag as ProductTag } from "@/service/tagApi" // 👈 THÊM DÒNG NÀY
+import { getTags, Tag as ProductTag } from "@/service/tagApi"
 import { useToast } from "@/hooks/use-toast"
 import { AppShell } from "@/components/app-shell"
 import { ProtectedRoute } from "@/contexts/protected-route"
@@ -14,7 +14,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { ArrowLeft, Save, Loader2, Package, DollarSign, Archive, Tag, Image as ImageIcon, CheckCircle, Upload, Trash, Star, } from "lucide-react"
+import {
+    ArrowLeft, Save, Loader2, Package, DollarSign, Archive, Tag, Image as ImageIcon, CheckCircle, Upload, Trash, Star, History, Plus
+} from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
@@ -25,16 +27,26 @@ import { Switch } from "@/components/ui/switch"
 import { LoadingSkeleton } from "@/components/loading-skeleton"
 import { getClubIdFromToken } from "@/service/clubApi"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, } from "@/components/ui/dialog"
+import {
+    AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
+    AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, } from "@/components/ui/table"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { Skeleton } from "@/components/ui/skeleton"
 
 type ProductEditForm = UpdateProductPayload
 interface FixedTagIds {
     clubTagId: number | null;
     eventTagId: number | null;
 }
+
 export default function EditProductPage() {
     const router = useRouter()
     const params = useParams()
     const { toast } = useToast()
+    const queryClient = useQueryClient()
+
     const [product, setProduct] = useState<Product | null>(null) // Dữ liệu gốc
     const [form, setForm] = useState<ProductEditForm | null>(null)
     const [allTags, setAllTags] = useState<ProductTag[]>([])
@@ -43,20 +55,34 @@ export default function EditProductPage() {
     const [clubId, setClubId] = useState<number | null>(null)
     const productId = params.id as string
     const [tagSearchTerm, setTagSearchTerm] = useState("")
+    const [isDeleting, setIsDeleting] = useState(false) // State cho việc xóa
     // STATE MEDIA DIALOG
-    // const [isMediaDialogOpen, setIsMediaDialogOpen] = useState(false)
-    // const [newMediaUrl, setNewMediaUrl] = useState("")
-    // const [isMediaLoading, setIsMediaLoading] = useState(false)
-    // const [newMediaIsThumbnail, setNewMediaIsThumbnail] = useState(false)
     const [isMediaDialogOpen, setIsMediaDialogOpen] = useState(false)
     const [isMediaLoading, setIsMediaLoading] = useState(false)
-    const [newMediaFile, setNewMediaFile] = useState<File | null>(null); // 👈 State cho file
-    // 👈 THÊM STATE ĐỂ LƯU ID CỦA TAG "CLUB" VÀ "EVENT"
+    const [newMediaFile, setNewMediaFile] = useState<File | null>(null);
+    // STATE ĐỂ LƯU ID CỦA TAG "CLUB" VÀ "EVENT"
     const [fixedTagIds, setFixedTagIds] = useState<FixedTagIds>({
         clubTagId: null,
         eventTagId: null,
     });
-
+    //State cho Dialog Lịch sử
+    const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+    // State cho Dialog Nhập kho
+    const [isStockDialogOpen, setIsStockDialogOpen] = useState(false);
+    const [stockChange, setStockChange] = useState<string>("");
+    const [stockNote, setStockNote] = useState<string>("");
+    const [isStockLoading, setIsStockLoading] = useState(false);
+    // STATE ĐỂ HIỂN THỊ GIÁ
+    const [displayPrice, setDisplayPrice] = useState<string>("");
+    //Biến kiểm tra xem có bị Archived không
+    const isArchived = product?.status === "ARCHIVED";
+    // --- Hàm Helper (Hàm hỗ trợ) ---
+    const formatNumber = (num: number | string): string => {
+        return Number(num).toLocaleString('en-US');
+    };
+    const parseFormattedNumber = (str: string): number => {
+        return Number(str.replace(/,/g, ''));
+    };
     // 1. Lấy clubId
     useEffect(() => {
         const id = getClubIdFromToken()
@@ -68,40 +94,7 @@ export default function EditProductPage() {
         }
     }, [router, toast])
 
-    // TÁCH HÀM FETCH GỐC 
-    // const fetchProductData = useCallback(async (cId: number, pId: string) => {
-    //     try {
-    //         const [productData, tagsData] = await Promise.all([
-    //             getProductById(cId, pId),
-    //             getTags()
-    //         ])
 
-    //         setProduct(productData)
-    //         setAllTags(tagsData)
-
-    //         const loadedTagIds = tagsData
-    //             .filter((tag) => productData.tags.includes(tag.name))
-    //             .map((tag) => tag.tagId)
-
-    //         setForm({
-    //             name: productData.name,
-    //             description: productData.description,
-    //             pointCost: productData.pointCost,
-    //             stockQuantity: productData.stockQuantity,
-    //             type: productData.type || "CLUB_ITEM",
-    //             eventId: productData.eventId,
-    //             tagIds: loadedTagIds,
-    //             status: productData.status,
-    //         })
-    //     } catch (error) {
-    //         console.error("Failed to load product details:", error)
-    //         toast({
-    //             title: "Error",
-    //             description: "Unable to load product details.",
-    //             variant: "destructive",
-    //         })
-    //         router.back()
-    //     }
     // }, [router, toast]) // Thêm dependencies
     const fetchProductData = useCallback(async (cId: number, pId: string) => {
         try {
@@ -113,7 +106,7 @@ export default function EditProductPage() {
             setProduct(productData)
             setAllTags(tagsData)
 
-            // 👈 THÊM LOGIC: Tìm và lưu các tag cố định
+            // Tìm và lưu các tag cố định
             const clubTag = tagsData.find(tag => tag.name.toLowerCase() === "club");
             const eventTag = tagsData.find(tag => tag.name.toLowerCase() === "event");
             setFixedTagIds({
@@ -136,6 +129,8 @@ export default function EditProductPage() {
                 tagIds: loadedTagIds,
                 status: productData.status,
             })
+
+            setDisplayPrice(formatNumber(productData.pointCost));
         } catch (error) {
             console.error("Failed to load product details:", error)
             toast({
@@ -160,22 +155,49 @@ export default function EditProductPage() {
 
 
     // 3. Handlers cho form 
+    // const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    //     const { name, value } = e.target
+    //     if (!form) return
+
+    //     setForm({
+    //         ...form,
+    //         [name]: name === "pointCost" || name === "eventId"
+    //             ? (value === "" ? 0 : Number(value)) // Sửa (default 0)
+    //             : value,
+    //     })
+    // }
+    // HANDLERS CHO FORM
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target
         if (!form) return
 
-        setForm({
-            ...form,
-            [name]: name === "pointCost" || name === "stockQuantity" || name === "eventId"
-                ? (value === "" ? 0 : Number(value)) // Sửa (default 0)
-                : value,
-        })
-    }
+        // 👈 XỬ LÝ ĐẶC BIỆT CHO "pointCost"
+        if (name === "pointCost") {
+            // Chỉ cho phép số và dấu phẩy
+            const numericValue = value.replace(/[^0-9]/g, '');
+            if (numericValue === "") {
+                setDisplayPrice("");
+                setForm({ ...form, pointCost: 0 });
+                return;
+            }
 
-    // const handleSelectChange = (name: string) => (value: string) => {
-    //     if (!form) return
-    //     setForm({ ...form, [name]: value })
-    // }
+            const numberValue = parseInt(numericValue, 10);
+
+            // Cập nhật giá trị hiển thị (có dấu phẩy)
+            setDisplayPrice(formatNumber(numberValue));
+            // Cập nhật state của form (dạng số)
+            setForm({ ...form, pointCost: numberValue });
+
+        } else {
+            // Logic cũ cho các trường khác
+            setForm({
+                ...form,
+                [name]: name === "eventId"
+                    ? (value === "" ? 0 : Number(value))
+                    : value,
+            })
+        }
+    }
     const handleSelectChange = (name: string) => (value: string) => {
         if (!form) return;
 
@@ -206,18 +228,7 @@ export default function EditProductPage() {
         }
     }
 
-    // const handleTagChange = (tagId: number) => (checked: boolean) => {
-    //     if (!form) return
-    //     const currentTags = form.tagIds || []
-    //     let newTagIds: number[]
-    //     if (checked) {
-    //         newTagIds = [...currentTags, tagId]
-    //     } else {
-    //         newTagIds = currentTags.filter((id) => id !== tagId)
-    //     }
-    //     setForm({ ...form, tagIds: newTagIds })
-    // }
-    // 🛑 CẬP NHẬT: handleTagChange (Không cho phép bỏ chọn tag cố định)
+    // handleTagChange (Không cho phép bỏ chọn tag cố định)
     const handleTagChange = (tagId: number) => (checked: boolean) => {
         if (!form) return;
         const { clubTagId, eventTagId } = fixedTagIds;
@@ -238,50 +249,18 @@ export default function EditProductPage() {
         setForm({ ...form, tagIds: newTagIds })
     }
 
-
-    // // 4. Handler LƯU (ĐÃ CẬP NHẬT và KÍCH HOẠT)
-    // const handleSave = async () => {
-    //     if (!form || !clubId || !productId) return
-
-    //     setIsSaving(true)
-    //     try {
-    //         // KÍCH HOẠT: Dùng hàm updateProduct
-    //         const updatedProduct = await updateProduct(clubId, productId, form)
-    //         // Cập nhật lại state gốc và form
-    //         setProduct(updatedProduct)
-    //         // Cập nhật lại form state (để đồng bộ nếu có logic nào đó từ server)
-    //         const loadedTagIds = allTags
-    //             .filter((tag) => updatedProduct.tags.includes(tag.name))
-    //             .map((tag) => tag.tagId)
-    //         setForm({
-    //             name: updatedProduct.name,
-    //             description: updatedProduct.description,
-    //             pointCost: updatedProduct.pointCost,
-    //             stockQuantity: updatedProduct.stockQuantity,
-    //             type: updatedProduct.type,
-    //             eventId: updatedProduct.eventId,
-    //             tagIds: loadedTagIds,
-    //             status: updatedProduct.status,
-    //         })
-    //         toast({
-    //             title: "Success",
-    //             description: "Product updated successfully.",
-    //             variant: "success",
-    //         })
-    //     } catch (error: any) {
-    //         toast({
-    //             title: "Error",
-    //             description: error.message || "Failed to update product.",
-    //             variant: "destructive",
-    //         })
-    //     } finally {
-    //         setIsSaving(false)
-    //     }
-    // }
-    // 5. Handler LƯU (Cập nhật để dùng refetch)
     const handleSave = async () => {
-        if (!form || !clubId || !productId) return
-        // 👈 KIỂM TRA NGHIỆP VỤ MỚI
+        if (!form || !clubId || !productId || !product) return // Thêm !product
+
+        if (product.status === "ARCHIVED") {
+            toast({
+                title: "Error",
+                description: "Cannot edit products that are in ARCHIVED status",
+                variant: "destructive",
+            })
+            return; // Dừng hàm
+        }
+
         if (!form.tagIds || form.tagIds.length === 0) {
             toast({ title: "Error", description: "Product must have at least one tag.", variant: "destructive" })
             return;
@@ -289,24 +268,20 @@ export default function EditProductPage() {
 
         setIsSaving(true)
         try {
-            // Bước 1: Gọi API updateProduct
-            await updateProduct(clubId, productId, form)
+            await updateProduct(clubId, productId, form);
 
-            // Bước 2: Báo thành công
             toast({
                 title: "Success",
                 description: "Product updated successfully.",
                 variant: "success",
             })
 
-            // Bước 3: Tải lại toàn bộ dữ liệu (an toàn nhất)
-            // (refetchProduct đã bao gồm setLoading(true/false) và toast)
-            await fetchProductData(clubId, productId); // Gọi trực tiếp để tránh toast "Media updated"
-
+            // Bước 3: Tải lại dữ liệu
+            await fetchProductData(clubId, productId);
         } catch (error: any) {
             toast({
                 title: "Error",
-                description: error.message || "Failed to update product.",
+                description: (error as any).response?.data?.message || error.message || "Failed to update product.",
                 variant: "destructive",
             })
         } finally {
@@ -328,7 +303,6 @@ export default function EditProductPage() {
         }
     }
 
-    // ❗️ THÊM HÀM MỚI NÀY
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             setNewMediaFile(e.target.files[0]);
@@ -337,46 +311,6 @@ export default function EditProductPage() {
         }
     };
 
-
-
-    // const handleAddMedia = async () => {
-    //     if (!clubId || !productId || !newMediaUrl) {
-    //         toast({ title: "Error", description: "URL is required.", variant: "destructive" })
-    //         return
-    //     }
-
-    //     setIsMediaLoading(true)
-
-    //     // Lấy thumbnail cũ TRƯỚC KHI GỌI API
-    //     const oldThumbnail = product?.media.find(m => m.thumbnail);
-
-    //     try {
-    //         // Bước 1: Thêm ảnh mới
-    //         await addMediaToProduct(clubId, productId, {
-    //             urls: [newMediaUrl],
-    //             type: "IMAGE",
-    //             thumbnail: newMediaIsThumbnail, // Gửi trạng thái thumbnail
-    //         })
-
-    //         // Bước 2: Nếu ta vừa set ảnh mới làm thumbnail VÀ có ảnh thumbnail cũ
-    //         if (newMediaIsThumbnail && oldThumbnail) {
-    //             // ... thì gỡ thumbnail cũ
-    //             await updateMedia(clubId, productId, oldThumbnail.mediaId, { thumbnail: false });
-    //         }
-
-    //         // Reset state của dialog
-    //         setIsMediaDialogOpen(false)
-    //         setNewMediaUrl("")
-    //         setNewMediaIsThumbnail(false)
-
-    //         await refetchProduct() // Tải lại dữ liệu
-    //     } catch (error: any) {
-    //         toast({ title: "Error", description: error.message || "Failed to add media.", variant: "destructive" })
-    //     } finally {
-    //         setIsMediaLoading(false)
-    //     }
-    // }
-    // ❗️ VIẾT LẠI HOÀN TOÀN handleAddMedia
     const handleAddMedia = async () => {
         if (!clubId || !productId || !newMediaFile) {
             toast({
@@ -409,7 +343,6 @@ export default function EditProductPage() {
         }
     }
 
-
     const handleDeleteMedia = async (mediaId: number) => {
         if (!clubId || !productId) return
         if (!window.confirm("Are you sure you want to delete this image?")) return
@@ -428,34 +361,141 @@ export default function EditProductPage() {
     const handleSetThumbnail = async (newMediaId: number) => {
         if (!clubId || !productId || !product) return
 
+        // Kiểm tra xem đã là thumbnail chưa
+        const currentMedia = product.media.find(m => m.mediaId === newMediaId);
+        if (currentMedia && currentMedia.thumbnail) {
+            toast({ title: "Info", description: "This is already the thumbnail." });
+            return; // Không làm gì cả
+        }
+
         setIsMediaLoading(true)
 
         try {
-            // Tìm thumbnail cũ
-            const oldThumbnail = product.media.find(m => m.thumbnail);
+            // Chỉ cần gọi API mới
+            // Backend sẽ tự động gỡ thumbnail cũ (theo Swagger)
+            await setMediaThumbnail(clubId, productId, newMediaId);
 
-            const operations = [];
+            await refetchProduct() // Tải lại để cập nhật UI
 
-            // Thao tác 1: Đặt thumbnail MỚI
-            operations.push(
-                updateMedia(clubId, productId, newMediaId, { thumbnail: true })
-            );
-
-            // Thao tác 2: Gỡ thumbnail CŨ (nếu có)
-            if (oldThumbnail) {
-                operations.push(
-                    updateMedia(clubId, productId, oldThumbnail.mediaId, { thumbnail: false })
-                );
-            }
-
-            // Chạy song song cả hai
-            await Promise.all(operations);
-
-            await refetchProduct() // Tải lại
         } catch (error: any) {
-            toast({ title: "Error", description: error.message || "Failed to set thumbnail.", variant: "destructive" })
+            toast({
+                title: "Error",
+                description: error.message || "Failed to set thumbnail.",
+                variant: "destructive"
+            })
         } finally {
             setIsMediaLoading(false)
+        }
+    }
+
+    // Handler cho Nhập kho
+    const handleUpdateStock = async () => {
+        if (!clubId || !productId) return;
+
+        // const delta = parseInt(stockChange);
+        // if (isNaN(delta) || delta === 0) {
+        //     toast({ title: "Error", description: "Please enter a valid number to add or remove stock (e.g. 50 or -10).", variant: "destructive" });
+        //     return;
+        // }
+        // if (!stockNote.trim()) {
+        //     toast({ title: "Error", description: "Please provide a note for this stock change.", variant: "destructive" });
+        //     return;
+        // }
+
+        // setIsStockLoading(true);
+        // try {
+        //     // Gọi API
+        //     await updateStock(clubId, productId, delta, stockNote);
+
+        //     toast({ title: "Success", description: "Stock updated successfully!" });
+
+        //     // Đóng dialog và reset
+        //     setIsStockDialogOpen(false);
+        //     setStockChange("");
+        //     setStockNote("");
+
+        //     // Tải lại dữ liệu sản phẩm (để cập nhật 'stockQuantity' mới)
+        //     await fetchProductData(clubId, productId);
+        //     // Tải lại lịch sử (nếu dialog lịch sử đang mở)
+        //     queryClient.invalidateQueries({ queryKey: ['stockHistory', clubId, productId] });
+        // 👈 SỬ DỤNG HÀM PARSE MỚI
+        const delta = parseFormattedNumber(stockChange);
+
+        if (isNaN(delta) || delta === 0) {
+            toast({ title: "Error", description: "Please enter a valid number to add or remove stock (e.g. 50 or -10).", variant: "destructive" });
+            return;
+        }
+        if (!stockNote.trim()) {
+            toast({ title: "Error", description: "Please provide a note for this stock change.", variant: "destructive" });
+            return;
+        }
+
+        setIsStockLoading(true);
+        try {
+            // Gọi API (API 'updateStock' vẫn nhận 'delta' là number)
+            await updateStock(clubId, productId, delta, stockNote);
+
+            toast({ title: "Success", description: "Stock updated successfully!" });
+
+            // Đóng dialog và reset
+            setIsStockDialogOpen(false);
+            setStockChange(""); // 👈 Reset về rỗng
+            setStockNote("");
+
+            await fetchProductData(clubId, productId);
+            queryClient.invalidateQueries({ queryKey: ['stockHistory', clubId, productId] });
+
+        } catch (error: any) {
+            toast({
+                title: "Error",
+                description: (error as any).response?.data?.message || error.message || "Failed to update stock.",
+                variant: "destructive"
+            });
+        } finally {
+            setIsStockLoading(false);
+        }
+    }
+
+    // Hook fetch Lịch sử Tồn kho
+    const {
+        data: stockHistory = [],
+        isLoading: historyLoading,
+    } = useQuery<StockHistory[], Error>({
+        queryKey: ['stockHistory', clubId, productId],
+        queryFn: () => getStockHistory(clubId!, productId),
+        // Chỉ fetch khi dialog được mở
+        enabled: !!clubId && !!productId && isHistoryOpen,
+        staleTime: 1000, // Luôn lấy dữ liệu mới khi mở dialog
+    });
+
+    const handleDeleteProduct = async () => {
+        if (!form || !clubId || !productId) return;
+
+        setIsDeleting(true);
+        try {
+            // Gọi API updateProduct, nhưng GHI ĐÈ status thành "ARCHIVED"
+            await updateProduct(clubId, productId, {
+                ...form, // Gửi tất cả dữ liệu form hiện tại
+                status: "ARCHIVED", // Ghi đè trạng thái
+            });
+
+            toast({
+                title: "Product Archived",
+                description: "The product has been successfully archived.",
+                variant: "success",
+            });
+
+            // Chuyển hướng về trang danh sách
+            router.push('/club-leader/gift');
+
+        } catch (error: any) {
+            toast({
+                title: "Error",
+                description: error.message || "Failed to archive product.",
+                variant: "destructive",
+            });
+        } finally {
+            setIsDeleting(false);
         }
     }
 
@@ -500,11 +540,58 @@ export default function EditProductPage() {
                                 Back to Gift page
                             </Button>
                         </div>
+
                         <div className="flex items-center gap-3">
                             <span className="text-sm text-muted-foreground">ID: #{product.id}</span>
 
-                            {/* Nút Save (Đã kích hoạt) */}
-                            <Button onClick={handleSave} disabled={isSaving}>
+                            {/* --- Logic MỚI: Chỉ hiển thị MỘT trong hai --- */}
+
+                            {isArchived ? (
+                                // 1. NẾU ĐÃ ARCHIVED: Hiển thị Badge
+                                <Badge variant="destructive" className="text-sm">
+                                    <Archive className="h-4 w-4 mr-2" />
+                                    Archived
+                                </Badge>
+                            ) : (
+                                // 2. NẾU CHƯA ARCHIVED: Hiển thị nút Archive
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button
+                                            variant="destructive"
+                                            size="sm"
+                                            disabled={isSaving || isDeleting}
+                                        >
+                                            <Trash className="h-4 w-4 mr-2" />
+                                            Archive
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>!!!WARNING!!!
+                                                <br />Are you absolutely sure?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                This action will archive the product by setting its
+                                                status to "ARCHIVED". It will be hidden from all students
+                                                and can no longer be redeemed. You cannot restore this product.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                                            <AlertDialogAction
+                                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                                onClick={handleDeleteProduct}
+                                                disabled={isDeleting}
+                                            >
+                                                {isDeleting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                                                Continue & Archive
+                                            </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            )}
+
+                            {/* Nút Save (Disabled nếu đã Archived) */}
+                            <Button onClick={handleSave} disabled={isSaving || isDeleting || isArchived}>
                                 {isSaving ? (
                                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                                 ) : (
@@ -567,26 +654,24 @@ export default function EditProductPage() {
                                                         className="object-cover w-full h-full"
                                                     />
                                                     {/* Overlay khi hover */}
-                                                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 z-10">
-                                                        <Button
-                                                            variant="destructive"
-                                                            size="icon"
-                                                            className="h-8 w-8"
-                                                            onClick={() => handleDeleteMedia(m.mediaId)}
-                                                        >
-                                                            <Trash className="h-4 w-4" />
-                                                        </Button>
-                                                        {!m.thumbnail && ( // Chỉ hiển thị nút nếu CHƯA phải là thumbnail
+                                                    {!isArchived && (
+                                                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 z-10">
                                                             <Button
-                                                                variant="secondary"
-                                                                size="icon"
-                                                                className="h-8 w-8"
-                                                                onClick={() => handleSetThumbnail(m.mediaId)}
+                                                                variant="destructive" size="icon" className="h-8 w-8"
+                                                                onClick={(e) => { e.preventDefault(); handleDeleteMedia(m.mediaId) }}
                                                             >
-                                                                <Star className="h-4 w-4" />
+                                                                <Trash className="h-4 w-4" />
                                                             </Button>
-                                                        )}
-                                                    </div>
+                                                            {!m.thumbnail && (
+                                                                <Button
+                                                                    variant="secondary" size="icon" className="h-8 w-8"
+                                                                    onClick={(e) => { e.preventDefault(); handleSetThumbnail(m.mediaId) }}
+                                                                >
+                                                                    <Star className="h-4 w-4" />
+                                                                </Button>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                     {m.thumbnail && (
                                                         <Badge className="absolute top-2 left-2 z-10 border-2 border-yellow-400 text-yellow-400">
                                                             Thumbnail
@@ -610,21 +695,29 @@ export default function EditProductPage() {
                                 </CardHeader>
                                 <CardContent className="space-y-4">
                                     <div className="space-y-1">
-                                        <Label htmlFor="status">Product Status</Label>
-                                        <Select
-                                            name="status"
-                                            value={form.status}
-                                            onValueChange={handleSelectChange("status")}
-                                        >
-                                            <SelectTrigger className="mt-2 border-slate-300">
-                                                <SelectValue placeholder="Select status" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="ACTIVE">Active (On sale)</SelectItem>
-                                                <SelectItem value="INACTIVE">Inactive (Hidden)</SelectItem>
-                                                {/* <SelectItem value="ARCHIVED">Archived</SelectItem> */}
-                                            </SelectContent>
-                                        </Select>
+
+                                        {isArchived ? (
+                                            // Nếu đã Archived: Hiển thị Badge
+                                            <Badge variant="destructive" className="text-md mt-2">
+                                                {/* <Archive className="h-4 w-4 mr-2" /> */}
+                                                Archived
+                                            </Badge>
+                                        ) : (
+                                            <Select
+                                                name="status"
+                                                value={form.status}
+                                                onValueChange={handleSelectChange("status")}
+                                                disabled={isArchived}
+                                            >
+                                                <SelectTrigger className="mt-2 border-slate-300">
+                                                    <SelectValue placeholder="Select status" />
+                                                </SelectTrigger>HANDLER
+                                                <SelectContent>
+                                                    <SelectItem value="ACTIVE">Active (On sale)</SelectItem>
+                                                    <SelectItem value="INACTIVE">Inactive (Hidden)</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        )}
                                     </div>
                                 </CardContent>
                             </Card>
@@ -640,6 +733,7 @@ export default function EditProductPage() {
                                             name="type"
                                             value={form.type}
                                             onValueChange={handleSelectChange("type")}
+                                            disabled={isArchived}
                                         >
                                             <SelectTrigger className="mt-2 border-slate-300">
                                                 <SelectValue placeholder="Select product type" />
@@ -660,25 +754,69 @@ export default function EditProductPage() {
                                                 value={form.eventId || 0}
                                                 onChange={handleChange}
                                                 min={1}
+                                                disabled={isArchived}
                                             />
                                         </div>
                                     )}
                                 </CardContent>
                             </Card>
 
+                            {/* CARD PRICE & INVENTORY */}
                             <Card>
                                 <CardHeader>
-                                    <CardTitle>Price & Inventory</CardTitle>
+                                    <div className="flex items-center justify-between">
+                                        <CardTitle>Price & Inventory</CardTitle>
+                                        {/* Cụm nút */}
+                                        <div className="flex gap-2">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => setIsHistoryOpen(true)}
+                                                disabled={isArchived}
+                                                className="h-8"
+                                            >
+                                                <History className="h-4 w-4" />
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => setIsStockDialogOpen(true)}
+                                                disabled={isArchived}
+                                                className="h-8"
+                                            >
+                                                <Plus className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    </div>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
                                     <div className="space-y-1">
                                         <Label htmlFor="pointCost">Price (Points)</Label>
-                                        {/* 5. SỬA: Đảm bảo Input name='price' khớp với form state */}
-                                        <Input id="pointCost" className="mt-2 border-slate-300" name="pointCost" type="number" value={form.pointCost} onChange={handleChange} min={0} />
+                                        {/*  Đổi type="text" và dùng 'displayPrice' */}
+                                        <Input
+                                            id="pointCost"
+                                            className="mt-2 border-slate-300"
+                                            name="pointCost"
+                                            type="text" // Đổi sang "text" để hiển thị dấu phẩy
+                                            inputMode="numeric" // Hiển thị bàn phím số trên di động
+                                            value={displayPrice} // Dùng state hiển thị
+                                            onChange={handleChange}
+                                            disabled={isArchived}
+                                        />
                                     </div>
                                     <div className="space-y-1">
                                         <Label htmlFor="stockQuantity">Quantity in stock</Label>
-                                        <Input id="stockQuantity" className="mt-2 border-slate-300" name="stockQuantity" type="number" value={form.stockQuantity} onChange={handleChange} min={0} />
+                                        <Input
+                                            id="stockQuantity"
+                                            className="mt-2 border-slate-300 bg-slate-100"
+                                            name="stockQuantity"
+                                            type="number"
+                                            value={form.stockQuantity}
+                                            onChange={() => { }}
+                                            min={0}
+                                            disabled
+                                            readOnly
+                                        />
                                     </div>
                                 </CardContent>
                             </Card>
@@ -692,37 +830,25 @@ export default function EditProductPage() {
                                         placeholder="Search tag..."
                                         value={tagSearchTerm}
                                         onChange={(e) => setTagSearchTerm(e.target.value)}
-                                        className="mb-3 mt-2 border-slate-300" // Thêm khoảng cách
+                                        className="mb-3 mt-2 border-slate-300"
+                                        disabled={isArchived}
                                     />
 
                                     {allTags.length > 0 ? (
                                         <ScrollArea className="h-48 rounded-md border p-3 mt-2 border-slate-300">
                                             <div className="space-y-2 ">
-                                                {/* {allTags
-                                                    .filter((tag) =>
-                                                        tag.name.toLowerCase().includes(tagSearchTerm.toLowerCase())
-                                                    )
-                                                    .map((tag) => (
-                                                        <div key={tag.tagId} className="flex items-center space-x-2">
-                                                            <Checkbox
-                                                                id={`tag-${tag.tagId}`}
-                                                                checked={form.tagIds.includes(tag.tagId)}
-                                                                onCheckedChange={(checked) => handleTagChange(tag.tagId)(checked as boolean)}
-                                                            />
-                                                            <Label htmlFor={`tag-${tag.tagId}`} className="font-normal">
-                                                                {tag.name}
-                                                            </Label>
-                                                        </div>
-                                                    ))} */}
                                                 {allTags
                                                     .filter((tag) =>
                                                         tag.name.toLowerCase().includes(tagSearchTerm.toLowerCase())
                                                     )
                                                     .map((tag) => {
-                                                        // 👈 KIỂM TRA XEM TAG CÓ BỊ VÔ HIỆU HÓA KHÔNG
-                                                        const isDisabled =
+                                                        // KIỂM TRA XEM TAG CÓ BỊ VÔ HIỆU HÓA KHÔNG
+                                                        const isCoreTag =
                                                             tag.tagId === fixedTagIds.clubTagId ||
                                                             tag.tagId === fixedTagIds.eventTagId;
+
+                                                        // Bị disable nếu là Core Tag HOẶC sản phẩm đã archived
+                                                        const isDisabled = isCoreTag || isArchived;
 
                                                         return (
                                                             <div key={tag.tagId} className="flex items-center space-x-2">
@@ -730,12 +856,12 @@ export default function EditProductPage() {
                                                                     id={`tag-${tag.tagId}`}
                                                                     checked={form.tagIds.includes(tag.tagId)}
                                                                     onCheckedChange={(checked) => handleTagChange(tag.tagId)(checked as boolean)}
-                                                                    disabled={isDisabled} // 👈 THÊM PROP DISABLED
+                                                                    disabled={isDisabled}
                                                                     aria-label={tag.name}
                                                                 />
                                                                 <Label
                                                                     htmlFor={`tag-${tag.tagId}`}
-                                                                    className={`font-normal ${isDisabled ? 'text-muted-foreground cursor-not-allowed' : ''}`} // 👈 Style cho tag bị disable
+                                                                    className={`font-normal ${isDisabled ? 'text-muted-foreground cursor-not-allowed' : ''}`}
                                                                 >
                                                                     {tag.name}
                                                                     {isDisabled && " (Auto)"}
@@ -756,61 +882,10 @@ export default function EditProductPage() {
 
                 <Dialog open={isMediaDialogOpen} onOpenChange={setIsMediaDialogOpen}>
                     <DialogContent className="sm:max-w-[425px]">
-                        {/* <DialogHeader>
-                            <DialogTitle>Add New Media</DialogTitle>
-                            <DialogDescription>
-                                Paste a URL to an image. The image will be added to the product.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <div className="grid gap-4 py-4">
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="media-url" className="text-right">
-                                    Image URL
-                                </Label>
-                                <Input
-                                    id="media-url"
-                                    value={newMediaUrl}
-                                    onChange={(e) => setNewMediaUrl(e.target.value)}
-                                    className="col-span-3"
-                                    placeholder="https://example.com/image.png"
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="thumbnail" className="text-right">
-                                    Thumbnail
-                                </Label>
-                                <div className="col-span-3 flex items-center space-x-2">
-                                    <Checkbox
-                                        id="thumbnail"
-                                        checked={newMediaIsThumbnail}
-                                        onCheckedChange={(checked) => setNewMediaIsThumbnail(checked as boolean)}
-                                    />
-                                    <Label
-                                        htmlFor="thumbnail"
-                                        className="text-sm font-normal text-muted-foreground"
-                                    >
-                                        Set this image as the product thumbnail (cover image).
-                                    </Label>
-                                </div>
-                            </div>
-                        </div>
-                        <DialogFooter>
-                            <Button variant="outline" onClick={() => {
-                                setIsMediaDialogOpen(false); // Reset khi cancel
-                                setNewMediaUrl("");
-                                setNewMediaIsThumbnail(false);
-                            }}>Cancel</Button>
-                            <Button onClick={handleAddMedia} disabled={isMediaLoading}>
-                                {isMediaLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                                Add Image
-                            </Button>
-                        </DialogFooter> */}
                         <DialogHeader>
                             <DialogTitle>Add New Media</DialogTitle>
                             <DialogDescription>
-                                {/* ❗️ Sửa mô tả */}
-                                Choose an image file to upload. It will be added to the product.
+                                Choose an image or video file to upload.
                             </DialogDescription>
                         </DialogHeader>
                         <div className="grid gap-4 py-4">
@@ -820,30 +895,174 @@ export default function EditProductPage() {
                                 </Label>
                                 <Input
                                     id="media-file"
-                                    type="file" // 👈 Sửa type
-                                    accept="image/*" // 👈 Thêm accept
-                                    onChange={handleFileChange} // 👈 Sửa onChange
-                                    className="col-span-3"
+                                    type="file"
+                                    accept="image/*,video/*"
+                                    onChange={handleFileChange}
+                                    className="col-span-3 border-slate-300"
                                 />
                             </div>
-
-                            {/* ❗️ Xóa phần Checkbox "Thumbnail" */}
-                            {/* API POST mới không hỗ trợ set thumbnail khi upload */}
-
                         </div>
                         <DialogFooter>
                             <Button variant="outline" onClick={() => {
-                                setIsMediaDialogOpen(false); // Reset khi cancel
-                                setNewMediaFile(null); // 👈 Sửa
+                                setIsMediaDialogOpen(false);
+                                setNewMediaFile(null);
                             }}>Cancel</Button>
-                            {/* ❗️ Sửa disable logic */}
                             <Button onClick={handleAddMedia} disabled={isMediaLoading || !newMediaFile}>
                                 {isMediaLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                                Add Image
+                                Add Image / Video
                             </Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
+
+                {/* Dialog Lịch sử Tồn kho */}
+                <Dialog open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
+                    <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col">
+                        <DialogHeader>
+                            <DialogTitle>Stock History: {product.name}</DialogTitle>
+                            <DialogDescription>
+                                View the change log for this product's inventory.
+                            </DialogDescription>
+                        </DialogHeader>
+                        {/* Thêm flex-1 và overflow-hidden để ScrollArea hoạt động */}
+                        <div className="flex-1 overflow-hidden">
+                            <ScrollArea className="h-full">
+                                <div className="pr-4"> {/* Padding cho thanh cuộn */}
+                                    {historyLoading ? (
+                                        <div className="space-y-2 py-4">
+                                            <Skeleton className="h-10 w-full" />
+                                            <Skeleton className="h-10 w-full" />
+                                            <Skeleton className="h-10 w-full" />
+                                        </div>
+                                    ) : stockHistory.length === 0 ? (
+                                        <p className="text-sm text-muted-foreground text-center py-10">
+                                            No stock history found for this product.
+                                        </p>
+                                    ) : (
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead className="w-[180px]">Date</TableHead>
+                                                    <TableHead className="text-center">Change</TableHead>
+                                                    <TableHead className="text-center">New Stock</TableHead>
+                                                    <TableHead>Note</TableHead>
+                                                    {/* <TableHead>By (ID)</TableHead> */}
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {stockHistory.map((entry) => {
+                                                    const change = entry.newStock - entry.oldStock;
+                                                    const changeColor = change > 0 ? "text-green-600" : "text-red-600";
+                                                    const changeSign = change > 0 ? "+" : "";
+
+                                                    return (
+                                                        <TableRow key={entry.id}>
+                                                            <TableCell className="text-xs whitespace-nowrap">
+                                                                {new Date(entry.changedAt).toLocaleString()}
+                                                            </TableCell>
+                                                            <TableCell className={`text-center font-bold ${changeColor}`}>
+                                                                {changeSign}{change}
+                                                            </TableCell>
+                                                            <TableCell className="text-center font-bold">{entry.newStock}</TableCell>
+                                                            <TableCell>{entry.note || "N/A"}</TableCell>
+                                                            {/* <TableCell>{entry.changedBy}</TableCell> */}
+                                                        </TableRow>
+                                                    );
+                                                })}
+                                            </TableBody>
+                                        </Table>
+                                    )}
+                                </div>
+                            </ScrollArea>
+                        </div>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setIsHistoryOpen(false)}>Close</Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Dialog Thêm hàng hóa */}
+                <Dialog open={isStockDialogOpen} onOpenChange={setIsStockDialogOpen}>
+                    <DialogContent className="sm:max-w-md">
+                        <DialogHeader>
+                            <DialogTitle>Update Stock</DialogTitle>
+                            <DialogDescription>
+                                Add or remove stock. Use a negative number (e.g., -5) to remove items.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="stockChange">Stock Change</Label>
+                                {/* <Input
+                                    id="stockChange"
+                                    type="number"
+                                    value={stockChange}
+                                    onChange={(e) => setStockChange(e.target.value)}
+                                    placeholder="e.g., 50 (to add) or -10 (to remove)"
+                                /> */}
+                                <Input
+                                    id="stockChange"
+                                    type="text" //  "number" -> "text"
+                                    inputMode="numeric" // Hiển thị bàn phím số
+                                    value={stockChange}
+                                    onChange={(e) => {
+                                        const value = e.target.value;
+                                        // Cho phép dấu âm chỉ ở đầu
+                                        const isNegative = value.startsWith('-');
+                                        // Chỉ lấy số
+                                        const numericValue = value.replace(/[^0-9]/g, '');
+
+                                        if (numericValue === "") {
+                                            // Cho phép người dùng gõ dấu "-"
+                                            setStockChange(isNegative ? "-" : "");
+                                            return;
+                                        }
+
+                                        const numberValue = parseInt(numericValue, 10);
+                                        const formattedValue = formatNumber(numberValue);
+
+                                        // Set lại giá trị (có dấu phẩy và dấu âm)
+                                        setStockChange(isNegative ? `-${formattedValue}` : formattedValue);
+                                    }}
+                                    placeholder="e.g., 50 (to add) or -10 (to remove)"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="stockNote">
+                                    Note <span className="text-red-500">*</span>
+                                </Label>
+                                <Textarea
+                                    id="stockNote"
+                                    value={stockNote}
+                                    onChange={(e) => setStockNote(e.target.value)}
+                                    placeholder="e.g., 'Initial stock import' or 'Manual correction'"
+                                />
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button
+                                variant="outline"
+                                onClick={() => {
+                                    setIsStockDialogOpen(false);
+                                    setStockChange("");
+                                    setStockNote("");
+                                }}
+                                disabled={isStockLoading}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={handleUpdateStock}
+                                // disabled={isStockLoading || !stockChange || !stockNote.trim()}
+                                disabled={isStockLoading || parseFormattedNumber(stockChange) === 0 || !stockNote.trim()}
+                            >
+                                {isStockLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                                Confirm Update
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
             </AppShell>
         </ProtectedRoute>
     )

@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select"
 import { useAuth } from "@/contexts/auth-context"
 import { useProfile, useClub, useClubs } from "@/hooks/use-query-hooks"
-import { safeLocalStorage } from "@/lib/browser-utils"
+import { safeSessionStorage } from "@/lib/browser-utils"
 import { useEffect, useState, useRef, useCallback } from "react"
 import { Send, MessageCircle, Users, Loader2, Building2, Trash2, X, Reply, Smile, Pin } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -87,10 +87,10 @@ export default function StudentChatPage() {
   // Fetch all clubs data for names
   const { data: allClubsData = [] } = useClubs()
 
-  // Get student's club IDs from localStorage
+  // Get student's club IDs from sessionStorage
   useEffect(() => {
     try {
-      const saved = safeLocalStorage.getItem("uniclub-auth")
+      const saved = safeSessionStorage.getItem("uniclub-auth")
       if (saved) {
         const parsed = JSON.parse(saved)
         
@@ -115,7 +115,7 @@ export default function StudentChatPage() {
         }
       }
     } catch (error) {
-      console.error("Failed to get clubIds from localStorage:", error)
+      console.error("Failed to get clubIds from sessionStorage:", error)
     }
   }, [])
 
