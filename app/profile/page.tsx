@@ -639,17 +639,15 @@ export default function ProfilePage() {
           <div className="min-h-screen bg-slate-50">
             {/* Header chuyên nghiệp */}
             <div className="bg-gradient-to-r from-primary to-secondary text-white relative overflow-hidden">
-              {/* Background Image - Full Header Background */}
-              {(previewBackgroundUrl || backgroundUrl) && (
-                <div 
-                  className="absolute inset-0 bg-cover bg-center z-0"
-                  style={{ 
-                    backgroundImage: `url(${previewBackgroundUrl || backgroundUrl || "/placeholder.jpg"})`,
-                  }}
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-primary/50 to-secondary/50" />
-                </div>
-              )}
+            {/* Background Image - Full Header Background */}
+            {(previewBackgroundUrl || backgroundUrl) && (
+              <div 
+                className="absolute inset-0 bg-cover bg-center z-0"
+                style={{ 
+                  backgroundImage: `url(${previewBackgroundUrl || backgroundUrl || "/placeholder.jpg"})`,
+                }}
+              />
+            )}
 
               {/* Hidden file input for background */}
               <input
@@ -936,9 +934,7 @@ export default function ProfilePage() {
                 style={{ 
                   backgroundImage: `url(${previewBackgroundUrl || backgroundUrl || "/placeholder.jpg"})`,
                 }}
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-indigo-600/50 via-purple-600/50 to-pink-600/50" />
-              </div>
+              />
             )}
 
             {/* Hidden file input for background */}

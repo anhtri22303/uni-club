@@ -350,6 +350,10 @@ export default function VirtualCardPage() {
   // Find current club membership info
   const currentMembership = profileData.memberships?.find(m => m.clubId === selectedClubId)
   
+  // Debug: Log membership and role info
+  console.log('Current membership:', currentMembership)
+  console.log('Role being used:', currentMembership?.level || profileData.role || "Member")
+  
   // Map profile data to CardData format
   const cardData: CardData = {
     clubName: cardDesign?.clubName || currentMembership?.clubName || "UniClub System",
