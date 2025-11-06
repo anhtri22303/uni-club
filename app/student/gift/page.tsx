@@ -13,7 +13,7 @@ import { useClubs, useProductsByClubId, useProfile, queryKeys } from "@/hooks/us
 import { Product } from "@/service/productApi"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { safeLocalStorage } from "@/lib/browser-utils"
+import { safeSessionStorage } from "@/lib/browser-utils"
 import { useToast } from "@/hooks/use-toast"
 import { useQueryClient } from "@tanstack/react-query"
 import { redeemClubProduct, redeemEventProduct, RedeemPayload } from "@/service/redeemApi"
@@ -92,7 +92,7 @@ export default function MemberGiftPage() {
 
 	useEffect(() => {
 		try {
-			const saved = safeLocalStorage.getItem("uniclub-auth")
+			const saved = safeSessionStorage.getItem("uniclub-auth")
 			if (saved) {
 				const parsed = JSON.parse(saved)
 				let clubIdNumbers: number[] = []
@@ -105,13 +105,13 @@ export default function MemberGiftPage() {
 				setUserClubIds(clubIdNumbers)
 			}
 		} catch (error) {
-			console.error("Failed to get clubIds from localStorage:", error)
+			console.error("Failed to get clubIds from sessionStorage:", error)
 		}
 	}, [])
 
 	useEffect(() => {
 		try {
-			const saved = safeLocalStorage.getItem("uniclub-auth")
+			const saved = safeSessionStorage.getItem("uniclub-auth")
 			if (saved) {
 				const parsed = JSON.parse(saved)
 				let clubIdNumbers: number[] = []
@@ -125,7 +125,7 @@ export default function MemberGiftPage() {
 				setUserClubIds(clubIdNumbers)
 			}
 		} catch (error) {
-			console.error("Failed to get clubIds from localStorage:", error)
+			console.error("Failed to get clubIds from sessionStorage:", error)
 		}
 	}, [])
 

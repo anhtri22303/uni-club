@@ -274,7 +274,7 @@ export function InsertTab({ onSync, compact = false }: InsertTabProps) {
               <div
                 key={index}
                 className={`w-5 h-5 border cursor-pointer transition-colors ${
-                  isHovered ? 'bg-blue-200 border-blue-400' : 'bg-white border-gray-300'
+                  isHovered ? 'bg-blue-200 dark:bg-blue-700 border-blue-400 dark:border-blue-500' : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600'
                 }`}
                 onMouseEnter={() => {
                   setHoverRow(row)
@@ -297,7 +297,7 @@ export function InsertTab({ onSync, compact = false }: InsertTabProps) {
   return (
     <TooltipProvider>
       <div className="overflow-x-auto overflow-y-hidden scrollbar-hide">
-        <div className={`flex items-center gap-1 ${compact ? 'p-1' : 'p-1.5 sm:p-2 bg-gray-50 border-b'} min-w-max`}>
+        <div className={`flex items-center gap-1 ${compact ? 'p-1' : 'p-1.5 sm:p-2 bg-gray-50 dark:bg-gray-800/50 border-b'} min-w-max`}>
         {/* Insert Table */}
         <div className="flex items-center gap-0.5 pr-2 border-r">
           <Popover open={showTablePopover} onOpenChange={(open) => {

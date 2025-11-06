@@ -91,7 +91,7 @@ export function PageLayoutTab({ pageSettings, onPageSettingsChange, onSync, comp
   return (
     <TooltipProvider>
       <div className="overflow-x-auto overflow-y-hidden scrollbar-hide">
-        <div className={`flex items-center gap-1 ${compact ? 'p-1' : 'p-1.5 sm:p-2 bg-gray-50 border-b'} min-w-max`}>
+        <div className={`flex items-center gap-1 ${compact ? 'p-1' : 'p-1.5 sm:p-2 bg-gray-50 dark:bg-gray-800/50 border-b'} min-w-max`}>
         {/* Paper Size */}
         <div className="flex items-center gap-1 pr-1.5 sm:pr-2 border-r">
           <Tooltip>

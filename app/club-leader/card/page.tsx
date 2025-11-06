@@ -59,10 +59,10 @@ export default function CardEditorPage() {
     memberId: "001234",
   }
 
-  // Load clubId from localStorage
+  // Load clubId from sessionStorage
   useEffect(() => {
     try {
-      const authDataString = localStorage.getItem("uniclub-auth")
+      const authDataString = sessionStorage.getItem("uniclub-auth")
       if (authDataString) {
         const authData = JSON.parse(authDataString)
         if (authData.clubId) {

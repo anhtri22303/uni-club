@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { usePagination } from "@/hooks/use-pagination"
 import { useState, useEffect, useMemo } from "react" // <-- Thêm useMemo
 import { Layers, History, Clock } from "lucide-react"
-import { safeLocalStorage } from "@/lib/browser-utils"
+import { safeSessionStorage } from "@/lib/browser-utils"
 import { useToast } from "@/hooks/use-toast"
 import { Skeleton } from "@/components/ui/skeleton"
 // 1. IMPORT CÁC HOOK MỚI
@@ -64,13 +64,13 @@ export default function MemberAttendancePage() {
 
   const { toast } = useToast()
 
-  // 4. LẤY DỮ LIỆU TỪ LOCALSTORAGE (userId VÀ clubIds)
+  // 4. LẤY DỮ LIỆU TỪ SESSIONSTORAGE (userId VÀ clubIds)
   useEffect(() => {
     try {
-      const saved = safeLocalStorage.getItem("uniclub-auth")
+      const saved = safeSessionStorage.getItem("uniclub-auth")
       if (saved) {
         const parsed = JSON.parse(saved)
-        console.log("Attendance page - Parsed localStorage data:", parsed)
+        console.log("Attendance page - Parsed sessionStorage data:", parsed)
 
         // Lấy userId của người dùng
         // const userId = parsed.user?.id
@@ -78,7 +78,7 @@ export default function MemberAttendancePage() {
         if (userId) {
           setLoggedInUserId(Number(userId))
         } else {
-          console.error("Không tìm thấy user.id trong localStorage!")
+          console.error("Không tìm thấy user.id trong sessionStorage!")
           toast({
             title: "Lỗi",
             description: "Không thể xác định người dùng. Vui lòng đăng nhập lại.",
@@ -98,7 +98,7 @@ export default function MemberAttendancePage() {
 
       }
     } catch (error) {
-      console.error("Failed to get data from localStorage:", error)
+      console.error("Failed to get data from sessionStorage:", error)
     }
   }, [toast])
 

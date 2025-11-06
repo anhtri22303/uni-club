@@ -123,9 +123,9 @@ interface JwtPayload {
 
 export const getClubIdFromToken = (): number | null => {
   try {
-    const authDataString = localStorage.getItem("uniclub-auth");
+    const authDataString = sessionStorage.getItem("uniclub-auth");
     if (!authDataString) {
-      console.warn("Không tìm thấy dữ liệu 'uniclub-auth' trong localStorage.");
+      console.warn("Không tìm thấy dữ liệu 'uniclub-auth' trong sessionStorage.");
       return null;
     }
 
@@ -133,7 +133,7 @@ export const getClubIdFromToken = (): number | null => {
 
     // Cách 1: Ưu tiên lấy clubId trực tiếp từ đối tượng đã lưu
     if (authData.clubId) {
-      console.log("Đã lấy clubId trực tiếp từ localStorage:", authData.clubId);
+      console.log("Đã lấy clubId trực tiếp từ sessionStorage:", authData.clubId);
       return authData.clubId;
     }
 
@@ -145,11 +145,11 @@ export const getClubIdFromToken = (): number | null => {
       return decoded.clubId ?? null;
     }
 
-    console.warn("Không tìm thấy clubId nào trong localStorage hoặc token.");
+    console.warn("Không tìm thấy clubId nào trong sessionStorage hoặc token.");
     return null;
 
   } catch (error) {
-    console.error("Lỗi khi xử lý dữ liệu từ localStorage:", error);
+    console.error("Lỗi khi xử lý dữ liệu từ sessionStorage:", error);
     return null;
   }
 };

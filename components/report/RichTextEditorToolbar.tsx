@@ -119,13 +119,13 @@ export function RichTextEditorToolbar({
   }, [isInTable, activeTab])
 
   return (
-    <div className={compact ? "" : "border rounded-lg bg-white shadow-sm overflow-hidden"}>
+    <div className={compact ? "" : "border rounded-lg bg-white dark:bg-gray-800 shadow-sm overflow-hidden"}>
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <div className="relative">
-          <TabsList className={`w-full justify-start ${compact ? 'rounded-none border-0 bg-transparent' : 'rounded-none border-b bg-gray-100'} h-auto sm:h-10 p-0 flex overflow-x-auto scrollbar-hide`}>
+          <TabsList className={`w-full justify-start ${compact ? 'rounded-none border-0 bg-transparent' : 'rounded-none border-b bg-gray-100 dark:bg-gray-700/50'} h-auto sm:h-10 p-0 flex overflow-x-auto scrollbar-hide`}>
             <TabsTrigger 
               value="editing" 
-              className={`gap-1.5 sm:gap-2 ${compact ? 'data-[state=active]:bg-gray-200/70 dark:data-[state=active]:bg-gray-700' : 'data-[state=active]:bg-white data-[state=active]:shadow-sm'} h-9 sm:h-10 px-3 sm:px-4 text-xs sm:text-sm whitespace-nowrap shrink-0`}
+              className={`gap-1.5 sm:gap-2 ${compact ? 'data-[state=active]:bg-gray-200/70 dark:data-[state=active]:bg-gray-700 data-[state=active]:text-gray-900 dark:data-[state=active]:text-white' : 'data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-gray-900 dark:data-[state=active]:text-white data-[state=active]:shadow-sm'} h-9 sm:h-10 px-3 sm:px-4 text-xs sm:text-sm whitespace-nowrap shrink-0`}
             >
               <Type className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               <span className="hidden md:inline">Editing & Formatting</span>
@@ -134,7 +134,7 @@ export function RichTextEditorToolbar({
             
             <TabsTrigger 
               value="layout" 
-              className={`gap-1.5 sm:gap-2 ${compact ? 'data-[state=active]:bg-gray-200/70 dark:data-[state=active]:bg-gray-700' : 'data-[state=active]:bg-white data-[state=active]:shadow-sm'} h-9 sm:h-10 px-3 sm:px-4 text-xs sm:text-sm whitespace-nowrap shrink-0`}
+              className={`gap-1.5 sm:gap-2 ${compact ? 'data-[state=active]:bg-gray-200/70 dark:data-[state=active]:bg-gray-700 data-[state=active]:text-gray-900 dark:data-[state=active]:text-white' : 'data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-gray-900 dark:data-[state=active]:text-white data-[state=active]:shadow-sm'} h-9 sm:h-10 px-3 sm:px-4 text-xs sm:text-sm whitespace-nowrap shrink-0`}
             >
               <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               <span className="hidden md:inline">Page Layout</span>
@@ -143,7 +143,7 @@ export function RichTextEditorToolbar({
             
             <TabsTrigger 
               value="insert" 
-              className={`gap-1.5 sm:gap-2 ${compact ? 'data-[state=active]:bg-gray-200/70 dark:data-[state=active]:bg-gray-700' : 'data-[state=active]:bg-white data-[state=active]:shadow-sm'} h-9 sm:h-10 px-3 sm:px-4 text-xs sm:text-sm whitespace-nowrap shrink-0`}
+              className={`gap-1.5 sm:gap-2 ${compact ? 'data-[state=active]:bg-gray-200/70 dark:data-[state=active]:bg-gray-700 data-[state=active]:text-gray-900 dark:data-[state=active]:text-white' : 'data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-gray-900 dark:data-[state=active]:text-white data-[state=active]:shadow-sm'} h-9 sm:h-10 px-3 sm:px-4 text-xs sm:text-sm whitespace-nowrap shrink-0`}
             >
               <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               <span>Insert</span>
@@ -153,7 +153,7 @@ export function RichTextEditorToolbar({
             {isInTable && (
               <TabsTrigger 
                 value="table" 
-                className={`gap-1.5 sm:gap-2 ${compact ? 'data-[state=active]:bg-gray-200/70 dark:data-[state=active]:bg-gray-700' : 'data-[state=active]:bg-white data-[state=active]:shadow-sm'} h-9 sm:h-10 px-3 sm:px-4 text-xs sm:text-sm whitespace-nowrap shrink-0 animate-in fade-in slide-in-from-left-2 duration-200`}
+                className={`gap-1.5 sm:gap-2 ${compact ? 'data-[state=active]:bg-gray-200/70 dark:data-[state=active]:bg-gray-700 data-[state=active]:text-gray-900 dark:data-[state=active]:text-white' : 'data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-gray-900 dark:data-[state=active]:text-white data-[state=active]:shadow-sm'} h-9 sm:h-10 px-3 sm:px-4 text-xs sm:text-sm whitespace-nowrap shrink-0 animate-in fade-in slide-in-from-left-2 duration-200`}
               >
                 <Table2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 <span className="hidden md:inline">Table Tools</span>
@@ -166,13 +166,13 @@ export function RichTextEditorToolbar({
 
             {/* Toggle Button - hide in compact mode */}
             {!compact && (
-              <div className="pr-1.5 sm:pr-2 flex items-center shrink-0 sticky right-0 bg-gray-100">
+              <div className="pr-1.5 sm:pr-2 flex items-center shrink-0 sticky right-0 bg-gray-100 dark:bg-gray-700/50">
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
                   onClick={() => setIsCollapsed(!isCollapsed)}
-                  className="h-7 w-7 sm:h-8 sm:w-8 p-0 hover:bg-gray-200"
+                  className="h-7 w-7 sm:h-8 sm:w-8 p-0 hover:bg-gray-200 dark:hover:bg-gray-600"
                   title={isCollapsed ? "Expand toolbar" : "Collapse toolbar"}
                 >
                   {isCollapsed ? (

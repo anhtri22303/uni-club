@@ -6,6 +6,7 @@ import { ProtectedRoute } from "@/contexts/protected-route"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   FileText,
   Download,
@@ -23,6 +24,8 @@ import {
   TrendingUp,
   ChevronUp,
   ChevronDown,
+  BarChart3,
+  PieChart as PieChartIcon,
 } from "lucide-react"
 import { getClubIdFromToken, getClubById } from "@/service/clubApi"
 import { getMembersByClubId } from "@/service/membershipApi"
@@ -47,7 +50,7 @@ import {
   clearReportFromSession,
   hasReportInSession,
   getReportLastModified
-} from "@/lib/reportSessionStorage"
+} from "@/lib/reportLocalStorage"
 import * as HistoryManager from "@/components/report/utils/historyManager"
 
 interface ClubData {
@@ -126,7 +129,7 @@ export default function ReportPage() {
         if (response.success && response.data) {
           setClubData(response.data)
           
-          // Restore page settings from session storage if available
+          // Restore page settings from local storage if available
           const savedSettings = loadPageSettingsFromSession(clubId)
           if (savedSettings) {
             setPageSettings(savedSettings)
@@ -145,7 +148,7 @@ export default function ReportPage() {
     fetchClubData()
   }, [])
 
-  // Auto-save to session storage every 1 minute
+  // Auto-save to local storage every 1 minute
   useEffect(() => {
     if (!clubData) return
 
@@ -427,7 +430,7 @@ export default function ReportPage() {
 
     editorRef.current.innerHTML = combinedContent
     
-    // Save to session storage after syncing
+    // Save to local storage after syncing
     if (clubData) {
       saveReportToSession(combinedContent, clubData.id)
       setLastAutoSave(new Date())
@@ -556,7 +559,7 @@ export default function ReportPage() {
   // Initialize default template
   const initializeDefaultTemplate = (club: ClubData, forceDefault: boolean = false) => {
     if (editorRef.current) {
-      // Check if there's saved content in session storage
+      // Check if there's saved content in local storage
       const savedContent = !forceDefault ? loadReportFromSession(club.id) : null
       
       if (savedContent) {
@@ -629,7 +632,7 @@ export default function ReportPage() {
     const newSettings = { ...pageSettings, ...settings }
     setPageSettings(newSettings)
     
-    // Save to session storage
+    // Save to local storage
     if (clubData) {
       savePageSettingsToSession(newSettings, clubData.id)
     }
@@ -1083,6 +1086,367 @@ export default function ReportPage() {
     }
   }
 
+  // ========== CHART INSERTION FUNCTIONS ==========
+  
+  // Helper function to generate SVG pie chart
+  const generatePieChartSVG = (data: Array<{name: string, value: number, color: string}>, title: string) => {
+    const total = data.reduce((sum, item) => sum + item.value, 0)
+    if (total === 0) return `<p style="text-align: center; color: #888;">No data available</p>`
+    
+    const cx = 120
+    const cy = 120
+    const radius = 90
+    let currentAngle = -90 // Start from top
+    
+    const slices = data.map(item => {
+      const percentage = item.value / total
+      const angle = percentage * 360
+      const startAngle = currentAngle * (Math.PI / 180)
+      const endAngle = (currentAngle + angle) * (Math.PI / 180)
+      
+      const x1 = cx + radius * Math.cos(startAngle)
+      const y1 = cy + radius * Math.sin(startAngle)
+      const x2 = cx + radius * Math.cos(endAngle)
+      const y2 = cy + radius * Math.sin(endAngle)
+      
+      const largeArcFlag = angle > 180 ? 1 : 0
+      
+      const path = `M ${cx} ${cy} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2} Z`
+      
+      currentAngle += angle
+      
+      return { path, color: item.color, name: item.name, value: item.value, percentage: (percentage * 100).toFixed(1) }
+    })
+    
+    const legend = data.map(item => 
+      `<div style="display: flex; align-items: center; margin: 4px 0;">
+        <div style="width: 14px; height: 14px; background: ${item.color}; margin-right: 8px; border-radius: 2px;"></div>
+        <span style="font-size: 13px; color: #374151;">${item.name}: <strong>${item.value}</strong> (${((item.value/total)*100).toFixed(1)}%)</span>
+      </div>`
+    ).join('')
+    
+    return `
+      <div style="display: flex; align-items: center; gap: 25px; margin: 12px 0;">
+        <svg width="240" height="240" viewBox="0 0 240 240" style="flex-shrink: 0;">
+          ${slices.map(slice => `<path d="${slice.path}" fill="${slice.color}" stroke="white" stroke-width="2"/>`).join('')}
+        </svg>
+        <div style="flex: 1;">
+          ${legend}
+        </div>
+      </div>
+    `
+  }
+  
+  // Helper function to generate SVG bar chart
+  const generateBarChartSVG = (data: Array<{name: string, value: number, color: string}>, title: string) => {
+    if (data.length === 0) return `<p style="text-align: center; color: #888;">No data available</p>`
+    
+    const maxValue = Math.max(...data.map(d => d.value))
+    const barWidth = 70
+    const barSpacing = 100
+    const chartHeight = 200
+    const chartWidth = Math.max(data.length * barSpacing + 60, 300)
+    
+    const bars = data.map((item, index) => {
+      const barHeight = maxValue > 0 ? (item.value / maxValue) * (chartHeight - 70) : 0
+      const x = 40 + index * barSpacing
+      const y = chartHeight - barHeight - 35
+      
+      return `
+        <rect x="${x}" y="${y}" width="${barWidth}" height="${barHeight}" fill="${item.color}" rx="4"/>
+        <text x="${x + barWidth/2}" y="${chartHeight - 15}" text-anchor="middle" font-size="11" fill="#6b7280" transform="rotate(-30 ${x + barWidth/2} ${chartHeight - 15})">${item.name}</text>
+        <text x="${x + barWidth/2}" y="${y - 8}" text-anchor="middle" font-size="15" font-weight="bold" fill="#1f2937">${item.value.toLocaleString()}</text>
+      `
+    })
+    
+    return `
+      <div style="margin: 10px 0;">
+        <svg width="${chartWidth}" height="${chartHeight}" viewBox="0 0 ${chartWidth} ${chartHeight}" style="display: block; max-width: 100%;">
+          <line x1="30" y1="${chartHeight - 35}" x2="${chartWidth - 20}" y2="${chartHeight - 35}" stroke="#d1d5db" stroke-width="1.5"/>
+          ${bars.join('')}
+        </svg>
+      </div>
+    `
+  }
+
+  // Insert Members Chart
+  const insertMembersChart = async () => {
+    try {
+      if (!clubData) return
+      
+      const members = await getMembersByClubId(clubData.id)
+      
+      // Count by role
+      const leaderCount = members.filter((m: any) => m.clubRole === 'LEADER').length
+      const viceLeaderCount = members.filter((m: any) => m.clubRole === 'VICE_LEADER').length
+      const regularMembers = members.filter((m: any) => m.clubRole === 'MEMBER').length
+      const staffMembers = members.filter((m: any) => m.staff === true).length
+      
+      const chartData = [
+        { name: "Leaders", value: leaderCount + viceLeaderCount, color: "#8b5cf6" },
+        { name: "Members", value: regularMembers, color: "#22c55e" },
+        { name: "Staff", value: staffMembers, color: "#3b82f6" },
+      ].filter(item => item.value > 0)
+      
+      const chartHTML = `
+        <div style="margin: 25px 0; page-break-inside: avoid;">
+          <h2 style="font-size: 18px; font-weight: bold; margin-bottom: 10px; color: #111827;">Member Distribution by Role</h2>
+          ${generatePieChartSVG(chartData, "Member Distribution")}
+          <div style="margin-top: 12px; padding: 12px; background: #f9fafb; border-radius: 6px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Total Members:</strong> ${members.length}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Leadership:</strong> ${leaderCount + viceLeaderCount}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Regular:</strong> ${regularMembers}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Staff:</strong> ${staffMembers}</p>
+            </div>
+          </div>
+        </div>
+      `
+      
+      if (editorRef.current) {
+        editorRef.current.innerHTML += chartHTML
+        setTimeout(() => paginateContent(), 100)
+      }
+      
+      toast.success("Members chart inserted")
+    } catch (error) {
+      console.error("Error inserting members chart:", error)
+      toast.error("Failed to insert members chart")
+    }
+  }
+
+  // Insert Events Chart
+  const insertEventsChart = async () => {
+    try {
+      if (!clubData) return
+      
+      const events = await getEventByClubId(clubData.id)
+      
+      const approvedCount = events.filter((e: any) => e.status === 'APPROVED').length
+      const pendingCount = events.filter((e: any) => e.status === 'PENDING_UNISTAFF' || e.status === 'PENDING_COCLUB').length
+      const rejectedCount = events.filter((e: any) => e.status === 'REJECTED').length
+      
+      const chartData = [
+        { name: "Approved", value: approvedCount, color: "#22c55e" },
+        { name: "Pending", value: pendingCount, color: "#eab308" },
+        { name: "Rejected", value: rejectedCount, color: "#ef4444" },
+      ].filter(item => item.value > 0)
+      
+      const chartHTML = `
+        <div style="margin: 25px 0; page-break-inside: avoid;">
+          <h2 style="font-size: 18px; font-weight: bold; margin-bottom: 10px; color: #111827;">Events Overview</h2>
+          ${generateBarChartSVG(chartData, "Events Status")}
+          <div style="margin-top: 12px; padding: 12px; background: #f9fafb; border-radius: 6px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Total Events:</strong> ${events.length}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Approved:</strong> ${approvedCount}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Pending:</strong> ${pendingCount}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Rejected:</strong> ${rejectedCount}</p>
+            </div>
+          </div>
+        </div>
+      `
+      
+      if (editorRef.current) {
+        editorRef.current.innerHTML += chartHTML
+        setTimeout(() => paginateContent(), 100)
+      }
+      
+      toast.success("Events chart inserted")
+    } catch (error) {
+      console.error("Error inserting events chart:", error)
+      toast.error("Failed to insert events chart")
+    }
+  }
+
+  // Insert Applications Chart
+  const insertApplicationsChart = async () => {
+    try {
+      if (!clubData) return
+      
+      const applications = await getMemberApplyByClubId(clubData.id)
+      
+      const approvedCount = applications.filter((a: any) => a.status === 'APPROVED').length
+      const pendingCount = applications.filter((a: any) => a.status === 'PENDING').length
+      const rejectedCount = applications.filter((a: any) => a.status === 'REJECTED').length
+      
+      const chartData = [
+        { name: "Approved", value: approvedCount, color: "#22c55e" },
+        { name: "Pending", value: pendingCount, color: "#eab308" },
+        { name: "Rejected", value: rejectedCount, color: "#ef4444" },
+      ].filter(item => item.value > 0)
+      
+      const approvalRate = applications.length > 0 ? ((approvedCount / applications.length) * 100).toFixed(1) : 0
+      
+      const chartHTML = `
+        <div style="margin: 25px 0; page-break-inside: avoid;">
+          <h2 style="font-size: 18px; font-weight: bold; margin-bottom: 10px; color: #111827;">Application Status Distribution</h2>
+          ${generatePieChartSVG(chartData, "Applications")}
+          <div style="margin-top: 12px; padding: 12px; background: #f9fafb; border-radius: 6px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Total:</strong> ${applications.length}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Approved:</strong> ${approvedCount}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Pending:</strong> ${pendingCount}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Rejected:</strong> ${rejectedCount}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151; grid-column: 1 / -1;"><strong>Approval Rate:</strong> ${approvalRate}%</p>
+            </div>
+          </div>
+        </div>
+      `
+      
+      if (editorRef.current) {
+        editorRef.current.innerHTML += chartHTML
+        setTimeout(() => paginateContent(), 100)
+      }
+      
+      toast.success("Applications chart inserted")
+    } catch (error) {
+      console.error("Error inserting applications chart:", error)
+      toast.error("Failed to insert applications chart")
+    }
+  }
+
+  // Insert Gifts/Products Chart
+  const insertGiftsChart = async () => {
+    try {
+      if (!clubData) return
+      
+      const products = await getProducts(clubData.id, { includeInactive: true })
+      
+      const activeCount = products.filter((p: any) => p.status === 'ACTIVE').length
+      const inactiveCount = products.filter((p: any) => p.status === 'INACTIVE').length
+      
+      const chartData = [
+        { name: "Active", value: activeCount, color: "#22c55e" },
+        { name: "Inactive", value: inactiveCount, color: "#94a3b8" },
+      ].filter(item => item.value > 0)
+      
+      const totalStock = products.reduce((sum: number, p: any) => sum + p.stockQuantity, 0)
+      const avgPrice = products.length > 0 ? (products.reduce((sum: number, p: any) => sum + p.pointCost, 0) / products.length).toFixed(2) : 0
+      
+      const chartHTML = `
+        <div style="margin: 25px 0; page-break-inside: avoid;">
+          <h2 style="font-size: 18px; font-weight: bold; margin-bottom: 10px; color: #111827;">Products Status Overview</h2>
+          ${generatePieChartSVG(chartData, "Products")}
+          <div style="margin-top: 12px; padding: 12px; background: #f9fafb; border-radius: 6px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Total Products:</strong> ${products.length}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Active:</strong> ${activeCount}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Inactive:</strong> ${inactiveCount}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Total Stock:</strong> ${totalStock}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151; grid-column: 1 / -1;"><strong>Avg Price:</strong> ${avgPrice} points</p>
+            </div>
+          </div>
+        </div>
+      `
+      
+      if (editorRef.current) {
+        editorRef.current.innerHTML += chartHTML
+        setTimeout(() => paginateContent(), 100)
+      }
+      
+      toast.success("Products chart inserted")
+    } catch (error) {
+      console.error("Error inserting products chart:", error)
+      toast.error("Failed to insert products chart")
+    }
+  }
+
+  // Insert Orders Chart
+  const insertOrdersChart = async () => {
+    try {
+      if (!clubData) return
+      
+      const orders = await getClubRedeemOrders(clubData.id)
+      
+      const completedCount = orders.filter((o: any) => o.status === 'COMPLETED').length
+      const pendingCount = orders.filter((o: any) => o.status === 'PENDING').length
+      const cancelledCount = orders.filter((o: any) => o.status === 'CANCELLED').length
+      
+      const chartData = [
+        { name: "Completed", value: completedCount, color: "#22c55e" },
+        { name: "Pending", value: pendingCount, color: "#eab308" },
+        { name: "Cancelled", value: cancelledCount, color: "#ef4444" },
+      ].filter(item => item.value > 0)
+      
+      const totalPointsRedeemed = orders.reduce((sum: number, o: any) => sum + o.totalPoints, 0)
+      const avgOrderValue = orders.length > 0 ? (totalPointsRedeemed / orders.length).toFixed(2) : 0
+      
+      const chartHTML = `
+        <div style="margin: 25px 0; page-break-inside: avoid;">
+          <h2 style="font-size: 18px; font-weight: bold; margin-bottom: 10px; color: #111827;">Redeem Orders Status</h2>
+          ${generatePieChartSVG(chartData, "Orders")}
+          <div style="margin-top: 12px; padding: 12px; background: #f9fafb; border-radius: 6px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Total Orders:</strong> ${orders.length}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Completed:</strong> ${completedCount}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Pending:</strong> ${pendingCount}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Cancelled:</strong> ${cancelledCount}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Points Redeemed:</strong> ${totalPointsRedeemed.toLocaleString()}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Avg Value:</strong> ${avgOrderValue} pts</p>
+            </div>
+          </div>
+        </div>
+      `
+      
+      if (editorRef.current) {
+        editorRef.current.innerHTML += chartHTML
+        setTimeout(() => paginateContent(), 100)
+      }
+      
+      toast.success("Orders chart inserted")
+    } catch (error) {
+      console.error("Error inserting orders chart:", error)
+      toast.error("Failed to insert orders chart")
+    }
+  }
+
+  // Insert Wallet Chart
+  const insertWalletChart = async () => {
+    try {
+      if (!clubData) return
+      
+      const wallet = await getClubWallet(clubData.id)
+      const transactions = await getClubToMemberTransactions()
+      
+      const totalTransactions = transactions.length
+      const totalPointsGiven = transactions.reduce((sum: number, t: any) => sum + t.amount, 0)
+      const avgTransaction = totalTransactions > 0 ? (totalPointsGiven / totalTransactions).toFixed(2) : 0
+      
+      // Create a visual representation of wallet balance vs points given
+      const chartData = [
+        { name: "Current Balance", value: wallet.balancePoints, color: "#3b82f6" },
+        { name: "Points Distributed", value: totalPointsGiven, color: "#8b5cf6" },
+      ]
+      
+      const chartHTML = `
+        <div style="margin: 25px 0; page-break-inside: avoid;">
+          <h2 style="font-size: 18px; font-weight: bold; margin-bottom: 10px; color: #111827;">Wallet & Points Overview</h2>
+          ${generateBarChartSVG(chartData, "Wallet")}
+          <div style="margin-top: 12px; padding: 12px; background: #f9fafb; border-radius: 6px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Current Balance:</strong> ${wallet.balancePoints.toLocaleString()}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Transactions:</strong> ${totalTransactions}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Distributed:</strong> ${totalPointsGiven.toLocaleString()}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Avg Transaction:</strong> ${avgTransaction}</p>
+              <p style="margin: 0; font-size: 13px; color: #374151; grid-column: 1 / -1;"><strong>Wallet ID:</strong> ${wallet.walletId}</p>
+            </div>
+          </div>
+        </div>
+      `
+      
+      if (editorRef.current) {
+        editorRef.current.innerHTML += chartHTML
+        setTimeout(() => paginateContent(), 100)
+      }
+      
+      toast.success("Wallet chart inserted")
+    } catch (error) {
+      console.error("Error inserting wallet chart:", error)
+      toast.error("Failed to insert wallet chart")
+    }
+  }
+
   // Manual save
   const handleManualSave = () => {
     if (clubData && editorRef.current) {
@@ -1099,10 +1463,10 @@ export default function ReportPage() {
   // Clear and reset to default template
   const handleClear = () => {
     if (clubData) {
-      // Clear session storage
+      // Clear local storage
       clearReportFromSession()
       
-      // Reset to default template (force default, don't restore from session)
+      // Reset to default template (force default, don't restore from local storage)
       initializeDefaultTemplate(clubData, true)
       
       // Reset last save indicator
@@ -1485,7 +1849,7 @@ export default function ReportPage() {
             </div>
 
             {/* Paginated Pages Container */}
-            <div className="bg-gray-100 dark:bg-gray-900 p-2 sm:p-4 rounded-lg max-h-[calc(100vh-200px)] sm:max-h-[calc(100vh-200px)] overflow-y-auto overflow-x-auto">
+            <div className="bg-gray-100 dark:bg-gray-800/50 p-2 sm:p-4 rounded-lg max-h-[calc(100vh-200px)] sm:max-h-[calc(100vh-200px)] overflow-y-auto overflow-x-auto">
               <div ref={pagesContainerRef} className="space-y-3 sm:space-y-4 min-w-fit sm:min-w-0">
                 {/* Pages will be dynamically inserted here */}
               </div>
@@ -1496,89 +1860,188 @@ export default function ReportPage() {
           <div className="hidden lg:block lg:col-span-1">
             <div className="sticky top-20 z-10">
               <Card className="p-4 shadow-lg max-h-[calc(100vh-100px)] overflow-y-auto">
-                <h3 className="font-semibold mb-4 text-sm">Insert Data</h3>
+                <h3 className="font-semibold mb-3 text-sm">Insert Data</h3>
                 
-                {/* Core Data Section */}
-                <div className="space-y-2 mb-4">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase">Core</p>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full justify-start text-sm"
-                    onClick={insertMembersData}
-                  >
-                    <Users className="h-4 w-4 mr-2" />
-                    Members
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full justify-start text-sm"
-                    onClick={insertEventsData}
-                  >
-                    <Calendar className="h-4 w-4 mr-2" />
-                    Events
-                  </Button>
-                </div>
+                <Tabs defaultValue="tables" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2 mb-3">
+                    <TabsTrigger value="tables" className="text-xs">
+                      <ClipboardList className="h-3 w-3 mr-1" />
+                      Tables
+                    </TabsTrigger>
+                    <TabsTrigger value="charts" className="text-xs">
+                      <BarChart3 className="h-3 w-3 mr-1" />
+                      Charts
+                    </TabsTrigger>
+                  </TabsList>
+                  
+                  {/* Tables Tab */}
+                  <TabsContent value="tables" className="mt-0">
+                    {/* Core Data Section */}
+                    <div className="space-y-2 mb-2">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase">Core</p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full justify-start text-sm"
+                        onClick={insertMembersData}
+                      >
+                        <Users className="h-4 w-4 mr-2" />
+                        Members
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full justify-start text-sm"
+                        onClick={insertEventsData}
+                      >
+                        <Calendar className="h-4 w-4 mr-2" />
+                        Events
+                      </Button>
+                    </div>
 
-                <Separator className="my-3" />
+                    <Separator className="my-2" />
 
-                {/* Products & Orders Section */}
-                <div className="space-y-2 mb-4">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase">Products & Orders</p>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full justify-start text-sm"
-                    onClick={insertGiftsData}
-                  >
-                    <Gift className="h-4 w-4 mr-2" />
-                    Gifts/Products
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full justify-start text-sm"
-                    onClick={insertOrdersData}
-                  >
-                    <ShoppingCart className="h-4 w-4 mr-2" />
-                    Redeem Orders
-                  </Button>
-                </div>
+                    {/* Products & Orders Section */}
+                    <div className="space-y-2 mb-2">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase">Products & Orders</p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full justify-start text-sm"
+                        onClick={insertGiftsData}
+                      >
+                        <Gift className="h-4 w-4 mr-2" />
+                        Gifts/Products
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full justify-start text-sm"
+                        onClick={insertOrdersData}
+                      >
+                        <ShoppingCart className="h-4 w-4 mr-2" />
+                        Redeem Orders
+                      </Button>
+                    </div>
 
-                <Separator className="my-3" />
+                    <Separator className="my-2" />
 
-                {/* Applications & Recruitment Section */}
-                <div className="space-y-2 mb-4">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase">Recruitment</p>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full justify-start text-sm"
-                    onClick={insertApplicationsData}
-                  >
-                    <UserCheck className="h-4 w-4 mr-2" />
-                    Applications
-                  </Button>
-                </div>
+                    {/* Applications & Recruitment Section */}
+                    <div className="space-y-2 mb-2">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase">Recruitment</p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full justify-start text-sm"
+                        onClick={insertApplicationsData}
+                      >
+                        <UserCheck className="h-4 w-4 mr-2" />
+                        Applications
+                      </Button>
+                    </div>
 
-                <Separator className="my-3" />
+                    <Separator className="my-2" />
 
-                {/* Financial Section */}
-                <div className="space-y-2 mb-4">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase">Financial</p>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full justify-start text-sm"
-                    onClick={insertWalletData}
-                  >
-                    <Wallet className="h-4 w-4 mr-2" />
-                    Wallet & Points
-                  </Button>
-                </div>
+                    {/* Financial Section */}
+                    <div className="space-y-2 mb-2">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase">Financial</p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full justify-start text-sm"
+                        onClick={insertWalletData}
+                      >
+                        <Wallet className="h-4 w-4 mr-2" />
+                        Wallet & Points
+                      </Button>
+                    </div>
+                  </TabsContent>
+                  
+                  {/* Charts Tab */}
+                  <TabsContent value="charts" className="mt-0">
+                    {/* Core Data Section */}
+                    <div className="space-y-2 mb-2">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase">Core</p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full justify-start text-sm"
+                        onClick={insertMembersChart}
+                      >
+                        <PieChartIcon className="h-4 w-4 mr-2" />
+                        Members Chart
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full justify-start text-sm"
+                        onClick={insertEventsChart}
+                      >
+                        <BarChart3 className="h-4 w-4 mr-2" />
+                        Events Chart
+                      </Button>
+                    </div>
 
-                <Separator className="my-4" />
+                    <Separator className="my-2" />
+
+                    {/* Products & Orders Section */}
+                    <div className="space-y-2 mb-2">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase">Products & Orders</p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full justify-start text-sm"
+                        onClick={insertGiftsChart}
+                      >
+                        <PieChartIcon className="h-4 w-4 mr-2" />
+                        Products Chart
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full justify-start text-sm"
+                        onClick={insertOrdersChart}
+                      >
+                        <PieChartIcon className="h-4 w-4 mr-2" />
+                        Orders Chart
+                      </Button>
+                    </div>
+
+                    <Separator className="my-2" />
+
+                    {/* Applications & Recruitment Section */}
+                    <div className="space-y-2 mb-2">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase">Recruitment</p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full justify-start text-sm"
+                        onClick={insertApplicationsChart}
+                      >
+                        <PieChartIcon className="h-4 w-4 mr-2" />
+                        Applications Chart
+                      </Button>
+                    </div>
+
+                    <Separator className="my-2" />
+
+                    {/* Financial Section */}
+                    <div className="space-y-2 mb-2">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase">Financial</p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full justify-start text-sm"
+                        onClick={insertWalletChart}
+                      >
+                        <BarChart3 className="h-4 w-4 mr-2" />
+                        Wallet Chart
+                      </Button>
+                    </div>
+                  </TabsContent>
+                </Tabs>
+
+                <Separator className="my-2" />
 
                 <div className="space-y-2 text-xs text-muted-foreground">
                   <p className="font-semibold text-foreground">Tips:</p>
@@ -1598,7 +2061,7 @@ export default function ReportPage() {
 
       {/* Download overlay */}
       {isDownloading && (
-        <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-50 flex items-center justify-center">
+        <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-[9999] flex items-center justify-center">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 flex flex-col items-center gap-4">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
             <p className="text-lg font-semibold text-foreground">Downloading PDF...</p>

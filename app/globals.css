@@ -808,3 +808,37 @@
     display: none;  /* Chrome, Safari and Opera */
   }
 }
+
+/* Force A4 page content to always use light mode colors (for PDF export) */
+.a4-page,
+.a4-page * {
+  /* Force light mode colors for text and backgrounds */
+  color: #000000 !important;
+  background-color: transparent !important;
+  border-color: #000000 !important;
+}
+
+/* Preserve white background only on the page itself */
+.a4-page {
+  background-color: white !important;
+}
+
+/* Preserve specific styling for tables and elements */
+.a4-page table {
+  border-color: #000000 !important;
+}
+
+.a4-page th {
+  background-color: #f3f4f6 !important;
+  color: #000000 !important;
+}
+
+.a4-page td {
+  background-color: transparent !important;
+  color: #000000 !important;
+}
+
+/* Preserve borders */
+.a4-page [style*="border"] {
+  border-color: #000000 !important;
+}
