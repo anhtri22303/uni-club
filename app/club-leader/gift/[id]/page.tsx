@@ -36,6 +36,7 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, } from "@/components/ui/table"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Skeleton } from "@/components/ui/skeleton"
+import { queryKeys } from "@/hooks/use-query-hooks" // 👈 THÊM IMPORT NÀY
 
 type ProductEditForm = UpdateProductPayload
 interface FixedTagIds {
@@ -108,11 +109,11 @@ export default function EditProductPage() {
         const canvas = document.createElement('canvas');
         const scaleX = image.naturalWidth / image.width;
         const scaleY = image.naturalHeight / image.height;
-        
+
         // Use natural dimensions for high quality output
         const naturalCropWidth = crop.width * scaleX;
         const naturalCropHeight = crop.height * scaleY;
-        
+
         canvas.width = naturalCropWidth;
         canvas.height = naturalCropHeight;
         const ctx = canvas.getContext('2d');
@@ -161,15 +162,15 @@ export default function EditProductPage() {
         try {
             const croppedBlob = await getCroppedImg(imgRef.current, completedCrop);
             setCroppedImageBlob(croppedBlob);
-            
+
             // Convert blob to file
             const croppedFile = new File([croppedBlob], originalFileName || 'cropped-image.jpg', {
                 type: 'image/jpeg',
             });
-            
+
             setNewMediaFile(croppedFile);
             setIsCropDialogOpen(false);
-            
+
             toast({
                 title: "Success",
                 description: "Image cropped successfully! Click 'Upload' to add it.",
@@ -378,6 +379,12 @@ export default function EditProductPage() {
                 variant: "success",
             })
 
+            // Báo cho React Query rằng "danh sách sản phẩm của club này" đã cũ.
+            // Bất kỳ trang nào đang dùng hook `useProductsByClubId(clubId)` sẽ tự động tải lại.
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.productsByClubId(clubId)
+            });
+
             // Bước 3: Tải lại dữ liệu
             await fetchProductData(clubId, productId);
         } catch (error: any) {
@@ -397,6 +404,11 @@ export default function EditProductPage() {
         try {
             setIsMediaLoading(true) // Chỉ dùng loading của Media
             await fetchProductData(clubId, productId)
+
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.productsByClubId(clubId)
+            });
+
             toast({ title: "Success", description: "Media updated.", variant: "success" })
         } catch (error) {
             toast({ title: "Error", description: "Failed to reload product.", variant: "destructive" })
@@ -409,7 +421,7 @@ export default function EditProductPage() {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
             setOriginalFileName(file.name);
-            
+
             // Check if it's an image
             if (file.type.startsWith('image/')) {
                 // Open crop modal for images
@@ -532,6 +544,16 @@ export default function EditProductPage() {
             setStockChange(""); // Reset về rỗng
             setStockNote("");
 
+            // 1. Báo cho trang list biết (vì stockQuantity thay đổi)
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.productsByClubId(clubId)
+            });
+
+            // 2. Báo cho dialog lịch sử biết (đã có)
+            queryClient.invalidateQueries({
+                queryKey: ['stockHistory', clubId, productId]
+            });
+
             await fetchProductData(clubId, productId);
             queryClient.invalidateQueries({ queryKey: ['stockHistory', clubId, productId] });
 
@@ -573,6 +595,11 @@ export default function EditProductPage() {
                 title: "Product Archived",
                 description: "The product has been successfully archived.",
                 variant: "success",
+            });
+
+            // Báo cho trang list (nơi chúng ta sắp quay về) rằng dữ liệu đã cũ.
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.productsByClubId(clubId)
             });
 
             // Chuyển hướng về trang danh sách
@@ -625,8 +652,8 @@ export default function EditProductPage() {
                     {/* Enhanced Header */}
                     <div className="flex items-center justify-between bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-xl border-2 border-blue-100">
                         <div className="flex items-center gap-4">
-                            <Button 
-                                variant="outline" 
+                            <Button
+                                variant="outline"
                                 onClick={() => router.back()}
                                 className="hover:bg-white transition-colors"
                             >
@@ -682,7 +709,7 @@ export default function EditProductPage() {
                                                         will be permanently archived and:
                                                     </p>
                                                 </div>
-                                                
+
                                                 <div className="space-y-2 text-left">
                                                     <div className="flex items-start gap-3 text-gray-700">
                                                         <div className="bg-red-100 p-1 rounded mt-0.5">
@@ -703,7 +730,7 @@ export default function EditProductPage() {
                                                         <span className="text-sm">Cannot be edited or restored</span>
                                                     </div>
                                                 </div>
-                                                
+
                                                 <div className="bg-amber-50 border-2 border-amber-300 rounded-lg p-3 mt-4">
                                                     <p className="text-amber-900 text-sm font-bold flex items-center gap-2">
                                                         <span className="text-lg">⚠️</span>
@@ -713,8 +740,8 @@ export default function EditProductPage() {
                                             </AlertDialogDescription>
                                         </AlertDialogHeader>
                                         <AlertDialogFooter className="flex gap-3 mt-2">
-                                            <AlertDialogCancel 
-                                                disabled={isDeleting} 
+                                            <AlertDialogCancel
+                                                disabled={isDeleting}
                                                 className="flex-1 h-11 border-2 hover:bg-gray-100"
                                             >
                                                 <XCircle className="h-4 w-4 mr-2" />
@@ -743,8 +770,8 @@ export default function EditProductPage() {
                             )}
 
                             {/* Nút Save (Disabled nếu đã Archived) */}
-                            <Button 
-                                onClick={handleSave} 
+                            <Button
+                                onClick={handleSave}
                                 disabled={isSaving || isDeleting || isArchived}
                                 size="lg"
                                 className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg"
@@ -782,11 +809,11 @@ export default function EditProductPage() {
                                         <Label htmlFor="name" className="text-base font-semibold">
                                             Product Name <span className="text-red-500">*</span>
                                         </Label>
-                                        <Input 
-                                            id="name" 
-                                            className="h-11 border-2 focus:border-blue-500" 
-                                            name="name" 
-                                            value={form.name} 
+                                        <Input
+                                            id="name"
+                                            className="h-11 border-2 focus:border-blue-500"
+                                            name="name"
+                                            value={form.name}
                                             onChange={handleChange}
                                             placeholder="Enter product name"
                                             disabled={isArchived}
@@ -819,9 +846,9 @@ export default function EditProductPage() {
                                         </div>
                                         <CardTitle className="text-xl">Product Images</CardTitle>
                                     </div>
-                                    <Button 
-                                        variant="outline" 
-                                        size="sm" 
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
                                         onClick={() => setIsMediaDialogOpen(true)}
                                         disabled={isArchived}
                                         className="border-2 hover:bg-purple-50 hover:border-purple-300"
@@ -859,7 +886,7 @@ export default function EditProductPage() {
                                                             className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-300"
                                                         />
                                                     )}
-                                                    
+
                                                     {/* Media Type Badge */}
                                                     <Badge className={`absolute top-3 right-3 z-10 ${m.type === "VIDEO" ? "bg-purple-500 text-white" : "bg-blue-500 text-white"} border-0 shadow-lg`}>
                                                         {m.type === "VIDEO" ? (
@@ -874,15 +901,15 @@ export default function EditProductPage() {
                                                             </>
                                                         )}
                                                     </Badge>
-                                                    
+
                                                     {/* Overlay khi hover */}
                                                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 z-10">
                                                         <Button
-                                                            variant="secondary" 
-                                                            size="icon" 
+                                                            variant="secondary"
+                                                            size="icon"
                                                             className="h-10 w-10 shadow-lg hover:scale-110 transition-transform bg-blue-500 hover:bg-blue-600"
-                                                            onClick={(e) => { 
-                                                                e.preventDefault(); 
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
                                                                 setSelectedMedia({ url: m.url, type: m.type });
                                                                 setIsMediaViewerOpen(true);
                                                             }}
@@ -892,8 +919,8 @@ export default function EditProductPage() {
                                                         {!isArchived && (
                                                             <>
                                                                 <Button
-                                                                    variant="destructive" 
-                                                                    size="icon" 
+                                                                    variant="destructive"
+                                                                    size="icon"
                                                                     className="h-10 w-10 shadow-lg hover:scale-110 transition-transform"
                                                                     onClick={(e) => { e.preventDefault(); handleDeleteMedia(m.mediaId) }}
                                                                 >
@@ -901,8 +928,8 @@ export default function EditProductPage() {
                                                                 </Button>
                                                                 {!m.thumbnail && (
                                                                     <Button
-                                                                        variant="secondary" 
-                                                                        size="icon" 
+                                                                        variant="secondary"
+                                                                        size="icon"
                                                                         className="h-10 w-10 shadow-lg hover:scale-110 transition-transform bg-yellow-400 hover:bg-yellow-500"
                                                                         onClick={(e) => { e.preventDefault(); handleSetThumbnail(m.mediaId) }}
                                                                     >
@@ -1215,8 +1242,8 @@ export default function EditProductPage() {
                             </div>
                         </div>
                         <DialogFooter className="flex gap-2">
-                            <Button 
-                                variant="outline" 
+                            <Button
+                                variant="outline"
                                 onClick={() => {
                                     setIsMediaDialogOpen(false);
                                     setNewMediaFile(null);
@@ -1226,8 +1253,8 @@ export default function EditProductPage() {
                             >
                                 Cancel
                             </Button>
-                            <Button 
-                                onClick={handleAddMedia} 
+                            <Button
+                                onClick={handleAddMedia}
                                 disabled={isMediaLoading || !newMediaFile}
                                 className="flex-1 bg-purple-600 hover:bg-purple-700"
                             >
@@ -1325,8 +1352,8 @@ export default function EditProductPage() {
                             </ScrollArea>
                         </div>
                         <DialogFooter>
-                            <Button 
-                                variant="outline" 
+                            <Button
+                                variant="outline"
                                 onClick={() => setIsHistoryOpen(false)}
                                 className="w-full sm:w-auto"
                             >

@@ -168,6 +168,65 @@ export default function StudentProductViewPage() {
         });
     }
 
+    // const handleRedeem = async () => {
+    //     // Cần product và currentMembership (thay vì currentWallet)
+    //     if (!product || !currentMembership) {
+    //         toast({
+    //             title: "Error",
+    //             description: "Cannot redeem. Product or membership data is missing.",
+    //             variant: "destructive",
+    //         })
+    //         return;
+    //     }
+
+    //     if (!currentMembership.membershipId) {
+    //         toast({
+    //             title: "Error",
+    //             description: "Membership ID not found. Cannot redeem.",
+    //             variant: "destructive",
+    //         })
+    //         return;
+    //     }
+
+    //     setIsRedeeming(true)
+    //     const payload: RedeemPayload = {
+    //         productId: product.id,
+    //         quantity: quantity,
+    //         membershipId: currentMembership.membershipId // Lấy ID từ membership
+    //     }
+
+    //     try {
+    //         let redeemedOrder;
+    //         if (product.type === "EVENT_ITEM" && product.eventId) {
+    //             redeemedOrder = await redeemEventProduct(product.eventId, payload);
+    //         }
+    //         else if (product.type === "CLUB_ITEM") {
+    //             redeemedOrder = await redeemClubProduct(product.clubId, payload);
+    //         }
+    //         else {
+    //             throw new Error("Invalid product data. Cannot determine redeem endpoint.");
+    //         }
+
+    //         toast({
+    //             title: "Success",
+    //             description: `You have successfully redeemed ${redeemedOrder.quantity} x ${redeemedOrder.productName}.`,
+    //             variant: "success",
+    //         })
+    //         setIsConfirmOpen(false)
+    //         setQuantity(1);
+    //         queryClient.invalidateQueries({ queryKey: queryKeys.profile });
+    //         await fetchProduct()
+
+    //     } catch (error: any) {
+    //         toast({
+    //             title: "Redemption Failed",
+    //             description: error.message || "Not enough points or product is out of stock.",
+    //             variant: "destructive",
+    //         })
+    //     } finally {
+    //         setIsRedeeming(false)
+    //     }
+    // }
     const handleRedeem = async () => {
         // Cần product và currentMembership (thay vì currentWallet)
         if (!product || !currentMembership) {
@@ -214,7 +273,21 @@ export default function StudentProductViewPage() {
             })
             setIsConfirmOpen(false)
             setQuantity(1);
+
+            // --- ✨ BẮT ĐẦU THAY ĐỔI ---
+
+            // 1. Làm mới danh sách membership (đã có)
             queryClient.invalidateQueries({ queryKey: queryKeys.profile });
+
+            // 2. ✨ THÊM MỚI: Làm mới profile ĐẦY ĐỦ (cho UserProfileWidget)
+            queryClient.invalidateQueries({ queryKey: queryKeys.fullProfile });
+
+            // 3. ✨ THÊM MỚI: Làm mới lịch sử đổi quà (cho trang History)
+            queryClient.invalidateQueries({ queryKey: queryKeys.myRedeemOrders() });
+
+            // --- KẾT THÚC THAY ĐỔI ---
+
+            // 4. Tải lại thông tin sản phẩm (đã có - để cập nhật stock)
             await fetchProduct()
 
         } catch (error: any) {
@@ -280,8 +353,8 @@ export default function StudentProductViewPage() {
                 <div className="space-y-6">
                     {/* Back Button with gradient hover */}
                     <div>
-                        <Button 
-                            variant="ghost" 
+                        <Button
+                            variant="ghost"
                             onClick={handleBack}
                             className="group hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 transition-all duration-300"
                         >
@@ -357,8 +430,8 @@ export default function StudentProductViewPage() {
 
                                         {/* Image Counter Badge */}
                                         {sortedMedia.length > 1 && (
-                                            <Badge 
-                                                variant="secondary" 
+                                            <Badge
+                                                variant="secondary"
                                                 className="absolute bottom-4 right-4 bg-black/60 text-white border-0 backdrop-blur-sm"
                                             >
                                                 {sortedMedia.findIndex(m => m.url === selectedImage) + 1} / {sortedMedia.length}
@@ -374,11 +447,10 @@ export default function StudentProductViewPage() {
                                     {sortedMedia.map((m) => (
                                         <button
                                             key={m.mediaId}
-                                            className={`aspect-square rounded-xl overflow-hidden border-3 transition-all duration-300 hover:scale-105 hover:shadow-lg relative ${
-                                                selectedImage === m.url 
-                                                    ? 'border-primary ring-2 ring-primary ring-offset-2 shadow-lg' 
+                                            className={`aspect-square rounded-xl overflow-hidden border-3 transition-all duration-300 hover:scale-105 hover:shadow-lg relative ${selectedImage === m.url
+                                                    ? 'border-primary ring-2 ring-primary ring-offset-2 shadow-lg'
                                                     : 'border-gray-200 hover:border-primary/50'
-                                            }`}
+                                                }`}
                                             onClick={() => setSelectedImage(m.url)}
                                         >
                                             {m.type === 'VIDEO' ? (
@@ -437,13 +509,12 @@ export default function StudentProductViewPage() {
 
                                         <div className="flex flex-col items-start sm:items-end gap-2">
                                             <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Availability</p>
-                                            <Badge 
-                                                variant={isAvailable ? "default" : "destructive"} 
-                                                className={`text-base px-5 py-2 shadow-md ${
-                                                    isAvailable 
-                                                        ? 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600' 
+                                            <Badge
+                                                variant={isAvailable ? "default" : "destructive"}
+                                                className={`text-base px-5 py-2 shadow-md ${isAvailable
+                                                        ? 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600'
                                                         : ''
-                                                }`}
+                                                    }`}
                                             >
                                                 <Package className="h-5 w-5 mr-2" />
                                                 {isAvailable ? `${product.stockQuantity.toLocaleString('en-US')} in stock` : "Out of Stock"}
@@ -581,8 +652,8 @@ export default function StudentProductViewPage() {
                                     <div className="flex flex-wrap gap-3">
                                         {product.tags.length > 0 ? (
                                             product.tags.map((tag) => (
-                                                <Badge 
-                                                    key={tag} 
+                                                <Badge
+                                                    key={tag}
                                                     variant="outline"
                                                     className="text-base px-4 py-2 border-2 border-primary/30 bg-gradient-to-r from-blue-50 to-purple-50 hover:from-blue-100 hover:to-purple-100 transition-all duration-300 hover:scale-105 font-semibold"
                                                 >
@@ -644,16 +715,16 @@ export default function StudentProductViewPage() {
                             </DialogDescription>
                         </DialogHeader>
                         <DialogFooter className="gap-2 sm:gap-0">
-                            <Button 
-                                variant="outline" 
-                                onClick={() => setIsConfirmOpen(false)} 
+                            <Button
+                                variant="outline"
+                                onClick={() => setIsConfirmOpen(false)}
                                 disabled={isRedeeming}
                                 className="flex-1"
                             >
                                 Cancel
                             </Button>
-                            <Button 
-                                onClick={handleRedeem} 
+                            <Button
+                                onClick={handleRedeem}
                                 disabled={isRedeeming}
                                 className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                             >

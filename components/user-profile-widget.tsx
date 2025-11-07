@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { useAuth } from "@/contexts/auth-context"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -8,14 +8,11 @@ import { useRouter } from "next/navigation"
 import { User, LogOut, Award, Trophy, Gem, Star, Flame, Check, ChevronDown, ChevronUp } from "lucide-react"
 import { useSidebarContext } from "@/components/app-shell"
 import { ApiMembershipWallet } from "@/service/walletApi"
-import { fetchProfile } from "@/service/userApi"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu"
+// import { fetchProfile } from "@/service/userApi"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
+
+import { useFullProfile } from "@/hooks/use-query-hooks"
+import { LoadingSpinner } from "@/components/loading-spinner"
 
 function getTierInfo(points: number, role: string) {
   // Keep a minimal tier fallback for accessory data, but primary UI is points card.
@@ -83,100 +80,170 @@ export function UserProfileWidget() {
   const { auth, logout } = useAuth()
   const router = useRouter()
   const { sidebarCollapsed, sidebarOpen } = useSidebarContext()
-  const [userPoints, setUserPoints] = useState<number>(0)
-  const [avatarUrl, setAvatarUrl] = useState<string>("")
-  const [userName, setUserName] = useState<string>("")
-  const [userEmail, setUserEmail] = useState<string>("")
-  const [memberships, setMemberships] = useState<ApiMembershipWallet[]>([])
+  // GỌI HOOK `useFullProfile`
+  const { data: profile, isLoading: profileLoading } = useFullProfile(true);
+
+  // const [userPoints, setUserPoints] = useState<number>(0)
+  // const [avatarUrl, setAvatarUrl] = useState<string>("")
+  // const [userName, setUserName] = useState<string>("")
+  // const [userEmail, setUserEmail] = useState<string>("")
+  // const [memberships, setMemberships] = useState<ApiMembershipWallet[]>([])
   const [selectedWalletId, setSelectedWalletId] = useState<string>("")
   const [widgetCollapsed, setWidgetCollapsed] = useState<boolean>(false)
 
   if (!auth.role || !auth.user) return null
 
   // Load profile and wallet data from API
-  useEffect(() => {
-    let mounted = true
-    const load = async () => {
-      try {
-        // Load profile (includes avatar and wallets data)
-        const profileData: any = await fetchProfile()
-        console.debug("UserProfileWidget.fetchProfile ->", profileData)
-        if (!mounted) return
-        
-        setAvatarUrl(profileData?.avatarUrl || "")
-        setUserName(profileData?.fullName || auth.user?.fullName || "User")
-        setUserEmail(profileData?.email || auth.user?.email || "")
+  // useEffect(() => {
+  //   let mounted = true
+  //   const load = async () => {
+  //     try {
+  //       // Load profile (includes avatar and wallets data)
+  //       const profileData: any = await fetchProfile()
+  //       console.debug("UserProfileWidget.fetchProfile ->", profileData)
+  //       if (!mounted) return
 
-        // Load wallet points only for eligible roles from profile response
-        if (auth.role === "club_leader" || auth.role === "student") {
-          // Handle both singular wallet and plural wallets formats
-          let walletsList = profileData?.wallets || []
-          
-          // If API returns singular wallet, convert to array
-          if (!walletsList || walletsList.length === 0) {
-            if (profileData?.wallet) {
-              // For singular wallet, create entry with club name from clubs array
-              const clubName = profileData?.clubs?.[0]?.clubName || "My Wallet"
-              const clubId = profileData?.clubs?.[0]?.clubId || null
-              
-              walletsList = [{
-                walletId: profileData.wallet.walletId,
-                balancePoints: profileData.wallet.balancePoints,
-                ownerType: profileData.wallet.ownerType,
-                clubId: clubId,
-                clubName: clubName,
-                userId: profileData.wallet.userId,
-                userFullName: profileData.wallet.userFullName
-              }]
-            }
-          }
-          
-          console.debug("UserProfileWidget.wallets ->", walletsList)
-          
-          // Map wallets to membership format for compatibility
-          const membershipsList: ApiMembershipWallet[] = walletsList.map((w: any) => ({
-            walletId: w.walletId,
-            balancePoints: w.balancePoints,
-            ownerType: w.ownerType,
-            clubId: w.clubId,
-            clubName: w.clubName,
-            userId: w.userId,
-            userFullName: w.userFullName
-          }))
-          
-          setMemberships(membershipsList)
-          
-          // Always display first wallet by default, or 0 if no wallets
-          if (membershipsList.length > 0) {
-            setSelectedWalletId(membershipsList[0].walletId.toString())
-            setUserPoints(Number(membershipsList[0].balancePoints) || 0)
-          } else {
-            // No wallets - display 0
-            setSelectedWalletId("")
-            setUserPoints(0)
-          }
-        }
-      } catch (err) {
-        console.error("Failed to load profile in UserProfileWidget", err)
-        console.log("Role:", auth.role, "Will fallback to initials for avatar")
-        // Avatar will fallback to initials if failed to load
+  //       setAvatarUrl(profileData?.avatarUrl || "")
+  //       setUserName(profileData?.fullName || auth.user?.fullName || "User")
+  //       setUserEmail(profileData?.email || auth.user?.email || "")
+
+  //       // Load wallet points only for eligible roles from profile response
+  //       if (auth.role === "club_leader" || auth.role === "student") {
+  //         // Handle both singular wallet and plural wallets formats
+  //         let walletsList = profileData?.wallets || []
+
+  //         // If API returns singular wallet, convert to array
+  //         if (!walletsList || walletsList.length === 0) {
+  //           if (profileData?.wallet) {
+  //             // For singular wallet, create entry with club name from clubs array
+  //             const clubName = profileData?.clubs?.[0]?.clubName || "My Wallet"
+  //             const clubId = profileData?.clubs?.[0]?.clubId || null
+
+  //             walletsList = [{
+  //               walletId: profileData.wallet.walletId,
+  //               balancePoints: profileData.wallet.balancePoints,
+  //               ownerType: profileData.wallet.ownerType,
+  //               clubId: clubId,
+  //               clubName: clubName,
+  //               userId: profileData.wallet.userId,
+  //               userFullName: profileData.wallet.userFullName
+  //             }]
+  //           }
+  //         }
+
+  //         console.debug("UserProfileWidget.wallets ->", walletsList)
+
+  //         // Map wallets to membership format for compatibility
+  //         const membershipsList: ApiMembershipWallet[] = walletsList.map((w: any) => ({
+  //           walletId: w.walletId,
+  //           balancePoints: w.balancePoints,
+  //           ownerType: w.ownerType,
+  //           clubId: w.clubId,
+  //           clubName: w.clubName,
+  //           userId: w.userId,
+  //           userFullName: w.userFullName
+  //         }))
+
+  //         setMemberships(membershipsList)
+
+  //         // Always display first wallet by default, or 0 if no wallets
+  //         if (membershipsList.length > 0) {
+  //           setSelectedWalletId(membershipsList[0].walletId.toString())
+  //           setUserPoints(Number(membershipsList[0].balancePoints) || 0)
+  //         } else {
+  //           // No wallets - display 0
+  //           setSelectedWalletId("")
+  //           setUserPoints(0)
+  //         }
+  //       }
+  //     } catch (err) {
+  //       console.error("Failed to load profile in UserProfileWidget", err)
+  //       console.log("Role:", auth.role, "Will fallback to initials for avatar")
+  //       // Avatar will fallback to initials if failed to load
+  //     }
+  //   }
+  //   load()
+  //   return () => {
+  //     mounted = false
+  //   }
+  // }, [auth?.userId, auth?.role])
+  // 8. DÙNG useMemo ĐỂ LẤY DỮ LIỆU TỪ `profile` (thay thế cho useEffect)
+  const memberships = useMemo((): ApiMembershipWallet[] => {
+    if (!profile) return []; // Nếu chưa có profile (đang tải hoặc lỗi), trả về mảng rỗng
+
+    // Hỗ trợ cả API mới (wallets) và API cũ (wallet)
+    let walletsList = profile?.wallets || [];
+
+    if (!walletsList || walletsList.length === 0) {
+      if (profile?.wallet) {
+        // Lấy tên club từ mảng `clubs` (nếu có)
+        const clubName = profile?.clubs?.[0]?.clubName || "My Wallet";
+        const clubId = profile?.clubs?.[0]?.clubId || 0;
+
+        // Tạo một mảng chứa 1 wallet
+        walletsList = [{
+          walletId: profile.wallet.walletId,
+          balancePoints: profile.wallet.balancePoints,
+          ownerType: profile.wallet.ownerType,
+          clubId: clubId,
+          clubName: clubName,
+          userId: profile.wallet.userId,
+          userFullName: profile.wallet.userFullName
+        }];
       }
     }
-    load()
-    return () => {
-      mounted = false
-    }
-  }, [auth?.userId, auth?.role])
+
+    // Map data (y hệt code cũ của bạn)
+    return walletsList.map((w: any) => ({
+      walletId: w.walletId,
+      balancePoints: w.balancePoints,
+      ownerType: w.ownerType,
+      clubId: w.clubId,
+      clubName: w.clubName,
+      userId: w.userId,
+      userFullName: w.userFullName
+    }));
+  }, [profile]); // 👈 Chỉ tính toán lại khi `profile` thay đổi
+
 
   // Update displayed points when wallet selection changes
+  // useEffect(() => {
+  //   if (selectedWalletId && memberships.length > 0) {
+  //     const selectedMembership = memberships.find(m => m.walletId.toString() === selectedWalletId)
+  //     if (selectedMembership) {
+  //       setUserPoints(Number(selectedMembership.balancePoints) || 0)
+  //     }
+  //   }
+  // }, [selectedWalletId, memberships])
+  // 9. DÙNG useEffect ĐỂ CHỌN WALLET MẶC ĐỊNH KHI `memberships` THAY ĐỔI
   useEffect(() => {
-    if (selectedWalletId && memberships.length > 0) {
-      const selectedMembership = memberships.find(m => m.walletId.toString() === selectedWalletId)
-      if (selectedMembership) {
-        setUserPoints(Number(selectedMembership.balancePoints) || 0)
-      }
+    // Nếu chưa chọn wallet NÀO, VÀ memberships đã tải xong (có ít nhất 1)
+    if (!selectedWalletId && memberships.length > 0) {
+      setSelectedWalletId(memberships[0].walletId.toString())
+    } else if (memberships.length === 0) {
+      // Nếu profile update và không còn wallet nào, reset
+      setSelectedWalletId("")
     }
-  }, [selectedWalletId, memberships])
+  }, [memberships, selectedWalletId]) // 👈 Chạy khi `memberships` thay đổi
+
+  // 10. DÙNG useMemo ĐỂ TÍNH ĐIỂM (thay thế cho useEffect)
+  const userPoints = useMemo(() => {
+    if (profileLoading || memberships.length === 0) return 0; // Đang tải hoặc ko có wallet
+
+    // Tìm wallet đang được chọn
+    const selectedMembership = memberships.find(m => m.walletId.toString() === selectedWalletId)
+    if (selectedMembership) {
+      return Number(selectedMembership.balancePoints) || 0
+    }
+
+    // Fallback về 0 nếu không tìm thấy
+    return 0;
+  }, [selectedWalletId, memberships, profileLoading]); // 👈 Tính lại khi 1 trong 3 thay đổi
+
+  // 11. LẤY DATA TRỰC TIẾP TỪ `profile`
+  const avatarUrl = profile?.avatarUrl || ""
+  const userName = profile?.fullName || auth.user?.fullName || "User"
+  const userEmail = profile?.email || auth.user?.email || ""
 
   const userInitials = (auth.user?.fullName || "User")
     .split(" ")
@@ -217,117 +284,122 @@ export function UserProfileWidget() {
 
       {!widgetCollapsed && (
         <>
-      {shouldShowPoints && (
-        // Points card - clickable when 2+ memberships
-        memberships.length >= 2 ? (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <div className={`rounded-lg p-0 overflow-hidden shadow-md cursor-pointer hover:shadow-lg hover:scale-[1.02] transition-all duration-200 mt-4 ${pointsStyle.cardClassName} ring-2 ring-transparent hover:ring-white/20`}>
-                <div className="p-3 flex items-center justify-between gap-2">
-                  <div className="flex-1 min-w-0 overflow-hidden">
-                    <div className={`text-xs font-medium transition-colors duration-300 ${pointsStyle.subtitleColorClassName} flex items-center gap-1`}>
-                      <span className="truncate">
-                        {memberships.find(m => m.walletId.toString() === selectedWalletId)?.clubName || "Club Points"}
-                      </span>
-                      <ChevronDown className={`h-3 w-3 flex-shrink-0 ${pointsStyle.subtitleColorClassName}`} />
+          {shouldShowPoints && (
+            profileLoading ? (
+              <div className="flex items-center justify-center h-[76px]">
+                <LoadingSpinner />
+              </div>
+            ) : (
+              // Points card - clickable when 2+ memberships
+              memberships.length >= 2 ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <div className={`rounded-lg p-0 overflow-hidden shadow-md cursor-pointer hover:shadow-lg hover:scale-[1.02] transition-all duration-200 mt-4 ${pointsStyle.cardClassName} ring-2 ring-transparent hover:ring-white/20`}>
+                      <div className="p-3 flex items-center justify-between gap-2">
+                        <div className="flex-1 min-w-0 overflow-hidden">
+                          <div className={`text-xs font-medium transition-colors duration-300 ${pointsStyle.subtitleColorClassName} flex items-center gap-1`}>
+                            <span className="truncate">
+                              {memberships.find(m => m.walletId.toString() === selectedWalletId)?.clubName || "Club Points"}
+                            </span>
+                            <ChevronDown className={`h-3 w-3 flex-shrink-0 ${pointsStyle.subtitleColorClassName}`} />
+                          </div>
+                          <p className={`text-2xl font-bold transition-colors duration-300 ${pointsStyle.textColorClassName} truncate`}>{userPoints.toLocaleString()}</p>
+                        </div>
+                        <div className={`p-2 rounded-full transition-all duration-300 flex-shrink-0 ${pointsStyle.iconBgClassName}`}>
+                          <Flame className={`h-5 w-5 transition-colors duration-300 ${pointsStyle.iconColorClassName} ${pointsStyle.animationClassName}`} />
+                        </div>
+                      </div>
                     </div>
-                    <p className={`text-2xl font-bold transition-colors duration-300 ${pointsStyle.textColorClassName} truncate`}>{userPoints.toLocaleString()}</p>
-                  </div>
-                  <div className={`p-2 rounded-full transition-all duration-300 flex-shrink-0 ${pointsStyle.iconBgClassName}`}>
-                    <Flame className={`h-5 w-5 transition-colors duration-300 ${pointsStyle.iconColorClassName} ${pointsStyle.animationClassName}`} />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-[280px] max-w-[280px] p-3">
+                    {memberships.map((membership, index) => {
+                      const colors = [
+                        { from: "from-blue-500", to: "to-cyan-500", hoverFrom: "hover:from-blue-600", hoverTo: "hover:to-cyan-600", check: "text-blue-600" },
+                        { from: "from-emerald-500", to: "to-teal-500", hoverFrom: "hover:from-emerald-600", hoverTo: "hover:to-teal-600", check: "text-emerald-600" },
+                        { from: "from-orange-500", to: "to-amber-500", hoverFrom: "hover:from-orange-600", hoverTo: "hover:to-amber-600", check: "text-orange-600" },
+                        { from: "from-rose-500", to: "to-red-500", hoverFrom: "hover:from-rose-600", hoverTo: "hover:to-red-600", check: "text-rose-600" },
+                        { from: "from-indigo-500", to: "to-purple-500", hoverFrom: "hover:from-indigo-600", hoverTo: "hover:to-purple-600", check: "text-indigo-600" },
+                        { from: "from-green-500", to: "to-lime-500", hoverFrom: "hover:from-green-600", hoverTo: "hover:to-lime-600", check: "text-green-600" },
+                      ]
+                      const colorScheme = colors[index % colors.length]
+                      const isSelected = selectedWalletId === membership.walletId.toString()
+
+                      return (
+                        <DropdownMenuItem
+                          key={membership.walletId}
+                          onClick={() => setSelectedWalletId(membership.walletId.toString())}
+                          className="cursor-pointer rounded-lg p-0 mb-2 overflow-hidden hover:shadow-md transition-all duration-200"
+                        >
+                          <div className={`flex items-center gap-3 w-full p-3 bg-gradient-to-r ${colorScheme.from} ${colorScheme.to} ${colorScheme.hoverFrom} ${colorScheme.hoverTo} transition-all overflow-hidden`}>
+                            <div className="w-10 h-10 rounded-lg bg-white/10 dark:bg-black/20 backdrop-blur-sm flex items-center justify-center font-bold text-lg text-white flex-shrink-0">
+                              {membership.clubName.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="flex-1 min-w-0 overflow-hidden">
+                              <div className="font-bold text-sm text-white truncate">{membership.clubName}</div>
+                              <div className="text-xs font-medium text-white/90 truncate">
+                                {membership.balancePoints.toLocaleString()} pts
+                              </div>
+                            </div>
+                            {isSelected && (
+                              <div className="flex-shrink-0 w-6 h-6 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center">
+                                <Check className={`h-4 w-4 ${colorScheme.check} font-bold`} />
+                              </div>
+                            )}
+                          </div>
+                        </DropdownMenuItem>
+                      )
+                    })}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                // Static points card when 0 or 1 membership
+                <div className={`rounded-lg p-0 overflow-hidden shadow-sm mt-4 ${pointsStyle.cardClassName}`}>
+                  <div className="p-3 flex items-center justify-between gap-2">
+                    <div className="flex-1 min-w-0 overflow-hidden">
+                      <p className={`text-xs font-medium transition-colors duration-300 ${pointsStyle.subtitleColorClassName} truncate`}>
+                        {memberships.length > 0
+                          ? memberships[0].clubName
+                          : "No Wallet"}
+                      </p>
+                      <p className={`text-2xl font-bold transition-colors duration-300 ${pointsStyle.textColorClassName} truncate`}>{userPoints.toLocaleString()}</p>
+                    </div>
+                    <div className={`p-2 rounded-full transition-colors duration-300 flex-shrink-0 ${pointsStyle.iconBgClassName}`}>
+                      <Flame className={`h-5 w-5 transition-colors duration-300 ${pointsStyle.iconColorClassName} ${pointsStyle.animationClassName}`} />
+                    </div>
                   </div>
                 </div>
-              </div>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-[280px] max-w-[280px] p-3">
-              {memberships.map((membership, index) => {
-                const colors = [
-                  { from: "from-blue-500", to: "to-cyan-500", hoverFrom: "hover:from-blue-600", hoverTo: "hover:to-cyan-600", check: "text-blue-600" },
-                  { from: "from-emerald-500", to: "to-teal-500", hoverFrom: "hover:from-emerald-600", hoverTo: "hover:to-teal-600", check: "text-emerald-600" },
-                  { from: "from-orange-500", to: "to-amber-500", hoverFrom: "hover:from-orange-600", hoverTo: "hover:to-amber-600", check: "text-orange-600" },
-                  { from: "from-rose-500", to: "to-red-500", hoverFrom: "hover:from-rose-600", hoverTo: "hover:to-red-600", check: "text-rose-600" },
-                  { from: "from-indigo-500", to: "to-purple-500", hoverFrom: "hover:from-indigo-600", hoverTo: "hover:to-purple-600", check: "text-indigo-600" },
-                  { from: "from-green-500", to: "to-lime-500", hoverFrom: "hover:from-green-600", hoverTo: "hover:to-lime-600", check: "text-green-600" },
-                ]
-                const colorScheme = colors[index % colors.length]
-                const isSelected = selectedWalletId === membership.walletId.toString()
-                
-                return (
-                  <DropdownMenuItem 
-                    key={membership.walletId}
-                    onClick={() => setSelectedWalletId(membership.walletId.toString())}
-                    className="cursor-pointer rounded-lg p-0 mb-2 overflow-hidden hover:shadow-md transition-all duration-200"
-                  >
-                    <div className={`flex items-center gap-3 w-full p-3 bg-gradient-to-r ${colorScheme.from} ${colorScheme.to} ${colorScheme.hoverFrom} ${colorScheme.hoverTo} transition-all overflow-hidden`}>
-                      <div className="w-10 h-10 rounded-lg bg-white/10 dark:bg-black/20 backdrop-blur-sm flex items-center justify-center font-bold text-lg text-white flex-shrink-0">
-                        {membership.clubName.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="flex-1 min-w-0 overflow-hidden">
-                        <div className="font-bold text-sm text-white truncate">{membership.clubName}</div>
-                        <div className="text-xs font-medium text-white/90 truncate">
-                          {membership.balancePoints.toLocaleString()} pts
-                        </div>
-                      </div>
-                      {isSelected && (
-                        <div className="flex-shrink-0 w-6 h-6 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center">
-                          <Check className={`h-4 w-4 ${colorScheme.check} font-bold`} />
-                        </div>
-                      )}
-                    </div>
-                  </DropdownMenuItem>
-                )
-              })}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ) : (
-          // Static points card when 0 or 1 membership
-          <div className={`rounded-lg p-0 overflow-hidden shadow-sm mt-4 ${pointsStyle.cardClassName}`}>
-            <div className="p-3 flex items-center justify-between gap-2">
-              <div className="flex-1 min-w-0 overflow-hidden">
-                <p className={`text-xs font-medium transition-colors duration-300 ${pointsStyle.subtitleColorClassName} truncate`}>
-                  {memberships.length > 0 
-                    ? memberships[0].clubName 
-                    : "No Wallet"}
-                </p>
-                <p className={`text-2xl font-bold transition-colors duration-300 ${pointsStyle.textColorClassName} truncate`}>{userPoints.toLocaleString()}</p>
-              </div>
-              <div className={`p-2 rounded-full transition-colors duration-300 flex-shrink-0 ${pointsStyle.iconBgClassName}`}>
-                <Flame className={`h-5 w-5 transition-colors duration-300 ${pointsStyle.iconColorClassName} ${pointsStyle.animationClassName}`} />
-              </div>
+              )
+            )
+          )}
+          {/* hiển thị thông tin user lấy từ API */}
+          <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors overflow-hidden">
+            <Avatar className="h-10 w-10 flex-shrink-0">
+              <AvatarImage src={avatarUrl || "/placeholder-user.jpg"} alt={userName || "User"} />
+              <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
+                {userInitials}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0 overflow-hidden">
+              <p className="text-sm font-semibold text-foreground truncate">{userName || "User"}</p>
+              <p className="text-xs text-muted-foreground truncate">{userEmail || "-"}</p>
             </div>
           </div>
-        )
-      )}
-      {/* hiển thị thông tin user lấy từ API */}
-      <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors overflow-hidden">
-        <Avatar className="h-10 w-10 flex-shrink-0">
-          <AvatarImage src={avatarUrl || "/placeholder-user.jpg"} alt={userName || "User"} />
-          <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
-            {userInitials}
-          </AvatarFallback>
-        </Avatar>
-        <div className="flex-1 min-w-0 overflow-hidden">
-          <p className="text-sm font-semibold text-foreground truncate">{userName || "User"}</p>
-          <p className="text-xs text-muted-foreground truncate">{userEmail || "-"}</p>
 
-        </div>
-      </div>
-
-      <div className="flex gap-2 overflow-hidden">
-        <Button variant="outline" size="sm" className="flex-1 gap-2 bg-transparent overflow-hidden" onClick={handleProfile}>
-          <User className="h-3 w-3 flex-shrink-0" />
-          <span className="truncate">Profile</span>
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          className="flex-1 gap-2 text-destructive hover:text-destructive bg-transparent overflow-hidden"
-          onClick={logout}
-        >
-          <LogOut className="h-3 w-3 flex-shrink-0" />
-          <span className="truncate">Logout</span>
-        </Button>
-      </div>
+          <div className="flex gap-2 overflow-hidden">
+            <Button variant="outline" size="sm" className="flex-1 gap-2 bg-transparent overflow-hidden" onClick={handleProfile}>
+              <User className="h-3 w-3 flex-shrink-0" />
+              <span className="truncate">Profile</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1 gap-2 text-destructive hover:text-destructive bg-transparent overflow-hidden"
+              onClick={logout}
+            >
+              <LogOut className="h-3 w-3 flex-shrink-0" />
+              <span className="truncate">Logout</span>
+            </Button>
+          </div>
         </>
       )}
     </div>

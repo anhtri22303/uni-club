@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import {
-    CheckCircle, XCircle, ArrowLeft, Clock, Package, DollarSign, ShoppingCart, User, Hash, Calendar, Undo2, Loader2, Info, WalletCards 
+    CheckCircle, XCircle, ArrowLeft, Clock, Package, DollarSign, ShoppingCart, User, Hash, Calendar, Undo2, Loader2, Info, WalletCards
 } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
@@ -93,13 +93,13 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
         setIsProcessing(true);
         try {
             await completeRedeemOrder(order.orderId);
-            
+
             toast({
                 title: "Success",
                 description: "Order marked as 'Delivered' successfully!",
                 variant: "success",
             })
-            
+
             // Tải lại danh sách orders và refresh page
             await queryClient.invalidateQueries({ queryKey: queryKeys.clubOrders(clubId) });
             router.refresh();
@@ -176,7 +176,7 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
             setRefundType("full")
             setPartialQuantity("1")
             setRefundReason("") // Reset reason
-            
+
             // Tải lại danh sách orders và refresh page
             await queryClient.invalidateQueries({ queryKey: queryKeys.clubOrders(clubId) })
             router.refresh();
@@ -287,30 +287,30 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
     }
 
     // Determine status color theme
-    const statusTheme = 
+    const statusTheme =
         order.status === "PENDING" ? {
             gradient: "from-yellow-50 via-yellow-50/50 to-transparent",
             border: "border-yellow-200",
             icon: "from-yellow-400 to-yellow-500",
             text: "text-yellow-700"
         } :
-        order.status === "COMPLETED" ? {
-            gradient: "from-green-50 via-green-50/50 to-transparent",
-            border: "border-green-200",
-            icon: "from-green-400 to-green-500",
-            text: "text-green-700"
-        } :
-        order.status === "PARTIALLY_REFUNDED" ? {
-            gradient: "from-orange-50 via-orange-50/50 to-transparent",
-            border: "border-orange-200",
-            icon: "from-orange-400 to-orange-500",
-            text: "text-orange-700"
-        } : {
-            gradient: "from-blue-50 via-blue-50/50 to-transparent",
-            border: "border-blue-200",
-            icon: "from-blue-400 to-blue-500",
-            text: "text-blue-700"
-        }
+            order.status === "COMPLETED" ? {
+                gradient: "from-green-50 via-green-50/50 to-transparent",
+                border: "border-green-200",
+                icon: "from-green-400 to-green-500",
+                text: "text-green-700"
+            } :
+                order.status === "PARTIALLY_REFUNDED" ? {
+                    gradient: "from-orange-50 via-orange-50/50 to-transparent",
+                    border: "border-orange-200",
+                    icon: "from-orange-400 to-orange-500",
+                    text: "text-orange-700"
+                } : {
+                    gradient: "from-blue-50 via-blue-50/50 to-transparent",
+                    border: "border-blue-200",
+                    icon: "from-blue-400 to-blue-500",
+                    text: "text-blue-700"
+                }
 
     return (
         <ProtectedRoute allowedRoles={["club_leader"]}>
@@ -321,7 +321,7 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
                         {/* Decorative circles */}
                         <div className="absolute top-0 right-0 w-64 h-64 bg-white/30 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
                         <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/20 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2" />
-                        
+
                         <div className="relative z-10">
                             {/* Back button */}
                             <Link href="/club-leader/club-order-list">
@@ -330,7 +330,7 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
                                     Back to Order List
                                 </Button>
                             </Link>
-                            
+
                             {/* Title section */}
                             <div className="flex items-start justify-between gap-4">
                                 <div className="flex items-center gap-4">
@@ -385,7 +385,7 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
                                             <p className="text-3xl font-bold text-indigo-900">{order.quantity.toLocaleString('en-US')}</p>
                                             <p className="text-xs text-muted-foreground mt-1">Item(s) ordered</p>
                                         </div>
-                                        
+
                                         <div className="p-5 bg-gradient-to-br from-cyan-50 to-teal-50 rounded-xl border border-cyan-100 shadow-sm hover:shadow-md transition-shadow">
                                             <div className="flex items-center gap-2 mb-3">
                                                 <div className="p-2 rounded-lg bg-gradient-to-br from-cyan-400 to-teal-500 shadow-md">
@@ -425,9 +425,9 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
                                                         </p>
                                                         <div className="mt-3 flex items-center gap-2 text-xs text-green-600">
                                                             <Calendar className="h-3.5 w-3.5" />
-                                                            <span>{new Date(order.completedAt).toLocaleString('en-US', { 
-                                                                dateStyle: 'full', 
-                                                                timeStyle: 'short' 
+                                                            <span>{new Date(order.completedAt).toLocaleString('en-US', {
+                                                                dateStyle: 'full',
+                                                                timeStyle: 'short'
                                                             })}</span>
                                                         </div>
                                                     </div>
@@ -451,9 +451,9 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
                                                         </p>
                                                         <div className="mt-3 flex items-center gap-2 text-xs text-orange-600">
                                                             <Calendar className="h-3.5 w-3.5" />
-                                                            <span>{new Date(order.completedAt).toLocaleString('en-US', { 
-                                                                dateStyle: 'full', 
-                                                                timeStyle: 'short' 
+                                                            <span>{new Date(order.completedAt).toLocaleString('en-US', {
+                                                                dateStyle: 'full',
+                                                                timeStyle: 'short'
                                                             })}</span>
                                                         </div>
                                                     </div>
@@ -477,9 +477,9 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
                                                         </p>
                                                         <div className="mt-3 flex items-center gap-2 text-xs text-blue-600">
                                                             <Calendar className="h-3.5 w-3.5" />
-                                                            <span>{new Date(order.completedAt).toLocaleString('en-US', { 
-                                                                dateStyle: 'full', 
-                                                                timeStyle: 'short' 
+                                                            <span>{new Date(order.completedAt).toLocaleString('en-US', {
+                                                                dateStyle: 'full',
+                                                                timeStyle: 'short'
                                                             })}</span>
                                                         </div>
                                                     </div>
@@ -535,16 +535,16 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
                                             <Calendar className="h-4 w-4 text-gray-600" />
                                             <div className="flex flex-col">
                                                 <span className="font-semibold text-sm text-gray-900">
-                                                    {new Date(order.createdAt).toLocaleDateString('en-US', { 
-                                                        month: 'long', 
-                                                        day: 'numeric', 
-                                                        year: 'numeric' 
+                                                    {new Date(order.createdAt).toLocaleDateString('en-US', {
+                                                        month: 'long',
+                                                        day: 'numeric',
+                                                        year: 'numeric'
                                                     })}
                                                 </span>
                                                 <span className="text-xs text-muted-foreground">
-                                                    {new Date(order.createdAt).toLocaleTimeString('en-US', { 
-                                                        hour: '2-digit', 
-                                                        minute: '2-digit' 
+                                                    {new Date(order.createdAt).toLocaleTimeString('en-US', {
+                                                        hour: '2-digit',
+                                                        minute: '2-digit'
                                                     })}
                                                 </span>
                                             </div>
@@ -656,7 +656,8 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
                                                     </div>
                                                 </DialogHeader>
 
-                                                <div className="space-y-6 py-4">
+                                                {/* <div className="space-y-6 py-4"> */}
+                                                <div className="space-y-6 py-4 max-h-[65vh] overflow-y-auto pr-4">
                                                     {/* Order Summary */}
                                                     <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
                                                         <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-2">Order Summary</p>
