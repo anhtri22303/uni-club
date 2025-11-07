@@ -52,6 +52,24 @@ interface Profile {
     wallet: ProfileWallet;
     wallets?: ProfileWallet[];
 }
+
+interface AttendanceRecord {
+  date: string;
+  note: string | null;
+  clubName: string;
+  status: string;
+  // (Thêm các thuộc tính khác nếu có)
+}
+
+interface MemberHistoryResponse {
+  success: boolean;
+  message: string;
+  data: {
+    clubName: string;
+    membershipId: number;
+    attendanceHistory: AttendanceRecord[];
+  };
+}
 // ============================================
 // QUERY KEYS - Centralized for consistency
 // ============================================
@@ -587,26 +605,24 @@ export function useAttendancesByDate(date: string, enabled = true) {
 }
 
 /**
- * Hook to fetch attendance history for a specific member
- * @param membershipId - The member's membership ID (NOT userId or clubId)
- */
+ * Hook to fetch attendance history for a specific member
+ * @param membershipId - The member's membership ID (NOT userId or clubId)
+ */
 export function useMemberAttendanceHistory(membershipId: number | null, enabled = true) {
-    // Chỉ cần thêm <any[], Error> vào đây
-    return useQuery<any[], Error>({
-        queryKey: queryKeys.memberAttendanceHistory(membershipId),
-        queryFn: async () => {
-            if (!membershipId) return []
+  // --- SỬA Ở ĐÂY ---
+  // Thêm kiểu <MemberHistoryResponse | null, Error>
+  return useQuery<MemberHistoryResponse | null, Error>({
+    queryKey: queryKeys.memberAttendanceHistory(membershipId),
+    queryFn: async () => {
+      if (!membershipId) return null 
 
-            // Giả sử bạn đã import 'fetchMemberAttendanceHistory' ở đầu file
-            // const history = await fetchMemberAttendanceHistory(membershipId)
-            const responseBody = await fetchMemberAttendanceHistory(membershipId)
-            // return history ?? [] // Đảm bảo luôn trả về một mảng
-            // return (responseBody as any)?.data || []
-            return (responseBody as any)?.attendanceHistory || []
-        },
-        enabled: !!membershipId && enabled,
-        staleTime: 2 * 60 * 1000,
-    })
+      const responseBody = await fetchMemberAttendanceHistory(membershipId)
+      
+      return responseBody as MemberHistoryResponse // Trả về toàn bộ object
+    },
+    enabled: !!membershipId && enabled,
+    staleTime: 2 * 60 * 1000,
+  })
 }
 
 // ============================================

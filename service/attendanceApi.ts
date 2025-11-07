@@ -12,20 +12,24 @@ export const saveAttendanceRecords = async (records: any[]) => {
   return response.data;
 };
 
-// --- Các hàm API điểm danh CLB (Mới từ Swagger) ---
-// export interface TimeObject {
-//   hour: number;
-//   minute: number;
-//   second: number;
-//   nano: number;
-// }
+// Thêm 2 interface này vào đầu file
+interface AttendanceRecord {
+  date: string;
+  note: string | null;
+  clubName: string;
+  status: string;
+  // (Thêm các thuộc tính khác nếu có)
+}
 
-// export interface CreateSessionBody {
-//   date: string; // "YYYY-MM-DD"
-//   startTime: TimeObject;
-//   endTime: TimeObject;
-//   note: string;
-// }
+interface MemberHistoryResponse {
+  success: boolean;
+  message: string;
+  data: {
+    clubName: string;
+    membershipId: number;
+    attendanceHistory: AttendanceRecord[];
+  };
+}
 export interface CreateSessionBody {
   date: string; // "YYYY-MM-DD"
   startTime: string; // <-- THAY ĐỔI: TỪ TimeObject sang string

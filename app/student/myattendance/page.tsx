@@ -14,17 +14,10 @@ import { Layers, History, Clock } from "lucide-react"
 import { safeSessionStorage } from "@/lib/browser-utils"
 import { useToast } from "@/hooks/use-toast"
 import { Skeleton } from "@/components/ui/skeleton"
-// 1. IMPORT CÁC HOOK MỚI
-import {
-  useClubs,
-  useClubMembers,
-  useMemberAttendanceHistory
-} from "@/hooks/use-query-hooks"
-import { TimeObject } from "@/service/attendanceApi" // Import kiểu TimeObject nếu nó được export
+import { useClubs, useClubMembers, useMemberAttendanceHistory } from "@/hooks/use-query-hooks"
+// import { TimeObject } from "@/service/attendanceApi" // Import kiểu TimeObject nếu nó được export
 
-// --- START: Helper Functions ---
-
-// 2. SAO CHÉP HELPER timeObjectToString
+// SAO CHÉP HELPER timeObjectToString
 const timeObjectToString = (timeObj: any): string => {
   if (!timeObj) return "N/A";
   if (typeof timeObj === 'string') return timeObj;
@@ -33,7 +26,7 @@ const timeObjectToString = (timeObj: any): string => {
   return `${hour}:${minute}`;
 };
 
-// 3. HELPER MỚI: Tạo badge dựa trên trạng thái điểm danh
+// Tạo badge dựa trên trạng thái điểm danh
 const AttendanceStatusBadge = ({ status }: { status: string }) => {
   switch (status) {
     case "PRESENT":
@@ -48,12 +41,29 @@ const AttendanceStatusBadge = ({ status }: { status: string }) => {
       return <Badge variant="secondary">{status}</Badge>
   }
 }
-// --- END: Helper Functions ---
 
 // Kiểu dữ liệu đơn giản cho CLB (từ hook useClubs)
 interface SimpleClub {
   id: number;
   name: string;
+}
+
+interface AttendanceRecord {
+  date: string;
+  note: string | null;
+  clubName: string;
+  status: string;
+  // (Thêm các thuộc tính khác nếu có)
+}
+
+interface MemberHistoryResponse {
+  success: boolean;
+  message: string;
+  data: {
+    clubName: string;
+    membershipId: number;
+    attendanceHistory: AttendanceRecord[];
+  };
 }
 
 export default function MemberAttendancePage() {
@@ -64,7 +74,7 @@ export default function MemberAttendancePage() {
 
   const { toast } = useToast()
 
-  // 4. LẤY DỮ LIỆU TỪ SESSIONSTORAGE (userId VÀ clubIds)
+  // LẤY DỮ LIỆU TỪ SESSIONSTORAGE (userId VÀ clubIds)
   useEffect(() => {
     try {
       const saved = safeSessionStorage.getItem("uniclub-auth")
@@ -102,10 +112,10 @@ export default function MemberAttendancePage() {
     }
   }, [toast])
 
-  // 5. GỌI useClubs() ĐỂ LẤY TÊN CLB CHO DROPDOWN
+  // GỌI useClubs() ĐỂ LẤY TÊN CLB CHO DROPDOWN
   const { data: allClubsData = [], isLoading: isLoadingClubs } = useClubs()
 
-  // 6. XỬ LÝ DROPDOWN KHI CÓ DỮ LIỆU
+  // XỬ LÝ DROPDOWN KHI CÓ DỮ LIỆU
   useEffect(() => {
     if (userClubIds.length > 0 && allClubsData.length > 0) {
       // Lọc danh sách 'all clubs' để chỉ lấy những club mà user tham gia
@@ -122,7 +132,7 @@ export default function MemberAttendancePage() {
     }
   }, [userClubIds, allClubsData, selectedClubId])
 
-  // 7. 🚀 LOGIC TRUNG TÂM: QUERY CHỒNG
+  // LOGIC TRUNG TÂM: QUERY CHỒNG
   //    Query 1: Lấy danh sách members của CLB đã chọn
   const {
     data: apiMembers = [],
@@ -150,17 +160,17 @@ export default function MemberAttendancePage() {
 
   //    Query 2: Lấy lịch sử điểm danh (chỉ chạy khi đã tìm thấy 'foundMembershipId')
   const {
-    data: attendanceHistoryData = [],
+    data: rawHistoryResponse,
     isLoading: isLoadingHistory
   } = useMemberAttendanceHistory(foundMembershipId)
 
-  // 8. LỌC DỮ LIỆU (SEARCH TERM)
+  // LỌC DỮ LIỆU (SEARCH TERM)
   const filteredHistory = useMemo(() => {
     // Chỉ cần trả về dữ liệu, hoặc mảng rỗng nếu chưa có
-    return attendanceHistoryData || []
-  }, [attendanceHistoryData])
+    return rawHistoryResponse?.data?.attendanceHistory || []
+  }, [rawHistoryResponse])
 
-  // 9. PHÂN TRANG
+  // PHÂN TRANG
   const {
     currentPage,
     pageSize,
@@ -174,11 +184,11 @@ export default function MemberAttendancePage() {
     initialPageSize: 10,
   })
 
-  // 10. TÍNH TOÁN TRẠNG THÁI LOADING TỔNG
+  // TÍNH TOÁN TRẠNG THÁI LOADING TỔNG
   // Loading khi: Đang tải clubs, HOẶC đang tải members, HOẶC đang tải history
   const isLoading = isLoadingClubs || isLoadingMembers || isLoadingHistory;
 
-  // 11. RENDER JSX
+  // RENDER JSX
   return (
     <ProtectedRoute allowedRoles={["student"]}>
       <AppShell>
@@ -279,7 +289,7 @@ export default function MemberAttendancePage() {
                             day: "numeric",
                           }) : "Unknown Date"}
                         </CardTitle>
-                        {/* ✅ ĐÃ SỬA: Hiển thị 'record.clubName' thay vì thời gian N/A */}
+                        {/* Hiển thị 'record.clubName' thay vì thời gian N/A */}
                         <CardDescription className="flex items-center gap-2 mt-1">
                           <Layers className="h-4 w-4" />
                           {record.clubName || "Unknown Club"}
@@ -291,26 +301,38 @@ export default function MemberAttendancePage() {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-2">
-                    {record.session?.note && (
+                    {/* {record.session?.note && (
                       <p className="text-sm text-muted-foreground">
                         <span className="font-semibold text-foreground">Session Note: </span>
                         {record.session.note}
                       </p>
-                    )}
-
-                    {/* ✅ ĐÃ SỬA: Đọc từ 'record.note' */}
-                    {record.note && (
+                    )} */}
+                    {/* Đọc từ 'record.note' */}
+                    {/* {record.note && (
                       <p className="text-sm">
                         <span className="font-semibold">Note: </span>
                         {record.note}
                       </p>
-                    )}
+                    )} */}
                     {/* Thêm dòng này nếu không có ghi chú */}
-                    {!record.note && (
+                    {/* {!record.note && (
                       <p className="text-sm text-muted-foreground italic">
                         No note for this session.
                       </p>
+                    )} */}
+                    {/* Đọc từ 'record.note' */}
+                    {record.note ? ( // Kiểm tra nếu 'record.note' có giá trị (không null hoặc rỗng)
+                      <p className="text-sm">
+                        <span className="font-semibold">Note: </span>
+                        {record.note}
+                      </p>
+                    ) : (
+                      // Thêm dòng này nếu không có ghi chú (note là null hoặc rỗng)
+                      <p className="text-sm text-muted-foreground italic">
+                        No note for this attendance.
+                      </p>
                     )}
+
                   </CardContent>
                 </Card>
               ))
