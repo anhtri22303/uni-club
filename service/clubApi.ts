@@ -20,6 +20,11 @@ interface MemberCountApiResponse {
 interface ClubListResponse {
   content: Club[];
 }
+interface ClubListApiResponse {
+  success: boolean;
+  message: string;
+  data: ClubListResponse;
+}
 interface Club {
   id: number
   name: string
@@ -43,13 +48,14 @@ export const fetchClub = async (
   pageable: PageableQuery = { page: 0, size: 70, sort: ["name"] }
 ): Promise<ClubListResponse> => {
   try {
-    const response = await axiosInstance.get("/api/clubs", {
+    const response = await axiosInstance.get<ClubListApiResponse>("/api/clubs", {
       params: {
         pageable: JSON.stringify(pageable),
       },
     })
     console.log("Fetched clubs response:", response.data)
-    return response.data as ClubListResponse
+    // Handle the nested response structure: response.data.data.content
+    return response.data.data
   } catch (error) {
     console.error("Error fetching clubs:", error)
     throw error
