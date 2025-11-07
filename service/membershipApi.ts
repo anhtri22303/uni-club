@@ -47,7 +47,7 @@ export async function getMyClubs(): Promise<ApiMembership[]> {
     "/api/users/me/clubs"
   );
   const body: any = res.data;
-  console.log("My clubs:", body);
+  console.log("My clubs Members:", body);
   return body?.data || [];
 }
 

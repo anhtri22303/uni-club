@@ -139,7 +139,7 @@ export const getClubIdFromToken = (): number | null => {
 
     // Cách 1: Ưu tiên lấy clubId trực tiếp từ đối tượng đã lưu
     if (authData.clubId) {
-      console.log("Đã lấy clubId trực tiếp từ sessionStorage:", authData.clubId);
+      // console.log("Đã lấy clubId trực tiếp từ sessionStorage:", authData.clubId);
       return authData.clubId;
     }
 
@@ -147,7 +147,7 @@ export const getClubIdFromToken = (): number | null => {
     const token = authData?.token;
     if (token) {
       const decoded: JwtPayload = jwtDecode(token);
-      console.log("Đã giải mã JWT. Payload:", decoded);
+      // console.log("Đã giải mã JWT. Payload:", decoded);
       return decoded.clubId ?? null;
     }
 

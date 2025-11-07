@@ -110,65 +110,39 @@ export default function UniStaffReportsPage() {
   // Count rejected club applications
   const rejectedClubApplications = clubApplications.filter((app: any) => app.status === "REJECTED").length
   
-  // Count approved events (non-expired only)
-  const approvedEvents = useMemo(() => {
-    const now = new Date()
-    return events.filter((event: any) => {
-      if (event.status !== "APPROVED") return false
-      
-      try {
-        const eventDate = new Date(event.date)
-        if (event.endTime) {
-          const endTimeStr = timeObjectToString(event.endTime)
-          const [hours, minutes] = endTimeStr.split(':')
-          eventDate.setHours(parseInt(hours), parseInt(minutes))
-        }
-        return eventDate >= now || (eventDate.toDateString() === now.toDateString())
-      } catch {
-        return false
-      }
-    }).length
-  }, [events])
-  
-  // Count pending events (non-expired only) - both PENDING_UNISTAFF and PENDING_COCLUB
-  const pendingEvents = useMemo(() => {
-    const now = new Date()
-    return events.filter((event: any) => {
-      if (event.status !== "PENDING_UNISTAFF" && event.status !== "PENDING_COCLUB") return false
-      
-      try {
-        const eventDate = new Date(event.date)
-        if (event.endTime) {
-          const endTimeStr = timeObjectToString(event.endTime)
-          const [hours, minutes] = endTimeStr.split(':')
-          eventDate.setHours(parseInt(hours), parseInt(minutes))
-        }
-        return eventDate >= now || (eventDate.toDateString() === now.toDateString())
-      } catch {
-        return false
-      }
-    }).length
+  // Count events by status (all events, not filtered by expiration)
+  const pendingCoClubEvents = useMemo(() => {
+    return events.filter((event: any) => event.status === "PENDING_COCLUB").length
   }, [events])
 
-  // Count rejected events (non-expired only)
-  const rejectedEvents = useMemo(() => {
-    const now = new Date()
-    return events.filter((event: any) => {
-      if (event.status !== "REJECTED") return false
-      
-      try {
-        const eventDate = new Date(event.date)
-        if (event.endTime) {
-          const endTimeStr = timeObjectToString(event.endTime)
-          const [hours, minutes] = endTimeStr.split(':')
-          eventDate.setHours(parseInt(hours), parseInt(minutes))
-        }
-        return eventDate >= now || (eventDate.toDateString() === now.toDateString())
-      } catch {
-        return false
-      }
-    }).length
+  const pendingUniStaffEvents = useMemo(() => {
+    return events.filter((event: any) => event.status === "PENDING_UNISTAFF").length
   }, [events])
+
+  const approvedEventsCount = useMemo(() => {
+    return events.filter((event: any) => event.status === "APPROVED").length
+  }, [events])
+
+  const ongoingEventsCount = useMemo(() => {
+    return events.filter((event: any) => event.status === "ONGOING").length
+  }, [events])
+
+  const completedEventsCount = useMemo(() => {
+    return events.filter((event: any) => event.status === "COMPLETED").length
+  }, [events])
+
+  const rejectedEventsCount = useMemo(() => {
+    return events.filter((event: any) => event.status === "REJECTED").length
+  }, [events])
+
+  const cancelledEventsCount = useMemo(() => {
+    return events.filter((event: any) => event.status === "CANCELLED").length
+  }, [events])
+
+  // Aggregate counts
+  const pendingEvents = pendingCoClubEvents + pendingUniStaffEvents
+  const approvedEvents = approvedEventsCount + ongoingEventsCount
+  const rejectedEvents = rejectedEventsCount + cancelledEventsCount
 
   return (
     <ProtectedRoute allowedRoles={["uni_staff"]}>
@@ -326,9 +300,13 @@ export default function UniStaffReportsPage() {
                 pendingClubApplications={pendingClubApplications}
                 rejectedClubApplications={rejectedClubApplications}
                 totalEventRequests={totalEventRequests}
-                approvedEvents={approvedEvents}
-                pendingEvents={pendingEvents}
-                rejectedEvents={rejectedEvents}
+                pendingCoClubEvents={pendingCoClubEvents}
+                pendingUniStaffEvents={pendingUniStaffEvents}
+                approvedEventsCount={approvedEventsCount}
+                ongoingEventsCount={ongoingEventsCount}
+                completedEventsCount={completedEventsCount}
+                rejectedEventsCount={rejectedEventsCount}
+                cancelledEventsCount={cancelledEventsCount}
               />
             </TabsContent>
           </Tabs>

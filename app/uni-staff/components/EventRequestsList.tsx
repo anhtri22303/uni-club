@@ -105,10 +105,13 @@ export function EventRequestsList({ events, eventsLoading, pendingEvents }: Even
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ALL">All Status</SelectItem>
-                  <SelectItem value="PENDING_UNISTAFF">Pending Uni-Staff</SelectItem>
                   <SelectItem value="PENDING_COCLUB">Pending Co-Club</SelectItem>
+                  <SelectItem value="PENDING_UNISTAFF">Pending Uni-Staff</SelectItem>
                   <SelectItem value="APPROVED">Approved</SelectItem>
+                  <SelectItem value="ONGOING">Ongoing</SelectItem>
+                  <SelectItem value="COMPLETED">Completed</SelectItem>
                   <SelectItem value="REJECTED">Rejected</SelectItem>
+                  <SelectItem value="CANCELLED">Cancelled</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={eventTypeFilter} onValueChange={setEventTypeFilter}>
@@ -164,38 +167,40 @@ export function EventRequestsList({ events, eventsLoading, pendingEvents }: Even
                   <div className="flex items-center justify-end sm:justify-start gap-3 flex-shrink-0">
                     <div className="text-right sm:text-left">
                       <Badge
-                        variant={
-                          event.status === "APPROVED"
-                            ? "default"
-                            : event.status === "ONGOING"
-                            ? "default"
-                            : event.status === "PENDING_UNISTAFF"
-                            ? "secondary"
-                            : event.status === "PENDING_COCLUB"
-                            ? "outline"
-                            : "destructive"
-                        }
+                        variant="outline"
                         className={`text-[10px] sm:text-xs px-2 py-0.5 ${
-                          event.status === "ONGOING"
-                            ? "bg-purple-600 text-white"
+                          event.status === "PENDING_COCLUB"
+                            ? "bg-orange-50 text-orange-700 border-orange-500"
                             : event.status === "PENDING_UNISTAFF" 
-                            ? "bg-yellow-100 text-yellow-700 border-yellow-500"
-                            : event.status === "PENDING_COCLUB"
-                            ? "bg-orange-100 text-orange-700 border-orange-500"
+                            ? "bg-amber-50 text-amber-700 border-amber-500"
                             : event.status === "APPROVED"
-                            ? "bg-green-600"
-                            : ""
+                            ? "bg-green-50 text-green-700 border-green-500"
+                            : event.status === "ONGOING"
+                            ? "bg-blue-50 text-blue-700 border-blue-500"
+                            : event.status === "COMPLETED"
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-500"
+                            : event.status === "REJECTED"
+                            ? "bg-red-50 text-red-700 border-red-500"
+                            : event.status === "CANCELLED"
+                            ? "bg-gray-50 text-gray-700 border-gray-500"
+                            : "bg-slate-50 text-slate-700 border-slate-500"
                         }`}
                       >
-                        {event.status === "ONGOING"
-                          ? "Ongoing"
+                        {event.status === "PENDING_COCLUB"
+                          ? "⏳ Pending Co-Club"
                           : event.status === "PENDING_UNISTAFF" 
-                          ? "Pending Uni-Staff" 
-                          : event.status === "PENDING_COCLUB"
-                          ? "Pending Co-Club"
+                          ? "🕓 Pending Uni-Staff" 
                           : event.status === "APPROVED" 
-                          ? "Approved" 
-                          : "Rejected"}
+                          ? "✅ Approved" 
+                          : event.status === "ONGOING"
+                          ? "🟢 Ongoing"
+                          : event.status === "COMPLETED"
+                          ? "🏁 Completed"
+                          : event.status === "REJECTED"
+                          ? "❌ Rejected"
+                          : event.status === "CANCELLED"
+                          ? "🚫 Cancelled"
+                          : event.status}
                       </Badge>
                       <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">
                         {event.type || "N/A"}
