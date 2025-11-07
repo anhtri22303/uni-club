@@ -63,6 +63,7 @@ export const fetchMajorById = async (id: number): Promise<Major> => {
     try {
         const response = await axiosInstance.get(`api/university/majors/${id}`)
         const body: any = response.data
+        console.log("fetchMajorById:", body)
         if (body && typeof body === "object" && "data" in body) {
             return body.data
         }

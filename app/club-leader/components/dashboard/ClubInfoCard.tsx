@@ -8,9 +8,10 @@ import { Users } from "lucide-react"
 interface ClubInfoCardProps {
   managedClub: any
   clubLoading: boolean
+  policyName?: string | null
 }
 
-export function ClubInfoCard({ managedClub, clubLoading }: ClubInfoCardProps) {
+export function ClubInfoCard({ managedClub, clubLoading, policyName }: ClubInfoCardProps) {
   return (
     <Card className="border-l-4 border-l-primary shadow-md">
       <CardHeader className="pb-4">
@@ -57,7 +58,7 @@ export function ClubInfoCard({ managedClub, clubLoading }: ClubInfoCardProps) {
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Policy</p>
                 <div className="flex items-center gap-2">
                   <Badge variant="secondary" className="bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-900">
-                    {managedClub.majorPolicyName}
+                    {policyName || managedClub.majorPolicyName || "No policy"}
                   </Badge>
                 </div>
               </div>

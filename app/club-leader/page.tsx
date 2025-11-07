@@ -16,6 +16,7 @@ import { getProducts } from "@/service/productApi"
 import { getClubRedeemOrders } from "@/service/redeemApi"
 import { getClubWallet, getClubToMemberTransactions } from "@/service/walletApi"
 import { fetchClubAttendanceHistory } from "@/service/attendanceApi"
+import { fetchMajorById } from "@/service/majorApi"
 
 // Import dashboard components
 import {
@@ -74,6 +75,7 @@ export default function ClubLeaderDashboardPage() {
   const [transactions, setTransactions] = useState<any[]>([])
   const [attendanceHistory, setAttendanceHistory] = useState<any[]>([])
   const [additionalDataLoading, setAdditionalDataLoading] = useState(false)
+  const [policyName, setPolicyName] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchAdditionalData = async () => {
@@ -118,6 +120,31 @@ export default function ClubLeaderDashboardPage() {
   const { data: rawCoHostEvents = [], isLoading: coHostEventsLoading } = useEventCoHostByClubId(clubId || 0, !!clubId)
 
   const loading = profileLoading || clubLoading
+
+  // Fetch major policy name when managedClub is loaded
+  useEffect(() => {
+    const fetchPolicyName = async () => {
+      if (!managedClub?.majorId) return
+      
+      try {
+        const majorData = await fetchMajorById(managedClub.majorId)
+        console.log('Major data received:', majorData)
+        
+        // Check for policies array first (actual API structure)
+        if ((majorData as any)?.policies && Array.isArray((majorData as any).policies) && (majorData as any).policies.length > 0) {
+          setPolicyName((majorData as any).policies[0].policyName)
+        }
+        // Fallback to majorPolicy object structure
+        else if (majorData?.majorPolicy?.policyName) {
+          setPolicyName(majorData.majorPolicy.policyName)
+        }
+      } catch (error) {
+        console.error('Error fetching policy name:', error)
+      }
+    }
+
+    fetchPolicyName()
+  }, [managedClub])
 
   // Transform API members data
   const allClubMembers = managedClub
@@ -266,7 +293,7 @@ export default function ClubLeaderDashboardPage() {
       <AppShell>
         <div className="space-y-4 sm:space-y-6 px-2 sm:px-0">
           {/* Club Information */}
-          <ClubInfoCard managedClub={managedClub} clubLoading={clubLoading} />
+          <ClubInfoCard managedClub={managedClub} clubLoading={clubLoading} policyName={policyName} />
 
           {/* Tab Buttons */}
           <div className="flex gap-2 border-b">
