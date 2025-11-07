@@ -332,17 +332,17 @@ export default function UniStaffMajorsPage() {
                             <div className="mt-2 space-y-3">
                                 <div>
                                     <Label htmlFor="create-major-name">Major Name</Label>
-                                    <Input id="create-major-name" value={createMajorName} onChange={(e) => setCreateMajorName((e.target as HTMLInputElement).value)} />
+                                    <Input id="create-major-name" className="mt-2 border-slate-300" value={createMajorName} onChange={(e) => setCreateMajorName((e.target as HTMLInputElement).value)} />
                                 </div>
 
                                 <div>
                                     <Label htmlFor="create-major-code">Major Code</Label>
-                                    <Input id="create-major-code" value={createMajorCode} onChange={(e) => setCreateMajorCode((e.target as HTMLInputElement).value)} />
+                                    <Input id="create-major-code" className="mt-2 border-slate-300" value={createMajorCode} onChange={(e) => setCreateMajorCode((e.target as HTMLInputElement).value)} />
                                 </div>
 
                                 <div>
                                     <Label htmlFor="create-desc">Description</Label>
-                                    <Textarea id="create-desc" value={createDescription} onChange={(e) => setCreateDescription((e.target as HTMLTextAreaElement).value)} />
+                                    <Textarea id="create-desc" className="mt-2 border-slate-300" value={createDescription} onChange={(e) => setCreateDescription((e.target as HTMLTextAreaElement).value)} />
                                 </div>
 
                                 <div className="mt-4 flex gap-2 justify-end">

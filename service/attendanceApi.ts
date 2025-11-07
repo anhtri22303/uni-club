@@ -13,16 +13,23 @@ export const saveAttendanceRecords = async (records: any[]) => {
 };
 
 // --- Các hàm API điểm danh CLB (Mới từ Swagger) ---
-export interface TimeObject {
-  hour: number;
-  minute: number;
-  second: number;
-  nano: number;
-}
+// export interface TimeObject {
+//   hour: number;
+//   minute: number;
+//   second: number;
+//   nano: number;
+// }
+
+// export interface CreateSessionBody {
+//   date: string; // "YYYY-MM-DD"
+//   startTime: TimeObject;
+//   endTime: TimeObject;
+//   note: string;
+// }
 export interface CreateSessionBody {
   date: string; // "YYYY-MM-DD"
-  startTime: TimeObject;
-  endTime: TimeObject;
+  startTime: string; // <-- THAY ĐỔI: TỪ TimeObject sang string
+  endTime: string;   // <-- THAY ĐỔI: TỪ TimeObject sang string
   note: string;
 }
 

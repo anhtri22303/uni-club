@@ -62,7 +62,7 @@ interface AttendanceResponse {
   sessionId: number
   date?: string
   isLocked?: boolean
-  records: { // ✅ SỬA LẠI TÊN
+  records: {
     memberId: number
     status: ApiAttendanceStatus // "PRESENT", "LATE", ...
     note: string | null
@@ -85,12 +85,11 @@ export default function ClubAttendancePage() {
   })
   const [currentDate, setCurrentDate] = useState("")
   const [userId, setUserId] = useState<string | number | null>(null)
-  // --- ✅ MỚI: State cho tính năng nâng cao ---
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [isReadOnly, setIsReadOnly] = useState(false)
-  const [sessionId, setSessionId] = useState<number | null>(null) // ✅ THAY ĐỔI: State mới để lưu sessionId
-  const [sessionError, setSessionError] = useState<string | null>(null) // ✅ THAY ĐỔI: State mới cho lỗi session
-  const [isSaving, setIsSaving] = useState(false); // ✅ THÊM STATE NÀY
+  const [sessionId, setSessionId] = useState<number | null>(null) // State mới để lưu sessionId
+  const [sessionError, setSessionError] = useState<string | null>(null) // State mới cho lỗi session
+  const [isSaving, setIsSaving] = useState(false);
   const [attendance, setAttendance] = useState<Record<number, PageAttendanceStatus>>({});
   const [notes, setNotes] = useState<Record<number, string>>({})
   const [editingNoteMember, setEditingNoteMember] = useState<Member | null>(null)
@@ -99,13 +98,11 @@ export default function ClubAttendancePage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [activeFilters, setActiveFilters] = useState<Record<string, any>>({})
   const [showFilters, setShowFilters] = useState(false)
-  // ✅ MỚI: Tách useEffect
   // useEffect này chỉ chạy 1 lần để lấy thông tin cơ bản
   useEffect(() => {
     const loadBaseData = async () => {
       setLoading(true)
       try {
-        // --- ✅ THAY ĐỔI BẮT ĐẦU TỪ ĐÂY ---
         const profile = (await fetchProfile()) as any // Thêm (as any)
         // THÊM DÒNG DEBUG NÀY ĐỂ KIỂM TRA
         console.log("DEBUG: Cấu trúc PROFILE THỰC SỰ:", JSON.stringify(profile, null, 2));
@@ -116,7 +113,6 @@ export default function ClubAttendancePage() {
           console.error("Failed to extract userId from profile!");
         }
         setUserId(currentUserId); // Set userId = 54 (ví dụ)
-        // --- ✅ KẾT THÚC THAY ĐỔI ---
 
         const clubId = getClubIdFromToken()
         if (!clubId) throw new Error("No club information found.")
@@ -132,18 +128,17 @@ export default function ClubAttendancePage() {
     }
     loadBaseData()
   }, [])
-  // ✅ THAY ĐỔI: useEffect này chạy mỗi khi clubId hoặc selectedDate thay đổi
+  // useEffect này chạy mỗi khi clubId hoặc selectedDate thay đổi
   useEffect(() => {
     if (!managedClub?.id) return;
 
-    // 1. Kiểm tra xem có phải ngày hôm nay không
     const today = new Date();
     const isToday =
       selectedDate.getDate() === today.getDate() &&
       selectedDate.getMonth() === today.getMonth() &&
       selectedDate.getFullYear() === today.getFullYear();
 
-    setIsReadOnly(!isToday); // Chỉ cho phép chỉnh sửa ngày hôm nay
+    setIsReadOnly(!isToday);
 
     const loadMembersAndAttendance = async () => {
       setMembersLoading(true);
@@ -151,17 +146,15 @@ export default function ClubAttendancePage() {
       setSessionError(null);
       setSessionId(null);
 
-      // Hàm trợ giúp để xử lý dữ liệu thành viên
+      // Hàm trợ giúp: Lấy thành viên
       const getMembers = async (): Promise<ApiMembership[]> => {
-        if (apiMembers.length > 0) return apiMembers; // Dùng cache nếu có
-
+        if (apiMembers.length > 0) return apiMembers;
         const membersData = await membershipApi.getMembersByClubId(managedClub.id);
-        console.log("DEBUG: Dữ liệu apiMembers (memberships):", membersData);
-
         setApiMembers(membersData);
         return membersData;
       };
-      // Hàm trợ giúp để thiết lập state điểm danh
+
+      // Hàm trợ giúp: Set state (Hàm này đã ĐÚNG, không cần sửa)
       const setAttendanceStates = (
         data: AttendanceResponse | null,
         members: ApiMembership[],
@@ -169,11 +162,9 @@ export default function ClubAttendancePage() {
         const initialAttendance: Record<number, PageAttendanceStatus> = {};
         const initialNotes: Record<number, string> = {};
 
-        // ✅ THAY ĐỔI: CHỈ xử lý điểm danh NẾU `data` (session) tồn tại
-        if (data) {
-          setSessionId(data.sessionId); // Luôn set sessionId nếu có data
+        if (data && data.sessionId) { // <-- Kiểm tra này là đúng
+          setSessionId(data.sessionId); // <-- Sẽ nhận được số 24
 
-          // 1. Tải các record đã lưu (nếu có)
           if (data.records && data.records.length > 0) {
             data.records.forEach((record) => {
               const status = (record.status?.toLowerCase() || "absent") as PageAttendanceStatus;
@@ -182,12 +173,8 @@ export default function ClubAttendancePage() {
             });
           }
 
-          // 2. Set mặc định "absent" cho các member
-          // `members` ở đây là `apiMembers`, nó có `m.membershipId`
           members.forEach((m: any) => {
-            // `m.membershipId` là ID chuẩn được dùng trong UI
             const memberUiId = m.membershipId;
-
             if (memberUiId && !initialAttendance[memberUiId]) {
               initialAttendance[memberUiId] = "absent";
               initialNotes[memberUiId] = "";
@@ -198,40 +185,45 @@ export default function ClubAttendancePage() {
         setNotes(initialNotes);
       };
 
-      // --- BẮT ĐẦU LOGIC CHÍNH ---
+      // --- BẮT ĐẦU LOGIC CHÍNH (ĐÃ SỬA LỖI UNWRAP) ---
       try {
-        const members = await getMembers(); // Lấy danh sách thành viên trước
+        const members = await getMembers();
 
+        // *** THAY ĐỔI QUAN TRỌNG: 
+        // Interface AttendanceResponse là đối tượng BÊN TRONG { data: ... }
+        // apiResponse là đối tượng BÊN NGOÀI { success, message, data }
         let attendanceData: AttendanceResponse | null = null;
+        let apiResponse: any = null; // Biến để giữ wrapper { success, data }
+
+        const formattedDate = format(selectedDate, "yyyy-MM-dd");
 
         if (isToday) {
-          // }// MỚI --- LOGIC CHO NGÀY HÔM NAY ---
+          // --- LOGIC MỚI CHO NGÀY HÔM NAY ---
           try {
-            // Bước 1: Thử lấy session hôm nay
-            attendanceData = (await fetchTodayClubAttendance(managedClub.id)) as AttendanceResponse;
-          } catch (fetchErr: any) {
+            // Bước 1: Thử fetch /today
+            console.log("Attempting to fetch /today session...");
+            apiResponse = (await fetchTodayClubAttendance(managedClub.id)) as any;
+            attendanceData = apiResponse.data; // <-- SỬA LỖI: Mở gói .data
 
-            const isNotFound = fetchErr?.response?.status === 404;
+            // Bước 2: Nếu /today không trả về data, thử create
+            if (!attendanceData || !attendanceData.sessionId) {
+              console.warn("/today returned empty. Attempting to /create-session...");
 
-            if (isNotFound) {
-              // --- LỖI 404: ĐÚNG LÀ KHÔNG CÓ SESSION -> TẠO MỚI ---
-              console.warn("Session not found, attempting to create one...");
+              const now = new Date();
+              const newSessionBody: CreateSessionBody = {
+                date: formattedDate,
+                startTime: format(now, "HH:mm"),
+                endTime: format(new Date(now.getTime() + 60 * 60 * 1000), "HH:mm"),
+                note: "Auto-created session by frontend (string time)",
+              };
+
               try {
-                // Chuẩn bị body cho API POST
-                const todayStr = format(new Date(), "yyyy-MM-dd");
-                const defaultTime = { hour: 0, minute: 0, second: 0, nano: 0 };
-                const newSessionBody: CreateSessionBody = {
-                  date: todayStr,
-                  startTime: defaultTime,
-                  endTime: defaultTime,
-                  note: "Auto-created session by frontend",
-                };
-
-                // Gọi API tạo session
-                attendanceData = (await createClubAttendanceSession(
+                // Bước 2a: Thử TẠO MỚI
+                apiResponse = (await createClubAttendanceSession(
                   managedClub.id,
                   newSessionBody,
-                )) as AttendanceResponse;
+                )) as any;
+                attendanceData = apiResponse.data; // <-- SỬA LỖI: Mở gói .data
 
                 toast({
                   title: "New Session Created",
@@ -239,42 +231,52 @@ export default function ClubAttendancePage() {
                 });
 
               } catch (createErr: any) {
-                // Bước 3: Lỗi khi TẠO -> Đây mới là lỗi thực sự
-                console.error("Failed to create attendance session:", createErr);
-                setSessionError(
-                  "Failed to create an attendance session for today. Please check backend.",
-                );
+                // Bước 2b: Xử lý lỗi TẠO MỚI
+                const errorMsg = createErr?.response?.data?.error || "Unknown creation error";
+                console.error("create-session failed:", errorMsg);
+
+                if (errorMsg.toLowerCase().includes("already exists")) {
+                  console.warn("Creation failed (400) because session exists. Attempting to fetch via /history...");
+
+                  // Bước 3: Dùng /history
+                  apiResponse = (await fetchClubAttendanceHistory({
+                    clubId: managedClub.id,
+                    date: formattedDate,
+                  })) as any;
+                  attendanceData = apiResponse.data; // <-- SỬA LỖI: Mở gói .data
+
+                  console.log("Fetch via /history successful.", attendanceData);
+
+                } else {
+                  throw createErr;
+                }
               }
-            } else {
-              // --- LỖI KHÁC (500, 401, etc.) -> KHÔNG TẠO MỚI, CHỈ BÁO LỖI ---
-              console.error("Failed to fetch attendance session:", fetchErr);
-              setSessionError(
-                fetchErr?.response?.data?.message || // Thử lấy message lỗi từ API
-                fetchErr?.message ||
-                "An error occurred while fetching attendance data. Please try refreshing."
-              );
-              // Để attendanceData = null và hàm setAttendanceStates sẽ xử lý
             }
+          } catch (err: any) {
+            console.error("Failed to fetch or create session:", err);
+            const error = err?.response?.data?.error || err?.message || "An error occurred.";
+            setSessionError(`Backend Error: ${error}`);
           }
         } else {
           // --- LOGIC CHO NGÀY QUÁ KHỨ ---
           try {
-            const formattedDate = format(selectedDate, "yyyy-MM-dd");
-            attendanceData = (await fetchClubAttendanceHistory({
+            apiResponse = (await fetchClubAttendanceHistory({
               clubId: managedClub.id,
               date: formattedDate,
-            })) as AttendanceResponse;
+            })) as any;
+            attendanceData = apiResponse.data; // <-- SỬA LỖI: Mở gói .data
           } catch (historyErr: any) {
             console.error("Failed to fetch attendance history:", historyErr);
             setSessionError("No attendance records found for this date.");
           }
         }
 
-        // Thiết lập state với bất kỳ dữ liệu nào đã lấy/tạo được
+        // *** ĐÃ SỬA ***
+        // Bây giờ `attendanceData` là đối tượng bên trong (vd: { sessionId: 24, ... })
+        // thay vì đối tượng bên ngoài (vd: { success: true, data: { ... } })
         setAttendanceStates(attendanceData, members);
 
       } catch (err: any) {
-        // Lỗi chung (ví dụ: không thể fetch thành viên)
         setMembersError(err?.message || "Error loading member list");
       } finally {
         setMembersLoading(false);
@@ -282,7 +284,6 @@ export default function ClubAttendancePage() {
     };
 
     loadMembersAndAttendance();
-    // }, [managedClub, selectedDate, apiMembers]);
   }, [managedClub, selectedDate]);
 
   // Lọc thành viên active
@@ -290,17 +291,17 @@ export default function ClubAttendancePage() {
     () =>
       managedClub
         ? apiMembers
-          // ✅ THAY ĐỔI: Lọc member có membershipId
+          //  Lọc member có membershipId
           .filter(
             (m: any) =>
               m.membershipId &&
               String(m.clubId) === String(managedClub.id) &&
-              m.state === "ACTIVE" 
-              // && m.userId !== userId,
+              m.state === "ACTIVE"
+            // && m.userId !== userId,
           )
           .map((m: any) => {
             return {
-              id: m.membershipId, // ✅ THAY ĐỔI: Dùng membershipId làm ID
+              id: m.membershipId, // Dùng membershipId làm ID
               fullName: m.fullName ?? m.fullName ?? `User ${m.userId}`,
               studentCode: m.studentCode ?? "—",
               avatarUrl: m.avatarUrl ?? null,
@@ -354,7 +355,6 @@ export default function ClubAttendancePage() {
     setCurrentPage: setMembersPage,
   } = usePagination({ data: filteredMembers, initialPageSize: 6 })
 
-  // --- ✅ DÁN useEffect MỚI NÀY VÀO ĐÂY ---
   useEffect(() => {
     // Chúng ta cần 3 điều kiện:
     // 1. Phải có `userId` (đã login, vd: 54)
@@ -391,14 +391,13 @@ export default function ClubAttendancePage() {
     }
     // Chúng ta thêm `toast` vào dependency vì nó là 1 hook
   }, [userId, apiMembers, attendance, toast]);
-  // --- ✅ KẾT THÚC Đoạn code mới ---
 
   const handleStatusChange = (memberId: number, status: PageAttendanceStatus) => {
     if (isReadOnly) return;
     setAttendance((prev) => ({ ...prev, [memberId]: status }));
   };
 
-  // ✅ MỚI: Thống kê nhanh
+  // Thống kê nhanh
   const stats = useMemo(() => {
     const total = filteredMembers.length
     let present = 0
@@ -426,7 +425,7 @@ export default function ClubAttendancePage() {
     return { total, present, absent, late, excused }
   }, [attendance, filteredMembers])
 
-  // ✅ THAY ĐỔI: Tắt auto-save
+  // Tắt auto-save
   const handleBulkAction = (status: "present" | "absent") => {
     if (isReadOnly) return;
     const newAttendance = { ...attendance };
@@ -436,7 +435,7 @@ export default function ClubAttendancePage() {
     setAttendance(newAttendance);
   };
 
-  // ✅ THAY ĐỔI: Tắt auto-save
+  //  Tắt auto-save
   const handleSaveNote = () => {
     if (isReadOnly || !editingNoteMember) return;
 
@@ -449,7 +448,7 @@ export default function ClubAttendancePage() {
     setCurrentNote("");
   };
 
-  // ✅ THAY THẾ: Hàm Save thủ công (phiên bản MỚI, hiệu quả cao)
+  // Hàm Save thủ công (phiên bản MỚI, hiệu quả cao)
   const handleSaveAttendance = async () => {
     if (isReadOnly || !sessionId || isSaving) return;
 
@@ -554,7 +553,7 @@ export default function ClubAttendancePage() {
           </div>
           <div className="text-right">
             <span className="text-sm font-medium text-muted-foreground mr-5">Attendance Date</span>
-            {/* ✅ MỚI: Date Picker */}
+            {/* Date Picker */}
             <Popover>
               <PopoverTrigger asChild>
                 <Button
@@ -574,14 +573,14 @@ export default function ClubAttendancePage() {
                   selected={selectedDate}
                   onSelect={(date) => setSelectedDate(date || new Date())}
                   initialFocus
-                  disabled={(date) => date > new Date()} // ✅ THAY ĐỔI: Không cho chọn ngày tương lai
+                  disabled={(date) => date > new Date()} // Không cho chọn ngày tương lai
                 />
               </PopoverContent>
             </Popover>
           </div>
         </div>
 
-        {/* ✅ THÊM MỚI: Thanh tìm kiếm và bộ lọc */}
+        {/* Thanh tìm kiếm và bộ lọc */}
         <div className="space-y-4 mb-6">
           <div className="flex items-center gap-3">
             <div className="flex-1 relative">
@@ -672,7 +671,7 @@ export default function ClubAttendancePage() {
           )}
         </div>
 
-        {/* ✅ THAY ĐỔI: Thêm cảnh báo nếu không có sessionId hoặc readonly */}
+        {/* Thêm cảnh báo nếu không có sessionId hoặc readonly */}
         {isReadOnly && (
           <Alert variant="default" className="mb-4 bg-gray-100 border-gray-300">
             <Info className="h-4 w-4 text-gray-700" />
@@ -720,12 +719,12 @@ export default function ClubAttendancePage() {
               </div>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => handleBulkAction("present")}
-                  disabled={isReadOnly || !sessionId} // ✅ THAY ĐỔI: Disable nếu không có session
+                  disabled={isReadOnly || !sessionId} // Disable nếu không có session
                 >
                   Mark All Present
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => handleBulkAction("absent")}
-                  disabled={isReadOnly || !sessionId} // ✅ THAY ĐỔI: Disable nếu không có session
+                  disabled={isReadOnly || !sessionId} // Disable nếu không có session
                 >
                   Mark All Absent
                 </Button>
@@ -761,9 +760,6 @@ export default function ClubAttendancePage() {
                 <Card key={member.id}>
                   <CardContent className="py-3 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      {/* <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                        {member.fullName.charAt(0).toUpperCase()}
-                      </div> */}
                       <Avatar className="w-10 h-10">
                         <AvatarImage
                           src={member.avatarUrl || ""}
@@ -786,7 +782,7 @@ export default function ClubAttendancePage() {
                       </div>
                     </div>
 
-                    {/* ✅ MỚI: Select Trạng thái và Nút Ghi chú */}
+                    {/* Select Trạng thái và Nút Ghi chú */}
                     <div className="flex items-center gap-2">
                       {/* Nút Ghi chú */}
                       <Button
@@ -796,7 +792,7 @@ export default function ClubAttendancePage() {
                           setEditingNoteMember(member)
                           setCurrentNote(notes[member.id] || "")
                         }}
-                        disabled={isReadOnly || !sessionId} // ✅ THAY ĐỔI: Disable nếu không có session
+                        disabled={isReadOnly || !sessionId} //: Disable nếu không có session
                         className={cn(
                           "relative text-muted-foreground hover:text-primary",
                           notes[member.id] && "text-blue-500 hover:text-blue-600",
@@ -812,7 +808,7 @@ export default function ClubAttendancePage() {
                       <Select
                         value={attendance[member.id] || "absent"}
                         onValueChange={(value: PageAttendanceStatus) => handleStatusChange(member.id, value)}
-                        disabled={isReadOnly || !sessionId} // ✅ THAY ĐỔI: Disable nếu không có session
+                        disabled={isReadOnly || !sessionId} // Disable nếu không có session
                       >
                         <SelectTrigger
                           className={cn(
@@ -861,8 +857,8 @@ export default function ClubAttendancePage() {
                 onNext={() => setMembersPage(Math.min(membersPages, membersPage + 1))}
               />
 
-              {/* ✅ Nút lưu điểm danh */}
-              {/* ✅ THAY ĐỔI: Kích hoạt Nút lưu điểm danh thủ công */}
+              {/* Nút lưu điểm danh */}
+              {/* Kích hoạt Nút lưu điểm danh thủ công */}
               {!isReadOnly && sessionId && (
                 <div className="flex justify-end mt-6">
                   <Button
@@ -902,7 +898,7 @@ export default function ClubAttendancePage() {
             </>
           )}
         </div>
-        {/* ✅ MỚI: Dialog để chỉnh sửa Ghi chú (chỉ 1 dialog, tái sử dụng) */}
+        {/* Dialog để chỉnh sửa Ghi chú (chỉ 1 dialog, tái sử dụng) */}
         <Dialog
           open={!!editingNoteMember}
           onOpenChange={(open) => {
@@ -921,7 +917,7 @@ export default function ClubAttendancePage() {
               value={currentNote}
               onChange={(e) => setCurrentNote(e.target.value)}
               rows={4}
-              disabled={isReadOnly || !sessionId} // ✅ THAY ĐỔI: Disable
+              disabled={isReadOnly || !sessionId} // Disable
             />
             <DialogFooter>
               <DialogClose asChild>
