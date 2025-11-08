@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { login as loginApi, LoginResponse, loginWithGoogleToken } from "@/service/authApi";
 import { safeSessionStorage, safeLocalStorage } from "@/lib/browser-utils";
 import { ClientOnlyWrapper } from "@/components/client-only-wrapper";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface AuthState {
   userId: string | number | null;
@@ -45,6 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   });
   const [initialized, setInitialized] = useState(false);
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     // Phần useEffect này giữ nguyên nhưng dùng safe storage
@@ -291,7 +293,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         err
       );
     } finally {
-      // --- Bước 4: Luôn luôn chuyển trang ---
+      // --- Bước 4: Clear React Query cache ---
+      console.log("Logout: Clearing React Query cache...");
+      queryClient.clear(); // Clear all cached queries
+      
+      // --- Bước 5: Luôn luôn chuyển trang ---
       // Khối `finally` đảm bảo rằng việc chuyển trang sẽ luôn xảy ra,
       // kể cả khi có lỗi trong khối `try`.
       console.log("Logout: Chuyển hướng về trang chủ.");

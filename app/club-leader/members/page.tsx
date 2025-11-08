@@ -10,14 +10,21 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useData } from "@/contexts/data-context"
-import { type ApiMembership, deleteMember } from "@/service/membershipApi"
+import { type ApiMembership, deleteMember, getLeaveReq, putLeaveReq, type LeaveRequest } from "@/service/membershipApi"
 import { getClubById, getClubIdFromToken } from "@/service/clubApi"
 import { useToast } from "@/hooks/use-toast"
 import { usePagination } from "@/hooks/use-pagination"
 import { useClub, useClubMembers } from "@/hooks/use-query-hooks"
 import { useQueryClient } from "@tanstack/react-query"
-import { Users, Trash2, ChevronLeft, ChevronRight, Mail, GraduationCap, Calendar, UserCircle, Filter, X,} from "lucide-react"
+import { Users, Trash2, ChevronLeft, ChevronRight, Mail, GraduationCap, Calendar, UserCircle, Filter, X, LogOut, Check, XCircle } from "lucide-react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 // Define a type for the club (có thể đặt trong một file dùng chung)
 interface Club {
@@ -40,6 +47,12 @@ export default function ClubLeaderMembersPage() {
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const [clubId] = useState(() => getClubIdFromToken())
+  
+  // Leave requests state
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([])
+  const [showLeaveRequestModal, setShowLeaveRequestModal] = useState(false)
+  const [loadingLeaveRequests, setLoadingLeaveRequests] = useState(false)
+  const [processingRequestId, setProcessingRequestId] = useState<number | null>(null)
 
   // ✅ USE REACT QUERY for club and members
   const { data: managedClub, isLoading: loading } = useClub(clubId || 0, !!clubId)
@@ -182,6 +195,62 @@ export default function ClubLeaderMembersPage() {
   const goPrev = () => setMembersPage(Math.max(1, membersPage - 1))
   const goNext = () => setMembersPage(Math.min(membersPages, membersPage + 1))
 
+  // Load leave requests when component mounts or clubId changes
+  useEffect(() => {
+    if (clubId) {
+      loadLeaveRequests()
+    }
+  }, [clubId])
+
+  const loadLeaveRequests = async () => {
+    if (!clubId) return
+    
+    setLoadingLeaveRequests(true)
+    try {
+      const requests = await getLeaveReq(clubId)
+      setLeaveRequests(requests)
+    } catch (error) {
+      console.error("Failed to load leave requests:", error)
+    } finally {
+      setLoadingLeaveRequests(false)
+    }
+  }
+
+  const handleOpenLeaveRequestModal = () => {
+    loadLeaveRequests()
+    setShowLeaveRequestModal(true)
+  }
+
+  const handleLeaveRequestAction = async (requestId: number, action: "APPROVED" | "REJECTED") => {
+    setProcessingRequestId(requestId)
+    try {
+      const message = await putLeaveReq(requestId, action)
+      toast({
+        title: "Thành công",
+        description: message || `Yêu cầu đã được ${action === "APPROVED" ? "chấp nhận" : "từ chối"}`,
+      })
+      // Reload leave requests
+      await loadLeaveRequests()
+    } catch (error: any) {
+      console.error("Failed to process leave request:", error)
+      toast({
+        title: "Lỗi",
+        description: error?.response?.data?.message || "Không thể xử lý yêu cầu",
+        variant: "destructive",
+      })
+    } finally {
+      setProcessingRequestId(null)
+    }
+  }
+
+  // Count pending requests
+  const pendingRequestsCount = leaveRequests.filter(req => req.status === "PENDING").length
+
+  // Sort requests by createdAt (latest first)
+  const sortedLeaveRequests = [...leaveRequests].sort((a, b) => {
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  })
+
   // Giao diện khi đang tải thông tin ban đầu
   if (loading) {
     return (
@@ -213,26 +282,46 @@ export default function ClubLeaderMembersPage() {
             <div className="absolute inset-0 opacity-10">
               <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500 rounded-full blur-3xl" />
             </div>
-            <div className="relative flex items-center justify-between gap-6">
-              <div className="flex-1">
-                <h1 className="text-4xl font-bold tracking-tight text-white mb-2">Club Members</h1>
-                {managedClub ? (
-                  <p className="text-slate-300">
-                    Managing membership of <span className="font-semibold text-blue-400">"{managedClub.name}"</span>
-                  </p>
-                ) : (
-                  <p className="text-red-400">Could not load club details. Please try again.</p>
+            <div className="relative space-y-4">
+              <div className="flex items-center justify-between gap-6">
+                <div className="flex-1">
+                  <h1 className="text-4xl font-bold tracking-tight text-white mb-2">Club Members</h1>
+                  {managedClub ? (
+                    <p className="text-slate-300">
+                      Managing membership of <span className="font-semibold text-blue-400">"{managedClub.name}"</span>
+                    </p>
+                  ) : (
+                    <p className="text-red-400">Could not load club details. Please try again.</p>
+                  )}
+                </div>
+                {!membersLoading && allClubMembers.length > 0 && (
+                  <div className="flex items-center gap-4 bg-white/10 backdrop-blur-sm rounded-xl px-6 py-4 border border-white/20">
+                    <div className="text-right">
+                      <p className="text-xs text-slate-400 uppercase tracking-wide">Total Members</p>
+                      <p className="text-3xl font-bold text-white">{allClubMembers.length}</p>
+                    </div>
+                    <div className="h-14 w-14 rounded-lg bg-blue-500/20 flex items-center justify-center border border-blue-500/30">
+                      <Users className="h-7 w-7 text-blue-400" />
+                    </div>
+                  </div>
                 )}
               </div>
-              {!membersLoading && allClubMembers.length > 0 && (
-                <div className="flex items-center gap-4 bg-white/10 backdrop-blur-sm rounded-xl px-6 py-4 border border-white/20">
-                  <div className="text-right">
-                    <p className="text-xs text-slate-400 uppercase tracking-wide">Total Members</p>
-                    <p className="text-3xl font-bold text-white">{allClubMembers.length}</p>
-                  </div>
-                  <div className="h-14 w-14 rounded-lg bg-blue-500/20 flex items-center justify-center border border-blue-500/30">
-                    <Users className="h-7 w-7 text-blue-400" />
-                  </div>
+              
+              {/* Request Out Button */}
+              {managedClub && (
+                <div className="flex justify-end">
+                  <Button
+                    onClick={handleOpenLeaveRequestModal}
+                    className="relative bg-orange-500 hover:bg-orange-600 text-white flex items-center gap-2"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Request Out
+                    {pendingRequestsCount > 0 && (
+                      <span className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center border-2 border-white">
+                        {pendingRequestsCount}
+                      </span>
+                    )}
+                  </Button>
                 </div>
               )}
             </div>
@@ -543,6 +632,135 @@ export default function ClubLeaderMembersPage() {
             )}
           </div>
         </div>
+
+        {/* Leave Requests Modal */}
+        <Dialog open={showLeaveRequestModal} onOpenChange={setShowLeaveRequestModal}>
+          <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-bold">Leave Requests</DialogTitle>
+              <DialogDescription>
+                Danh sách yêu cầu rời câu lạc bộ từ các thành viên
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              {loadingLeaveRequests ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center mb-3 animate-pulse">
+                    <LogOut className="h-6 w-6 text-blue-500" />
+                  </div>
+                  <p className="text-sm text-slate-500">Đang tải danh sách yêu cầu...</p>
+                </div>
+              ) : sortedLeaveRequests.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <div className="h-16 w-16 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+                    <LogOut className="h-8 w-8 text-slate-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-slate-900 mb-1">Không có yêu cầu nào</h3>
+                  <p className="text-sm text-slate-500">Chưa có thành viên nào gửi yêu cầu rời câu lạc bộ</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {sortedLeaveRequests.map((request) => {
+                    const statusColors = {
+                      PENDING: "bg-yellow-100 text-yellow-700 border-yellow-200",
+                      APPROVED: "bg-green-100 text-green-700 border-green-200",
+                      REJECTED: "bg-red-100 text-red-700 border-red-200",
+                    }
+
+                    const statusText = {
+                      PENDING: "Chờ duyệt",
+                      APPROVED: "Đã duyệt",
+                      REJECTED: "Đã từ chối",
+                    }
+
+                    return (
+                      <Card
+                        key={request.requestId}
+                        className={`border shadow-sm hover:shadow-md transition-all ${
+                          request.status === "PENDING" ? "border-yellow-300 bg-yellow-50/30" : ""
+                        }`}
+                      >
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1 space-y-2">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h4 className="text-base font-bold text-slate-900">{request.memberName}</h4>
+                                <Badge className={`text-xs font-semibold rounded-full ${statusColors[request.status]}`}>
+                                  {statusText[request.status]}
+                                </Badge>
+                                <Badge variant="outline" className="text-xs">
+                                  {request.memberRole}
+                                </Badge>
+                              </div>
+
+                              <div className="space-y-1 text-sm">
+                                <div className="flex items-center gap-2 text-slate-600">
+                                  <Mail className="h-3.5 w-3.5 text-blue-500" />
+                                  <span>{request.memberEmail}</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-slate-600">
+                                  <Calendar className="h-3.5 w-3.5 text-blue-500" />
+                                  <span>
+                                    Gửi lúc: {new Date(request.createdAt).toLocaleString("vi-VN")}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="pt-2 border-t border-slate-200">
+                                <p className="text-xs font-semibold text-slate-700 mb-1">Lý do:</p>
+                                <p className="text-sm text-slate-600 italic">"{request.reason}"</p>
+                              </div>
+
+                              {request.processedAt && (
+                                <div className="text-xs text-slate-500">
+                                  Xử lý lúc: {new Date(request.processedAt).toLocaleString("vi-VN")}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Action buttons for PENDING requests */}
+                            {request.status === "PENDING" && (
+                              <div className="flex flex-col gap-2">
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleLeaveRequestAction(request.requestId, "APPROVED")}
+                                  disabled={processingRequestId === request.requestId}
+                                  className="bg-green-500 hover:bg-green-600 text-white flex items-center gap-1.5 h-8"
+                                >
+                                  <Check className="h-3.5 w-3.5" />
+                                  {processingRequestId === request.requestId ? "..." : "Approve"}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleLeaveRequestAction(request.requestId, "REJECTED")}
+                                  disabled={processingRequestId === request.requestId}
+                                  className="bg-red-500 hover:bg-red-600 text-white flex items-center gap-1.5 h-8"
+                                >
+                                  <XCircle className="h-3.5 w-3.5" />
+                                  {processingRequestId === request.requestId ? "..." : "Reject"}
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t">
+              <Button variant="outline" onClick={() => setShowLeaveRequestModal(false)}>
+                Đóng
+              </Button>
+              <Button onClick={loadLeaveRequests} disabled={loadingLeaveRequests}>
+                {loadingLeaveRequests ? "Đang tải..." : "Làm mới"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </AppShell>
     </ProtectedRoute>
   )

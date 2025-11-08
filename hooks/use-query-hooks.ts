@@ -156,8 +156,14 @@ export function useClubs(params = { page: 0, size: 70, sort: ["name"] }) {
     return useQuery({
         queryKey: queryKeys.clubsList(params),
         queryFn: async () => {
+            console.log("🔍 useClubs queryFn - calling fetchClub with params:", params)
             const res: any = await fetchClub(params)
-            return res?.data?.content ?? []
+            console.log("🔍 useClubs queryFn - raw response:", res)
+            console.log("🔍 useClubs queryFn - res.data:", res?.data)
+            console.log("🔍 useClubs queryFn - res.data.content:", res?.data?.content)
+            const clubs = res?.data?.content ?? []
+            console.log("🔍 useClubs queryFn - returning clubs:", clubs.length, "items")
+            return clubs
         },
         staleTime: 5 * 60 * 1000, // 5 minutes
         retry: 1,
@@ -216,11 +222,14 @@ export function useClubMemberCount(clubId: number, enabled = true) {
  * Hook to prefetch multiple club member counts
  * Useful for lists where we need counts for many clubs
  * ✅ OPTIMIZED: Returns both activeMemberCount and approvedEvents
+ * @param clubIds - Array of club IDs to fetch counts for
+ * @param enabled - Whether to enable the query (default: true). Should be false if parent data is still loading
  */
-export function useClubMemberCounts(clubIds: number[]) {
+export function useClubMemberCounts(clubIds: number[], enabled = true) {
     return useQuery({
         queryKey: ["clubs", "member-counts", clubIds],
         queryFn: async () => {
+            console.log("🔵 useClubMemberCounts: Fetching counts for", clubIds.length, "clubs")
             // Fetch all counts in parallel for better performance
             const counts = await Promise.all(
                 clubIds.map(async (id) => {
@@ -241,6 +250,7 @@ export function useClubMemberCounts(clubIds: number[]) {
                     }
                 })
             )
+            console.log("🟢 useClubMemberCounts: Fetched counts successfully")
             // Convert array to object for easy lookup
             return counts.reduce((acc, data) => {
                 acc[data.clubId] = {
@@ -250,7 +260,7 @@ export function useClubMemberCounts(clubIds: number[]) {
                 return acc
             }, {} as Record<number, { activeMemberCount: number; approvedEvents: number }>)
         },
-        enabled: clubIds.length > 0,
+        enabled: enabled && clubIds.length > 0,
         staleTime: 5 * 60 * 1000,
         // Don't show errors for member counts - just use 0 as fallback
         retry: 1,
@@ -647,6 +657,7 @@ export function useProfile(enabled = true) {
 /**
  * Hook to fetch current user's FULL profile
  * TRẢ VỀ: Profile (object) - (Dùng cho UserProfileWidget và trang Profile)
+ * NOTE: This will automatically refetch when auth changes (user logs in/out)
  */
 export function useFullProfile(enabled = true) {
     return useQuery<Profile, Error>({
@@ -657,6 +668,7 @@ export function useFullProfile(enabled = true) {
         },
         enabled,
         staleTime: 5 * 60 * 1000, // Cache 5 phút
+        refetchOnMount: true, // Refetch when component mounts
     })
 }
 

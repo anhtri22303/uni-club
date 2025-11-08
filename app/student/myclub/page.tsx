@@ -25,8 +25,18 @@ import {
 } from "lucide-react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { safeSessionStorage } from "@/lib/browser-utils"
-import { type ApiMembership } from "@/service/membershipApi"
+import { type ApiMembership, postLeaveReq } from "@/service/membershipApi"
 import { getClubById } from "@/service/clubApi"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
+import { LogOut } from "lucide-react"
 
 interface Club {
   id: number
@@ -50,6 +60,9 @@ export default function MyClubPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [activeFilters, setActiveFilters] = useState<Record<string, any>>({})
   const [showFilters, setShowFilters] = useState(false)
+  const [showLeaveModal, setShowLeaveModal] = useState(false)
+  const [leaveReason, setLeaveReason] = useState("")
+  const [isSubmittingLeave, setIsSubmittingLeave] = useState(false)
   const { toast } = useToast()
 
   // ✅ USE REACT QUERY for club data and members
@@ -215,6 +228,53 @@ export default function MyClubPage() {
   const goPrev = () => setMembersPage(Math.max(1, membersPage - 1))
   const goNext = () => setMembersPage(Math.min(membersPages, membersPage + 1))
 
+  // Handle leave club request
+  const handleOpenLeaveModal = () => {
+    if (!selectedClubId) {
+      toast({
+        title: "Lỗi",
+        description: "Vui lòng chọn một câu lạc bộ trước",
+        variant: "destructive",
+      })
+      return
+    }
+    setLeaveReason("")
+    setShowLeaveModal(true)
+  }
+
+  const handleLeaveClub = async () => {
+    if (!selectedClubId) return
+    
+    if (!leaveReason.trim()) {
+      toast({
+        title: "Lỗi",
+        description: "Vui lòng nhập lý do rời câu lạc bộ",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsSubmittingLeave(true)
+    try {
+      const result = await postLeaveReq(selectedClubId, leaveReason)
+      toast({
+        title: "Thành công",
+        description: result || "Yêu cầu rời câu lạc bộ đã được gửi thành công",
+      })
+      setShowLeaveModal(false)
+      setLeaveReason("")
+    } catch (error: any) {
+      console.error("Failed to submit leave request:", error)
+      toast({
+        title: "Lỗi",
+        description: error?.response?.data?.message || "Không thể gửi yêu cầu rời câu lạc bộ",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSubmittingLeave(false)
+    }
+  }
+
   // Loading state
   if (loading && userClubIds.length === 0) {
     return (
@@ -301,6 +361,17 @@ export default function MyClubPage() {
                     <span className="text-xs text-slate-400">
                       ({userClubIds.length} clubs available)
                     </span>
+                  )}
+                  {selectedClubId && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={handleOpenLeaveModal}
+                      className="ml-auto flex items-center gap-2 bg-red-500 hover:bg-red-600"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      Out Club
+                    </Button>
                   )}
                 </div>
               )}
@@ -625,6 +696,58 @@ export default function MyClubPage() {
             )}
           </div>
         </div>
+
+        {/* Leave Club Modal */}
+        <Dialog open={showLeaveModal} onOpenChange={setShowLeaveModal}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-bold">Rời câu lạc bộ</DialogTitle>
+              <DialogDescription>
+                Bạn có chắc chắn muốn rời khỏi câu lạc bộ{" "}
+                <span className="font-semibold text-slate-900">"{selectedClub?.name}"</span>?
+                <br />
+                Vui lòng nhập lý do để Leader xem xét.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <label htmlFor="leave-reason" className="text-sm font-medium text-slate-700">
+                  Lý do rời câu lạc bộ <span className="text-red-500">*</span>
+                </label>
+                <Textarea
+                  id="leave-reason"
+                  placeholder="Nhập lý do của bạn..."
+                  value={leaveReason}
+                  onChange={(e) => setLeaveReason(e.target.value)}
+                  className="min-h-[120px] resize-none"
+                  disabled={isSubmittingLeave}
+                />
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowLeaveModal(false)
+                  setLeaveReason("")
+                }}
+                disabled={isSubmittingLeave}
+              >
+                Hủy
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleLeaveClub}
+                disabled={isSubmittingLeave || !leaveReason.trim()}
+                className="bg-red-500 hover:bg-red-600"
+              >
+                {isSubmittingLeave ? "Đang gửi..." : "Out"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </AppShell>
     </ProtectedRoute>
   )
