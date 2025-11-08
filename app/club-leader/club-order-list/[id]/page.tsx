@@ -50,7 +50,8 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
     const [isRefundModalOpen, setIsRefundModalOpen] = useState<boolean>(false)
     const [refundReason, setRefundReason] = useState<string>("")
     const [refundType, setRefundType] = useState<"full" | "partial">("full")
-    const [partialQuantity, setPartialQuantity] = useState<string>("1")
+    const [partialQuantity, setPartialQuantity] = useState<string>("1");
+    const [partialQuantityError, setPartialQuantityError] = useState<string | null>(null)
 
 
     // 1. Lấy clubId của leader (Giữ nguyên)
@@ -192,6 +193,34 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
             setIsProcessing(false)
         }
     }
+
+    // Xử lý validate khi nhập số lượng partial
+    const handlePartialQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        setPartialQuantity(value); // Cập nhật state
+        setPartialQuantityError(null); // Reset lỗi
+
+        if (!value) {
+            setPartialQuantityError("Quantity is required.");
+            return;
+        }
+
+        const qty = parseInt(value);
+        if (isNaN(qty)) {
+            setPartialQuantityError("Invalid number.");
+            return;
+        }
+
+        if (qty <= 0) {
+            setPartialQuantityError("Quantity must be at least 1.");
+        } else if (order && qty === order.quantity) {
+            // Yêu cầu của bạn: Nếu nhập BẰNG số lượng tổng
+            setPartialQuantityError(`Use 'Full Refund' to refund all ${order.quantity} items.`);
+        } else if (order && qty > order.quantity) {
+            // Yêu cầu của bạn: Nếu nhập LỚN HƠN số lượng tổng
+            setPartialQuantityError(`Quantity cannot exceed the total ${order.quantity} items.`);
+        }
+    };
 
     // Enhanced Status Badge Function
     const getStatusBadge = (status: string) => {
@@ -671,7 +700,12 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
                                                     {/* Refund Type Selection */}
                                                     <div>
                                                         <Label className="text-sm font-semibold mb-3 block">Select Refund Type</Label>
-                                                        <RadioGroup value={refundType} onValueChange={(v) => setRefundType(v as any)} className="space-y-3">
+                                                        <RadioGroup value={refundType} onValueChange={(v) => {
+                                                            setRefundType(v as any);
+                                                            setPartialQuantityError(null);
+                                                        }}
+                                                            className="space-y-3"
+                                                        >
                                                             <div>
                                                                 <RadioGroupItem value="full" id="r-full" className="peer sr-only" />
                                                                 <Label
@@ -724,15 +758,21 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
                                                                     id="partialQuantity"
                                                                     type="number"
                                                                     value={partialQuantity}
-                                                                    onChange={(e) => setPartialQuantity(e.target.value)}
+                                                                    // onChange={(e) => setPartialQuantity(e.target.value)}
+                                                                    onChange={handlePartialQuantityChange}
                                                                     min={1}
                                                                     max={order!.quantity - 1}
-                                                                    className="text-lg font-semibold h-12"
+                                                                    // className="text-lg font-semibold h-12"
+                                                                    className={`text-lg font-semibold h-12 ${partialQuantityError ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                                                                 />
                                                                 <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-orange-200">
                                                                     <span className="text-sm text-gray-600">Points to be refunded:</span>
                                                                     <span className="font-bold text-lg text-orange-600">{partialPoints} pts</span>
                                                                 </div>
+                                                                {/* hiển thị lỗi */}
+                                                                {partialQuantityError && (
+                                                                    <p className="text-sm text-red-600 font-medium px-1">{partialQuantityError}</p>
+                                                                )}
                                                                 <p className="text-xs text-gray-600">
                                                                     Enter a value between 1 and {order!.quantity - 1}
                                                                 </p>
@@ -767,6 +807,7 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
                                                             setRefundReason("")
                                                             setRefundType("full")
                                                             setPartialQuantity("1")
+                                                            setPartialQuantityError(null)
                                                         }}
                                                         disabled={isProcessing}
                                                         className="flex-1 h-11 border-2 hover:bg-gray-50"
@@ -777,7 +818,12 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
                                                     <Button
                                                         type="submit"
                                                         onClick={handleRefund}
-                                                        disabled={isProcessing || !refundReason.trim()}
+                                                        // disabled={isProcessing || !refundReason.trim()}
+                                                        disabled={
+                                                            isProcessing ||
+                                                            !refundReason.trim() ||
+                                                            (refundType === 'partial' && !!partialQuantityError) // Logic này ngăn submit khi có lỗi
+                                                        }
                                                         className="flex-1 h-11 bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white font-semibold shadow-lg"
                                                     >
                                                         {isProcessing ? (

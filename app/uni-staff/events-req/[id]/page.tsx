@@ -6,19 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import {
-  Calendar,
-  Users,
-  MapPin,
-  Mail,
-  Building,
-  FileText,
-  CheckCircle,
-  XCircle,
-  ArrowLeft,
-  Clock,
-  DollarSign,
-} from "lucide-react"
+import { Calendar, Users, MapPin, Mail, Building, FileText, CheckCircle, XCircle, ArrowLeft, Clock, DollarSign, } from "lucide-react"
 import Link from "next/link"
 import { useState, useEffect } from "react"
 import { getEventById, putEventStatus, getEventSummary, EventSummary, eventSettle, getEventSettle } from "@/service/eventApi"
@@ -255,9 +243,9 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
     setSettling(true)
     try {
       const response = await eventSettle(request.id)
-      toast({ 
-        title: 'Event Settled', 
-        description: response.message || `Event ${request.name || request.id} has been settled successfully.` 
+      toast({
+        title: 'Event Settled',
+        description: response.message || `Event ${request.name || request.id} has been settled successfully.`
       })
       // Mark as settled and refetch the event data
       setIsEventSettled(true)
@@ -265,8 +253,8 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
       setRequest(updatedData)
     } catch (err: any) {
       console.error('Settle failed', err)
-      toast({ 
-        title: 'Error', 
+      toast({
+        title: 'Error',
         description: err?.response?.data?.message || err?.message || 'Failed to settle event',
         variant: 'destructive'
       })
@@ -295,11 +283,11 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
               {/* prefer status, fallback to type */}
               {getStatusBadge(effectiveStatus)}
               {effectiveStatus === "COMPLETED" && (
-                <Button 
-                  variant="default" 
-                  size="sm" 
+                <Button
+                  variant="default"
+                  size="sm"
                   className={isEventSettled ? "bg-gray-400" : "bg-blue-600 hover:bg-blue-700"}
-                  onClick={handleSettle} 
+                  onClick={handleSettle}
                   disabled={settling || isEventSettled || checkingSettled}
                 >
                   <DollarSign className="h-4 w-4 mr-2" />
@@ -355,12 +343,12 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                   </div>
 
                   <div>
-            <label className="text-sm font-medium text-muted-foreground">Description</label>
-          <p className="mt-1">{request.description}</p>
+                    <label className="text-sm font-medium text-muted-foreground">Description</label>
+                    <p className="mt-1">{request.description}</p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
-                    { (request.date || request.eventDate) && (
+                    {(request.date || request.eventDate) && (
                       <div>
                         <label className="text-sm font-medium text-muted-foreground">Event Date</label>
                         <div className="flex items-center gap-2 mt-1">
@@ -369,13 +357,13 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                         </div>
                       </div>
                     )}
-                    { (request.startTime || request.endTime || request.time || request.eventTime) && (
+                    {(request.startTime || request.endTime || request.time || request.eventTime) && (
                       <div>
                         <label className="text-sm font-medium text-muted-foreground">Event Time</label>
                         <div className="flex items-center gap-2 mt-1">
                           <Clock className="h-4 w-4 text-muted-foreground" />
                           <span>
-                            {request.startTime && request.endTime 
+                            {request.startTime && request.endTime
                               ? `${request.startTime} - ${request.endTime}`
                               : request.time || request.eventTime || "Time not set"}
                           </span>
@@ -537,16 +525,16 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                               <span className="font-medium">{club.name}</span>
                               <span className="text-sm text-muted-foreground">(#{club.id})</span>
                             </div>
-                            <Badge 
+                            <Badge
                               variant="outline"
                               className={
                                 club.coHostStatus === "APPROVED"
                                   ? "bg-green-100 text-green-700 border-green-500"
                                   : club.coHostStatus === "REJECTED"
-                                  ? "bg-red-100 text-red-700 border-red-500"
-                                  : club.coHostStatus === "PENDING"
-                                  ? "bg-yellow-100 text-yellow-700 border-yellow-500"
-                                  : "bg-gray-100 text-gray-700 border-gray-300"
+                                    ? "bg-red-100 text-red-700 border-red-500"
+                                    : club.coHostStatus === "PENDING"
+                                      ? "bg-yellow-100 text-yellow-700 border-yellow-500"
+                                      : "bg-gray-100 text-gray-700 border-gray-300"
                               }
                             >
                               {club.coHostStatus}
@@ -559,7 +547,7 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                 </CardContent>
               </Card>
 
-              { (request.purpose || request.description) && (
+              {(request.purpose || request.description) && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -581,7 +569,7 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                   <CardTitle className="text-lg">Request Details</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  { (request.requestDate || request.date) && (
+                  {(request.requestDate || request.date) && (
                     <div>
                       <label className="text-sm font-medium text-muted-foreground">Request Date</label>
                       <div className="flex items-center gap-2 mt-1">
@@ -621,7 +609,7 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                     </div>
                   )}
 
-                  { (request.requestedByEmail || request.email) && (
+                  {(request.requestedByEmail || request.email) && (
                     <div>
                       <label className="text-sm font-medium text-muted-foreground">Contact Email</label>
                       <div className="flex items-center gap-2 mt-1">
@@ -660,10 +648,10 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                         This event has been completed. Click the button below to process the final settlement.
                       </p>
                     )}
-                    <Button 
+                    <Button
                       className={`w-full ${isEventSettled ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'}`}
-                      variant="default" 
-                      onClick={handleSettle} 
+                      variant="default"
+                      onClick={handleSettle}
                       disabled={settling || isEventSettled || checkingSettled}
                     >
                       <DollarSign className="h-4 w-4 mr-2" />
