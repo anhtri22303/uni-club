@@ -132,7 +132,7 @@ export const queryKeys = {
     // Attendances
     attendances: ["attendances"] as const,
     attendancesByDate: (date: string) => [...queryKeys.attendances, "date", date] as const,
-    memberAttendanceHistory: (membershipId: number | null) => [...queryKeys.attendances, "member", membershipId] as const,
+    memberAttendanceHistory: (clubId: number | null) => [...queryKeys.attendances, "club", clubId, "member-history"] as const,
     // Profile
     profile: ["profile"] as const,
     fullProfile: ["fullProfile"] as const, // Dùng cho `fetchProfile`, trả về object Profile
@@ -605,24 +605,22 @@ export function useAttendancesByDate(date: string, enabled = true) {
 }
 
 /**
- * Hook to fetch attendance history for a specific member
- * @param membershipId - The member's membership ID (NOT userId or clubId)
- */
-export function useMemberAttendanceHistory(membershipId: number | null, enabled = true) {
-  // --- SỬA Ở ĐÂY ---
-  // Thêm kiểu <MemberHistoryResponse | null, Error>
+ * Hook to fetch attendance history for current member in a specific club
+ * @param clubId - The club ID to fetch attendance history for
+ */
+export function useMemberAttendanceHistory(clubId: number | null, enabled = true) {
   return useQuery<MemberHistoryResponse | null, Error>({
-    queryKey: queryKeys.memberAttendanceHistory(membershipId),
-    queryFn: async () => {
-      if (!membershipId) return null 
+    queryKey: queryKeys.memberAttendanceHistory(clubId),
+    queryFn: async () => {
+      if (!clubId) return null 
 
-      const responseBody = await fetchMemberAttendanceHistory(membershipId)
+      const responseBody = await fetchMemberAttendanceHistory(clubId)
       
-      return responseBody as MemberHistoryResponse // Trả về toàn bộ object
-    },
-    enabled: !!membershipId && enabled,
-    staleTime: 2 * 60 * 1000,
-  })
+      return responseBody as MemberHistoryResponse // Trả về toàn bộ object
+    },
+    enabled: !!clubId && enabled,
+    staleTime: 2 * 60 * 1000,
+  })
 }
 
 // ============================================

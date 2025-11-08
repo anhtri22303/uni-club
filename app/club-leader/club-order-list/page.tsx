@@ -113,17 +113,23 @@ export default function ClubLeaderOrdersPage() {
     })
   }
 
-  // 4. Phân loại đơn hàng
+  // 4. Phân loại đơn hàng (có sắp xếp theo ngày mới nhất)
   const pendingOrders = useMemo(
-    () => getFilteredOrders("pending"),
+    () => getFilteredOrders("pending").sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    ),
     [orders, searchTerm, dateFromFilter, dateToFilter]
   )
   const completedOrders = useMemo(
-    () => getFilteredOrders("completed"),
+    () => getFilteredOrders("completed").sort((a, b) => 
+      new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime()
+    ),
     [orders, searchTerm, dateFromFilter, dateToFilter]
   )
   const cancelledOrders = useMemo(
-    () => getFilteredOrders("cancelled"),
+    () => getFilteredOrders("cancelled").sort((a, b) => 
+      new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime()
+    ),
     [orders, searchTerm, dateFromFilter, dateToFilter]
   )
 

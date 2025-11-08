@@ -5,26 +5,15 @@ import { AppShell } from "@/components/app-shell"
 import { ProtectedRoute } from "@/contexts/protected-route"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
 import { Pagination } from "@/components/pagination"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { usePagination } from "@/hooks/use-pagination"
 import { useState, useEffect, useMemo } from "react" // <-- Thêm useMemo
-import { Layers, History, Clock } from "lucide-react"
+import { Layers, History } from "lucide-react"
 import { safeSessionStorage } from "@/lib/browser-utils"
 import { useToast } from "@/hooks/use-toast"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useClubs, useClubMembers, useMemberAttendanceHistory } from "@/hooks/use-query-hooks"
-// import { TimeObject } from "@/service/attendanceApi" // Import kiểu TimeObject nếu nó được export
-
-// SAO CHÉP HELPER timeObjectToString
-const timeObjectToString = (timeObj: any): string => {
-  if (!timeObj) return "N/A";
-  if (typeof timeObj === 'string') return timeObj;
-  const hour = String(timeObj.hour).padStart(2, '0');
-  const minute = String(timeObj.minute).padStart(2, '0');
-  return `${hour}:${minute}`;
-};
+import { useClubs, useMemberAttendanceHistory } from "@/hooks/use-query-hooks"
 
 // Tạo badge dựa trên trạng thái điểm danh
 const AttendanceStatusBadge = ({ status }: { status: string }) => {
@@ -67,34 +56,19 @@ interface MemberHistoryResponse {
 }
 
 export default function MemberAttendancePage() {
-  const [loggedInUserId, setLoggedInUserId] = useState<number | null>(null)
   const [userClubIds, setUserClubIds] = useState<number[]>([])
   const [userClubsDetails, setUserClubsDetails] = useState<SimpleClub[]>([])
   const [selectedClubId, setSelectedClubId] = useState<number | null>(null)
 
   const { toast } = useToast()
 
-  // LẤY DỮ LIỆU TỪ SESSIONSTORAGE (userId VÀ clubIds)
+  // LẤY DỮ LIỆU TỪ SESSIONSTORAGE (clubIds)
   useEffect(() => {
     try {
       const saved = safeSessionStorage.getItem("uniclub-auth")
       if (saved) {
         const parsed = JSON.parse(saved)
         console.log("Attendance page - Parsed sessionStorage data:", parsed)
-
-        // Lấy userId của người dùng
-        // const userId = parsed.user?.id
-        const userId = parsed.userId
-        if (userId) {
-          setLoggedInUserId(Number(userId))
-        } else {
-          console.error("Không tìm thấy user.id trong sessionStorage!")
-          toast({
-            title: "Lỗi",
-            description: "Không thể xác định người dùng. Vui lòng đăng nhập lại.",
-            variant: "destructive"
-          })
-        }
 
         // Lấy clubIds
         let clubIdNumbers: number[] = []
@@ -106,6 +80,13 @@ export default function MemberAttendancePage() {
 
         setUserClubIds(clubIdNumbers)
 
+        if (clubIdNumbers.length === 0) {
+          toast({
+            title: "Thông báo",
+            description: "Bạn chưa tham gia CLB nào.",
+            variant: "default"
+          })
+        }
       }
     } catch (error) {
       console.error("Failed to get data from sessionStorage:", error)
@@ -132,37 +113,12 @@ export default function MemberAttendancePage() {
     }
   }, [userClubIds, allClubsData, selectedClubId])
 
-  // LOGIC TRUNG TÂM: QUERY CHỒNG
-  //    Query 1: Lấy danh sách members của CLB đã chọn
-  const {
-    data: apiMembers = [],
-    isLoading: isLoadingMembers,
-    error: membersError
-  } = useClubMembers(
-    selectedClubId ?? 0,
-    !!selectedClubId // Chỉ chạy khi selectedClubId có giá trị
-  );
-
-  //    Xử lý: Tìm 'membershipId' của BẠN từ danh sách members
-  const foundMembershipId = useMemo(() => {
-    if (!apiMembers || apiMembers.length === 0 || !loggedInUserId) {
-      return null
-    }
-    // Tìm bản ghi member khớp với userId đang đăng nhập
-    const self = apiMembers.find(m => m.userId === loggedInUserId)
-    if (self) {
-      console.log(`Tìm thấy membershipId: ${self.membershipId} cho userId: ${loggedInUserId}`)
-      return self.membershipId
-    }
-    console.warn(`Không tìm thấy member với userId: ${loggedInUserId} trong CLB ${selectedClubId}`)
-    return null
-  }, [apiMembers, loggedInUserId, selectedClubId])
-
-  //    Query 2: Lấy lịch sử điểm danh (chỉ chạy khi đã tìm thấy 'foundMembershipId')
+  // LOGIC ĐƠN GIẢN HÓA: GỌI API TRỰC TIẾP VỚI CLUBID
+  // API mới sẽ tự động lấy lịch sử điểm danh của user hiện tại dựa trên JWT
   const {
     data: rawHistoryResponse,
     isLoading: isLoadingHistory
-  } = useMemberAttendanceHistory(foundMembershipId)
+  } = useMemberAttendanceHistory(selectedClubId)
 
   // LỌC DỮ LIỆU (SEARCH TERM)
   const filteredHistory = useMemo(() => {
@@ -185,8 +141,8 @@ export default function MemberAttendancePage() {
   })
 
   // TÍNH TOÁN TRẠNG THÁI LOADING TỔNG
-  // Loading khi: Đang tải clubs, HOẶC đang tải members, HOẶC đang tải history
-  const isLoading = isLoadingClubs || isLoadingMembers || isLoadingHistory;
+  // Loading khi: Đang tải clubs HOẶC đang tải history
+  const isLoading = isLoadingClubs || isLoadingHistory;
 
   // RENDER JSX
   return (
@@ -246,15 +202,6 @@ export default function MemberAttendancePage() {
                 <Skeleton className="h-32 w-full rounded-lg" />
                 <Skeleton className="h-32 w-full rounded-lg" />
               </div>
-            ) : membersError ? (
-              // Báo lỗi nếu không tải được member (ví dụ: student không có quyền)
-              <div className="col-span-full text-center py-12">
-                <History className="h-12 w-12 text-red-500 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2 text-red-700">Error loading members</h3>
-                <p className="text-muted-foreground">
-                  {(membersError as Error)?.message || "You may not have permission to view members of this club."}
-                </p>
-              </div>
             ) : userClubIds.length === 0 ? (
               // Trường hợp không ở CLB nào
               <div className="col-span-full text-center py-12">
@@ -275,8 +222,8 @@ export default function MemberAttendancePage() {
               </div>
             ) : (
               // Render danh sách
-              paginatedHistory.map((record: any) => (
-                <Card key={record.id}>
+              paginatedHistory.map((record: any, index: number) => (
+                <Card key={`${record.date}-${index}`}>
                   <CardHeader>
                     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
                       <div>
@@ -295,7 +242,7 @@ export default function MemberAttendancePage() {
                           {record.clubName || "Unknown Club"}
                         </CardDescription>
                       </div>
-                      <div className="flex-shrink-0 mt-2 sm:mt-0">
+                      <div className="shrink-0 mt-2 sm:mt-0">
                         <AttendanceStatusBadge status={record.status} />
                       </div>
                     </div>

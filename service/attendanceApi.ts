@@ -136,14 +136,14 @@ export const markAttendanceBulk = async (sessionId: number, data: MarkBulkBody) 
 };
 
 /**
- * Tương ứng với: GET /api/club-attendance/member/{membershipId}/history
- * Lấy toàn bộ lịch sử điểm danh của một thành viên (membershipId) trong CLB.
+ * Tương ứng với: GET /api/club-attendance/clubs/{clubId}/member/history
+ * Lấy toàn bộ lịch sử điểm danh của thành viên hiện tại trong CLB (JWT tự động).
  *
- * @param membershipId ID thành viên của CLB (membershipId)
+ * @param clubId ID của câu lạc bộ (clubId)
  */
-export const fetchMemberAttendanceHistory = async (membershipId: number) => {
+export const fetchMemberAttendanceHistory = async (clubId: number) => {
   const response = await axiosInstance.get(
-    `/api/club-attendance/member/${membershipId}/history`
+    `/api/club-attendance/clubs/${clubId}/member/history`
   );
   return response.data;
 };
