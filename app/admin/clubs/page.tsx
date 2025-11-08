@@ -8,59 +8,40 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import { useClubs } from "@/hooks/use-query-hooks"
-import { getClubMemberCount } from "@/service/clubApi"
 import { Skeleton } from "@/components/ui/skeleton"
 import { fetchAdminClubs, approveAdminClub, suspendAdminClub, AdminClub } from "@/service/adminApi/adminClubApi"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, } from "@/components/ui/dropdown-menu"
 import { Users, Calendar, MoreHorizontal, CheckCircle, Ban } from "lucide-react"
+import { fetchMajors, Major } from "@/service/majorApi"
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
-// Bảng màu theo ngành học
-const categoryColors: Record<string, string> = {
-  "Software Engineering": "#0052CC",
-  "Artificial Intelligence": "#6A00FF",
-  "Information Assurance": "#243447",
-  "Data Science": "#00B8A9",
-  "Business Administration": "#1E2A78",
-  "Digital Marketing": "#FF3366",
-  "Graphic Design": "#FFC300",
-  "Multimedia Communication": "#FF6B00",
-  "Hospitality Management": "#E1B382",
-  "International Business": "#007F73",
-  "Finance and Banking": "#006B3C",
-  "Japanese Language": "#D80032",
-  "Korean Language": "#5DADEC",
-}
-
-// Kiểu dữ liệu từ API
-type ClubApiItem = {
-  id: number
-  name: string
-  majorName?: string
-  leaderName?: string
-  description?: string
-  majorPolicyName?: string
-  memberCount?: number
-  approvedEvents?: number
-  // activityLevel?: "High" | "Medium" | "Low"
-}
 
 export default function AdminClubsPage() {
   const { toast } = useToast()
   const [clubs, setClubs] = useState<AdminClub[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  //State để lưu danh sách majors
+  const [majors, setMajors] = useState<Major[]>([])
 
   // Hàm load/refetch data
   const loadClubs = async () => {
     setIsLoading(true)
     setError(null)
     try {
-      // Fetch một danh sách lớn để cho DataTable xử lý filter/search/pagination phía client
-      // (Giống logic cũ là lấy size 100)
-      const data = await fetchAdminClubs({ page: 0, size: 200 })
-      setClubs(data.content)
+      // Chạy song song 2 API call
+      const [clubsData, majorsData] = await Promise.all([
+        fetchAdminClubs({ page: 0, size: 200 }),
+        fetchMajors()
+      ])
+
+      setClubs(clubsData.content)
+      setMajors(majorsData)
+
     } catch (err: any) {
-      const errMsg = err.message || "Failed to fetch clubs"
+      const errMsg = err.message || "Failed to fetch data"
       setError(errMsg)
       toast({ title: "Error", description: errMsg, variant: "destructive" })
     } finally {
@@ -73,22 +54,26 @@ export default function AdminClubsPage() {
     loadClubs()
   }, []) // Chỉ chạy 1 lần
 
-  const [clubsWithData, setClubsWithData] = useState<ClubApiItem[]>([])
-
+  // Cập nhật `enhancedClubs` để tìm màu từ state `majors`
   const enhancedClubs = clubs.map((club) => {
+    // Tìm major tương ứng trong danh sách majors đã fetch
+    const major = majors.find(m => m.name === club.majorName)
+
     return {
       id: String(club.id),
       name: club.name,
       category: club.majorName ?? "-",
       leaderName: club.leaderName ?? "-",
       members: club.memberCount ?? 0,
-      events: club.eventCount ?? 0, 
-      active: club.active, 
+      events: club.eventCount ?? 0,
+      active: club.active,
+      // Thêm màu đã tìm thấy (hoặc màu fallback)
+      majorColor: major ? major.colorHex : "#E2E8F0"
     }
   })
 
-  const uniqueCategories: string[] = Array.from(new Set(clubsWithData.map((c: any) => c.majorName).filter((v: any): v is string => !!v)))
-  const uniqueLeaders: string[] = Array.from(new Set(clubsWithData.map((c: any) => c.leaderName).filter((v: any): v is string => !!v)))
+  const uniqueCategories: string[] = Array.from(new Set(clubs.map((c) => c.majorName).filter((v): v is string => !!v)))
+  const uniqueLeaders: string[] = Array.from(new Set(clubs.map((c) => c.leaderName).filter((v): v is string => !!v)))
 
   const filters = [
     {
@@ -103,7 +88,6 @@ export default function AdminClubsPage() {
       type: "select" as const,
       options: uniqueLeaders.map((l: string) => ({ value: l, label: l })),
     },
-    // THAY ĐỔI Ở ĐÂY: Chuyển giá trị boolean thành string
     {
       key: "active",
       label: "Status",
@@ -126,8 +110,8 @@ export default function AdminClubsPage() {
     {
       key: "category" as const,
       label: "Category",
-      render: (value: string) => {
-        const color = categoryColors[value] || "#E2E8F0"
+      render: (value: string, club: any) => { // 'club' là một item từ enhancedClubs
+        const color = club.majorColor // Lấy màu động đã map
         return (
           <Badge
             variant="secondary"
@@ -158,7 +142,7 @@ export default function AdminClubsPage() {
         </div>
       ),
     },
-    // THÊM: Cột Status
+    // Cột Status
     {
       key: "active" as const,
       label: "Status",
@@ -181,11 +165,11 @@ export default function AdminClubsPage() {
         </div>
       ),
     },
-    // CẬP NHẬT: Cột Actions
+    // Cột Actions
     {
       key: "id" as const,
       label: "Actions",
-      render: (id: string, club: any) => ( // 'club' là từ 'enhancedClubs'
+      render: (id: string, club: any) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="h-8 w-8 p-0">
@@ -196,41 +180,82 @@ export default function AdminClubsPage() {
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
             {club.active ? (
-              // Nút Tạm dừng
-              <DropdownMenuItem
-                className="text-yellow-600 focus:text-yellow-600"
-                onClick={async () => {
-                  if (!window.confirm(`Bạn có chắc muốn tạm dừng CLB '${club.name}'?`)) return;
-                  try {
-                    await suspendAdminClub(Number(id));
-                    toast({ title: "Club Suspended", description: `${club.name} đã bị tạm dừng.` });
-                    loadClubs(); // Refetch
-                  } catch (err) {
-                    toast({ title: "Error", description: "Không thể tạm dừng CLB.", variant: "destructive" });
-                  }
-                }}
-              >
-                <Ban className="mr-2 h-4 w-4" />
-                Suspend
-              </DropdownMenuItem>
+              // --- Nút Tạm dừng (SUSPEND) ---
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  {/* Thêm onSelect để ngăn Dropdown tự đóng */}
+                  <DropdownMenuItem
+                    className="text-yellow-600 focus:text-yellow-600"
+                    onSelect={(e) => e.preventDefault()}
+                  >
+                    <Ban className="mr-2 h-4 w-4" />
+                    Suspend
+                  </DropdownMenuItem>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Club suspension?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to suspend the '{club.name}' club?
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-yellow-600 hover:bg-yellow-700"
+                      onClick={async () => {
+                        try {
+                          await suspendAdminClub(Number(id));
+                          toast({ title: "Club Suspended", description: `${club.name} has been suspended.` });
+                          loadClubs(); // Refetch
+                        } catch (err) {
+                          toast({ title: "Error", description: "Cannot suspend the club.", variant: "destructive" });
+                        }
+                      }}
+                    >
+                      Suspend
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             ) : (
-              // Nút Duyệt
-              <DropdownMenuItem
-                className="text-green-600 focus:text-green-600"
-                onClick={async () => {
-                  if (!window.confirm(`Bạn có chắc muốn duyệt CLB '${club.name}'?`)) return;
-                  try {
-                    await approveAdminClub(Number(id));
-                    toast({ title: "Club Approved", description: `${club.name} đã được kích hoạt.` });
-                    loadClubs(); // Refetch
-                  } catch (err) {
-                    toast({ title: "Error", description: "Không thể duyệt CLB.", variant: "destructive" });
-                  }
-                }}
-              >
-                <CheckCircle className="mr-2 h-4 w-4" />
-                Approve
-              </DropdownMenuItem>
+              // --- BUTTON APPROVE ---
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <DropdownMenuItem
+                    className="text-green-600 focus:text-green-600"
+                    onSelect={(e) => e.preventDefault()}
+                  >
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                    Approve
+                  </DropdownMenuItem>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>club approval?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to browse and activate the '{club.name}' club?
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-green-600 hover:bg-green-700"
+                      onClick={async () => {
+                        try {
+                          await approveAdminClub(Number(id));
+                          toast({ title: "Club Approved", description: `${club.name} has been activated.` });
+                          loadClubs(); // Refetch
+                        } catch (err) {
+                          toast({ title: "Error", description: "Club cannot be approved.", variant: "destructive" });
+                        }
+                      }}
+                    >
+                      Approve
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             )}
           </DropdownMenuContent>
         </DropdownMenu>
