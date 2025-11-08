@@ -18,7 +18,11 @@ interface MemberCountApiResponse {
   data: MemberCountData;
 }
 interface ClubListResponse {
-  content: Club[];
+  success: boolean;
+  message: string;
+  data: {
+    content: Club[];
+  };
 }
 interface Club {
   id: number
@@ -43,13 +47,14 @@ export const fetchClub = async (
   pageable: PageableQuery = { page: 0, size: 70, sort: ["name"] }
 ): Promise<ClubListResponse> => {
   try {
-    const response = await axiosInstance.get("/api/clubs", {
+    const response = await axiosInstance.get<ClubListResponse>("/api/clubs", {
       params: {
         pageable: JSON.stringify(pageable),
       },
     })
     console.log("Fetched clubs response:", response.data)
-    return response.data as ClubListResponse
+    // Handle the nested response structure: response.data.data.content
+    return response.data
   } catch (error) {
     console.error("Error fetching clubs:", error)
     throw error
@@ -133,7 +138,7 @@ export const getClubIdFromToken = (): number | null => {
 
     // Cách 1: Ưu tiên lấy clubId trực tiếp từ đối tượng đã lưu
     if (authData.clubId) {
-      console.log("Đã lấy clubId trực tiếp từ sessionStorage:", authData.clubId);
+      // console.log("Đã lấy clubId trực tiếp từ sessionStorage:", authData.clubId);
       return authData.clubId;
     }
 
@@ -141,7 +146,7 @@ export const getClubIdFromToken = (): number | null => {
     const token = authData?.token;
     if (token) {
       const decoded: JwtPayload = jwtDecode(token);
-      console.log("Đã giải mã JWT. Payload:", decoded);
+      // console.log("Đã giải mã JWT. Payload:", decoded);
       return decoded.clubId ?? null;
     }
 

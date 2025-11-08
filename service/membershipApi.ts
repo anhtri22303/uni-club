@@ -47,7 +47,7 @@ export async function getMyClubs(): Promise<ApiMembership[]> {
     "/api/users/me/clubs"
   );
   const body: any = res.data;
-  console.log("My clubs:", body);
+  console.log("My clubs Members:", body);
   return body?.data || [];
 }
 
@@ -188,6 +188,64 @@ export async function updateMemberRole(
 }
 
 /**
+ * ❗️ MỚI: Student gửi yêu cầu rời club
+ * (POST /api/clubs/{clubId}/leave-request)
+ */
+export async function postLeaveReq(
+  clubId: number | string,
+  reason: string
+): Promise<string> {
+  const res = await axiosInstance.post<ApiResponse<string>>(
+    `/api/clubs/${clubId}/leave-request`,
+    { reason }
+  );
+  return res.data.data; // Trả về message
+}
+
+/**
+ * ❗️ MỚI: Leader lấy danh sách yêu cầu rời club
+ * (GET /api/clubs/{clubId}/leave-requests)
+ */
+export interface LeaveRequest {
+  requestId: number;
+  membershipId: number;
+  memberName: string;
+  memberEmail: string;
+  memberRole: string;
+  reason: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  createdAt: string;
+  processedAt: string | null;
+}
+
+export async function getLeaveReq(
+  clubId: number | string
+): Promise<LeaveRequest[]> {
+  const res = await axiosInstance.get<ApiResponse<LeaveRequest[]>>(
+    `/api/clubs/${clubId}/leave-requests`
+  );
+  return res.data.data || [];
+}
+
+/**
+ * ❗️ MỚI: Leader approve/reject yêu cầu rời club
+ * (PUT /api/clubs/leave-request/{requestId}?action={APPROVED|REJECTED})
+ */
+export async function putLeaveReq(
+  requestId: number | string,
+  action: "APPROVED" | "REJECTED"
+): Promise<string> {
+  const res = await axiosInstance.put<ApiResponse<string>>(
+    `/api/clubs/leave-request/${requestId}`,
+    null, // Không có body
+    {
+      params: { action }, // Gửi action qua query param
+    }
+  );
+  return res.data.data; // Trả về message
+}
+
+/**
  * Xóa một membership (ví dụ: student tự rời club)
  * (DELETE /api/memberships/{membershipId})
  * (Hàm này đã đúng)
@@ -217,4 +275,7 @@ export default {
   getPendingMembers, // ❗️ Mới
   getClubStaff, // ❗️ Mới
   getMembersByLeaderName, // ❗️ Mới
+  postLeaveReq, // ❗️ Mới
+  getLeaveReq, // ❗️ Mới
+  putLeaveReq, // ❗️ Mới
 };

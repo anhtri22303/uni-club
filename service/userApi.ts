@@ -125,17 +125,17 @@ export const updateUserById = async (id: string | number, data: Record<string, a
   }
 }
 
-// New: editProfile - update current authenticated user's profile
+// editProfile - update current authenticated user's profile
 export const editProfile = async (data: {
-  majorName?: string
+  fullName?: string  
   phone?: string
   bio?: string
-  avatarUrl?: string
-  fullName?: string
-  email?: string
+  majorId?: number   
+  // KHÔNG CẦN: email, avatarUrl, backgroundUrl
 }) => {
   try {
     console.log("Editing profile with data:", data)
+    // Endpoint của bạn là 'api/users/profile' đã chính xác
     const response = await axiosInstance.put(`api/users/profile`, data)
     const body = response.data
     console.log("Edit profile response:", body)

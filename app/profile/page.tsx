@@ -82,7 +82,7 @@ export default function ProfilePage() {
 
   // State for change password modal
   const [showChangePassword, setShowChangePassword] = useState(false)
-  
+
   // State for user profile statistics (real data from API)
   const [userStats, setUserStats] = useState<ProfileStats | null>(null)
   const [statsLoading, setStatsLoading] = useState(true)
@@ -175,14 +175,14 @@ export default function ProfilePage() {
       if (auth.role === "student" || auth.role === "club_leader") {
         // Handle both singular wallet and plural wallets formats
         let walletsList = profile?.wallets || []
-        
+
         // If API returns singular wallet, convert to array
         if (!walletsList || walletsList.length === 0) {
           if (profile?.wallet) {
             // For singular wallet, create entry with club name from clubs array
             const clubName = profile?.clubs?.[0]?.clubName || "My Wallet"
             const clubId = profile?.clubs?.[0]?.clubId || null
-            
+
             walletsList = [{
               walletId: profile.wallet.walletId,
               balancePoints: profile.wallet.balancePoints,
@@ -194,7 +194,7 @@ export default function ProfilePage() {
             }]
           }
         }
-        
+
         console.log("Wallets from profile:", walletsList)
         setMemberships(walletsList)
       }
@@ -252,21 +252,78 @@ export default function ProfilePage() {
   }, [auth.userId])
 
   // Handle profile update (không bao gồm avatar)
+  // const handleSave = async () => {
+  //   if (!profileState.data) return
+
+  //   try {
+  //     setProfileState(prev => ({ ...prev, saving: true }))
+
+  //     // Chỉ cập nhật thông tin profile (không bao gồm avatar)
+  //     const { fullName, email, phone, majorName, bio } = profileState.data
+  //     const payload: Record<string, any> = {
+  //       email,
+  //       fullName,
+  //       phone,
+  //       majorName,
+  //       bio
+  //     }
+
+  //     const res = (await editProfile(payload)) as any
+
+  //     if (res && res.success) {
+  //       toast({
+  //         title: "Update Successful",
+  //         description: "Your profile information has been saved.",
+  //       })
+  //       // Reload profile data after successful update
+  //       await loadProfile()
+  //     } else {
+  //       throw new Error(res?.message || "Unable to update profile")
+  //     }
+  //   } catch (err) {
+  //     console.error("Edit profile failed:", err)
+  //     toast({
+  //       title: "Error",
+  //       description: err instanceof Error ? err.message : "An error occurred while updating profile"
+  //     })
+  //   } finally {
+  //     setProfileState(prev => ({ ...prev, saving: false }))
+  //   }
+  // }
+  // Handle profile update (không bao gồm avatar)
   const handleSave = async () => {
     if (!profileState.data) return
 
     try {
       setProfileState(prev => ({ ...prev, saving: true }))
 
-      // Chỉ cập nhật thông tin profile (không bao gồm avatar)
-      const { fullName, email, phone, majorName, bio } = profileState.data
-      const payload: Record<string, any> = {
-        email,
-        fullName,
-        phone,
-        majorName,
-        bio
+      // Lấy thông tin cần thiết từ state
+      const { fullName, phone, majorName, bio } = profileState.data
+
+      // --- BƯỚC QUAN TRỌNG: Chuyển đổi majorName thành majorId ---
+      // Tìm majorId từ danh sách allMajors (đã được fetch trong loadProfile)
+      const selectedMajor = allMajors.find(m => m.name === majorName)
+
+      // Lấy ID của major, nếu không tìm thấy thì gửi undefined
+      const majorId = selectedMajor ? selectedMajor.id : undefined
+
+      if (majorName && !selectedMajor) {
+        console.warn(`Không thể tìm thấy majorId cho majorName: ${majorName}`)
       }
+
+      // --- XÂY DỰNG PAYLOAD CHÍNH XÁC ---
+      // Dựa trên Swagger (image_30c2e3.png) VÀ các trường có thể sửa đổi trong UI
+      const payload = {
+        fullName: fullName,
+        phone: phone,
+        bio: bio,
+        majorId: majorId, // Gửi majorId (số) thay vì majorName (chuỗi)
+
+        // KHÔNG GỬI: email, studentCode (vì chúng bị 'disabled' và không nên cập nhật)
+        // KHÔNG GỬI: avatarUrl, backgroundUrl (chúng được xử lý bằng endpoint upload file riêng)
+      }
+
+      console.log("Đang gửi payload để cập nhật profile:", payload)
 
       const res = (await editProfile(payload)) as any
 
@@ -275,22 +332,55 @@ export default function ProfilePage() {
           title: "Update Successful",
           description: "Your profile information has been saved.",
         })
-        // Reload profile data after successful update
+        // Tải lại profile để hiển thị thông tin mới nhất từ server
         await loadProfile()
       } else {
+        // Xử lý trường hợp res.success = false
         throw new Error(res?.message || "Unable to update profile")
       }
-    } catch (err) {
+    } catch (err: any) { // Thêm kiểu 'any' để truy cập 'err.response'
       console.error("Edit profile failed:", err)
+
+      // --- Xử lý lỗi từ API (VD: 400 Bad Request) ---
+      let errorMessage = "An error occurred while updating profile"
+
+      // Thử lấy thông báo lỗi cụ thể từ response của API
+      if (err.response && err.response.data && err.response.data.message) {
+        // Nếu API trả về { success: false, message: "..." }
+        errorMessage = err.response.data.message
+      } else if (err.response && err.response.data) {
+        // Nếu API trả về lỗi validation (thường là một object)
+        // Ví dụ: { "phone": "Invalid phone number" }
+        try {
+          // Lấy thông báo lỗi đầu tiên từ object
+          const errorData = err.response.data
+          const firstErrorKey = Object.keys(errorData)[0]
+          const firstError = errorData[firstErrorKey]
+
+          if (typeof firstError === 'string') {
+            errorMessage = firstError
+          } else if (Array.isArray(firstError) && firstError.length > 0) {
+            errorMessage = firstError[0] // Lấy lỗi đầu tiên trong mảng
+          }
+        } catch (e) {
+          // Bỏ qua, dùng message mặc định
+        }
+      } else if (err.message) {
+        // Lỗi mạng hoặc lỗi JavaScript
+        errorMessage = err.message
+      }
+
       toast({
         title: "Error",
-        description: err instanceof Error ? err.message : "An error occurred while updating profile"
+        description: errorMessage, // Hiển thị lỗi cụ thể cho user
+        variant: "destructive"
       })
     } finally {
       setProfileState(prev => ({ ...prev, saving: false }))
     }
   }
 
+  
   // Update profile data handlers
   const updateProfileData = (field: keyof ProfileData, value: string | number) => {
     if (!profileState.data) return
@@ -639,15 +729,15 @@ export default function ProfilePage() {
           <div className="min-h-screen bg-slate-50">
             {/* Header chuyên nghiệp */}
             <div className="bg-gradient-to-r from-primary to-secondary text-white relative overflow-hidden">
-            {/* Background Image - Full Header Background */}
-            {(previewBackgroundUrl || backgroundUrl) && (
-              <div 
-                className="absolute inset-0 bg-cover bg-center z-0"
-                style={{ 
-                  backgroundImage: `url(${previewBackgroundUrl || backgroundUrl || "/placeholder.jpg"})`,
-                }}
-              />
-            )}
+              {/* Background Image - Full Header Background */}
+              {(previewBackgroundUrl || backgroundUrl) && (
+                <div
+                  className="absolute inset-0 bg-cover bg-center z-0"
+                  style={{
+                    backgroundImage: `url(${previewBackgroundUrl || backgroundUrl || "/placeholder.jpg"})`,
+                  }}
+                />
+              )}
 
               {/* Hidden file input for background */}
               <input
@@ -780,9 +870,9 @@ export default function ProfilePage() {
                           )}
                           {profileState.saving ? "Saving..." : "Save Changes"}
                         </Button>
-                        <Button 
-                          onClick={() => setShowChangePassword(true)} 
-                          variant="outline" 
+                        <Button
+                          onClick={() => setShowChangePassword(true)}
+                          variant="outline"
                           className="w-fit"
                         >
                           <Lock className="h-4 w-4 mr-2" />
@@ -929,9 +1019,9 @@ export default function ProfilePage() {
           <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 pb-20 relative overflow-hidden">
             {/* Background Image - Full Header Background */}
             {(previewBackgroundUrl || backgroundUrl) && (
-              <div 
+              <div
                 className="absolute inset-0 bg-cover bg-center z-0"
-                style={{ 
+                style={{
                   backgroundImage: `url(${previewBackgroundUrl || backgroundUrl || "/placeholder.jpg"})`,
                 }}
               />
@@ -1078,9 +1168,9 @@ export default function ProfilePage() {
                         )}
                         {profileState.saving ? "Saving..." : "Save Changes"}
                       </Button>
-                      <Button 
-                        onClick={() => setShowChangePassword(true)} 
-                        variant="outline" 
+                      <Button
+                        onClick={() => setShowChangePassword(true)}
+                        variant="outline"
                         className="w-fit"
                       >
                         <Lock className="h-4 w-4 mr-2" />
@@ -1098,8 +1188,8 @@ export default function ProfilePage() {
                   memberships.map((membership) => {
                     const pointsCardStyle = getPointsCardStyle(membership.balancePoints)
                     return (
-                      <Card 
-                        key={membership.walletId} 
+                      <Card
+                        key={membership.walletId}
                         className={`shadow-lg border-0 transition-all duration-300 ${pointsCardStyle.cardClassName}`}
                       >
                         <CardContent className="p-4 flex items-center justify-between">

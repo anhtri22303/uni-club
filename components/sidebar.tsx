@@ -102,12 +102,13 @@ const navigationConfig = {
     { href: "/admin/clubs", label: "Clubs", icon: Building },
     // { href: "/admin/attendances", label: "Attendances", icon: FileText },
     { href: "/admin/events", label: "Events", icon: Calendar },
+    { href: "/admin/products", label: "Products", icon: Gift }
   ],
 } as const
 
 export function Sidebar({ onNavigate, open = true }: SidebarProps) {
   const { auth } = useAuth()
-  const { events, clubs, users, policies, clubApplications, eventRequests } = useData()
+  const { events, clubs, users, policies, clubApplications, eventRequests, clubLeaderApplications, clubLeaderEventCounts } = useData()
   const pathname = usePathname()
   const router = useRouter()
   const [loadingPath, setLoadingPath] = useState<string | null>(null)
@@ -286,7 +287,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
           {/* Logo căn giữa header, xích qua phải */}
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
             <img
-              src="/images/Logo.png"
+              src="/images/LogoSidebar.png"
               alt="UniClub Logo"
               // className="h-16 w-auto object-contain drop-shadow"
               className="h-16 w-16 object-cover drop-shadow border-1 border-primary rounded" // <-- THAY ĐỔI Ở ĐÂY
@@ -317,13 +318,21 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
               const isPoliciesItem = item.label === "Policies"
               const isClubRequestsItem = item.label === "Club Requests"
               const isEventRequestsItem = item.label === "Event Requests"
+              const isApplicationsItem = item.label === "Applications"
               const eventsCount = events.length
               const clubsCount = auth.role === "admin" ? clubStatsTotal : clubs.length
               const usersCount = auth.role === "admin" ? userStatsTotal : users.length
               const policiesCount = policies.length
               const clubApplicationsCount = clubApplications.length
               const eventRequestsCount = eventRequests.length
+              const clubLeaderApplicationsCount = clubLeaderApplications.length
               const showBadges = auth.role !== "admin"
+              
+              // Club Leader Event Counts (3 separate badges)
+              const isClubLeaderEventsItem = auth.role === "club_leader" && isEventsItem
+              const pendingCoClubCount = clubLeaderEventCounts.pendingCoClub
+              const pendingUniStaffCount = clubLeaderEventCounts.pendingUniStaff
+              const coHostPendingCount = clubLeaderEventCounts.coHostPending
 
               // Calculate total badge count for dropdown groups
               let dropdownBadgeCount = 0
@@ -384,7 +393,28 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                         Staff
                       </span>
                     )}
-                    {showBadges && isEventsItem && eventsCount > 0 && (
+                    {/* Club Leader Events - 3 separate badges with different colors */}
+                    {isClubLeaderEventsItem && (
+                      <div className="ml-auto flex gap-1">
+                        {pendingCoClubCount > 0 && (
+                          <span className="text-xs px-1.5 py-0.5 rounded-full bg-orange-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
+                            {pendingCoClubCount}
+                          </span>
+                        )}
+                        {pendingUniStaffCount > 0 && (
+                          <span className="text-xs px-1.5 py-0.5 rounded-full bg-blue-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
+                            {pendingUniStaffCount}
+                          </span>
+                        )}
+                        {coHostPendingCount > 0 && (
+                          <span className="text-xs px-1.5 py-0.5 rounded-full bg-purple-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
+                            {coHostPendingCount}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {/* Other roles Events badge */}
+                    {showBadges && isEventsItem && !isClubLeaderEventsItem && eventsCount > 0 && (
                       <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
                         {eventsCount}
                       </span>
@@ -412,6 +442,11 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                     {showBadges && isEventRequestsItem && eventRequestsCount > 0 && (
                       <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
                         {eventRequestsCount}
+                      </span>
+                    )}
+                    {showBadges && isApplicationsItem && clubLeaderApplicationsCount > 0 && (
+                      <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
+                        {clubLeaderApplicationsCount}
                       </span>
                     )}
                     {showBadges && hasChildren && dropdownBadgeCount > 0 && (

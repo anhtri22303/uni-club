@@ -7,40 +7,18 @@ import { fetchUser, fetchUserById, fetchProfile } from "@/service/userApi"
 import { getMembersByClubId, ApiMembership, getMyClubs, } from "@/service/membershipApi"
 import { fetchMajors } from "@/service/majorApi"
 import { getProducts, Product, } from "@/service/productApi"
-import { getTags, Tag as ProductTag } from "@/service/tagApi" // 👈 THÊM `Tag as ProductTag`import { getWallet } from "@/service/walletApi"
+import { getTags, Tag as ProductTag } from "@/service/tagApi"
 import { fetchPolicies, fetchPolicyById } from "@/service/policyApi"
 import { fetchAttendanceByDate, fetchMemberAttendanceHistory } from "@/service/attendanceApi"
 import { getMemberApplyByClubId, getMyMemApply, fetchAllMemberApplications } from "@/service/memberApplicationApi"
 import { getClubApplications, getMyClubApply } from "@/service/clubApplicationAPI"
 import { fetchUniversityPoints, fetchAttendanceSummary, fetchAttendanceRanking } from "@/service/universityApi"
-import { getWallet } from "@/service/walletApi"
+import { getWallet, ApiMembershipWallet } from "@/service/walletApi"
 import { getMemberRedeemOrders } from "@/service/redeemApi"
 
 // ============================================
 // INTERFACES
 // ============================================
-// interface MembershipWallet {
-//   walletId: number;
-//   membershipId: number; // 👈 Đây là ID chúng ta cần
-//   clubId: number;
-//   clubName: string;
-//   balancePoints: number;
-//   // ... (Thêm các trường khác nếu có)
-// }
-
-// interface Profile {
-//   id: number;
-//   email: string;
-//   fullName: string;
-//   phone: string;
-//   studentCode: string;
-//   majorName: string;
-//   bio: string;
-//   avatarUrl: string;
-//   wallets: MembershipWallet[]; // 👈 Định nghĩa thuộc tính 'wallets'
-//   // ... (Thêm các trường khác nếu có, vd: clubs, roleName)
-// }
-// (Interface này mô tả object 'wallet' (dựa trên image_131d0f.png))
 interface ProfileWallet {
     walletId: number;
     balancePoints: number;
@@ -70,8 +48,27 @@ interface Profile {
     bio: string | null;
     avatarUrl: string | null;
     backgroundUrl: string | null;
-    clubs: ProfileClub[];   // 👈 Đã thêm 'clubs' (array)
+    clubs: ProfileClub[];
     wallet: ProfileWallet;
+    wallets?: ProfileWallet[];
+}
+
+interface AttendanceRecord {
+  date: string;
+  note: string | null;
+  clubName: string;
+  status: string;
+  // (Thêm các thuộc tính khác nếu có)
+}
+
+interface MemberHistoryResponse {
+  success: boolean;
+  message: string;
+  data: {
+    clubName: string;
+    membershipId: number;
+    attendanceHistory: AttendanceRecord[];
+  };
 }
 // ============================================
 // QUERY KEYS - Centralized for consistency
@@ -135,10 +132,10 @@ export const queryKeys = {
     // Attendances
     attendances: ["attendances"] as const,
     attendancesByDate: (date: string) => [...queryKeys.attendances, "date", date] as const,
-    memberAttendanceHistory: (membershipId: number | null) => [...queryKeys.attendances, "member", membershipId] as const,
+    memberAttendanceHistory: (clubId: number | null) => [...queryKeys.attendances, "club", clubId, "member-history"] as const,
     // Profile
     profile: ["profile"] as const,
-
+    fullProfile: ["fullProfile"] as const, // Dùng cho `fetchProfile`, trả về object Profile
     // University Analytics
     university: ["university"] as const,
     universityPoints: () => [...queryKeys.university, "points"] as const,
@@ -159,8 +156,14 @@ export function useClubs(params = { page: 0, size: 70, sort: ["name"] }) {
     return useQuery({
         queryKey: queryKeys.clubsList(params),
         queryFn: async () => {
+            console.log("🔍 useClubs queryFn - calling fetchClub with params:", params)
             const res: any = await fetchClub(params)
-            return res?.data?.content ?? []
+            console.log("🔍 useClubs queryFn - raw response:", res)
+            console.log("🔍 useClubs queryFn - res.data:", res?.data)
+            console.log("🔍 useClubs queryFn - res.data.content:", res?.data?.content)
+            const clubs = res?.data?.content ?? []
+            console.log("🔍 useClubs queryFn - returning clubs:", clubs.length, "items")
+            return clubs
         },
         staleTime: 5 * 60 * 1000, // 5 minutes
         retry: 1,
@@ -219,11 +222,14 @@ export function useClubMemberCount(clubId: number, enabled = true) {
  * Hook to prefetch multiple club member counts
  * Useful for lists where we need counts for many clubs
  * ✅ OPTIMIZED: Returns both activeMemberCount and approvedEvents
+ * @param clubIds - Array of club IDs to fetch counts for
+ * @param enabled - Whether to enable the query (default: true). Should be false if parent data is still loading
  */
-export function useClubMemberCounts(clubIds: number[]) {
+export function useClubMemberCounts(clubIds: number[], enabled = true) {
     return useQuery({
         queryKey: ["clubs", "member-counts", clubIds],
         queryFn: async () => {
+            console.log("🔵 useClubMemberCounts: Fetching counts for", clubIds.length, "clubs")
             // Fetch all counts in parallel for better performance
             const counts = await Promise.all(
                 clubIds.map(async (id) => {
@@ -244,6 +250,7 @@ export function useClubMemberCounts(clubIds: number[]) {
                     }
                 })
             )
+            console.log("🟢 useClubMemberCounts: Fetched counts successfully")
             // Convert array to object for easy lookup
             return counts.reduce((acc, data) => {
                 acc[data.clubId] = {
@@ -253,7 +260,7 @@ export function useClubMemberCounts(clubIds: number[]) {
                 return acc
             }, {} as Record<number, { activeMemberCount: number; approvedEvents: number }>)
         },
-        enabled: clubIds.length > 0,
+        enabled: enabled && clubIds.length > 0,
         staleTime: 5 * 60 * 1000,
         // Don't show errors for member counts - just use 0 as fallback
         retry: 1,
@@ -514,10 +521,9 @@ export function usePrefetchClub() {
  */
 export function useProductsByClubId(clubId: number, enabled: boolean = true) {
     return useQuery<Product[], Error>({
-        // 🛑 CẬP NHẬT KEY: Thêm 'includeArchived' để nó là 1 query mới
+        // Thêm 'includeArchived' để nó là 1 query mới
         queryKey: [...queryKeys.productsByClubId(clubId), { includeInactive: true, includeArchived: true }],
 
-        // 🛑 CẬP NHẬT QUERY FN:
         // Gửi 'includeArchived: true' để lấy TẤT CẢ sản phẩm (ACTIVE, INACTIVE, ARCHIVED)
         queryFn: () => getProducts(clubId, { includeInactive: true, includeArchived: true }),
 
@@ -531,8 +537,8 @@ export function useProductsByClubId(clubId: number, enabled: boolean = true) {
  */
 export function useProductTags(enabled: boolean = true) {
     return useQuery<ProductTag[], Error>({
-        queryKey: queryKeys.tags(),     // 👈 Dùng key mới
-        queryFn: getTags,               // 👈 Gọi hàm getTags mới
+        queryKey: queryKeys.tags(),     // Dùng key mới
+        queryFn: getTags,               // Gọi hàm getTags mới
         enabled: enabled,
         staleTime: 5 * 60 * 1000, // 5 phút
     });
@@ -608,28 +614,23 @@ export function useAttendancesByDate(date: string, enabled = true) {
     })
 }
 
-// ✅ THÊM HOOK MỚI NÀY VÀO ĐÂY:
 /**
- * Hook to fetch attendance history for a specific member
- * @param membershipId - The member's membership ID (NOT userId or clubId)
+ * Hook to fetch attendance history for current member in a specific club
+ * @param clubId - The club ID to fetch attendance history for
  */
-export function useMemberAttendanceHistory(membershipId: number | null, enabled = true) {
-    // 👇 Chỉ cần thêm <any[], Error> vào đây
-    return useQuery<any[], Error>({
-        queryKey: queryKeys.memberAttendanceHistory(membershipId),
-        queryFn: async () => {
-            if (!membershipId) return []
+export function useMemberAttendanceHistory(clubId: number | null, enabled = true) {
+  return useQuery<MemberHistoryResponse | null, Error>({
+    queryKey: queryKeys.memberAttendanceHistory(clubId),
+    queryFn: async () => {
+      if (!clubId) return null 
 
-            // Giả sử bạn đã import 'fetchMemberAttendanceHistory' ở đầu file
-            // const history = await fetchMemberAttendanceHistory(membershipId)
-            const responseBody = await fetchMemberAttendanceHistory(membershipId)
-            // return history ?? [] // Đảm bảo luôn trả về một mảng
-            // return (responseBody as any)?.data || []
-            return (responseBody as any)?.attendanceHistory || []
-        },
-        enabled: !!membershipId && enabled,
-        staleTime: 2 * 60 * 1000,
-    })
+      const responseBody = await fetchMemberAttendanceHistory(clubId)
+      
+      return responseBody as MemberHistoryResponse // Trả về toàn bộ object
+    },
+    enabled: !!clubId && enabled,
+    staleTime: 2 * 60 * 1000,
+  })
 }
 
 // ============================================
@@ -639,31 +640,38 @@ export function useMemberAttendanceHistory(membershipId: number | null, enabled 
 /**
  * Hook to fetch current user's profile
  */
-// export function useProfile(enabled = true) {
-//   // 🛑 CẬP NHẬT: Thêm <Profile, Error> vào useQuery
-//   return useQuery<Profile, Error>({
-//     queryKey: queryKeys.profile,
-//     queryFn: async () => {
-//       const profile = await fetchProfile()
-//       return profile as Profile // Ép kiểu để đảm bảo
-//     },
-//     enabled,
-//     staleTime: 5 * 60 * 1000,
-//   })
-// }
 export function useProfile(enabled = true) {
-    // ❗️ Sửa kiểu dữ liệu trả về: là một MẢNG ApiMembership[]
+    // Sửa kiểu dữ liệu trả về: là một MẢNG ApiMembership[]
     return useQuery<ApiMembership[], Error>({
         queryKey: queryKeys.profile,
-        // ❗️ Sửa hàm gọi API
+        // Sửa hàm gọi API
         queryFn: async () => {
-            const myClubs = await getMyClubs(); // 👈 Gọi API có 'membershipId'
+            const myClubs = await getMyClubs(); // Gọi API có 'membershipId'
             return myClubs;
         },
         enabled,
         staleTime: 5 * 60 * 1000,
     });
 }
+
+/**
+ * Hook to fetch current user's FULL profile
+ * TRẢ VỀ: Profile (object) - (Dùng cho UserProfileWidget và trang Profile)
+ * NOTE: This will automatically refetch when auth changes (user logs in/out)
+ */
+export function useFullProfile(enabled = true) {
+    return useQuery<Profile, Error>({
+        queryKey: queryKeys.fullProfile, // Dùng key mới
+        queryFn: async () => {
+            const profile = await fetchProfile()
+            return profile as Profile // Gọi API fetchProfile
+        },
+        enabled,
+        staleTime: 5 * 60 * 1000, // Cache 5 phút
+        refetchOnMount: true, // Refetch when component mounts
+    })
+}
+
 // ============================================
 // LOCATIONS QUERIES
 // ============================================

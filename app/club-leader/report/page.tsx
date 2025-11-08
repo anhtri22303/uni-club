@@ -261,7 +261,7 @@ export default function ReportPage() {
       const preSelectionRange = range.cloneRange()
       
       // Find the contentEditable ancestor
-      let container = range.startContainer
+      let container: Node | null = range.startContainer
       while (container && container.nodeType !== Node.ELEMENT_NODE) {
         container = container.parentNode
       }
@@ -342,8 +342,8 @@ export default function ReportPage() {
         selection?.removeAllRanges()
         selection?.addRange(range)
         
-        // Focus the content div
-        ;(contentDiv as HTMLElement).focus()
+        // Focus the content div without scrolling
+        ;(contentDiv as HTMLElement).focus({ preventScroll: true })
       }
     } catch (error) {
       console.error('Error restoring cursor position:', error)
@@ -356,6 +356,10 @@ export default function ReportPage() {
 
     // Save cursor position before repaginating
     const savedCursor = saveCursorPosition()
+    
+    // Save scroll position
+    const scrollContainer = pagesContainerRef.current.parentElement
+    const savedScrollTop = scrollContainer?.scrollTop || 0
 
     const content = editorRef.current.innerHTML
     pagesContainerRef.current.innerHTML = ""
@@ -410,6 +414,13 @@ export default function ReportPage() {
 
     document.body.removeChild(tempDiv)
     setPageCount(currentPage)
+
+    // Restore scroll position after repaginating
+    if (scrollContainer) {
+      setTimeout(() => {
+        scrollContainer.scrollTop = savedScrollTop
+      }, 0)
+    }
 
     // Restore cursor position after repaginating
     if (savedCursor) {
@@ -655,12 +666,97 @@ export default function ReportPage() {
     }, 100)
   }
 
+  // Helper function to insert HTML content at cursor position and move cursor below
+  const insertHtmlAtCursor = (html: string) => {
+    if (!editorRef.current) {
+      console.error('[Insert] editorRef.current is null')
+      return
+    }
+
+    const selection = window.getSelection()
+    if (!selection || selection.rangeCount === 0) {
+      // No selection, append to the end
+      console.log('[Insert] No selection, appending to end')
+      editorRef.current.innerHTML += html
+      // Create a paragraph after and focus it
+      const newP = document.createElement('p')
+      newP.innerHTML = '<br>'
+      editorRef.current.appendChild(newP)
+      
+      return
+    }
+
+    // Get the current cursor position
+    const range = selection.getRangeAt(0)
+    
+    // Find the contentEditable container
+    let container: Node | null = range.startContainer
+    while (container && container.nodeType !== Node.ELEMENT_NODE) {
+      container = container.parentNode
+    }
+    
+    if (!container) {
+      // Fallback: append to end
+      editorRef.current.innerHTML += html
+      return
+    }
+
+    const editableElement = (container as Element).closest('[contenteditable="true"]')
+    if (!editableElement) {
+      // Fallback: append to end
+      editorRef.current.innerHTML += html
+      return
+    }
+
+    // Create a temporary container to parse the HTML
+    const tempDiv = document.createElement('div')
+    tempDiv.innerHTML = html
+
+    // Insert the content at cursor position
+    range.deleteContents()
+    
+    // Insert all nodes from the temp div
+    const fragment = document.createDocumentFragment()
+    while (tempDiv.firstChild) {
+      fragment.appendChild(tempDiv.firstChild)
+    }
+    range.insertNode(fragment)
+
+    // Create a new paragraph after the inserted content
+    const newP = document.createElement('p')
+    newP.innerHTML = '<br>'
+    
+    // Move range after the inserted content
+    range.collapse(false)
+    range.insertNode(newP)
+
+    // Move cursor to the new paragraph
+    const newRange = document.createRange()
+    newRange.setStart(newP, 0)
+    newRange.collapse(true)
+    selection.removeAllRanges()
+    selection.addRange(newRange)
+  }
+
   // Insert Members data
   const insertMembersData = async () => {
     try {
-      if (!clubData) return
+      console.log('[Insert] insertMembersData called, clubData:', clubData)
+      if (!clubData) {
+        toast.error("Club data not loaded yet. Please wait...")
+        return
+      }
       
+      toast.loading("Loading members data...")
       const members = await getMembersByClubId(clubData.id)
+      toast.dismiss()
+      
+      console.log('[Insert] Members fetched:', members.length)
+      
+      if (members.length === 0) {
+        toast.info("No members found for this club")
+        return
+      }
       
       // Calculate metrics
       const totalMembers = members.length
@@ -710,21 +806,35 @@ export default function ReportPage() {
         </div>
       `
 
-      if (editorRef.current) {
-        editorRef.current.innerHTML += membersHTML
-        setTimeout(() => {
-          paginateContent()
-          // Save to history after inserting members
-          if (editorRef.current) {
-            HistoryManager.saveToHistory(editorRef.current.innerHTML)
-            console.log('[History] Saved state after inserting members')
-          }
-        }, 100)
+      // Insert at cursor position
+      console.log('[Insert] About to insert HTML, editorRef:', !!editorRef.current)
+      
+      // If no cursor position, append to the hidden editor
+      if (!editorRef.current) {
+        console.error('[Insert] editorRef is null!')
+        return
       }
+      
+      // Simply append to the hidden editor with an empty paragraph after
+      editorRef.current.innerHTML += membersHTML + '<p><br></p>'
+      console.log('[Insert] HTML inserted, content length:', editorRef.current.innerHTML.length)
+      
+      // Immediately paginate to show the content
+      setTimeout(() => {
+        console.log('[Insert] Starting pagination')
+        paginateContent()
+        console.log('[Insert] Pagination complete')
+        // Save to history after inserting members
+        if (editorRef.current) {
+          HistoryManager.saveToHistory(editorRef.current.innerHTML)
+          console.log('[History] Saved state after inserting members')
+        }
+      }, 50)
 
       toast.success(`${members.length} members inserted`)
     } catch (error) {
       console.error("Error inserting members:", error)
+      toast.dismiss()
       toast.error("Failed to insert members data")
     }
   }
@@ -790,10 +900,22 @@ export default function ReportPage() {
         </div>
       `
 
-      if (editorRef.current) {
-        editorRef.current.innerHTML += eventsHTML
-        setTimeout(() => paginateContent(), 100)
+      // Insert at cursor position
+      if (!editorRef.current) {
+        console.error('[Insert] editorRef is null!')
+        return
       }
+      
+      editorRef.current.innerHTML += eventsHTML + '<p><br></p>'
+      
+      setTimeout(() => {
+        paginateContent()
+        // Save to history after inserting events
+        if (editorRef.current) {
+          HistoryManager.saveToHistory(editorRef.current.innerHTML)
+          console.log('[History] Saved state after inserting events')
+        }
+      }, 50)
 
       toast.success(`${events.length} events inserted`)
     } catch (error) {
@@ -859,10 +981,22 @@ export default function ReportPage() {
         </div>
       `
 
-      if (editorRef.current) {
-        editorRef.current.innerHTML += giftsHTML
-        setTimeout(() => paginateContent(), 100)
+      // Insert at cursor position
+      if (!editorRef.current) {
+        console.error('[Insert] editorRef is null!')
+        return
       }
+      
+      editorRef.current.innerHTML += giftsHTML + '<p><br></p>'
+      
+      setTimeout(() => {
+        paginateContent()
+        // Save to history after inserting products
+        if (editorRef.current) {
+          HistoryManager.saveToHistory(editorRef.current.innerHTML)
+          console.log('[History] Saved state after inserting products')
+        }
+      }, 50)
 
       toast.success(`${products.length} products inserted`)
     } catch (error) {
@@ -928,10 +1062,22 @@ export default function ReportPage() {
         </div>
       `
 
-      if (editorRef.current) {
-        editorRef.current.innerHTML += applicationsHTML
-        setTimeout(() => paginateContent(), 100)
+      // Insert at cursor position
+      if (!editorRef.current) {
+        console.error('[Insert] editorRef is null!')
+        return
       }
+      
+      editorRef.current.innerHTML += applicationsHTML + '<p><br></p>'
+      
+      setTimeout(() => {
+        paginateContent()
+        // Save to history after inserting applications
+        if (editorRef.current) {
+          HistoryManager.saveToHistory(editorRef.current.innerHTML)
+          console.log('[History] Saved state after inserting applications')
+        }
+      }, 50)
 
       toast.success(`${applications.length} applications inserted`)
     } catch (error) {
@@ -999,10 +1145,22 @@ export default function ReportPage() {
         </div>
       `
 
-      if (editorRef.current) {
-        editorRef.current.innerHTML += ordersHTML
-        setTimeout(() => paginateContent(), 100)
+      // Insert at cursor position
+      if (!editorRef.current) {
+        console.error('[Insert] editorRef is null!')
+        return
       }
+      
+      editorRef.current.innerHTML += ordersHTML + '<p><br></p>'
+      
+      setTimeout(() => {
+        paginateContent()
+        // Save to history after inserting orders
+        if (editorRef.current) {
+          HistoryManager.saveToHistory(editorRef.current.innerHTML)
+          console.log('[History] Saved state after inserting orders')
+        }
+      }, 50)
 
       toast.success(`${orders.length} orders inserted`)
     } catch (error) {
@@ -1074,10 +1232,22 @@ export default function ReportPage() {
         </div>
       `
 
-      if (editorRef.current) {
-        editorRef.current.innerHTML += walletHTML
-        setTimeout(() => paginateContent(), 100)
+      // Insert at cursor position
+      if (!editorRef.current) {
+        console.error('[Insert] editorRef is null!')
+        return
       }
+      
+      editorRef.current.innerHTML += walletHTML + '<p><br></p>'
+      
+      setTimeout(() => {
+        paginateContent()
+        // Save to history after inserting wallet data
+        if (editorRef.current) {
+          HistoryManager.saveToHistory(editorRef.current.innerHTML)
+          console.log('[History] Saved state after inserting wallet data')
+        }
+      }, 50)
 
       toast.success("Wallet data inserted")
     } catch (error) {
@@ -1203,10 +1373,22 @@ export default function ReportPage() {
         </div>
       `
       
-      if (editorRef.current) {
-        editorRef.current.innerHTML += chartHTML
-        setTimeout(() => paginateContent(), 100)
+      // Insert at cursor position
+      if (!editorRef.current) {
+        console.error('[Insert] editorRef is null!')
+        return
       }
+      
+      editorRef.current.innerHTML += chartHTML + '<p><br></p>'
+      
+      setTimeout(() => {
+        paginateContent()
+        // Save to history after inserting members chart
+        if (editorRef.current) {
+          HistoryManager.saveToHistory(editorRef.current.innerHTML)
+          console.log('[History] Saved state after inserting members chart')
+        }
+      }, 50)
       
       toast.success("Members chart inserted")
     } catch (error) {
@@ -1247,10 +1429,22 @@ export default function ReportPage() {
         </div>
       `
       
-      if (editorRef.current) {
-        editorRef.current.innerHTML += chartHTML
-        setTimeout(() => paginateContent(), 100)
+      // Insert at cursor position
+      if (!editorRef.current) {
+        console.error('[Insert] editorRef is null!')
+        return
       }
+      
+      editorRef.current.innerHTML += chartHTML + '<p><br></p>'
+      
+      setTimeout(() => {
+        paginateContent()
+        // Save to history after inserting events chart
+        if (editorRef.current) {
+          HistoryManager.saveToHistory(editorRef.current.innerHTML)
+          console.log('[History] Saved state after inserting events chart')
+        }
+      }, 50)
       
       toast.success("Events chart inserted")
     } catch (error) {
@@ -1294,10 +1488,22 @@ export default function ReportPage() {
         </div>
       `
       
-      if (editorRef.current) {
-        editorRef.current.innerHTML += chartHTML
-        setTimeout(() => paginateContent(), 100)
+      // Insert at cursor position
+      if (!editorRef.current) {
+        console.error('[Insert] editorRef is null!')
+        return
       }
+      
+      editorRef.current.innerHTML += chartHTML + '<p><br></p>'
+      
+      setTimeout(() => {
+        paginateContent()
+        // Save to history after inserting applications chart
+        if (editorRef.current) {
+          HistoryManager.saveToHistory(editorRef.current.innerHTML)
+          console.log('[History] Saved state after inserting applications chart')
+        }
+      }, 50)
       
       toast.success("Applications chart inserted")
     } catch (error) {
@@ -1340,10 +1546,22 @@ export default function ReportPage() {
         </div>
       `
       
-      if (editorRef.current) {
-        editorRef.current.innerHTML += chartHTML
-        setTimeout(() => paginateContent(), 100)
+      // Insert at cursor position
+      if (!editorRef.current) {
+        console.error('[Insert] editorRef is null!')
+        return
       }
+      
+      editorRef.current.innerHTML += chartHTML + '<p><br></p>'
+      
+      setTimeout(() => {
+        paginateContent()
+        // Save to history after inserting products chart
+        if (editorRef.current) {
+          HistoryManager.saveToHistory(editorRef.current.innerHTML)
+          console.log('[History] Saved state after inserting products chart')
+        }
+      }, 50)
       
       toast.success("Products chart inserted")
     } catch (error) {
@@ -1389,10 +1607,22 @@ export default function ReportPage() {
         </div>
       `
       
-      if (editorRef.current) {
-        editorRef.current.innerHTML += chartHTML
-        setTimeout(() => paginateContent(), 100)
+      // Insert at cursor position
+      if (!editorRef.current) {
+        console.error('[Insert] editorRef is null!')
+        return
       }
+      
+      editorRef.current.innerHTML += chartHTML + '<p><br></p>'
+      
+      setTimeout(() => {
+        paginateContent()
+        // Save to history after inserting orders chart
+        if (editorRef.current) {
+          HistoryManager.saveToHistory(editorRef.current.innerHTML)
+          console.log('[History] Saved state after inserting orders chart')
+        }
+      }, 50)
       
       toast.success("Orders chart inserted")
     } catch (error) {
@@ -1435,10 +1665,22 @@ export default function ReportPage() {
         </div>
       `
       
-      if (editorRef.current) {
-        editorRef.current.innerHTML += chartHTML
-        setTimeout(() => paginateContent(), 100)
+      // Insert at cursor position
+      if (!editorRef.current) {
+        console.error('[Insert] editorRef is null!')
+        return
       }
+      
+      editorRef.current.innerHTML += chartHTML + '<p><br></p>'
+      
+      setTimeout(() => {
+        paginateContent()
+        // Save to history after inserting wallet chart
+        if (editorRef.current) {
+          HistoryManager.saveToHistory(editorRef.current.innerHTML)
+          console.log('[History] Saved state after inserting wallet chart')
+        }
+      }, 50)
       
       toast.success("Wallet chart inserted")
     } catch (error) {
@@ -1766,7 +2008,11 @@ export default function ReportPage() {
                 variant="outline"
                 size="sm"
                 className="shrink-0"
-                onClick={insertMembersData}
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  insertMembersData()
+                }}
               >
                 <Users className="h-3.5 w-3.5 mr-1.5" />
                 Members
@@ -1776,7 +2022,11 @@ export default function ReportPage() {
                 variant="outline"
                 size="sm"
                 className="shrink-0"
-                onClick={insertEventsData}
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  insertEventsData()
+                }}
               >
                 <Calendar className="h-3.5 w-3.5 mr-1.5" />
                 Events
@@ -1786,7 +2036,11 @@ export default function ReportPage() {
                 variant="outline"
                 size="sm"
                 className="shrink-0"
-                onClick={insertGiftsData}
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  insertGiftsData()
+                }}
               >
                 <Gift className="h-3.5 w-3.5 mr-1.5" />
                 Products
@@ -1796,7 +2050,11 @@ export default function ReportPage() {
                 variant="outline"
                 size="sm"
                 className="shrink-0"
-                onClick={insertOrdersData}
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  insertOrdersData()
+                }}
               >
                 <ShoppingCart className="h-3.5 w-3.5 mr-1.5" />
                 Orders
@@ -1806,7 +2064,11 @@ export default function ReportPage() {
                 variant="outline"
                 size="sm"
                 className="shrink-0"
-                onClick={insertApplicationsData}
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  insertApplicationsData()
+                }}
               >
                 <UserCheck className="h-3.5 w-3.5 mr-1.5" />
                 Applications
@@ -1816,7 +2078,11 @@ export default function ReportPage() {
                 variant="outline"
                 size="sm"
                 className="shrink-0"
-                onClick={insertWalletData}
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  insertWalletData()
+                }}
               >
                 <Wallet className="h-3.5 w-3.5 mr-1.5" />
                 Wallet
@@ -1883,7 +2149,12 @@ export default function ReportPage() {
                         type="button"
                         variant="outline"
                         className="w-full justify-start text-sm"
-                        onClick={insertMembersData}
+                        disabled={!clubData || loading}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          insertMembersData()
+                        }}
                       >
                         <Users className="h-4 w-4 mr-2" />
                         Members
@@ -1892,7 +2163,12 @@ export default function ReportPage() {
                         type="button"
                         variant="outline"
                         className="w-full justify-start text-sm"
-                        onClick={insertEventsData}
+                        disabled={!clubData || loading}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          insertEventsData()
+                        }}
                       >
                         <Calendar className="h-4 w-4 mr-2" />
                         Events
@@ -1908,7 +2184,12 @@ export default function ReportPage() {
                         type="button"
                         variant="outline"
                         className="w-full justify-start text-sm"
-                        onClick={insertGiftsData}
+                        disabled={!clubData || loading}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          insertGiftsData()
+                        }}
                       >
                         <Gift className="h-4 w-4 mr-2" />
                         Gifts/Products
@@ -1917,7 +2198,12 @@ export default function ReportPage() {
                         type="button"
                         variant="outline"
                         className="w-full justify-start text-sm"
-                        onClick={insertOrdersData}
+                        disabled={!clubData || loading}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          insertOrdersData()
+                        }}
                       >
                         <ShoppingCart className="h-4 w-4 mr-2" />
                         Redeem Orders
@@ -1933,7 +2219,12 @@ export default function ReportPage() {
                         type="button"
                         variant="outline"
                         className="w-full justify-start text-sm"
-                        onClick={insertApplicationsData}
+                        disabled={!clubData || loading}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          insertApplicationsData()
+                        }}
                       >
                         <UserCheck className="h-4 w-4 mr-2" />
                         Applications
@@ -1949,7 +2240,12 @@ export default function ReportPage() {
                         type="button"
                         variant="outline"
                         className="w-full justify-start text-sm"
-                        onClick={insertWalletData}
+                        disabled={!clubData || loading}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          insertWalletData()
+                        }}
                       >
                         <Wallet className="h-4 w-4 mr-2" />
                         Wallet & Points
@@ -1966,7 +2262,12 @@ export default function ReportPage() {
                         type="button"
                         variant="outline"
                         className="w-full justify-start text-sm"
-                        onClick={insertMembersChart}
+                        disabled={!clubData || loading}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          insertMembersChart()
+                        }}
                       >
                         <PieChartIcon className="h-4 w-4 mr-2" />
                         Members Chart
@@ -1975,7 +2276,12 @@ export default function ReportPage() {
                         type="button"
                         variant="outline"
                         className="w-full justify-start text-sm"
-                        onClick={insertEventsChart}
+                        disabled={!clubData || loading}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          insertEventsChart()
+                        }}
                       >
                         <BarChart3 className="h-4 w-4 mr-2" />
                         Events Chart
@@ -1991,7 +2297,12 @@ export default function ReportPage() {
                         type="button"
                         variant="outline"
                         className="w-full justify-start text-sm"
-                        onClick={insertGiftsChart}
+                        disabled={!clubData || loading}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          insertGiftsChart()
+                        }}
                       >
                         <PieChartIcon className="h-4 w-4 mr-2" />
                         Products Chart
@@ -2000,7 +2311,12 @@ export default function ReportPage() {
                         type="button"
                         variant="outline"
                         className="w-full justify-start text-sm"
-                        onClick={insertOrdersChart}
+                        disabled={!clubData || loading}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          insertOrdersChart()
+                        }}
                       >
                         <PieChartIcon className="h-4 w-4 mr-2" />
                         Orders Chart
@@ -2016,7 +2332,12 @@ export default function ReportPage() {
                         type="button"
                         variant="outline"
                         className="w-full justify-start text-sm"
-                        onClick={insertApplicationsChart}
+                        disabled={!clubData || loading}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          insertApplicationsChart()
+                        }}
                       >
                         <PieChartIcon className="h-4 w-4 mr-2" />
                         Applications Chart
@@ -2032,7 +2353,12 @@ export default function ReportPage() {
                         type="button"
                         variant="outline"
                         className="w-full justify-start text-sm"
-                        onClick={insertWalletChart}
+                        disabled={!clubData || loading}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          insertWalletChart()
+                        }}
                       >
                         <BarChart3 className="h-4 w-4 mr-2" />
                         Wallet Chart

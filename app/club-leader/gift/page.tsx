@@ -7,7 +7,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import Link from "next/link"
 import {
   Gift, Package, Calendar, Clock, CheckCircle, XCircle, Plus, ChevronLeft, ChevronRight, Loader2, Archive,
-  WalletCards,
+  WalletCards, Tag as TagIcon,
 } from "lucide-react"
 // --- Service ---
 import { addProduct, Product, AddProductPayload, } from "@/service/productApi"
@@ -377,16 +377,19 @@ export default function ClubLeaderGiftPage() {
   return (
     <ProtectedRoute allowedRoles={["club_leader"]}>
       <AppShell>
-        <div className="space-y-6">
-          <div>
-            <h1 className="text-3xl font-bold">Gift Products</h1>
-            <p className="text-muted-foreground">Manage club items and event products.</p>
-          </div>
-          {/* Search and Add Product Button - Same Line */}
-          <div className="flex items-center gap-4 justify-between">
-            <Input placeholder="Search for products..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="max-w-sm" />
+        <div className="space-y-8">
+          {/* Header Section with Enhanced Design */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                Gift Products
+              </h1>
+              <p className="text-muted-foreground mt-2 text-lg">
+                Manage your club items and event products efficiently
+              </p>
+            </div>
             <Button
-              size="sm"
+              size="lg"
               onClick={() => {
                 // setForm(initialFormState) // Reset form khi mở
                 // Reset form về trạng thái có tag "club"
@@ -401,44 +404,70 @@ export default function ClubLeaderGiftPage() {
                 setTagSearchTerm("") // THÊM: Reset search tag
                 setOpen(true)
               }}
-              className="bg-blue-600 hover:bg-gradient-to-r hover:from-blue-600 hover:to-purple-600 text-white border-none whitespace-nowrap"
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
               disabled={!clubId}
             >
-              <Plus className="h-4 w-4 mr-1" /> Add Product
+              <Plus className="h-5 w-5 mr-2" /> 
+              Add New Product
             </Button>
           </div>
 
-          {/* ProductFilters and Filter Status - Same Line with Separator */}
-          <div className="flex items-center gap-6 flex-wrap">
-            {/* SELECT BY CRITERIA SECTION (LEFT) */}
-            <ProductFilters
-              availableTags={productTags}
-              onFilterChange={setFilters}
-              onSortChange={setSortBy}
+          {/* Search Bar - Full Width with Better Design */}
+          <div className="relative">
+            <Input 
+              placeholder="Search for products by name or description..." 
+              value={searchTerm} 
+              onChange={(e) => setSearchTerm(e.target.value)} 
+              className="h-12 pl-12 text-base border-2 focus:border-blue-500 transition-colors" 
             />
-
-            {/* VERTICAL SEPARATOR */}
-            <Separator orientation="vertical" className="h-24 bg-black" />
-
-            {/* FILTER STATUS SECTION (RIGHT) */}
-            <div className="flex items-center gap-3">
-              <Label className="text-lg font-semibold">Filter Status</Label>
-              <ToggleGroup
-                type="single"
-                value={statusFilter}
-                onValueChange={(value: "all" | "active" | "inactive" | "archived") => {
-                  if (value) setStatusFilter(value); // Chỉ set khi có giá trị
-                }}
-                variant="outline"
-              >
-                <ToggleGroupItem value="all" aria-label="Show all">All</ToggleGroupItem>
-                <ToggleGroupItem value="active" aria-label="Show active only">Active</ToggleGroupItem>
-                <ToggleGroupItem value="inactive" aria-label="Show inactive only">Inactive</ToggleGroupItem>
-                <ToggleGroupItem value="archived" aria-label="Show archived only">Archived</ToggleGroupItem>
-              </ToggleGroup>
-            </div>
+            <Gift className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
           </div>
-          <Separator className="my-6" />
+
+          {/* Filter Section with Modern Card Design */}
+          <Card className="border-2 shadow-sm">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-6 flex-wrap">
+                {/* SELECT BY CRITERIA SECTION (LEFT) */}
+                <div className="flex-1 min-w-[300px]">
+                  <ProductFilters
+                    availableTags={productTags}
+                    onFilterChange={setFilters}
+                    onSortChange={setSortBy}
+                  />
+                </div>
+
+                {/* VERTICAL SEPARATOR */}
+                <Separator orientation="vertical" className="h-20" />
+
+                {/* FILTER STATUS SECTION (RIGHT) */}
+                <div className="flex flex-col gap-3">
+                  <Label className="text-base font-semibold text-gray-700">Filter by Status</Label>
+                  <ToggleGroup
+                    type="single"
+                    value={statusFilter}
+                    onValueChange={(value: "all" | "active" | "inactive" | "archived") => {
+                      if (value) setStatusFilter(value); // Chỉ set khi có giá trị
+                    }}
+                    variant="outline"
+                    className="gap-2"
+                  >
+                    <ToggleGroupItem value="all" aria-label="Show all" className="data-[state=on]:bg-blue-100 data-[state=on]:text-blue-700">
+                      All
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="active" aria-label="Show active only" className="data-[state=on]:bg-green-100 data-[state=on]:text-green-700">
+                      Active
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="inactive" aria-label="Show inactive only" className="data-[state=on]:bg-gray-100 data-[state=on]:text-gray-700">
+                      Inactive
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="archived" aria-label="Show archived only" className="data-[state=on]:bg-red-100 data-[state=on]:text-red-700">
+                      Archived
+                    </ToggleGroupItem>
+                  </ToggleGroup>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* 6. Cập nhật Dialog Content */}
           <Dialog open={open} onOpenChange={setOpen}>
@@ -565,27 +594,55 @@ export default function ClubLeaderGiftPage() {
                 </div>
               </ScrollArea>
               <DialogFooter>
-                <Button variant="outline" onClick={() => {
-                  setOpen(false)
-                  setTagSearchTerm("")
-                }
-                }>Cancel</Button>
-                <Button onClick={handleCreate} disabled={submitting}>
-                  {submitting ? "Creating..." : "Create a product"}
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setOpen(false)
+                    setTagSearchTerm("")
+                  }}
+                  disabled={submitting}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleCreate} 
+                  disabled={submitting}
+                  className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Product
+                    </>
+                  )}
                 </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
 
-          {/* Product Card Rendering */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {/* Product Card Rendering with Enhanced Design */}
+          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {isLoading ? (
-              <div className="col-span-full text-center py-12">Loading products...</div>
+              <div className="col-span-full text-center py-20">
+                <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-blue-600" />
+                <p className="text-lg text-muted-foreground">Loading products...</p>
+              </div>
             ) : filteredAndSortedProducts.length === 0 ? (
-              <div className="col-span-full text-center py-12">
-                <h3 className="text-lg font-semibold mb-2">No products found</h3>
-                <p className="text-sm text-muted-foreground">
-                  {statusFilter === "archived" ? "Empty archive." : "Try adjusting your filters or add a new product."}
+              <div className="col-span-full text-center py-20">
+                <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                  <Package className="h-12 w-12 text-gray-400" />
+                </div>
+                <h3 className="text-xl font-semibold mb-2 text-gray-700">No products found</h3>
+                <p className="text-base text-muted-foreground max-w-md mx-auto">
+                  {statusFilter === "archived" 
+                    ? "Your archive is empty. Archived products will appear here." 
+                    : "Try adjusting your filters or create a new product to get started."}
                 </p>
               </div>
             ) : (
@@ -596,73 +653,111 @@ export default function ClubLeaderGiftPage() {
                   <Link
                     href={`/club-leader/gift/${p.id}`}
                     key={p.id}
-                    className="h-full flex"
+                    className="group"
                   >
-                    {/* 2. Cập nhật Card styling (shadow, cursor, v.v.) */}
-                    <Card className="transition-all duration-200 hover:shadow-lg cursor-pointer flex flex-col h-full relative overflow-hidden w-full">
+                    {/* Modern Card Design with Enhanced Visual Hierarchy */}
+                    <Card className="h-full flex flex-col overflow-hidden border-2 border-gray-200 transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 hover:border-blue-400 bg-white">
+                      
+                      {/* Image Container with Overlay Effect */}
+                      <div className="relative aspect-square w-full overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200">
+                        <img
+                          src={thumbnail}
+                          alt={p.name}
+                          className="w-full h-full object-cover transition-all duration-500 group-hover:scale-110 group-hover:brightness-105"
+                          onError={(e) => (e.currentTarget.src = "/placeholder.svg")}
+                        />
+                        
+                        {/* Gradient Overlay on Hover */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-black/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                        
+                        {/* Status Badge - Top Right */}
+                        <Badge
+                          className={`absolute right-3 top-3 z-10 px-2.5 py-1 text-xs font-bold shadow-xl border-2 transition-transform duration-300 group-hover:scale-110
+                            ${p.status === "ACTIVE" ? "bg-green-500 hover:bg-green-600 text-white border-white/50" : ""}
+                            ${p.status === "INACTIVE" ? "bg-gray-500 hover:bg-gray-600 text-white border-white/50" : ""}
+                            ${p.status === "ARCHIVED" ? "bg-red-600 hover:bg-red-700 text-white border-white/50" : ""}
+                          `}
+                        >
+                          {p.status === "ACTIVE" && <CheckCircle className="h-3 w-3 mr-1" />}
+                          {p.status === "INACTIVE" && <XCircle className="h-3 w-3 mr-1" />}
+                          {p.status === "ARCHIVED" && <Archive className="h-3 w-3 mr-1" />}
+                          {p.status}
+                        </Badge>
+                      </div>
 
-                      {/* Phần Header */}
-                      <CardHeader className="p-0 border-b"> {/* Xóa padding */}
-                        <div className="aspect-video w-full relative overflow-hidden bg-muted">
-                          {/* Dùng placeholder nếu ảnh lỗi */}
-                          <img
-                            src={thumbnail}
-                            alt={p.name}
-                            className="object-cover w-full h-full"
-                            onError={(e) => (e.currentTarget.src = "/placeholder.svg")}
-                          />
-                          {/* Badge Active/Inactive */}
-                          <Badge
-                            variant="default"
-                            className={`absolute right-2 top-2 z-10 text-xs
-                              ${p.status === "ACTIVE" ? "bg-green-600 text-white" : ""}
-                              ${p.status === "INACTIVE" ? "bg-gray-500 text-white" : ""}
-                              ${p.status === "ARCHIVED" ? "bg-red-700 text-white" : ""}
-                              `}
-                          >
-                            {p.status}
-                          </Badge>
-                        </div>
-                      </CardHeader>
-
-                      {/* Phần Content (Thông tin) */}
-                      <CardContent className="p-3 flex flex-col gap-2 grow">
-                        {/* Title và Description */}
-                        <div className="min-w-0">
-                          <CardTitle className="text-base font-semibold truncate" title={p.name}>
+                      {/* Card Body */}
+                      <CardContent className="flex-1 flex flex-col p-4 gap-3">
+                        {/* Product Title */}
+                        <div className="space-y-1.5">
+                          <h3 className="font-bold text-base leading-tight line-clamp-2 min-h-[2.5rem] group-hover:text-blue-600 transition-colors duration-200" title={p.name}>
                             {p.name}
-                          </CardTitle>
-                          <CardDescription className="mt-1 text-sm line-clamp-2" title={p.description}>
+                          </h3>
+                          <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed min-h-[2rem]" title={p.description}>
                             {p.description || "No description provided."}
-                          </CardDescription>
+                          </p>
                         </div>
 
-                        {/* Tags (Giống trong ảnh) */}
+                        {/* Tags */}
                         {p.tags && p.tags.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {p.tags.map((tag) => (
+                          <div className="flex flex-wrap gap-1">
+                            {p.tags.slice(0, 2).map((tag) => (
                               <Badge
                                 key={tag}
-                                variant="default" // Màu xanh
-                                className="text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200"
+                                variant="secondary"
+                                className="text-[10px] px-1.5 py-0 bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 border border-blue-200 hover:from-blue-100 hover:to-purple-100 transition-colors"
                               >
                                 {tag}
                               </Badge>
                             ))}
+                            {p.tags.length > 2 && (
+                              <Badge
+                                variant="secondary"
+                                className="text-[10px] px-1.5 py-0 bg-gray-100 text-gray-600 border border-gray-200"
+                              >
+                                +{p.tags.length - 2}
+                              </Badge>
+                            )}
                           </div>
                         )}
 
-                        {/* Giá và Kho (Đẩy xuống dưới) */}
-                        <div className="flex items-center justify-between mt-auto pt-3">
-                          <div className="flex items-center gap-2"> {/* Thêm 'gap-2' để có khoảng cách */}
-                            <WalletCards className="h-4 w-4 text-muted-foreground" />
-                            <span className="font-semibold text-blue-600 text-base">
-                              {p.pointCost.toLocaleString('en-US')} points
-                            </span>
+                        {/* Price and Stock - Compact Design */}
+                        <div className="mt-auto pt-3 border-t border-gray-100">
+                          <div className="flex items-center justify-between gap-2">
+                            {/* Price Section */}
+                            <div className="flex items-center gap-1.5 flex-1">
+                              <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-md flex items-center justify-center shadow-sm">
+                                <WalletCards className="h-4 w-4 text-white" />
+                              </div>
+                              <div className="flex flex-col min-w-0">
+                                <span className="text-[9px] text-gray-500 font-medium uppercase tracking-wide">Price</span>
+                                <span className="font-bold text-sm text-blue-600 truncate">
+                                  {p.pointCost.toLocaleString('en-US')}
+                                </span>
+                              </div>
+                            </div>
+                            
+                            {/* Divider */}
+                            <div className="w-px h-10 bg-gray-200" />
+                            
+                            {/* Stock Section */}
+                            <div className="flex items-center gap-1.5 flex-1">
+                              <div className={`flex-shrink-0 w-8 h-8 rounded-md flex items-center justify-center shadow-sm ${
+                                p.stockQuantity === 0 
+                                  ? 'bg-gradient-to-br from-red-500 to-red-600' 
+                                  : 'bg-gradient-to-br from-gray-500 to-gray-600'
+                              }`}>
+                                <Package className="h-4 w-4 text-white" />
+                              </div>
+                              <div className="flex flex-col min-w-0">
+                                <span className="text-[9px] text-gray-500 font-medium uppercase tracking-wide">Stock</span>
+                                <span className={`font-bold text-sm truncate ${
+                                  p.stockQuantity === 0 ? 'text-red-600' : 'text-gray-700'
+                                }`}>
+                                  {p.stockQuantity.toLocaleString('en-US')}
+                                </span>
+                              </div>
+                            </div>
                           </div>
-                          <span className="text-sm text-muted-foreground">
-                            Warehouse: {p.stockQuantity.toLocaleString('en-US')}
-                          </span>
                         </div>
                       </CardContent>
                     </Card>

@@ -24,10 +24,12 @@ export interface RedeemOrder {
   productType?: string;
   status: string; // (PENDING, COMPLETED, REFUNDED, PARTIALLY_REFUNDED)
   createdAt: string;
-  completedAt: string;
+  completedAt: string; // Có thể null
   clubName: string;
   memberName: string;
-  reasonRefund?: string;
+  reasonRefund?: string; 
+  clubId?: number; 
+  eventId?: number;
 }
 
 /**

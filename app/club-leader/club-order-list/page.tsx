@@ -113,17 +113,23 @@ export default function ClubLeaderOrdersPage() {
     })
   }
 
-  // 4. Phân loại đơn hàng
+  // 4. Phân loại đơn hàng (có sắp xếp theo ngày mới nhất)
   const pendingOrders = useMemo(
-    () => getFilteredOrders("pending"),
+    () => getFilteredOrders("pending").sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    ),
     [orders, searchTerm, dateFromFilter, dateToFilter]
   )
   const completedOrders = useMemo(
-    () => getFilteredOrders("completed"),
+    () => getFilteredOrders("completed").sort((a, b) => 
+      new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime()
+    ),
     [orders, searchTerm, dateFromFilter, dateToFilter]
   )
   const cancelledOrders = useMemo(
-    () => getFilteredOrders("cancelled"),
+    () => getFilteredOrders("cancelled").sort((a, b) => 
+      new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime()
+    ),
     [orders, searchTerm, dateFromFilter, dateToFilter]
   )
 
@@ -536,75 +542,117 @@ function RenderOrderList({
   }
 
   return (
-    <div className="grid md:grid-cols-2 gap-4">
-      {orders.map((order) => (
-        <Card
-          key={order.orderId}
-          className="hover:shadow-md transition-shadow"
-        >
-          {/* Link to detail page */}
-          <Link href={`/club-leader/club-order-list/${order.orderId}`}>
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between">
-                {/* Chi tiết đơn hàng */}
-                <div className="flex-1 space-y-2">
-                  <div className="flex items-center gap-3 mb-2">
-                    <Package className="h-5 w-5 text-muted-foreground" />
-                    <h3 className="font-semibold text-lg line-clamp-1">
-                      {order.productName}
-                    </h3>
+    <div className="grid md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+      {orders.map((order) => {
+        // Determine status styling
+        const gradientClasses = 
+          order.status === "PENDING" ? "from-yellow-50 via-white to-white" :
+          order.status === "COMPLETED" ? "from-green-50 via-white to-white" :
+          order.status === "CANCELLED" ? "from-red-50 via-white to-white" : "from-blue-50 via-white to-white"
+
+        return (
+          <Link 
+            key={order.orderId} 
+            href={`/club-leader/club-order-list/${order.orderId}`}
+            className="group"
+          >
+            <Card className={`border-0 shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] bg-gradient-to-br ${gradientClasses} overflow-hidden relative`}>
+              {/* Decorative top border */}
+              <div className={`h-1.5 w-full bg-gradient-to-r ${
+                order.status === "PENDING" ? "from-yellow-400 via-yellow-500 to-yellow-600" :
+                order.status === "COMPLETED" ? "from-green-400 via-green-500 to-green-600" :
+                order.status === "CANCELLED" ? "from-red-400 via-red-500 to-red-600" : "from-blue-400 via-blue-500 to-blue-600"
+              }`} />
+              
+              <CardContent className="p-6">
+                {/* Header Section */}
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className={`p-2.5 rounded-xl bg-gradient-to-br ${
+                      order.status === "PENDING" ? "from-yellow-400 to-yellow-500" :
+                      order.status === "COMPLETED" ? "from-green-400 to-green-500" :
+                      order.status === "CANCELLED" ? "from-red-400 to-red-500" : "from-blue-400 to-blue-500"
+                    } shadow-lg flex-shrink-0`}>
+                      <Package className="h-5 w-5 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-lg text-gray-900 line-clamp-1 group-hover:text-primary transition-colors">
+                        {order.productName}
+                      </h3>
+                      <p className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5">
+                        <Hash className="h-3 w-3" />
+                        {order.orderCode}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex-shrink-0 ml-2">
                     {getStatusBadge(order.status)}
                   </div>
+                </div>
 
-                  <div className="flex items-center gap-6 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1.5" title="Order Code">
-                      <Hash className="h-4 w-4" />
-                      <span>{order.orderCode}</span>
+                {/* Member Information */}
+                <div className="mb-4 p-3 bg-white/80 backdrop-blur-sm rounded-lg border border-gray-100">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 bg-gradient-to-br from-blue-100 to-purple-100 rounded-lg">
+                      <User className="h-4 w-4 text-blue-600" />
                     </div>
-                    <div className="flex items-center gap-1.5" title="Member">
-                      <User className="h-4 w-4" />
-                      <span className="line-clamp-1">{order.memberName}</span>
+                    <div>
+                      <p className="text-xs text-muted-foreground font-medium">Ordered by</p>
+                      <p className="font-semibold text-sm text-gray-900 line-clamp-1">{order.memberName}</p>
                     </div>
-                  </div>
-
-                  <div className="flex items-center gap-6 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1.5" title="Quantity">
-                      <ShoppingCart className="h-4 w-4" />
-                      <span>Quantity: {order.quantity.toLocaleString('en-US')}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5" title="Total Points">
-                      <WalletCards className="h-4 w-4" />
-                      <span>{order.totalPoints.toLocaleString('en-US')} points</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground pt-1">
-                    <Calendar className="h-4 w-4" />
-                    <span>
-                      Ordered: {new Date(order.createdAt).toLocaleString()}
-                    </span>
                   </div>
                 </div>
 
-                {/* Nút View (để căn phải) */}
-                <div className="flex items-center gap-2 ml-4">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-8 bg-transparent"
-                    asChild // Để Button hoạt động như Link
-                  >
-                    <span>
-                      <Eye className="h-3 w-3 mr-1" />
-                      View
-                    </span>
-                  </Button>
+                {/* Order Details Grid */}
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <div className="p-3 bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg border border-purple-100">
+                    <div className="flex items-center gap-2 mb-1">
+                      <ShoppingCart className="h-4 w-4 text-purple-600" />
+                      <span className="text-xs font-medium text-purple-700">Quantity</span>
+                    </div>
+                    <p className="text-xl font-bold text-purple-900">{order.quantity.toLocaleString('en-US')}</p>
+                  </div>
+                  
+                  <div className="p-3 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-lg border border-blue-100">
+                    <div className="flex items-center gap-2 mb-1">
+                      <WalletCards className="h-4 w-4 text-blue-600" />
+                      <span className="text-xs font-medium text-blue-700">Points</span>
+                    </div>
+                    <p className="text-xl font-bold text-blue-900">{order.totalPoints.toLocaleString('en-US')}</p>
+                  </div>
                 </div>
-              </div>
-            </CardContent>
+
+                {/* Date Footer */}
+                <div className="pt-3 border-t border-gray-200/60">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Calendar className="h-3.5 w-3.5" />
+                      <span>{new Date(order.createdAt).toLocaleDateString('en-US', { 
+                        month: 'short', 
+                        day: 'numeric', 
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}</span>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 px-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white hover:from-blue-600 hover:to-purple-600 hover:text-white group-hover:shadow-lg transition-all"
+                    >
+                      <Eye className="h-3.5 w-3.5 mr-1.5" />
+                      View Details
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+
+              {/* Hover effect overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-transparent via-transparent to-white/20 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+            </Card>
           </Link>
-        </Card>
-      ))}
+        )
+      })}
     </div>
   )
 }

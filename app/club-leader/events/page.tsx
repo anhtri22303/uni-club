@@ -81,7 +81,9 @@ export default function ClubLeaderEventsPage() {
       setClubsLoading(true)
       try {
         const data = await fetchClub({ page: 0, size: 70, sort: ["name"] })
-        const clubList = data?.content || []
+        const clubList = data?.data.content || []
+        // const clubList = data || []
+
         setAllClubs(clubList)
       } catch (error) {
         console.error("Failed to fetch clubs:", error)
@@ -106,7 +108,7 @@ export default function ClubLeaderEventsPage() {
   const isEventExpired = (event: any) => {
     // COMPLETED status is always considered expired
     if (event.status === "COMPLETED") return true
-    
+
     // Check if date and endTime are present
     if (!event.date || !event.endTime) return false
 
@@ -119,7 +121,7 @@ export default function ClubLeaderEventsPage() {
 
       // Convert endTime to string if it's an object
       const endTimeStr = timeObjectToString(event.endTime)
-      
+
       // Parse endTime (format: HH:MM:SS or HH:MM)
       const [hours, minutes] = endTimeStr.split(':').map(Number)
 
@@ -138,7 +140,7 @@ export default function ClubLeaderEventsPage() {
   const isEventActive = (event: any) => {
     // COMPLETED status means event has ended
     if (event.status === "COMPLETED") return false
-    
+
     // Must be ONGOING
     if (event.status !== "ONGOING") return false
 
@@ -184,7 +186,7 @@ export default function ClubLeaderEventsPage() {
   // Process and sort events (both hosted and co-host based on viewMode)
   const events = useMemo(() => {
     const eventsToProcess = viewMode === "hosted" ? rawEvents : rawCoHostEvents
-    
+
     // Normalize events with both new and legacy field support
     const normalized = eventsToProcess
       .filter((e: any) => {
@@ -202,12 +204,12 @@ export default function ClubLeaderEventsPage() {
         // Convert TimeObject to string if needed
         const startTimeStr = timeObjectToString(e.startTime)
         const endTimeStr = timeObjectToString(e.endTime)
-        
+
         // For co-host events, find the club's co-host status
         const myCoHostStatus = viewMode === "cohost" && userClubId
           ? e.coHostedClubs?.find((club: any) => club.id === userClubId)?.coHostStatus
           : null
-        
+
         return {
           ...e,
           title: e.name || e.title,
@@ -296,11 +298,11 @@ export default function ClubLeaderEventsPage() {
       regenerateQR()
       setCountdown(Math.floor(ROTATION_INTERVAL_MS / 1000))
     }, ROTATION_INTERVAL_MS)
-    
+
     const cntId = setInterval(() => {
       setCountdown((s) => (s <= 1 ? Math.floor(ROTATION_INTERVAL_MS / 1000) : s - 1))
     }, 1000)
-    
+
     return () => {
       clearInterval(rotId)
       clearInterval(cntId)
@@ -355,7 +357,7 @@ export default function ClubLeaderEventsPage() {
     // Convert TimeObject to string if needed
     const startTimeStr = timeObjectToString(event.startTime || event.time)
     const endTimeStr = timeObjectToString(event.endTime)
-    
+
     // Parse event date and start time
     const [startHour = "00", startMinute = "00"] = (startTimeStr || "00:00").split(":")
     const [year, month, day] = event.date.split('-').map(Number)
@@ -387,13 +389,13 @@ export default function ClubLeaderEventsPage() {
     // Calculate status values
     const isExpired = isEventExpired(item)
     const isFutureEvent = item.date && new Date(item.date) >= new Date(new Date().toDateString())
-    
+
     const approvalFilter = activeFilters["approval"]
     const expiredFilter = activeFilters["expired"] || "hide"
-    
+
     // Apply default restrictions only when filters are at default values
     const isDefaultState = !approvalFilter && expiredFilter === "hide"
-    
+
     if (isDefaultState) {
       // Default: Only show future PENDING_UNISTAFF and APPROVED events
       if (item.status === "REJECTED") return false
@@ -401,7 +403,7 @@ export default function ClubLeaderEventsPage() {
       if (isExpired) return false
       if (!isFutureEvent) return false
     }
-    
+
     // search by title/name
     if (searchTerm) {
       const v = String(item.title || item.name || "").toLowerCase()
@@ -433,7 +435,7 @@ export default function ClubLeaderEventsPage() {
         if (isExpired) return false
       } else if (expiredFilter === "only") {
         if (!isExpired) return false
-      } 
+      }
       // Handle time-based status options (Soon, Finished)
       else if (expiredFilter === "Soon" || expiredFilter === "Finished") {
         const status = getEventStatus(item)
@@ -477,75 +479,75 @@ export default function ClubLeaderEventsPage() {
   const handleCreate = async () => {
     // Comprehensive validation for all required fields (except coHostedClubs which is optional)
     const validationErrors: string[] = []
-    
+
     if (!formData.name || formData.name.trim() === "") {
       validationErrors.push("Event Name is required")
     }
-    
+
     if (!formData.description || formData.description.trim() === "") {
       validationErrors.push("Description is required")
     }
-    
+
     if (!formData.type) {
       validationErrors.push("Event Type is required")
     }
-    
+
     if (!formData.date) {
       validationErrors.push("Date is required")
     }
-    
+
     if (!formData.startTime) {
       validationErrors.push("Start Time is required")
     }
-    
+
     if (!formData.endTime) {
       validationErrors.push("End Time is required")
     }
-    
+
     if (!formData.locationId || formData.locationId === 0) {
       validationErrors.push("Location is required")
     }
-    
+
     if (!formData.maxCheckInCount || formData.maxCheckInCount <= 0) {
       validationErrors.push("Max Check-ins must be greater than 0")
     }
-    
+
     if (formData.commitPointCost < 0) {
       validationErrors.push("Point Cost cannot be negative")
     }
-    
+
     if (formData.budgetPoints < 0) {
       validationErrors.push("Budget Points cannot be negative")
     }
-    
+
     // Validate time range
     if (formData.startTime && formData.endTime) {
       const [startHour, startMin] = formData.startTime.split(':').map(Number)
       const [endHour, endMin] = formData.endTime.split(':').map(Number)
       const startMinutes = startHour * 60 + startMin
       const endMinutes = endHour * 60 + endMin
-      
+
       if (endMinutes <= startMinutes) {
         validationErrors.push("End Time must be after Start Time")
       }
     }
-    
+
     // Show validation errors if any
     if (validationErrors.length > 0) {
-      toast({ 
-        title: "Validation Error", 
+      toast({
+        title: "Validation Error",
         description: validationErrors.join(", "),
-        variant: "destructive" 
+        variant: "destructive"
       })
       return
     }
 
     // Validate max check-in count against location capacity
     if (selectedLocationCapacity && formData.maxCheckInCount > selectedLocationCapacity) {
-      toast({ 
-        title: "Invalid Max Check-ins", 
-        description: `Max check-ins (${formData.maxCheckInCount}) cannot exceed location capacity (${selectedLocationCapacity})`, 
-        variant: "destructive" 
+      toast({
+        title: "Invalid Max Check-ins",
+        description: `Max check-ins (${formData.maxCheckInCount}) cannot exceed location capacity (${selectedLocationCapacity})`,
+        variant: "destructive"
       })
       return
     }
@@ -553,22 +555,22 @@ export default function ClubLeaderEventsPage() {
     setIsCreating(true)
     try {
       const hostClubId = Number(formData.clubId)
-      
+
       // Format time strings to HH:MM format (API expects string, not TimeObject)
       const startTime = formData.startTime.substring(0, 5) // Convert HH:MM:SS to HH:MM
       const endTime = formData.endTime.substring(0, 5)     // Convert HH:MM:SS to HH:MM
-      
+
       // Ensure numeric values are properly converted (not NaN or null)
       const budgetPoints = Number(formData.budgetPoints) || 0
       const commitPointCost = Number(formData.commitPointCost) || 0
-      
+
       console.log('📊 Form data before sending:', {
         budgetPoints: formData.budgetPoints,
         commitPointCost: formData.commitPointCost,
         convertedBudgetPoints: budgetPoints,
         convertedCommitPointCost: commitPointCost
       })
-      
+
       const payload: any = {
         hostClubId,
         name: formData.name,
@@ -582,7 +584,7 @@ export default function ClubLeaderEventsPage() {
         commitPointCost: commitPointCost,
         budgetPoints: budgetPoints,
       }
-      
+
       console.log('📤 Payload being sent to API:', payload)
 
       // Add coHostClubIds if any are selected
@@ -591,7 +593,7 @@ export default function ClubLeaderEventsPage() {
       }
 
       const res: any = await createEvent(payload)
-        // toast({ title: "Event Created", description: "Event created successfully" })
+      // toast({ title: "Event Created", description: "Event created successfully" })
       // ✅ THAY ĐỔI LOGIC TOAST
       if (selectedCoHostClubIds.length > 0) {
         toast({
@@ -912,7 +914,7 @@ export default function ClubLeaderEventsPage() {
                   const isCompleted = event.status === "COMPLETED"
                   const expired = isCompleted || isEventExpired(event)
                   const status = expired ? "Finished" : getEventStatus(event)
-                  
+
                   // Border color logic
                   let borderColor = ""
                   if (viewMode === "cohost") {
@@ -1143,10 +1145,10 @@ export default function ClubLeaderEventsPage() {
           {/* Event Policy Modal - Right Side */}
           <Modal
             open={showPolicyModal && showCreateModal}
-            onOpenChange={() => {}}
+            onOpenChange={() => { }}
             title={eventPolicies.title}
             description="Important guidelines for Points & Budget"
-            className="sm:max-w-[500px] max-h-[90vh] overflow-hidden !fixed !left-[calc(50%+400px)] !top-[50%] !translate-x-0 !translate-y-[-50%] z-[60] border-2 border-blue-300/60 dark:border-blue-700/60 shadow-2xl pointer-events-auto"
+            className="p-2 sm:max-w-[500px] max-h-[90vh] overflow-hidden !fixed !left-[calc(50%+400px)] !top-[50%] !translate-x-0 !translate-y-[-50%] z-[60] border-2 border-blue-300/60 dark:border-blue-700/60 shadow-2xl pointer-events-auto flex flex-col"
             showCloseButton={false}
             noOverlay={true}
             style={{ pointerEvents: 'auto' }}
@@ -1155,12 +1157,13 @@ export default function ClubLeaderEventsPage() {
             <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-indigo-50 to-violet-50 dark:from-slate-900 dark:via-blue-950 dark:to-indigo-950 -z-10" />
             <div className="absolute top-0 right-0 w-72 h-72 bg-blue-400/20 dark:bg-blue-500/20 rounded-full blur-3xl -z-10 animate-pulse" />
             <div className="absolute bottom-0 left-0 w-72 h-72 bg-indigo-400/20 dark:bg-indigo-500/20 rounded-full blur-3xl -z-10 animate-pulse" style={{ animationDelay: '1s' }} />
-            
-            <ScrollArea className="h-[calc(75vh-4rem)]">
-              <div className="space-y-4 pr-4">
+
+            <ScrollArea className="h-full mt-2">
+
+              <div className="space-y-4">
                 {eventPolicies.sections.map((section, sectionIndex) => (
-                  <div 
-                    key={sectionIndex} 
+                  <div
+                    key={sectionIndex}
                     className="group bg-white/80 dark:bg-slate-800/50 backdrop-blur-md rounded-2xl p-5 border border-blue-200/60 dark:border-blue-800/40 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.01]"
                   >
                     {/* Section Header with Icon */}
@@ -1172,17 +1175,16 @@ export default function ClubLeaderEventsPage() {
                         {section.heading}
                       </h4>
                     </div>
-                    
+
                     {/* Items List */}
                     <ul className="space-y-3">
                       {section.items.map((item, itemIndex) => (
                         <li
                           key={itemIndex}
-                          className={`text-sm leading-relaxed flex items-start gap-3 rounded-xl transition-all duration-200 ${
-                            item.important 
-                              ? 'bg-gradient-to-r from-amber-50 via-yellow-50 to-orange-50 dark:from-amber-900/20 dark:via-yellow-900/20 dark:to-orange-900/20 border-l-4 border-amber-500 dark:border-amber-400 pl-4 pr-3 py-3 font-semibold text-amber-950 dark:text-amber-200 shadow-md hover:shadow-lg' 
-                              : 'text-gray-700 dark:text-gray-300 pl-1 pr-2 py-1 hover:pl-2 hover:bg-blue-50/50 dark:hover:bg-blue-900/20 rounded-lg'
-                          }`}
+                          className={`text-sm leading-relaxed flex items-start gap-3 rounded-xl transition-all duration-200 ${item.important
+                            ? 'bg-gradient-to-r from-amber-50 via-yellow-50 to-orange-50 dark:from-amber-900/20 dark:via-yellow-900/20 dark:to-orange-900/20 border-l-4 border-amber-500 dark:border-amber-400 pl-4 pr-3 py-3 font-semibold text-amber-950 dark:text-amber-200 shadow-md hover:shadow-lg'
+                            : 'text-gray-700 dark:text-gray-300 pl-1 pr-2 py-1 hover:pl-2 hover:bg-blue-50/50 dark:hover:bg-blue-900/20 rounded-lg'
+                            }`}
                         >
                           {item.important ? (
                             <>
@@ -1202,7 +1204,7 @@ export default function ClubLeaderEventsPage() {
                     </ul>
                   </div>
                 ))}
-                
+
                 {/* Footer Section */}
                 {eventPolicies.footer && (
                   <div className="mt-5 p-5 bg-gradient-to-r from-blue-100/80 via-indigo-100/80 to-violet-100/80 dark:from-blue-900/30 dark:via-indigo-900/30 dark:to-violet-900/30 rounded-2xl border-2 border-blue-300/50 dark:border-blue-700/50 backdrop-blur-md shadow-lg">
@@ -1226,324 +1228,331 @@ export default function ClubLeaderEventsPage() {
             onOpenChange={setShowCreateModal}
             title="Create New Event"
             description="Add a new event for your club members"
-            className="sm:max-w-[880px] max-h-[85vh] overflow-hidden !fixed !left-[calc(50%-620px)] !top-[50%] !translate-x-0 !translate-y-[-50%] z-[60]"
+            className="sm:max-w-[880px] max-h-[85vh] overflow-hidden !fixed !top-[50%] !translate-y-[-50%] z-[60] flex flex-col"
           >
-            <ScrollArea className="h-[calc(75vh-4rem)] pr-4">
-              <div className="space-y-3">
-              <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="name" className="text-sm">Event Name *</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="Enter event name"
-                    className="h-9"
-                    required
-                  />
-                </div>
+            <ScrollArea className="h-full pr-4">
+              <div className="space-y-3" onClick={() => setShowPolicyModal(false)}>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="name" className="text-sm">Event Name *</Label>
+                    <Input
+                      id="name"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      placeholder="Enter event name"
+                      className="h-9 border-slate-300"
+                      required
+                    />
+                  </div>
 
-                <div className="space-y-1.5">
-                  <Label htmlFor="date" className="text-sm">Date *</Label>
-                  <Input
-                    id="date"
-                    type="date"
-                    value={formData.date}
-                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    className="h-9"
-                    required
-                  />
-                </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="date" className="text-sm">Date *</Label>
+                    <Input
+                      id="date"
+                      type="date"
+                      value={formData.date}
+                      onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                      className="h-9 border-slate-300"
+                      required
+                    />
+                  </div>
 
-                <div className="space-y-1.5">
-                  <Label htmlFor="type" className="text-sm">Type *</Label>
-                  <Select
-                    value={formData.type}
-                    onValueChange={(value) => setFormData({ ...formData, type: value })}
-                    required
-                  >
-                    <SelectTrigger id="type" className="h-9">
-                      <SelectValue placeholder="Select type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="PUBLIC">Public</SelectItem>
-                      <SelectItem value="PRIVATE">Private</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="description" className="text-sm">Description *</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Describe your event..."
-                  rows={2}
-                  className="resize-none"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-4 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="startTime" className="text-sm">Start Time *</Label>
-                  <Input
-                    id="startTime"
-                    type="time"
-                    value={formData.startTime.substring(0, 5)}
-                    onChange={(e) => setFormData({ ...formData, startTime: e.target.value + ":00" })}
-                    className="h-9"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="endTime" className="text-sm">End Time *</Label>
-                  <Input
-                    id="endTime"
-                    type="time"
-                    value={formData.endTime.substring(0, 5)}
-                    onChange={(e) => setFormData({ ...formData, endTime: e.target.value + ":00" })}
-                    className="h-9"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="maxCheckInCount" className="text-sm">Max Check-ins *</Label>
-                  <Input
-                    id="maxCheckInCount"
-                    type="number"
-                    value={formData.maxCheckInCount}
-                    onChange={(e) => setFormData({ ...formData, maxCheckInCount: Number.parseInt(e.target.value) || 100 })}
-                    className={`h-9 ${
-                      selectedLocationCapacity && formData.maxCheckInCount > selectedLocationCapacity 
-                        ? "border-red-500 focus-visible:ring-red-500" 
-                        : selectedLocationId 
-                          ? "bg-muted border-blue-300" 
-                          : ""
-                    }`}
-                    placeholder="100"
-                    min="1"
-                    max={selectedLocationCapacity || undefined}
-                    required
-                  />
-                  {selectedLocationCapacity && formData.maxCheckInCount > selectedLocationCapacity && (
-                    <p className="text-xs text-red-600 font-medium mt-1 flex items-center gap-1">
-                      <span className="text-base">🚫</span>
-                      Max check-ins cannot exceed location capacity ({selectedLocationCapacity})
-                    </p>
-                  )}
-                  {selectedLocationCapacity && formData.maxCheckInCount <= selectedLocationCapacity && selectedLocationId && (
-                    <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
-                      <span className="text-base">✓</span>
-                      Within location capacity
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="commitPointCost" className="text-sm flex items-center gap-1.5">
-                    Point Cost *
-                    <button
-                      type="button"
-                      onClick={() => setShowPolicyModal(!showPolicyModal)}
-                      className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-                      title="View policy guidelines"
+                  <div className="space-y-1.5">
+                    <Label htmlFor="type" className="text-sm">Type *</Label>
+                    <Select
+                      value={formData.type}
+                      onValueChange={(value) => setFormData({ ...formData, type: value })}
+                      required
                     >
-                      <AlertCircle className="h-3.5 w-3.5" />
-                    </button>
-                  </Label>
-                  <Input
-                    id="commitPointCost"
-                    type="number"
-                    value={formData.commitPointCost}
-                    onChange={(e) => {
-                      const value = e.target.value === '' ? 0 : Number(e.target.value)
-                      setFormData({ ...formData, commitPointCost: isNaN(value) ? 0 : value })
-                    }}
-                    onClick={() => setShowPolicyModal(true)}
-                    onFocus={() => setShowPolicyModal(true)}
-                    className="h-9 transition-all duration-200 focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                    placeholder="0"
-                    min="0"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="budgetPoints" className="text-sm flex items-center gap-1.5">
-                    Budget Points *
-                    <button
-                      type="button"
-                      onClick={() => setShowPolicyModal(!showPolicyModal)}
-                      className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-                      title="View policy guidelines"
-                    >
-                      <AlertCircle className="h-3.5 w-3.5" />
-                    </button>
-                  </Label>
-                  <Input
-                    id="budgetPoints"
-                    type="number"
-                    value={formData.budgetPoints}
-                    onChange={(e) => {
-                      const value = e.target.value === '' ? 0 : Number(e.target.value)
-                      setFormData({ ...formData, budgetPoints: isNaN(value) ? 0 : value })
-                    }}
-                    onClick={() => setShowPolicyModal(true)}
-                    onFocus={() => setShowPolicyModal(true)}
-                    className="h-9 transition-all duration-200 focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                    placeholder="0"
-                    min="0"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="locationName" className="text-sm">Location *</Label>
-                  <Select
-                    value={selectedLocationId}
-                    onValueChange={(value) => {
-                      setSelectedLocationId(value)
-                      const location = locations.find(loc => String(loc.id) === value)
-                      if (location) {
-                        setSelectedLocationCapacity(location.capacity || null)
-                        setFormData({
-                          ...formData,
-                          locationId: Number(location.id),
-                          maxCheckInCount: location.capacity || 100
-                        })
-                      }
-                    }}
-                    disabled={locationsLoading}
-                    required
-                  >
-                    <SelectTrigger id="locationName" className="h-9">
-                      <SelectValue placeholder={locationsLoading ? "Loading locations..." : "Select a location"} />
-                    </SelectTrigger>
-                    <SelectContent className="z-[70]">
-                      {locations.map((location) => (
-                        <SelectItem key={location.id} value={String(location.id)}>
-                          {location.name} {location.capacity && `(${location.capacity})`}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-sm">
-                    Co-Host Clubs
-                    {selectedCoHostClubIds.length > 0 && (
-                      <span className="text-xs text-muted-foreground ml-1">
-                        ({selectedCoHostClubIds.length} selected)
-                      </span>
-                    )}
-                  </Label>
-                  <div className="border rounded-md p-2 min-h-[2.25rem] bg-muted/30 flex items-center gap-1 flex-wrap">
-                    {clubsLoading ? (
-                      <p className="text-xs text-muted-foreground">Loading...</p>
-                    ) : allClubs.length === 0 ? (
-                      <p className="text-xs text-muted-foreground">No clubs available</p>
-                    ) : selectedCoHostClubIds.length === 0 ? (
-                      <p className="text-xs text-muted-foreground">Click below to select clubs</p>
-                    ) : (
-                      <>
-                        {selectedCoHostClubIds.map((clubId) => {
-                          const club = allClubs.find(c => c.id === clubId)
-                          if (!club) return null
-                          return (
-                            <Badge
-                              key={clubId}
-                              variant="secondary"
-                              className="text-xs px-2 py-0.5 flex items-center gap-1"
-                            >
-                              {club.name}
-                              <X
-                                className="h-3 w-3 cursor-pointer hover:text-destructive"
-                                onClick={() => setSelectedCoHostClubIds(selectedCoHostClubIds.filter(id => id !== clubId))}
-                              />
-                            </Badge>
-                          )
-                        })}
-                      </>
-                    )}
+                      <SelectTrigger id="type" className="h-9 border-slate-300">
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent className="z-[70]">
+                        <SelectItem value="PUBLIC">Public</SelectItem>
+                        <SelectItem value="PRIVATE">Private</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
-              </div>
 
-              {/* Expandable co-host section for selecting clubs */}
-              {allClubs.filter(club => club.id !== userClubId).length > 0 && (
-                <details className="space-y-2">
-                  <summary className="text-sm font-medium cursor-pointer hover:text-primary flex items-center gap-2">
-                    <Plus className="h-4 w-4" />
-                    Select Co-Host Clubs ({allClubs.filter(club => club.id !== userClubId).length} available)
-                  </summary>
-                  <div className="border rounded-md p-3 max-h-40 overflow-y-auto bg-muted/30 mt-2">
-                    <div className="grid grid-cols-2 gap-2">
-                      {allClubs
-                        .filter(club => club.id !== userClubId)
-                        .map((club) => (
-                          <div key={club.id} className="flex items-center space-x-2 p-1.5 hover:bg-background rounded">
-                            <Checkbox
-                              id={`club-full-${club.id}`}
-                              checked={selectedCoHostClubIds.includes(club.id)}
-                              onCheckedChange={(checked: boolean) => {
-                                if (checked) {
-                                  setSelectedCoHostClubIds([...selectedCoHostClubIds, club.id])
-                                } else {
-                                  setSelectedCoHostClubIds(selectedCoHostClubIds.filter(id => id !== club.id))
-                                }
-                              }}
-                              className="h-4 w-4"
-                            />
-                            <label
-                              htmlFor={`club-full-${club.id}`}
-                              className="text-sm cursor-pointer flex-1"
-                            >
-                              {club.name}
-                            </label>
-                          </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="description" className="text-sm">Description *</Label>
+                  <Textarea
+                    id="description"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="Describe your event..."
+                    rows={2}
+                    className="resize-none border-slate-300"
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-4 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="startTime" className="text-sm">Start Time *</Label>
+                    <Input
+                      id="startTime"
+                      type="time"
+                      value={formData.startTime.substring(0, 5)}
+                      onChange={(e) => setFormData({ ...formData, startTime: e.target.value + ":00" })}
+                      className="h-9 border-slate-300"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="endTime" className="text-sm">End Time *</Label>
+                    <Input
+                      id="endTime"
+                      type="time"
+                      value={formData.endTime.substring(0, 5)}
+                      onChange={(e) => setFormData({ ...formData, endTime: e.target.value + ":00" })}
+                      className="h-9 border-slate-300"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="maxCheckInCount" className="text-sm">Max Check-ins *</Label>
+                    <Input
+                      id="maxCheckInCount"
+                      type="text"
+                      inputMode="numeric" // Tốt cho di động
+                      value={formData.maxCheckInCount.toLocaleString('en-US')}
+                      onChange={(e) => {
+                        const cleanValue = e.target.value.replace(/[^0-9]/g, ''); // Xóa mọi thứ không phải số
+                        const numValue = cleanValue === '' ? 0 : Number.parseInt(cleanValue, 10);
+                        setFormData({ ...formData, maxCheckInCount: numValue });
+                      }}
+                      className={`h-9 border-slate-300${selectedLocationCapacity && formData.maxCheckInCount > selectedLocationCapacity
+                        ? "border-red-500 focus-visible:ring-red-500"
+                        : selectedLocationId
+                          ? "bg-muted border-blue-300"
+                          : ""
+                        }`}
+                      placeholder="100"
+                      required
+                    />
+
+                    {selectedLocationCapacity && formData.maxCheckInCount > selectedLocationCapacity && (
+                      <p className="text-xs text-red-600 font-medium mt-1 flex items-center gap-1">
+                        <span className="text-base">🚫</span>
+                        Max check-ins cannot exceed location capacity ({selectedLocationCapacity})
+                      </p>
+                    )}
+                    {selectedLocationCapacity && formData.maxCheckInCount <= selectedLocationCapacity && selectedLocationId && (
+                      <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                        <span className="text-base">✓</span>
+                        Within location capacity
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="commitPointCost" className="text-sm flex items-center gap-1.5">
+                      Point Cost *
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setShowPolicyModal(!showPolicyModal); }}
+                        className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                        title="View policy guidelines"
+                      >
+                        <AlertCircle className="h-3.5 w-3.5" />
+                      </button>
+                    </Label>
+                    <Input
+                      id="commitPointCost"
+                      type="text"
+                      inputMode="numeric" // Tốt cho di động
+                      value={formData.commitPointCost.toLocaleString('en-US')}
+                      onChange={(e) => {
+                        const cleanValue = e.target.value.replace(/[^0-9]/g, ''); // Xóa mọi thứ không phải số
+                        const numValue = cleanValue === '' ? 0 : Number.parseInt(cleanValue, 10);
+                        setFormData({ ...formData, commitPointCost: numValue });
+                      }}
+                      onClick={(e) => { e.stopPropagation(); setShowPolicyModal(true); }}
+                      onFocus={() => setShowPolicyModal(true)}
+                      className="h-9 transition-all duration-200 focus:ring-2 focus:ring-blue-500 cursor-pointer border-slate-300"
+                      placeholder="0"
+                      required
+                    />
+
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="budgetPoints" className="text-sm flex items-center gap-1.5">
+                      Budget Points *
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setShowPolicyModal(!showPolicyModal); }}
+                        className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                        title="View policy guidelines"
+                      >
+                        <AlertCircle className="h-3.5 w-3.5" />
+                      </button>
+                    </Label>
+                    {/* Code mới cho Budget Points */}
+                    <Input
+                      id="budgetPoints"
+                      type="text"
+                      inputMode="numeric" // Tốt cho di động
+                      value={formData.budgetPoints.toLocaleString('en-US')}
+                      onChange={(e) => {
+                        const cleanValue = e.target.value.replace(/[^0-9]/g, ''); // Xóa mọi thứ không phải số
+                        const numValue = cleanValue === '' ? 0 : Number.parseInt(cleanValue, 10);
+                        setFormData({ ...formData, budgetPoints: numValue });
+                      }}
+                      onClick={(e) => { e.stopPropagation(); setShowPolicyModal(true); }}
+                      onFocus={() => setShowPolicyModal(true)}
+                      className="h-9 transition-all duration-200 focus:ring-2 focus:ring-blue-500 cursor-pointer border-slate-300"
+                      placeholder="0"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="locationName" className="text-sm">Location *</Label>
+                    <Select
+                      value={selectedLocationId}
+                      onValueChange={(value) => {
+                        setSelectedLocationId(value)
+                        const location = locations.find(loc => String(loc.id) === value)
+                        if (location) {
+                          setSelectedLocationCapacity(location.capacity || null)
+                          setFormData({
+                            ...formData,
+                            locationId: Number(location.id),
+                            maxCheckInCount: location.capacity || 100
+                          })
+                        }
+                      }}
+                      disabled={locationsLoading}
+                      required
+                    >
+                      <SelectTrigger id="locationName" className="h-9 border-slate-300">
+                        <SelectValue placeholder={locationsLoading ? "Loading locations..." : "Select a location"} />
+                      </SelectTrigger>
+                      <SelectContent className="z-[70]">
+                        {locations.map((location) => (
+                          <SelectItem key={location.id} value={String(location.id)}>
+                            {location.name} {location.capacity && `(${location.capacity})`}
+                          </SelectItem>
                         ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-sm">
+                      Co-Host Clubs
+                      {selectedCoHostClubIds.length > 0 && (
+                        <span className="text-xs text-muted-foreground ml-1">
+                          ({selectedCoHostClubIds.length} selected)
+                        </span>
+                      )}
+                    </Label>
+                    <div className="border rounded-md p-2 min-h-[2.25rem] bg-muted/30 flex items-center gap-1 flex-wrap border-slate-300">
+                      {clubsLoading ? (
+                        <p className="text-xs text-muted-foreground">Loading...</p>
+                      ) : allClubs.length === 0 ? (
+                        <p className="text-xs text-muted-foreground">No clubs available</p>
+                      ) : selectedCoHostClubIds.length === 0 ? (
+                        <p className="text-xs text-muted-foreground">Click below to select clubs</p>
+                      ) : (
+                        <>
+                          {selectedCoHostClubIds.map((clubId) => {
+                            const club = allClubs.find(c => c.id === clubId)
+                            if (!club) return null
+                            return (
+                              <Badge
+                                key={clubId}
+                                variant="secondary"
+                                className="text-xs px-2 py-0.5 flex items-center gap-1"
+                              >
+                                {club.name}
+                                <X
+                                  className="h-3 w-3 cursor-pointer hover:text-destructive"
+                                  onClick={() => setSelectedCoHostClubIds(selectedCoHostClubIds.filter(id => id !== clubId))}
+                                />
+                              </Badge>
+                            )
+                          })}
+                        </>
+                      )}
                     </div>
                   </div>
-                </details>
-              )}
-
-              <div className="space-y-2">
-                <p className="text-xs text-muted-foreground italic border-t pt-2 pb-0">
-                  * Required fields - All fields except Co-Host Clubs must be filled
-                </p>
-                <div className="flex gap-2 justify-end">
-                  <Button variant="outline" onClick={() => setShowCreateModal(false)} disabled={isCreating} className="h-9">
-                    Cancel
-                  </Button>
-                  <Button 
-                    onClick={handleCreate} 
-                    disabled={
-                      isCreating || 
-                      (selectedLocationCapacity !== null && formData.maxCheckInCount > selectedLocationCapacity)
-                    } 
-                    className="h-9"
-                  >
-                    {isCreating ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Creating...
-                      </>
-                    ) : (
-                      'Send'
-                    )}
-                  </Button>
                 </div>
-              </div>
+
+                {/* Expandable co-host section for selecting clubs */}
+                {allClubs.filter(club => club.id !== userClubId).length > 0 && (
+                  <details className="space-y-2">
+                    <summary className="text-sm font-medium cursor-pointer hover:text-primary flex items-center gap-2">
+                      <Plus className="h-4 w-4" />
+                      Select Co-Host Clubs ({allClubs.filter(club => club.id !== userClubId).length} available)
+                    </summary>
+                    <div className="border rounded-md p-3 max-h-40 overflow-y-auto bg-muted/30 mt-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        {allClubs
+                          .filter(club => club.id !== userClubId)
+                          .map((club) => (
+                            <div key={club.id} className="flex items-center space-x-2 p-1.5 hover:bg-background rounded">
+                              <Checkbox
+                                id={`club-full-${club.id}`}
+                                checked={selectedCoHostClubIds.includes(club.id)}
+                                onCheckedChange={(checked: boolean) => {
+                                  if (checked) {
+                                    setSelectedCoHostClubIds([...selectedCoHostClubIds, club.id])
+                                  } else {
+                                    setSelectedCoHostClubIds(selectedCoHostClubIds.filter(id => id !== club.id))
+                                  }
+                                }}
+                                className="h-4 w-4"
+                              />
+                              <label
+                                htmlFor={`club-full-${club.id}`}
+                                className="text-sm cursor-pointer flex-1"
+                              >
+                                {club.name}
+                              </label>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  </details>
+                )}
+
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground italic border-t pt-2 pb-0">
+                    * Required fields - All fields except Co-Host Clubs must be filled
+                  </p>
+                  <div className="flex gap-2 justify-end">
+                    <Button variant="outline" onClick={() => setShowCreateModal(false)} disabled={isCreating} className="h-9">
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleCreate}
+                      disabled={
+                        isCreating ||
+                        (selectedLocationCapacity !== null && formData.maxCheckInCount > selectedLocationCapacity)
+                      }
+                      className="h-9"
+                    >
+                      {isCreating ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Creating...
+                        </>
+                      ) : (
+                        'Send'
+                      )}
+                    </Button>
+                  </div>
+                </div>
               </div>
             </ScrollArea>
           </Modal>

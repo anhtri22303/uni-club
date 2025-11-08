@@ -10,9 +10,13 @@ interface AnalyticsTabProps {
   pendingClubApplications: number
   rejectedClubApplications: number
   totalEventRequests: number
-  approvedEvents: number
-  pendingEvents: number
-  rejectedEvents: number
+  pendingCoClubEvents: number
+  pendingUniStaffEvents: number
+  approvedEventsCount: number
+  ongoingEventsCount: number
+  completedEventsCount: number
+  rejectedEventsCount: number
+  cancelledEventsCount: number
 }
 
 export function AnalyticsTab({
@@ -22,9 +26,13 @@ export function AnalyticsTab({
   pendingClubApplications,
   rejectedClubApplications,
   totalEventRequests,
-  approvedEvents,
-  pendingEvents,
-  rejectedEvents
+  pendingCoClubEvents,
+  pendingUniStaffEvents,
+  approvedEventsCount,
+  ongoingEventsCount,
+  completedEventsCount,
+  rejectedEventsCount,
+  cancelledEventsCount
 }: AnalyticsTabProps) {
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -148,43 +156,74 @@ export function AnalyticsTab({
               </div>
               <span className="truncate">Event Requests Status</span>
             </CardTitle>
-            <CardDescription className="text-[10px] sm:text-xs">Distribution of event request statuses (non-expired only)</CardDescription>
+            <CardDescription className="text-[10px] sm:text-xs">Complete distribution of all event statuses</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4 sm:space-y-6">
               {/* Total Count Display */}
               <div className="text-center p-3 sm:p-4 bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-950/30 dark:to-purple-900/30 rounded-lg border border-purple-200 dark:border-purple-800">
-                <div className="text-3xl sm:text-4xl font-bold text-white-600">{totalEventRequests}</div>
-                <div className="text-xs sm:text-sm text-muted-foreground mt-1">Total Requests</div>
+                <div className="text-3xl sm:text-4xl font-bold text-purple-600">{totalEventRequests}</div>
+                <div className="text-xs sm:text-sm text-muted-foreground mt-1">Total Events</div>
               </div>
 
               {/* Bar Chart */}
-              <div className="space-y-4 sm:space-y-6">
-                {/* Pending Bar */}
+              <div className="space-y-3 sm:space-y-4">
+                {/* Pending Co-club Bar */}
                 <div className="space-y-1.5 sm:space-y-2">
-                  <div className="flex items-center justify-between p-1.5 sm:p-2 rounded-lg bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800/50">
+                  <div className="flex items-center justify-between p-1.5 sm:p-2 rounded-lg bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800/50">
                     <div className="flex items-center gap-1.5 sm:gap-2">
-                      <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-yellow-500 flex-shrink-0" />
-                      <span className="font-semibold text-xs sm:text-sm text-yellow-700 dark:text-yellow-400">Pending</span>
+                      <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-orange-400 flex-shrink-0" />
+                      <span className="font-semibold text-xs sm:text-sm text-orange-700 dark:text-orange-400">⏳ Pending Co-club</span>
                     </div>
                     <div className="flex items-center gap-1 sm:gap-2">
-                      <span className="text-lg sm:text-xl md:text-2xl font-bold text-yellow-600 dark:text-yellow-500">{pendingEvents}</span>
-                      <span className="text-[10px] sm:text-xs text-yellow-600 dark:text-yellow-500 w-10 sm:w-12 text-right">
-                        {totalEventRequests > 0 ? Math.round((pendingEvents / totalEventRequests) * 100) : 0}%
+                      <span className="text-lg sm:text-xl md:text-2xl font-bold text-orange-600 dark:text-orange-500">{pendingCoClubEvents}</span>
+                      <span className="text-[10px] sm:text-xs text-orange-600 dark:text-orange-500 w-10 sm:w-12 text-right">
+                        {totalEventRequests > 0 ? Math.round((pendingCoClubEvents / totalEventRequests) * 100) : 0}%
                       </span>
                     </div>
                   </div>
-                  <div className="relative h-8 sm:h-10 bg-gray-100 dark:bg-gray-800/50 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                  <div className="relative h-6 sm:h-8 bg-gray-100 dark:bg-gray-800/50 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
                     <div
                       className="absolute inset-y-0 left-0 transition-all duration-700 ease-out flex items-center justify-center"
                       style={{
-                        width: `${totalEventRequests > 0 ? (pendingEvents / totalEventRequests) * 100 : 0}%`,
-                        backgroundColor: '#eab308',
+                        width: `${totalEventRequests > 0 ? (pendingCoClubEvents / totalEventRequests) * 100 : 0}%`,
+                        backgroundColor: '#fb923c',
                       }}
                     >
-                      {pendingEvents > 0 && (
+                      {pendingCoClubEvents > 0 && (
                         <span className="text-[10px] sm:text-xs font-bold text-white px-1 sm:px-2">
-                          {pendingEvents} request{pendingEvents !== 1 ? 's' : ''}
+                          {pendingCoClubEvents}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Pending UniStaff Bar */}
+                <div className="space-y-1.5 sm:space-y-2">
+                  <div className="flex items-center justify-between p-1.5 sm:p-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-amber-400 flex-shrink-0" />
+                      <span className="font-semibold text-xs sm:text-sm text-amber-700 dark:text-amber-400">🕓 Pending UniStaff</span>
+                    </div>
+                    <div className="flex items-center gap-1 sm:gap-2">
+                      <span className="text-lg sm:text-xl md:text-2xl font-bold text-amber-600 dark:text-amber-500">{pendingUniStaffEvents}</span>
+                      <span className="text-[10px] sm:text-xs text-amber-600 dark:text-amber-500 w-10 sm:w-12 text-right">
+                        {totalEventRequests > 0 ? Math.round((pendingUniStaffEvents / totalEventRequests) * 100) : 0}%
+                      </span>
+                    </div>
+                  </div>
+                  <div className="relative h-6 sm:h-8 bg-gray-100 dark:bg-gray-800/50 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                    <div
+                      className="absolute inset-y-0 left-0 transition-all duration-700 ease-out flex items-center justify-center"
+                      style={{
+                        width: `${totalEventRequests > 0 ? (pendingUniStaffEvents / totalEventRequests) * 100 : 0}%`,
+                        backgroundColor: '#fbbf24',
+                      }}
+                    >
+                      {pendingUniStaffEvents > 0 && (
+                        <span className="text-[10px] sm:text-xs font-bold text-white px-1 sm:px-2">
+                          {pendingUniStaffEvents}
                         </span>
                       )}
                     </div>
@@ -196,26 +235,88 @@ export function AnalyticsTab({
                   <div className="flex items-center justify-between p-1.5 sm:p-2 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800/50">
                     <div className="flex items-center gap-1.5 sm:gap-2">
                       <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-green-500 flex-shrink-0" />
-                      <span className="font-semibold text-xs sm:text-sm text-green-700 dark:text-green-400">Approved</span>
+                      <span className="font-semibold text-xs sm:text-sm text-green-700 dark:text-green-400">✅ Approved</span>
                     </div>
                     <div className="flex items-center gap-1 sm:gap-2">
-                      <span className="text-lg sm:text-xl md:text-2xl font-bold text-green-600 dark:text-green-500">{approvedEvents}</span>
+                      <span className="text-lg sm:text-xl md:text-2xl font-bold text-green-600 dark:text-green-500">{approvedEventsCount}</span>
                       <span className="text-[10px] sm:text-xs text-green-600 dark:text-green-500 w-10 sm:w-12 text-right">
-                        {totalEventRequests > 0 ? Math.round((approvedEvents / totalEventRequests) * 100) : 0}%
+                        {totalEventRequests > 0 ? Math.round((approvedEventsCount / totalEventRequests) * 100) : 0}%
                       </span>
                     </div>
                   </div>
-                  <div className="relative h-8 sm:h-10 bg-gray-100 dark:bg-gray-800/50 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                  <div className="relative h-6 sm:h-8 bg-gray-100 dark:bg-gray-800/50 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
                     <div
                       className="absolute inset-y-0 left-0 transition-all duration-700 ease-out flex items-center justify-center"
                       style={{
-                        width: `${totalEventRequests > 0 ? (approvedEvents / totalEventRequests) * 100 : 0}%`,
+                        width: `${totalEventRequests > 0 ? (approvedEventsCount / totalEventRequests) * 100 : 0}%`,
                         backgroundColor: '#22c55e',
                       }}
                     >
-                      {approvedEvents > 0 && (
+                      {approvedEventsCount > 0 && (
                         <span className="text-[10px] sm:text-xs font-bold text-white px-1 sm:px-2">
-                          {approvedEvents} request{approvedEvents !== 1 ? 's' : ''}
+                          {approvedEventsCount}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Ongoing Bar */}
+                <div className="space-y-1.5 sm:space-y-2">
+                  <div className="flex items-center justify-between p-1.5 sm:p-2 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/50">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-blue-500 flex-shrink-0" />
+                      <span className="font-semibold text-xs sm:text-sm text-blue-700 dark:text-blue-400">🟢 Ongoing</span>
+                    </div>
+                    <div className="flex items-center gap-1 sm:gap-2">
+                      <span className="text-lg sm:text-xl md:text-2xl font-bold text-blue-600 dark:text-blue-500">{ongoingEventsCount}</span>
+                      <span className="text-[10px] sm:text-xs text-blue-600 dark:text-blue-500 w-10 sm:w-12 text-right">
+                        {totalEventRequests > 0 ? Math.round((ongoingEventsCount / totalEventRequests) * 100) : 0}%
+                      </span>
+                    </div>
+                  </div>
+                  <div className="relative h-6 sm:h-8 bg-gray-100 dark:bg-gray-800/50 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                    <div
+                      className="absolute inset-y-0 left-0 transition-all duration-700 ease-out flex items-center justify-center"
+                      style={{
+                        width: `${totalEventRequests > 0 ? (ongoingEventsCount / totalEventRequests) * 100 : 0}%`,
+                        backgroundColor: '#3b82f6',
+                      }}
+                    >
+                      {ongoingEventsCount > 0 && (
+                        <span className="text-[10px] sm:text-xs font-bold text-white px-1 sm:px-2">
+                          {ongoingEventsCount}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Completed Bar */}
+                <div className="space-y-1.5 sm:space-y-2">
+                  <div className="flex items-center justify-between p-1.5 sm:p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-emerald-500 flex-shrink-0" />
+                      <span className="font-semibold text-xs sm:text-sm text-emerald-700 dark:text-emerald-400">🏁 Completed</span>
+                    </div>
+                    <div className="flex items-center gap-1 sm:gap-2">
+                      <span className="text-lg sm:text-xl md:text-2xl font-bold text-emerald-600 dark:text-emerald-500">{completedEventsCount}</span>
+                      <span className="text-[10px] sm:text-xs text-emerald-600 dark:text-emerald-500 w-10 sm:w-12 text-right">
+                        {totalEventRequests > 0 ? Math.round((completedEventsCount / totalEventRequests) * 100) : 0}%
+                      </span>
+                    </div>
+                  </div>
+                  <div className="relative h-6 sm:h-8 bg-gray-100 dark:bg-gray-800/50 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                    <div
+                      className="absolute inset-y-0 left-0 transition-all duration-700 ease-out flex items-center justify-center"
+                      style={{
+                        width: `${totalEventRequests > 0 ? (completedEventsCount / totalEventRequests) * 100 : 0}%`,
+                        backgroundColor: '#10b981',
+                      }}
+                    >
+                      {completedEventsCount > 0 && (
+                        <span className="text-[10px] sm:text-xs font-bold text-white px-1 sm:px-2">
+                          {completedEventsCount}
                         </span>
                       )}
                     </div>
@@ -227,26 +328,57 @@ export function AnalyticsTab({
                   <div className="flex items-center justify-between p-1.5 sm:p-2 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50">
                     <div className="flex items-center gap-1.5 sm:gap-2">
                       <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-red-500 flex-shrink-0" />
-                      <span className="font-semibold text-xs sm:text-sm text-red-700 dark:text-red-400">Rejected</span>
+                      <span className="font-semibold text-xs sm:text-sm text-red-700 dark:text-red-400">❌ Rejected</span>
                     </div>
                     <div className="flex items-center gap-1 sm:gap-2">
-                      <span className="text-lg sm:text-xl md:text-2xl font-bold text-red-600 dark:text-red-500">{rejectedEvents}</span>
+                      <span className="text-lg sm:text-xl md:text-2xl font-bold text-red-600 dark:text-red-500">{rejectedEventsCount}</span>
                       <span className="text-[10px] sm:text-xs text-red-600 dark:text-red-500 w-10 sm:w-12 text-right">
-                        {totalEventRequests > 0 ? Math.round((rejectedEvents / totalEventRequests) * 100) : 0}%
+                        {totalEventRequests > 0 ? Math.round((rejectedEventsCount / totalEventRequests) * 100) : 0}%
                       </span>
                     </div>
                   </div>
-                  <div className="relative h-8 sm:h-10 bg-gray-100 dark:bg-gray-800/50 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                  <div className="relative h-6 sm:h-8 bg-gray-100 dark:bg-gray-800/50 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
                     <div
                       className="absolute inset-y-0 left-0 transition-all duration-700 ease-out flex items-center justify-center"
                       style={{
-                        width: `${totalEventRequests > 0 ? (rejectedEvents / totalEventRequests) * 100 : 0}%`,
+                        width: `${totalEventRequests > 0 ? (rejectedEventsCount / totalEventRequests) * 100 : 0}%`,
                         backgroundColor: '#ef4444',
                       }}
                     >
-                      {rejectedEvents > 0 && (
+                      {rejectedEventsCount > 0 && (
                         <span className="text-[10px] sm:text-xs font-bold text-white px-1 sm:px-2">
-                          {rejectedEvents} request{rejectedEvents !== 1 ? 's' : ''}
+                          {rejectedEventsCount}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Cancelled Bar */}
+                <div className="space-y-1.5 sm:space-y-2">
+                  <div className="flex items-center justify-between p-1.5 sm:p-2 rounded-lg bg-gray-50 dark:bg-gray-950/30 border border-gray-200 dark:border-gray-800/50">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-gray-500 flex-shrink-0" />
+                      <span className="font-semibold text-xs sm:text-sm text-gray-700 dark:text-gray-400">🚫 Cancelled</span>
+                    </div>
+                    <div className="flex items-center gap-1 sm:gap-2">
+                      <span className="text-lg sm:text-xl md:text-2xl font-bold text-gray-600 dark:text-gray-500">{cancelledEventsCount}</span>
+                      <span className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-500 w-10 sm:w-12 text-right">
+                        {totalEventRequests > 0 ? Math.round((cancelledEventsCount / totalEventRequests) * 100) : 0}%
+                      </span>
+                    </div>
+                  </div>
+                  <div className="relative h-6 sm:h-8 bg-gray-100 dark:bg-gray-800/50 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                    <div
+                      className="absolute inset-y-0 left-0 transition-all duration-700 ease-out flex items-center justify-center"
+                      style={{
+                        width: `${totalEventRequests > 0 ? (cancelledEventsCount / totalEventRequests) * 100 : 0}%`,
+                        backgroundColor: '#6b7280',
+                      }}
+                    >
+                      {cancelledEventsCount > 0 && (
+                        <span className="text-[10px] sm:text-xs font-bold text-white px-1 sm:px-2">
+                          {cancelledEventsCount}
                         </span>
                       )}
                     </div>

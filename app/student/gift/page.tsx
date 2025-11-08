@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Gift, Package, ChevronLeft, ChevronRight, Layers, Loader2, Eye, WalletCards } from "lucide-react"
+import { Gift, Package, ChevronLeft, ChevronRight, Layers, Loader2, Eye, WalletCards, Search } from "lucide-react"
 import { usePagination } from "@/hooks/use-pagination"
 import { useClubs, useProductsByClubId, useProfile, queryKeys } from "@/hooks/use-query-hooks"
 import { Product } from "@/service/productApi"
@@ -33,39 +33,38 @@ const MinimalPager = ({
 	onNext: () => void
 }) =>
 	total > 1 ? (
-		<div className="flex items-center justify-center gap-3 mt-4">
-			<Button
-				variant="outline"
-				size="sm"
-				className="h-8 w-8 p-0"
+		<div className="flex items-center justify-center gap-2">
+			<button
 				onClick={onPrev}
 				disabled={current === 1}
+				className="h-10 w-10 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
+				aria-label="Previous page"
 			>
-				<ChevronLeft className="h-4 w-4" />
-			</Button>
-			<div className="min-w-[2rem] text-center text-sm font-medium">
-				{current}
+				<ChevronLeft className="h-5 w-5 text-gray-600" />
+			</button>
+			<div className="px-4 py-2 text-sm font-medium text-gray-700">
+				Page {current} of {total}
 			</div>
-			<Button
-				variant="outline"
-				size="sm"
-				className="h-8 w-8 p-0"
+			<button
 				onClick={onNext}
 				disabled={current === total}
+				className="h-10 w-10 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
+				aria-label="Next page"
 			>
-				<ChevronRight className="h-4 w-4" />
-			</Button>
+				<ChevronRight className="h-5 w-5 text-gray-600" />
+			</button>
 		</div>
 	) : null
 
 // ========== COMPONENT ==========
 export default function MemberGiftPage() {
 	const [searchTerm, setSearchTerm] = useState("")
+	const [selectedTab, setSelectedTab] = useState<"CLUB_ITEM" | "EVENT_ITEM">("CLUB_ITEM")
 	const { toast } = useToast()
 	const router = useRouter()
 	const searchParams = useSearchParams()
 	const clubIdFromQuery = searchParams.get('clubId') // Lấy clubId từ URL
-	// ✅ MỚI: Thêm state cho logic chọn club
+	// state cho logic chọn club
 	const [userClubIds, setUserClubIds] = useState<number[]>([])
 	const [userClubsDetails, setUserClubsDetails] = useState<any[]>([])
 	const [selectedClubId, setSelectedClubId] = useState<string | null>(null)// Bắt đầu là null
@@ -155,20 +154,23 @@ export default function MemberGiftPage() {
 	}, [userClubIds, clubsData, clubIdFromQuery, selectedClubId]);
 	//
 
-	// Logic lọc (Luôn lọc 'ACTIVE' trước)
+	// Logic lọc (Luôn lọc 'ACTIVE' trước, sau đó filter theo tab và search)
 	const filteredProducts = useMemo(() => {
 		const activeProducts = products.filter(p => p.status === "ACTIVE");
+		
+		// Filter by selected tab (type)
+		const typeFilteredProducts = activeProducts.filter(p => p.type === selectedTab);
 
 		if (!searchTerm) {
-			return activeProducts;
+			return typeFilteredProducts;
 		}
 
 		const searchLower = searchTerm.toLowerCase()
-		return activeProducts.filter((p) => {
+		return typeFilteredProducts.filter((p) => {
 			return p.name.toLowerCase().includes(searchLower) ||
 				p.description.toLowerCase().includes(searchLower);
 		});
-	}, [products, searchTerm]); // Chạy lại khi products hoặc searchTerm thay đổi
+	}, [products, searchTerm, selectedTab]); // Chạy lại khi products, searchTerm hoặc selectedTab thay đổi
 
 	const {
 		currentPage,
@@ -244,194 +246,251 @@ export default function MemberGiftPage() {
 	return (
 		<ProtectedRoute allowedRoles={["student"]}>
 			<AppShell>
-				<div className="space-y-6">
-					<div>
-						<h1 className="text-3xl font-bold">Gift Products</h1>
-						{/* Thêm thông tin club */}
-						<p className="text-muted-foreground">
-							Browse and redeem products from your clubs
-							{userClubIds.length > 0 && (
-								<span className="text-xs text-muted-foreground/70 ml-2">
-									(Viewing for club{userClubIds.length > 1 ? "s" : ""} {userClubIds.join(", ")})
-								</span>
-							)}
-						</p>
+				<div className="space-y-8 pb-8">
+					{/* Header */}
+					<div className="bg-gradient-to-r from-blue-600 to-purple-600 -mx-6 -mt-6 px-6 py-8 text-white">
+						<h1 className="text-3xl font-bold mb-2">Gift Store</h1>
+						<p className="text-blue-100">Redeem your points for amazing rewards</p>
 					</div>
 
-					{/* Thêm Flex container cho Input và Select */}
-					<div className="flex flex-wrap gap-4">
-						<Input
-							placeholder="Search products..."
-							value={searchTerm}
-							onChange={(e) => {
-								setSearchTerm(e.target.value)
-								setCurrentPage(1) // Reset page
+					{/* Tab Buttons - Moved to top */}
+					<div className="flex gap-3 -mt-4">
+						<button
+							onClick={() => {
+								setSelectedTab("CLUB_ITEM")
+								setCurrentPage(1)
 							}}
-							className="max-w-sm flex-1 min-w-[200px]"
-						/>
-
-						{/*  Dropdown chọn Club */}
-						{userClubIds.length > 0 && (
-							<Select
-								value={selectedClubId || ""}
-								onValueChange={(value) => {
-									setSelectedClubId(value)
-									// ❗️ Dòng này rất quan trọng
-									router.push(`/student/gift?clubId=${value}`, { scroll: false })
-									setCurrentPage(1)
-								}}
-							>
-								<SelectTrigger className="w-full sm:w-[240px]">
-									<div className="flex items-center gap-2">
-										<Layers className="h-4 w-4 text-muted-foreground" />
-										<SelectValue placeholder="Select a club" />
-									</div>
-								</SelectTrigger>
-								<SelectContent>
-									{/* Không có "All My Clubs" */}
-									{userClubsDetails.map((club) => (
-										<SelectItem key={club.id} value={String(club.id)}>
-											{club.name}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-						)}
+							className={`flex-1 py-4 px-6 rounded-lg font-semibold text-base transition-all duration-200 flex items-center justify-center gap-2 ${
+								selectedTab === "CLUB_ITEM"
+									? "bg-blue-600 text-white shadow-lg shadow-blue-200"
+									: "bg-white text-gray-700 hover:bg-gray-50 border-2 border-gray-200"
+							}`}
+						>
+							<Gift className="h-5 w-5" />
+							Club Gift
+						</button>
+						<button
+							onClick={() => {
+								setSelectedTab("EVENT_ITEM")
+								setCurrentPage(1)
+							}}
+							className={`flex-1 py-4 px-6 rounded-lg font-semibold text-base transition-all duration-200 flex items-center justify-center gap-2 ${
+								selectedTab === "EVENT_ITEM"
+									? "bg-purple-600 text-white shadow-lg shadow-purple-200"
+									: "bg-white text-gray-700 hover:bg-gray-50 border-2 border-gray-200"
+							}`}
+						>
+							<Package className="h-5 w-5" />
+							Event Gift
+						</button>
 					</div>
 
-					<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-						{/* Logic hiển thị loading/empty */}
-						{(isLoading || profileLoading) ? (
-							<div className="col-span-full text-center py-12">
-								<Package className="h-12 w-12 text-muted-foreground mx-auto mb-4 animate-pulse" />
-								<p className="text-muted-foreground">Loading clubs...</p>
+					{/* Search and Filter Section */}
+					<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+						<div className="flex flex-col md:flex-row gap-3">
+							<div className="relative flex-1">
+								<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+								<Input
+									placeholder="Search for gifts..."
+									value={searchTerm}
+									onChange={(e) => {
+										setSearchTerm(e.target.value)
+										setCurrentPage(1)
+									}}
+									className="pl-10 h-11 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+								/>
 							</div>
-						) : isFetching ? ( //Loading khi đổi club
-							<div className="col-span-full text-center py-12">
-								<Package className="h-12 w-12 text-muted-foreground mx-auto mb-4 animate-pulse" />
-								<p className="text-muted-foreground">Loading products for this club...</p>
+
+							{userClubIds.length > 0 && (
+								<Select
+									value={selectedClubId || ""}
+									onValueChange={(value) => {
+										setSelectedClubId(value)
+										router.push(`/student/gift?clubId=${value}`, { scroll: false })
+										setCurrentPage(1)
+									}}
+								>
+									<SelectTrigger className="w-full md:w-[280px] h-11 border-gray-300">
+										<div className="flex items-center gap-2">
+											<Layers className="h-4 w-4 text-gray-500" />
+											<SelectValue placeholder="Select a club" />
+										</div>
+									</SelectTrigger>
+									<SelectContent>
+										{userClubsDetails.map((club) => (
+											<SelectItem key={club.id} value={String(club.id)}>
+												{club.name}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							)}
+						</div>
+					</div>
+
+				{/* Products Grid */}
+				<div className="grid gap-4 grid-cols-4">
+						{(isLoading || profileLoading) ? (
+							<div className="col-span-full">
+								<div className="bg-white rounded-lg border border-gray-200 p-16 text-center">
+									<div className="w-20 h-20 mx-auto mb-6 rounded-full bg-blue-100 flex items-center justify-center">
+										<Loader2 className="h-10 w-10 text-blue-600 animate-spin" />
+									</div>
+									<h3 className="text-xl font-semibold mb-2 text-gray-900">Loading Amazing Gifts...</h3>
+									<p className="text-gray-600">Please wait while we fetch the best rewards for you</p>
+								</div>
+							</div>
+						) : isFetching ? (
+							<div className="col-span-full">
+								<div className="bg-white rounded-lg border border-gray-200 p-16 text-center">
+									<div className="w-20 h-20 mx-auto mb-6 rounded-full bg-purple-100 flex items-center justify-center">
+										<Loader2 className="h-10 w-10 text-purple-600 animate-spin" />
+									</div>
+									<h3 className="text-xl font-semibold mb-2 text-gray-900">Loading Products...</h3>
+									<p className="text-gray-600">Fetching gifts from this club</p>
+								</div>
 							</div>
 						) : userClubIds.length === 0 ? (
-							<div className="col-span-full text-center py-12">
-								<Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-								<h3 className="text-lg font-semibold mb-2">No club membership</h3>
-								<p className="text-muted-foreground">You must join a club to see its products.</p>
+							<div className="col-span-full">
+								<div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-lg border border-orange-200 p-16 text-center">
+									<div className="w-20 h-20 mx-auto mb-6 rounded-full bg-white flex items-center justify-center shadow-md">
+										<Package className="h-10 w-10 text-orange-500" />
+									</div>
+									<h3 className="text-2xl font-bold mb-2 text-orange-900">No Club Membership</h3>
+									<p className="text-orange-700 mb-6">Join a club to start redeeming amazing rewards!</p>
+									<button 
+										onClick={() => router.push('/student/club')}
+										className="px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-semibold rounded-lg transition-colors inline-flex items-center gap-2"
+									>
+										<Layers className="h-4 w-4" />
+										Browse Clubs
+									</button>
+								</div>
 							</div>
 						) : paginatedProducts.length === 0 ? (
-							<div className="col-span-full text-center py-12">
-								<Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-								<h3 className="text-lg font-semibold mb-2">
-									No products found
-								</h3>
-								<p className="text-muted-foreground">
-									{searchTerm ? "Try adjusting your search terms" : "This club has no products available."}
-								</p>
+							<div className="col-span-full">
+								<div className="bg-white rounded-lg border border-gray-200 p-16 text-center">
+									<div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gray-100 flex items-center justify-center">
+										<Package className="h-10 w-10 text-gray-400" />
+									</div>
+									<h3 className="text-2xl font-bold mb-2 text-gray-900">No Products Found</h3>
+									<p className="text-gray-600 mb-4">
+										{searchTerm ? "Try adjusting your search terms" : `No ${selectedTab === "CLUB_ITEM" ? "club" : "event"} gifts available`}
+									</p>
+									{searchTerm && (
+										<button 
+											onClick={() => setSearchTerm("")}
+											className="px-6 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium rounded-lg transition-colors"
+										>
+											Clear Search
+										</button>
+									)}
+								</div>
 							</div>
 						) : (
 							paginatedProducts.map((p) => {
-								// LẤY ẢNH THUMBNAIL
 								const thumbnail = p.media?.find((m) => m.thumbnail)?.url || "/placeholder.svg";
 								const isRedeeming = redeemingProductId === p.id;
 								const isOutOfStock = p.stockQuantity === 0;
 								const detailUrl = `/student/gift/${p.id}?clubId=${selectedClubId}`;
 
 								return (
-									<Card
+									<div
 										key={p.id}
-										className="transition-all duration-200 hover:shadow-md flex flex-col h-full relative overflow-hidden"
+										className="group bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-1 flex flex-col"
 									>
-										<CardHeader className="p-0 border-b">
-											<div
-												className="aspect-video w-full relative overflow-hidden bg-muted cursor-pointer"
+										{/* Image Section */}
+										<div 
+											className="relative aspect-square overflow-hidden bg-gray-100 cursor-pointer"
+											onClick={() => router.push(detailUrl)}
+										>
+											<img
+												src={thumbnail}
+												alt={p.name}
+												className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
+												onError={(e) => (e.currentTarget.src = "/placeholder.svg")}
+											/>
+											
+											{/* Stock Badge */}
+											{isOutOfStock && (
+												<div className="absolute top-2 left-2 bg-red-500 text-white text-xs font-semibold px-2 py-1 rounded-full">
+													Out of Stock
+												</div>
+											)}
+										</div>
+
+										<div className="p-3 flex flex-col gap-2 grow">
+											{/* Title */}
+											<h3
+												className="text-sm font-bold line-clamp-2 cursor-pointer hover:text-blue-600 transition-colors min-h-10"
+												title={p.name}
 												onClick={() => router.push(detailUrl)}
 											>
-												<img
-													src={thumbnail}
-													alt={p.name}
-													className="object-cover w-full h-full"
-													onError={(e) => (e.currentTarget.src = "/placeholder.svg")}
-												/>
-												{/* Badge Club Name */}
-												<Badge
-													variant="secondary"
-													className="absolute right-2 top-2 z-10 text-xs"
-												>
-													{p.clubName}
-												</Badge>
-											</div>
-										</CardHeader>
+												{p.name}
+											</h3>
 
-										<CardContent className="p-3 flex flex-col gap-2 grow">
-											<div className="min-w-0">
-												<CardTitle
-													className="text-base font-semibold truncate cursor-pointer hover:text-primary"
-													title={p.name}
-													onClick={() => router.push(detailUrl)}
-												>
-													{p.name}
-												</CardTitle>
-												<CardDescription className="mt-1 text-sm line-clamp-2" title={p.description}>
-													{p.description || "No description."}
-												</CardDescription>
-											</div>
+											{/* Description */}
+											<p className="text-xs text-gray-600 line-clamp-2">
+												{p.description || "An amazing reward waiting for you!"}
+											</p>
 
-											{/*Hiển thị Tags */}
+											{/* Tags */}
 											{p.tags && p.tags.length > 0 && (
-												<div className="flex flex-wrap gap-1 mt-1">
-													{p.tags.map((tag) => (
-														<Badge
+												<div className="flex flex-wrap gap-1">
+													{p.tags.slice(0, 2).map((tag) => (
+														<span
 															key={tag}
-															variant="default"
-															className="text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200"
+															className="text-xs font-medium px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200"
 														>
 															{tag}
-														</Badge>
+														</span>
 													))}
+													{p.tags.length > 2 && (
+														<span className="text-xs font-medium px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded">
+															+{p.tags.length - 2}
+														</span>
+													)}
 												</div>
 											)}
 
-											{/* Đẩy giá và kho xuống dưới */}
-											<div className="flex items-center justify-between mt-auto pt-2">
+											{/* Price and Stock Info */}
+											<div className="mt-auto pt-2 border-t border-gray-200 space-y-2">
+												<div className="flex items-center justify-between">
+													<div>
+														<p className="text-xs text-gray-500">Points</p>
+														<p className="text-lg font-bold text-gray-900">
+															{p.pointCost.toLocaleString('en-US')}
+														</p>
+													</div>
+													<div className="text-right">
+														<p className="text-xs text-gray-500">Stock</p>
+														<p className={`text-sm font-bold ${isOutOfStock ? 'text-red-500' : 'text-green-600'}`}>
+															{p.stockQuantity.toLocaleString('en-US')}
+														</p>
+													</div>
+												</div>
 
-												<span className="font-semibold text-blue-600 text-base flex items-center">
-													<WalletCards className="h-4 w-4 text-muted-foreground mr-2" />
-													{p.pointCost.toLocaleString('en-US')} points
-												</span>
-												<span className={`text-sm ${isOutOfStock ? 'text-red-500 font-medium' : 'text-muted-foreground'}`}>
-													Stock: {p.stockQuantity.toLocaleString('en-US')}
-												</span>
-											</div>
-
-											{/* Nút Redeem và Nút Details */}
-											<div className="mt-2 grid grid-cols-2 gap-2">
-												{/* Nút View Details */}
-												<Button
-													variant="outline"
-													size="sm"
+												{/* Action Button */}
+												<button
 													onClick={() => router.push(detailUrl)}
-													disabled={isRedeeming} // Vô hiệu hóa khi đang redeem
-												>
-													<Eye className="h-4 w-4 mr-2 flex-shrink-0" />
-													<span className="truncate">Details</span>
-												</Button>
-
-												{/* Nút Redeem */}
-												<Button
-													variant={isOutOfStock ? "secondary" : "default"}
-													size="sm"
-													disabled={isOutOfStock || isRedeeming}
-													onClick={() => handleRedeem(p)}
+													disabled={isRedeeming}
+													className="w-full py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
 												>
 													{isRedeeming ? (
-														<Loader2 className="h-4 w-4 mr-2 animate-spin" />
+														<>
+															<Loader2 className="h-4 w-4 animate-spin" />
+															Processing...
+														</>
 													) : (
-														<Gift className="h-4 w-4 mr-2" />
+														<>
+															<Eye className="h-3.5 w-3.5" />
+															View
+														</>
 													)}
-													{isOutOfStock ? "Out of Stock" : (isRedeeming ? "Processing..." : "Redeem")}
-												</Button>
+												</button>
 											</div>
-										</CardContent>
-									</Card>
+										</div>
+									</div>
 								)
 							})
 						)}

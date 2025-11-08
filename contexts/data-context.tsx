@@ -27,6 +27,12 @@ interface DataContextType {
   policies: any[]
   clubApplications: any[]
   eventRequests: any[]
+  clubLeaderApplications: any[]
+  clubLeaderEventCounts: {
+    pendingCoClub: number
+    pendingUniStaff: number
+    coHostPending: number
+  }
   updateClubMemberships: (data: any[]) => void
   updateMembershipApplications: (data: any[]) => void
   updateVouchers: (data: any[]) => void
@@ -40,6 +46,8 @@ interface DataContextType {
   updatePolicies: (data: any[]) => void
   updateClubApplications: (data: any[]) => void
   updateEventRequests: (data: any[]) => void
+  updateClubLeaderApplications: (data: any[]) => void
+  updateClubLeaderEventCounts: (counts: { pendingCoClub: number; pendingUniStaff: number; coHostPending: number }) => void
   addMembershipApplication: (application: any) => void
   addVoucher: (voucher: any) => void
   addStaffHistoryEntry: (entry: any) => void
@@ -66,6 +74,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [policies, setPolicies] = useLocalStorage("clubly-policies", [] as any[])
   const [clubApplications, setClubApplications] = useLocalStorage("clubly-club-applications", [] as any[])
   const [eventRequests, setEventRequests] = useLocalStorage("clubly-event-requests", [] as any[])
+  const [clubLeaderApplications, setClubLeaderApplications] = useLocalStorage("clubly-club-leader-applications", [] as any[])
+  const [clubLeaderEventCounts, setClubLeaderEventCounts] = useLocalStorage("clubly-club-leader-event-counts", {
+    pendingCoClub: 0,
+    pendingUniStaff: 0,
+    coHostPending: 0
+  })
   const [staffHistory, setStaffHistory] = useLocalStorage("clubly-staff-history", initialStaffHistory)
   const [clubGiftProducts, setClubGiftProducts] = useLocalStorage("clubly-club-gift-products", initialClubGiftProducts)
   const [shopProducts, setShopProducts] = useLocalStorage("clubly-shop-products", initialShopProducts)
@@ -163,6 +177,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       policies,
       clubApplications,
       eventRequests,
+      clubLeaderApplications,
+      clubLeaderEventCounts,
       updateClubMemberships: setClubMemberships,
       updateMembershipApplications: setMembershipApplications,
       updateVouchers: setVouchers,
@@ -176,6 +192,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       updatePolicies: setPolicies,
       updateClubApplications: setClubApplications,
       updateEventRequests: setEventRequests,
+      updateClubLeaderApplications: setClubLeaderApplications,
+      updateClubLeaderEventCounts: setClubLeaderEventCounts,
       addMembershipApplication,
       removeMembershipApplication,
       replaceMembershipApplication,
@@ -200,6 +218,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       policies,
       clubApplications,
       eventRequests,
+      clubLeaderApplications,
+      clubLeaderEventCounts,
       setClubMemberships,
       setMembershipApplications,
       setVouchers,
@@ -213,6 +233,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       setPolicies,
       setClubApplications,
       setEventRequests,
+      setClubLeaderApplications,
+      setClubLeaderEventCounts,
       addMembershipApplication,
       removeMembershipApplication,
       replaceMembershipApplication,

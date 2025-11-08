@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { forceResetPassword } from "@/service/userApi"
 import { ChangePasswordModal } from "@/components/change-password"
+import { useDataLoader } from "@/hooks/use-data-loader"
 
 interface AppShellProps {
   children: React.ReactNode
@@ -42,6 +43,9 @@ export function AppShell({ children }: AppShellProps) {
   const { auth, logout } = useAuth()
   const pathname = usePathname()
   const { toast } = useToast()
+
+  // Load data into DataContext after login
+  useDataLoader()
 
   // Mobile: drawer open
   const [sidebarOpen, setSidebarOpen] = useState(false)

@@ -137,21 +137,21 @@ export default function MemberClubsPage() {
   }, [])
 
 
-  const majorColors: Record<string, string> = {
-    "Software Engineering": "#0052CC",
-    "Artificial Intelligence": "#6A00FF",
-    "Information Assurance": "#243447",
-    "Data Science": "#00B8A9",
-    "Business Administration": "#1E2A78",
-    "Digital Marketing": "#FF3366",
-    "Graphic Design": "#FFC300",
-    "Multimedia Communication": "#FF6B00",
-    "Hospitality Management": "#E1B382",
-    "International Business": "#007F73",
-    "Finance and Banking": "#006B3C",
-    "Japanese Language": "#D80032",
-    "Korean Language": "#5DADEC",
-  }
+  // const majorColors: Record<string, string> = {
+  //   "Software Engineering": "#0052CC",
+  //   "Artificial Intelligence": "#6A00FF",
+  //   "Information Assurance": "#243447",
+  //   "Data Science": "#00B8A9",
+  //   "Business Administration": "#1E2A78",
+  //   "Digital Marketing": "#FF3366",
+  //   "Graphic Design": "#FFC300",
+  //   "Multimedia Communication": "#FF6B00",
+  //   "Hospitality Management": "#E1B382",
+  //   "International Business": "#007F73",
+  //   "Finance and Banking": "#006B3C",
+  //   "Japanese Language": "#D80032",
+  //   "Korean Language": "#5DADEC",
+  // }
   const getClubStatus = (clubId: string) => {
     // If we have a local pending marker for this club, show pending immediately
     if (pendingClubIds.includes(clubId)) return "pending"
@@ -194,9 +194,11 @@ export default function MemberClubsPage() {
     .map((club: ClubApiItem) => {
       // 1. Thử lấy tên major trực tiếp (logic cũ)
       let majorName = club.majorName ?? (club as any).major?.name ?? (club as any).major?.majorName
+      let majorColor: string | undefined = undefined // Khởi tạo màu
 
       // 2. Nếu không có tên, thử tìm bằng ID
-      if (!majorName && majors.length > 0) {
+      // (Chúng ta cũng tìm ngay cả khi có tên, để lấy màu)
+      if (majors.length > 0) {
         // Giả sử API trả về 'majorId' hoặc 'major' (dưới dạng ID hoặc object {id: ...})
         const clubMajorId = (club as any).majorId ?? (club as any).major?.id ?? (club as any).major
 
@@ -204,6 +206,7 @@ export default function MemberClubsPage() {
           const majorFromList = majors.find(m => m.id === Number(clubMajorId))
           if (majorFromList) {
             majorName = majorFromList.name // Đã tìm thấy tên từ danh sách majors
+            majorColor = majorFromList.colorHex // [THÊM] Lấy colorHex từ danh sách
           }
         }
       }
@@ -211,6 +214,7 @@ export default function MemberClubsPage() {
         id: String(club.id),
         name: club.name,
         major: majorName ?? "", // Sử dụng tên đã được tìm thấy
+        majorColor: majorColor ?? "#E2E8F0", // [THÊM] Thêm màu (với fallback)
         description: club.description,
         members: club.memberCount ?? 0,
         events: club.approvedEvents ?? 0,
@@ -298,8 +302,7 @@ export default function MemberClubsPage() {
     setShowApplicationModal(true)
   }
 
-  // ✅ REMOVED: useEffect for fetching clubs - now using React Query hooks above
-
+  // useEffect for fetching clubs - now using React Query hooks above
   const submitApplication = () => {
     if (!selectedClub || !applicationText.trim()) {
       toast({
@@ -424,16 +427,9 @@ export default function MemberClubsPage() {
     {
       key: "major" as const,
       label: "Major",
-      // render: (value: string) => {
-      //   const variant = getMajorVariant(value)
-      //   return (
-      //     <Badge title={value || ""} variant={variant as any} className="max-w-[140px] truncate">
-      //       {value || "-"}
-      //     </Badge>
-      //   )
-      // },
-      render: (value: string) => {
-        const color = majorColors[value] || "#E2E8F0" // fallback nếu không có
+      render: (value: string, club: any) => { // Nhận toàn bộ đối tượng 'club' (hàng)
+        // Lấy màu từ 'club.majorColor' đã được thêm vào ở useMemo
+        const color = club.majorColor || "#E2E8F0" // fallback nếu không có
         return (
           <Badge
             variant="secondary"
@@ -443,7 +439,7 @@ export default function MemberClubsPage() {
               color: "#fff", // chữ trắng cho rõ
             }}
           >
-            {value || "-"}
+            {value || "-"} {/* 'value' vẫn là club.major (tên) */}
           </Badge>
         )
       },
@@ -734,7 +730,7 @@ export default function MemberClubsPage() {
                       const payload = {
                         clubName: newClubName.trim(),
                         description: newDescription.trim(),
-                        majorId: selectedMajorId, // ✅ ID của major
+                        majorId: selectedMajorId,
                         vision: newVision.trim(),
                         proposerReason: newProposerReason.trim(),
                       }

@@ -19,7 +19,7 @@ export function GoogleSignInButton({ mode = "sign-in", onClick }: GoogleSignInBu
   const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
     try {
       setIsLoading(true)
-      console.log("✅ Google credential received from Google OAuth")
+      console.log("✅ Google credential received from Google OAuth: ", credentialResponse.credential)
       
       // Validate credential exists
       if (!credentialResponse.credential) {

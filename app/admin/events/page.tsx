@@ -1,6 +1,7 @@
+// file: admin/events/page.tsx
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { AppShell } from "@/components/app-shell"
 import { ProtectedRoute } from "@/contexts/protected-route"
@@ -14,128 +15,117 @@ import { Modal } from "@/components/modal"
 import { QRModal } from "@/components/qr-modal"
 import { CalendarModal } from "@/components/calendar-modal"
 import { useToast } from "@/hooks/use-toast"
-import { usePagination } from "@/hooks/use-pagination"
-import { Calendar, Plus, MapPin, Trophy, ChevronLeft, ChevronRight, Filter, X, Eye } from "lucide-react"
+import { Calendar, Plus, Trophy, ChevronLeft, ChevronRight, Eye, Filter, X } from "lucide-react"
 import { QrCode } from "lucide-react"
 import QRCode from "qrcode"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
-
-import clubs from "@/src/data/clubs.json"
-import { fetchEvent, timeObjectToString, eventQR } from "@/service/eventApi"
-import { createEvent, getEventById } from "@/service/eventApi"
-import { safeLocalStorage } from "@/lib/browser-utils"
+import { fetchAdminEvents, AdminEvent, FetchAdminEventsParams } from "@/service/adminApi/adminEventApi"
+import { createEvent, eventQR, timeObjectToString } from "@/service/eventApi"
 import { PhaseSelectionModal } from "@/components/phase-selection-modal"
+
+// Helper mới để format thời gian ISO
+const formatIsoTime = (isoString: string) => {
+  if (!isoString) return "N/A"
+  try {
+    return new Date(isoString).toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    })
+  } catch {
+    return "Invalid Time"
+  }
+}
+
+// Định nghĩa kiểu cho bộ lọc
+type EventFilters = {
+  status?: string
+  type?: string
+  date?: string
+}
 
 export default function AdminEventsPage() {
   const router = useRouter()
-  const [rawEvents, setRawEvents] = useState<any[]>([])
+  const [events, setEvents] = useState<AdminEvent[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const { toast } = useToast()
 
-  // Add fullscreen and environment states
+  // State cho pagination (server-side)
+  const [currentPage, setCurrentPage] = useState(0) // API dùng 0-indexed
+  const [paginationInfo, setPaginationInfo] = useState({
+    totalPages: 0,
+    totalElements: 0,
+    first: true,
+    last: true,
+  })
+  // hiển thị số lượng thẻ trong 1 trang
+  const PAGE_SIZE = 16
+
+  const [searchTerm, setSearchTerm] = useState("")
+  const [activeFilters, setActiveFilters] = useState<EventFilters>({})
+  const [showFilters, setShowFilters] = useState(false)
+
+  // Add fullscreen and environment states (cho QR Modal)
   const [isFullscreen, setIsFullscreen] = useState(false)
-  // support 'mobile' environment for deep-link QR
   const [activeEnvironment, setActiveEnvironment] = useState<'local' | 'prod' | 'mobile'>('prod')
 
-  // Helper function to check if event has expired (past endTime) or is COMPLETED
-  const isEventExpired = (event: any) => {
-    // COMPLETED status is always considered expired
+  // Helper function để kiểm tra event đã hết hạn (dựa trên endTime ISO string)
+  const isEventExpired = (event: AdminEvent) => {
     if (event.status === "COMPLETED") return true
-    
-    // Check if date and endTime are present
-    if (!event.date || !event.endTime) return false
+    if (!event.endTime) return false
 
     try {
-      // Get current date/time in Vietnam timezone (UTC+7)
       const now = new Date()
-      const vnTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }))
-
-      // Parse event date (format: YYYY-MM-DD)
-      const [year, month, day] = event.date.split('-').map(Number)
-      
-      // Convert endTime to string if it's an object
-      const endTimeStr = timeObjectToString(event.endTime)
-      
-      // Parse endTime (format: HH:MM:SS or HH:MM)
-      const [hours, minutes] = endTimeStr.split(':').map(Number)
-
-      // Create event end datetime in Vietnam timezone
-      const eventEndDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0)
-
-      // Event is expired if current VN time is past the end time
-      return vnTime > eventEndDateTime
+      const eventEndDateTime = new Date(event.endTime)
+      return now > eventEndDateTime
     } catch (error) {
       console.error('Error checking event expiration:', error)
       return false
     }
   }
 
-  // Helper function to sort events by date and time (newest to oldest)
-  const sortEventsByDateTime = (eventList: any[]) => {
-    return eventList.sort((a: any, b: any) => {
-      // Parse dates for comparison
-      const dateA = new Date(a.date || '1970-01-01')
-      const dateB = new Date(b.date || '1970-01-01')
-      
-      // Compare dates first (newest first)
-      if (dateA.getTime() !== dateB.getTime()) {
-        return dateB.getTime() - dateA.getTime()
+  // --- Logic Fetch Data ---
+  const loadEvents = async (page: number, keyword: string, filters: EventFilters) => {
+    setIsLoading(true)
+    try {
+      // Xây dựng params động
+      const params: FetchAdminEventsParams = {
+        page,
+        size: PAGE_SIZE,
+        keyword: keyword || undefined,
+        // Chỉ thêm filter nếu nó có giá trị và không phải "all"
+        status: filters.status && filters.status !== 'all' ? filters.status : undefined,
+        type: filters.type && filters.type !== 'all' ? filters.type : undefined,
+        date: filters.date || undefined,
       }
-      
-      // If dates are equal, compare times (latest startTime first)
-      // Support both new (startTime) and legacy (time) formats
-      const timeA = a.startTime || a.time || '00:00'
-      const timeB = b.startTime || b.time || '00:00'
-      
-      // Convert time strings to comparable format (HH:MM:SS or HH:MM to minutes)
-      const parseTime = (timeStr: string) => {
-        const parts = timeStr.split(':').map(Number)
-        const hours = parts[0] || 0
-        const minutes = parts[1] || 0
-        return hours * 60 + minutes
-      }
-      
-      return parseTime(timeB) - parseTime(timeA)
-    })
+
+      const data = await fetchAdminEvents(params)
+
+      setEvents(data.content)
+      setPaginationInfo({
+        totalPages: data.totalPages,
+        totalElements: data.totalElements,
+        first: data.first,
+        last: data.last,
+      })
+    } catch (error) {
+      console.error("Failed to load events:", error)
+      toast({ title: "Error fetching events", description: "Could not load events from server.", variant: "destructive" })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
+  // useEffect để fetch data khi page hoặc search term thay đổi
   useEffect(() => {
-    let mounted = true
-    const load = async () => {
-      setIsLoading(true)
-      try {
-        const data: any = await fetchEvent()
-        if (!mounted) return
-        const raw: any[] = Array.isArray(data) ? data : (data?.events ?? [])
-        setRawEvents(raw)
-      } catch (error) {
-        console.error("Failed to load events:", error)
-        toast({ title: "Error fetching events", description: "Could not load events from server.", variant: "destructive" })
-      } finally {
-        if (mounted) setIsLoading(false)
-      }
-    }
-    load()
-    return () => { mounted = false }
-  }, [])
+    loadEvents(currentPage, searchTerm, activeFilters)
+  }, [currentPage, searchTerm, activeFilters])
 
-  // Process and sort events using useMemo
-  const events = useMemo(() => {
-    // Normalize events with both new and legacy field support
-    const normalized = rawEvents.map((e: any) => ({ 
-      ...e, 
-      title: e.name || e.title,
-      time: e.startTime || e.time, // Map startTime to time for legacy compatibility
-      clubId: e.hostClub?.id || e.clubId,
-      clubName: e.hostClub?.name || e.clubName,
-    }))
-    return sortEventsByDateTime(normalized)
-  }, [rawEvents])
-
+  // --- Các state cho Modals ---
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showCalendarModal, setShowCalendarModal] = useState(false)
-  const [selectedEvent, setSelectedEvent] = useState<any>(null)
+  const [selectedEvent, setSelectedEvent] = useState<AdminEvent | null>(null)
   const [showPhaseModal, setShowPhaseModal] = useState(false)
   const [isGeneratingQR, setIsGeneratingQR] = useState(false)
   const [showQrModal, setShowQrModal] = useState(false)
@@ -158,7 +148,6 @@ export default function AdminEventsPage() {
     }
     setCountdown(Math.floor(ROTATION_INTERVAL_MS / 1000))
 
-    // Regenerate QR codes every 30 seconds by calling the API
     const regenerateQR = async () => {
       if (!selectedEvent?.id || !selectedPhase) return
 
@@ -167,12 +156,10 @@ export default function AdminEventsPage() {
         const { token } = await eventQR(selectedEvent.id, selectedPhase)
         console.log('New token generated:', token)
 
-        // Create URLs with new token and phase
         const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${selectedPhase}/${token}`
         const localUrl = `http://localhost:3000/student/checkin/${selectedPhase}/${token}`
         const mobileLink = `exp://192.168.1.50:8081/--/student/checkin/${selectedPhase}/${token}`
 
-        // Generate QR code variants
         const styleVariants = [
           { color: { dark: '#000000', light: '#FFFFFF' }, margin: 1 },
           { color: { dark: '#111111', light: '#FFFFFF' }, margin: 2 },
@@ -206,11 +193,11 @@ export default function AdminEventsPage() {
       regenerateQR()
       setCountdown(Math.floor(ROTATION_INTERVAL_MS / 1000))
     }, ROTATION_INTERVAL_MS)
-    
+
     const cntId = setInterval(() => {
       setCountdown((s) => (s <= 1 ? Math.floor(ROTATION_INTERVAL_MS / 1000) : s - 1))
     }, 1000)
-    
+
     return () => {
       clearInterval(rotId)
       clearInterval(cntId)
@@ -228,10 +215,9 @@ export default function AdminEventsPage() {
     return () => clearTimeout(t)
   }, [visibleIndex, showQrModal])
 
-  // For admin, show all clubs
-  const managedClub = clubs[0]
+  // --- Logic Create Modal ---
   const [formData, setFormData] = useState({
-    clubId: managedClub.id,
+    clubId: 1, // TODO: Thay bằng club selector
     name: "",
     description: "",
     type: "PUBLIC",
@@ -242,92 +228,27 @@ export default function AdminEventsPage() {
     maxCheckInCount: 100,
   })
 
-  // Admin sees all events
-  const effectiveEvents = events
+  // Pagination handlers - Thêm window.scrollTo
+  const goPrev = () => {
+    setCurrentPage(Math.max(0, currentPage - 1))
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+  const goNext = () => {
+    setCurrentPage(Math.min(paginationInfo.totalPages - 1, currentPage + 1))
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
-  const [searchTerm, setSearchTerm] = useState("")
-  const [activeFilters, setActiveFilters] = useState<Record<string, any>>({ expired: "hide" })
-  const [showFilters, setShowFilters] = useState(false)
-
-  const filteredEvents = effectiveEvents.filter((item) => {
-    // Calculate status values
-    const isExpired = isEventExpired(item)
-    const isFutureEvent = item.date && new Date(item.date) >= new Date(new Date().toDateString())
-    
-    const approvalFilter = activeFilters["approval"]
-    const expiredFilter = activeFilters["expired"] || "hide"
-    
-    // Apply default restrictions only when filters are at default values
-    const isDefaultState = !approvalFilter && expiredFilter === "hide"
-    
-    if (isDefaultState) {
-      // Default: Only show future PENDING_UNISTAFF and APPROVED events
-      if (item.status === "REJECTED") return false
-      if (item.status === "COMPLETED") return false
-      if (isExpired) return false
-      if (!isFutureEvent) return false
-    }
-    
-    // search by title/name
-    if (searchTerm) {
-      const v = String(item.title || item.name || "").toLowerCase()
-      if (!v.includes(searchTerm.toLowerCase())) return false
-    }
-
-    // type filter
-    const typeFilter = activeFilters["type"]
-    if (typeFilter && typeFilter !== "all") {
-      if (String(item.type || "").toUpperCase() !== String(typeFilter).toUpperCase()) return false
-    }
-
-    // date exact match (can be extended to ranges)
-    const dateFilter = activeFilters["date"]
-    if (dateFilter) {
-      const it = new Date(item.date).toDateString()
-      const df = new Date(dateFilter).toDateString()
-      if (it !== df) return false
-    }
-
-    // approval status filter (specific status like APPROVED, PENDING, REJECTED)
-    if (approvalFilter && approvalFilter !== "all") {
-      if (String(item.status).toUpperCase() !== String(approvalFilter).toUpperCase()) return false
-    }
-
-    // expired filter - only apply if not in default state (to avoid duplicate filtering)
-    if (!isDefaultState) {
-      if (expiredFilter === "hide") {
-        if (isExpired) return false
-      } else if (expiredFilter === "only") {
-        if (!isExpired) return false
-      } 
-      // Handle time-based status options (Soon, Finished)
-      else if (expiredFilter === "Soon" || expiredFilter === "Finished") {
-        const status = getEventStatus(item.date, item.time)
-        if (String(status).toLowerCase() !== String(expiredFilter).toLowerCase()) return false
-      }
-      // "show" means show all - no filtering needed
-    }
-
-    return true
+  const resetForm = () => setFormData({
+    clubId: 1, // TODO: Thay bằng club selector
+    name: "",
+    description: "",
+    type: "PUBLIC",
+    date: "",
+    startTime: "09:00:00",
+    endTime: "11:00:00",
+    locationName: "",
+    maxCheckInCount: 100
   })
-
-  const { currentPage, totalPages, paginatedData: paginatedEvents, setCurrentPage } = usePagination({ data: filteredEvents, initialPageSize: 6 })
-  const goPrev = () => setCurrentPage(Math.max(1, currentPage - 1))
-  const goNext = () => setCurrentPage(Math.min(totalPages, currentPage + 1))
-  const handleFilterChange = (filterKey: string, value: any) => {
-    setActiveFilters((prev) => ({ ...prev, [filterKey]: value }))
-    setCurrentPage(1)
-  }
-  const clearFilters = () => {
-    setActiveFilters({ expired: "hide" })
-    setSearchTerm("")
-    setCurrentPage(1)
-  }
-  const hasActiveFilters = Object.entries(activeFilters).some(([key, v]) => {
-    if (key === "expired") return v !== "hide"
-    return v && v !== "all"
-  }) || Boolean(searchTerm)
-  const resetForm = () => setFormData({ clubId: managedClub.id, name: "", description: "", type: "PUBLIC", date: "", startTime: "09:00:00", endTime: "11:00:00", locationName: "", maxCheckInCount: 100 })
 
   const handleCreate = async () => {
     if (!formData.name || !formData.date || !formData.startTime || !formData.endTime) {
@@ -336,11 +257,10 @@ export default function AdminEventsPage() {
     }
     try {
       const hostClubId = Number(formData.clubId)
-      
-      // Format time strings to HH:MM format
+
       const startTime = formData.startTime.substring(0, 5)
       const endTime = formData.endTime.substring(0, 5)
-      
+
       const payload: any = {
         hostClubId,
         name: formData.name,
@@ -349,67 +269,77 @@ export default function AdminEventsPage() {
         date: formData.date,
         startTime: startTime,
         endTime: endTime,
-        locationId: 1, // Default location - admin should select from locations
+        locationId: 1, // Default location
         maxCheckInCount: formData.maxCheckInCount,
-        commitPointCost: 0, // Admin creates events with 0 commit cost
-        budgetPoints: 0,    // Admin can set budget points later
+        commitPointCost: 0,
+        budgetPoints: 0,
       }
       const res: any = await createEvent(payload)
       toast({ title: "Event Created", description: "Event created successfully" })
       setShowCreateModal(false)
-      // Refresh events
-      const data: any = await fetchEvent()
-      const raw: any[] = Array.isArray(data) ? data : (data?.events ?? [])
-      setRawEvents(raw)
+
+      // Refresh events list
       resetForm()
+      // Tải lại trang đầu tiên
+      if (currentPage === 0) {
+        loadEvents(0, searchTerm, activeFilters)
+      } else {
+        setCurrentPage(0)
+      }
+
     } catch (error: any) {
       console.error(error)
-      toast({ 
-        title: "Error", 
-        description: error?.response?.data?.message || "Failed to create event", 
-        variant: "destructive" 
+      toast({
+        title: "Error",
+        description: error?.response?.data?.message || "Failed to create event",
+        variant: "destructive"
       })
     }
   }
 
+  // --- Các handlers cho Filter ---
+  const handleFilterChange = (filterKey: keyof EventFilters, value: any) => {
+    setActiveFilters((prev) => ({ ...prev, [filterKey]: value }))
+    setCurrentPage(0) // Reset về trang đầu khi đổi filter
+  }
+  const clearFilters = () => {
+    setActiveFilters({})
+    setSearchTerm("")
+    setCurrentPage(0)
+  }
+  const hasActiveFilters = Object.values(activeFilters).some(v => v && v !== "all") || Boolean(searchTerm)
 
-  // Helper function to handle phase confirmation
+  // --- Logic QR Modal (handlePhaseConfirm, handleDownloadQR, handleCopyLink) ---
   const handlePhaseConfirm = async (phase: string) => {
     if (!selectedEvent?.id) return
 
     try {
       setIsGeneratingQR(true)
 
-      // Call new eventQR API with selected phase
       console.log('Generating check-in token for event:', selectedEvent.id, 'with phase:', phase)
       const { token, expiresIn } = await eventQR(selectedEvent.id, phase)
       console.log('Generated token:', token, 'expires in:', expiresIn)
 
-      // Create URLs with token and phase (path parameter format)
       const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${phase}/${token}`
       const localUrl = `http://localhost:3000/student/checkin/${phase}/${token}`
       const mobileLink = `exp://192.168.1.50:8081/--/student/checkin/${phase}/${token}`
 
-      // Generate QR code variants
       const styleVariants = [
         { color: { dark: '#000000', light: '#FFFFFF' }, margin: 1 },
         { color: { dark: '#111111', light: '#FFFFFF' }, margin: 2 },
         { color: { dark: '#222222', light: '#FFFFFF' }, margin: 0 },
       ]
 
-      // Generate QR variants for local environment
       const localQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) =>
         QRCode.toDataURL(localUrl, styleVariants[i % styleVariants.length])
       )
       const localQrVariants = await Promise.all(localQrVariantsPromises)
 
-      // Generate QR variants for production environment
       const prodQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) =>
         QRCode.toDataURL(prodUrl, styleVariants[i % styleVariants.length])
       )
       const prodQrVariants = await Promise.all(prodQrVariantsPromises)
 
-      // Generate QR variants for mobile
       const mobileVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) =>
         QRCode.toDataURL(mobileLink, styleVariants[i % styleVariants.length])
       )
@@ -421,7 +351,6 @@ export default function AdminEventsPage() {
       setDisplayedIndex(0)
       setSelectedPhase(phase)
 
-      // Close phase modal and open QR modal
       setShowPhaseModal(false)
       setShowQrModal(true)
 
@@ -442,7 +371,6 @@ export default function AdminEventsPage() {
     }
   }
 
-  // Helper functions for QR actions
   const handleDownloadQR = (environment: 'local' | 'prod' | 'mobile') => {
     try {
       let qrDataUrl: string | undefined
@@ -451,11 +379,9 @@ export default function AdminEventsPage() {
       } else if (environment === 'prod') {
         qrDataUrl = qrRotations.prod[displayedIndex % (qrRotations.prod.length || 1)]
       } else {
-        // mobile: use pre-generated QR from qrRotations.mobile, or fallback to qrLinks.mobile
         if (qrRotations.mobile && qrRotations.mobile.length > 0) {
           qrDataUrl = qrRotations.mobile[displayedIndex % qrRotations.mobile.length]
         } else if (qrLinks.mobile) {
-          // Fallback: generate QR using external API with the correct mobile link (includes phase)
           qrDataUrl = `https://api.qrserver.com/v1/create-qr-code/?size=640x640&data=${encodeURIComponent(qrLinks.mobile)}`
         } else {
           toast({ title: 'No QR', description: 'Mobile QR not available', variant: 'destructive' })
@@ -466,13 +392,13 @@ export default function AdminEventsPage() {
       if (!qrDataUrl) return
 
       const link = document.createElement('a')
-      link.download = `qr-code-${selectedEvent?.name?.replace(/[^a-zA-Z0-9]/g, '-')}-${environment}.png`
+      link.download = `qr-code-${selectedEvent?.title?.replace(/[^a-zA-Z0-9]/g, '-')}-${environment}.png`
       link.href = qrDataUrl
       link.click()
 
-      toast({ 
-        title: 'Downloaded', 
-        description: `QR code downloaded for ${environment} environment` 
+      toast({
+        title: 'Downloaded',
+        description: `QR code downloaded for ${environment} environment`
       })
     } catch (err) {
       toast({ title: 'Download failed', description: 'Could not download QR code' })
@@ -489,41 +415,41 @@ export default function AdminEventsPage() {
       }
 
       if (!link) return
-      
+
       await navigator.clipboard.writeText(link)
-      toast({ 
-        title: 'Copied', 
-        description: `${environment.charAt(0).toUpperCase() + environment.slice(1)} link copied to clipboard` 
+      toast({
+        title: 'Copied',
+        description: `${environment.charAt(0).toUpperCase() + environment.slice(1)} link copied to clipboard`
       })
     } catch {
       toast({ title: 'Copy failed', description: 'Could not copy link to clipboard' })
     }
   }
 
-  // Helper to get event status based on date and time
-  const getEventStatus = (eventDate: string, eventTime: string) => {
-    if (!eventDate) return "Finished"
-    // Get current time in Vietnam timezone (UTC+7)
-    const now = new Date()
-    const vnTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }))
-    
-    // Parse event date and time
-    const [hour = "00", minute = "00"] = (eventTime || "00:00").split(":")
-    const [year, month, day] = eventDate.split('-').map(Number)
-    const event = new Date(year, month - 1, day, Number(hour), Number(minute), 0, 0)
+  // Helper mới để get status (dùng startTime ISO string)
+  const getEventStatus = (startTimeIso: string) => {
+    if (!startTimeIso) return "Finished"
+    try {
+      const now = new Date()
+      const eventStartTime = new Date(startTimeIso)
 
-    // Event duration: assume 2 hours for "Now" window (customize as needed)
-    const EVENT_DURATION_MS = 2 * 60 * 60 * 1000
-    const start = event.getTime()
-    const end = start + EVENT_DURATION_MS
+      // Giả sử 2 tiếng cho "Now"
+      const EVENT_DURATION_MS = 2 * 60 * 60 * 1000
+      const start = eventStartTime.getTime()
+      const end = start + EVENT_DURATION_MS
+      const nowTime = now.getTime()
 
-    if (vnTime.getTime() < start) {
-      // If event starts within next 7 days, it's "Soon"
-      if (start - vnTime.getTime() < 7 * 24 * 60 * 60 * 1000) return "Soon"
-      return "Future"
+      if (nowTime < start) {
+        // Trong 7 ngày tới là "Soon"
+        if (start - nowTime < 7 * 24 * 60 * 60 * 1000) return "Soon"
+        return "Future"
+      }
+      if (nowTime >= start && nowTime <= end) return "Now"
+      return "Finished"
+    } catch (error) {
+      console.error("Error in getEventStatus:", error);
+      return "Finished"
     }
-    if (vnTime.getTime() >= start && vnTime.getTime() <= end) return "Now"
-    return "Finished"
   }
 
   return (
@@ -551,15 +477,18 @@ export default function AdminEventsPage() {
               <Input
                 placeholder="Search by name"
                 value={searchTerm}
-                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1) }}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value)
+                  setCurrentPage(0)
+                }}
                 className="max-w-sm"
               />
               <Button variant="outline" size="sm" onClick={() => setShowFilters(!showFilters)} className="flex items-center gap-2">
                 <Filter className="h-4 w-4" />
                 Filters
                 {hasActiveFilters && (
-                  <Badge variant="secondary" className="ml-1 h-5 w-5 p-0 text-xs">
-                    {Object.values(activeFilters).filter((v) => v && v !== "all").length + (searchTerm ? 1 : 0)}
+                  <Badge variant="secondary" className="ml-1 h-5 w-5 p-0 text-xs flex items-center justify-center">
+                    {Object.values(activeFilters).filter(v => v && v !== "all").length + (searchTerm ? 1 : 0)}
                   </Badge>
                 )}
               </Button>
@@ -575,7 +504,7 @@ export default function AdminEventsPage() {
                     </Button>
                   )}
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-muted-foreground">Type</label>
                     <Select value={activeFilters["type"] || "all"} onValueChange={(v) => handleFilterChange("type", v)}>
@@ -583,7 +512,7 @@ export default function AdminEventsPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">All</SelectItem>
+                        <SelectItem value="all">All Types</SelectItem>
                         <SelectItem value="PUBLIC">Public</SelectItem>
                         <SelectItem value="PRIVATE">Private</SelectItem>
                       </SelectContent>
@@ -597,32 +526,20 @@ export default function AdminEventsPage() {
 
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-muted-foreground">Status</label>
-                    <Select value={activeFilters["approval"] || "all"} onValueChange={(v) => handleFilterChange("approval", v)}>
+                    <Select value={activeFilters["status"] || "all"} onValueChange={(v) => handleFilterChange("status", v)}>
                       <SelectTrigger className="h-8 text-xs">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">All</SelectItem>
-                        <SelectItem value="APPROVED">Approved</SelectItem>
+                        <SelectItem value="all">All Statuses</SelectItem>
                         <SelectItem value="PENDING_COCLUB">Pending Co-Club</SelectItem>
                         <SelectItem value="PENDING_UNISTAFF">Pending Uni-Staff</SelectItem>
+                        <SelectItem value="APPROVED">Approved</SelectItem>
+                        <SelectItem value="ONGOING">Ongoing</SelectItem>
+                        <SelectItem value="COMPLETED">Completed</SelectItem>
                         <SelectItem value="REJECTED">Rejected</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                        <SelectItem value="CANCELLED">Cancelled</SelectItem>
 
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">Expired</label>
-                    <Select value={activeFilters["expired"] || "hide"} onValueChange={(v) => handleFilterChange("expired", v)}>
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="hide">Hide Expired</SelectItem>
-                        <SelectItem value="show">Show All</SelectItem>
-                        <SelectItem value="only">Only Expired</SelectItem>
-                        <SelectItem value="Soon">Soon</SelectItem>
-                        <SelectItem value="Finished">Finished</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -631,30 +548,60 @@ export default function AdminEventsPage() {
             )}
           </div>
 
-          {effectiveEvents.length === 0 ? (
+          {/* Event List */}
+          {isLoading ? (
+            // Loading Skeletons
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              {Array.from({ length: PAGE_SIZE }).map((_, index) => (
+                <Card key={index} className="h-[350px]"> {/* Giữ chiều cao skeleton để tránh nhảy layout */}
+                  <CardHeader className="p-4"> {/* CHANGED */}
+                    <Skeleton className="h-5 w-3/4" />
+                    <Skeleton className="h-4 w-1/2 mt-2" />
+                  </CardHeader>
+                  <CardContent className="p-4 space-y-2"> {/* CHANGED */}
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-5/6" />
+                    <Skeleton className="h-4 w-2/3" />
+                    <div className="pt-3 mt-auto"> {/* CHANGED */}
+                      <Skeleton className="h-9 w-full" />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : events.length === 0 ? (
+            // No events state
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12 text-center">
                 <Calendar className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No Events Yet</h3>
-                <p className="text-muted-foreground mb-4">Create your first event to get started</p>
-                <Button onClick={() => setShowCreateModal(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Event
-                </Button>
+                <h3 className="text-lg font-semibold mb-2">
+                  {searchTerm ? "No Events Found" : "No Events Yet"}
+                </h3>
+                <p className="text-muted-foreground mb-4">
+                  {searchTerm ? "Try adjusting your search." : "Create your first event to get started"}
+                </p>
+                {!searchTerm && (
+                  <Button onClick={() => setShowCreateModal(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Event
+                  </Button>
+                )}
               </CardContent>
             </Card>
           ) : (
+            // Event grid
             <>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {paginatedEvents.map((event: any) => {
-                  // COMPLETED status means event has ended, regardless of date/time
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                {events.map((event: AdminEvent) => {
                   const isCompleted = event.status === "COMPLETED"
-                  const expired = isCompleted || isEventExpired(event)
-                  const status = expired ? "Finished" : getEventStatus(event.date, event.time)
-                  // Border color logic - completed events get dark blue, expired events override approval status
+                  const isCancelled = event.status === "CANCELLED" // CHANGED: Thêm check
+                  const expired = isCompleted || isCancelled || isEventExpired(event)
+
                   let borderColor = ""
                   if (isCompleted) {
                     borderColor = "border-l-4 border-l-blue-900"
+                  } else if (isCancelled) { // CHANGED: Thêm border cho Cancelled
+                    borderColor = "border-l-4 border-l-slate-700"
                   } else if (expired) {
                     borderColor = "border-l-4 border-l-gray-400"
                   } else if (event.status === "APPROVED") {
@@ -672,12 +619,12 @@ export default function AdminEventsPage() {
                       key={event.id}
                       className={`hover:shadow-md transition-shadow ${borderColor} ${expired || isCompleted ? 'opacity-60' : ''} h-full flex flex-col`}
                     >
-                      <CardHeader>
+                      {/* <CardHeader>
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <CardTitle className="text-lg">{event.title}</CardTitle>
                             {event.description && (
-                              <CardDescription 
+                              <CardDescription
                                 className="mt-1 text-sm leading-5 max-h-[3.75rem] overflow-hidden"
                                 style={{
                                   display: '-webkit-box',
@@ -689,27 +636,38 @@ export default function AdminEventsPage() {
                                 {event.description}
                               </CardDescription>
                             )}
+                          </div> */}
+                      <CardHeader className="p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <CardTitle className="text-lg">{event.title}</CardTitle>
+                            {/* CHANGED: Đã XÓA CardDescription */}
                           </div>
                           <Badge
                             variant={
                               status === "Finished"
                                 ? "secondary"
                                 : status === "Soon"
-                                ? "default"
-                                : status === "Now"
-                                ? "destructive"
-                                : "outline"
+                                  ? "default"
+                                  : status === "Now"
+                                    ? "destructive"
+                                    : "outline"
                             }
                           >
                             {status}
                           </Badge>
                         </div>
-                        {/* Approval status badge - show COMPLETED in dark blue, gray for expired events */}
+                        {/* Approval status badge */}
                         <div className="mt-2">
                           {isCompleted ? (
                             <Badge variant="secondary" className="bg-blue-900 text-white border-blue-900 font-semibold">
                               <span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
                               Completed
+                            </Badge>
+                          ) : isCancelled ? (
+                            <Badge variant="secondary" className="bg-slate-700 text-white border-slate-700 font-semibold">
+                              <span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
+                              Cancelled
                             </Badge>
                           ) : expired ? (
                             <Badge variant="secondary" className="bg-gray-400 text-white font-semibold">
@@ -752,40 +710,48 @@ export default function AdminEventsPage() {
                           )}
                         </div>
                       </CardHeader>
-                      <CardContent className="flex-1 flex flex-col">
-                        <div className="space-y-3 flex-1">
+                      {/* <CardContent className="flex-1 flex flex-col">
+                        <div className="space-y-3 flex-1"> */}
+                      <CardContent className="flex-1 flex flex-col p-4">
+                        <div className="space-y-2 flex-1">
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <Calendar className="h-4 w-4" />
-                            {new Date(event.date).toLocaleDateString("en-US", {
+                            {/* Dùng startTime để hiển thị ngày */}
+                            {new Date(event.startTime).toLocaleDateString("en-US", {
                               weekday: "long",
                               year: "numeric",
                               month: "long",
                               day: "numeric",
                             })}
                           </div>
-                          {event.locationName && (
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <MapPin className="h-4 w-4" />
-                              {event.locationName}
-                            </div>
-                          )}
-                          {(event.startTime && event.endTime) && (
+                          {/* Thay locationName bằng clubName từ API mới */}
+                          {event.clubName && (
                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
                               <Trophy className="h-4 w-4" />
-                              {timeObjectToString(event.startTime)} - {timeObjectToString(event.endTime)}
+                              {event.clubName}
+                            </div>
+                          )}
+                          {/* Dùng helper mới để format thời gian */}
+                          {(event.startTime && event.endTime) && (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              {/* Có thể đổi icon nếu muốn */}
+                              <Trophy className="h-4 w-4" />
+                              {formatIsoTime(event.startTime)} - {formatIsoTime(event.endTime)}
                             </div>
                           )}
                         </div>
 
-                        {/* Buttons section - pushed to bottom */}
-                        <div className="mt-auto pt-4 space-y-3">
+                        {/* Buttons section */}
+                        {/* <div className="mt-auto pt-4 space-y-3"> */}
+                        <div className="mt-auto pt-3 space-y-2">
                           <Button variant="outline" className="w-full" onClick={() => router.push(`/admin/events/${event.id}`)}>
                             <Eye className="h-4 w-4 mr-2" />
                             View Detail
                           </Button>
-                          {/* QR Code Section - Show if APPROVED or ONGOING */}
+                          {/* QR Code Section */}
                           {(event.status === "APPROVED" || event.status === "ONGOING") && (
-                            <div className="mt-3 pt-3 border-t border-muted">
+                            // <div className="mt-3 pt-3 border-t border-muted">
+                            <div className="mt-2 pt-2 border-t border-muted">
                               <Button
                                 variant="default"
                                 size="sm"
@@ -806,7 +772,8 @@ export default function AdminEventsPage() {
                   )
                 })}
               </div>
-              {totalPages > 1 && (
+              {/* Pagination Controls (server-side) */}
+              {paginationInfo.totalPages > 1 && (
                 <div className="flex items-center justify-center gap-3 mt-6">
                   <Button
                     aria-label="Previous page"
@@ -814,18 +781,19 @@ export default function AdminEventsPage() {
                     size="sm"
                     className="h-8 w-8 p-0"
                     onClick={goPrev}
-                    disabled={currentPage === 1}
+                    disabled={paginationInfo.first} // Dùng state từ API
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
-                  <div className="min-w-[2rem] text-center text-sm font-medium">{currentPage}</div>
+                  {/* Hiển thị trang 1-indexed */}
+                  <div className="min-w-[2rem] text-center text-sm font-medium">{currentPage + 1}</div>
                   <Button
                     aria-label="Next page"
                     variant="outline"
                     size="sm"
                     className="h-8 w-8 p-0"
                     onClick={goNext}
-                    disabled={currentPage === totalPages}
+                    disabled={paginationInfo.last} // Dùng state từ API
                   >
                     <ChevronRight className="h-4 w-4" />
                   </Button>
@@ -834,7 +802,7 @@ export default function AdminEventsPage() {
             </>
           )}
 
-          {/* Create Event Modal */}
+          {/* Create Event Modal (Không thay đổi nhiều, chỉ logic bên trong) */}
           <Modal
             open={showCreateModal}
             onOpenChange={setShowCreateModal}
@@ -951,13 +919,13 @@ export default function AdminEventsPage() {
             isLoading={isGeneratingQR}
           />
 
-          {/* QR Modal */}
+          {/* QR Modal (Cập nhật eventName prop) */}
           {selectedEvent && (
             <QRModal
               open={showQrModal}
               onOpenChange={setShowQrModal}
-              eventName={selectedEvent.name ?? ''}
-              checkInCode={selectedEvent.checkInCode ?? ''}
+              eventName={selectedEvent.title ?? ''} // Dùng .title thay vì .name
+              checkInCode={''} // API mới không có checkInCode
               qrRotations={qrRotations}
               qrLinks={qrLinks}
               countdown={countdown}
@@ -972,11 +940,11 @@ export default function AdminEventsPage() {
             />
           )}
 
-          {/* Calendar Modal */}
+          {/* Calendar Modal (Cần đảm bảo events prop hoạt động với AdminEvent[]) */}
           <CalendarModal
             open={showCalendarModal}
             onOpenChange={setShowCalendarModal}
-            events={events}
+            events={events.map(e => ({ ...e, date: e.startTime }))} // Map startTime -> date cho CalendarModal
             onEventClick={(event) => {
               setShowCalendarModal(false)
               router.push(`/admin/events/${event.id}`)
