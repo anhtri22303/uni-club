@@ -130,16 +130,20 @@ export default function ClubLeaderDashboardPage() {
         const majorData = await fetchMajorById(managedClub.majorId)
         console.log('Major data received:', majorData)
         
-        // Check for policies array first (actual API structure)
-        if ((majorData as any)?.policies && Array.isArray((majorData as any).policies) && (majorData as any).policies.length > 0) {
-          setPolicyName((majorData as any).policies[0].policyName)
-        }
-        // Fallback to majorPolicy object structure
-        else if (majorData?.majorPolicy?.policyName) {
-          setPolicyName(majorData.majorPolicy.policyName)
+        // Check for policies array (proper typing)
+        if (majorData?.policies && Array.isArray(majorData.policies) && majorData.policies.length > 0) {
+          // Get the first active policy, or just the first policy if none are active
+          const activePolicy = majorData.policies.find(p => p.active)
+          const policyToUse = activePolicy || majorData.policies[0]
+          setPolicyName(policyToUse.policyName)
+          console.log('Policy name set:', policyToUse.policyName)
+        } else {
+          console.log('No policies found for major')
+          setPolicyName(null)
         }
       } catch (error) {
         console.error('Error fetching policy name:', error)
+        setPolicyName(null)
       }
     }
 
