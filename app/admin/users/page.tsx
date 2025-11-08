@@ -18,7 +18,7 @@ import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useQueryClient, useQuery } from "@tanstack/react-query"
-import { fetchAdminUsers, fetchAdminUserDetails, banUser, unbanUser, AdminUser, AdminUserPaginationResponse, updateUserRole } from "@/service/adminUserApi"
+import { fetchAdminUsers, fetchAdminUserDetails, banUser, unbanUser, AdminUser, AdminUserPaginationResponse, updateUserRole } from "@/service/adminApi/adminUserApi"
 import { useAuth } from "@/contexts/auth-context" // <-- THÊM MỚI
 
 

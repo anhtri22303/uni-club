@@ -102,6 +102,7 @@ const navigationConfig = {
     { href: "/admin/clubs", label: "Clubs", icon: Building },
     // { href: "/admin/attendances", label: "Attendances", icon: FileText },
     { href: "/admin/events", label: "Events", icon: Calendar },
+    { href: "/admin/products", label: "Products", icon: Gift }
   ],
 } as const
 
