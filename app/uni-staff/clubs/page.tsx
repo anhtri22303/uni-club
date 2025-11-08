@@ -55,20 +55,20 @@ export default function UniStaffClubsPage() {
       setError(null)
       try {
         const res: any = await fetchClub({ page: 0, size: 70, sort: ["name"] })
-        const clubList = res?.content ?? []
-        
+        const clubList = res?.data.content ?? []
+
         // Fetch member count for each club
         const clubsWithMemberCount = await Promise.all(
           clubList.map(async (club: ClubApiItem) => {
             const clubData = await getClubMemberCount(club.id)
-            return { 
-              ...club, 
+            return {
+              ...club,
               memberCount: clubData.activeMemberCount,
               approvedEvents: clubData.approvedEvents
             }
           })
         )
-        
+
         if (mounted) setClubs(clubsWithMemberCount)
       } catch (err: any) {
         console.error(err)
@@ -102,16 +102,24 @@ export default function UniStaffClubsPage() {
       // Reload club list
       try {
         const res: any = await fetchClub({ page: 0, size: 70, sort: ["name"] });
-        const clubList = res?.content ?? []
-        
-        // Fetch member count for each club
+
+        // SỬA LỖI 1: Phải là res.data.content
+        const clubList = res?.data?.content ?? [];
+
+        // SỬA LỖI 2: Xử lý đúng response từ getClubMemberCount
         const clubsWithMemberCount = await Promise.all(
           clubList.map(async (club: ClubApiItem) => {
-            const memberCount = await getClubMemberCount(club.id)
-            return { ...club, memberCount }
+            // Lấy đúng object trả về
+            const clubData = await getClubMemberCount(club.id);
+            return {
+              ...club,
+              // Gán đúng giá trị
+              memberCount: clubData.activeMemberCount,
+              approvedEvents: clubData.approvedEvents
+            };
           })
-        )
-        
+        );
+
         setClubs(clubsWithMemberCount);
       } catch (err) {
         toast({ title: "Reload Error", description: "Failed to reload club list.", variant: "destructive" });
