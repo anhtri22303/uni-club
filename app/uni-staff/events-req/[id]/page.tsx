@@ -215,20 +215,79 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
   // effective status (prefer status over type) for checks and display
   const effectiveStatus = (request.status ?? request.type ?? "").toString().toUpperCase()
 
-  const updateStatus = async (status: string) => {
+  // const updateStatus = async (status: string) => {
+  //   if (!request) return
+  //   setProcessing(true)
+  //   try {
+  //     await putEventStatus(request.id, status, request.budgetPoints || 0)
+  //     // optimistic/local update
+  //     setRequest({ ...request, status })
+  //     toast({ title: status === "APPROVED" ? "Approved" : "Rejected", description: `Event ${request.name || request.id} ${status === "APPROVED" ? "approved" : "rejected"}.` })
+  //   } catch (err: any) {
+  //     console.error('Update status failed', err)
+  //     toast({ title: 'Error', description: err?.message || 'Failed to update event status' })
+  //   } finally {
+  //     setProcessing(false)
+  //   }
+  // }
+  // 'updateStatus' được chia thành 'handleApprove' và 'handleReject'
+  // vì 'putEventStatus' API mới (approve-budget) chỉ xử lý việc duyệt.
+
+  const handleApprove = async () => {
     if (!request) return
     setProcessing(true)
     try {
-      await putEventStatus(request.id, status, request.budgetPoints || 0)
-      // optimistic/local update
-      setRequest({ ...request, status })
-      toast({ title: status === "APPROVED" ? "Approved" : "Rejected", description: `Event ${request.name || request.id} ${status === "APPROVED" ? "approved" : "rejected"}.` })
+      // Gọi API theo signature mới: (id, approvedBudgetPoints)
+      const approvedBudgetPoints = request.budgetPoints || 0
+      const updatedEvent = await putEventStatus(request.id, approvedBudgetPoints)
+
+      // Cập nhật state với event (đã được duyệt) trả về từ API
+      setRequest(updatedEvent)
+
+      toast({
+        title: "Approved",
+        description: `Event ${request.name || request.id} approved with ${approvedBudgetPoints} points.`
+      })
     } catch (err: any) {
-      console.error('Update status failed', err)
-      toast({ title: 'Error', description: err?.message || 'Failed to update event status' })
+      console.error('Approve status failed', err)
+      toast({
+        title: 'Error',
+        description: err?.message || 'Failed to approve event',
+        variant: "destructive"
+      })
     } finally {
       setProcessing(false)
     }
+  }
+
+  const handleReject = async () => {
+    if (!request) return
+
+    // TODO: API 'putEventStatus' mới của bạn (approve-budget) không hỗ trợ 'REJECT'.
+    // Bạn sẽ cần một API endpoint riêng cho việc từ chối (ví dụ: rejectEvent(id, reason)).
+    // Tạm thời, nút này sẽ hiển thị một cảnh báo.
+
+    console.warn("Rejection API is not implemented or 'putEventStatus' was changed.")
+    toast({
+      title: "Action Not Implemented",
+      description: "Rejection logic needs a separate API endpoint.",
+      variant: "destructive"
+    })
+
+    // Dưới đây là logic cũ nếu bạn muốn khôi phục/sửa lại API:
+    /*
+    setProcessing(true)
+    try {
+      // Giả sử bạn có một API 'rejectEvent'
+      // await rejectEvent(request.id, { reason: "Not approved" })
+      // setRequest({ ...request, status: "REJECTED" })
+      // toast({ title: "Rejected", ... })
+    } catch (err) {
+      // ...
+    } finally {
+      setProcessing(false)
+    }
+    */
   }
 
   const formatCurrency = (amount: number) => {
@@ -296,10 +355,10 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
               )}
               {effectiveStatus !== "APPROVED" && effectiveStatus !== "REJECTED" && effectiveStatus !== "COMPLETED" && (
                 <div className="flex gap-2">
-                  <Button variant="default" size="sm" className="h-8 w-8 p-0" onClick={() => updateStatus('APPROVED')} disabled={processing}>
+                  <Button variant="default" size="sm" className="h-8 w-8 p-0" onClick={handleApprove} disabled={processing}>
                     <CheckCircle className="h-4 w-4" />
                   </Button>
-                  <Button variant="destructive" size="sm" className="h-8 w-8 p-0" onClick={() => updateStatus('REJECTED')} disabled={processing}>
+                  <Button variant="destructive" size="sm" className="h-8 w-8 p-0" onClick={handleReject} disabled={processing}>
                     <XCircle className="h-4 w-4" />
                   </Button>
                 </div>
@@ -670,11 +729,11 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                     <CardTitle className="text-lg">Actions</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <Button className="w-full" variant="default" onClick={() => updateStatus('APPROVED')} disabled={processing}>
+                    <Button className="w-full" variant="default" onClick={handleApprove} disabled={processing}>
                       <CheckCircle className="h-4 w-4 mr-2" />
-                      {processing ? 'Processing...' : 'Approve Request'}
+                      {processing ? 'Approving...' : 'Approve Request'}
                     </Button>
-                    <Button className="w-full" variant="destructive" onClick={() => updateStatus('REJECTED')} disabled={processing}>
+                    <Button className="w-full" variant="destructive" onClick={handleReject} disabled={processing}>
                       <XCircle className="h-4 w-4 mr-2" />
                       {processing ? 'Processing...' : 'Reject Request'}
                     </Button>

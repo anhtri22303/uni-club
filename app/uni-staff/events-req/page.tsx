@@ -67,7 +67,7 @@ export default function UniStaffEventRequestsPage() {
 			const pad = (n: number) => n.toString().padStart(2, '0')
 			eventTimeStr = `${pad(eventTime.hour || 0)}:${pad(eventTime.minute || 0)}:${pad(eventTime.second || 0)}`
 		}
-		
+
 		// Parse event date and time
 		const [hour = "00", minute = "00"] = (eventTimeStr || "00:00").split(":")
 		const [year, month, day] = eventDate.split('-').map(Number)
@@ -91,7 +91,7 @@ export default function UniStaffEventRequestsPage() {
 	const isEventExpired = (event: any) => {
 		// COMPLETED status is always considered expired
 		if (event.status === "COMPLETED") return true
-		
+
 		// Check if date and endTime are present
 		if (!event.date || !event.endTime) return false
 
@@ -102,7 +102,7 @@ export default function UniStaffEventRequestsPage() {
 
 			// Parse event date (format: YYYY-MM-DD)
 			const [year, month, day] = event.date.split('-').map(Number)
-			
+
 			// Parse endTime (format: HH:MM:SS or HH:MM)
 			const [hours, minutes] = event.endTime.split(':').map(Number)
 
@@ -125,34 +125,34 @@ export default function UniStaffEventRequestsPage() {
 				console.log("🔄 Starting to fetch data for events-req page...")
 				// fetch events, locations, clubs, and settled events in parallel
 				const [eventsRes, locationsRes, clubsRes, settledEventsRes] = await Promise.all([
-					fetchEvent(), 
-					fetchLocation(), 
+					fetchEvent(),
+					fetchLocation(),
 					fetchClub(),
 					getEventSettle().catch(err => {
 						console.warn("Failed to fetch settled events:", err)
 						return []
 					})
 				])
-				
+
 				console.log("✅ Received API responses:", { eventsRes, locationsRes, clubsRes, settledEventsRes })
-				
-				const eventsContent = (eventsRes as any) && Array.isArray((eventsRes as any).content) 
-					? (eventsRes as any).content 
+
+				const eventsContent = (eventsRes as any) && Array.isArray((eventsRes as any).content)
+					? (eventsRes as any).content
 					: Array.isArray(eventsRes) ? eventsRes : []
-				const locationsContent = (locationsRes as any) && Array.isArray((locationsRes as any).content) 
-					? (locationsRes as any).content 
+				const locationsContent = (locationsRes as any) && Array.isArray((locationsRes as any).content)
+					? (locationsRes as any).content
 					: Array.isArray(locationsRes) ? locationsRes : []
-				const clubsContent = (clubsRes as any) && Array.isArray((clubsRes as any).content) 
-					? (clubsRes as any).content 
+				const clubsContent = (clubsRes as any) && Array.isArray((clubsRes as any).content)
+					? (clubsRes as any).content
 					: Array.isArray(clubsRes) ? clubsRes : []
-				
+
 				// Create a set of settled event IDs
 				const settledIds = new Set(
-					Array.isArray(settledEventsRes) 
-						? settledEventsRes.map((e: any) => e.id) 
+					Array.isArray(settledEventsRes)
+						? settledEventsRes.map((e: any) => e.id)
 						: []
 				)
-				
+
 				if (mounted) {
 					console.log("📝 Setting state with data:", { eventsContent, locationsContent, clubsContent, settledIds })
 					setEvents(eventsContent)
@@ -185,7 +185,7 @@ export default function UniStaffEventRequestsPage() {
 			// First filter by active tab status
 			// PENDING_COCLUB events should appear in the PENDING_UNISTAFF tab
 			const eventStatus = (evt.status ?? "").toUpperCase()
-			const matchTab = eventStatus === activeTab || 
+			const matchTab = eventStatus === activeTab ||
 				(activeTab === "PENDING_UNISTAFF" && eventStatus === "PENDING_COCLUB")
 
 			const q = searchTerm.trim().toLowerCase()
@@ -225,9 +225,9 @@ export default function UniStaffEventRequestsPage() {
 			return dateB - dateA // Descending order (latest first)
 		})
 
-		// Minimal pagination state
-		const [page, setPage] = useState(0)
-		const [pageSize, setPageSize] = useState(3)
+	// Minimal pagination state
+	const [page, setPage] = useState(0)
+	const [pageSize, setPageSize] = useState(3)
 
 	// Clamp page when filteredRequests or pageSize change
 	useEffect(() => {
@@ -244,10 +244,10 @@ export default function UniStaffEventRequestsPage() {
 		}
 	}, [activeTab])
 
-		const paginated = (() => {
-			const start = page * pageSize
-			return filteredRequests.slice(start, start + pageSize)
-		})()
+	const paginated = (() => {
+		const start = page * pageSize
+		return filteredRequests.slice(start, start + pageSize)
+	})()
 
 	const getStatusBadge = (status: string, isExpired: boolean = false, isCompleted: boolean = false) => {
 		// COMPLETED status gets dark blue badge - highest priority
@@ -259,7 +259,7 @@ export default function UniStaffEventRequestsPage() {
 				</Badge>
 			)
 		}
-		
+
 		// Override with Expired badge if expired - gray color to override approval status
 		if (isExpired) {
 			return (
@@ -356,9 +356,9 @@ export default function UniStaffEventRequestsPage() {
 									</div>
 									<div>
 										<div className="text-2xl font-bold text-yellow-900 dark:text-yellow-100">
-																{waitingUniStaffCount}
-															</div>
-															<p className="text-sm text-yellow-600 dark:text-yellow-400">Waiting events</p>
+											{waitingUniStaffCount}
+										</div>
+										<p className="text-sm text-yellow-600 dark:text-yellow-400">Waiting events</p>
 									</div>
 								</div>
 							</CardContent>
@@ -377,9 +377,9 @@ export default function UniStaffEventRequestsPage() {
 									</div>
 									<div>
 										<div className="text-2xl font-bold text-green-900 dark:text-green-100">
-																{approvedCount}
-															</div>
-															<p className="text-sm text-green-600 dark:text-green-400">Approved events</p>
+											{approvedCount}
+										</div>
+										<p className="text-sm text-green-600 dark:text-green-400">Approved events</p>
 									</div>
 								</div>
 							</CardContent>
@@ -398,9 +398,9 @@ export default function UniStaffEventRequestsPage() {
 									</div>
 									<div>
 										<div className="text-2xl font-bold text-blue-900 dark:text-blue-100">
-																{completedCount}
-															</div>
-															<p className="text-sm text-blue-600 dark:text-blue-400">Completed events</p>
+											{completedCount}
+										</div>
+										<p className="text-sm text-blue-600 dark:text-blue-400">Completed events</p>
 									</div>
 								</div>
 							</CardContent>
@@ -417,9 +417,9 @@ export default function UniStaffEventRequestsPage() {
 									</div>
 									<div>
 										<div className="text-2xl font-bold text-red-900 dark:text-red-100">
-																{rejectedCount}
-															</div>
-															<p className="text-sm text-red-600 dark:text-red-400">Rejected events</p>
+											{rejectedCount}
+										</div>
+										<p className="text-sm text-red-600 dark:text-red-400">Rejected events</p>
 									</div>
 								</div>
 							</CardContent>
@@ -431,11 +431,10 @@ export default function UniStaffEventRequestsPage() {
 						<Button
 							variant={activeTab === "PENDING_UNISTAFF" ? "default" : "ghost"}
 							size="lg"
-							className={`flex-1 rounded-b-none py-6 text-base font-semibold transition-all ${
-								activeTab === "PENDING_UNISTAFF"
-									? "border-b-4 border-yellow-500 bg-yellow-50 text-yellow-700 hover:bg-yellow-100 dark:bg-yellow-950 dark:text-yellow-300"
-									: "border-b-4 border-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
-							}`}
+							className={`flex-1 rounded-b-none py-6 text-base font-semibold transition-all ${activeTab === "PENDING_UNISTAFF"
+								? "border-b-4 border-yellow-500 bg-yellow-50 text-yellow-700 hover:bg-yellow-100 dark:bg-yellow-950 dark:text-yellow-300"
+								: "border-b-4 border-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
+								}`}
 							onClick={() => setActiveTab("PENDING_UNISTAFF")}
 						>
 							<Clock className="h-5 w-5 mr-2" />
@@ -444,11 +443,10 @@ export default function UniStaffEventRequestsPage() {
 						<Button
 							variant={activeTab === "APPROVED" ? "default" : "ghost"}
 							size="lg"
-							className={`flex-1 rounded-b-none py-6 text-base font-semibold transition-all ${
-								activeTab === "APPROVED"
-									? "border-b-4 border-green-500 bg-green-50 text-green-700 hover:bg-green-100 dark:bg-green-950 dark:text-green-300"
-									: "border-b-4 border-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
-							}`}
+							className={`flex-1 rounded-b-none py-6 text-base font-semibold transition-all ${activeTab === "APPROVED"
+								? "border-b-4 border-green-500 bg-green-50 text-green-700 hover:bg-green-100 dark:bg-green-950 dark:text-green-300"
+								: "border-b-4 border-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
+								}`}
 							onClick={() => setActiveTab("APPROVED")}
 						>
 							<CheckCircle className="h-5 w-5 mr-2" />
@@ -457,11 +455,10 @@ export default function UniStaffEventRequestsPage() {
 						<Button
 							variant={activeTab === "ONGOING" ? "default" : "ghost"}
 							size="lg"
-							className={`flex-1 rounded-b-none py-6 text-base font-semibold transition-all ${
-								activeTab === "ONGOING"
-									? "border-b-4 border-purple-500 bg-purple-50 text-purple-700 hover:bg-purple-100 dark:bg-purple-950 dark:text-purple-300"
-									: "border-b-4 border-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
-							}`}
+							className={`flex-1 rounded-b-none py-6 text-base font-semibold transition-all ${activeTab === "ONGOING"
+								? "border-b-4 border-purple-500 bg-purple-50 text-purple-700 hover:bg-purple-100 dark:bg-purple-950 dark:text-purple-300"
+								: "border-b-4 border-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
+								}`}
 							onClick={() => setActiveTab("ONGOING")}
 						>
 							<Clock className="h-5 w-5 mr-2" />
@@ -470,11 +467,10 @@ export default function UniStaffEventRequestsPage() {
 						<Button
 							variant={activeTab === "COMPLETED" ? "default" : "ghost"}
 							size="lg"
-							className={`flex-1 rounded-b-none py-6 text-base font-semibold transition-all ${
-								activeTab === "COMPLETED"
-									? "border-b-4 border-blue-500 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-950 dark:text-blue-300"
-									: "border-b-4 border-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
-							}`}
+							className={`flex-1 rounded-b-none py-6 text-base font-semibold transition-all ${activeTab === "COMPLETED"
+								? "border-b-4 border-blue-500 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-950 dark:text-blue-300"
+								: "border-b-4 border-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
+								}`}
 							onClick={() => setActiveTab("COMPLETED")}
 						>
 							<CheckCircle className="h-5 w-5 mr-2" />
@@ -483,11 +479,10 @@ export default function UniStaffEventRequestsPage() {
 						<Button
 							variant={activeTab === "REJECTED" ? "default" : "ghost"}
 							size="lg"
-							className={`flex-1 rounded-b-none py-6 text-base font-semibold transition-all ${
-								activeTab === "REJECTED"
-									? "border-b-4 border-red-500 bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-950 dark:text-red-300"
-									: "border-b-4 border-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
-							}`}
+							className={`flex-1 rounded-b-none py-6 text-base font-semibold transition-all ${activeTab === "REJECTED"
+								? "border-b-4 border-red-500 bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-950 dark:text-red-300"
+								: "border-b-4 border-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
+								}`}
 							onClick={() => setActiveTab("REJECTED")}
 						>
 							<XCircle className="h-5 w-5 mr-2" />
@@ -548,8 +543,8 @@ export default function UniStaffEventRequestsPage() {
 								<Filter className="h-4 w-4" />
 								{showWaitingCoClub ? "Hide" : "Show"} Pending Co-Club
 								{waitingCoClubCount > 0 && (
-									<Badge 
-										variant="secondary" 
+									<Badge
+										variant="secondary"
 										className={`ml-1 ${showWaitingCoClub ? "bg-white/20" : "bg-orange-100 text-orange-700"}`}
 									>
 										{waitingCoClubCount}
@@ -577,7 +572,7 @@ export default function UniStaffEventRequestsPage() {
 								// COMPLETED status means event has ended, regardless of date/time
 								const isCompleted = request.status === "COMPLETED"
 								const expired = isCompleted || isEventExpired(request)
-								
+
 								// Left border color based on status
 								let borderClass = ""
 								if (isCompleted) {
@@ -593,165 +588,116 @@ export default function UniStaffEventRequestsPage() {
 								} else if (request.status === "REJECTED") {
 									borderClass = 'border-l-4 border-l-red-500'
 								}
-								
+
 								return (
-								<Card key={request.id} className={`hover:shadow-md transition-shadow cursor-pointer ${borderClass}`}>
-									<Link href={`/uni-staff/events-req/${request.id}`}>
-										<CardContent className="p-6">
-											<div className="flex items-start justify-between">
-												<div className="flex-1">
-													<div className="flex items-center gap-3 mb-2">
-														<Calendar className="h-5 w-5 text-muted-foreground" />
-														<h3 className="font-semibold text-lg">{request.name || request.eventName}</h3>
-														{renderTypeBadge(request.type || request.eventType)}
-														{/* category not provided by API example */}
-														{getStatusBadge(request.status || request.type, expired, isCompleted)}
-														{/* Show "Need Settle" badge if event is COMPLETED but not in settled list */}
+									<Card key={request.id} className={`hover:shadow-md transition-shadow cursor-pointer ${borderClass}`}>
+										<Link href={`/uni-staff/events-req/${request.id}`}>
+											<CardContent className="p-6">
+												<div className="flex items-start justify-between">
+													<div className="flex-1">
+														<div className="flex items-center gap-3 mb-2">
+															<Calendar className="h-5 w-5 text-muted-foreground" />
+															<h3 className="font-semibold text-lg">{request.name || request.eventName}</h3>
+															{renderTypeBadge(request.type || request.eventType)}
+															{/* category not provided by API example */}
+															{getStatusBadge(request.status || request.type, expired, isCompleted)}
+															{/* Show "Need Settle" badge if event is COMPLETED but not in settled list */}
+															{isCompleted && !settledEventIds.has(request.id) && (
+																<Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-500 font-semibold animate-pulse">
+																	<DollarSign className="h-3 w-3 mr-1" />
+																	Need Settle
+																</Badge>
+															)}
+														</div>
+
+														<p className="text-muted-foreground mb-3 line-clamp-2">{request.description}</p>
+
+														<div className="flex items-center gap-6 text-sm text-muted-foreground">
+															<div className="flex items-center gap-1">
+																<Calendar className="h-4 w-4" />
+																<span>{request.date ? new Date(request.date).toLocaleDateString() : request.eventDate}</span>
+															</div>
+															<div className="flex items-center gap-1">
+																<MapPin className="h-4 w-4" />
+																<span>
+																	{request.locationName || `ID: ${request.locationId || 'N/A'}`}
+																</span>
+															</div>
+															<div className="flex items-center gap-1">
+																<Users className="h-4 w-4" />
+																<span>{
+																	(() => {
+																		const cap = getLocationCapacity(request.locationId)
+																		if (cap !== null && cap !== undefined) return `${cap} capacity`
+																		if (request.expectedAttendees) return `${request.expectedAttendees} attendees`
+																		return "-"
+																	})()
+																}</span>
+															</div>
+															<div className="flex items-center gap-1">
+																<Building className="h-4 w-4" />
+																<span>
+																	{request.hostClub?.name || request.clubName || `ID: ${request.clubId || '?'}`}
+																</span>
+															</div>
+														</div>
+													</div>
+
+													<div className="flex items-center gap-2 ml-4">
+														{/* Show "Need Settle" button for completed events not yet settled */}
 														{isCompleted && !settledEventIds.has(request.id) && (
-															<Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-500 font-semibold animate-pulse">
+															<Button
+																size="sm"
+																variant="default"
+																className="h-8 bg-amber-600 hover:bg-amber-700"
+															>
 																<DollarSign className="h-3 w-3 mr-1" />
 																Need Settle
-															</Badge>
+															</Button>
 														)}
-													</div>
-
-													<p className="text-muted-foreground mb-3 line-clamp-2">{request.description}</p>
-
-													<div className="flex items-center gap-6 text-sm text-muted-foreground">
-														<div className="flex items-center gap-1">
-															<Calendar className="h-4 w-4" />
-															<span>{request.date ? new Date(request.date).toLocaleDateString() : request.eventDate}</span>
-														</div>
-														<div className="flex items-center gap-1">
-															<MapPin className="h-4 w-4" />
-															<span>{
-																(() => {
-																	const loc = locations.find((l) => String(l.id) === String(request.locationId))
-																	if (loc && loc.name) return loc.name
-																	if (request.venue) return request.venue
-																	return `Location #${request.locationId ?? "N/A"}`
-																})()
-															}</span>
-														</div>
-														<div className="flex items-center gap-1">
-															<Users className="h-4 w-4" />
-															<span>{
-																(() => {
-																	const cap = getLocationCapacity(request.locationId)
-																	if (cap !== null && cap !== undefined) return `${cap} capacity`
-																	if (request.expectedAttendees) return `${request.expectedAttendees} attendees`
-																	return "-"
-																})()
-															}</span>
-														</div>
-														<div className="flex items-center gap-1">
-															<Building className="h-4 w-4" />
-															<span>{
-																(() => {
-																	const club = clubs.find((c) => String(c.id) === String(request.clubId))
-																	if (club && club.name) return club.name
-																	if (request.requestedBy) return request.requestedBy
-																	return `Club #${request.clubId || "?"}`
-																})()
-															}</span>
-														</div>
-													</div>
-												</div>
-
-												<div className="flex items-center gap-2 ml-4">
-													{request.status === "PENDING_UNISTAFF" && !expired && (
-														<>
-															<Button size="sm" variant="default" className="h-8 w-8 p-0" onClick={async (e) => {
-																e.preventDefault()
-																if (processingId) return
-																setProcessingId(request.id)
-																try {
-																	await putEventStatus(request.id, "APPROVED", request.budgetPoints || 0)
-																	// optimistic update in local state
-																	setEvents(prev => prev.map(ev => ev.id === request.id ? { ...ev, status: "APPROVED" } : ev))
-																	toast({ title: 'Approved', description: `Event ${request.name || request.id} approved.` })
-																} catch (err: any) {
-																	console.error('Approve failed', err)
-																	toast({ title: 'Error', description: err?.message || 'Failed to approve event' })
-																} finally {
-																	setProcessingId(null)
-																}
-															}}>
-																<CheckCircle className="h-4 w-4" />
-															</Button>
-															<Button size="sm" variant="destructive" className="h-8 w-8 p-0" onClick={async (e) => {
-																e.preventDefault()
-																if (processingId) return
-																setProcessingId(request.id)
-																try {
-																	await putEventStatus(request.id, "REJECTED", request.budgetPoints || 0)
-																	setEvents(prev => prev.map(ev => ev.id === request.id ? { ...ev, status: "REJECTED" } : ev))
-																	toast({ title: 'Rejected', description: `Event ${request.name || request.id} rejected.` })
-																} catch (err: any) {
-																	console.error('Reject failed', err)
-																	toast({ title: 'Error', description: err?.message || 'Failed to reject event' })
-																} finally {
-																	setProcessingId(null)
-																}
-															}}>
-																<XCircle className="h-4 w-4" />
-															</Button>
-														</>
-													)}
-													{/* Show "Need Settle" button for completed events not yet settled */}
-													{isCompleted && !settledEventIds.has(request.id) && (
-														<Button 
-															size="sm" 
-															variant="default"
-															className="h-8 bg-amber-600 hover:bg-amber-700"
-														>
-															<DollarSign className="h-3 w-3 mr-1" />
-															Need Settle
+														<Button size="sm" variant="outline" className="h-8 bg-transparent">
+															<Eye className="h-3 w-3 mr-1" />
+															View Details
 														</Button>
-													)}
-													<Button size="sm" variant="outline" className="h-8 bg-transparent">
-														<Eye className="h-3 w-3 mr-1" />
-														View Details
-													</Button>
+													</div>
 												</div>
-											</div>
-										</CardContent>
-									</Link>
-								</Card>
+											</CardContent>
+										</Link>
+									</Card>
 								)
 							})
 						)}
-						</div>
+					</div>
 
-						{/* Pagination controls */}
-						<div className="flex items-center justify-between mt-2">
-							<div className="text-sm text-muted-foreground">
-								Showing {filteredRequests.length === 0 ? 0 : page * pageSize + 1} to {Math.min((page + 1) * pageSize, filteredRequests.length)} of {filteredRequests.length} requests
-							</div>
-							<div className="flex items-center gap-2">
-								<Button size="sm" variant="outline" onClick={() => setPage(0)} disabled={page === 0}>First</Button>
-								<Button size="sm" variant="outline" onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}>Prev</Button>
-								<div className="px-2 text-sm">Page {filteredRequests.length === 0 ? 0 : page + 1} / {Math.max(1, Math.ceil(filteredRequests.length / pageSize))}</div>
-								<Button size="sm" variant="outline" onClick={() => setPage(p => Math.min(p + 1, Math.max(0, Math.ceil(filteredRequests.length / pageSize) - 1)))} disabled={(page + 1) * pageSize >= filteredRequests.length}>Next</Button>
-								<Button size="sm" variant="outline" onClick={() => setPage(Math.max(0, Math.ceil(filteredRequests.length / pageSize) - 1))} disabled={(page + 1) * pageSize >= filteredRequests.length}>Last</Button>
-								<select aria-label="Items per page" className="ml-2 rounded border px-2 py-1 text-sm" value={pageSize} onChange={(e) => { setPageSize(Number((e.target as HTMLSelectElement).value)); setPage(0) }}>
-									<option value={3}>3</option>
-									<option value={6}>6</option>
-									<option value={12}>12</option>
-								</select>
-							</div>
+					{/* Pagination controls */}
+					<div className="flex items-center justify-between mt-2">
+						<div className="text-sm text-muted-foreground">
+							Showing {filteredRequests.length === 0 ? 0 : page * pageSize + 1} to {Math.min((page + 1) * pageSize, filteredRequests.length)} of {filteredRequests.length} requests
 						</div>
+						<div className="flex items-center gap-2">
+							<Button size="sm" variant="outline" onClick={() => setPage(0)} disabled={page === 0}>First</Button>
+							<Button size="sm" variant="outline" onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}>Prev</Button>
+							<div className="px-2 text-sm">Page {filteredRequests.length === 0 ? 0 : page + 1} / {Math.max(1, Math.ceil(filteredRequests.length / pageSize))}</div>
+							<Button size="sm" variant="outline" onClick={() => setPage(p => Math.min(p + 1, Math.max(0, Math.ceil(filteredRequests.length / pageSize) - 1)))} disabled={(page + 1) * pageSize >= filteredRequests.length}>Next</Button>
+							<Button size="sm" variant="outline" onClick={() => setPage(Math.max(0, Math.ceil(filteredRequests.length / pageSize) - 1))} disabled={(page + 1) * pageSize >= filteredRequests.length}>Last</Button>
+							<select aria-label="Items per page" className="ml-2 rounded border px-2 py-1 text-sm" value={pageSize} onChange={(e) => { setPageSize(Number((e.target as HTMLSelectElement).value)); setPage(0) }}>
+								<option value={3}>3</option>
+								<option value={6}>6</option>
+								<option value={12}>12</option>
+							</select>
+						</div>
+					</div>
 
-						{/* Calendar Modal */}
-						<CalendarModal
-							open={showCalendarModal}
-							onOpenChange={setShowCalendarModal}
-							events={events}
-							onEventClick={(event) => {
-								setShowCalendarModal(false)
-								router.push(`/uni-staff/events-req/${event.id}`)
-							}}
-						/>
+					{/* Calendar Modal */}
+					<CalendarModal
+						open={showCalendarModal}
+						onOpenChange={setShowCalendarModal}
+						events={events}
+						onEventClick={(event) => {
+							setShowCalendarModal(false)
+							router.push(`/uni-staff/events-req/${event.id}`)
+						}}
+					/>
 				</div>
 			</AppShell>
 		</ProtectedRoute>

@@ -70,7 +70,7 @@ export const timeStringToObject = (timeStr: string): TimeObject => {
 export const timeObjectToString = (timeObj: TimeObject | string | null): string => {
   if (!timeObj) return "00:00:00"
   if (typeof timeObj === 'string') return timeObj
-  
+
   const pad = (n: number) => n.toString().padStart(2, '0')
   return `${pad(timeObj.hour)}:${pad(timeObj.minute)}:${pad(timeObj.second)}`
 }
@@ -91,7 +91,7 @@ export const fetchEvent = async ({ page = 0, size = 70, sort = "name" } = {}): P
     });
     const data: any = response.data;
     console.log(`fetchEvent at ${new Date().toISOString()}:`, data);
-    
+
     // Log first event to check structure
     if (data?.content?.[0]) {
       console.log("First event in response:", data.content[0]);
@@ -145,16 +145,35 @@ export const getEventById = async (id: string | number): Promise<Event> => {
   }
 }
 
-export const putEventStatus = async (id: string | number, status: string, budgetPoints: number = 0): Promise<Event> => {
+// export const putEventStatus = async (id: string | number, status: string, budgetPoints: number = 0): Promise<Event> => {
+//   try {
+//     const response = await axiosInstance.put(`api/events/${id}/status`, { status, budgetPoints })
+//     const data: any = response.data
+//     console.log(`Updated event ${id} status -> ${status} with budgetPoints: ${budgetPoints}:`, data)
+//     // Response structure: { success: true, message: "success", data: {...event} }
+//     if (data && data.data) return data.data
+//     return data
+//   } catch (error) {
+//     console.error(`Error updating event ${id} status:`, error)
+//     throw error
+//   }
+// }
+export const putEventStatus = async (id: string | number, approvedBudgetPoints: number): Promise<Event> => {
   try {
-    const response = await axiosInstance.put(`api/events/${id}/status`, { status, budgetPoints })
+    // Cập nhật endpoint và payload theo Swagger
+    const response = await axiosInstance.put(
+      `api/events/${id}/approve-budget`,
+      { approvedBudgetPoints }
+    )
+
     const data: any = response.data
-    console.log(`Updated event ${id} status -> ${status} with budgetPoints: ${budgetPoints}:`, data)
+    console.log(`Approved budget for event ${id} with points: ${approvedBudgetPoints}:`, data)
+
     // Response structure: { success: true, message: "success", data: {...event} }
     if (data && data.data) return data.data
     return data
   } catch (error) {
-    console.error(`Error updating event ${id} status:`, error)
+    console.error(`Error approving budget for event ${id}:`, error)
     throw error
   }
 }
@@ -248,11 +267,11 @@ export const deleteEvent = async (id: string | number): Promise<void> => {
 
 export const submitForUniversityApproval = async (eventId: string | number) => {
   // Đây là ví dụ, bạn cần API endpoint thực tế
-    const response = await axiosInstance.put(`/events/${eventId}/submit-to-staff`)
-    const data: any = response.data
-    // Response structure: { success: true, message: "success", data: {...event} }
-    if (data && data.data) return data.data
-    return data
+  const response = await axiosInstance.put(`/events/${eventId}/submit-to-staff`)
+  const data: any = response.data
+  // Response structure: { success: true, message: "success", data: {...event} }
+  if (data && data.data) return data.data
+  return data
   // return api.put(`/events/${eventId}/submit-to-staff`)
 }
 
