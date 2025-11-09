@@ -678,22 +678,22 @@ export default function EditProductPage() {
             <AppShell>
                 <div className="space-y-8">
                     {/* Enhanced Header */}
-                    <div className="flex items-center justify-between bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-xl border-2 border-blue-100">
+                    <div className="flex items-center justify-between bg-gradient-to-r from-blue-50 to-purple-50 dark:from-slate-800 dark:to-slate-800 p-6 rounded-xl border-2 border-blue-100 dark:border-slate-700">
                         <div className="flex items-center gap-4">
                             <Button
                                 variant="outline"
                                 onClick={() => router.back()}
-                                className="hover:bg-white transition-colors"
+                                className="hover:bg-white dark:hover:bg-slate-700 dark:bg-slate-800 dark:text-white dark:border-slate-600 transition-colors"
                             >
                                 <ArrowLeft className="h-4 w-4 mr-2" />
                                 Back to Products
                             </Button>
-                            <Separator orientation="vertical" className="h-8" />
+                            <Separator orientation="vertical" className="h-8 dark:bg-slate-700" />
                             <div>
-                                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
                                     Edit Product
                                 </h1>
-                                <span className="text-sm text-muted-foreground">Product ID: #{product.id}</span>
+                                <span className="text-sm text-muted-foreground dark:text-slate-400">Product ID: #{product.id}</span>
                             </div>
                         </div>
 
@@ -710,15 +710,15 @@ export default function EditProductPage() {
                                 // 2. NẾU CHƯA ARCHIVED: Hiển thị nút Archive
                                 <AlertDialog>
                                     <AlertDialogTrigger asChild>
-                                        <Button
-                                            variant="outline"
-                                            size="lg"
-                                            className="border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
-                                            disabled={isSaving || isDeleting}
-                                        >
-                                            <Trash className="h-4 w-4 mr-2" />
-                                            Archive Product
-                                        </Button>
+                            <Button
+                                variant="outline"
+                                size="lg"
+                                className="border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 hover:border-red-300 dark:hover:border-red-700"
+                                disabled={isSaving || isDeleting}
+                            >
+                                <Trash className="h-4 w-4 mr-2" />
+                                Archive Product
+                            </Button>
                                     </AlertDialogTrigger>
                                     <AlertDialogContent className="max-w-lg">
                                         <AlertDialogHeader>
@@ -802,7 +802,7 @@ export default function EditProductPage() {
                                 onClick={handleSave}
                                 disabled={isSaving || isDeleting || isArchived}
                                 size="lg"
-                                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg"
+                                className="bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-500 dark:to-purple-500 hover:from-blue-700 hover:to-purple-700 dark:hover:from-blue-600 dark:hover:to-purple-600 text-white shadow-lg"
                             >
                                 {isSaving ? (
                                     <>
@@ -823,23 +823,23 @@ export default function EditProductPage() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {/* Cột trái: Thông tin chính */}
                         <div className="md:col-span-2 space-y-6">
-                            <Card className="border-2 shadow-sm hover:shadow-md transition-shadow">
-                                <CardHeader className="bg-gradient-to-r from-blue-50 to-white border-b-2">
+                            <Card className="border-2 shadow-sm hover:shadow-md transition-shadow dark:bg-slate-800 dark:border-slate-700">
+                                <CardHeader className="bg-gradient-to-r from-blue-50 to-white dark:from-slate-700 dark:to-slate-800 border-b-2 dark:border-slate-700">
                                     <div className="flex items-center gap-2">
-                                        <div className="bg-blue-600 p-2 rounded-lg">
+                                        <div className="bg-blue-600 dark:bg-blue-500 p-2 rounded-lg">
                                             <Package className="h-5 w-5 text-white" />
                                         </div>
-                                        <CardTitle className="text-xl">Product Details</CardTitle>
+                                        <CardTitle className="text-xl dark:text-white">Product Details</CardTitle>
                                     </div>
                                 </CardHeader>
                                 <CardContent className="space-y-6 pt-6">
                                     <div className="space-y-2">
-                                        <Label htmlFor="name" className="text-base font-semibold">
-                                            Product Name <span className="text-red-500">*</span>
+                                        <Label htmlFor="name" className="text-base font-semibold dark:text-white">
+                                            Product Name <span className="text-red-500 dark:text-red-400">*</span>
                                         </Label>
                                         <Input
                                             id="name"
-                                            className="h-11 border-2 focus:border-blue-500"
+                                            className="h-11 border-2 focus:border-blue-500 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:placeholder:text-slate-400 dark:focus:border-blue-400"
                                             name="name"
                                             value={form.name}
                                             onChange={handleChange}
@@ -848,7 +848,7 @@ export default function EditProductPage() {
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="description" className="text-base font-semibold">
+                                        <Label htmlFor="description" className="text-base font-semibold dark:text-white">
                                             Description
                                         </Label>
                                         <Textarea
@@ -857,7 +857,7 @@ export default function EditProductPage() {
                                             value={form.description}
                                             onChange={handleChange}
                                             rows={6}
-                                            className="border-2 focus:border-blue-500 resize-none"
+                                            className="border-2 focus:border-blue-500 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:placeholder:text-slate-400 dark:focus:border-blue-400 resize-none"
                                             placeholder="Enter a detailed description of your product..."
                                             disabled={isArchived}
                                         />
@@ -866,20 +866,20 @@ export default function EditProductPage() {
                             </Card>
 
                             {/* CARD IMAGE */}
-                            <Card className="border-2 shadow-sm hover:shadow-md transition-shadow">
-                                <CardHeader className="flex flex-row items-center justify-between bg-gradient-to-r from-purple-50 to-white border-b-2">
+                            <Card className="border-2 shadow-sm hover:shadow-md transition-shadow dark:bg-slate-800 dark:border-slate-700">
+                                <CardHeader className="flex flex-row items-center justify-between bg-gradient-to-r from-purple-50 to-white dark:from-slate-700 dark:to-slate-800 border-b-2 dark:border-slate-700">
                                     <div className="flex items-center gap-2">
-                                        <div className="bg-purple-600 p-2 rounded-lg">
+                                        <div className="bg-purple-600 dark:bg-purple-500 p-2 rounded-lg">
                                             <ImageIcon className="h-5 w-5 text-white" />
                                         </div>
-                                        <CardTitle className="text-xl">Product Images</CardTitle>
+                                        <CardTitle className="text-xl dark:text-white">Product Images</CardTitle>
                                     </div>
                                     <Button
                                         variant="outline"
                                         size="sm"
                                         onClick={() => setIsMediaDialogOpen(true)}
                                         disabled={isArchived}
-                                        className="border-2 hover:bg-purple-50 hover:border-purple-300"
+                                        className="border-2 hover:bg-purple-50 dark:hover:bg-purple-900/30 hover:border-purple-300 dark:bg-slate-700 dark:text-white dark:border-slate-600"
                                     >
                                         <Upload className="h-4 w-4 mr-2" />
                                         Upload Media
@@ -887,17 +887,17 @@ export default function EditProductPage() {
                                 </CardHeader>
                                 <CardContent className="pt-6">
                                     {isMediaLoading && ( // Hiển thị loading khi đang thao tác media
-                                        <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-20 rounded-lg backdrop-blur-sm">
+                                        <div className="absolute inset-0 bg-white/80 dark:bg-slate-900/80 flex items-center justify-center z-20 rounded-lg backdrop-blur-sm">
                                             <div className="text-center">
-                                                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-purple-600" />
-                                                <p className="text-sm text-muted-foreground">Processing...</p>
+                                                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-purple-600 dark:text-purple-400" />
+                                                <p className="text-sm text-muted-foreground dark:text-slate-300">Processing...</p>
                                             </div>
                                         </div>
                                     )}
                                     {product.media && product.media.length > 0 ? (
                                         <div className="grid grid-cols-3 gap-4">
                                             {product.media.map((m) => (
-                                                <div key={m.mediaId} className="relative aspect-square group rounded-lg overflow-hidden border-2 border-gray-200 hover:border-purple-300 transition-all">
+                                                <div key={m.mediaId} className="relative aspect-square group rounded-lg overflow-hidden border-2 border-gray-200 dark:border-slate-600 hover:border-purple-300 dark:hover:border-purple-500 transition-all">
                                                     {/* Render video or image based on type */}
                                                     {m.type === "VIDEO" ? (
                                                         <video
@@ -977,10 +977,10 @@ export default function EditProductPage() {
                                             ))}
                                         </div>
                                     ) : (
-                                        <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-                                            <ImageIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                                            <p className="text-muted-foreground font-medium">No media uploaded yet</p>
-                                            <p className="text-sm text-muted-foreground mt-1">Click "Upload Image" to add product photos or videos</p>
+                                        <div className="text-center py-12 bg-gray-50 dark:bg-slate-700/50 rounded-lg border-2 border-dashed border-gray-300 dark:border-slate-600">
+                                            <ImageIcon className="h-12 w-12 text-gray-400 dark:text-slate-400 mx-auto mb-3" />
+                                            <p className="text-muted-foreground dark:text-slate-300 font-medium">No media uploaded yet</p>
+                                            <p className="text-sm text-muted-foreground dark:text-slate-400 mt-1">Click "Upload Image" to add product photos or videos</p>
                                         </div>
                                     )}
                                 </CardContent>
@@ -989,21 +989,21 @@ export default function EditProductPage() {
 
                         {/* Cột phải: Thông tin phụ */}
                         <div className="md:col-span-1 space-y-6">
-                            <Card className="border-2 shadow-sm hover:shadow-md transition-shadow">
-                                <CardHeader className="bg-gradient-to-r from-green-50 to-white border-b-2">
+                            <Card className="border-2 shadow-sm hover:shadow-md transition-shadow dark:bg-slate-800 dark:border-slate-700">
+                                <CardHeader className="bg-gradient-to-r from-green-50 to-white dark:from-slate-700 dark:to-slate-800 border-b-2 dark:border-slate-700">
                                     <div className="flex items-center gap-2">
-                                        <div className="bg-green-600 p-2 rounded-lg">
+                                        <div className="bg-green-600 dark:bg-green-500 p-2 rounded-lg">
                                             <CheckCircle className="h-5 w-5 text-white" />
                                         </div>
-                                        <CardTitle className="text-xl">Status</CardTitle>
+                                        <CardTitle className="text-xl dark:text-white">Status</CardTitle>
                                     </div>
                                 </CardHeader>
                                 <CardContent className="space-y-4 pt-6">
                                     <div className="space-y-2">
-                                        <Label className="text-base font-semibold">Product Status</Label>
+                                        <Label className="text-base font-semibold dark:text-white">Product Status</Label>
                                         {isArchived ? (
                                             // Nếu đã Archived: Hiển thị Badge
-                                            <div className="p-3 bg-red-50 border-2 border-red-200 rounded-lg">
+                                            <div className="p-3 bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-lg">
                                                 <Badge variant="destructive" className="text-base w-full justify-center py-2">
                                                     <Archive className="h-4 w-4 mr-2" />
                                                     Archived
@@ -1016,7 +1016,7 @@ export default function EditProductPage() {
                                                 onValueChange={handleSelectChange("status")}
                                                 disabled={isArchived}
                                             >
-                                                <SelectTrigger className="h-11 border-2 focus:border-green-500">
+                                                <SelectTrigger className="h-11 border-2 focus:border-green-500 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:focus:border-green-400">
                                                     <SelectValue placeholder="Select status" />
                                                 </SelectTrigger>
                                                 <SelectContent>
@@ -1039,25 +1039,25 @@ export default function EditProductPage() {
                                 </CardContent>
                             </Card>
 
-                            <Card className="border-2 shadow-sm hover:shadow-md transition-shadow">
-                                <CardHeader className="bg-gradient-to-r from-orange-50 to-white border-b-2">
+                            <Card className="border-2 shadow-sm hover:shadow-md transition-shadow dark:bg-slate-800 dark:border-slate-700">
+                                <CardHeader className="bg-gradient-to-r from-orange-50 to-white dark:from-slate-700 dark:to-slate-800 border-b-2 dark:border-slate-700">
                                     <div className="flex items-center gap-2">
-                                        <div className="bg-orange-600 p-2 rounded-lg">
+                                        <div className="bg-orange-600 dark:bg-orange-500 p-2 rounded-lg">
                                             <Tag className="h-5 w-5 text-white" />
                                         </div>
-                                        <CardTitle className="text-xl">Classification</CardTitle>
+                                        <CardTitle className="text-xl dark:text-white">Classification</CardTitle>
                                     </div>
                                 </CardHeader>
                                 <CardContent className="space-y-4 pt-6">
                                     <div className="space-y-2">
-                                        <Label htmlFor="type" className="text-base font-semibold">Product Type</Label>
+                                        <Label htmlFor="type" className="text-base font-semibold dark:text-white">Product Type</Label>
                                         <Select
                                             name="type"
                                             value={form.type}
                                             onValueChange={handleSelectChange("type")}
                                             disabled={isArchived}
                                         >
-                                            <SelectTrigger className="h-11 border-2 focus:border-orange-500">
+                                            <SelectTrigger className="h-11 border-2 focus:border-orange-500 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:focus:border-orange-400">
                                                 <SelectValue placeholder="Select product type" />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -1068,10 +1068,10 @@ export default function EditProductPage() {
                                     </div>
                                     {form.type === "EVENT_ITEM" && (
                                         <div className="space-y-2">
-                                            <Label htmlFor="eventId" className="text-base font-semibold">Event ID</Label>
+                                            <Label htmlFor="eventId" className="text-base font-semibold dark:text-white">Event ID</Label>
                                             <Input
                                                 id="eventId"
-                                                className="h-11 border-2 focus:border-orange-500"
+                                                className="h-11 border-2 focus:border-orange-500 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:placeholder:text-slate-400 dark:focus:border-orange-400"
                                                 name="eventId"
                                                 type="number"
                                                 value={form.eventId || 0}
@@ -1085,14 +1085,14 @@ export default function EditProductPage() {
                             </Card>
 
                             {/* CARD PRICE & INVENTORY */}
-                            <Card className="border-2 shadow-sm hover:shadow-md transition-shadow">
-                                <CardHeader className="bg-gradient-to-r from-indigo-50 to-white border-b-2">
+                            <Card className="border-2 shadow-sm hover:shadow-md transition-shadow dark:bg-slate-800 dark:border-slate-700">
+                                <CardHeader className="bg-gradient-to-r from-indigo-50 to-white dark:from-slate-700 dark:to-slate-800 border-b-2 dark:border-slate-700">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
-                                            <div className="bg-indigo-600 p-2 rounded-lg">
+                                            <div className="bg-indigo-600 dark:bg-indigo-500 p-2 rounded-lg">
                                                 <DollarSign className="h-5 w-5 text-white" />
                                             </div>
-                                            <CardTitle className="text-xl">Price & Stock</CardTitle>
+                                            <CardTitle className="text-xl dark:text-white">Price & Stock</CardTitle>
                                         </div>
                                         {/* Cụm nút */}
                                         <div className="flex gap-2">
@@ -1101,7 +1101,7 @@ export default function EditProductPage() {
                                                 size="sm"
                                                 onClick={() => setIsHistoryOpen(true)}
                                                 disabled={isArchived}
-                                                className="h-9 w-9 p-0 border-2 hover:bg-indigo-50"
+                                                className="h-9 w-9 p-0 border-2 hover:bg-indigo-50 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:hover:bg-indigo-900/30"
                                                 title="View Stock History"
                                             >
                                                 <History className="h-4 w-4" />
@@ -1111,7 +1111,7 @@ export default function EditProductPage() {
                                                 size="sm"
                                                 onClick={() => setIsStockDialogOpen(true)}
                                                 disabled={isArchived}
-                                                className="h-9 w-9 p-0 border-2 hover:bg-indigo-50"
+                                                className="h-9 w-9 p-0 border-2 hover:bg-indigo-50 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:hover:bg-indigo-900/30"
                                                 title="Update Stock"
                                             >
                                                 <Plus className="h-4 w-4" />
@@ -1121,12 +1121,12 @@ export default function EditProductPage() {
                                 </CardHeader>
                                 <CardContent className="space-y-4 pt-6">
                                     <div className="space-y-2">
-                                        <Label htmlFor="pointCost" className="text-base font-semibold">
-                                            Price (Points) <span className="text-red-500">*</span>
+                                        <Label htmlFor="pointCost" className="text-base font-semibold dark:text-white">
+                                            Price (Points) <span className="text-red-500 dark:text-red-400">*</span>
                                         </Label>
                                         <Input
                                             id="pointCost"
-                                            className="h-11 border-2 focus:border-indigo-500"
+                                            className="h-11 border-2 focus:border-indigo-500 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:placeholder:text-slate-400 dark:focus:border-indigo-400"
                                             name="pointCost"
                                             type="text"
                                             inputMode="numeric"
@@ -1138,7 +1138,7 @@ export default function EditProductPage() {
                                     </div>
                                     <div className="space-y-2">
                                         <div className="flex items-center justify-between">
-                                            <Label htmlFor="stockQuantity" className="text-base font-semibold">Current Stock</Label>
+                                            <Label htmlFor="stockQuantity" className="text-base font-semibold dark:text-white">Current Stock</Label>
                                             {form.stockQuantity === 0 && (
                                                 <Badge variant="destructive" className="text-xs">Out of Stock</Badge>
                                             )}
@@ -1146,7 +1146,7 @@ export default function EditProductPage() {
                                         <div className="relative">
                                             <Input
                                                 id="stockQuantity"
-                                                className="h-11 border-2 bg-gray-50 text-gray-600 font-semibold text-lg"
+                                                className="h-11 border-2 bg-gray-50 dark:bg-slate-700 text-gray-600 dark:text-slate-300 font-semibold text-lg dark:border-slate-600"
                                                 name="stockQuantity"
                                                 type="number"
                                                 value={form.stockQuantity}
@@ -1155,20 +1155,20 @@ export default function EditProductPage() {
                                                 disabled
                                                 readOnly
                                             />
-                                            <Package className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                                            <Package className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-slate-400" />
                                         </div>
-                                        <p className="text-xs text-muted-foreground">Use the + button to update stock</p>
+                                        <p className="text-xs text-muted-foreground dark:text-slate-400">Use the + button to update stock</p>
                                     </div>
                                 </CardContent>
                             </Card>
 
-                            <Card className="border-2 shadow-sm hover:shadow-md transition-shadow">
-                                <CardHeader className="bg-gradient-to-r from-pink-50 to-white border-b-2">
+                            <Card className="border-2 shadow-sm hover:shadow-md transition-shadow dark:bg-slate-800 dark:border-slate-700">
+                                <CardHeader className="bg-gradient-to-r from-pink-50 to-white dark:from-slate-700 dark:to-slate-800 border-b-2 dark:border-slate-700">
                                     <div className="flex items-center gap-2">
-                                        <div className="bg-pink-600 p-2 rounded-lg">
+                                        <div className="bg-pink-600 dark:bg-pink-500 p-2 rounded-lg">
                                             <Tag className="h-5 w-5 text-white" />
                                         </div>
-                                        <CardTitle className="text-xl">Product Tags</CardTitle>
+                                        <CardTitle className="text-xl dark:text-white">Product Tags</CardTitle>
                                     </div>
                                 </CardHeader>
                                 <CardContent className="pt-6">
@@ -1176,12 +1176,12 @@ export default function EditProductPage() {
                                         placeholder="Search tags..."
                                         value={tagSearchTerm}
                                         onChange={(e) => setTagSearchTerm(e.target.value)}
-                                        className="mb-4 h-10 border-2 focus:border-pink-500"
+                                        className="mb-4 h-10 border-2 focus:border-pink-500 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:placeholder:text-slate-400 dark:focus:border-pink-400"
                                         disabled={isArchived}
                                     />
 
                                     {allTags.length > 0 ? (
-                                        <ScrollArea className="h-52 rounded-lg border-2 p-4 bg-gray-50">
+                                        <ScrollArea className="h-52 rounded-lg border-2 p-4 bg-gray-50 dark:bg-slate-700/50 dark:border-slate-600">
                                             <div className="space-y-3">
                                                 {allTags
                                                     .filter((tag) =>
@@ -1197,7 +1197,7 @@ export default function EditProductPage() {
                                                         const isDisabled = isCoreTag || isArchived;
 
                                                         return (
-                                                            <div key={tag.tagId} className="flex items-center space-x-3 p-2 rounded-md hover:bg-white transition-colors">
+                                                            <div key={tag.tagId} className="flex items-center space-x-3 p-2 rounded-md hover:bg-white dark:hover:bg-slate-600 transition-colors">
                                                                 <Checkbox
                                                                     id={`tag-${tag.tagId}`}
                                                                     checked={form.tagIds.includes(tag.tagId)}
@@ -1208,11 +1208,11 @@ export default function EditProductPage() {
                                                                 />
                                                                 <Label
                                                                     htmlFor={`tag-${tag.tagId}`}
-                                                                    className={`font-medium flex-1 cursor-pointer ${isDisabled ? 'text-muted-foreground' : ''}`}
+                                                                    className={`font-medium flex-1 cursor-pointer dark:text-white ${isDisabled ? 'text-muted-foreground dark:text-slate-400' : ''}`}
                                                                 >
                                                                     {tag.name}
                                                                     {isCoreTag && (
-                                                                        <Badge variant="outline" className="ml-2 text-xs">Auto</Badge>
+                                                                        <Badge variant="outline" className="ml-2 text-xs dark:border-slate-500 dark:text-slate-300">Auto</Badge>
                                                                     )}
                                                                 </Label>
                                                             </div>
@@ -1221,9 +1221,9 @@ export default function EditProductPage() {
                                             </div>
                                         </ScrollArea>
                                     ) : (
-                                        <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed">
-                                            <Tag className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                                            <p className="text-sm text-muted-foreground">No tags available</p>
+                                        <div className="text-center py-8 bg-gray-50 dark:bg-slate-700/50 rounded-lg border-2 border-dashed dark:border-slate-600">
+                                            <Tag className="h-8 w-8 text-gray-400 dark:text-slate-400 mx-auto mb-2" />
+                                            <p className="text-sm text-muted-foreground dark:text-slate-400">No tags available</p>
                                         </div>
                                     )}
                                 </CardContent>

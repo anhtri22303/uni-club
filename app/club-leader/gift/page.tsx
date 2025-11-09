@@ -387,10 +387,10 @@ export default function ClubLeaderGiftPage() {
           {/* Header Section with Enhanced Design */}
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
                 Gift Products
               </h1>
-              <p className="text-muted-foreground mt-2 text-lg">
+              <p className="text-muted-foreground dark:text-slate-400 mt-2 text-lg">
                 Manage your club items and event products efficiently
               </p>
             </div>
@@ -424,13 +424,13 @@ export default function ClubLeaderGiftPage() {
               placeholder="Search for products by name or description..." 
               value={searchTerm} 
               onChange={(e) => setSearchTerm(e.target.value)} 
-              className="h-12 pl-12 text-base border-2 focus:border-blue-500 transition-colors" 
+              className="h-12 pl-12 text-base border-2 focus:border-blue-500 dark:focus:border-blue-400 dark:bg-slate-800 dark:text-white dark:border-slate-700 dark:placeholder:text-slate-400 transition-colors" 
             />
-            <Gift className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Gift className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground dark:text-slate-400" />
           </div>
 
           {/* Filter Section with Modern Card Design */}
-          <Card className="border-2 shadow-sm">
+          <Card className="border-2 shadow-sm dark:bg-slate-800/90 dark:border-slate-700">
             <CardContent className="p-6">
               <div className="flex items-center gap-6 flex-wrap">
                 {/* SELECT BY CRITERIA SECTION (LEFT) */}
@@ -443,11 +443,11 @@ export default function ClubLeaderGiftPage() {
                 </div>
 
                 {/* VERTICAL SEPARATOR */}
-                <Separator orientation="vertical" className="h-20" />
+                <Separator orientation="vertical" className="h-20 dark:bg-slate-700" />
 
                 {/* FILTER STATUS SECTION (RIGHT) */}
                 <div className="flex flex-col gap-3">
-                  <Label className="text-base font-semibold text-gray-700">Filter by Status</Label>
+                  <Label className="text-base font-semibold text-gray-700 dark:text-white">Filter by Status</Label>
                   <ToggleGroup
                     type="single"
                     value={statusFilter}
@@ -477,17 +477,17 @@ export default function ClubLeaderGiftPage() {
 
           {/* 6. Cập nhật Dialog Content */}
           <Dialog open={open} onOpenChange={setOpen}>
-            <DialogContent className="max-h-[90vh]">
+            <DialogContent className="max-h-[90vh] dark:bg-slate-900 dark:border-slate-700">
               <DialogHeader>
-                <DialogTitle>Add new products</DialogTitle>
+                <DialogTitle className="dark:text-white">Add new products</DialogTitle>
               </DialogHeader>
               {/* Thêm ScrollArea cho form dài */}
               <ScrollArea className="max-h-[70vh] p-1">
                 <div className="space-y-4 py-4 pr-3">
                   <div className="space-y-1">
-                    <Label htmlFor="type">Product Type</Label>
+                    <Label htmlFor="type" className="dark:text-white">Product Type</Label>
                     <Select name="type" value={form.type} onValueChange={handleSelectChange("type")}>
-                      <SelectTrigger className="mt-2 border-slate-300">
+                      <SelectTrigger className="mt-2 border-slate-300 dark:bg-slate-800 dark:text-white dark:border-slate-600">
                         <SelectValue placeholder="Select product type" />
                       </SelectTrigger>
                       <SelectContent>
@@ -500,7 +500,7 @@ export default function ClubLeaderGiftPage() {
                   {/* Hiển thị có điều kiện */}
                   {form.type === "EVENT_ITEM" && (
                     <div className="space-y-1">
-                      <Label htmlFor="eventId">Event</Label>
+                      <Label htmlFor="eventId" className="dark:text-white">Event</Label>
                       {/* Thay thế Input bằng Select */}
                       <Select
                         name="eventId"
@@ -508,7 +508,7 @@ export default function ClubLeaderGiftPage() {
                         value={form.eventId ? String(form.eventId) : ""}
                         onValueChange={handleEventSelectChange} // Dùng handler mới
                       >
-                        <SelectTrigger className="mt-2 border-slate-300">
+                        <SelectTrigger className="mt-2 border-slate-300 dark:bg-slate-800 dark:text-white dark:border-slate-600">
                           <SelectValue placeholder="Select an approved or on-going event" />
                         </SelectTrigger>
                         <SelectContent>
@@ -530,15 +530,15 @@ export default function ClubLeaderGiftPage() {
                   )}
 
                   <div className="space-y-1">
-                    <Label htmlFor="name">Product name</Label>
-                    <Input id="name" className="mt-2 border-slate-300" name="name" value={form.name} onChange={handleChange} placeholder="e.g., F-Code Club T-Shirt" />
+                    <Label htmlFor="name" className="dark:text-white">Product name</Label>
+                    <Input id="name" className="mt-2 border-slate-300 dark:bg-slate-800 dark:text-white dark:border-slate-600 dark:placeholder:text-slate-400" name="name" value={form.name} onChange={handleChange} placeholder="e.g., F-Code Club T-Shirt" />
                   </div>
 
                   <div className="space-y-1">
-                    <Label htmlFor="description">Describe</Label>
+                    <Label htmlFor="description" className="dark:text-white">Describe</Label>
                     <Textarea 
                       id="description" 
-                      className={`mt-2 border-slate-300 ${isDescriptionTooLong ? 'border-red-500 focus:border-red-500' : ''}`}
+                      className={`mt-2 border-slate-300 dark:bg-slate-800 dark:text-white dark:border-slate-600 dark:placeholder:text-slate-400 ${isDescriptionTooLong ? 'border-red-500 dark:border-red-500 focus:border-red-500 dark:focus:border-red-500' : ''}`}
                       name="description" 
                       value={form.description} 
                       onChange={handleChange} 
@@ -548,13 +548,13 @@ export default function ClubLeaderGiftPage() {
                     <div className="flex items-center justify-between mt-1">
                       <div className="flex-1">
                         {isDescriptionTooLong && (
-                          <p className="text-sm text-red-600 font-medium">
+                          <p className="text-sm text-red-600 dark:text-red-400 font-medium">
                             Description exceeds the maximum length of {MAX_DESCRIPTION_LENGTH} characters. 
                             Please shorten your description by {form.description.length - MAX_DESCRIPTION_LENGTH} characters.
                           </p>
                         )}
                       </div>
-                      <span className={`text-xs ml-2 ${isDescriptionTooLong ? 'text-red-600 font-semibold' : 'text-muted-foreground'}`}>
+                      <span className={`text-xs ml-2 ${isDescriptionTooLong ? 'text-red-600 dark:text-red-400 font-semibold' : 'text-muted-foreground dark:text-slate-400'}`}>
                         {form.description.length} / {MAX_DESCRIPTION_LENGTH}
                       </span>
                     </div>
@@ -562,25 +562,25 @@ export default function ClubLeaderGiftPage() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
-                      <Label htmlFor="pointCost">Price (Points)</Label>
-                      <Input id="pointCost" className="mt-2 border-slate-300" name="pointCost" type="number" value={form.pointCost} onChange={handleChange} placeholder="0" min={0} />
+                      <Label htmlFor="pointCost" className="dark:text-white">Price (Points)</Label>
+                      <Input id="pointCost" className="mt-2 border-slate-300 dark:bg-slate-800 dark:text-white dark:border-slate-600 dark:placeholder:text-slate-400" name="pointCost" type="number" value={form.pointCost} onChange={handleChange} placeholder="0" min={0} />
                     </div>
                     <div className="space-y-1">
-                      <Label htmlFor="stockQuantity">Quantity in stock</Label>
-                      <Input id="stockQuantity" className="mt-2 border-slate-300" name="stockQuantity" type="number" value={form.stockQuantity} onChange={handleChange} placeholder="0" min={0} />
+                      <Label htmlFor="stockQuantity" className="dark:text-white">Quantity in stock</Label>
+                      <Input id="stockQuantity" className="mt-2 border-slate-300 dark:bg-slate-800 dark:text-white dark:border-slate-600 dark:placeholder:text-slate-400" name="stockQuantity" type="number" value={form.stockQuantity} onChange={handleChange} placeholder="0" min={0} />
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Tags</Label>
+                    <Label className="dark:text-white">Tags</Label>
                     <Input
                       placeholder="Search tags..."
                       value={tagSearchTerm}
                       onChange={(e) => setTagSearchTerm(e.target.value)}
-                      className="mb-2 border-slate-300"
+                      className="mb-2 border-slate-300 dark:bg-slate-800 dark:text-white dark:border-slate-600 dark:placeholder:text-slate-400"
                     />
                     {productTags.length > 0 ? (
-                      <ScrollArea className="h-24 rounded-md border p-3 2 border-slate-300">
+                      <ScrollArea className="h-24 rounded-md border p-3 border-slate-300 dark:border-slate-600 dark:bg-slate-800/50">
                         <div className="space-y-2">
                           {productTags
                             .filter((tag) =>
@@ -604,7 +604,7 @@ export default function ClubLeaderGiftPage() {
                                   />
                                   <Label
                                     htmlFor={`tag-${tag.tagId}`}
-                                    className={`font-normal ${isDisabled ? 'text-muted-foreground cursor-not-allowed' : ''}`} // Style cho tag bị disable
+                                    className={`font-normal dark:text-white ${isDisabled ? 'text-muted-foreground dark:text-slate-400 cursor-not-allowed' : ''}`} // Style cho tag bị disable
                                   >
                                     {tag.name}
                                     {isDisabled && " (Auto)"}
@@ -615,7 +615,7 @@ export default function ClubLeaderGiftPage() {
                         </div>
                       </ScrollArea>
                     ) : (
-                      <p className="text-sm text-muted-foreground">There are no tags for this club.</p>
+                      <p className="text-sm text-muted-foreground dark:text-slate-400">There are no tags for this club.</p>
                     )}
                   </div>
                 </div>
@@ -628,14 +628,14 @@ export default function ClubLeaderGiftPage() {
                     setTagSearchTerm("")
                   }}
                   disabled={submitting}
-                  className="flex-1"
+                  className="flex-1 dark:bg-slate-800 dark:text-white dark:border-slate-600 dark:hover:bg-slate-700"
                 >
                   Cancel
                 </Button>
                 <Button 
                   onClick={handleCreate} 
                   disabled={submitting || isDescriptionTooLong}
-                  className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-500 dark:to-purple-500 hover:from-blue-700 hover:to-purple-700 dark:hover:from-blue-600 dark:hover:to-purple-600 disabled:opacity-50 disabled:cursor-not-allowed text-white"
                 >
                   {submitting ? (
                     <>
@@ -657,16 +657,16 @@ export default function ClubLeaderGiftPage() {
           <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {isLoading ? (
               <div className="col-span-full text-center py-20">
-                <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-blue-600" />
-                <p className="text-lg text-muted-foreground">Loading products...</p>
+                <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-blue-600 dark:text-blue-400" />
+                <p className="text-lg text-muted-foreground dark:text-slate-400">Loading products...</p>
               </div>
             ) : filteredAndSortedProducts.length === 0 ? (
               <div className="col-span-full text-center py-20">
-                <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                  <Package className="h-12 w-12 text-gray-400" />
+                <div className="mx-auto w-24 h-24 bg-gray-100 dark:bg-slate-700 rounded-full flex items-center justify-center mb-4">
+                  <Package className="h-12 w-12 text-gray-400 dark:text-slate-400" />
                 </div>
-                <h3 className="text-xl font-semibold mb-2 text-gray-700">No products found</h3>
-                <p className="text-base text-muted-foreground max-w-md mx-auto">
+                <h3 className="text-xl font-semibold mb-2 text-gray-700 dark:text-white">No products found</h3>
+                <p className="text-base text-muted-foreground dark:text-slate-400 max-w-md mx-auto">
                   {statusFilter === "archived" 
                     ? "Your archive is empty. Archived products will appear here." 
                     : "Try adjusting your filters or create a new product to get started."}
@@ -683,10 +683,10 @@ export default function ClubLeaderGiftPage() {
                     className="group"
                   >
                     {/* Modern Card Design with Enhanced Visual Hierarchy */}
-                    <Card className="h-full flex flex-col overflow-hidden border-2 border-gray-200 transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 hover:border-blue-400 bg-white">
+                    <Card className="h-full flex flex-col overflow-hidden border-2 border-gray-200 dark:border-slate-700 transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 hover:border-blue-400 dark:hover:border-blue-500 bg-white dark:bg-slate-800/90">
                       
                       {/* Image Container with Overlay Effect */}
-                      <div className="relative aspect-square w-full overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200">
+                      <div className="relative aspect-square w-full overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 dark:from-slate-700 dark:to-slate-800">
                         <img
                           src={thumbnail}
                           alt={p.name}
@@ -700,9 +700,9 @@ export default function ClubLeaderGiftPage() {
                         {/* Status Badge - Top Right */}
                         <Badge
                           className={`absolute right-3 top-3 z-10 px-2.5 py-1 text-xs font-bold shadow-xl border-2 transition-transform duration-300 group-hover:scale-110
-                            ${p.status === "ACTIVE" ? "bg-green-500 hover:bg-green-600 text-white border-white/50" : ""}
-                            ${p.status === "INACTIVE" ? "bg-gray-500 hover:bg-gray-600 text-white border-white/50" : ""}
-                            ${p.status === "ARCHIVED" ? "bg-red-600 hover:bg-red-700 text-white border-white/50" : ""}
+                            ${p.status === "ACTIVE" ? "bg-green-500 dark:bg-green-600 hover:bg-green-600 dark:hover:bg-green-700 text-white border-white/50 dark:border-slate-300/50" : ""}
+                            ${p.status === "INACTIVE" ? "bg-gray-500 dark:bg-gray-600 hover:bg-gray-600 dark:hover:bg-gray-700 text-white border-white/50 dark:border-slate-300/50" : ""}
+                            ${p.status === "ARCHIVED" ? "bg-red-600 dark:bg-red-700 hover:bg-red-700 dark:hover:bg-red-800 text-white border-white/50 dark:border-slate-300/50" : ""}
                           `}
                         >
                           {p.status === "ACTIVE" && <CheckCircle className="h-3 w-3 mr-1" />}
@@ -716,10 +716,10 @@ export default function ClubLeaderGiftPage() {
                       <CardContent className="flex-1 flex flex-col p-4 gap-3">
                         {/* Product Title */}
                         <div className="space-y-1.5">
-                          <h3 className="font-bold text-base leading-tight line-clamp-2 min-h-[2.5rem] group-hover:text-blue-600 transition-colors duration-200" title={p.name}>
+                          <h3 className="font-bold text-base leading-tight line-clamp-2 min-h-[2.5rem] group-hover:text-blue-600 dark:group-hover:text-blue-400 dark:text-white transition-colors duration-200" title={p.name}>
                             {p.name}
                           </h3>
-                          <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed min-h-[2rem]" title={p.description}>
+                          <p className="text-xs text-gray-600 dark:text-slate-400 line-clamp-2 leading-relaxed min-h-[2rem]" title={p.description}>
                             {p.description || "No description provided."}
                           </p>
                         </div>
@@ -731,7 +731,7 @@ export default function ClubLeaderGiftPage() {
                               <Badge
                                 key={tag}
                                 variant="secondary"
-                                className="text-[10px] px-1.5 py-0 bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 border border-blue-200 hover:from-blue-100 hover:to-purple-100 transition-colors"
+                                className="text-[10px] px-1.5 py-0 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/40 dark:to-purple-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700 hover:from-blue-100 hover:to-purple-100 dark:hover:from-blue-900/60 dark:hover:to-purple-900/60 transition-colors"
                               >
                                 {tag}
                               </Badge>
@@ -739,7 +739,7 @@ export default function ClubLeaderGiftPage() {
                             {p.tags.length > 2 && (
                               <Badge
                                 variant="secondary"
-                                className="text-[10px] px-1.5 py-0 bg-gray-100 text-gray-600 border border-gray-200"
+                                className="text-[10px] px-1.5 py-0 bg-gray-100 dark:bg-slate-700/50 text-gray-600 dark:text-slate-300 border border-gray-200 dark:border-slate-600"
                               >
                                 +{p.tags.length - 2}
                               </Badge>
@@ -748,37 +748,37 @@ export default function ClubLeaderGiftPage() {
                         )}
 
                         {/* Price and Stock - Compact Design */}
-                        <div className="mt-auto pt-3 border-t border-gray-100">
+                        <div className="mt-auto pt-3 border-t border-gray-100 dark:border-slate-700">
                           <div className="flex items-center justify-between gap-2">
                             {/* Price Section */}
                             <div className="flex items-center gap-1.5 flex-1">
-                              <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-md flex items-center justify-center shadow-sm">
+                              <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 rounded-md flex items-center justify-center shadow-sm">
                                 <WalletCards className="h-4 w-4 text-white" />
                               </div>
                               <div className="flex flex-col min-w-0">
-                                <span className="text-[9px] text-gray-500 font-medium uppercase tracking-wide">Price</span>
-                                <span className="font-bold text-sm text-blue-600 truncate">
+                                <span className="text-[9px] text-gray-500 dark:text-slate-400 font-medium uppercase tracking-wide">Price</span>
+                                <span className="font-bold text-sm text-blue-600 dark:text-blue-400 truncate">
                                   {p.pointCost.toLocaleString('en-US')}
                                 </span>
                               </div>
                             </div>
                             
                             {/* Divider */}
-                            <div className="w-px h-10 bg-gray-200" />
+                            <div className="w-px h-10 bg-gray-200 dark:bg-slate-700" />
                             
                             {/* Stock Section */}
                             <div className="flex items-center gap-1.5 flex-1">
                               <div className={`flex-shrink-0 w-8 h-8 rounded-md flex items-center justify-center shadow-sm ${
                                 p.stockQuantity === 0 
-                                  ? 'bg-gradient-to-br from-red-500 to-red-600' 
-                                  : 'bg-gradient-to-br from-gray-500 to-gray-600'
+                                  ? 'bg-gradient-to-br from-red-500 to-red-600 dark:from-red-600 dark:to-red-700' 
+                                  : 'bg-gradient-to-br from-gray-500 to-gray-600 dark:from-slate-600 dark:to-slate-700'
                               }`}>
                                 <Package className="h-4 w-4 text-white" />
                               </div>
                               <div className="flex flex-col min-w-0">
-                                <span className="text-[9px] text-gray-500 font-medium uppercase tracking-wide">Stock</span>
+                                <span className="text-[9px] text-gray-500 dark:text-slate-400 font-medium uppercase tracking-wide">Stock</span>
                                 <span className={`font-bold text-sm truncate ${
-                                  p.stockQuantity === 0 ? 'text-red-600' : 'text-gray-700'
+                                  p.stockQuantity === 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-700 dark:text-slate-300'
                                 }`}>
                                   {p.stockQuantity.toLocaleString('en-US')}
                                 </span>

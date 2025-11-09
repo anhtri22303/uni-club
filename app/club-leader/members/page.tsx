@@ -508,25 +508,25 @@ export default function ClubLeaderMembersPage() {
                   // Determine border color based on role and staff status
                   let borderColor = ""
                   if (member.role === "LEADER") {
-                    borderColor = "border-l-4 border-l-red-500" // LEADER: Red border
+                    borderColor = "border-l-4 border-l-red-500 dark:border-l-red-400" // LEADER: Red border
                   } else if (member.role === "MEMBER" && member.isStaff) {
-                    borderColor = "border-l-4 border-l-blue-500" // MEMBER + Staff: Blue border
+                    borderColor = "border-l-4 border-l-blue-500 dark:border-l-blue-400" // MEMBER + Staff: Blue border
                   } else if (member.role === "MEMBER") {
-                    borderColor = "border-l-4 border-l-green-500" // MEMBER: Green border
+                    borderColor = "border-l-4 border-l-green-500 dark:border-l-green-400" // MEMBER: Green border
                   }
 
                   return (
                     <Card
                       key={member.id}
-                      className={`border-0 shadow-sm hover:shadow-md transition-all duration-300 bg-white hover:bg-gradient-to-br hover:from-white hover:to-slate-50 group ${borderColor}`}
+                      className={`border-0 shadow-sm hover:shadow-md transition-all duration-300 bg-white dark:bg-slate-800/90 hover:bg-gradient-to-br hover:from-white hover:to-slate-50 dark:hover:from-slate-800 dark:hover:to-slate-700/80 group ${borderColor}`}
                     >
                       <CardContent className="px-6 py-0.3">
                       <div className="flex items-start justify-between gap-6">
                         {/* Left: Avatar + Basic Info */}
                         <div className="flex items-start gap-4 flex-1">
-                          <Avatar className="h-16 w-16 border-2 border-slate-200 ring-2 ring-blue-100 group-hover:ring-blue-200 transition-all">
+                          <Avatar className="h-16 w-16 border-2 border-slate-200 dark:border-slate-700 ring-2 ring-blue-100 dark:ring-blue-900/50 group-hover:ring-blue-200 dark:group-hover:ring-blue-800/70 transition-all">
                             <AvatarImage src={member.avatarUrl || "/placeholder.svg"} alt={member.fullName} />
-                            <AvatarFallback className="text-lg font-semibold bg-gradient-to-br from-blue-400 to-blue-600 text-white">
+                            <AvatarFallback className="text-lg font-semibold bg-gradient-to-br from-blue-400 to-blue-600 dark:from-blue-500 dark:to-blue-700 text-white">
                               {member.fullName
                                 .split(" ")
                                 .map((n: string) => n[0])
@@ -539,18 +539,18 @@ export default function ClubLeaderMembersPage() {
                           <div className="space-y-3 flex-1">
                             {/* Name and Role */}
                             <div className="flex items-center gap-2 flex-wrap">
-                              <h3 className="text-lg font-bold text-slate-900">{member.fullName}</h3>
+                              <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">{member.fullName}</h3>
                               <Badge
                                 className={`font-semibold text-xs rounded-full ${
                                   member.role === "LEADER"
-                                    ? "bg-purple-100 text-purple-700 border border-purple-200"
-                                    : "bg-green-100 text-green-700 border border-green-200"
+                                    ? "bg-purple-100 text-purple-700 border border-purple-200 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-700/50"
+                                    : "bg-green-100 text-green-700 border border-green-200 dark:bg-green-900/40 dark:text-green-300 dark:border-green-700/50"
                                 }`}
                               >
                                 {member.role}
                               </Badge>
                               {member.isStaff && (
-                                <Badge className="font-semibold text-xs rounded-full bg-blue-100 text-blue-700 border border-blue-200">
+                                <Badge className="font-semibold text-xs rounded-full bg-blue-100 text-blue-700 border border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700/50">
                                   Staff
                                 </Badge>
                               )}
@@ -558,23 +558,23 @@ export default function ClubLeaderMembersPage() {
 
                             {/* Contact and Academic Info Grid */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                              <div className="flex items-center gap-2 text-slate-600 group-hover:text-slate-900 transition-colors">
-                                <Mail className="h-4 w-4 flex-shrink-0 text-blue-500" />
+                              <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-200 transition-colors">
+                                <Mail className="h-4 w-4 flex-shrink-0 text-blue-500 dark:text-blue-400" />
                                 <span className="truncate">{member.email}</span>
                               </div>
 
-                              <div className="flex items-center gap-2 text-slate-600 group-hover:text-slate-900 transition-colors">
-                                <UserCircle className="h-4 w-4 flex-shrink-0 text-blue-500" />
+                              <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-200 transition-colors">
+                                <UserCircle className="h-4 w-4 flex-shrink-0 text-blue-500 dark:text-blue-400" />
                                 <span>Student: {member.studentCode}</span>
                               </div>
 
-                              <div className="flex items-center gap-2 text-slate-600 group-hover:text-slate-900 transition-colors">
-                                <GraduationCap className="h-4 w-4 flex-shrink-0 text-blue-500" />
+                              <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-200 transition-colors">
+                                <GraduationCap className="h-4 w-4 flex-shrink-0 text-blue-500 dark:text-blue-400" />
                                 <span className="truncate">{member.majorName}</span>
                               </div>
 
-                              <div className="flex items-center gap-2 text-slate-600 group-hover:text-slate-900 transition-colors">
-                                <Calendar className="h-4 w-4 flex-shrink-0 text-blue-500" />
+                              <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-200 transition-colors">
+                                <Calendar className="h-4 w-4 flex-shrink-0 text-blue-500 dark:text-blue-400" />
                                 <span>Joined: {member.joinedAt}</span>
                               </div>
                             </div>
@@ -586,7 +586,7 @@ export default function ClubLeaderMembersPage() {
                           {member.role !== "LEADER" && member.role !== "VICE_LEADER" && (
                             <Button
                               size="sm"
-                              className="rounded-lg bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 transition-all duration-200 border border-red-200"
+                              className="rounded-lg bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 dark:hover:text-red-300 transition-all duration-200 border border-red-200 dark:border-red-800/50"
                               onClick={() => handleDeleteMember(member.id)}
                             >
                               <Trash2 className="h-4 w-4" />
@@ -635,10 +635,10 @@ export default function ClubLeaderMembersPage() {
 
         {/* Leave Requests Modal */}
         <Dialog open={showLeaveRequestModal} onOpenChange={setShowLeaveRequestModal}>
-          <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto dark:bg-slate-900 dark:border-slate-700">
             <DialogHeader>
-              <DialogTitle className="text-2xl font-bold">Leave Requests</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="text-2xl font-bold text-white dark:text-white">Leave Requests</DialogTitle>
+              <DialogDescription className="text-slate-400 dark:text-slate-400">
                 Danh sách yêu cầu rời câu lạc bộ từ các thành viên
               </DialogDescription>
             </DialogHeader>
@@ -646,26 +646,26 @@ export default function ClubLeaderMembersPage() {
             <div className="space-y-4 py-4">
               {loadingLeaveRequests ? (
                 <div className="flex flex-col items-center justify-center py-12">
-                  <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center mb-3 animate-pulse">
-                    <LogOut className="h-6 w-6 text-blue-500" />
+                  <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-3 animate-pulse">
+                    <LogOut className="h-6 w-6 text-blue-500 dark:text-blue-400" />
                   </div>
-                  <p className="text-sm text-slate-500">Đang tải danh sách yêu cầu...</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Đang tải danh sách yêu cầu...</p>
                 </div>
               ) : sortedLeaveRequests.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12">
-                  <div className="h-16 w-16 rounded-full bg-slate-100 flex items-center justify-center mb-3">
-                    <LogOut className="h-8 w-8 text-slate-400" />
+                  <div className="h-16 w-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-3">
+                    <LogOut className="h-8 w-8 text-slate-400 dark:text-slate-500" />
                   </div>
-                  <h3 className="text-lg font-semibold text-slate-900 mb-1">Không có yêu cầu nào</h3>
-                  <p className="text-sm text-slate-500">Chưa có thành viên nào gửi yêu cầu rời câu lạc bộ</p>
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">Không có yêu cầu nào</h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Chưa có thành viên nào gửi yêu cầu rời câu lạc bộ</p>
                 </div>
               ) : (
                 <div className="space-y-3">
                   {sortedLeaveRequests.map((request) => {
                     const statusColors = {
-                      PENDING: "bg-yellow-100 text-yellow-700 border-yellow-200",
-                      APPROVED: "bg-green-100 text-green-700 border-green-200",
-                      REJECTED: "bg-red-100 text-red-700 border-red-200",
+                      PENDING: "bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/40 dark:text-yellow-300 dark:border-yellow-700/50",
+                      APPROVED: "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/40 dark:text-green-300 dark:border-green-700/50",
+                      REJECTED: "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/40 dark:text-red-300 dark:border-red-700/50",
                     }
 
                     const statusText = {
@@ -677,43 +677,43 @@ export default function ClubLeaderMembersPage() {
                     return (
                       <Card
                         key={request.requestId}
-                        className={`border shadow-sm hover:shadow-md transition-all ${
-                          request.status === "PENDING" ? "border-yellow-300 bg-yellow-50/30" : ""
+                        className={`border shadow-sm hover:shadow-md transition-all dark:bg-slate-800/90 dark:border-slate-700 ${
+                          request.status === "PENDING" ? "border-yellow-300 bg-yellow-50/30 dark:border-yellow-700/50 dark:bg-yellow-900/20" : ""
                         }`}
                       >
                         <CardContent className="p-4">
                           <div className="flex items-start justify-between gap-4">
                             <div className="flex-1 space-y-2">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <h4 className="text-base font-bold text-slate-900">{request.memberName}</h4>
-                                <Badge className={`text-xs font-semibold rounded-full ${statusColors[request.status]}`}>
+                                <h4 className="text-base font-bold text-slate-900 dark:text-white">{request.memberName}</h4>
+                                <Badge className={`text-xs font-semibold rounded-full text-white ${statusColors[request.status]}`}>
                                   {statusText[request.status]}
                                 </Badge>
-                                <Badge variant="outline" className="text-xs">
+                                <Badge variant="outline" className="text-xs dark:bg-slate-700/50 dark:text-white dark:border-slate-600">
                                   {request.memberRole}
                                 </Badge>
                               </div>
 
                               <div className="space-y-1 text-sm">
-                                <div className="flex items-center gap-2 text-slate-600">
-                                  <Mail className="h-3.5 w-3.5 text-blue-500" />
+                                <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+                                  <Mail className="h-3.5 w-3.5 text-blue-500 dark:text-blue-400" />
                                   <span>{request.memberEmail}</span>
                                 </div>
-                                <div className="flex items-center gap-2 text-slate-600">
-                                  <Calendar className="h-3.5 w-3.5 text-blue-500" />
+                                <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+                                  <Calendar className="h-3.5 w-3.5 text-blue-500 dark:text-blue-400" />
                                   <span>
                                     Gửi lúc: {new Date(request.createdAt).toLocaleString("vi-VN")}
                                   </span>
                                 </div>
                               </div>
 
-                              <div className="pt-2 border-t border-slate-200">
-                                <p className="text-xs font-semibold text-slate-700 mb-1">Lý do:</p>
-                                <p className="text-sm text-slate-600 italic">"{request.reason}"</p>
+                              <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
+                                <p className="text-xs font-semibold text-slate-700 dark:text-slate-400 mb-1">Lý do:</p>
+                                <p className="text-sm text-slate-600 dark:text-slate-300 italic">"{request.reason}"</p>
                               </div>
 
                               {request.processedAt && (
-                                <div className="text-xs text-slate-500">
+                                <div className="text-xs text-slate-500 dark:text-slate-400">
                                   Xử lý lúc: {new Date(request.processedAt).toLocaleString("vi-VN")}
                                 </div>
                               )}
@@ -751,11 +751,19 @@ export default function ClubLeaderMembersPage() {
               )}
             </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t">
-              <Button variant="outline" onClick={() => setShowLeaveRequestModal(false)}>
+            <div className="flex justify-end gap-3 pt-4 border-t dark:border-slate-700">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowLeaveRequestModal(false)}
+                className="dark:bg-slate-800 dark:text-white dark:border-slate-600 dark:hover:bg-slate-700"
+              >
                 Đóng
               </Button>
-              <Button onClick={loadLeaveRequests} disabled={loadingLeaveRequests}>
+              <Button 
+                onClick={loadLeaveRequests} 
+                disabled={loadingLeaveRequests}
+                className="bg-green-500 hover:bg-green-600 text-white dark:bg-green-600 dark:hover:bg-green-700"
+              >
                 {loadingLeaveRequests ? "Đang tải..." : "Làm mới"}
               </Button>
             </div>
