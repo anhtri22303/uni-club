@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useMemo } from "react"
+import { useEffect, useState, useMemo, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { AppShell } from "@/components/app-shell"
 import { ProtectedRoute } from "@/contexts/protected-route"
@@ -57,6 +57,19 @@ export default function MemberClubsPage() {
 
   // ✅ Fetch user's existing applications
   const { data: myApplications = [], isLoading: applicationsLoading } = useMyMemberApplications()
+
+  // Debug: Log clubs data when it loads
+  useEffect(() => {
+    console.log("🔍 Clubs data state:", {
+      clubsCount: clubs.length,
+      loading,
+      error: queryError,
+      clubIds: clubIds.length > 0 ? clubIds.slice(0, 5) : [],
+    })
+    if (clubs.length > 0) {
+      console.log("✅ Loaded clubs:", clubs.slice(0, 3).map((c: any) => ({ id: c.id, name: c.name })))
+    }
+  }, [clubs, loading, queryError, clubIds])
 
   // Debug: Log applications when they load
   useEffect(() => {
@@ -152,7 +165,8 @@ export default function MemberClubsPage() {
   //   "Japanese Language": "#D80032",
   //   "Korean Language": "#5DADEC",
   // }
-  const getClubStatus = (clubId: string) => {
+  // ✅ FIX: Wrap getClubStatus in useCallback to avoid unnecessary re-renders
+  const getClubStatus = useCallback((clubId: string) => {
     // If we have a local pending marker for this club, show pending immediately
     if (pendingClubIds.includes(clubId)) return "pending"
 
@@ -176,22 +190,31 @@ export default function MemberClubsPage() {
     if (apiApplication) return "pending"
 
     return "none"
-  }
+  }, [pendingClubIds, userMemberships, userApplications, myApplications])
 
   // Map API items to table rows and filter out user's current clubs
-  console.log("Total clubs before filter:", clubsWithData.length, "userClubIds:", userClubIds)
-  const enhancedClubs = clubsWithData
-    .filter((club: ClubApiItem) => {
+  // ✅ FIX: Use useMemo to ensure proper dependency tracking and avoid race conditions
+  const enhancedClubs = useMemo(() => {
+    console.log("🔄 Computing enhancedClubs - clubsWithData:", clubsWithData.length, "userClubIds:", userClubIds)
+    
+    if (clubsWithData.length === 0) {
+      console.log("⚠️ No clubs data available yet")
+      return []
+    }
+
+    const filtered = clubsWithData.filter((club: ClubApiItem) => {
       // Hide clubs that user is already a member of
       const clubIdNumber = Number(club.id)
       if (userClubIds.length > 0 && userClubIds.includes(clubIdNumber)) {
-        console.log(`Hiding club ${club.name} (ID: ${club.id}) - user is member of this club`)
+        console.log(`🚫 Hiding club ${club.name} (ID: ${club.id}) - user is member of this club`)
         return false
       }
       return true
     })
 
-    .map((club: ClubApiItem) => {
+    console.log(`✅ Filtered clubs: ${filtered.length} out of ${clubsWithData.length} (hidden: ${clubsWithData.length - filtered.length})`)
+
+    return filtered.map((club: ClubApiItem) => {
       // 1. Thử lấy tên major trực tiếp (logic cũ)
       let majorName = club.majorName ?? (club as any).major?.name ?? (club as any).major?.majorName
       let majorColor: string | undefined = undefined // Khởi tạo màu
@@ -225,7 +248,9 @@ export default function MemberClubsPage() {
         actions: undefined,
       }
     })
-  console.log("Enhanced clubs after filter:", enhancedClubs.length)
+  }, [clubsWithData, userClubIds, majors, getClubStatus, myApplications, userMemberships, userApplications, pendingClubIds])
+  
+  console.log("📊 Final enhancedClubs count:", enhancedClubs.length)
 
   const getMajorVariant = (major?: string) => {
     if (!major) return "outline"

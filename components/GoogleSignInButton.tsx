@@ -17,16 +17,46 @@ export function GoogleSignInButton({ mode = "sign-in", onClick }: GoogleSignInBu
   const [isLoading, setIsLoading] = useState(false)
 
   const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
+    const credentialTimestamp = new Date().toISOString()
+    
     try {
       setIsLoading(true)
-      console.log("✅ Google credential received from Google OAuth: ", credentialResponse.credential)
+      
+      // Log Google credential details
+      const credentialDetails = {
+        timestamp: credentialTimestamp,
+        hasCredential: !!credentialResponse.credential,
+        tokenLength: credentialResponse.credential?.length || 0,
+        tokenPreview: credentialResponse.credential?.substring(0, 30) + "..." || "N/A",
+        select_by: (credentialResponse as any).select_by || "unknown"
+      }
+      
+      console.log("✅ [Google OAuth] Credential Received:", credentialDetails)
+      
+      // Save credential details to sessionStorage
+      if (typeof window !== "undefined") {
+        console.log("💾 [SessionStorage] Attempting to save credential...")
+        try {
+          sessionStorage.setItem("google_oauth_credential", JSON.stringify({
+            ...credentialDetails,
+            timestamp: credentialTimestamp
+          }))
+          console.log("✅ [SessionStorage] Credential saved successfully!")
+          console.log("💾 [SessionStorage] Keys:", Object.keys(sessionStorage).filter(k => k.startsWith("google_")))
+        } catch (e) {
+          console.error("❌ [SessionStorage] Failed to save credential:", e)
+          console.warn("⚠️ Failed to save credential to sessionStorage:", e)
+        }
+      } else {
+        console.warn("⚠️ [SessionStorage] window is undefined, cannot save to sessionStorage")
+      }
       
       // Validate credential exists
       if (!credentialResponse.credential) {
         throw new Error("No credential received from Google")
       }
 
-      console.log("📤 Sending Google ID token to backend...", {
+      console.log("📤 [Google OAuth] Sending ID token to backend...", {
         tokenLength: credentialResponse.credential.length,
         tokenPreview: credentialResponse.credential.substring(0, 30) + "..."
       })

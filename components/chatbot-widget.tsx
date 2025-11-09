@@ -703,7 +703,7 @@ Please analyze the pending applications and recommend which ones to approve base
         <Button
           variant="outline"
           size="icon"
-          className="h-12 w-12 bg-green-200 shadow-lg hover:shadow-xl transition-shadow"
+          className="h-12 w-12 bg-green-200 dark:bg-green-800 shadow-lg hover:shadow-xl transition-shadow"
           onClick={() => setIsOpen(!isOpen)}
           aria-label={isOpen ? "Close chat" : "Open chat"}
           title={isOpen ? "Close chat" : "Open chat"}

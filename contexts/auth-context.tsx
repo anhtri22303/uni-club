@@ -265,6 +265,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         sessionStorage.removeItem(key);
       });
 
+      // --- Bước 2.5: Xóa tất cả Google OAuth data trong sessionStorage ---
+      if (typeof window !== "undefined" && sessionStorage) {
+        try {
+          const allSessionKeys = Object.keys(sessionStorage);
+          const googleKeys = allSessionKeys.filter((key) => key.startsWith("google_"));
+          
+          if (googleKeys.length > 0) {
+            console.log(`🧹 [Logout] Xóa ${googleKeys.length} Google OAuth keys từ sessionStorage:`, googleKeys);
+            googleKeys.forEach((key) => {
+              safeSessionStorage.removeItem(key);
+              sessionStorage.removeItem(key);
+            });
+            console.log("✅ [Logout] Đã xóa tất cả Google OAuth data từ sessionStorage.");
+          }
+        } catch (err) {
+          console.error("❌ [Logout] Lỗi khi xóa Google OAuth data:", err);
+        }
+      }
+
       console.log("Logout: Đã thực hiện xong các lệnh xóa.");
 
       // --- Bước 3: Kiểm tra lại storage ---

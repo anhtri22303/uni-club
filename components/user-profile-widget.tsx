@@ -58,20 +58,20 @@ function getPointsCardStyle(points: number) {
   }
   if (points >= 1000) {
     return {
-      cardClassName: "bg-amber-50",
-      textColorClassName: "text-amber-900",
-      subtitleColorClassName: "text-amber-700",
-      iconBgClassName: "bg-amber-200",
-      iconColorClassName: "text-amber-600",
+      cardClassName: "bg-amber-50 dark:bg-amber-900/20",
+      textColorClassName: "text-amber-900 dark:text-amber-200",
+      subtitleColorClassName: "text-amber-700 dark:text-amber-300",
+      iconBgClassName: "bg-amber-200 dark:bg-amber-800/50",
+      iconColorClassName: "text-amber-600 dark:text-amber-400",
       animationClassName: "animate-flicker [animation-duration:3s]",
     }
   }
   return {
-    cardClassName: "bg-slate-100",
-    textColorClassName: "text-slate-800",
-    subtitleColorClassName: "text-slate-500",
-    iconBgClassName: "bg-slate-200",
-    iconColorClassName: "text-slate-600",
+    cardClassName: "!bg-slate-100 dark:!bg-slate-800",
+    textColorClassName: "text-slate-800 dark:text-slate-200",
+    subtitleColorClassName: "text-slate-500 dark:text-slate-400",
+    iconBgClassName: "bg-slate-200 dark:bg-slate-700",
+    iconColorClassName: "text-slate-600 dark:text-slate-300",
     animationClassName: "",
   }
 }
