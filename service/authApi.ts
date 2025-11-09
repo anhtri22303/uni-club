@@ -71,22 +71,116 @@ export interface GoogleAuthResponse {
 }
 
 export const loginWithGoogleToken = async (credentials: { token: string }): Promise<LoginResponse> => {
-  try {
-    console.log("🚀 Sending Google token to backend:", {
-      url: `${axiosInstance.defaults.baseURL}/auth/google`,
+  const requestTimestamp = new Date().toISOString()
+  const requestId = `google_login_${Date.now()}`
+  
+  // Prepare request details
+  const requestUrl = `${axiosInstance.defaults.baseURL}/auth/google`
+  const requestDetails = {
+    id: requestId,
+    timestamp: requestTimestamp,
+    method: "POST",
+    url: requestUrl,
+    endpoint: "/auth/google",
+    headers: {
+      "Content-Type": "application/json",
+      ...(typeof window !== "undefined" && sessionStorage.getItem("jwtToken") 
+        ? { Authorization: `Bearer ${sessionStorage.getItem("jwtToken")?.substring(0, 20)}...` }
+        : {}
+      )
+    },
+    body: {
+      token: credentials.token,
       tokenLength: credentials.token?.length || 0,
-      tokenStart: credentials.token?.substring(0, 20) + "..."
-    })
+      tokenPreview: credentials.token?.substring(0, 30) + "..."
+    }
+  }
 
+  // Log request details
+  console.log("🚀 [Google Login API] Request Details:", requestDetails)
+  
+  // Save request to sessionStorage
+  if (typeof window !== "undefined") {
+    console.log("💾 [SessionStorage] Attempting to save request...")
+    try {
+      const existingLogs = sessionStorage.getItem("google_login_logs")
+      console.log("💾 [SessionStorage] Existing logs:", existingLogs ? "Found" : "None")
+      const logs = existingLogs ? JSON.parse(existingLogs) : []
+      logs.push({
+        ...requestDetails,
+        status: "pending"
+      })
+      // Keep only last 10 logs
+      const recentLogs = logs.slice(-10)
+      sessionStorage.setItem("google_login_logs", JSON.stringify(recentLogs))
+      console.log("✅ [SessionStorage] Request saved successfully!")
+      console.log("💾 [SessionStorage] Keys:", Object.keys(sessionStorage).filter(k => k.startsWith("google_")))
+    } catch (e) {
+      console.error("❌ [SessionStorage] Failed to save request:", e)
+      console.warn("⚠️ Failed to save request to sessionStorage:", e)
+    }
+  } else {
+    console.warn("⚠️ [SessionStorage] window is undefined, cannot save to sessionStorage")
+  }
+
+  try {
     const response = await axiosInstance.post<GoogleAuthResponse>("/auth/google", credentials)
     
-    console.log("✅ Google OAuth Response:", {
-      success: response.data.success,
-      message: response.data.message,
-      hasToken: !!response.data.data?.token,
-      email: response.data.data?.email,
-      fullName: response.data.data?.fullName,
-    })
+    // Prepare response details
+    const responseDetails = {
+      id: requestId,
+      timestamp: new Date().toISOString(),
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers,
+      data: {
+        success: response.data.success,
+        message: response.data.message,
+        hasToken: !!response.data.data?.token,
+        email: response.data.data?.email,
+        fullName: response.data.data?.fullName,
+        role: response.data.data?.role,
+        userId: response.data.data?.userId,
+        staff: response.data.data?.staff,
+        clubIds: response.data.data?.clubIds
+      }
+    }
+
+    // Log response details
+    console.log("✅ [Google Login API] Response Details:", responseDetails)
+    
+    // Save response to sessionStorage
+    if (typeof window !== "undefined") {
+      console.log("💾 [SessionStorage] Attempting to save response...")
+      try {
+        const existingLogs = sessionStorage.getItem("google_login_logs")
+        const logs = existingLogs ? JSON.parse(existingLogs) : []
+        const logIndex = logs.findIndex((log: any) => log.id === requestId)
+        if (logIndex !== -1) {
+          logs[logIndex] = {
+            ...logs[logIndex],
+            ...responseDetails,
+            status: "success"
+          }
+        } else {
+          logs.push({
+            ...requestDetails,
+            ...responseDetails,
+            status: "success"
+          })
+        }
+        // Keep only last 10 logs
+        const recentLogs = logs.slice(-10)
+        sessionStorage.setItem("google_login_logs", JSON.stringify(recentLogs))
+        console.log("✅ [SessionStorage] Response saved successfully!")
+        console.log("💾 [SessionStorage] Keys:", Object.keys(sessionStorage).filter(k => k.startsWith("google_")))
+      } catch (e) {
+        console.error("❌ [SessionStorage] Failed to save response:", e)
+        console.warn("⚠️ Failed to save response to sessionStorage:", e)
+      }
+    } else {
+      console.warn("⚠️ [SessionStorage] window is undefined, cannot save to sessionStorage")
+    }
 
     // Check if response is successful
     if (!response.data.success || !response.data.data) {
@@ -105,14 +199,54 @@ export const loginWithGoogleToken = async (credentials: { token: string }): Prom
       clubIds: userData.clubIds || [],
     }
   } catch (error: any) {
-    console.error("❌ Error during Google token login:", {
+    // Prepare error details
+    const errorDetails = {
+      id: requestId,
+      timestamp: new Date().toISOString(),
       status: error.response?.status,
       statusText: error.response?.statusText,
       data: error.response?.data,
       url: error.config?.url,
       method: error.config?.method,
-      message: error.message
-    })
+      message: error.message,
+      stack: error.stack
+    }
+
+    // Log error details
+    console.error("❌ [Google Login API] Error Details:", errorDetails)
+    
+    // Save error to sessionStorage
+    if (typeof window !== "undefined") {
+      console.log("💾 [SessionStorage] Attempting to save error...")
+      try {
+        const existingLogs = sessionStorage.getItem("google_login_logs")
+        const logs = existingLogs ? JSON.parse(existingLogs) : []
+        const logIndex = logs.findIndex((log: any) => log.id === requestId)
+        if (logIndex !== -1) {
+          logs[logIndex] = {
+            ...logs[logIndex],
+            error: errorDetails,
+            status: "error"
+          }
+        } else {
+          logs.push({
+            ...requestDetails,
+            error: errorDetails,
+            status: "error"
+          })
+        }
+        // Keep only last 10 logs
+        const recentLogs = logs.slice(-10)
+        sessionStorage.setItem("google_login_logs", JSON.stringify(recentLogs))
+        console.log("✅ [SessionStorage] Error saved successfully!")
+        console.log("💾 [SessionStorage] Keys:", Object.keys(sessionStorage).filter(k => k.startsWith("google_")))
+      } catch (e) {
+        console.error("❌ [SessionStorage] Failed to save error:", e)
+        console.warn("⚠️ Failed to save error to sessionStorage:", e)
+      }
+    } else {
+      console.warn("⚠️ [SessionStorage] window is undefined, cannot save to sessionStorage")
+    }
 
     // Re-throw with more specific error message
     if (error.response?.status === 401) {

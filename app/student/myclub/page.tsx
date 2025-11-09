@@ -585,25 +585,25 @@ export default function MyClubPage() {
                   // Determine border color based on role and staff status
                   let borderColor = ""
                   if (member.role === "LEADER") {
-                    borderColor = "border-l-4 border-l-red-500"
+                    borderColor = "border-l-4 border-l-red-500 dark:border-l-red-400"
                   } else if (member.role === "MEMBER" && member.isStaff) {
-                    borderColor = "border-l-4 border-l-blue-500"
+                    borderColor = "border-l-4 border-l-blue-500 dark:border-l-blue-400"
                   } else if (member.role === "MEMBER") {
-                    borderColor = "border-l-4 border-l-green-500"
+                    borderColor = "border-l-4 border-l-green-500 dark:border-l-green-400"
                   }
 
                   return (
                     <Card
                       key={member.id}
-                      className={`border-0 shadow-sm hover:shadow-md transition-all duration-300 bg-white hover:bg-gradient-to-br hover:from-white hover:to-slate-50 group ${borderColor}`}
+                      className={`border-0 shadow-sm hover:shadow-md transition-all duration-300 bg-white dark:bg-slate-800/90 hover:bg-gradient-to-br hover:from-white hover:to-slate-50 dark:hover:from-slate-800 dark:hover:to-slate-700/80 group ${borderColor}`}
                     >
                       <CardContent className="px-6 py-1.5">
                         <div className="flex items-start justify-between gap-6">
                           {/* Left: Avatar + Basic Info */}
                           <div className="flex items-start gap-4 flex-1">
-                            <Avatar className="h-16 w-16 border-2 border-slate-200 ring-2 ring-blue-100 group-hover:ring-blue-200 transition-all">
+                            <Avatar className="h-16 w-16 border-2 border-slate-200 dark:border-slate-700 ring-2 ring-blue-100 dark:ring-blue-900/50 group-hover:ring-blue-200 dark:group-hover:ring-blue-800/70 transition-all">
                               <AvatarImage src={member.avatarUrl || "/placeholder.svg"} alt={member.fullName} />
-                              <AvatarFallback className="text-lg font-semibold bg-gradient-to-br from-blue-400 to-blue-600 text-white">
+                              <AvatarFallback className="text-lg font-semibold bg-gradient-to-br from-blue-400 to-blue-600 dark:from-blue-500 dark:to-blue-700 text-white">
                                 {member.fullName
                                   .split(" ")
                                   .map((n: string) => n[0])
@@ -616,18 +616,18 @@ export default function MyClubPage() {
                             <div className="space-y-3 flex-1">
                               {/* Name and Role */}
                               <div className="flex items-center gap-2 flex-wrap">
-                                <h3 className="text-lg font-bold text-slate-900">{member.fullName}</h3>
+                                <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">{member.fullName}</h3>
                                 <Badge
                                   className={`font-semibold text-xs rounded-full ${
                                     member.role === "LEADER"
-                                      ? "bg-purple-100 text-purple-700 border border-purple-200"
-                                      : "bg-green-100 text-green-700 border border-green-200"
+                                      ? "bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-700/50"
+                                      : "bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-700/50"
                                   }`}
                                 >
                                   {member.role}
                                 </Badge>
                                 {member.isStaff && (
-                                  <Badge className="font-semibold text-xs rounded-full bg-blue-100 text-blue-700 border border-blue-200">
+                                  <Badge className="font-semibold text-xs rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700/50">
                                     Staff
                                   </Badge>
                                 )}
@@ -635,23 +635,23 @@ export default function MyClubPage() {
 
                               {/* Contact and Academic Info Grid */}
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                                <div className="flex items-center gap-2 text-slate-600 group-hover:text-slate-900 transition-colors">
-                                  <Mail className="h-4 w-4 flex-shrink-0 text-blue-500" />
+                                <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-200 transition-colors">
+                                  <Mail className="h-4 w-4 flex-shrink-0 text-blue-500 dark:text-blue-400" />
                                   <span className="truncate">{member.email}</span>
                                 </div>
 
-                                <div className="flex items-center gap-2 text-slate-600 group-hover:text-slate-900 transition-colors">
-                                  <UserCircle className="h-4 w-4 flex-shrink-0 text-blue-500" />
+                                <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-200 transition-colors">
+                                  <UserCircle className="h-4 w-4 flex-shrink-0 text-blue-500 dark:text-blue-400" />
                                   <span>Student: {member.studentCode}</span>
                                 </div>
 
-                                <div className="flex items-center gap-2 text-slate-600 group-hover:text-slate-900 transition-colors">
-                                  <GraduationCap className="h-4 w-4 flex-shrink-0 text-blue-500" />
+                                <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-200 transition-colors">
+                                  <GraduationCap className="h-4 w-4 flex-shrink-0 text-blue-500 dark:text-blue-400" />
                                   <span className="truncate">{member.majorName}</span>
                                 </div>
 
-                                <div className="flex items-center gap-2 text-slate-600 group-hover:text-slate-900 transition-colors">
-                                  <Calendar className="h-4 w-4 flex-shrink-0 text-blue-500" />
+                                <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-200 transition-colors">
+                                  <Calendar className="h-4 w-4 flex-shrink-0 text-blue-500 dark:text-blue-400" />
                                   <span>Joined: {member.joinedAt}</span>
                                 </div>
                               </div>

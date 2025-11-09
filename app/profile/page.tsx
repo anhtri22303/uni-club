@@ -612,7 +612,7 @@ export default function ProfilePage() {
     return (
       <ProtectedRoute allowedRoles={["student", "club_leader", "uni_staff", "admin", "staff"]}>
         <AppShell>
-          <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+          <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
             <Card className="w-full max-w-md">
               <CardContent className="flex flex-col items-center space-y-4 p-8">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -633,7 +633,7 @@ export default function ProfilePage() {
     return (
       <ProtectedRoute allowedRoles={["student", "club_leader", "uni_staff", "admin", "staff"]}>
         <AppShell>
-          <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+          <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
             <Card className="w-full max-w-md">
               <CardContent className="flex flex-col items-center space-y-4 p-8">
                 <AlertCircle className="h-12 w-12 text-red-500" />
@@ -657,7 +657,7 @@ export default function ProfilePage() {
     return (
       <ProtectedRoute allowedRoles={["student", "club_leader", "uni_staff", "admin", "staff"]}>
         <AppShell>
-          <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+          <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
             <Card className="w-full max-w-md">
               <CardContent className="flex flex-col items-center space-y-4 p-8">
                 <AlertCircle className="h-8 w-8 text-yellow-500" />
@@ -697,22 +697,22 @@ export default function ProfilePage() {
     }
     if (points >= 1000) {
       return {
-        cardClassName: "bg-amber-50",
-        textColorClassName: "text-amber-900",
-        subtitleColorClassName: "text-amber-700",
-        iconBgClassName: "bg-amber-200",
-        iconColorClassName: "text-amber-600",
+        cardClassName: "bg-amber-50 dark:bg-amber-900/20",
+        textColorClassName: "text-amber-900 dark:text-amber-300",
+        subtitleColorClassName: "text-amber-700 dark:text-amber-400",
+        iconBgClassName: "bg-amber-200 dark:bg-amber-800/50",
+        iconColorClassName: "text-amber-600 dark:text-amber-400",
         // Dùng class của Tailwind để làm animation chậm lại
         animationClassName: "animate-flicker [animation-duration:3s]", // Animation cháy nhẹ
       }
     }
     // Mặc định cho 0-999 điểm
     return {
-      cardClassName: "bg-slate-100",
-      textColorClassName: "text-slate-800",
-      subtitleColorClassName: "text-slate-500",
-      iconBgClassName: "bg-slate-200",
-      iconColorClassName: "text-slate-600",
+      cardClassName: "!bg-slate-100 dark:!bg-slate-800",
+      textColorClassName: "text-slate-800 dark:text-slate-200",
+      subtitleColorClassName: "text-slate-500 dark:text-slate-400",
+      iconBgClassName: "bg-slate-200 dark:bg-slate-700",
+      iconColorClassName: "text-slate-600 dark:text-slate-300",
       animationClassName: "", // Không có animation
     }
   }
@@ -726,7 +726,7 @@ export default function ProfilePage() {
     return (
       <ProtectedRoute allowedRoles={["student", "club_leader", "uni_staff", "admin", "staff"]}>
         <AppShell>
-          <div className="min-h-screen bg-slate-50">
+          <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
             {/* Header chuyên nghiệp */}
             <div className="bg-gradient-to-r from-primary to-secondary text-white relative overflow-hidden">
               {/* Background Image - Full Header Background */}
@@ -755,7 +755,7 @@ export default function ProfilePage() {
                   onClick={handleBackgroundClick}
                   variant="secondary"
                   size="sm"
-                  className="bg-white/90 hover:bg-white text-slate-700 font-medium shadow-lg"
+                  className="bg-white/90 dark:bg-gray-800/90 hover:bg-white dark:hover:bg-gray-800 text-slate-700 dark:text-slate-200 font-medium shadow-lg"
                 >
                   <Camera className="h-4 w-4 mr-2" />
                   Change Background
@@ -892,18 +892,18 @@ export default function ProfilePage() {
                     <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {auth.role === "uni_staff" && (
                         <>
-                          <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg"><Building2 className="h-5 w-5 text-primary" /><span>University Management</span></div>
-                          <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg"><Users className="h-5 w-5 text-primary" /><span>User Administration</span></div>
-                          <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg"><BarChart3 className="h-5 w-5 text-primary" /><span>Analytics & Reports</span></div>
-                          <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg"><Settings className="h-5 w-5 text-primary" /><span>System Configuration</span></div>
+                          <div className="flex items-center gap-3 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg"><Building2 className="h-5 w-5 text-primary" /><span>University Management</span></div>
+                          <div className="flex items-center gap-3 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg"><Users className="h-5 w-5 text-primary" /><span>User Administration</span></div>
+                          <div className="flex items-center gap-3 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg"><BarChart3 className="h-5 w-5 text-primary" /><span>Analytics & Reports</span></div>
+                          <div className="flex items-center gap-3 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg"><Settings className="h-5 w-5 text-primary" /><span>System Configuration</span></div>
                         </>
                       )}
                       {(auth.role === "admin" || auth.role === "staff") && (
                         <>
-                          <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg"><Globe className="h-5 w-5 text-primary" /><span>Partner Management</span></div>
-                          <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg"><FileText className="h-5 w-5 text-primary" /><span>Offer Management</span></div>
-                          <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg"><UserCheck className="h-5 w-5 text-primary" /><span>Customer Support</span></div>
-                          <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg"><BarChart3 className="h-5 w-5 text-primary" /><span>Performance Analytics</span></div>
+                          <div className="flex items-center gap-3 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg"><Globe className="h-5 w-5 text-primary" /><span>Partner Management</span></div>
+                          <div className="flex items-center gap-3 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg"><FileText className="h-5 w-5 text-primary" /><span>Offer Management</span></div>
+                          <div className="flex items-center gap-3 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg"><UserCheck className="h-5 w-5 text-primary" /><span>Customer Support</span></div>
+                          <div className="flex items-center gap-3 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg"><BarChart3 className="h-5 w-5 text-primary" /><span>Performance Analytics</span></div>
                         </>
                       )}
                     </CardContent>
@@ -1014,7 +1014,7 @@ export default function ProfilePage() {
   return (
     <ProtectedRoute allowedRoles={["student", "club_leader", "uni_staff", "admin", "staff"]}>
       <AppShell>
-        <div className="min-h-screen bg-slate-50">
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
           {/* Header với ảnh đại diện */}
           <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 pb-20 relative overflow-hidden">
             {/* Background Image - Full Header Background */}
@@ -1043,14 +1043,14 @@ export default function ProfilePage() {
                 onClick={handleBackgroundClick}
                 variant="secondary"
                 size="sm"
-                className="bg-white/90 hover:bg-white text-indigo-600 font-medium shadow-lg"
+                className="bg-white/90 dark:bg-gray-800/90 hover:bg-white dark:hover:bg-gray-800 text-indigo-600 dark:text-indigo-400 font-medium shadow-lg"
               >
                 <Camera className="h-4 w-4 mr-2" />
                 Change Background
               </Button>
               <Button
                 onClick={() => router.push('/virtual-card')}
-                className="bg-white text-indigo-600 hover:bg-white/90 font-semibold shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
+                className="bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 hover:bg-white/90 dark:hover:bg-gray-800/90 font-semibold shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
               >
                 <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z" />
@@ -1214,18 +1214,18 @@ export default function ProfilePage() {
                   })
                 ) : (
                   // Show empty state when no wallets
-                  <Card className="shadow-lg border-0 bg-slate-100">
+                  <Card className="shadow-lg border-0 bg-slate-100 dark:bg-slate-800">
                     <CardContent className="p-4 flex items-center justify-between">
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-slate-500 truncate">
+                        <p className="text-sm font-medium text-slate-500 dark:text-slate-400 truncate">
                           No Club Memberships
                         </p>
-                        <p className="text-3xl font-bold text-slate-800">
+                        <p className="text-3xl font-bold text-slate-800 dark:text-slate-200">
                           0
                         </p>
                       </div>
-                      <div className="p-3 rounded-full bg-slate-200">
-                        <Flame className="h-6 w-6 text-slate-600" />
+                      <div className="p-3 rounded-full bg-slate-200 dark:bg-slate-700">
+                        <Flame className="h-6 w-6 text-slate-600 dark:text-slate-300" />
                       </div>
                     </CardContent>
                   </Card>
@@ -1243,59 +1243,59 @@ export default function ProfilePage() {
                       // Loading state for stats
                       <>
                         {[1, 2, 3, 4].map((i) => (
-                          <div key={i} className="text-center p-4 bg-slate-100 rounded-lg animate-pulse">
-                            <div className="h-7 w-7 bg-slate-300 rounded mx-auto mb-1" />
-                            <div className="h-6 w-12 bg-slate-300 rounded mx-auto mb-1" />
-                            <div className="h-3 w-20 bg-slate-300 rounded mx-auto" />
+                          <div key={i} className="text-center p-4 bg-slate-100 dark:bg-slate-800 rounded-lg animate-pulse">
+                            <div className="h-7 w-7 bg-slate-300 dark:bg-slate-600 rounded mx-auto mb-1" />
+                            <div className="h-6 w-12 bg-slate-300 dark:bg-slate-600 rounded mx-auto mb-1" />
+                            <div className="h-3 w-20 bg-slate-300 dark:bg-slate-600 rounded mx-auto" />
                           </div>
                         ))}
                       </>
                     ) : userStats ? (
                       // Real data from API
                       <>
-                        <div className="text-center p-4 bg-slate-100 rounded-lg">
-                          <Users className="h-7 w-7 text-blue-600 mx-auto mb-1" />
-                          <div className="text-2xl font-bold text-blue-800">{userStats.totalClubsJoined}</div>
-                          <div className="text-xs text-slate-600">Clubs Joined</div>
+                        <div className="text-center p-4 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                          <Users className="h-7 w-7 text-blue-600 dark:text-blue-400 mx-auto mb-1" />
+                          <div className="text-2xl font-bold text-blue-800 dark:text-blue-300">{userStats.totalClubsJoined}</div>
+                          <div className="text-xs text-slate-600 dark:text-slate-400">Clubs Joined</div>
                         </div>
-                        <div className="text-center p-4 bg-slate-100 rounded-lg">
-                          <Calendar className="h-7 w-7 text-green-600 mx-auto mb-1" />
-                          <div className="text-2xl font-bold text-green-800">{userStats.totalEventsJoined}</div>
-                          <div className="text-xs text-slate-600">Events Joined</div>
+                        <div className="text-center p-4 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                          <Calendar className="h-7 w-7 text-green-600 dark:text-green-400 mx-auto mb-1" />
+                          <div className="text-2xl font-bold text-green-800 dark:text-green-300">{userStats.totalEventsJoined}</div>
+                          <div className="text-xs text-slate-600 dark:text-slate-400">Events Joined</div>
                         </div>
-                        <div className="text-center p-4 bg-slate-100 rounded-lg">
-                          <Zap className="h-7 w-7 text-purple-600 mx-auto mb-1" />
-                          <div className="text-2xl font-bold text-purple-800">{userStats.totalPointsEarned.toLocaleString()}</div>
-                          <div className="text-xs text-slate-600">Points Earned</div>
+                        <div className="text-center p-4 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                          <Zap className="h-7 w-7 text-purple-600 dark:text-purple-400 mx-auto mb-1" />
+                          <div className="text-2xl font-bold text-purple-800 dark:text-purple-300">{userStats.totalPointsEarned.toLocaleString()}</div>
+                          <div className="text-xs text-slate-600 dark:text-slate-400">Points Earned</div>
                         </div>
-                        <div className="text-center p-4 bg-slate-100 rounded-lg">
-                          <Clock className="h-7 w-7 text-amber-600 mx-auto mb-1" />
-                          <div className="text-2xl font-bold text-amber-800">{userStats.totalAttendanceDays}</div>
-                          <div className="text-xs text-slate-600">Attendance Days</div>
+                        <div className="text-center p-4 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                          <Clock className="h-7 w-7 text-amber-600 dark:text-amber-400 mx-auto mb-1" />
+                          <div className="text-2xl font-bold text-amber-800 dark:text-amber-300">{userStats.totalAttendanceDays}</div>
+                          <div className="text-xs text-slate-600 dark:text-slate-400">Attendance Days</div>
                         </div>
                       </>
                     ) : (
                       // Empty state if no stats available
                       <>
-                        <div className="text-center p-4 bg-slate-100 rounded-lg">
-                          <Users className="h-7 w-7 text-blue-600 mx-auto mb-1" />
-                          <div className="text-2xl font-bold text-blue-800">0</div>
-                          <div className="text-xs text-slate-600">Clubs Joined</div>
+                        <div className="text-center p-4 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                          <Users className="h-7 w-7 text-blue-600 dark:text-blue-400 mx-auto mb-1" />
+                          <div className="text-2xl font-bold text-blue-800 dark:text-blue-300">0</div>
+                          <div className="text-xs text-slate-600 dark:text-slate-400">Clubs Joined</div>
                         </div>
-                        <div className="text-center p-4 bg-slate-100 rounded-lg">
-                          <Calendar className="h-7 w-7 text-green-600 mx-auto mb-1" />
-                          <div className="text-2xl font-bold text-green-800">0</div>
-                          <div className="text-xs text-slate-600">Events Joined</div>
+                        <div className="text-center p-4 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                          <Calendar className="h-7 w-7 text-green-600 dark:text-green-400 mx-auto mb-1" />
+                          <div className="text-2xl font-bold text-green-800 dark:text-green-300">0</div>
+                          <div className="text-xs text-slate-600 dark:text-slate-400">Events Joined</div>
                         </div>
-                        <div className="text-center p-4 bg-slate-100 rounded-lg">
-                          <Zap className="h-7 w-7 text-purple-600 mx-auto mb-1" />
-                          <div className="text-2xl font-bold text-purple-800">0</div>
-                          <div className="text-xs text-slate-600">Points Earned</div>
+                        <div className="text-center p-4 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                          <Zap className="h-7 w-7 text-purple-600 dark:text-purple-400 mx-auto mb-1" />
+                          <div className="text-2xl font-bold text-purple-800 dark:text-purple-300">0</div>
+                          <div className="text-xs text-slate-600 dark:text-slate-400">Points Earned</div>
                         </div>
-                        <div className="text-center p-4 bg-slate-100 rounded-lg">
-                          <Clock className="h-7 w-7 text-amber-600 mx-auto mb-1" />
-                          <div className="text-2xl font-bold text-amber-800">0</div>
-                          <div className="text-xs text-slate-600">Attendance Days</div>
+                        <div className="text-center p-4 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                          <Clock className="h-7 w-7 text-amber-600 dark:text-amber-400 mx-auto mb-1" />
+                          <div className="text-2xl font-bold text-amber-800 dark:text-amber-300">0</div>
+                          <div className="text-xs text-slate-600 dark:text-slate-400">Attendance Days</div>
                         </div>
                       </>
                     )}
