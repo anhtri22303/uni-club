@@ -5,21 +5,24 @@
       "heading": "Points & Budget",
       "items": [
         {
-          "text": "Point Cost: The commitment points students must spend to register for the event",
+          "text": "Point Cost: The number of committed points that students must spend to register to buy tickets to participate in the event",
           "important": true
         },
         {
           "text": "Higher point costs indicate more important or exclusive events"
         },
         {
-          "text": "Students earn points back upon successful event check-in"
+          "text": "Students will be refunded their ticket purchase points after meeting the pre-event check-in and mid-event check-in requirements"
         },
         {
-          "text": "Budget Points: The total budget allocated from your club's budget pool for event expenses",
+          "text": "Students will receive additional reward points after completing the pre-event check-in, mid-event check-in, and post-event check-in requirements"
+        },
+        {
+          "text": "Budget Points: The total budget points allocated by the university to the event fund to support event organization expenses",
           "important": true
         },
         {
-          "text": "Budget points cover event costs like venues, materials, refreshments, and rewards"
+          "text": "Budget points are used to cover reward points for participants who attend the entire duration of the event"
         },
         {
           "text": "Unused budget points will be returned to the club after the event"
