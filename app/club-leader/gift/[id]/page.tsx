@@ -823,13 +823,14 @@ export default function EditProductPage() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {/* Cột trái: Thông tin chính */}
                         <div className="md:col-span-2 space-y-6">
-                            <Card className="border-2 shadow-sm hover:shadow-md transition-shadow dark:bg-slate-800 dark:border-slate-700">
-                                <CardHeader className="bg-gradient-to-r from-blue-50 to-white dark:from-slate-700 dark:to-slate-800 border-b-2 dark:border-slate-700">
-                                    <div className="flex items-center gap-2">
-                                        <div className="bg-blue-600 dark:bg-blue-500 p-2 rounded-lg">
+                            <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 dark:bg-slate-800 dark:border-slate-700 overflow-hidden">
+                                <div className="h-2 bg-gradient-to-r from-blue-400 via-blue-500 to-indigo-500" />
+                                <CardHeader className="bg-gradient-to-br from-blue-50 via-blue-50/50 to-white dark:from-blue-900/20 dark:via-slate-800/50 dark:to-slate-800 border-b border-blue-100 dark:border-slate-700 pb-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg">
                                             <Package className="h-5 w-5 text-white" />
                                         </div>
-                                        <CardTitle className="text-xl dark:text-white">Product Details</CardTitle>
+                                        <CardTitle className="text-xl font-bold dark:text-white">Product Details</CardTitle>
                                     </div>
                                 </CardHeader>
                                 <CardContent className="space-y-6 pt-6">
@@ -866,13 +867,14 @@ export default function EditProductPage() {
                             </Card>
 
                             {/* CARD IMAGE */}
-                            <Card className="border-2 shadow-sm hover:shadow-md transition-shadow dark:bg-slate-800 dark:border-slate-700">
-                                <CardHeader className="flex flex-row items-center justify-between bg-gradient-to-r from-purple-50 to-white dark:from-slate-700 dark:to-slate-800 border-b-2 dark:border-slate-700">
-                                    <div className="flex items-center gap-2">
-                                        <div className="bg-purple-600 dark:bg-purple-500 p-2 rounded-lg">
+                            <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 dark:bg-slate-800 dark:border-slate-700 overflow-hidden">
+                                <div className="h-2 bg-gradient-to-r from-purple-400 via-purple-500 to-pink-500" />
+                                <CardHeader className="flex flex-row items-center justify-between bg-gradient-to-br from-purple-50 via-purple-50/50 to-white dark:from-purple-900/20 dark:via-slate-800/50 dark:to-slate-800 border-b border-purple-100 dark:border-slate-700 pb-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2.5 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 shadow-lg">
                                             <ImageIcon className="h-5 w-5 text-white" />
                                         </div>
-                                        <CardTitle className="text-xl dark:text-white">Product Images</CardTitle>
+                                        <CardTitle className="text-xl font-bold dark:text-white">Product Images</CardTitle>
                                     </div>
                                     <Button
                                         variant="outline"
@@ -989,13 +991,14 @@ export default function EditProductPage() {
 
                         {/* Cột phải: Thông tin phụ */}
                         <div className="md:col-span-1 space-y-6">
-                            <Card className="border-2 shadow-sm hover:shadow-md transition-shadow dark:bg-slate-800 dark:border-slate-700">
-                                <CardHeader className="bg-gradient-to-r from-green-50 to-white dark:from-slate-700 dark:to-slate-800 border-b-2 dark:border-slate-700">
-                                    <div className="flex items-center gap-2">
-                                        <div className="bg-green-600 dark:bg-green-500 p-2 rounded-lg">
+                            <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 dark:bg-slate-800 dark:border-slate-700 overflow-hidden">
+                                <div className="h-2 bg-gradient-to-r from-green-400 via-green-500 to-emerald-500" />
+                                <CardHeader className="bg-gradient-to-br from-green-50 via-green-50/50 to-white dark:from-green-900/20 dark:via-slate-800/50 dark:to-slate-800 border-b border-green-100 dark:border-slate-700 pb-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2.5 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg">
                                             <CheckCircle className="h-5 w-5 text-white" />
                                         </div>
-                                        <CardTitle className="text-xl dark:text-white">Status</CardTitle>
+                                        <CardTitle className="text-xl font-bold dark:text-white">Status</CardTitle>
                                     </div>
                                 </CardHeader>
                                 <CardContent className="space-y-4 pt-6">
@@ -1039,13 +1042,14 @@ export default function EditProductPage() {
                                 </CardContent>
                             </Card>
 
-                            <Card className="border-2 shadow-sm hover:shadow-md transition-shadow dark:bg-slate-800 dark:border-slate-700">
-                                <CardHeader className="bg-gradient-to-r from-orange-50 to-white dark:from-slate-700 dark:to-slate-800 border-b-2 dark:border-slate-700">
-                                    <div className="flex items-center gap-2">
-                                        <div className="bg-orange-600 dark:bg-orange-500 p-2 rounded-lg">
+                            <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 dark:bg-slate-800 dark:border-slate-700 overflow-hidden">
+                                <div className="h-2 bg-gradient-to-r from-orange-400 via-orange-500 to-amber-500" />
+                                <CardHeader className="bg-gradient-to-br from-orange-50 via-orange-50/50 to-white dark:from-orange-900/20 dark:via-slate-800/50 dark:to-slate-800 border-b border-orange-100 dark:border-slate-700 pb-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2.5 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 shadow-lg">
                                             <Tag className="h-5 w-5 text-white" />
                                         </div>
-                                        <CardTitle className="text-xl dark:text-white">Classification</CardTitle>
+                                        <CardTitle className="text-xl font-bold dark:text-white">Classification</CardTitle>
                                     </div>
                                 </CardHeader>
                                 <CardContent className="space-y-4 pt-6">
@@ -1085,14 +1089,15 @@ export default function EditProductPage() {
                             </Card>
 
                             {/* CARD PRICE & INVENTORY */}
-                            <Card className="border-2 shadow-sm hover:shadow-md transition-shadow dark:bg-slate-800 dark:border-slate-700">
-                                <CardHeader className="bg-gradient-to-r from-indigo-50 to-white dark:from-slate-700 dark:to-slate-800 border-b-2 dark:border-slate-700">
+                            <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 dark:bg-slate-800 dark:border-slate-700 overflow-hidden">
+                                <div className="h-2 bg-gradient-to-r from-indigo-400 via-indigo-500 to-blue-500" />
+                                <CardHeader className="bg-gradient-to-br from-indigo-50 via-indigo-50/50 to-white dark:from-indigo-900/20 dark:via-slate-800/50 dark:to-slate-800 border-b border-indigo-100 dark:border-slate-700 pb-4">
                                     <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            <div className="bg-indigo-600 dark:bg-indigo-500 p-2 rounded-lg">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2.5 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 shadow-lg">
                                                 <DollarSign className="h-5 w-5 text-white" />
                                             </div>
-                                            <CardTitle className="text-xl dark:text-white">Price & Stock</CardTitle>
+                                            <CardTitle className="text-xl font-bold dark:text-white">Price & Stock</CardTitle>
                                         </div>
                                         {/* Cụm nút */}
                                         <div className="flex gap-2">
@@ -1162,13 +1167,14 @@ export default function EditProductPage() {
                                 </CardContent>
                             </Card>
 
-                            <Card className="border-2 shadow-sm hover:shadow-md transition-shadow dark:bg-slate-800 dark:border-slate-700">
-                                <CardHeader className="bg-gradient-to-r from-pink-50 to-white dark:from-slate-700 dark:to-slate-800 border-b-2 dark:border-slate-700">
-                                    <div className="flex items-center gap-2">
-                                        <div className="bg-pink-600 dark:bg-pink-500 p-2 rounded-lg">
+                            <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 dark:bg-slate-800 dark:border-slate-700 overflow-hidden">
+                                <div className="h-2 bg-gradient-to-r from-pink-400 via-pink-500 to-rose-500" />
+                                <CardHeader className="bg-gradient-to-br from-pink-50 via-pink-50/50 to-white dark:from-pink-900/20 dark:via-slate-800/50 dark:to-slate-800 border-b border-pink-100 dark:border-slate-700 pb-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2.5 rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 shadow-lg">
                                             <Tag className="h-5 w-5 text-white" />
                                         </div>
-                                        <CardTitle className="text-xl dark:text-white">Product Tags</CardTitle>
+                                        <CardTitle className="text-xl font-bold dark:text-white">Product Tags</CardTitle>
                                     </div>
                                 </CardHeader>
                                 <CardContent className="pt-6">
@@ -1233,19 +1239,19 @@ export default function EditProductPage() {
                 </div>
 
                 <Dialog open={isMediaDialogOpen} onOpenChange={setIsMediaDialogOpen}>
-                    <DialogContent className="sm:max-w-md">
+                    <DialogContent className="sm:max-w-md dark:bg-slate-800 dark:border-slate-700">
                         <DialogHeader>
-                            <div className="mx-auto w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mb-4">
-                                <Upload className="h-8 w-8 text-purple-600" />
+                            <div className="mx-auto w-16 h-16 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center mb-4">
+                                <Upload className="h-8 w-8 text-purple-600 dark:text-purple-400" />
                             </div>
-                            <DialogTitle className="text-center text-2xl">Upload Product Media</DialogTitle>
-                            <DialogDescription className="text-center">
+                            <DialogTitle className="text-center text-2xl dark:text-white">Upload Product Media</DialogTitle>
+                            <DialogDescription className="text-center dark:text-slate-300">
                                 Choose an image or video file to add to your product gallery.
                             </DialogDescription>
                         </DialogHeader>
                         <div className="space-y-4 py-4">
                             <div className="space-y-2">
-                                <Label htmlFor="media-file" className="text-base font-semibold">
+                                <Label htmlFor="media-file" className="text-base font-semibold dark:text-white">
                                     Select File
                                 </Label>
                                 <Input
@@ -1253,16 +1259,16 @@ export default function EditProductPage() {
                                     type="file"
                                     accept="image/*,video/*"
                                     onChange={handleFileChange}
-                                    className="border-2 focus:border-purple-500 cursor-pointer"
+                                    className="border-2 focus:border-purple-500 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:focus:border-purple-400 cursor-pointer"
                                 />
                                 {newMediaFile && (
-                                    <div className="flex items-center gap-2 p-3 bg-purple-50 rounded-lg border border-purple-200">
+                                    <div className="flex items-center gap-2 p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
                                         {newMediaFile.type.startsWith('video/') ? (
-                                            <VideoIcon className="h-5 w-5 text-purple-600 flex-shrink-0" />
+                                            <VideoIcon className="h-5 w-5 text-purple-600 dark:text-purple-400 shrink-0" />
                                         ) : (
-                                            <ImageIcon className="h-5 w-5 text-purple-600 flex-shrink-0" />
+                                            <ImageIcon className="h-5 w-5 text-purple-600 dark:text-purple-400 shrink-0" />
                                         )}
-                                        <span className="text-sm font-medium text-purple-900 truncate flex-1 min-w-0" title={newMediaFile.name}>
+                                        <span className="text-sm font-medium text-purple-900 dark:text-purple-200 truncate flex-1 min-w-0" title={newMediaFile.name}>
                                             {truncateFileName(newMediaFile.name, 40)}
                                         </span>
                                     </div>
@@ -1276,7 +1282,7 @@ export default function EditProductPage() {
                                     setIsMediaDialogOpen(false);
                                     setNewMediaFile(null);
                                 }}
-                                className="flex-1"
+                                className="flex-1 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:hover:bg-slate-600"
                                 disabled={isMediaLoading}
                             >
                                 Cancel
@@ -1284,7 +1290,7 @@ export default function EditProductPage() {
                             <Button
                                 onClick={handleAddMedia}
                                 disabled={isMediaLoading || !newMediaFile}
-                                className="flex-1 bg-purple-600 hover:bg-purple-700"
+                                className="flex-1 bg-purple-600 hover:bg-purple-700 dark:bg-purple-600 dark:hover:bg-purple-700 text-white"
                             >
                                 {isMediaLoading ? (
                                     <>
@@ -1304,61 +1310,63 @@ export default function EditProductPage() {
 
                 {/* Dialog Lịch sử Tồn kho */}
                 <Dialog open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
-                    <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col">
+                    <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col dark:bg-slate-800 dark:border-slate-700">
                         <DialogHeader>
                             <div className="flex items-center gap-3 mb-2">
-                                <div className="bg-indigo-100 p-2 rounded-lg">
-                                    <History className="h-6 w-6 text-indigo-600" />
+                                <div className="bg-indigo-100 dark:bg-indigo-900/30 p-2 rounded-lg">
+                                    <History className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
                                 </div>
                                 <div>
-                                    <DialogTitle className="text-2xl">Stock History</DialogTitle>
-                                    <DialogDescription className="text-base">
+                                    <DialogTitle className="text-2xl dark:text-white">Stock History</DialogTitle>
+                                    <DialogDescription className="text-base dark:text-slate-300">
                                         {product.name}
                                     </DialogDescription>
                                 </div>
                             </div>
                         </DialogHeader>
                         {/* Thêm flex-1 và overflow-hidden để ScrollArea hoạt động */}
-                        <div className="flex-1 overflow-hidden border-2 rounded-lg">
+                        <div className="flex-1 overflow-hidden border-2 rounded-lg dark:border-slate-700">
                             <ScrollArea className="h-full">
                                 <div className="p-4">
                                     {historyLoading ? (
                                         <div className="space-y-3 py-4">
-                                            <Skeleton className="h-12 w-full" />
-                                            <Skeleton className="h-12 w-full" />
-                                            <Skeleton className="h-12 w-full" />
+                                            <Skeleton className="h-12 w-full dark:bg-slate-700" />
+                                            <Skeleton className="h-12 w-full dark:bg-slate-700" />
+                                            <Skeleton className="h-12 w-full dark:bg-slate-700" />
                                         </div>
                                     ) : stockHistory.length === 0 ? (
                                         <div className="text-center py-16">
-                                            <div className="mx-auto w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                                                <History className="h-10 w-10 text-gray-400" />
+                                            <div className="mx-auto w-20 h-20 bg-gray-100 dark:bg-slate-700 rounded-full flex items-center justify-center mb-4">
+                                                <History className="h-10 w-10 text-gray-400 dark:text-slate-400" />
                                             </div>
-                                            <p className="text-base text-muted-foreground font-medium">
+                                            <p className="text-base text-muted-foreground dark:text-slate-300 font-medium">
                                                 No stock history found
                                             </p>
-                                            <p className="text-sm text-muted-foreground mt-1">
+                                            <p className="text-sm text-muted-foreground dark:text-slate-400 mt-1">
                                                 Stock changes will appear here
                                             </p>
                                         </div>
                                     ) : (
                                         <Table>
                                             <TableHeader>
-                                                <TableRow className="bg-gray-50">
-                                                    <TableHead className="w-[200px] font-bold">Date & Time</TableHead>
-                                                    <TableHead className="text-center font-bold">Change</TableHead>
-                                                    <TableHead className="text-center font-bold">New Stock</TableHead>
-                                                    <TableHead className="font-bold">Note</TableHead>
+                                                <TableRow className="bg-gray-50 dark:bg-slate-700">
+                                                    <TableHead className="w-[200px] font-bold dark:text-white">Date & Time</TableHead>
+                                                    <TableHead className="text-center font-bold dark:text-white">Change</TableHead>
+                                                    <TableHead className="text-center font-bold dark:text-white">New Stock</TableHead>
+                                                    <TableHead className="font-bold dark:text-white">Note</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
                                                 {stockHistory.map((entry) => {
                                                     const change = entry.newStock - entry.oldStock;
-                                                    const changeColor = change > 0 ? "text-green-600 bg-green-50" : "text-red-600 bg-red-50";
+                                                    const changeColor = change > 0 
+                                                        ? "text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-900/30" 
+                                                        : "text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-900/30";
                                                     const changeSign = change > 0 ? "+" : "";
 
                                                     return (
-                                                        <TableRow key={entry.id} className="hover:bg-gray-50">
-                                                            <TableCell className="text-sm whitespace-nowrap font-medium">
+                                                        <TableRow key={entry.id} className="hover:bg-gray-50 dark:hover:bg-slate-700/50">
+                                                            <TableCell className="text-sm whitespace-nowrap font-medium dark:text-slate-200">
                                                                 {new Date(entry.changedAt).toLocaleString()}
                                                             </TableCell>
                                                             <TableCell className="text-center">
@@ -1367,9 +1375,9 @@ export default function EditProductPage() {
                                                                 </Badge>
                                                             </TableCell>
                                                             <TableCell className="text-center">
-                                                                <span className="font-bold text-lg">{entry.newStock}</span>
+                                                                <span className="font-bold text-lg dark:text-slate-200">{entry.newStock}</span>
                                                             </TableCell>
-                                                            <TableCell className="text-sm">{entry.note || "N/A"}</TableCell>
+                                                            <TableCell className="text-sm dark:text-slate-300">{entry.note || "N/A"}</TableCell>
                                                         </TableRow>
                                                     );
                                                 })}
@@ -1383,7 +1391,7 @@ export default function EditProductPage() {
                             <Button
                                 variant="outline"
                                 onClick={() => setIsHistoryOpen(false)}
-                                className="w-full sm:w-auto"
+                                className="w-full sm:w-auto dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:hover:bg-slate-600"
                             >
                                 Close
                             </Button>
@@ -1393,20 +1401,20 @@ export default function EditProductPage() {
 
                 {/* Dialog Thêm hàng hóa */}
                 <Dialog open={isStockDialogOpen} onOpenChange={setIsStockDialogOpen}>
-                    <DialogContent className="sm:max-w-lg">
+                    <DialogContent className="sm:max-w-lg dark:bg-slate-800 dark:border-slate-700">
                         <DialogHeader>
-                            <div className="mx-auto w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mb-4">
-                                <Package className="h-8 w-8 text-indigo-600" />
+                            <div className="mx-auto w-16 h-16 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center mb-4">
+                                <Package className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />
                             </div>
-                            <DialogTitle className="text-center text-2xl">Update Stock</DialogTitle>
-                            <DialogDescription className="text-center">
+                            <DialogTitle className="text-center text-2xl dark:text-white">Update Stock</DialogTitle>
+                            <DialogDescription className="text-center dark:text-slate-300">
                                 Add or remove stock. Use a negative number to remove items.
                             </DialogDescription>
                         </DialogHeader>
                         <div className="space-y-6 py-4">
                             <div className="space-y-2">
-                                <Label htmlFor="stockChange" className="text-base font-semibold">
-                                    Stock Change <span className="text-red-500">*</span>
+                                <Label htmlFor="stockChange" className="text-base font-semibold dark:text-white">
+                                    Stock Change <span className="text-red-500 dark:text-red-400">*</span>
                                 </Label>
                                 <Input
                                     id="stockChange"
@@ -1433,13 +1441,13 @@ export default function EditProductPage() {
                                         setStockChange(isNegative ? `-${formattedValue}` : formattedValue);
                                     }}
                                     placeholder="e.g., 50 (to add) or -10 (to remove)"
-                                    className="h-12 border-2 focus:border-indigo-500 text-lg"
+                                    className="h-12 border-2 focus:border-indigo-500 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:placeholder:text-slate-400 dark:focus:border-indigo-400 text-lg"
                                 />
-                                <div className="flex items-start gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                                    <div className="bg-blue-100 p-1 rounded">
-                                        <CheckCircle className="h-4 w-4 text-blue-600" />
+                                <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                                    <div className="bg-blue-100 dark:bg-blue-800/50 p-1 rounded">
+                                        <CheckCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                                     </div>
-                                    <div className="text-xs text-blue-900">
+                                    <div className="text-xs text-blue-900 dark:text-blue-200">
                                         <p className="font-semibold mb-1">Examples:</p>
                                         <p>• Type <span className="font-bold">50</span> to add 50 items</p>
                                         <p>• Type <span className="font-bold">-10</span> to remove 10 items</p>
@@ -1447,15 +1455,15 @@ export default function EditProductPage() {
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="stockNote" className="text-base font-semibold">
-                                    Note <span className="text-red-500">*</span>
+                                <Label htmlFor="stockNote" className="text-base font-semibold dark:text-white">
+                                    Note <span className="text-red-500 dark:text-red-400">*</span>
                                 </Label>
                                 <Textarea
                                     id="stockNote"
                                     value={stockNote}
                                     onChange={(e) => setStockNote(e.target.value)}
                                     placeholder="e.g., 'Initial stock import' or 'Manual correction'"
-                                    className="border-2 focus:border-indigo-500 resize-none"
+                                    className="border-2 focus:border-indigo-500 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:placeholder:text-slate-400 dark:focus:border-indigo-400 resize-none"
                                     rows={4}
                                 />
                             </div>
@@ -1469,14 +1477,14 @@ export default function EditProductPage() {
                                     setStockNote("");
                                 }}
                                 disabled={isStockLoading}
-                                className="flex-1"
+                                className="flex-1 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:hover:bg-slate-600"
                             >
                                 Cancel
                             </Button>
                             <Button
                                 onClick={handleUpdateStock}
                                 disabled={isStockLoading || parseFormattedNumber(stockChange) === 0 || !stockNote.trim()}
-                                className="flex-1 bg-indigo-600 hover:bg-indigo-700"
+                                className="flex-1 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-700 text-white"
                             >
                                 {isStockLoading ? (
                                     <>
@@ -1496,18 +1504,18 @@ export default function EditProductPage() {
 
                 {/* Image Crop Dialog */}
                 <Dialog open={isCropDialogOpen} onOpenChange={setIsCropDialogOpen}>
-                    <DialogContent className="max-w-[90vw] w-[90vw] max-h-[95vh] overflow-auto">
+                    <DialogContent className="max-w-[90vw] w-[90vw] max-h-[95vh] overflow-auto dark:bg-slate-800 dark:border-slate-700">
                         <DialogHeader>
-                            <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-                                <ImageIcon className="h-8 w-8 text-blue-600" />
+                            <div className="mx-auto w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mb-4">
+                                <ImageIcon className="h-8 w-8 text-blue-600 dark:text-blue-400" />
                             </div>
-                            <DialogTitle className="text-center text-2xl">Crop Image</DialogTitle>
-                            <DialogDescription className="text-center">
+                            <DialogTitle className="text-center text-2xl dark:text-white">Crop Image</DialogTitle>
+                            <DialogDescription className="text-center dark:text-slate-300">
                                 Drag and resize the selection to crop your image
                             </DialogDescription>
                         </DialogHeader>
                         <div className="py-4 px-6">
-                            <div className="border-2 border-gray-200 rounded-lg p-8 bg-gray-50 w-full">
+                            <div className="border-2 border-gray-200 dark:border-slate-700 rounded-lg p-8 bg-gray-50 dark:bg-slate-900/50 w-full">
                                 <div className="flex justify-center w-full">
                                     {imageSrc && (
                                         <ReactCrop
@@ -1533,14 +1541,14 @@ export default function EditProductPage() {
                             <Button
                                 variant="outline"
                                 onClick={handleCropCancel}
-                                className="flex-1"
+                                className="flex-1 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:hover:bg-slate-600"
                             >
                                 Cancel
                             </Button>
                             <Button
                                 onClick={handleCropComplete}
                                 disabled={!completedCrop}
-                                className="flex-1 bg-blue-600 hover:bg-blue-700"
+                                className="flex-1 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white"
                             >
                                 <CheckCircle className="h-4 w-4 mr-2" />
                                 Apply Crop

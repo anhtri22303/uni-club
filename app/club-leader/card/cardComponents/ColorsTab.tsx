@@ -43,8 +43,8 @@ export const ColorsTab: React.FC<ColorsTabProps> = ({
               onClick={() => onColorTypeChange(type.value)}
               className={`p-2 sm:p-3 rounded-lg border-2 transition-all text-xs sm:text-sm font-medium overflow-hidden ${
                 colorType === type.value
-                  ? "border-blue-600 bg-blue-50 text-blue-700 ring-2 ring-blue-200"
-                  : "border-gray-200 hover:border-gray-300"
+                  ? "border-blue-600 dark:border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 ring-2 ring-blue-200 dark:ring-blue-800"
+                  : "border-gray-200 dark:border-slate-600 hover:border-gray-300 dark:hover:border-slate-500 dark:text-slate-300"
               }`}
               title={type.name}
             >
@@ -57,7 +57,7 @@ export const ColorsTab: React.FC<ColorsTabProps> = ({
         </div>
       </div>
 
-      <div className="h-px bg-slate-200" />
+      <div className="h-px bg-slate-200 dark:bg-slate-700" />
 
       {/* Color Presets */}
       <div className="space-y-3">
@@ -80,8 +80,8 @@ export const ColorsTab: React.FC<ColorsTabProps> = ({
               onClick={() => onColorSelect(preset.value, preset.type)}
               className={`p-2 sm:p-3 md:p-4 rounded-lg border-2 transition-all hover:scale-105 overflow-hidden ${
                 gradient === preset.value
-                  ? "border-blue-600 ring-2 ring-blue-200 shadow-lg"
-                  : "border-gray-200 hover:border-gray-300"
+                  ? "border-blue-600 dark:border-blue-500 ring-2 ring-blue-200 dark:ring-blue-800 shadow-lg"
+                  : "border-gray-200 dark:border-slate-600 hover:border-gray-300 dark:hover:border-slate-500"
               }`}
               title={preset.name}
             >
@@ -94,7 +94,7 @@ export const ColorsTab: React.FC<ColorsTabProps> = ({
 
               {gradient === preset.value && (
                 <div className="mt-1 text-center">
-                  <span className="text-xs text-blue-600 font-semibold">✓ Selected</span>
+                  <span className="text-xs text-blue-600 dark:text-blue-400 font-semibold">✓ Selected</span>
                 </div>
               )}
             </button>
@@ -102,15 +102,15 @@ export const ColorsTab: React.FC<ColorsTabProps> = ({
         </div>
       </div>
 
-      <div className="space-y-3 p-4 bg-slate-50 rounded-lg border border-slate-200">
+      <div className="space-y-3 p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-600">
         <div className="flex items-center justify-between min-w-0">
           <div className="min-w-0">
-            <Label className="font-semibold">Card Opacity</Label>
-            <p className="text-xs text-muted-foreground mt-1 truncate text-ellipsis whitespace-nowrap">
+            <Label className="font-semibold dark:text-slate-200">Card Opacity</Label>
+            <p className="text-xs text-muted-foreground dark:text-slate-400 mt-1 truncate text-ellipsis whitespace-nowrap">
               Adjust the opacity of the background color
             </p>
           </div>
-          <span className="text-sm font-bold text-blue-600">{cardOpacity[0]}%</span>
+          <span className="text-sm font-bold text-blue-600 dark:text-blue-400">{cardOpacity[0]}%</span>
         </div>
 
         <Slider
@@ -127,8 +127,8 @@ export const ColorsTab: React.FC<ColorsTabProps> = ({
         </div>
       </div>
 
-      <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <p className="text-sm text-blue-800">
+      <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 rounded-lg">
+        <p className="text-sm text-blue-800 dark:text-blue-300">
           <strong>💡 Tip:</strong> Choose contrasting colors for better text readability!
         </p>
       </div>

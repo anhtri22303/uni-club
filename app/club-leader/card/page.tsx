@@ -341,14 +341,14 @@ export default function CardEditorPage() {
   return (
     <ProtectedRoute allowedRoles={["club_leader"]}>
       <AppShell>
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-2 sm:p-4 lg:p-8">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 p-2 sm:p-4 lg:p-8">
           <div className="max-w-7xl mx-auto">
             {/* Page Title - Mobile Friendly */}
             <div className="mb-4 sm:mb-6 lg:mb-8">
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-slate-800 mb-1 sm:mb-2">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-slate-800 dark:text-slate-100 mb-1 sm:mb-2">
                 🎨 Card Designer
               </h1>
-              <p className="text-sm sm:text-base text-slate-600">
+              <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400">
                 Create and customize your club membership cards
               </p>
             </div>
