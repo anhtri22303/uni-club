@@ -40,7 +40,7 @@ export function AttendanceSummaryCard({ attendanceSummary, attendanceRanking }: 
   }, [filteredAttendanceData])
 
   return (
-    <Card className="border-2">
+    <Card className="border-2 dark:border-slate-700">
       <CardHeader className="pb-2 sm:pb-3">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex-1 min-w-0">
@@ -52,7 +52,7 @@ export function AttendanceSummaryCard({ attendanceSummary, attendanceRanking }: 
             </CardTitle>
             <CardDescription className="text-[10px] sm:text-xs mt-1">
               Total participants by month • 
-              <span className="font-semibold text-purple-600 dark:text-purple-500 ml-1">
+              <span className="font-semibold text-purple-600 dark:text-purple-400 ml-1">
                 {totalParticipants.toLocaleString()} total participants
               </span>
             </CardDescription>
@@ -126,7 +126,7 @@ export function AttendanceSummaryCard({ attendanceSummary, attendanceRanking }: 
                     const monthName = monthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
                     
                     return (
-                      <Card key={item.month} className="border bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/20 dark:to-background">
+                      <Card key={item.month} className="border bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/30 dark:to-slate-800 dark:border-slate-700">
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div className="space-y-1">

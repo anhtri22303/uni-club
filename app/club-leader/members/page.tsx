@@ -600,32 +600,42 @@ export default function ClubLeaderMembersPage() {
                 })}
 
                 {membersPages > 1 && (
-                  <div className="flex items-center justify-center gap-3 mt-8 pt-4">
-                    <Button
-                      aria-label="Previous page"
-                      variant="outline"
-                      size="sm"
-                      className="h-9 w-9 p-0 rounded-lg border-slate-200 hover:bg-slate-100 transition-colors bg-transparent"
+                  <div className="flex items-center justify-center gap-2 mt-8 pt-4">
+                    <button
                       onClick={goPrev}
                       disabled={membersPage === 1}
+                      className={`
+                        flex items-center gap-1 px-3 py-1.5 text-sm font-medium
+                        transition-colors
+                        ${membersPage === 1 
+                          ? 'text-muted-foreground/50 cursor-not-allowed' 
+                          : 'text-cyan-500 hover:text-cyan-400 dark:text-cyan-400 dark:hover:text-cyan-300 cursor-pointer'
+                        }
+                      `}
+                      aria-label="Previous page"
                     >
                       <ChevronLeft className="h-4 w-4" />
-                    </Button>
-
-                    <div className="min-w-[6rem] text-center text-sm font-semibold text-slate-700">
-                      Page {membersPage} of {membersPages}
-                    </div>
-
-                    <Button
-                      aria-label="Next page"
-                      variant="outline"
-                      size="sm"
-                      className="h-9 w-9 p-0 rounded-lg border-slate-200 hover:bg-slate-100 transition-colors bg-transparent"
+                      <span>Previous</span>
+                    </button>
+                    <span className="text-sm font-medium text-cyan-500 dark:text-cyan-400 px-2">
+                      {membersPage}/{membersPages}
+                    </span>
+                    <button
                       onClick={goNext}
                       disabled={membersPage === membersPages}
+                      className={`
+                        flex items-center gap-1 px-3 py-1.5 text-sm font-medium
+                        transition-colors
+                        ${membersPage === membersPages 
+                          ? 'text-muted-foreground/50 cursor-not-allowed' 
+                          : 'text-cyan-500 hover:text-cyan-400 dark:text-cyan-400 dark:hover:text-cyan-300 cursor-pointer'
+                        }
+                      `}
+                      aria-label="Next page"
                     >
+                      <span>Next</span>
                       <ChevronRight className="h-4 w-4" />
-                    </Button>
+                    </button>
                   </div>
                 )}
               </>

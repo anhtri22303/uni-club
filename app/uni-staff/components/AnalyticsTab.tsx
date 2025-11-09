@@ -41,7 +41,7 @@ export function AnalyticsTab({
       {/* Row 1: Club Applications and Event Requests Donut Charts */}
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
         {/* Club Applications Donut Chart */}
-        <Card className="border-2">
+        <Card className="border-2 dark:border-slate-700">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base sm:text-lg md:text-xl">
               <div className="p-1 sm:p-1.5 bg-green-500 rounded-lg flex-shrink-0">
@@ -148,7 +148,7 @@ export function AnalyticsTab({
         </Card>
 
         {/* Event Requests Bar Chart */}
-        <Card className="border-2">
+        <Card className="border-2 dark:border-slate-700">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base sm:text-lg md:text-xl">
               <div className="p-1 sm:p-1.5 bg-purple-500 rounded-lg flex-shrink-0">
@@ -391,7 +391,7 @@ export function AnalyticsTab({
       </div>
 
       {/* Top Clubs by Member Count */}
-      <Card className="border-2">
+      <Card className="border-2 dark:border-slate-700">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base sm:text-lg md:text-xl">
             <div className="p-1 sm:p-1.5 bg-blue-500 rounded-lg flex-shrink-0">
@@ -555,10 +555,10 @@ export function AnalyticsTab({
                     Members
                   </text>
                   
-                  {/* X-axis label */}
+                  {/* X-axis label - moved to top of chart */}
                   <text
                     x={padding.left + graphWidth / 2}
-                    y={chartHeight - 10}
+                    y={15}
                     textAnchor="middle"
                     fontSize="12"
                     fontWeight="bold"

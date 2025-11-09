@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   ShoppingCart, Search, CheckCircle, XCircle, Clock, Eye, Filter, DollarSign, Package, User, Hash, Calendar, Undo2, 
-  WalletCards,
+  WalletCards, ChevronLeft, ChevronRight,
 } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
@@ -683,62 +683,43 @@ function PaginationControls({
   }
 
   return (
-    <div className="flex items-center justify-between mt-4">
-      <div className="text-sm text-muted-foreground dark:text-slate-400">
-        Showing {totalItems === 0 ? 0 : currentPage * pageSize + 1} to{" "}
-        {Math.min((currentPage + 1) * pageSize, totalItems)} of {totalItems}{" "}
-        orders
-      </div>
+    <div className="flex items-center justify-center mt-4">
       <div className="flex items-center gap-2">
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => setPage(0)}
-          disabled={isFirstPage}
-          className="dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:hover:bg-slate-600"
-        >
-          First
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
+        <button
           onClick={() => setPage((p) => Math.max(0, p - 1))}
           disabled={isFirstPage}
-          className="dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:hover:bg-slate-600"
+          className={`
+            flex items-center gap-1 px-3 py-1.5 text-sm font-medium
+            transition-colors
+            ${isFirstPage 
+              ? 'text-muted-foreground/50 cursor-not-allowed' 
+              : 'text-cyan-500 hover:text-cyan-400 dark:text-cyan-400 dark:hover:text-cyan-300 cursor-pointer'
+            }
+          `}
+          aria-label="Previous page"
         >
-          Prev
-        </Button>
-        <div className="px-2 text-sm dark:text-slate-300">
-          Page {totalItems === 0 ? 0 : currentPage + 1} / {totalPages}
-        </div>
-        <Button
-          size="sm"
-          variant="outline"
+          <ChevronLeft className="h-4 w-4" />
+          <span>Previous</span>
+        </button>
+        <span className="text-sm font-medium text-cyan-500 dark:text-cyan-400 px-2">
+          {totalItems === 0 ? 0 : currentPage + 1}/{totalPages}
+        </span>
+        <button
           onClick={() => setPage((p) => Math.min(p + 1, totalPages - 1))}
           disabled={isLastPage}
-          className="dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:hover:bg-slate-600"
+          className={`
+            flex items-center gap-1 px-3 py-1.5 text-sm font-medium
+            transition-colors
+            ${isLastPage 
+              ? 'text-muted-foreground/50 cursor-not-allowed' 
+              : 'text-cyan-500 hover:text-cyan-400 dark:text-cyan-400 dark:hover:text-cyan-300 cursor-pointer'
+            }
+          `}
+          aria-label="Next page"
         >
-          Next
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => setPage(totalPages - 1)}
-          disabled={isLastPage}
-          className="dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:hover:bg-slate-600"
-        >
-          Last
-        </Button>
-        <select
-          aria-label="Items per page"
-          className="ml-2 rounded border px-2 py-1 text-sm h-9 bg-transparent dark:bg-slate-700 dark:text-white dark:border-slate-600"
-          value={pageSize}
-          onChange={handlePageSizeChange}
-        >
-          <option value={6}>6 / page</option>
-          <option value={12}>12 / page</option>
-          <option value={24}>24 / page</option>
-        </select>
+          <span>Next</span>
+          <ChevronRight className="h-4 w-4" />
+        </button>
       </div>
     </div>
   )
