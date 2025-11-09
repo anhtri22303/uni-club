@@ -6,15 +6,18 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { Calendar, Users, MapPin, Mail, Building, FileText, CheckCircle, XCircle, ArrowLeft, Clock, DollarSign, } from "lucide-react"
+import { Calendar, Users, MapPin, Mail, Building, FileText, CheckCircle, XCircle, ArrowLeft, Clock, DollarSign, Loader2, } from "lucide-react"
 import Link from "next/link"
 import { useState, useEffect } from "react"
-import { getEventById, putEventStatus, getEventSummary, EventSummary, eventSettle, getEventSettle } from "@/service/eventApi"
+import { getEventById, putEventStatus, getEventSummary, EventSummary, eventSettle, getEventSettle, rejectEvent } from "@/service/eventApi"
 import { useToast } from "@/hooks/use-toast"
 import { renderTypeBadge } from "@/lib/eventUtils"
 import { getLocationById } from "@/service/locationApi"
 import { getClubById } from "@/service/clubApi"
 import { EventWalletHistoryModal } from "@/components/event-wallet-history-modal"
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
 
 interface EventRequestDetailPageProps {
   params: {
@@ -40,6 +43,8 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
   const [settling, setSettling] = useState(false)
   const [isEventSettled, setIsEventSettled] = useState(false)
   const [checkingSettled, setCheckingSettled] = useState(false)
+  const [showRejectModal, setShowRejectModal] = useState(false)
+  const [rejectReason, setRejectReason] = useState("")
 
   useEffect(() => {
     let mounted = true
@@ -260,34 +265,91 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
     }
   }
 
+  // const handleReject = async () => {
+  //   if (!request) return
+  //   // Hiển thị hộp thoại (prompt) để nhập lý do từ chối
+  //   // (Để có UX tốt hơn, bạn có thể thay thế bằng một Dialog/Modal component)
+  //   const reason = window.prompt("Please enter a reason for rejecting this event:")
+
+  //   // Nếu người dùng nhấn "Cancel" hoặc không nhập gì
+  //   if (!reason) {
+  //     toast({
+  //       title: "Cancelled",
+  //       description: "Rejection was cancelled.",
+  //       variant: "default"
+  //     })
+  //     return // Dừng hàm
+  //   }
+
+  //   setProcessing(true)
+  //   try {
+  //     // Gọi API 'rejectEvent' mới với lý do
+  //     await rejectEvent(request.id, reason)
+
+  //     // Cập nhật state local để UI thay đổi ngay lập tức
+  //     setRequest({ ...request, status: "REJECTED" })
+
+  //     toast({
+  //       title: "Event Rejected",
+  //       description: `Event ${request.name || request.id} has been rejected.`,
+  //     })
+
+  //   } catch (err: any) {
+  //     console.error('Reject status failed', err)
+  //     toast({
+  //       title: 'Error',
+  //       description: err?.response?.data?.message || err?.message || 'Failed to reject event',
+  //       variant: "destructive"
+  //     })
+  //   } finally {
+  //     setProcessing(false)
+  //   }
+  // }
   const handleReject = async () => {
     if (!request) return
 
-    // TODO: API 'putEventStatus' mới của bạn (approve-budget) không hỗ trợ 'REJECT'.
-    // Bạn sẽ cần một API endpoint riêng cho việc từ chối (ví dụ: rejectEvent(id, reason)).
-    // Tạm thời, nút này sẽ hiển thị một cảnh báo.
+    // Mở modal để nhập lý do
+    setRejectReason("") // Xóa lý do cũ (nếu có)
+    setShowRejectModal(true)
+  }
 
-    console.warn("Rejection API is not implemented or 'putEventStatus' was changed.")
-    toast({
-      title: "Action Not Implemented",
-      description: "Rejection logic needs a separate API endpoint.",
-      variant: "destructive"
-    })
+  const handleConfirmReject = async () => {
+    if (!request || !rejectReason.trim()) {
+      toast({
+        title: "Error",
+        description: "Please provide a reason for rejection.",
+        variant: "destructive",
+      })
+      return
+    }
 
-    // Dưới đây là logic cũ nếu bạn muốn khôi phục/sửa lại API:
-    /*
     setProcessing(true)
     try {
-      // Giả sử bạn có một API 'rejectEvent'
-      // await rejectEvent(request.id, { reason: "Not approved" })
-      // setRequest({ ...request, status: "REJECTED" })
-      // toast({ title: "Rejected", ... })
-    } catch (err) {
-      // ...
+      // Gọi API 'rejectEvent' mới với lý do từ state
+      await rejectEvent(request.id, rejectReason)
+
+      // Cập nhật state local để UI thay đổi ngay lập tức
+      setRequest({ ...request, status: "REJECTED" })
+
+      toast({
+        title: "Event Rejected",
+        description: `Event ${request.name || request.id} has been rejected.`,
+      })
+
+      setShowRejectModal(false) // Đóng modal
+
+    } catch (err: any) {
+      console.error('Reject status failed', err)
+      // Hiển thị lỗi API trực tiếp
+      const apiError = err?.response?.data?.message || err?.message || 'Failed to reject event'
+      toast({
+        title: 'Error',
+        description: apiError,
+        variant: "destructive",
+      })
     } finally {
       setProcessing(false)
     }
-    */
   }
 
   const formatCurrency = (amount: number) => {
@@ -753,6 +815,50 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
             onOpenChange={setShowWalletHistoryModal}
             eventId={params.id}
           />
+
+          {/* Reject Modal */}
+          <Dialog open={showRejectModal} onOpenChange={setShowRejectModal}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Reason for Rejection</DialogTitle>
+              </DialogHeader>
+              <div className="py-4 space-y-2">
+                <Label htmlFor="rejectReason" className="text-muted-foreground">
+                  Please provide a reason for rejecting this event.
+                </Label>
+                <Textarea
+                  id="rejectReason"
+                  placeholder="Type your reason here..."
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  rows={4}
+                  className="mt-2 border-slate-300"
+                />
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowRejectModal(false)}
+                  disabled={processing}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => handleConfirmReject()} // Sẽ tạo hàm này ở bước 5
+                  disabled={processing || !rejectReason.trim()} // Vô hiệu hóa nếu đang xử lý hoặc lý do trống
+                >
+                  {processing ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <XCircle className="h-4 w-4 mr-2" />
+                  )}
+                  Confirm Reject
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
         </div>
       </AppShell>
     </ProtectedRoute>

@@ -36,6 +36,46 @@ import { Tag } from "@/service/tagApi"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { getEventByClubId, Event } from "@/service/eventApi"
 
+// Hàm này giúp phân tích lỗi từ API để hiển thị thông báo thân thiện hơn
+const parseApiError = (error: any): string => {
+  const defaultMessage = "Failed to create product. Please try again."
+
+  if (error?.response?.data) {
+    const data = error.response.data
+
+    // 1. Ưu tiên 'message'
+    if (data.message && typeof data.message === "string") {
+      return data.message
+    }
+
+    // 2. Xử lý lỗi 'error' (giống trong ảnh của bạn)
+    if (data.error && typeof data.error === "string") {
+      // Kiểm tra định dạng "field: message"
+      const parts = data.error.split(":")
+      if (parts.length > 1) {
+        const fieldName = parts[0].trim()
+        const errorMessage = parts.slice(1).join(":").trim()
+
+        // Viết hoa chữ cái đầu của tên trường
+        const friendlyFieldName = fieldName.charAt(0).toUpperCase() + fieldName.slice(1)
+
+        return `${friendlyFieldName}: ${errorMessage}` // Ví dụ: "Name: must not be blank"
+      }
+      return data.error // Trả về nếu không có định dạng "field: message"
+    }
+  }
+
+  // 3. Fallback (nếu API không trả về message hay error)
+  if (error.message && typeof error.message === "string") {
+    if (error.message.includes("code 400")) {
+      return "Bad request. Please check your input." // Thông báo thân thiện hơn
+    }
+    return error.message
+  }
+
+  return defaultMessage
+}
+
 // ---- Compact status badge overlay ----
 const StatusBadge = ({ status }: { status: string }) => {
   const base = "truncate max-w-[7.5rem] text-xs px-2 py-1 rounded-md absolute right-2 top-2 z-10"
@@ -123,7 +163,7 @@ export default function ClubLeaderGiftPage() {
     eventTagId: null,
   });
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive" | "archived">("all");
-  
+
   // Kiểm tra description có vượt quá giới hạn
   const isDescriptionTooLong = form.description.length > MAX_DESCRIPTION_LENGTH;
 
@@ -212,9 +252,24 @@ export default function ClubLeaderGiftPage() {
     const { name, value } = e.target
     setForm((prev) => ({
       ...prev,
-      [name]: name === "pointCost" || name === "stockQuantity" || name === "eventId" ? (value === "" ? 0 : Number(value)) : value,
+      //[name]: name === "pointCost" || name === "stockQuantity" || name === "eventId" ? (value === "" ? 0 : Number(value)) : value,
+      [name]: value,
     }))
   }
+
+  // Handler mới cho các trường số có định dạng
+  const handleNumericChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    // 1. Loại bỏ tất cả ký tự không phải là số (như dấu phẩy)
+    const cleanValue = value.replace(/[^0-9]/g, '');
+    // 2. Chuyển về số, coi chuỗi rỗng là 0
+    const numValue = cleanValue === '' ? 0 : Number.parseInt(cleanValue, 10);
+
+    setForm((prev) => ({
+      ...prev,
+      [name]: numValue,
+    }));
+  };
 
   const handleSelectChange = (name: string) => (value: string) => {
     // Chỉ xử lý logic đặc biệt khi đổi 'type'
@@ -317,7 +372,15 @@ export default function ClubLeaderGiftPage() {
       setTagSearchTerm("") // Reset search tag khi tạo thành công
       queryClient.invalidateQueries({ queryKey: queryKeys.productsByClubId(clubId) })
     } catch (err: any) {
-      toast({ title: "Error", description: err.message || "Create a failed product", variant: "destructive" })
+      // toast({ title: "Error", description: err.message || "Create a failed product", variant: "destructive" })
+      console.error("Create product error:", err.response || err) // Log lỗi chi tiết hơn
+      toast({
+        title: "Error",
+        // Sử dụng hàm helper mới
+        description: parseApiError(err),
+        // DÒNG CŨ: description: err.message || "Create a failed product", 
+        variant: "destructive"
+      })
     } finally {
       setSubmitting(false)
     }
@@ -413,18 +476,18 @@ export default function ClubLeaderGiftPage() {
               className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
               disabled={!clubId}
             >
-              <Plus className="h-5 w-5 mr-2" /> 
+              <Plus className="h-5 w-5 mr-2" />
               Add New Product
             </Button>
           </div>
 
           {/* Search Bar - Full Width with Better Design */}
           <div className="relative">
-            <Input 
-              placeholder="Search for products by name or description..." 
-              value={searchTerm} 
-              onChange={(e) => setSearchTerm(e.target.value)} 
-              className="h-12 pl-12 text-base border-2 focus:border-blue-500 dark:focus:border-blue-400 dark:bg-slate-800 dark:text-white dark:border-slate-700 dark:placeholder:text-slate-400 transition-colors" 
+            <Input
+              placeholder="Search for products by name or description..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="h-12 pl-12 text-base border-2 focus:border-blue-500 dark:focus:border-blue-400 dark:bg-slate-800 dark:text-white dark:border-slate-700 dark:placeholder:text-slate-400 transition-colors"
             />
             <Gift className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground dark:text-slate-400" />
           </div>
@@ -536,12 +599,12 @@ export default function ClubLeaderGiftPage() {
 
                   <div className="space-y-1">
                     <Label htmlFor="description" className="dark:text-white">Describe</Label>
-                    <Textarea 
-                      id="description" 
+                    <Textarea
+                      id="description"
                       className={`mt-2 border-slate-300 dark:bg-slate-800 dark:text-white dark:border-slate-600 dark:placeholder:text-slate-400 ${isDescriptionTooLong ? 'border-red-500 dark:border-red-500 focus:border-red-500 dark:focus:border-red-500' : ''}`}
-                      name="description" 
-                      value={form.description} 
-                      onChange={handleChange} 
+                      name="description"
+                      value={form.description}
+                      onChange={handleChange}
                       placeholder="Detailed product description..."
                       rows={4}
                     />
@@ -549,7 +612,7 @@ export default function ClubLeaderGiftPage() {
                       <div className="flex-1">
                         {isDescriptionTooLong && (
                           <p className="text-sm text-red-600 dark:text-red-400 font-medium">
-                            Description exceeds the maximum length of {MAX_DESCRIPTION_LENGTH} characters. 
+                            Description exceeds the maximum length of {MAX_DESCRIPTION_LENGTH} characters.
                             Please shorten your description by {form.description.length - MAX_DESCRIPTION_LENGTH} characters.
                           </p>
                         )}
@@ -563,11 +626,31 @@ export default function ClubLeaderGiftPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
                       <Label htmlFor="pointCost" className="dark:text-white">Price (Points)</Label>
-                      <Input id="pointCost" className="mt-2 border-slate-300 dark:bg-slate-800 dark:text-white dark:border-slate-600 dark:placeholder:text-slate-400" name="pointCost" type="number" value={form.pointCost} onChange={handleChange} placeholder="0" min={0} />
+                      {/* <Input id="pointCost" className="mt-2 border-slate-300 dark:bg-slate-800 dark:text-white dark:border-slate-600 dark:placeholder:text-slate-400" name="pointCost" type="number" value={form.pointCost} onChange={handleChange} placeholder="0" min={0} /> */}
+                      <Input
+                        id="pointCost"
+                        className="mt-2 border-slate-300 dark:bg-slate-800 dark:text-white dark:border-slate-600 dark:placeholder:text-slate-400"
+                        name="pointCost"
+                        type="text" // 1. Đổi sang "text"
+                        inputMode="numeric" // 2. Thêm inputMode
+                        value={form.pointCost.toLocaleString('en-US')} // 3. Định dạng giá trị
+                        onChange={handleNumericChange} // 4. Dùng handler mới
+                        placeholder="0"
+                      />
                     </div>
                     <div className="space-y-1">
                       <Label htmlFor="stockQuantity" className="dark:text-white">Quantity in stock</Label>
-                      <Input id="stockQuantity" className="mt-2 border-slate-300 dark:bg-slate-800 dark:text-white dark:border-slate-600 dark:placeholder:text-slate-400" name="stockQuantity" type="number" value={form.stockQuantity} onChange={handleChange} placeholder="0" min={0} />
+                      {/* <Input id="stockQuantity" className="mt-2 border-slate-300 dark:bg-slate-800 dark:text-white dark:border-slate-600 dark:placeholder:text-slate-400" name="stockQuantity" type="number" value={form.stockQuantity} onChange={handleChange} placeholder="0" min={0} /> */}
+                      <Input
+                        id="stockQuantity"
+                        className="mt-2 border-slate-300 dark:bg-slate-800 dark:text-white dark:border-slate-600 dark:placeholder:text-slate-400"
+                        name="stockQuantity"
+                        type="text" // 1. Đổi sang "text"
+                        inputMode="numeric" // 2. Thêm inputMode
+                        value={form.stockQuantity.toLocaleString('en-US')} // 3. Định dạng giá trị
+                        onChange={handleNumericChange} // 4. Dùng handler mới
+                        placeholder="0"
+                      />
                     </div>
                   </div>
 
@@ -580,7 +663,7 @@ export default function ClubLeaderGiftPage() {
                       className="mb-2 border-slate-300 dark:bg-slate-800 dark:text-white dark:border-slate-600 dark:placeholder:text-slate-400"
                     />
                     {productTags.length > 0 ? (
-                      <ScrollArea className="h-24 rounded-md border p-3 border-slate-300 dark:border-slate-600 dark:bg-slate-800/50">
+                      <ScrollArea className="h-36 rounded-md border p-3 border-slate-300 dark:border-slate-600 dark:bg-slate-800/50">
                         <div className="space-y-2">
                           {productTags
                             .filter((tag) =>
@@ -621,8 +704,8 @@ export default function ClubLeaderGiftPage() {
                 </div>
               </ScrollArea>
               <DialogFooter>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={() => {
                     setOpen(false)
                     setTagSearchTerm("")
@@ -632,8 +715,8 @@ export default function ClubLeaderGiftPage() {
                 >
                   Cancel
                 </Button>
-                <Button 
-                  onClick={handleCreate} 
+                <Button
+                  onClick={handleCreate}
                   disabled={submitting || isDescriptionTooLong}
                   className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-500 dark:to-purple-500 hover:from-blue-700 hover:to-purple-700 dark:hover:from-blue-600 dark:hover:to-purple-600 disabled:opacity-50 disabled:cursor-not-allowed text-white"
                 >
@@ -667,8 +750,8 @@ export default function ClubLeaderGiftPage() {
                 </div>
                 <h3 className="text-xl font-semibold mb-2 text-gray-700 dark:text-white">No products found</h3>
                 <p className="text-base text-muted-foreground dark:text-slate-400 max-w-md mx-auto">
-                  {statusFilter === "archived" 
-                    ? "Your archive is empty. Archived products will appear here." 
+                  {statusFilter === "archived"
+                    ? "Your archive is empty. Archived products will appear here."
                     : "Try adjusting your filters or create a new product to get started."}
                 </p>
               </div>
@@ -684,7 +767,7 @@ export default function ClubLeaderGiftPage() {
                   >
                     {/* Modern Card Design with Enhanced Visual Hierarchy */}
                     <Card className="h-full flex flex-col overflow-hidden border-2 border-gray-200 dark:border-slate-700 transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 hover:border-blue-400 dark:hover:border-blue-500 bg-white dark:bg-slate-800/90">
-                      
+
                       {/* Image Container with Overlay Effect */}
                       <div className="relative aspect-square w-full overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 dark:from-slate-700 dark:to-slate-800">
                         <img
@@ -693,10 +776,10 @@ export default function ClubLeaderGiftPage() {
                           className="w-full h-full object-cover transition-all duration-500 group-hover:scale-110 group-hover:brightness-105"
                           onError={(e) => (e.currentTarget.src = "/placeholder.svg")}
                         />
-                        
+
                         {/* Gradient Overlay on Hover */}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-black/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                        
+
                         {/* Status Badge - Top Right */}
                         <Badge
                           className={`absolute right-3 top-3 z-10 px-2.5 py-1 text-xs font-bold shadow-xl border-2 transition-transform duration-300 group-hover:scale-110
@@ -762,24 +845,22 @@ export default function ClubLeaderGiftPage() {
                                 </span>
                               </div>
                             </div>
-                            
+
                             {/* Divider */}
                             <div className="w-px h-10 bg-gray-200 dark:bg-slate-700" />
-                            
+
                             {/* Stock Section */}
                             <div className="flex items-center gap-1.5 flex-1">
-                              <div className={`flex-shrink-0 w-8 h-8 rounded-md flex items-center justify-center shadow-sm ${
-                                p.stockQuantity === 0 
-                                  ? 'bg-gradient-to-br from-red-500 to-red-600 dark:from-red-600 dark:to-red-700' 
-                                  : 'bg-gradient-to-br from-gray-500 to-gray-600 dark:from-slate-600 dark:to-slate-700'
-                              }`}>
+                              <div className={`flex-shrink-0 w-8 h-8 rounded-md flex items-center justify-center shadow-sm ${p.stockQuantity === 0
+                                ? 'bg-gradient-to-br from-red-500 to-red-600 dark:from-red-600 dark:to-red-700'
+                                : 'bg-gradient-to-br from-gray-500 to-gray-600 dark:from-slate-600 dark:to-slate-700'
+                                }`}>
                                 <Package className="h-4 w-4 text-white" />
                               </div>
                               <div className="flex flex-col min-w-0">
                                 <span className="text-[9px] text-gray-500 dark:text-slate-400 font-medium uppercase tracking-wide">Stock</span>
-                                <span className={`font-bold text-sm truncate ${
-                                  p.stockQuantity === 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-700 dark:text-slate-300'
-                                }`}>
+                                <span className={`font-bold text-sm truncate ${p.stockQuantity === 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-700 dark:text-slate-300'
+                                  }`}>
                                   {p.stockQuantity.toLocaleString('en-US')}
                                 </span>
                               </div>
