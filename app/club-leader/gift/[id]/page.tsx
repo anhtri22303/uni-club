@@ -103,6 +103,34 @@ export default function EditProductPage() {
     const parseFormattedNumber = (str: string): number => {
         return Number(str.replace(/,/g, ''));
     };
+    // Hàm truncate tên file nếu quá dài
+    const truncateFileName = (fileName: string, maxLength: number = 40): string => {
+        if (fileName.length <= maxLength) return fileName;
+        
+        const lastDotIndex = fileName.lastIndexOf('.');
+        // Nếu không có extension hoặc extension quá dài
+        if (lastDotIndex === -1 || lastDotIndex === 0) {
+            // File không có extension, truncate từ đầu
+            return fileName.substring(0, maxLength - 3) + '...';
+        }
+        
+        const extension = fileName.substring(lastDotIndex);
+        const nameWithoutExt = fileName.substring(0, lastDotIndex);
+        
+        // Đảm bảo extension không quá dài
+        if (extension.length > maxLength / 2) {
+            return fileName.substring(0, maxLength - 3) + '...';
+        }
+        
+        // Truncate phần tên, giữ lại extension
+        const availableLength = maxLength - extension.length - 3; // 3 cho "..."
+        if (availableLength <= 0) {
+            return '...' + extension;
+        }
+        
+        const truncatedName = nameWithoutExt.substring(0, availableLength);
+        return `${truncatedName}...${extension}`;
+    };
 
     // Crop image utility function with high quality preservation
     const getCroppedImg = useCallback((image: HTMLImageElement, crop: PixelCrop): Promise<Blob> => {
@@ -1230,12 +1258,12 @@ export default function EditProductPage() {
                                 {newMediaFile && (
                                     <div className="flex items-center gap-2 p-3 bg-purple-50 rounded-lg border border-purple-200">
                                         {newMediaFile.type.startsWith('video/') ? (
-                                            <VideoIcon className="h-5 w-5 text-purple-600" />
+                                            <VideoIcon className="h-5 w-5 text-purple-600 flex-shrink-0" />
                                         ) : (
-                                            <ImageIcon className="h-5 w-5 text-purple-600" />
+                                            <ImageIcon className="h-5 w-5 text-purple-600 flex-shrink-0" />
                                         )}
-                                        <span className="text-sm font-medium text-purple-900 truncate flex-1">
-                                            {newMediaFile.name}
+                                        <span className="text-sm font-medium text-purple-900 truncate flex-1 min-w-0" title={newMediaFile.name}>
+                                            {truncateFileName(newMediaFile.name, 40)}
                                         </span>
                                     </div>
                                 )}

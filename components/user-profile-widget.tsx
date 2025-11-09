@@ -89,7 +89,7 @@ export function UserProfileWidget() {
   // const [userEmail, setUserEmail] = useState<string>("")
   // const [memberships, setMemberships] = useState<ApiMembershipWallet[]>([])
   const [selectedWalletId, setSelectedWalletId] = useState<string>("")
-  const [widgetCollapsed, setWidgetCollapsed] = useState<boolean>(false)
+  const [widgetCollapsed, setWidgetCollapsed] = useState<boolean>(true)
 
   if (!auth.role || !auth.user) return null
 
@@ -263,7 +263,7 @@ export function UserProfileWidget() {
     <div
       className={`fixed bottom-4 left-4 z-50 bg-background border border-border rounded-lg shadow-lg transition-all duration-300
       ${isHidden ? "opacity-0 -translate-x-full pointer-events-none" : "opacity-100 translate-x-0"}
-      pt-0 pb-4 px-4 space-y-3 w-[240px] max-w-[240px] block`}
+      pt-0 pb-4 px-4 space-y-3 ${widgetCollapsed ? "w-auto" : "w-[240px] max-w-[240px]"} block`}
     >
       {/* Toggle Button */}
       <div className="flex justify-end pt-2">
@@ -401,6 +401,30 @@ export function UserProfileWidget() {
             </Button>
           </div>
         </>
+      )}
+
+      {/* Collapsed state: Show only icon buttons */}
+      {widgetCollapsed && (
+        <div className="flex gap-2 overflow-hidden">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="h-9 w-9 p-0 bg-transparent overflow-hidden" 
+            onClick={handleProfile}
+            title="Profile"
+          >
+            <User className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 w-9 p-0 text-destructive hover:text-destructive bg-transparent overflow-hidden"
+            onClick={logout}
+            title="Logout"
+          >
+            <LogOut className="h-4 w-4" />
+          </Button>
+        </div>
       )}
     </div>
   )

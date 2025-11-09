@@ -16,9 +16,11 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group" // ✨ THÊM DÒNG NÀY
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 // ✨ --- IMPORT API THẬT --- ✨
 import { fetchClub } from "@/service/clubApi"
 import { pointsToClubs, getUniToClubTransactions, ApiUniToClubTransaction } from "@/service/walletApi"
+import { usePointRequests, PointRequest } from "@/service/pointRequestsApi"
 
 // Định nghĩa một kiểu dữ liệu cơ bản cho Club
 interface Club {
@@ -43,9 +45,18 @@ export default function UniversityStaffRewardPage() {
     const [showHistoryModal, setShowHistoryModal] = useState(false)
     const [transactions, setTransactions] = useState<ApiUniToClubTransaction[]>([])
     const [transactionsLoading, setTransactionsLoading] = useState(false)
-    const [reasonType, setReasonType] = useState<"monthly" | "other">("monthly") // Mặc định là 'monthly'
+    const [reasonType, setReasonType] = useState<"monthly" | "other" | "fromRequest">("monthly") // Mặc định là 'monthly'
     const [customReason, setCustomReason] = useState<string>("")
+    const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null)
     const [searchQuery, setSearchQuery] = useState<string>("")
+    
+    // Fetch approved point requests
+    const { data: pointRequestsResponse } = usePointRequests()
+    const allPointRequests: PointRequest[] = pointRequestsResponse?.data || []
+    const approvedRequests = useMemo(() => 
+        allPointRequests.filter(req => req.status === "APPROVED"),
+        [allPointRequests]
+    )
 
     // Tải danh sách tất cả các CLB khi component được mount bằng API thật
     useEffect(() => {
@@ -179,6 +190,25 @@ export default function UniversityStaffRewardPage() {
         let finalReason = ""
         if (reasonType === "monthly") {
             finalReason = "Monthly club points" // Lý do theo yêu cầu
+        } else if (reasonType === "fromRequest") {
+            if (!selectedRequestId) {
+                toast({
+                    title: "Reason Required",
+                    description: "Please select a point request to use its reason.",
+                    variant: "destructive"
+                })
+                return
+            }
+            const selectedRequest = approvedRequests.find(req => req.id === selectedRequestId)
+            if (!selectedRequest || !selectedRequest.reason) {
+                toast({
+                    title: "Invalid Request",
+                    description: "Selected point request not found or has no reason.",
+                    variant: "destructive"
+                })
+                return
+            }
+            finalReason = selectedRequest.reason
         } else {
             finalReason = customReason.trim()
         }
@@ -213,6 +243,9 @@ export default function UniversityStaffRewardPage() {
                     variant: "default"
                 })
                 setRewardAmount('')
+                setCustomReason('')
+                setSelectedRequestId(null)
+                setReasonType("monthly")
             } else {
                 throw new Error(response.message || "Failed to distribute points")
             }
@@ -272,7 +305,9 @@ export default function UniversityStaffRewardPage() {
             </div>
         ) : null
 
-    const isReasonInvalid = (reasonType === 'other' && !customReason.trim())
+    const isReasonInvalid = 
+        (reasonType === 'other' && !customReason.trim()) ||
+        (reasonType === 'fromRequest' && !selectedRequestId)
 
     return (
         <ProtectedRoute allowedRoles={["uni_staff"]}>
@@ -393,7 +428,12 @@ export default function UniversityStaffRewardPage() {
                                     <Label>Reason for Distribution (Required)</Label>
                                     <RadioGroup
                                         value={reasonType}
-                                        onValueChange={(value) => setReasonType(value as "monthly" | "other")}
+                                        onValueChange={(value) => {
+                                            setReasonType(value as "monthly" | "other" | "fromRequest")
+                                            if (value !== "fromRequest") {
+                                                setSelectedRequestId(null)
+                                            }
+                                        }}
                                         disabled={isDistributing}
                                         className="mt-2 space-y-2" // Thêm space-y-2
                                     >
@@ -404,12 +444,58 @@ export default function UniversityStaffRewardPage() {
                                             </Label>
                                         </div>
                                         <div className="flex items-center space-x-2">
+                                            <RadioGroupItem value="fromRequest" id="r-fromRequest" />
+                                            <Label htmlFor="r-fromRequest" className="font-normal cursor-pointer">
+                                                From approved point request
+                                            </Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
                                             <RadioGroupItem value="other" id="r-other" />
                                             <Label htmlFor="r-other" className="font-normal cursor-pointer">
                                                 Khác
                                             </Label>
                                         </div>
                                     </RadioGroup>
+
+                                    {/* Dropdown chọn point request */}
+                                    {reasonType === 'fromRequest' && (
+                                        <div className="mt-2 space-y-2">
+                                            <Label htmlFor="point-request-select" className="text-sm text-muted-foreground">
+                                                Select approved point request:
+                                            </Label>
+                                            {approvedRequests.length === 0 ? (
+                                                <p className="text-sm text-muted-foreground italic">
+                                                    No approved point requests available.
+                                                </p>
+                                            ) : (
+                                                <Select
+                                                    value={selectedRequestId?.toString() || ""}
+                                                    onValueChange={(value) => setSelectedRequestId(parseInt(value, 10))}
+                                                    disabled={isDistributing}
+                                                >
+                                                    <SelectTrigger id="point-request-select" className="border-slate-300">
+                                                        <SelectValue placeholder="Select a point request..." />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {approvedRequests.map((req) => (
+                                                            <SelectItem key={req.id} value={req.id.toString()}>
+                                                                {req.clubName} - {req.requestedPoints.toLocaleString()} pts
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            )}
+                                            {selectedRequestId && (
+                                                <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-md">
+                                                    <p className="text-sm text-blue-900">
+                                                        <strong>Selected reason:</strong> {
+                                                            approvedRequests.find(req => req.id === selectedRequestId)?.reason
+                                                        }
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
 
                                     {/* Ô nhập lý do "Khác" */}
                                     {reasonType === 'other' && (
