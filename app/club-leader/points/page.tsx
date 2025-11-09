@@ -169,6 +169,7 @@ export default function ClubLeaderRewardDistributionPage() {
 
   // === State và Logic phân phát điểm thưởng (Mới) ===
   const [rewardAmount, setRewardAmount] = useState<number | ''>('')
+  const [rewardReason, setRewardReason] = useState("")
   const [isDistributing, setIsDistributing] = useState(false)
   // State filters
   const uniqueRoles = Array.from(new Set(clubMembers.map((m) => m.role)))
@@ -264,6 +265,15 @@ export default function ClubLeaderRewardDistributionPage() {
       return
     }
 
+    if (!rewardReason.trim()) {
+      toast({
+        title: "Reason required",
+        description: "Please provide a reason for distributing points.",
+        variant: "destructive"
+      })
+      return
+    }
+
     if (clubMembers.length === 0) {
       toast({
         title: "Notification",
@@ -287,14 +297,14 @@ export default function ClubLeaderRewardDistributionPage() {
     }
 
     try {
-      // Collect all membershipIds as numbers
-      const targetIds = selectedMembersList.map(member => Number(member.id))
+      // Collect all userIds as numbers
+      const targetIds = selectedMembersList.map(member => Number(member.userId))
 
       // Call the new batch API
       const response = await rewardPointsToMembers(
         targetIds,
         rewardAmount as number,
-        "Event giving" // reason
+        rewardReason.trim() // reason
       )
 
       if (response.success) {
@@ -313,6 +323,7 @@ export default function ClubLeaderRewardDistributionPage() {
         }
 
         setRewardAmount('') // Reset số điểm sau khi thành công
+        setRewardReason('') // Reset reason sau khi thành công
       } else {
         throw new Error(response.message || "Failed to distribute points")
       }
@@ -625,7 +636,7 @@ export default function ClubLeaderRewardDistributionPage() {
                   {/* 2. Nút Phân phát (ĐÃ CẬP NHẬT TEXT) */}
                   <Button
                     onClick={handleDistributeRewards}
-                    disabled={isDistributing || rewardAmount === '' || rewardAmount <= 0}
+                    disabled={isDistributing || rewardAmount === '' || rewardAmount <= 0 || !rewardReason.trim()}
                     className="sm:w-auto"
                   >
                     {isDistributing ? "In the process..." : (
@@ -648,6 +659,17 @@ export default function ClubLeaderRewardDistributionPage() {
                   </Button>
 
                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="reward-reason">Reason for Distribution</Label>
+                <Textarea
+                  id="reward-reason"
+                  placeholder="e.g., Event giving, Monthly bonus, Achievement reward..."
+                  value={rewardReason}
+                  onChange={(e) => setRewardReason(e.target.value)}
+                  className="min-h-[100px]"
+                  disabled={isDistributing}
+                />
               </div>
               <p className="text-sm text-muted-foreground">Total number of members who will receive the bonus points: {clubMembers.length}</p>
             </CardContent>
@@ -853,6 +875,7 @@ export default function ClubLeaderRewardDistributionPage() {
                             onChange={() => handleToggleSelect(member.id)}
                             className="w-5 h-5 accent-primary cursor-pointer transition-all duration-150"
                             style={{ transform: "scale(1.2)" }}
+                            aria-label={`Select ${member.fullName} for reward distribution`}
                           />
                           <Button
                             variant="outline"

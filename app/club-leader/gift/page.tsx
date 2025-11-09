@@ -103,6 +103,9 @@ interface FixedTagIds {
   eventTagId: number | null;
 }
 
+// Giới hạn độ dài description
+const MAX_DESCRIPTION_LENGTH = 500;
+
 export default function ClubLeaderGiftPage() {
   const [clubId, setClubId] = useState<number | null>(() => getClubIdFromToken())
   const [searchTerm, setSearchTerm] = useState("")
@@ -120,6 +123,9 @@ export default function ClubLeaderGiftPage() {
     eventTagId: null,
   });
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive" | "archived">("all");
+  
+  // Kiểm tra description có vượt quá giới hạn
+  const isDescriptionTooLong = form.description.length > MAX_DESCRIPTION_LENGTH;
 
   useEffect(() => {
     const id = getClubIdFromToken();
@@ -530,7 +536,28 @@ export default function ClubLeaderGiftPage() {
 
                   <div className="space-y-1">
                     <Label htmlFor="description">Describe</Label>
-                    <Textarea id="description" className="mt-2 border-slate-300" name="description" value={form.description} onChange={handleChange} placeholder="Detailed product description..." />
+                    <Textarea 
+                      id="description" 
+                      className={`mt-2 border-slate-300 ${isDescriptionTooLong ? 'border-red-500 focus:border-red-500' : ''}`}
+                      name="description" 
+                      value={form.description} 
+                      onChange={handleChange} 
+                      placeholder="Detailed product description..."
+                      rows={4}
+                    />
+                    <div className="flex items-center justify-between mt-1">
+                      <div className="flex-1">
+                        {isDescriptionTooLong && (
+                          <p className="text-sm text-red-600 font-medium">
+                            Description exceeds the maximum length of {MAX_DESCRIPTION_LENGTH} characters. 
+                            Please shorten your description by {form.description.length - MAX_DESCRIPTION_LENGTH} characters.
+                          </p>
+                        )}
+                      </div>
+                      <span className={`text-xs ml-2 ${isDescriptionTooLong ? 'text-red-600 font-semibold' : 'text-muted-foreground'}`}>
+                        {form.description.length} / {MAX_DESCRIPTION_LENGTH}
+                      </span>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -607,8 +634,8 @@ export default function ClubLeaderGiftPage() {
                 </Button>
                 <Button 
                   onClick={handleCreate} 
-                  disabled={submitting}
-                  className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                  disabled={submitting || isDescriptionTooLong}
+                  className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {submitting ? (
                     <>
