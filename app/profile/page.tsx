@@ -87,6 +87,9 @@ export default function ProfilePage() {
   const [userStats, setUserStats] = useState<ProfileStats | null>(null)
   const [statsLoading, setStatsLoading] = useState(true)
 
+  // State for studentCode validation error
+  const [studentCodeError, setStudentCodeError] = useState<string | null>(null)
+
   // Static data for administrators
   const adminStats = {
     totalUsers: "1,247",
@@ -170,6 +173,9 @@ export default function ProfilePage() {
         error: null,
         saving: false,
       })
+
+      // Clear validation errors when profile loads
+      setStudentCodeError(null)
 
       // Load wallet memberships for students and club leaders from profile response
       if (auth.role === "student" || auth.role === "club_leader") {
@@ -294,11 +300,26 @@ export default function ProfilePage() {
   const handleSave = async () => {
     if (!profileState.data) return
 
+    // Validate studentCode before saving
+    const { studentCode } = profileState.data
+    if (studentCode) {
+      const error = validateStudentCode(studentCode)
+      if (error) {
+        setStudentCodeError(error)
+        toast({
+          title: "Validation Error",
+          description: error,
+          variant: "destructive"
+        })
+        return
+      }
+    }
+
     try {
       setProfileState(prev => ({ ...prev, saving: true }))
 
       // Lấy thông tin cần thiết từ state
-      const { fullName, phone, majorName, bio } = profileState.data
+      const { fullName, phone, majorName, bio, studentCode: validatedStudentCode } = profileState.data
 
       // --- BƯỚC QUAN TRỌNG: Chuyển đổi majorName thành majorId ---
       // Tìm majorId từ danh sách allMajors (đã được fetch trong loadProfile)
@@ -318,8 +339,9 @@ export default function ProfilePage() {
         phone: phone,
         bio: bio,
         majorId: majorId, // Gửi majorId (số) thay vì majorName (chuỗi)
+        studentCode: validatedStudentCode,
 
-        // KHÔNG GỬI: email, studentCode (vì chúng bị 'disabled' và không nên cập nhật)
+        // KHÔNG GỬI: email (vì bị 'disabled' và không nên cập nhật)
         // KHÔNG GỬI: avatarUrl, backgroundUrl (chúng được xử lý bằng endpoint upload file riêng)
       }
 
@@ -328,6 +350,8 @@ export default function ProfilePage() {
       const res = (await editProfile(payload)) as any
 
       if (res && res.success) {
+        // Clear validation error on successful save
+        setStudentCodeError(null)
         toast({
           title: "Update Successful",
           description: "Your profile information has been saved.",
@@ -381,9 +405,35 @@ export default function ProfilePage() {
   }
 
   
+  // Validation function for studentCode
+  const validateStudentCode = (code: string): string | null => {
+    if (!code || code.trim() === "") {
+      return null // Allow empty, validation will happen on save
+    }
+    
+    // Format: 2 letters followed by 6 numbers (e.g., SE000001)
+    const pattern = /^[A-Za-z]{2}\d{6}$/
+    
+    if (code.length !== 8) {
+      return "Student code must be exactly 8 characters (2 letters + 6 numbers)"
+    }
+    
+    if (!pattern.test(code)) {
+      return "Student code must start with 2 letters followed by 6 numbers (e.g., SE000001)"
+    }
+    
+    return null // Valid
+  }
+
   // Update profile data handlers
   const updateProfileData = (field: keyof ProfileData, value: string | number) => {
     if (!profileState.data) return
+
+    // Validate studentCode on change
+    if (field === 'studentCode' && typeof value === 'string') {
+      const error = validateStudentCode(value)
+      setStudentCodeError(error)
+    }
 
     setProfileState(prev => ({
       ...prev,
@@ -825,7 +875,23 @@ export default function ProfilePage() {
                         </div>
                         <div className="space-y-1">
                           <Label htmlFor="admin-studentCode">Student Code</Label>
-                          <Input id="admin-studentCode" value={studentCode} disabled className="bg-slate-100 border-slate-300" />
+                          <Input
+                            id="admin-studentCode"
+                            value={studentCode}
+                            onChange={(e) => updateProfileData('studentCode', e.target.value.toUpperCase())}
+                            className={studentCodeError ? "border-red-500 focus-visible:ring-red-500" : "border-slate-300"}
+                            placeholder="SE000001"
+                            maxLength={8}
+                          />
+                          {studentCodeError && (
+                            <p className="text-sm text-red-500 flex items-center gap-1 mt-1">
+                              <AlertCircle className="h-3 w-3" />
+                              {studentCodeError}
+                            </p>
+                          )}
+                          {!studentCodeError && studentCode && (
+                            <p className="text-xs text-slate-500 mt-1">Format: 2 letters + 6 numbers (e.g., SE000001)</p>
+                          )}
                         </div>
 
                         {/* --- THAY ĐỔI 4 (ADMIN): THAY THẾ INPUT BẰNG SELECT --- */}
@@ -1136,7 +1202,23 @@ export default function ProfilePage() {
                       </div>
                       <div className="space-y-1">
                         <Label htmlFor="user-studentCode">Student Code</Label>
-                        <Input id="user-studentCode" value={studentCode} disabled className="bg-slate-100 border-slate-300" />
+                        <Input
+                          id="user-studentCode"
+                          value={studentCode}
+                          onChange={(e) => updateProfileData('studentCode', e.target.value.toUpperCase())}
+                          className={studentCodeError ? "border-red-500 focus-visible:ring-red-500" : "border-slate-300"}
+                          placeholder="SE000001"
+                          maxLength={8}
+                        />
+                        {studentCodeError && (
+                          <p className="text-sm text-red-500 flex items-center gap-1 mt-1">
+                            <AlertCircle className="h-3 w-3" />
+                            {studentCodeError}
+                          </p>
+                        )}
+                        {!studentCodeError && studentCode && (
+                          <p className="text-xs text-slate-500 mt-1">Format: 2 letters + 6 numbers (e.g., SE000001)</p>
+                        )}
                       </div>
                       {/* --- THAY ĐỔI 5 (USER): THAY THẾ INPUT BẰNG SELECT --- */}
                       <div className="space-y-1">

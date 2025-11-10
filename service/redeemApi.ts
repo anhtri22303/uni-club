@@ -122,6 +122,7 @@ export async function getMemberRedeemOrders(): Promise<RedeemOrder[]> {
   const res = await axiosInstance.get<ApiResponse<RedeemOrder[]>>(
     `/api/redeem/orders/member`
   );
+  console.log("Member redeem orders:", res.data.data);
   return res.data.data;
 }
 
