@@ -37,7 +37,7 @@ const navigationConfig = {
     { href: "/student/clubs", label: "Clubs", icon: Users },
     { href: "/student/myclub", label: "My Club", icon: Building },
     { href: "/student/events", label: "Events", icon: Calendar },
-    { href: "/student/checkin", label: "Check In", icon: CheckCircle },
+    // { href: "/student/checkin", label: "Check In", icon: CheckCircle },
     { href: "/student/gift", label: "Gift", icon: Gift },
     // { href: "/student/wallet", label: "Wallet", icon: Wallet },
     { href: "/student/history", label: "History", icon: History },
@@ -102,7 +102,9 @@ const navigationConfig = {
     { href: "/admin/clubs", label: "Clubs", icon: Building },
     // { href: "/admin/attendances", label: "Attendances", icon: FileText },
     { href: "/admin/events", label: "Events", icon: Calendar },
-    { href: "/admin/products", label: "Products", icon: Gift }
+    { href: "/admin/products", label: "Products", icon: Gift },
+    { href: "/admin/policies", label: "Policies", icon: FileText },
+
   ],
 } as const
 
@@ -327,7 +329,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
               const eventRequestsCount = eventRequests.length
               const clubLeaderApplicationsCount = clubLeaderApplications.length
               const showBadges = auth.role !== "admin"
-              
+
               // Club Leader Event Counts (3 separate badges)
               const isClubLeaderEventsItem = auth.role === "club_leader" && isEventsItem
               const pendingCoClubCount = clubLeaderEventCounts.pendingCoClub
