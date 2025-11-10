@@ -12,7 +12,9 @@ import { getUserStats } from "@/service/userApi"
 import { getClubStats, getClubIdFromToken } from "@/service/clubApi"
 import { getEventByClubId, timeObjectToString, type Event } from "@/service/eventApi"
 import { getLeaveReq, type LeaveRequest } from "@/service/membershipApi"
-import { usePrefetchClubs, usePrefetchEvents, usePrefetchUsers, useMyMemberApplications, useMyClubApplications, useMyRedeemOrders } from "@/hooks/use-query-hooks"
+import { getClubRedeemOrders, type RedeemOrder } from "@/service/redeemApi"
+import { usePointRequests } from "@/service/pointRequestsApi"
+import { usePrefetchClubs, usePrefetchEvents, usePrefetchUsers, useMyMemberApplications, useMyClubApplications, useMyRedeemOrders, useClubApplications, useEvents } from "@/hooks/use-query-hooks"
 import {
   LayoutDashboard, Users, Calendar, Gift, Wallet, History, BarChart3,
   Building, Home, CheckCircle, FileText, FileUser, HandCoins, CalendarDays,
@@ -171,6 +173,18 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
   const [clubLeaderApprovedEventsCount, setClubLeaderApprovedEventsCount] = useState<number>(0) // APPROVED
   const [clubLeaderOngoingEventsCount, setClubLeaderOngoingEventsCount] = useState<number>(0) // ONGOING
 
+  // State for Club Leader pending club orders (from getClubRedeemOrders)
+  const [pendingClubOrdersCount, setPendingClubOrdersCount] = useState<number>(0) // PENDING orders
+
+  // State for Uni Staff pending club applications (from useClubApplications)
+  const [pendingUniStaffClubApplicationsCount, setPendingUniStaffClubApplicationsCount] = useState<number>(0) // PENDING club applications
+
+  // State for Uni Staff pending event requests (from useEvents)
+  const [pendingUniStaffEventRequestsCount, setPendingUniStaffEventRequestsCount] = useState<number>(0) // PENDING_COCLUB + PENDING_UNISTAFF events
+
+  // State for Uni Staff pending point requests (from usePointRequests)
+  const [pendingUniStaffPointRequestsCount, setPendingUniStaffPointRequestsCount] = useState<number>(0) // PENDING point requests
+
   // Prefetch hooks for instant navigation
   const prefetchClubs = usePrefetchClubs()
   const prefetchEvents = usePrefetchEvents()
@@ -180,6 +194,15 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
   const { data: memberAppsData } = useMyMemberApplications(auth.role === "student")
   const { data: clubAppsData } = useMyClubApplications(auth.role === "student")
   const { data: ordersData } = useMyRedeemOrders(auth.role === "student")
+
+  // Call API for UNI_STAFF role to get club applications
+  const { data: uniStaffClubApplicationsData } = useClubApplications(auth.role === "uni_staff")
+
+  // Call API for UNI_STAFF role to get events
+  const { data: uniStaffEventsData } = useEvents()
+
+  // Call API for UNI_STAFF role to get point requests
+  const { data: uniStaffPointRequestsData } = usePointRequests()
 
   // Check clubIds for STUDENT role on every component mount/auth change
   useEffect(() => {
@@ -419,6 +442,128 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
     }
   }, [auth.role, pathname])
 
+  // Fetch club redeem orders for CLUB_LEADER role and count PENDING orders
+  useEffect(() => {
+    if (auth.role === "club_leader") {
+      const fetchClubOrders = async () => {
+        try {
+          const clubId = getClubIdFromToken()
+          if (!clubId) {
+            setPendingClubOrdersCount(0)
+            return
+          }
+
+          const orders = await getClubRedeemOrders(clubId)
+          
+          // Count PENDING orders
+          const pendingCount = orders.filter(
+            (order: RedeemOrder) => order.status === "PENDING"
+          ).length
+
+          setPendingClubOrdersCount(pendingCount)
+
+          console.log("Club Leader sidebar - Pending club orders:", pendingCount)
+        } catch (error) {
+          console.error("Failed to fetch club orders for sidebar:", error)
+          setPendingClubOrdersCount(0)
+        }
+      }
+
+      fetchClubOrders()
+      // Refresh every 30 seconds to keep badge updated
+      const interval = setInterval(fetchClubOrders, 30000)
+      return () => clearInterval(interval)
+    } else {
+      setPendingClubOrdersCount(0)
+    }
+  }, [auth.role, pathname])
+
+  // Calculate pending club applications count for UNI_STAFF role
+  useEffect(() => {
+    if (auth.role === "uni_staff") {
+      // Process club applications
+      const applications: any[] = Array.isArray(uniStaffClubApplicationsData) 
+        ? uniStaffClubApplicationsData 
+        : ((uniStaffClubApplicationsData as any)?.data || [])
+      const pendingCount = applications.filter((app: any) => app.status === "PENDING").length
+      setPendingUniStaffClubApplicationsCount(pendingCount)
+
+      console.log("Uni Staff sidebar - Pending club applications:", pendingCount)
+    } else {
+      setPendingUniStaffClubApplicationsCount(0)
+    }
+  }, [auth.role, uniStaffClubApplicationsData])
+
+  // Calculate pending event requests count for UNI_STAFF role
+  useEffect(() => {
+    if (auth.role === "uni_staff" && uniStaffEventsData) {
+      // Process events
+      const events: Event[] = Array.isArray(uniStaffEventsData) 
+        ? uniStaffEventsData 
+        : ((uniStaffEventsData as any)?.data || [])
+      
+      // Filter events that:
+      // 1. Have valid date and endTime
+      // 2. Are not expired (still in current time or future)
+      // 3. Have status PENDING_COCLUB or PENDING_UNISTAFF
+      const pendingEvents = events.filter((event: Event) => {
+        // Check status first
+        const isPending = event.status === "PENDING_COCLUB" || event.status === "PENDING_UNISTAFF"
+        if (!isPending) return false
+
+        // Check if event has valid date and endTime
+        if (!event.date || !event.endTime) {
+          console.warn("Event missing date or endTime:", event)
+          return false
+        }
+
+        // Check if event is not expired (still in current time or future)
+        const notExpired = !isEventExpired(event)
+        if (!notExpired) return false
+
+        // Additional validation: ensure event end time is in the future or current
+        try {
+          const now = new Date()
+          const [year, month, day] = event.date.split('-').map(Number)
+          const endTimeStr = timeObjectToString(event.endTime)
+          const [hours, minutes] = endTimeStr.split(':').map(Number)
+          const eventEndDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0)
+
+          // Event is valid if end time is in the future or current (not past)
+          return now <= eventEndDateTime
+        } catch (error) {
+          console.error('Error validating event time:', error, event)
+          return false
+        }
+      })
+
+      setPendingUniStaffEventRequestsCount(pendingEvents.length)
+
+      console.log("Uni Staff sidebar - Pending event requests (not expired):", pendingEvents.length)
+    } else {
+      setPendingUniStaffEventRequestsCount(0)
+    }
+  }, [auth.role, uniStaffEventsData])
+
+  // Calculate pending point requests count for UNI_STAFF role
+  useEffect(() => {
+    if (auth.role === "uni_staff" && uniStaffPointRequestsData) {
+      // Process point requests
+      const pointRequests: any[] = Array.isArray(uniStaffPointRequestsData) 
+        ? uniStaffPointRequestsData 
+        : ((uniStaffPointRequestsData as any)?.data || [])
+      
+      // Filter point requests with status PENDING
+      const pendingPointRequests = pointRequests.filter((request: any) => request.status === "PENDING")
+
+      setPendingUniStaffPointRequestsCount(pendingPointRequests.length)
+
+      console.log("Uni Staff sidebar - Pending point requests:", pendingPointRequests.length)
+    } else {
+      setPendingUniStaffPointRequestsCount(0)
+    }
+  }, [auth.role, uniStaffPointRequestsData])
+
   if (!auth.role || !auth.user) return null
 
   // Default navigation per role (cast to a mutable, wide type to avoid readonly tuple issues)
@@ -589,7 +734,9 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
               const isApplicationsItem = item.label === "Applications"
               const isHistoryItem = item.label === "History"
               const isGiftItem = item.label === "Gift"
+              const isGiftsItem = item.label === "Gifts" // Parent dropdown item for club_leader
               const isMembersItem = item.label === "Members"
+              const isRequestsItem = item.label === "Requests" // Parent dropdown item for uni_staff
               const eventsCount = events.length
               const clubsCount = auth.role === "admin" ? clubStatsTotal : clubs.length
               const usersCount = auth.role === "admin" ? userStatsTotal : users.length
@@ -606,11 +753,35 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
               let dropdownBadgeCount = 0
               if (hasChildren && showBadges) {
                 item.children?.forEach(child => {
-                  if (child.label === "Club Requests") dropdownBadgeCount += clubApplicationsCount
-                  if (child.label === "Points Requests") dropdownBadgeCount += 0 // Add if needed
-                  if (child.label === "Event Requests") dropdownBadgeCount += eventRequestsCount
+                  if (child.label === "Club Requests") {
+                    // For uni_staff, use pendingUniStaffClubApplicationsCount, otherwise use clubApplicationsCount
+                    if (auth.role === "uni_staff") {
+                      dropdownBadgeCount += pendingUniStaffClubApplicationsCount
+                    } else {
+                      dropdownBadgeCount += clubApplicationsCount
+                    }
+                  }
+                  if (child.label === "Points Requests") {
+                    // For uni_staff, use pendingUniStaffPointRequestsCount
+                    if (auth.role === "uni_staff") {
+                      dropdownBadgeCount += pendingUniStaffPointRequestsCount
+                    }
+                  }
+                  if (child.label === "Event Requests") {
+                    // For uni_staff, use pendingUniStaffEventRequestsCount, otherwise use eventRequestsCount
+                    if (auth.role === "uni_staff") {
+                      dropdownBadgeCount += pendingUniStaffEventRequestsCount
+                    } else {
+                      dropdownBadgeCount += eventRequestsCount
+                    }
+                  }
                 })
               }
+
+              // Check if this is the "Gifts" dropdown for club_leader
+              const isGiftsDropdown = auth.role === "club_leader" && isGiftsItem
+              // Check if this is the "Requests" dropdown for uni_staff
+              const isRequestsDropdown = auth.role === "uni_staff" && isRequestsItem
 
               return (
                 <div key={item.href || item.label}>
@@ -733,9 +904,22 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                         {pendingLeaveRequestsCount}
                       </span>
                     )}
-                    {showBadges && hasChildren && dropdownBadgeCount > 0 && (
+                    {/* Show red badge for dropdown groups (exclude Gifts and Requests which have their own yellow badges) */}
+                    {showBadges && hasChildren && dropdownBadgeCount > 0 && !isGiftsDropdown && !isRequestsDropdown && (
                       <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
                         {dropdownBadgeCount}
+                      </span>
+                    )}
+                    {/* Club Leader role: Show badge for Gifts item (Pending Club Orders) when dropdown is closed */}
+                    {showBadges && isGiftsDropdown && !isDropdownOpen && pendingClubOrdersCount > 0 && (
+                      <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-yellow-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center" title="Pending Club Orders">
+                        {pendingClubOrdersCount}
+                      </span>
+                    )}
+                    {/* Uni Staff role: Show badge for Requests item (Pending Event Requests + Point Requests) when dropdown is closed */}
+                    {showBadges && isRequestsDropdown && !isDropdownOpen && (pendingUniStaffEventRequestsCount > 0 || pendingUniStaffPointRequestsCount > 0) && (
+                      <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-orange-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center" title="Pending Requests (Event Requests + Point Requests)">
+                        {pendingUniStaffEventRequestsCount + pendingUniStaffPointRequestsCount}
                       </span>
                     )}
                     {/* Student role: Show 3 separate badges for History item (Member Apps, Club Apps, Orders) */}
@@ -771,6 +955,8 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                         // Child badges
                         const isChildClubRequests = child.label === "Club Requests"
                         const isChildEventRequests = child.label === "Event Requests"
+                        const isChildPointsRequests = child.label === "Points Requests"
+                        const isChildClubOrdersList = child.label === "Club orders list"
 
                         return (
                           <Button
@@ -793,14 +979,52 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                             <span className="truncate text-xs">{child.label}</span>
 
                             {/* Child badges */}
-                            {showBadges && isChildClubRequests && clubApplicationsCount > 0 && (
-                              <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
-                                {clubApplicationsCount}
-                              </span>
+                            {showBadges && isChildClubRequests && (
+                              <>
+                                {/* Uni Staff role: Show yellow badge for Club Requests (Pending Club Applications) */}
+                                {auth.role === "uni_staff" && pendingUniStaffClubApplicationsCount > 0 && (
+                                  <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-yellow-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center" title="Pending Club Applications">
+                                    {pendingUniStaffClubApplicationsCount}
+                                  </span>
+                                )}
+                                {/* Other roles: Show red badge for Club Requests */}
+                                {auth.role !== "uni_staff" && clubApplicationsCount > 0 && (
+                                  <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
+                                    {clubApplicationsCount}
+                                  </span>
+                                )}
+                              </>
                             )}
-                            {showBadges && isChildEventRequests && eventRequestsCount > 0 && (
-                              <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
-                                {eventRequestsCount}
+                            {showBadges && isChildEventRequests && (
+                              <>
+                                {/* Uni Staff role: Show orange badge for Event Requests (Pending Event Requests) */}
+                                {auth.role === "uni_staff" && pendingUniStaffEventRequestsCount > 0 && (
+                                  <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-orange-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center" title="Pending Event Requests (PENDING_COCLUB + PENDING_UNISTAFF)">
+                                    {pendingUniStaffEventRequestsCount}
+                                  </span>
+                                )}
+                                {/* Other roles: Show red badge for Event Requests */}
+                                {auth.role !== "uni_staff" && eventRequestsCount > 0 && (
+                                  <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
+                                    {eventRequestsCount}
+                                  </span>
+                                )}
+                              </>
+                            )}
+                            {showBadges && isChildPointsRequests && (
+                              <>
+                                {/* Uni Staff role: Show orange badge for Points Requests (Pending Point Requests) */}
+                                {auth.role === "uni_staff" && pendingUniStaffPointRequestsCount > 0 && (
+                                  <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-orange-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center" title="Pending Point Requests">
+                                    {pendingUniStaffPointRequestsCount}
+                                  </span>
+                                )}
+                              </>
+                            )}
+                            {/* Club Leader role: Show badge for Club orders list (Pending Club Orders) when dropdown is open */}
+                            {showBadges && isChildClubOrdersList && auth.role === "club_leader" && pendingClubOrdersCount > 0 && (
+                              <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-yellow-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center" title="Pending Club Orders">
+                                {pendingClubOrdersCount}
                               </span>
                             )}
                           </Button>

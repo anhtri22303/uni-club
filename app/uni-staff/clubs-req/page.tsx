@@ -407,8 +407,9 @@ export default function UniStaffClubRequestsPage() {
 								</div>
 							
 							<div className="flex items-center gap-2">
-								<label className="text-sm font-medium whitespace-nowrap">Major:</label>
+								<label htmlFor="major-filter" className="text-sm font-medium whitespace-nowrap">Major:</label>
 								<select
+									id="major-filter"
 									className="rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 									value={majorFilter}
 									onChange={(e) => {

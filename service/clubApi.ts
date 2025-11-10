@@ -24,7 +24,7 @@ interface ClubListResponse {
     content: Club[];
   };
 }
-interface Club {
+export interface Club {
   id: number
   name: string
   description: string
