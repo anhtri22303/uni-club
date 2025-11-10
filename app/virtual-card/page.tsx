@@ -312,7 +312,7 @@ export default function VirtualCardPage() {
     return (
       <ProtectedRoute allowedRoles={["member", "student", "club_leader", "uni_staff", "admin", "staff"]}>
         <AppShell>
-          <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+          <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-950 flex items-center justify-center">
             <Card className="p-8">
               <CardContent className="flex flex-col items-center space-y-4">
                 <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
@@ -329,7 +329,7 @@ export default function VirtualCardPage() {
     return (
       <ProtectedRoute allowedRoles={["member", "student", "club_leader", "uni_staff", "admin", "staff"]}>
         <AppShell>
-          <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+          <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-950 flex items-center justify-center">
             <Card className="p-8 max-w-md">
               <CardContent className="text-center space-y-4">
                 <div className="text-red-500 text-6xl">⚠</div>
@@ -381,7 +381,7 @@ export default function VirtualCardPage() {
   return (
     <ProtectedRoute allowedRoles={["member", "student", "club_leader", "uni_staff", "admin", "staff"]}>
       <AppShell>
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-2 sm:p-4 lg:p-8">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-950 p-2 sm:p-4 lg:p-8">
           <div className="max-w-7xl mx-auto">
             {/* Header - Mobile Responsive */}
             <div className="flex flex-col gap-4 mb-6 sm:mb-8">
@@ -391,7 +391,7 @@ export default function VirtualCardPage() {
                     onClick={() => router.back()} 
                     variant="ghost" 
                     size="sm"
-                    className="text-gray-600 hover:text-gray-800"
+                    className="text-gray-600 hover:text-gray-800 dark:text-slate-300 dark:hover:text-white"
                   >
                     <ArrowLeft className="h-4 w-4 mr-2" />
                     <span className="hidden sm:inline">Back to Profile</span>
@@ -413,9 +413,9 @@ export default function VirtualCardPage() {
 
               {/* Club Selection - Only show if multiple clubs */}
               {availableClubIds.length > 1 && (
-                <Card className="p-4 bg-white/80 backdrop-blur-sm border-blue-200">
+                <Card className="p-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border-blue-200 dark:border-slate-700">
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                    <label htmlFor="club-select" className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                    <label htmlFor="club-select" className="text-sm font-medium text-gray-700 dark:text-slate-200 whitespace-nowrap">
                       🏛️ Select Club:
                     </label>
                     <Select

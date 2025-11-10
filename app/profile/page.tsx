@@ -738,6 +738,8 @@ export default function ProfilePage() {
                   }}
                 />
               )}
+              {/* Dark overlay to ensure text readability over bright backgrounds */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent z-0" />
 
               {/* Hidden file input for background */}
               <input
@@ -780,9 +782,15 @@ export default function ProfilePage() {
                     </div> */}
                   </div>
                   <div>
-                    <h1 className="text-4xl font-bold tracking-tight">{fullName || "Administrator"}</h1>
-                    <p className="text-xl text-white/80">{formatRoleName(auth.role)}</p>
-                    <p className="text-md text-white/70 mt-1">{auth.user?.email}</p>
+                    <h1 className="text-4xl font-bold tracking-tight drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)] [-webkit-text-stroke:1px_black]">
+                      {fullName || "Administrator"}
+                    </h1>
+                    <p className="text-xl text-white/80 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
+                      {formatRoleName(auth.role)}
+                    </p>
+                    <p className="text-md text-white mt-1 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] [-webkit-text-stroke:0.4px_black]">
+                      {auth.user?.email}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -996,6 +1004,7 @@ export default function ProfilePage() {
           imageSrc={backgroundImageToCrop}
           onCropComplete={handleBackgroundCropComplete}
           aspectRatio={3} // 3:1 aspect ratio for wide background
+          minOutputWidth={1800}
           title="Crop Background Image"
         />
 
@@ -1026,6 +1035,8 @@ export default function ProfilePage() {
                 }}
               />
             )}
+            {/* Dark overlay to ensure text readability over bright backgrounds */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent z-0" />
 
             {/* Hidden file input for background */}
             <input
@@ -1077,8 +1088,12 @@ export default function ProfilePage() {
                   aria-label="Upload avatar image"
                 />
               </div>
-              <h1 className="mt-4 text-3xl font-bold text-white tracking-tight">{fullName}</h1>
-              <p className="mt-1 text-lg text-white/80">{auth.user?.email}</p>
+              <h1 className="mt-4 text-3xl font-bold text-white tracking-tight drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)] [-webkit-text-stroke:1px_black]">
+                {fullName}
+              </h1>
+              <p className="mt-1 text-lg text-white/85 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] [-webkit-text-stroke:0.4px_black]">
+                {auth.user?.email}
+              </p>
             </div>
           </div>
 
@@ -1322,6 +1337,7 @@ export default function ProfilePage() {
         imageSrc={backgroundImageToCrop}
         onCropComplete={handleBackgroundCropComplete}
         aspectRatio={3} // 3:1 aspect ratio for wide background
+        minOutputWidth={1800}
         title="Crop Background Image"
       />
 

@@ -34,7 +34,7 @@ import { ProductFilters, FilterState, SortState } from "@/components/product-fil
 import { Separator } from "@/components/ui/separator"
 import { Tag } from "@/service/tagApi"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
-import { getEventByClubId, getEventCoHost, Event } from "@/service/eventApi"
+import { getEventByClubId, Event } from "@/service/eventApi"
 
 // Hàm này giúp phân tích lỗi từ API để hiển thị thông báo thân thiện hơn
 const parseApiError = (error: any): string => {
@@ -194,26 +194,24 @@ export default function ClubLeaderGiftPage() {
     // Chỉ fetch khi có clubId VÀ dialog đang mở (tối ưu)
     enabled: !!clubId && open,
   });
-  // Fetch events mà club là co-host
-  const { data: coHostEvents = [], isLoading: eventsLoadingCoHost } = useQuery<Event[]>({
-    queryKey: ['clubEvents_cohost', clubId],
-    queryFn: () => getEventCoHost(clubId as number),
-    enabled: !!clubId && open,
-  });
-  const eventsLoading = eventsLoadingHost || eventsLoadingCoHost;
+  const eventsLoading = eventsLoadingHost;
 
-  // Lọc các event hợp lệ (APPROVED và chưa/đang diễn ra, hoặc ON-GOING)
+  // Lọc các event hợp lệ (APPROVED và chưa/đang diễn ra, hoặc ONGOING)
   const availableEvents = useMemo(() => {
-    // Hợp nhất hosted + cohost và loại trùng theo id
-    const merged = [...(clubEvents || []), ...(coHostEvents || [])];
-    const uniqueById = Array.from(new Map(merged.map(e => [e.id, e])).values());
-    if (!uniqueById) return [];
+    if (!clubId) return [];
+    const numericClubId = Number(clubId);
+    const events =
+      (clubEvents || []).filter((event) => {
+        const hostId = event.hostClub?.id ?? event.clubId;
+        return Number(hostId) === numericClubId;
+      }) || [];
+    if (!events) return [];
 
     // Lấy thời điểm đầu ngày hôm nay (00:00:00) theo giờ địa phương
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    return uniqueById.filter(event => {
+    return events.filter(event => {
       const parts = event.date.split('-').map(Number);
       // new Date(year, monthIndex, day)
       const eventDate = new Date(parts[0], parts[1] - 1, parts[2]);
@@ -232,7 +230,7 @@ export default function ClubLeaderGiftPage() {
       // Tất cả các trường hợp khác (PENDING, REJECTED, APPROVED nhưng đã qua ngày)
       return false;
     });
-  }, [clubEvents, coHostEvents]);
+  }, [clubEvents, clubId]);
 
   // useEffect ĐỂ TÌM VÀ SET ID CỦA TAG CỐ ĐỊNH
   useEffect(() => {
