@@ -444,45 +444,45 @@ export default function MemberHistoryPage() {
               {paginatedActivities.map((activity, index) => {
                 // Determine border color based on status
                 const getBorderColor = () => {
-                  if (activity.type === "redemption") return "border-l-purple-500"
+                  if (activity.type === "redemption") return "border-l-purple-500 dark:border-l-purple-400"
 
                   // LOGIC MÀU CHO ORDER
                   if (activity.type === "redeemOrder") {
                     const orderStatus = activity.data.status
-                    if (orderStatus === "COMPLETED") return "border-l-green-500"
-                    if (orderStatus === "PENDING") return "border-l-yellow-500"
+                    if (orderStatus === "COMPLETED") return "border-l-green-500 dark:border-l-green-400"
+                    if (orderStatus === "PENDING") return "border-l-yellow-500 dark:border-l-yellow-400"
                     if (
                       orderStatus === "CANCELLED" ||
                       orderStatus === "REFUNDED" ||
                       orderStatus === "PARTIALLY_REFUNDED"
                     )
-                      return "border-l-red-500"
-                    return "border-l-gray-300"
+                      return "border-l-red-500 dark:border-l-red-400"
+                    return "border-l-gray-300 dark:border-l-gray-600"
                   }
 
                   // LOGIC MÀU CHO EVENT
                   if (activity.type === "event") {
                     const eventStatus = activity.data.status
-                    if (eventStatus === "APPROVED" || eventStatus === "COMPLETED") return "border-l-green-500"
-                    if (eventStatus === "ONGOING") return "border-l-blue-500"
-                    if (eventStatus === "PENDING_UNISTAFF") return "border-l-yellow-500"
-                    if (eventStatus === "REJECTED") return "border-l-red-500"
-                    return "border-l-gray-300"
+                    if (eventStatus === "APPROVED" || eventStatus === "COMPLETED") return "border-l-green-500 dark:border-l-green-400"
+                    if (eventStatus === "ONGOING") return "border-l-blue-500 dark:border-l-blue-400"
+                    if (eventStatus === "PENDING_UNISTAFF") return "border-l-yellow-500 dark:border-l-yellow-400"
+                    if (eventStatus === "REJECTED") return "border-l-red-500 dark:border-l-red-400"
+                    return "border-l-gray-300 dark:border-l-gray-600"
                   }
 
                   const status = activity.data.status
-                  if (status === "APPROVED") return "border-l-green-500"
-                  if (status === "COMPLETE") return "border-l-blue-500"
-                  if (status === "PENDING") return "border-l-yellow-500"
-                  if (status === "REJECTED") return "border-l-red-500"
-                  return "border-l-gray-300"
+                  if (status === "APPROVED") return "border-l-green-500 dark:border-l-green-400"
+                  if (status === "COMPLETE") return "border-l-blue-500 dark:border-l-blue-400"
+                  if (status === "PENDING") return "border-l-yellow-500 dark:border-l-yellow-400"
+                  if (status === "REJECTED") return "border-l-red-500 dark:border-l-red-400"
+                  return "border-l-gray-300 dark:border-l-gray-600"
                 }
 
                 return (
                   <Card key={index} className={`border-l-4 ${getBorderColor()} transition-all hover:shadow-md`}>
                     <CardContent className="pt-6">
                       <div className="flex items-start gap-4">
-                        <div className="flex-shrink-0">
+                        <div className="shrink-0">
                           {activity.type === "application" ? (
                             <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
                               <UserPlus className="h-5 w-5 text-blue-600 dark:text-blue-400" />
@@ -590,12 +590,12 @@ export default function MemberHistoryPage() {
                                     }
                                     className={
                                       activity.data.status === "APPROVED"
-                                        ? "bg-green-100 text-green-800 border-green-300 hover:bg-green-100"
+                                        ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-green-300 dark:border-green-700 hover:bg-green-100 dark:hover:bg-green-900/40"
                                         : activity.data.status === "COMPLETE"
-                                          ? "bg-blue-100 text-blue-800 border-blue-300 hover:bg-blue-100"
+                                          ? "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/40"
                                           : activity.data.status === "PENDING"
-                                            ? "bg-yellow-100 text-yellow-800 border-yellow-300 hover:bg-yellow-100"
-                                            : "bg-red-100 text-red-800 border-red-300 hover:bg-red-100"
+                                            ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700 hover:bg-yellow-100 dark:hover:bg-yellow-900/40"
+                                            : "bg-red-100 dark:bg-red-900/70 text-red-800 dark:text-red-100 border-red-300 dark:border-red-600 hover:bg-red-100 dark:hover:bg-red-900/80"
                                     }
                                   >
                                     {activity.data.status}
@@ -613,10 +613,10 @@ export default function MemberHistoryPage() {
                                   }
                                   className={
                                     activity.data.status === "COMPLETED"
-                                      ? "bg-green-100 text-green-800 border-green-300 hover:bg-green-100"
+                                      ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-green-300 dark:border-green-700 hover:bg-green-100 dark:hover:bg-green-900/40"
                                       : activity.data.status === "PENDING"
-                                        ? "bg-yellow-100 text-yellow-800 border-yellow-300 hover:bg-yellow-100"
-                                        : "bg-red-100 text-red-800 border-red-300 hover:bg-red-100" // Áp dụng cho CANCELLED, REFUNDED, PARTIALLY_REFUNDED
+                                        ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700 hover:bg-yellow-100 dark:hover:bg-yellow-900/40"
+                                        : "bg-red-100 dark:bg-red-900/70 text-red-800 dark:text-red-100 border-red-300 dark:border-red-600 hover:bg-red-100 dark:hover:bg-red-900/80" // Áp dụng cho CANCELLED, REFUNDED, PARTIALLY_REFUNDED
                                   }
                                 >
                                   {activity.data.status}
@@ -636,12 +636,12 @@ export default function MemberHistoryPage() {
                                   }
                                   className={
                                     activity.data.status === "APPROVED" || activity.data.status === "COMPLETED"
-                                      ? "bg-green-100 text-green-800 border-green-300 hover:bg-green-100"
+                                      ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-green-300 dark:border-green-700 hover:bg-green-100 dark:hover:bg-green-900/40"
                                       : activity.data.status === "ONGOING"
-                                        ? "bg-blue-100 text-blue-800 border-blue-300 hover:bg-blue-100"
+                                        ? "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/40"
                                         : activity.data.status === "PENDING_UNISTAFF"
-                                          ? "bg-yellow-100 text-yellow-800 border-yellow-300 hover:bg-yellow-100"
-                                          : "bg-red-100 text-red-800 border-red-300 hover:bg-red-100"
+                                          ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700 hover:bg-yellow-100 dark:hover:bg-yellow-900/40"
+                                          : "bg-red-100 dark:bg-red-900/70 text-red-800 dark:text-red-100 border-red-300 dark:border-red-600 hover:bg-red-100 dark:hover:bg-red-900/80"
                                   }
                                 >
                                   {activity.data.status}

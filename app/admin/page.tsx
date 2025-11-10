@@ -107,7 +107,10 @@ export default function PartnerDashboard() {
   const inactiveUsers = userStats?.inactive || 0
 
   // Helper to get event status based on date and time
-  const getEventStatus = (eventDate: string, eventTime: string) => {
+  const getEventStatus = (eventDate: string, eventTime: string, eventStatus?: string) => {
+    // Nếu event.status là ONGOING thì bắt buộc phải là "Now"
+    if (eventStatus === "ONGOING") return "Now"
+    
     if (!eventDate) return "Finished"
     const now = new Date()
     const [hour = "00", minute = "00"] = (eventTime || "00:00").split(":")
@@ -133,9 +136,9 @@ export default function PartnerDashboard() {
     const waitingCoClub = events.filter((e: any) => e.status === "PENDING_COCLUB").length
     const pending = waitingUniStaff + waitingCoClub // Total pending (both types)
     const rejected = events.filter((e: any) => e.status === "REJECTED").length
-    const now = events.filter((e: any) => getEventStatus(e.date, e.time) === "Now").length
-    const soon = events.filter((e: any) => getEventStatus(e.date, e.time) === "Soon").length
-    const finished = events.filter((e: any) => getEventStatus(e.date, e.time) === "Finished").length
+    const now = events.filter((e: any) => getEventStatus(e.date, e.time, e.status) === "Now").length
+    const soon = events.filter((e: any) => getEventStatus(e.date, e.time, e.status) === "Soon").length
+    const finished = events.filter((e: any) => getEventStatus(e.date, e.time, e.status) === "Finished").length
 
     return { approved, pending, waitingUniStaff, waitingCoClub, rejected, now, soon, finished }
   }, [events])
@@ -143,7 +146,7 @@ export default function PartnerDashboard() {
   // Filtered events based on status and approval
   const filteredEvents = useMemo(() => {
     return events.filter((event: any) => {
-      const status = getEventStatus(event.date, event.time)
+      const status = getEventStatus(event.date, event.time, event.status)
       const matchesStatus = statusFilter === "all" || status.toLowerCase() === statusFilter.toLowerCase()
       const matchesApproval = approvalFilter === "all" || event.status === approvalFilter
       return matchesStatus && matchesApproval
@@ -918,7 +921,7 @@ export default function PartnerDashboard() {
                         <div className="text-center py-8 text-muted-foreground">No events found</div>
                       ) : (
                         paginatedEvents.map((event: any) => {
-                          const status = getEventStatus(event.date, event.time)
+                          const status = getEventStatus(event.date, event.time, event.status)
                           return (
                             <div
                               key={event.id}

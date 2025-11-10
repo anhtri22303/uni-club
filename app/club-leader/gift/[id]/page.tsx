@@ -525,6 +525,16 @@ export default function EditProductPage() {
             return; // Không làm gì cả
         }
 
+        // Kiểm tra xem có phải là video không - video không thể được set làm thumbnail
+        if (currentMedia && currentMedia.type === "VIDEO") {
+            toast({ 
+                title: "Error", 
+                description: "Videos cannot be set as thumbnail.", 
+                variant: "destructive" 
+            });
+            return;
+        }
+
         setIsMediaLoading(true)
 
         try {
@@ -956,7 +966,7 @@ export default function EditProductPage() {
                                                                 >
                                                                     <Trash className="h-5 w-5" />
                                                                 </Button>
-                                                                {!m.thumbnail && (
+                                                                {!m.thumbnail && m.type !== "VIDEO" && (
                                                                     <Button
                                                                         variant="secondary"
                                                                         size="icon"

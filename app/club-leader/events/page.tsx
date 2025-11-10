@@ -350,6 +350,9 @@ export default function ClubLeaderEventsPage() {
 
   // Helper to get event status based on date and time
   const getEventStatus = (event: any) => {
+    // Nếu event.status là ONGOING thì bắt buộc phải là "Now"
+    if (event?.status === "ONGOING") return "Now"
+    
     if (!event.date) return "Finished"
     // Get current time
     const now = new Date()

@@ -89,7 +89,10 @@ export default function UniStaffEventRequestsPage() {
 	}
 
 	// Helper to get event status based on date and time
-	const getEventStatus = (eventDate: string, eventTime: string | any) => {
+	const getEventStatus = (eventDate: string, eventTime: string | any, eventStatus?: string) => {
+		// Nếu event.status là ONGOING thì bắt buộc phải là "Now"
+		if (eventStatus === "ONGOING") return "Now"
+		
 		if (!eventDate) return "Finished"
 		// Get current time in Vietnam timezone (UTC+7)
 		const now = new Date()
@@ -245,7 +248,7 @@ export default function UniStaffEventRequestsPage() {
 			} else if (expiredFilter === "only") {
 				matchExpired = isExpired
 			} else if (expiredFilter === "Soon" || expiredFilter === "Finished") {
-				const status = getEventStatus(evt.date, evt.startTime || evt.time)
+				const status = getEventStatus(evt.date, evt.startTime || evt.time, evt.status)
 				matchExpired = status.toLowerCase() === expiredFilter.toLowerCase()
 			}
 			// "show" means show all - no filtering needed

@@ -202,6 +202,9 @@ export default function MemberEventsPage() {
 
   // Time-aware status similar to club-leader/events
   const getEventStatus = (event: any) => {
+    // Nếu event.status là ONGOING thì bắt buộc phải là "Now"
+    if (event?.status === "ONGOING") return "Now"
+    
     if (!event?.date) return "Finished"
     const now = new Date()
     const startTimeStr = timeObjectToString(event.startTime || event.time)
