@@ -641,21 +641,7 @@ export default function AdminEventsPage() {
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <CardTitle className="text-lg">{event.title}</CardTitle>
-                            {/* CHANGED: Đã XÓA CardDescription */}
                           </div>
-                          <Badge
-                            variant={
-                              status === "Finished"
-                                ? "secondary"
-                                : status === "Soon"
-                                  ? "default"
-                                  : status === "Now"
-                                    ? "destructive"
-                                    : "outline"
-                            }
-                          >
-                            {status}
-                          </Badge>
                         </div>
                         {/* Approval status badge */}
                         <div className="mt-2">

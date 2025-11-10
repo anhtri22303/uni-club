@@ -110,6 +110,7 @@ const navigationConfig = {
     { href: "/admin/products", label: "Products", icon: Gift },
     { href: "/admin/policies", label: "Policies", icon: FileText },
     { href: "/admin/locations", label: "Locations", icon: MapPin },
+    { href: "/admin/wallets", label: "Wallets", icon: Wallet },
 
   ],
 } as const
@@ -251,7 +252,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
           }
 
           // Fetch events for all clubIds
-          const allEventsPromises = clubIds.map((clubId: number) => 
+          const allEventsPromises = clubIds.map((clubId: number) =>
             getEventByClubId(clubId).catch((err) => {
               console.error(`Failed to fetch events for club ${clubId}:`, err)
               return [] // Return empty array on error
@@ -295,22 +296,22 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
   useEffect(() => {
     if (auth.role === "student") {
       // Process member applications
-      const memberApps: any[] = Array.isArray(memberAppsData) 
-        ? memberAppsData 
+      const memberApps: any[] = Array.isArray(memberAppsData)
+        ? memberAppsData
         : ((memberAppsData as any)?.data || [])
       const pendingMemberApps = memberApps.filter((app: any) => app.status === "PENDING")
       setPendingMemberAppsCount(pendingMemberApps.length)
 
       // Process club applications
-      const clubApps: any[] = Array.isArray(clubAppsData) 
-        ? clubAppsData 
+      const clubApps: any[] = Array.isArray(clubAppsData)
+        ? clubAppsData
         : ((clubAppsData as any)?.data || [])
       const pendingClubApps = clubApps.filter((app: any) => app.status === "PENDING")
       setPendingClubAppsCount(pendingClubApps.length)
 
       // Process orders
-      const orders: any[] = Array.isArray(ordersData) 
-        ? ordersData 
+      const orders: any[] = Array.isArray(ordersData)
+        ? ordersData
         : ((ordersData as any)?.data || [])
       const pendingOrders = orders.filter((order: any) => order.status === "PENDING")
       setPendingOrdersCount(pendingOrders.length)
@@ -395,7 +396,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
           }
 
           const events = await getEventByClubId(clubId)
-          
+
           // Filter events that are not expired
           const nonExpiredEvents = events.filter((event: Event) => !isEventExpired(event))
 
@@ -454,7 +455,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
           }
 
           const orders = await getClubRedeemOrders(clubId)
-          
+
           // Count PENDING orders
           const pendingCount = orders.filter(
             (order: RedeemOrder) => order.status === "PENDING"
@@ -482,8 +483,8 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
   useEffect(() => {
     if (auth.role === "uni_staff") {
       // Process club applications
-      const applications: any[] = Array.isArray(uniStaffClubApplicationsData) 
-        ? uniStaffClubApplicationsData 
+      const applications: any[] = Array.isArray(uniStaffClubApplicationsData)
+        ? uniStaffClubApplicationsData
         : ((uniStaffClubApplicationsData as any)?.data || [])
       const pendingCount = applications.filter((app: any) => app.status === "PENDING").length
       setPendingUniStaffClubApplicationsCount(pendingCount)
@@ -498,10 +499,10 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
   useEffect(() => {
     if (auth.role === "uni_staff" && uniStaffEventsData) {
       // Process events
-      const events: Event[] = Array.isArray(uniStaffEventsData) 
-        ? uniStaffEventsData 
+      const events: Event[] = Array.isArray(uniStaffEventsData)
+        ? uniStaffEventsData
         : ((uniStaffEventsData as any)?.data || [])
-      
+
       // Filter events that:
       // 1. Have valid date and endTime
       // 2. Are not expired (still in current time or future)
@@ -549,10 +550,10 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
   useEffect(() => {
     if (auth.role === "uni_staff" && uniStaffPointRequestsData) {
       // Process point requests
-      const pointRequests: any[] = Array.isArray(uniStaffPointRequestsData) 
-        ? uniStaffPointRequestsData 
+      const pointRequests: any[] = Array.isArray(uniStaffPointRequestsData)
+        ? uniStaffPointRequestsData
         : ((uniStaffPointRequestsData as any)?.data || [])
-      
+
       // Filter point requests with status PENDING
       const pendingPointRequests = pointRequests.filter((request: any) => request.status === "PENDING")
 
@@ -614,7 +615,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
       return
     }
     setLoadingPath(href)
-    
+
     // Nếu điều hướng đến student/clubs, reload trang sau khi push
     if (href === "/student/clubs") {
       router.push(href)

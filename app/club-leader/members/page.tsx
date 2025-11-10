@@ -560,17 +560,17 @@ export default function ClubLeaderMembersPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                               <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-200 transition-colors">
                                 <Mail className="h-4 w-4 flex-shrink-0 text-blue-500 dark:text-blue-400" />
-                                <span className="truncate">{member.email}</span>
+                                <span className="truncate">Mail: {member.email}</span>
                               </div>
 
                               <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-200 transition-colors">
                                 <UserCircle className="h-4 w-4 flex-shrink-0 text-blue-500 dark:text-blue-400" />
-                                <span>Student: {member.studentCode}</span>
+                                <span>Student Code: {member.studentCode}</span>
                               </div>
 
                               <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-200 transition-colors">
                                 <GraduationCap className="h-4 w-4 flex-shrink-0 text-blue-500 dark:text-blue-400" />
-                                <span className="truncate">{member.majorName}</span>
+                                <span className="truncate">Major: {member.majorName}</span>
                               </div>
 
                               <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-200 transition-colors">

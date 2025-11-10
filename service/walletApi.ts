@@ -1,5 +1,56 @@
 import axiosInstance from "@/lib/axiosInstance"
 
+/**
+ * Cấu trúc phản hồi API chuẩn (Thêm mới)
+ * (Dùng cho các hàm POST/PATCH/DELETE)
+ */
+export interface ApiResponse<T> {
+  success: boolean;
+  message: string;
+  data: T;
+}
+
+/**
+ * Dữ liệu body cho API chuyển điểm
+ * Dựa trên: POST /api/wallets/transfer
+ */
+export interface TransferPointsBody {
+  fromWalletId: number;
+  toWalletId: number;
+  amount: number;
+  description: string;
+}
+
+/**
+ * Tham số cho API cộng/trừ điểm thủ công
+ * Dựa trên: POST /api/wallets/{id}/add & /reduce
+ */
+export interface AdminAdjustPointsParams {
+  id: number; // Wallet ID
+  amount: number;
+  description: string;
+}
+
+/**
+ * Tham số cho API thưởng điểm cho 1 user
+ * Dựa trên: POST /api/wallets/reward/{userId}
+ */
+export interface RewardPointsToUserParams {
+  userId: number;
+  points: number;
+  reason?: string;
+}
+
+/**
+ * Tham số cho API nạp điểm cho 1 CLB
+ * Dựa trên: POST /api/wallets/reward/club/{clubId}
+ */
+export interface RewardPointsToClubParams {
+  clubId: number;
+  points: number;
+  reason?: string;
+}
+
 export type ApiWallet = {
   points: number;
   memberships?: ApiMembershipWallet[]; // Array of membership wallets
@@ -26,13 +77,42 @@ export type ApiClubWallet = {
   userFullName: string | null;
 };
 
+/**
+ * Thông tin Ví (Chuẩn hóa)
+ * Dựa trên: GET /api/wallets/me và GET /api/wallets/club/{clubId}
+ */
+export interface Wallet {
+  walletId: number;
+  balancePoints: number;
+  ownerType: string; // "CLUB" hoặc "MEMBER"
+  clubId: number | null;
+  clubName: string | null;
+  userId: number | null;
+  userFullName: string | null;
+}
+
+/**
+ * Thông tin Giao dịch (Chuẩn hóa)
+ * Dựa trên: GET .../transactions/...
+ */
+export interface Transaction {
+  id: number;
+  type: string;
+  amount: number;
+  description: string;
+  createdAt: string; // ISO date string
+  signedAmount: string; // vd: "+100" hoặc "-50"
+  senderName: string;
+  receiverName: string;
+}
+
 export const getWallet = async (): Promise<ApiWallet> => {
   try {
     const res = await axiosInstance.get("/api/wallets/me/memberships")
 
     // Response is an array of membership wallets
     const memberships: ApiMembershipWallet[] = Array.isArray(res.data) ? res.data : []
-    
+
     // Sum all membership balancePoints to get total points
     const totalPoints = memberships.reduce((sum, membership) => {
       return sum + (Number(membership.balancePoints) || 0)
@@ -42,13 +122,13 @@ export const getWallet = async (): Promise<ApiWallet> => {
       points: totalPoints,
       memberships: memberships
     }
-    
+
     console.log("getWallet (memberships):", {
       totalMemberships: memberships.length,
       totalPoints,
       memberships
     })
-    
+
     return normalized
   } catch (err) {
     console.error("walletApi.getWallet failed", err)
@@ -64,6 +144,98 @@ export type ApiRewardResponse = {
   clubName: string;
   userId: number;
   userFullName: string;
+};
+
+/**
+ * Chuyển điểm giữa hai ví (Admin/Staff)
+ * Tương ứng với: POST /api/wallets/transfer
+ */
+export const transferPoints = async (body: TransferPointsBody) => {
+  try {
+    const res = await axiosInstance.post<ApiResponse<any>>(
+      `/api/wallets/transfer`,
+      body
+    );
+    console.log("transferPoints:", res.data)
+    return res.data;
+  } catch (err) {
+    console.error("Failed to transfer points", err)
+    throw err
+  }
+};
+
+/**
+ * Cộng điểm thủ công (Admin)
+ * Tương ứng với: POST /api/wallets/{id}/add
+ */
+export const adminAddPoints = async ({ id, amount, description }: AdminAdjustPointsParams) => {
+  try {
+    const res = await axiosInstance.post<ApiResponse<any>>(
+      `/api/wallets/${id}/add`,
+      { amount, description }
+    );
+    console.log(`adminAddPoints (walletId: ${id}):`, res.data)
+    return res.data;
+  } catch (err) {
+    console.error(`Failed to add points to wallet ${id}`, err)
+    throw err
+  }
+};
+
+/**
+ * Trừ điểm thủ công (Admin)
+ * Tương ứng với: POST /api/wallets/{id}/reduce
+ */
+export const adminReducePoints = async ({ id, amount, description }: AdminAdjustPointsParams) => {
+  try {
+    const res = await axiosInstance.post<ApiResponse<any>>(
+      `/api/wallets/${id}/reduce`,
+      { amount, description }
+    );
+    console.log(`adminReducePoints (walletId: ${id}):`, res.data)
+    return res.data;
+  } catch (err) {
+    console.error(`Failed to reduce points from wallet ${id}`, err)
+    throw err
+  }
+};
+
+/**
+ * Thưởng điểm cho MỘT user (Admin, Staff, Club Leader)
+ * Tương ứng với: POST /api/wallets/reward/{userId}
+ */
+export const rewardPointsToUser = async ({ userId, points, reason }: RewardPointsToUserParams) => {
+  try {
+    const res = await axiosInstance.post<ApiResponse<ApiMembershipWallet>>(
+      `/api/wallets/reward/${userId}`,
+      null, // Không có body
+      { params: { points, reason } }
+    );
+    console.log(`rewardPointsToUser (userId: ${userId}):`, res.data)
+    return res.data;
+  } catch (err) {
+    console.error(`Failed to reward points to user ${userId}`, err)
+    throw err
+  }
+};
+
+/**
+ * Nạp điểm cho MỘT CLB (Admin, Staff)
+ * Tương ứng với: POST /api/wallets/reward/club/{clubId}
+ */
+export const rewardPointsToClub = async ({ clubId, points, reason }: RewardPointsToClubParams) => {
+  try {
+    const res = await axiosInstance.post<ApiResponse<any>>( // Swagger ghi data: {}
+      `/api/wallets/reward/club/${clubId}`,
+      null, // Không có body
+      { params: { points, reason } }
+    );
+    console.log(`rewardPointsToClub (clubId: ${clubId}):`, res.data)
+    return res.data;
+  } catch (err) {
+    console.error(`Failed to reward points to club ${clubId}`, err)
+    throw err
+  }
 };
 
 export type ApiRewardMembersTransaction = {
@@ -181,6 +353,24 @@ export const pointsToClubs = async (
   }
 }
 
+/**
+ * Lấy lịch sử giao dịch của một ví cụ thể
+ * Tương ứng với: GET /api/wallets/{walletId}/transactions
+ */
+export const getTransactionsByWalletId = async (walletId: number) => {
+  try {
+    // HÀM MỚI
+    const res = await axiosInstance.get<ApiResponse<Transaction[]>>(
+      `/api/wallets/${walletId}/transactions`
+    );
+    console.log(`getTransactionsByWalletId (walletId: ${walletId}):`, res.data);
+    return res.data;
+  } catch (err) {
+    console.error(`Failed to get transactions for wallet ${walletId}`, err);
+    throw err;
+  }
+};
+
 // Deprecated: Use pointsToClubs instead
 // export const postClubWalletByClubId = async (
 //   clubId: string | number,
@@ -267,5 +457,11 @@ export default {
   // postClubWalletByClubId, // Deprecated
   pointsToClubs,
   getClubToMemberTransactions,
-  getUniToClubTransactions
+  getUniToClubTransactions,
+  transferPoints,
+  adminAddPoints,
+  adminReducePoints,
+  rewardPointsToUser,
+  rewardPointsToClub,
+  getTransactionsByWalletId
 }
