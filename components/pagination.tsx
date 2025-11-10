@@ -12,6 +12,65 @@ interface PaginationProps {
   onPageChange: (page: number) => void
   onPageSizeChange: (pageSize: number) => void
   pageSizeOptions?: number[]
+  simple?: boolean // 新增：是否使用简洁样式
+}
+
+// 简洁分页组件 - 样式像图片中那样
+export function SimplePagination({
+  currentPage,
+  totalPages,
+  onPageChange,
+}: {
+  currentPage: number
+  totalPages: number
+  onPageChange: (page: number) => void
+}) {
+  if (totalPages <= 1) return null
+
+  const isFirstPage = currentPage === 1
+  const isLastPage = currentPage === totalPages
+
+  return (
+    <div className="flex items-center justify-center gap-2">
+      <button
+        onClick={() => onPageChange(currentPage - 1)}
+        disabled={isFirstPage}
+        className={`
+          flex items-center gap-1 px-3 py-1.5 text-sm font-medium
+          transition-colors
+          ${isFirstPage 
+            ? 'text-muted-foreground/50 cursor-not-allowed' 
+            : 'text-cyan-500 hover:text-cyan-400 dark:text-cyan-400 dark:hover:text-cyan-300 cursor-pointer'
+          }
+        `}
+        aria-label="Previous page"
+      >
+        <ChevronLeft className="h-4 w-4" />
+        <span>Previous</span>
+      </button>
+      
+      <span className="text-sm font-medium text-cyan-500 dark:text-cyan-400 px-2">
+        {currentPage}/{totalPages}
+      </span>
+      
+      <button
+        onClick={() => onPageChange(currentPage + 1)}
+        disabled={isLastPage}
+        className={`
+          flex items-center gap-1 px-3 py-1.5 text-sm font-medium
+          transition-colors
+          ${isLastPage 
+            ? 'text-muted-foreground/50 cursor-not-allowed' 
+            : 'text-cyan-500 hover:text-cyan-400 dark:text-cyan-400 dark:hover:text-cyan-300 cursor-pointer'
+          }
+        `}
+        aria-label="Next page"
+      >
+        <span>Next</span>
+        <ChevronRight className="h-4 w-4" />
+      </button>
+    </div>
+  )
 }
 
 export function Pagination({
@@ -22,9 +81,16 @@ export function Pagination({
   onPageChange,
   onPageSizeChange,
   pageSizeOptions = [6, 12, 24, 48],
+  simple = true, // 默认使用简洁样式
 }: PaginationProps) {
   if (totalPages <= 1) return null
 
+  // 如果使用简洁样式，返回 SimplePagination
+  if (simple) {
+    return <SimplePagination currentPage={currentPage} totalPages={totalPages} onPageChange={onPageChange} />
+  }
+
+  // 否则使用完整样式（保留原有功能）
   const startItem = (currentPage - 1) * pageSize + 1
   const endItem = Math.min(currentPage * pageSize, totalItems)
 

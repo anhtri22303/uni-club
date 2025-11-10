@@ -1875,8 +1875,8 @@ export default function ReportPage() {
           <div className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60 border-b mb-3">
             <div className="flex items-start gap-2 py-2 px-2">
               {/* Scrollable Toolbar Section */}
-              <div className="overflow-x-auto overflow-y-hidden flex-1 min-w-0" style={{ scrollbarWidth: 'thin' }}>
-                <div className="shrink-0">
+              <div className="overflow-x-scroll overflow-y-hidden flex-1 min-w-0 whitespace-nowrap" style={{ scrollbarWidth: 'thin', WebkitOverflowScrolling: 'touch' }}>
+                <div className="shrink-0 inline-block">
                   <RichTextEditorToolbar
                     pageSettings={pageSettings}
                     onPageSettingsChange={handlePageSettingsChange}
@@ -2002,7 +2002,7 @@ export default function ReportPage() {
         <div className="lg:hidden mb-3">
           <Card className="p-3 shadow-sm">
             <h3 className="font-semibold mb-2 text-sm">Quick Insert</h3>
-            <div className="flex gap-2 overflow-x-auto pb-1">
+            <div className="flex gap-2 overflow-x-scroll pb-1 whitespace-nowrap min-w-0" style={{ WebkitOverflowScrolling: 'touch' }}>
               <Button
                 type="button"
                 variant="outline"

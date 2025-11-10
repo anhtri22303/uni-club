@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   ShoppingCart, Search, CheckCircle, XCircle, Clock, Eye, Filter, DollarSign, Package, User, Hash, Calendar, Undo2,
-  WalletCards,
+  WalletCards, ChevronLeft, ChevronRight,
 } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
@@ -239,9 +239,9 @@ export default function ClubLeaderEventOrdersPage() {
 
           {/* Stats Cards (Giữ nguyên) */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card className="border-0 shadow-md bg-gradient-to-br from-yellow-50 to-yellow-100">
+            <Card className="border-0 shadow-md bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20">
               <CardHeader className="pb-1 px-4 pt-3">
-                <CardTitle className="text-xs font-medium text-yellow-700">
+                <CardTitle className="text-xs font-medium text-yellow-700 dark:text-yellow-300">
                   Pending Orders
                 </CardTitle>
               </CardHeader>
@@ -250,16 +250,16 @@ export default function ClubLeaderEventOrdersPage() {
                   <div className="p-1.5 bg-yellow-500 rounded-md">
                     <Clock className="h-4 w-4 text-white" />
                   </div>
-                  <div className="text-lg font-bold text-yellow-900">
+                  <div className="text-lg font-bold text-yellow-900 dark:text-yellow-200">
                     {isLoading ? <Skeleton className="h-6 w-10" /> : pendingCount}
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-0 shadow-md bg-gradient-to-br from-green-50 to-green-100">
+            <Card className="border-0 shadow-md bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20">
               <CardHeader className="pb-1 px-4 pt-3">
-                <CardTitle className="text-xs font-medium text-green-700">
+                <CardTitle className="text-xs font-medium text-green-700 dark:text-green-300">
                   Completed Orders
                 </CardTitle>
               </CardHeader>
@@ -268,16 +268,16 @@ export default function ClubLeaderEventOrdersPage() {
                   <div className="p-1.5 bg-green-500 rounded-md">
                     <CheckCircle className="h-4 w-4 text-white" />
                   </div>
-                  <div className="text-lg font-bold text-green-900">
+                  <div className="text-lg font-bold text-green-900 dark:text-green-200">
                     {isLoading ? <Skeleton className="h-6 w-10" /> : completedCount}
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-0 shadow-md bg-gradient-to-br from-red-50 to-red-100">
+            <Card className="border-0 shadow-md bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20">
               <CardHeader className="pb-1 px-4 pt-3">
-                <CardTitle className="text-xs font-medium text-red-700">
+                <CardTitle className="text-xs font-medium text-red-700 dark:text-red-300">
                   Cancelled/Refunded
                 </CardTitle>
               </CardHeader>
@@ -286,16 +286,16 @@ export default function ClubLeaderEventOrdersPage() {
                   <div className="p-1.5 bg-red-500 rounded-md">
                     <XCircle className="h-4 w-4 text-white" />
                   </div>
-                  <div className="text-lg font-bold text-red-900">
+                  <div className="text-lg font-bold text-red-900 dark:text-red-200">
                     {isLoading ? <Skeleton className="h-6 w-10" /> : cancelledCount}
                   </div>
                 </div>
               </CardContent>
             </Card>
             
-            <Card className="border-0 shadow-md bg-gradient-to-br from-blue-50 to-blue-100">
+            <Card className="border-0 shadow-md bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20">
               <CardHeader className="pb-1 px-4 pt-3">
-                <CardTitle className="text-xs font-medium text-blue-700">
+                <CardTitle className="text-xs font-medium text-blue-700 dark:text-blue-300">
                   Points Redeemed
                 </CardTitle>
               </CardHeader>
@@ -304,7 +304,7 @@ export default function ClubLeaderEventOrdersPage() {
                   <div className="p-1.5 bg-blue-500 rounded-md">
                     <WalletCards className="h-4 w-4 text-white" />
                   </div>
-                  <div className="text-lg font-bold text-blue-900">
+                  <div className="text-lg font-bold text-blue-900 dark:text-blue-200">
                     {isLoading ? <Skeleton className="h-6 w-16" /> : totalPointsCompleted}
                   </div>
                 </div>
@@ -534,9 +534,9 @@ function RenderOrderList({
     <div className="grid md:grid-cols-2 gap-6">
       {orders.map((order) => {
         const gradientClasses = 
-          order.status === "PENDING" ? "from-yellow-50 via-white to-white" :
-          order.status === "COMPLETED" ? "from-green-50 via-white to-white" :
-          order.status === "CANCELLED" ? "from-red-50 via-white to-white" : "from-blue-50 via-white to-white"
+          order.status === "PENDING" ? "from-yellow-50 via-white to-white dark:from-yellow-900/20 dark:via-slate-800 dark:to-slate-800" :
+          order.status === "COMPLETED" ? "from-green-50 via-white to-white dark:from-green-900/20 dark:via-slate-800 dark:to-slate-800" :
+          order.status === "CANCELLED" ? "from-red-50 via-white to-white dark:from-red-900/20 dark:via-slate-800 dark:to-slate-800" : "from-blue-50 via-white to-white dark:from-blue-900/20 dark:via-slate-800 dark:to-slate-800"
 
         return (
           <Link 
@@ -564,7 +564,7 @@ function RenderOrderList({
                       <Package className="h-5 w-5 text-white" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-bold text-lg text-gray-900 line-clamp-1 group-hover:text-primary transition-colors">
+                      <h3 className="font-bold text-lg text-gray-900 dark:text-gray-100 line-clamp-1 group-hover:text-primary transition-colors">
                         {order.productName}
                       </h3>
                       <p className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5">
@@ -579,39 +579,39 @@ function RenderOrderList({
                 </div>
 
                 {/* Member Information */}
-                <div className="mb-4 p-3 bg-white/80 backdrop-blur-sm rounded-lg border border-gray-100">
+                <div className="mb-4 p-3 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-lg border border-gray-100 dark:border-slate-700">
                   <div className="flex items-center gap-2">
-                    <div className="p-1.5 bg-gradient-to-br from-blue-100 to-purple-100 rounded-lg">
-                      <User className="h-4 w-4 text-blue-600" />
+                    <div className="p-1.5 bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/50 dark:to-purple-900/50 rounded-lg">
+                      <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground font-medium">Ordered by</p>
-                      <p className="font-semibold text-sm text-gray-900 line-clamp-1">{order.memberName}</p>
+                      <p className="font-semibold text-sm text-gray-900 dark:text-gray-100 line-clamp-1">{order.memberName}</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Order Details Grid */}
                 <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div className="p-3 bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg border border-purple-100">
+                  <div className="p-3 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-lg border border-purple-100 dark:border-purple-800/50">
                     <div className="flex items-center gap-2 mb-1">
-                      <ShoppingCart className="h-4 w-4 text-purple-600" />
-                      <span className="text-xs font-medium text-purple-700">Quantity</span>
+                      <ShoppingCart className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                      <span className="text-xs font-medium text-purple-700 dark:text-purple-300">Quantity</span>
                     </div>
-                    <p className="text-xl font-bold text-purple-900">{order.quantity.toLocaleString('en-US')}</p>
+                    <p className="text-xl font-bold text-purple-900 dark:text-purple-200">{order.quantity.toLocaleString('en-US')}</p>
                   </div>
                   
-                  <div className="p-3 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-lg border border-blue-100">
+                  <div className="p-3 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-lg border border-blue-100 dark:border-blue-800/50">
                     <div className="flex items-center gap-2 mb-1">
-                      <WalletCards className="h-4 w-4 text-blue-600" />
-                      <span className="text-xs font-medium text-blue-700">Points</span>
+                      <WalletCards className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      <span className="text-xs font-medium text-blue-700 dark:text-blue-300">Points</span>
                     </div>
-                    <p className="text-xl font-bold text-blue-900">{order.totalPoints.toLocaleString('en-US')}</p>
+                    <p className="text-xl font-bold text-blue-900 dark:text-blue-200">{order.totalPoints.toLocaleString('en-US')}</p>
                   </div>
                 </div>
 
                 {/* Date Footer */}
-                <div className="pt-3 border-t border-gray-200/60">
+                <div className="pt-3 border-t border-gray-200/60 dark:border-slate-700/60">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Calendar className="h-3.5 w-3.5" />
@@ -650,64 +650,44 @@ function PaginationControls({
   const isFirstPage = currentPage === 0
   const isLastPage = (currentPage + 1) * pageSize >= totalItems
 
-  const handlePageSizeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setPageSize(Number(e.target.value))
-    setPage(0) // Reset về trang đầu khi đổi page size
-  }
-
   return (
-    <div className="flex items-center justify-between mt-4">
-      <div className="text-sm text-muted-foreground">
-        Showing {totalItems === 0 ? 0 : currentPage * pageSize + 1} to{" "}
-        {Math.min((currentPage + 1) * pageSize, totalItems)} of {totalItems}{" "}
-        orders
-      </div>
+    <div className="flex items-center justify-center mt-4">
       <div className="flex items-center gap-2">
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => setPage(0)}
-          disabled={isFirstPage}
-        >
-          First
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
+        <button
           onClick={() => setPage((p) => Math.max(0, p - 1))}
           disabled={isFirstPage}
+          className={`
+            flex items-center gap-1 px-3 py-1.5 text-sm font-medium
+            transition-colors
+            ${isFirstPage 
+              ? 'text-muted-foreground/50 cursor-not-allowed' 
+              : 'text-cyan-500 hover:text-cyan-400 dark:text-cyan-400 dark:hover:text-cyan-300 cursor-pointer'
+            }
+          `}
+          aria-label="Previous page"
         >
-          Prev
-        </Button>
-        <div className="px-2 text-sm">
-          Page {totalItems === 0 ? 0 : currentPage + 1} / {totalPages}
-        </div>
-        <Button
-          size="sm"
-          variant="outline"
+          <ChevronLeft className="h-4 w-4" />
+          <span>Previous</span>
+        </button>
+        <span className="text-sm font-medium text-cyan-500 dark:text-cyan-400 px-2">
+          {totalItems === 0 ? 0 : currentPage + 1}/{totalPages}
+        </span>
+        <button
           onClick={() => setPage((p) => Math.min(p + 1, totalPages - 1))}
           disabled={isLastPage}
+          className={`
+            flex items-center gap-1 px-3 py-1.5 text-sm font-medium
+            transition-colors
+            ${isLastPage 
+              ? 'text-muted-foreground/50 cursor-not-allowed' 
+              : 'text-cyan-500 hover:text-cyan-400 dark:text-cyan-400 dark:hover:text-cyan-300 cursor-pointer'
+            }
+          `}
+          aria-label="Next page"
         >
-          Next
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => setPage(totalPages - 1)}
-          disabled={isLastPage}
-        >
-          Last
-        </Button>
-        <select
-          aria-label="Items per page"
-          className="ml-2 rounded border px-2 py-1 text-sm h-9 bg-transparent"
-          value={pageSize}
-          onChange={handlePageSizeChange}
-        >
-          <option value={6}>6 / page</option>
-          <option value={12}>12 / page</option>
-          <option value={24}>24 / page</option>
-        </select>
+          <span>Next</span>
+          <ChevronRight className="h-4 w-4" />
+        </button>
       </div>
     </div>
   )

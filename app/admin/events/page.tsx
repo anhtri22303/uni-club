@@ -427,7 +427,10 @@ export default function AdminEventsPage() {
   }
 
   // Helper mới để get status (dùng startTime ISO string)
-  const getEventStatus = (startTimeIso: string) => {
+  const getEventStatus = (startTimeIso: string, eventStatus?: string) => {
+    // Nếu event.status là ONGOING thì bắt buộc phải là "Now"
+    if (eventStatus === "ONGOING") return "Now"
+    
     if (!startTimeIso) return "Finished"
     try {
       const now = new Date()
@@ -596,6 +599,7 @@ export default function AdminEventsPage() {
                   const isCompleted = event.status === "COMPLETED"
                   const isCancelled = event.status === "CANCELLED" // CHANGED: Thêm check
                   const expired = isCompleted || isCancelled || isEventExpired(event)
+                  const status = expired ? "Finished" : getEventStatus(event.startTime, event.status)
 
                   let borderColor = ""
                   if (isCompleted) {
@@ -641,21 +645,22 @@ export default function AdminEventsPage() {
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <CardTitle className="text-lg">{event.title}</CardTitle>
-                            {/* CHANGED: Đã XÓA CardDescription */}
                           </div>
-                          <Badge
-                            variant={
-                              status === "Finished"
-                                ? "secondary"
-                                : status === "Soon"
-                                  ? "default"
-                                  : status === "Now"
-                                    ? "destructive"
-                                    : "outline"
-                            }
-                          >
-                            {status}
-                          </Badge>
+                          {!expired && !isCompleted && !isCancelled && (
+                            <Badge
+                              variant={
+                                status === "Finished"
+                                  ? "secondary"
+                                  : status === "Soon"
+                                    ? "default"
+                                    : status === "Now"
+                                      ? "destructive"
+                                      : "outline"
+                              }
+                            >
+                              {status}
+                            </Badge>
+                          )}
                         </div>
                         {/* Approval status badge */}
                         <div className="mt-2">
@@ -813,7 +818,7 @@ export default function AdminEventsPage() {
             <div className="space-y-3">
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="name" className="text-sm">Event Name *</Label>
+                  <Label htmlFor="name" className="text-sm">Event Name<span className="text-red-500">*</span></Label>
                   <Input
                     id="name"
                     value={formData.name}
@@ -823,7 +828,7 @@ export default function AdminEventsPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="date" className="text-sm">Date *</Label>
+                  <Label htmlFor="date" className="text-sm">Date<span className="text-red-500">*</span></Label>
                   <Input
                     id="date"
                     type="date"
@@ -833,7 +838,7 @@ export default function AdminEventsPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="type" className="text-sm">Type</Label>
+                  <Label htmlFor="type" className="text-sm">Type<span className="text-red-500">*</span></Label>
                   <Select
                     value={formData.type}
                     onValueChange={(value) => setFormData({ ...formData, type: value })}
@@ -849,7 +854,7 @@ export default function AdminEventsPage() {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="description" className="text-sm">Description</Label>
+                <Label htmlFor="description" className="text-sm">Description<span className="text-red-500">*</span></Label>
                 <Textarea
                   id="description"
                   value={formData.description}
@@ -861,7 +866,7 @@ export default function AdminEventsPage() {
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="startTime" className="text-sm">Start Time *</Label>
+                  <Label htmlFor="startTime" className="text-sm">Start Time<span className="text-red-500">*</span></Label>
                   <Input
                     id="startTime"
                     type="time"
@@ -871,7 +876,7 @@ export default function AdminEventsPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="endTime" className="text-sm">End Time *</Label>
+                  <Label htmlFor="endTime" className="text-sm">End Time<span className="text-red-500">*</span></Label>
                   <Input
                     id="endTime"
                     type="time"
@@ -881,7 +886,7 @@ export default function AdminEventsPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="maxCheckInCount" className="text-sm">Max Check-ins</Label>
+                  <Label htmlFor="maxCheckInCount" className="text-sm">Max Check-ins<span className="text-red-500">*</span></Label>
                   <Input
                     id="maxCheckInCount"
                     type="number"
@@ -893,7 +898,7 @@ export default function AdminEventsPage() {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="locationName" className="text-sm">Location Name</Label>
+                <Label htmlFor="locationName" className="text-sm">Location Name<span className="text-red-500">*</span></Label>
                 <Input
                   id="locationName"
                   value={formData.locationName}

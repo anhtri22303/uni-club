@@ -271,10 +271,10 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
                     <div className="flex items-center justify-center min-h-[60vh]">
                         <div className="text-center space-y-4">
                             <div className="relative">
-                                <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto" />
-                                <Package className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 h-6 w-6 text-blue-600" />
+                                <div className="w-16 h-16 border-4 border-blue-200 dark:border-blue-800 border-t-blue-600 dark:border-t-blue-500 rounded-full animate-spin mx-auto" />
+                                <Package className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 h-6 w-6 text-blue-600 dark:text-blue-400" />
                             </div>
-                            <p className="text-lg font-medium text-gray-600">Loading order details...</p>
+                            <p className="text-lg font-medium text-gray-600 dark:text-slate-300">Loading order details...</p>
                         </div>
                     </div>
                 </AppShell>
@@ -288,21 +288,21 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
             <ProtectedRoute allowedRoles={["club_leader"]}>
                 <AppShell>
                     <div className="flex items-center justify-center min-h-[60vh]">
-                        <Card className="max-w-md border-0 shadow-2xl">
+                        <Card className="max-w-md border-0 shadow-2xl dark:bg-slate-800 dark:border-slate-700">
                             <CardContent className="pt-8 pb-8 text-center space-y-6">
                                 <div className="flex justify-center">
-                                    <div className="p-4 rounded-full bg-gradient-to-br from-red-50 to-rose-100">
-                                        <XCircle className="h-16 w-16 text-red-500" />
+                                    <div className="p-4 rounded-full bg-gradient-to-br from-red-50 to-rose-100 dark:from-red-900/30 dark:to-rose-900/30">
+                                        <XCircle className="h-16 w-16 text-red-500 dark:text-red-400" />
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <h1 className="text-3xl font-bold text-gray-900">Order Not Found</h1>
-                                    <p className="text-gray-600">
+                                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Order Not Found</h1>
+                                    <p className="text-gray-600 dark:text-slate-400">
                                         {error ? String(error) : "The requested order could not be found or you don't have permission to view it."}
                                     </p>
                                 </div>
                                 <Link href="/club-leader/club-order-list">
-                                    <Button className="h-12 px-6 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold shadow-lg">
+                                    <Button className="h-12 px-6 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 dark:from-blue-600 dark:to-indigo-700 dark:hover:from-blue-700 dark:hover:to-indigo-800 text-white font-semibold shadow-lg">
                                         <ArrowLeft className="h-4 w-4 mr-2" />
                                         Back to Order List
                                     </Button>
@@ -318,27 +318,27 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
     // Determine status color theme
     const statusTheme =
         order.status === "PENDING" ? {
-            gradient: "from-yellow-50 via-yellow-50/50 to-transparent",
-            border: "border-yellow-200",
+            gradient: "from-yellow-50 via-yellow-50/50 to-transparent dark:from-yellow-900/20 dark:via-slate-800/50 dark:to-transparent",
+            border: "border-yellow-200 dark:border-yellow-800",
             icon: "from-yellow-400 to-yellow-500",
-            text: "text-yellow-700"
+            text: "text-yellow-700 dark:text-yellow-300"
         } :
             order.status === "COMPLETED" ? {
-                gradient: "from-green-50 via-green-50/50 to-transparent",
-                border: "border-green-200",
+                gradient: "from-green-50 via-green-50/50 to-transparent dark:from-green-900/20 dark:via-slate-800/50 dark:to-transparent",
+                border: "border-green-200 dark:border-green-800",
                 icon: "from-green-400 to-green-500",
-                text: "text-green-700"
+                text: "text-green-700 dark:text-green-300"
             } :
                 order.status === "PARTIALLY_REFUNDED" ? {
-                    gradient: "from-orange-50 via-orange-50/50 to-transparent",
-                    border: "border-orange-200",
+                    gradient: "from-orange-50 via-orange-50/50 to-transparent dark:from-orange-900/20 dark:via-slate-800/50 dark:to-transparent",
+                    border: "border-orange-200 dark:border-orange-800",
                     icon: "from-orange-400 to-orange-500",
-                    text: "text-orange-700"
+                    text: "text-orange-700 dark:text-orange-300"
                 } : {
-                    gradient: "from-blue-50 via-blue-50/50 to-transparent",
-                    border: "border-blue-200",
+                    gradient: "from-blue-50 via-blue-50/50 to-transparent dark:from-blue-900/20 dark:via-slate-800/50 dark:to-transparent",
+                    border: "border-blue-200 dark:border-blue-800",
                     icon: "from-blue-400 to-blue-500",
-                    text: "text-blue-700"
+                    text: "text-blue-700 dark:text-blue-300"
                 }
 
     return (
@@ -346,15 +346,15 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
             <AppShell>
                 <div className="space-y-6">
                     {/* Enhanced Header with Background */}
-                    <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${statusTheme.gradient} border ${statusTheme.border} p-6 shadow-lg`}>
+                    <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${statusTheme.gradient} border ${statusTheme.border} p-6 shadow-lg dark:bg-slate-800/50`}>
                         {/* Decorative circles */}
-                        <div className="absolute top-0 right-0 w-64 h-64 bg-white/30 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-                        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/20 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2" />
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-white/30 dark:bg-slate-700/30 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+                        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/20 dark:bg-slate-700/20 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2" />
 
                         <div className="relative z-10">
                             {/* Back button */}
                             <Link href="/club-leader/club-order-list">
-                                <Button variant="ghost" size="sm" className="mb-4 hover:bg-white/50">
+                                <Button variant="ghost" size="sm" className="mb-4 hover:bg-white/50 dark:hover:bg-slate-700/50 dark:text-white">
                                     <ArrowLeft className="h-4 w-4 mr-2" />
                                     Back to Order List
                                 </Button>
@@ -367,8 +367,8 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
                                         <Package className="h-8 w-8 text-white" />
                                     </div>
                                     <div>
-                                        <h1 className="text-4xl font-bold text-gray-900">Order #{order.orderCode}</h1>
-                                        <p className="text-muted-foreground mt-1 flex items-center gap-2">
+                                        <h1 className="text-4xl font-bold text-gray-900 dark:text-white">Order #{order.orderCode}</h1>
+                                        <p className="text-muted-foreground dark:text-slate-400 mt-1 flex items-center gap-2">
                                             <Hash className="h-4 w-4" />
                                             Order ID: {order.orderId}
                                         </p>
@@ -385,10 +385,10 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
                         {/* Main Information */}
                         <div className="lg:col-span-2 space-y-6">
                             {/* Enhanced Product Card */}
-                            <Card className="border-0 shadow-xl bg-gradient-to-br from-white via-gray-50/30 to-white overflow-hidden">
+                            <Card className="border-0 shadow-xl bg-gradient-to-br from-white via-gray-50/30 to-white dark:from-slate-800 dark:via-slate-800/50 dark:to-slate-800 dark:border-slate-700 overflow-hidden">
                                 <div className="h-2 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500" />
                                 <CardHeader className="pb-4">
-                                    <CardTitle className="flex items-center gap-3 text-xl">
+                                    <CardTitle className="flex items-center gap-3 text-xl dark:text-white">
                                         <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg">
                                             <Package className="h-5 w-5 text-white" />
                                         </div>
@@ -397,40 +397,40 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
                                 </CardHeader>
                                 <CardContent className="space-y-6">
                                     {/* Product Name - Featured */}
-                                    <div className="p-5 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl border border-purple-100 shadow-sm">
-                                        <label className="text-xs font-semibold text-purple-700 uppercase tracking-wide mb-2 block">Product Name</label>
-                                        <p className="text-2xl font-bold text-gray-900">{order.productName}</p>
+                                    <div className="p-5 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl border border-purple-100 dark:border-purple-800 shadow-sm">
+                                        <label className="text-xs font-semibold text-purple-700 dark:text-purple-300 uppercase tracking-wide mb-2 block">Product Name</label>
+                                        <p className="text-2xl font-bold text-gray-900 dark:text-white">{order.productName}</p>
                                     </div>
 
                                     {/* Order Stats Grid */}
                                     <div className="grid grid-cols-2 gap-4">
-                                        <div className="p-5 bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl border border-indigo-100 shadow-sm hover:shadow-md transition-shadow">
+                                        <div className="p-5 bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800 shadow-sm hover:shadow-md transition-shadow">
                                             <div className="flex items-center gap-2 mb-3">
                                                 <div className="p-2 rounded-lg bg-gradient-to-br from-indigo-400 to-blue-500 shadow-md">
                                                     <ShoppingCart className="h-4 w-4 text-white" />
                                                 </div>
-                                                <label className="text-xs font-semibold text-indigo-700 uppercase tracking-wide">Quantity</label>
+                                                <label className="text-xs font-semibold text-indigo-700 dark:text-indigo-300 uppercase tracking-wide">Quantity</label>
                                             </div>
-                                            <p className="text-3xl font-bold text-indigo-900">{order.quantity.toLocaleString('en-US')}</p>
-                                            <p className="text-xs text-muted-foreground mt-1">Item(s) ordered</p>
+                                            <p className="text-3xl font-bold text-indigo-900 dark:text-indigo-200">{order.quantity.toLocaleString('en-US')}</p>
+                                            <p className="text-xs text-muted-foreground dark:text-slate-400 mt-1">Item(s) ordered</p>
                                         </div>
 
-                                        <div className="p-5 bg-gradient-to-br from-cyan-50 to-teal-50 rounded-xl border border-cyan-100 shadow-sm hover:shadow-md transition-shadow">
+                                        <div className="p-5 bg-gradient-to-br from-cyan-50 to-teal-50 dark:from-cyan-900/20 dark:to-teal-900/20 rounded-xl border border-cyan-100 dark:border-cyan-800 shadow-sm hover:shadow-md transition-shadow">
                                             <div className="flex items-center gap-2 mb-3">
                                                 <div className="p-2 rounded-lg bg-gradient-to-br from-cyan-400 to-teal-500 shadow-md">
                                                     <WalletCards className="h-4 w-4 text-white" />
                                                 </div>
-                                                <label className="text-xs font-semibold text-cyan-700 uppercase tracking-wide">Total Points</label>
+                                                <label className="text-xs font-semibold text-cyan-700 dark:text-cyan-300 uppercase tracking-wide">Total Points</label>
                                             </div>
-                                            <p className="text-3xl font-bold text-cyan-900">{order.totalPoints.toLocaleString('en-US')}</p>
-                                            <p className="text-xs text-muted-foreground mt-1">Points redeemed</p>
+                                            <p className="text-3xl font-bold text-cyan-900 dark:text-cyan-200">{order.totalPoints.toLocaleString('en-US')}</p>
+                                            <p className="text-xs text-muted-foreground dark:text-slate-400 mt-1">Points redeemed</p>
                                         </div>
                                     </div>
 
                                     {/* Points per item calculation */}
-                                    <div className="flex items-center justify-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                                        <DollarSign className="h-4 w-4 text-gray-600" />
-                                        <span className="text-sm text-gray-600">
+                                    <div className="flex items-center justify-center gap-2 p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg border border-gray-200 dark:border-slate-600">
+                                        <DollarSign className="h-4 w-4 text-gray-600 dark:text-slate-400" />
+                                        <span className="text-sm text-gray-600 dark:text-slate-300">
                                             <span className="font-semibold">{(order.totalPoints / order.quantity).toLocaleString('en-US')}</span> points per item
                                         </span>
                                     </div>
@@ -438,21 +438,21 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
                             </Card>
                             {/* Enhanced Status Log */}
                             {order.status !== "PENDING" && (
-                                <Card className="border-0 shadow-xl overflow-hidden">
+                                <Card className="border-0 shadow-xl overflow-hidden dark:bg-slate-800 dark:border-slate-700">
                                     {order.status === "COMPLETED" && (
                                         <>
                                             <div className="h-2 bg-gradient-to-r from-green-400 via-green-500 to-emerald-500" />
-                                            <div className="bg-gradient-to-br from-green-50 via-emerald-50/50 to-white p-6">
+                                            <div className="bg-gradient-to-br from-green-50 via-emerald-50/50 to-white dark:from-green-900/20 dark:via-emerald-900/20 dark:to-slate-800 p-6">
                                                 <div className="flex items-start gap-4">
                                                     <div className="p-3 rounded-xl bg-gradient-to-br from-green-400 to-emerald-500 shadow-lg flex-shrink-0">
                                                         <CheckCircle className="h-6 w-6 text-white" />
                                                     </div>
                                                     <div className="flex-1">
-                                                        <h3 className="text-lg font-bold text-green-900 mb-1">Successfully Delivered</h3>
-                                                        <p className="text-sm text-green-700">
+                                                        <h3 className="text-lg font-bold text-green-900 dark:text-green-200 mb-1">Successfully Delivered</h3>
+                                                        <p className="text-sm text-green-700 dark:text-green-300">
                                                             This order was completed and delivered to the member.
                                                         </p>
-                                                        <div className="mt-3 flex items-center gap-2 text-xs text-green-600">
+                                                        <div className="mt-3 flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
                                                             <Calendar className="h-3.5 w-3.5" />
                                                             <span>{new Date(order.completedAt).toLocaleString('en-US', {
                                                                 dateStyle: 'full',
@@ -468,17 +468,17 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
                                     {order.status === "PARTIALLY_REFUNDED" && (
                                         <>
                                             <div className="h-2 bg-gradient-to-r from-orange-400 via-orange-500 to-amber-500" />
-                                            <div className="bg-gradient-to-br from-orange-50 via-amber-50/50 to-white p-6">
+                                            <div className="bg-gradient-to-br from-orange-50 via-amber-50/50 to-white dark:from-orange-900/20 dark:via-amber-900/20 dark:to-slate-800 p-6">
                                                 <div className="flex items-start gap-4">
                                                     <div className="p-3 rounded-xl bg-gradient-to-br from-orange-400 to-amber-500 shadow-lg flex-shrink-0">
                                                         <Undo2 className="h-6 w-6 text-white" />
                                                     </div>
                                                     <div className="flex-1">
-                                                        <h3 className="text-lg font-bold text-orange-900 mb-1">Partially Refunded</h3>
-                                                        <p className="text-sm text-orange-700">
+                                                        <h3 className="text-lg font-bold text-orange-900 dark:text-orange-200 mb-1">Partially Refunded</h3>
+                                                        <p className="text-sm text-orange-700 dark:text-orange-300">
                                                             A portion of this order has been refunded to the member.
                                                         </p>
-                                                        <div className="mt-3 flex items-center gap-2 text-xs text-orange-600">
+                                                        <div className="mt-3 flex items-center gap-2 text-xs text-orange-600 dark:text-orange-400">
                                                             <Calendar className="h-3.5 w-3.5" />
                                                             <span>{new Date(order.completedAt).toLocaleString('en-US', {
                                                                 dateStyle: 'full',
@@ -494,17 +494,17 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
                                     {order.status === "REFUNDED" && (
                                         <>
                                             <div className="h-2 bg-gradient-to-r from-blue-400 via-blue-500 to-cyan-500" />
-                                            <div className="bg-gradient-to-br from-blue-50 via-cyan-50/50 to-white p-6">
+                                            <div className="bg-gradient-to-br from-blue-50 via-cyan-50/50 to-white dark:from-blue-900/20 dark:via-cyan-900/20 dark:to-slate-800 p-6">
                                                 <div className="flex items-start gap-4">
                                                     <div className="p-3 rounded-xl bg-gradient-to-br from-blue-400 to-cyan-500 shadow-lg flex-shrink-0">
                                                         <Undo2 className="h-6 w-6 text-white" />
                                                     </div>
                                                     <div className="flex-1">
-                                                        <h3 className="text-lg font-bold text-blue-900 mb-1">Fully Refunded</h3>
-                                                        <p className="text-sm text-blue-700">
+                                                        <h3 className="text-lg font-bold text-blue-900 dark:text-blue-200 mb-1">Fully Refunded</h3>
+                                                        <p className="text-sm text-blue-700 dark:text-blue-300">
                                                             This order has been completely cancelled and all points refunded.
                                                         </p>
-                                                        <div className="mt-3 flex items-center gap-2 text-xs text-blue-600">
+                                                        <div className="mt-3 flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400">
                                                             <Calendar className="h-3.5 w-3.5" />
                                                             <span>{new Date(order.completedAt).toLocaleString('en-US', {
                                                                 dateStyle: 'full',
@@ -524,10 +524,10 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
                         {/* Enhanced Sidebar Information */}
                         <div className="space-y-6">
                             {/* Member & Order Details Card */}
-                            <Card className="border-0 shadow-xl bg-gradient-to-br from-white via-blue-50/20 to-white overflow-hidden">
+                            <Card className="border-0 shadow-xl bg-gradient-to-br from-white via-blue-50/20 to-white dark:from-slate-800 dark:via-blue-900/10 dark:to-slate-800 dark:border-slate-700 overflow-hidden">
                                 <div className="h-2 bg-gradient-to-r from-blue-400 via-indigo-500 to-purple-500" />
                                 <CardHeader className="pb-4">
-                                    <CardTitle className="flex items-center gap-3 text-lg">
+                                    <CardTitle className="flex items-center gap-3 text-lg dark:text-white">
                                         <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg">
                                             <User className="h-5 w-5 text-white" />
                                         </div>
@@ -536,41 +536,41 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
                                 </CardHeader>
                                 <CardContent className="space-y-5">
                                     {/* Member Name - Highlighted */}
-                                    <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
-                                        <label className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-2 block">Member Name</label>
+                                    <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border border-blue-100 dark:border-blue-800">
+                                        <label className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wide mb-2 block">Member Name</label>
                                         <div className="flex items-center gap-3">
                                             <div className="p-2 rounded-lg bg-gradient-to-br from-blue-400 to-indigo-500 shadow-md">
                                                 <User className="h-4 w-4 text-white" />
                                             </div>
-                                            <p className="font-bold text-lg text-gray-900">{order.memberName}</p>
+                                            <p className="font-bold text-lg text-gray-900 dark:text-white">{order.memberName}</p>
                                         </div>
                                     </div>
 
-                                    <Separator className="my-4" />
+                                    <Separator className="my-4 dark:bg-slate-700" />
 
                                     {/* Order Code */}
                                     <div>
-                                        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 block">Order Code</label>
-                                        <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                                            <Hash className="h-4 w-4 text-gray-600" />
-                                            <span className="font-mono font-semibold text-gray-900">{order.orderCode}</span>
+                                        <label className="text-xs font-semibold text-muted-foreground dark:text-slate-400 uppercase tracking-wide mb-2 block">Order Code</label>
+                                        <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg border border-gray-200 dark:border-slate-600">
+                                            <Hash className="h-4 w-4 text-gray-600 dark:text-slate-400" />
+                                            <span className="font-mono font-semibold text-gray-900 dark:text-white">{order.orderCode}</span>
                                         </div>
                                     </div>
 
                                     {/* Order Date */}
                                     <div>
-                                        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 block">Order Date</label>
-                                        <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                                            <Calendar className="h-4 w-4 text-gray-600" />
+                                        <label className="text-xs font-semibold text-muted-foreground dark:text-slate-400 uppercase tracking-wide mb-2 block">Order Date</label>
+                                        <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg border border-gray-200 dark:border-slate-600">
+                                            <Calendar className="h-4 w-4 text-gray-600 dark:text-slate-400" />
                                             <div className="flex flex-col">
-                                                <span className="font-semibold text-sm text-gray-900">
+                                                <span className="font-semibold text-sm text-gray-900 dark:text-white">
                                                     {new Date(order.createdAt).toLocaleDateString('en-US', {
                                                         month: 'long',
                                                         day: 'numeric',
                                                         year: 'numeric'
                                                     })}
                                                 </span>
-                                                <span className="text-xs text-muted-foreground">
+                                                <span className="text-xs text-muted-foreground dark:text-slate-400">
                                                     {new Date(order.createdAt).toLocaleTimeString('en-US', {
                                                         hour: '2-digit',
                                                         minute: '2-digit'
@@ -580,24 +580,24 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
                                         </div>
                                     </div>
 
-                                    <Separator className="my-4" />
+                                    <Separator className="my-4 dark:bg-slate-700" />
 
                                     {/* Current Status */}
                                     <div>
-                                        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3 block">Current Status</label>
+                                        <label className="text-xs font-semibold text-muted-foreground dark:text-slate-400 uppercase tracking-wide mb-3 block">Current Status</label>
                                         <div className="flex justify-center">{getStatusBadge(order.status)}</div>
                                     </div>
 
                                     {/* Refund Reason */}
                                     {(order.status === "REFUNDED" || order.status === "PARTIALLY_REFUNDED") && order.reasonRefund && (
                                         <>
-                                            <Separator className="my-4" />
-                                            <div className="p-4 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border border-amber-200">
-                                                <label className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-2 flex items-center gap-2">
+                                            <Separator className="my-4 dark:bg-slate-700" />
+                                            <div className="p-4 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-xl border border-amber-200 dark:border-amber-800">
+                                                <label className="text-xs font-semibold text-amber-700 dark:text-amber-300 uppercase tracking-wide mb-2 flex items-center gap-2">
                                                     <Info className="h-3.5 w-3.5" />
                                                     Refund Reason
                                                 </label>
-                                                <p className="text-sm text-gray-700 leading-relaxed italic">&quot;{order.reasonRefund}&quot;</p>
+                                                <p className="text-sm text-gray-700 dark:text-slate-300 leading-relaxed italic">&quot;{order.reasonRefund}&quot;</p>
                                             </div>
                                         </>
                                     )}
@@ -607,10 +607,10 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
                             {/* Enhanced Action Cards */}
                             {/* Deliver Action - For PENDING orders */}
                             {order.status === "PENDING" && (
-                                <Card className="border-0 shadow-xl overflow-hidden bg-gradient-to-br from-green-50 via-emerald-50/50 to-white">
+                                <Card className="border-0 shadow-xl overflow-hidden bg-gradient-to-br from-green-50 via-emerald-50/50 to-white dark:from-green-900/20 dark:via-emerald-900/20 dark:to-slate-800 dark:border-slate-700">
                                     <div className="h-2 bg-gradient-to-r from-green-400 via-emerald-500 to-teal-500" />
                                     <CardHeader className="pb-3">
-                                        <CardTitle className="flex items-center gap-3 text-lg">
+                                        <CardTitle className="flex items-center gap-3 text-lg dark:text-white">
                                             <div className="p-2 rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg">
                                                 <CheckCircle className="h-5 w-5 text-white" />
                                             </div>
@@ -618,11 +618,11 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
                                         </CardTitle>
                                     </CardHeader>
                                     <CardContent className="space-y-3">
-                                        <p className="text-sm text-gray-600 mb-4">
+                                        <p className="text-sm text-gray-600 dark:text-slate-300 mb-4">
                                             Mark this order as delivered once the member has received their product.
                                         </p>
                                         <Button
-                                            className="w-full h-12 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all text-base"
+                                            className="w-full h-12 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 dark:from-green-600 dark:to-emerald-700 dark:hover:from-green-700 dark:hover:to-emerald-800 text-white font-semibold shadow-lg hover:shadow-xl transition-all text-base"
                                             onClick={handleDeliver}
                                             disabled={isProcessing}
                                         >
@@ -644,10 +644,10 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
 
                             {/* Refund Action - For COMPLETED or PARTIALLY_REFUNDED orders */}
                             {(order.status === "COMPLETED" || order.status === "PARTIALLY_REFUNDED") && (
-                                <Card className="border-0 shadow-xl overflow-hidden bg-gradient-to-br from-red-50 via-rose-50/50 to-white">
+                                <Card className="border-0 shadow-xl overflow-hidden bg-gradient-to-br from-red-50 via-rose-50/50 to-white dark:from-red-900/20 dark:via-rose-900/20 dark:to-slate-800 dark:border-slate-700">
                                     <div className="h-2 bg-gradient-to-r from-red-400 via-rose-500 to-pink-500" />
                                     <CardHeader className="pb-3">
-                                        <CardTitle className="flex items-center gap-3 text-lg">
+                                        <CardTitle className="flex items-center gap-3 text-lg dark:text-white">
                                             <div className="p-2 rounded-lg bg-gradient-to-br from-red-500 to-rose-600 shadow-lg">
                                                 <Undo2 className="h-5 w-5 text-white" />
                                             </div>
@@ -655,13 +655,13 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
                                         </CardTitle>
                                     </CardHeader>
                                     <CardContent>
-                                        <p className="text-sm text-gray-600 mb-4">
+                                        <p className="text-sm text-gray-600 dark:text-slate-300 mb-4">
                                             Process a refund for this order if needed. You can refund the entire order or just a portion.
                                         </p>
                                         <Dialog open={isRefundModalOpen} onOpenChange={setIsRefundModalOpen}>
                                             <DialogTrigger asChild>
                                                 <Button
-                                                    className="w-full h-12 bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all text-base"
+                                                    className="w-full h-12 bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 dark:from-red-600 dark:to-rose-700 dark:hover:from-red-700 dark:hover:to-rose-800 text-white font-semibold shadow-lg hover:shadow-xl transition-all text-base"
                                                     disabled={isProcessing}
                                                 >
                                                     <Undo2 className="h-5 w-5 mr-2" />
@@ -670,16 +670,16 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
                                             </DialogTrigger>
 
                                             {/* Enhanced Refund Dialog */}
-                                            <DialogContent className="sm:max-w-lg">
+                                            <DialogContent className="sm:max-w-lg dark:bg-slate-800 dark:border-slate-700">
                                                 <DialogHeader className="space-y-3">
                                                     <div className="flex items-center gap-3">
                                                         <div className="p-3 rounded-xl bg-gradient-to-br from-red-500 to-rose-600 shadow-lg">
                                                             <Undo2 className="h-6 w-6 text-white" />
                                                         </div>
                                                         <div>
-                                                            <DialogTitle className="text-2xl">Process Refund</DialogTitle>
-                                                            <DialogDescription className="text-base mt-1">
-                                                                Refund order for <span className="font-semibold text-gray-900">{order.memberName}</span>
+                                                            <DialogTitle className="text-2xl dark:text-white">Process Refund</DialogTitle>
+                                                            <DialogDescription className="text-base mt-1 dark:text-slate-300">
+                                                                Refund order for <span className="font-semibold text-gray-900 dark:text-white">{order.memberName}</span>
                                                             </DialogDescription>
                                                         </div>
                                                     </div>
@@ -688,18 +688,18 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
                                                 {/* <div className="space-y-6 py-4"> */}
                                                 <div className="space-y-6 py-4 max-h-[65vh] overflow-y-auto pr-4">
                                                     {/* Order Summary */}
-                                                    <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
-                                                        <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-2">Order Summary</p>
+                                                    <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
+                                                        <p className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wide mb-2">Order Summary</p>
                                                         <div className="space-y-1">
-                                                            <p className="text-sm"><span className="font-semibold">Product:</span> {order.productName}</p>
-                                                            <p className="text-sm"><span className="font-semibold">Total Quantity:</span> {order.quantity.toLocaleString('en-US')} item(s)</p>
-                                                            <p className="text-sm"><span className="font-semibold">Total Points:</span> {order.totalPoints.toLocaleString('en-US')} points</p>
+                                                            <p className="text-sm dark:text-slate-300"><span className="font-semibold">Product:</span> {order.productName}</p>
+                                                            <p className="text-sm dark:text-slate-300"><span className="font-semibold">Total Quantity:</span> {order.quantity.toLocaleString('en-US')} item(s)</p>
+                                                            <p className="text-sm dark:text-slate-300"><span className="font-semibold">Total Points:</span> {order.totalPoints.toLocaleString('en-US')} points</p>
                                                         </div>
                                                     </div>
 
                                                     {/* Refund Type Selection */}
                                                     <div>
-                                                        <Label className="text-sm font-semibold mb-3 block">Select Refund Type</Label>
+                                                        <Label className="text-sm font-semibold mb-3 block dark:text-white">Select Refund Type</Label>
                                                         <RadioGroup value={refundType} onValueChange={(v) => {
                                                             setRefundType(v as any);
                                                             setPartialQuantityError(null);
@@ -710,15 +710,15 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
                                                                 <RadioGroupItem value="full" id="r-full" className="peer sr-only" />
                                                                 <Label
                                                                     htmlFor="r-full"
-                                                                    className="flex items-start gap-3 rounded-xl border-2 border-gray-200 bg-white p-4 hover:bg-blue-50 hover:border-blue-300 peer-data-[state=checked]:border-blue-500 peer-data-[state=checked]:bg-blue-50 [&:has([data-state=checked])]:border-blue-500 cursor-pointer transition-all shadow-sm hover:shadow-md"
+                                                                    className="flex items-start gap-3 rounded-xl border-2 border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 p-4 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-300 dark:hover:border-blue-600 peer-data-[state=checked]:border-blue-500 dark:peer-data-[state=checked]:border-blue-500 peer-data-[state=checked]:bg-blue-50 dark:peer-data-[state=checked]:bg-blue-900/30 [&:has([data-state=checked])]:border-blue-500 cursor-pointer transition-all shadow-sm hover:shadow-md"
                                                                 >
                                                                     <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-br from-blue-400 to-blue-600 flex-shrink-0 mt-0.5">
                                                                         <Undo2 className="h-5 w-5 text-white" />
                                                                     </div>
                                                                     <div className="flex-1">
-                                                                        <span className="font-bold text-base block mb-1">Full Refund</span>
-                                                                        <span className="text-sm text-gray-600">
-                                                                            Cancel the entire order and refund all <span className="font-semibold text-blue-600">{order.totalPoints.toLocaleString('en-US')} points</span> for <span className="font-semibold">{order.quantity.toLocaleString('en-US')} item(s)</span>.
+                                                                        <span className="font-bold text-base block mb-1 dark:text-white">Full Refund</span>
+                                                                        <span className="text-sm text-gray-600 dark:text-slate-300">
+                                                                            Cancel the entire order and refund all <span className="font-semibold text-blue-600 dark:text-blue-400">{order.totalPoints.toLocaleString('en-US')} points</span> for <span className="font-semibold">{order.quantity.toLocaleString('en-US')} item(s)</span>.
                                                                         </span>
                                                                     </div>
                                                                 </Label>
@@ -727,14 +727,14 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
                                                                 <RadioGroupItem value="partial" id="r-partial" className="peer sr-only" disabled={order.quantity <= 1} />
                                                                 <Label
                                                                     htmlFor="r-partial"
-                                                                    className={`flex items-start gap-3 rounded-xl border-2 border-gray-200 bg-white p-4 transition-all shadow-sm ${order.quantity > 1 ? 'cursor-pointer hover:bg-orange-50 hover:border-orange-300 peer-data-[state=checked]:border-orange-500 peer-data-[state=checked]:bg-orange-50 [&:has([data-state=checked])]:border-orange-500 hover:shadow-md' : 'cursor-not-allowed opacity-50'}`}
+                                                                    className={`flex items-start gap-3 rounded-xl border-2 border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 p-4 transition-all shadow-sm ${order.quantity > 1 ? 'cursor-pointer hover:bg-orange-50 dark:hover:bg-orange-900/20 hover:border-orange-300 dark:hover:border-orange-600 peer-data-[state=checked]:border-orange-500 dark:peer-data-[state=checked]:border-orange-500 peer-data-[state=checked]:bg-orange-50 dark:peer-data-[state=checked]:bg-orange-900/30 [&:has([data-state=checked])]:border-orange-500 hover:shadow-md' : 'cursor-not-allowed opacity-50'}`}
                                                                 >
                                                                     <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-br from-orange-400 to-orange-600 flex-shrink-0 mt-0.5">
                                                                         <Undo2 className="h-5 w-5 text-white" />
                                                                     </div>
                                                                     <div className="flex-1">
-                                                                        <span className="font-bold text-base block mb-1">Partial Refund</span>
-                                                                        <span className="text-sm text-gray-600">
+                                                                        <span className="font-bold text-base block mb-1 dark:text-white">Partial Refund</span>
+                                                                        <span className="text-sm text-gray-600 dark:text-slate-300">
                                                                             Refund a specific quantity. {order.quantity <= 1 ? 'Not available for single-item orders.' : 'Choose how many items to refund.'}
                                                                         </span>
                                                                     </div>
@@ -749,9 +749,9 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
                                                         const partialPoints = (pointsPerItem * (parseInt(partialQuantity) || 0)).toFixed(0);
 
                                                         return (
-                                                            <div className="p-4 bg-gradient-to-br from-orange-50 to-amber-50 rounded-xl border border-orange-200 space-y-3">
-                                                                <Label htmlFor="partialQuantity" className="text-sm font-semibold flex items-center gap-2">
-                                                                    <ShoppingCart className="h-4 w-4 text-orange-600" />
+                                                            <div className="p-4 bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20 rounded-xl border border-orange-200 dark:border-orange-800 space-y-3">
+                                                                <Label htmlFor="partialQuantity" className="text-sm font-semibold flex items-center gap-2 dark:text-orange-300">
+                                                                    <ShoppingCart className="h-4 w-4 text-orange-600 dark:text-orange-400" />
                                                                     Quantity to Refund
                                                                 </Label>
                                                                 <Input
@@ -763,17 +763,17 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
                                                                     min={1}
                                                                     max={order!.quantity - 1}
                                                                     // className="text-lg font-semibold h-12"
-                                                                    className={`text-lg font-semibold h-12 ${partialQuantityError ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                                                                    className={`text-lg font-semibold h-12 dark:bg-slate-700 dark:text-white dark:border-slate-600 ${partialQuantityError ? 'border-red-500 focus-visible:ring-red-500 dark:border-red-500' : ''}`}
                                                                 />
-                                                                <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-orange-200">
-                                                                    <span className="text-sm text-gray-600">Points to be refunded:</span>
-                                                                    <span className="font-bold text-lg text-orange-600">{partialPoints} pts</span>
+                                                                <div className="flex items-center justify-between p-3 bg-white dark:bg-slate-700 rounded-lg border border-orange-200 dark:border-orange-800">
+                                                                    <span className="text-sm text-gray-600 dark:text-slate-300">Points to be refunded:</span>
+                                                                    <span className="font-bold text-lg text-orange-600 dark:text-orange-400">{partialPoints} pts</span>
                                                                 </div>
                                                                 {/* hiển thị lỗi */}
                                                                 {partialQuantityError && (
-                                                                    <p className="text-sm text-red-600 font-medium px-1">{partialQuantityError}</p>
+                                                                    <p className="text-sm text-red-600 dark:text-red-400 font-medium px-1">{partialQuantityError}</p>
                                                                 )}
-                                                                <p className="text-xs text-gray-600">
+                                                                <p className="text-xs text-gray-600 dark:text-slate-400">
                                                                     Enter a value between 1 and {order!.quantity - 1}
                                                                 </p>
                                                             </div>
@@ -782,18 +782,18 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
 
                                                     {/* Refund Reason Input */}
                                                     <div className="space-y-3">
-                                                        <Label htmlFor="refundReason" className="text-sm font-semibold flex items-center gap-2">
-                                                            <Info className="h-4 w-4 text-gray-600" />
-                                                            Reason for Refund <span className="text-red-500">*</span>
+                                                        <Label htmlFor="refundReason" className="text-sm font-semibold flex items-center gap-2 dark:text-white">
+                                                            <Info className="h-4 w-4 text-gray-600 dark:text-slate-400" />
+                                                            Reason for Refund <span className="text-red-500 dark:text-red-400">*</span>
                                                         </Label>
                                                         <Textarea
                                                             id="refundReason"
                                                             value={refundReason}
                                                             onChange={(e) => setRefundReason(e.target.value)}
                                                             placeholder="e.g., Product out of stock, member request, quality issue..."
-                                                            className="min-h-[100px] resize-none"
+                                                            className="min-h-[100px] resize-none dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:placeholder:text-slate-400"
                                                         />
-                                                        <p className="text-xs text-gray-500">
+                                                        <p className="text-xs text-gray-500 dark:text-slate-400">
                                                             Please provide a clear reason for this refund. This will be recorded in the order history.
                                                         </p>
                                                     </div>
@@ -810,7 +810,7 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
                                                             setPartialQuantityError(null)
                                                         }}
                                                         disabled={isProcessing}
-                                                        className="flex-1 h-11 border-2 hover:bg-gray-50"
+                                                        className="flex-1 h-11 border-2 hover:bg-gray-50 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:hover:bg-slate-600"
                                                     >
                                                         <XCircle className="h-4 w-4 mr-2" />
                                                         Cancel
@@ -824,7 +824,7 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
                                                             !refundReason.trim() ||
                                                             (refundType === 'partial' && !!partialQuantityError) // Logic này ngăn submit khi có lỗi
                                                         }
-                                                        className="flex-1 h-11 bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white font-semibold shadow-lg"
+                                                        className="flex-1 h-11 bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 dark:from-red-600 dark:to-rose-700 dark:hover:from-red-700 dark:hover:to-rose-800 text-white font-semibold shadow-lg"
                                                     >
                                                         {isProcessing ? (
                                                             <>

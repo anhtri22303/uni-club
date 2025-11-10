@@ -21,22 +21,22 @@ export const QRTab: React.FC<QRTabProps> = ({
   return (
     <div className="space-y-4 sm:space-y-6 mt-4 sm:mt-6">
       <div className="space-y-3">
-        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <Label className="text-base font-semibold">📍 QR Code Position</Label>
-          <p className="text-sm text-blue-700 mt-2">
+        <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 rounded-lg">
+          <Label className="text-base font-semibold dark:text-blue-300">📍 QR Code Position</Label>
+          <p className="text-sm text-blue-700 dark:text-blue-300 mt-2">
             The QR code is fixed at <strong>Center - Right</strong> position for optimal
             scanning
           </p>
         </div>
       </div>
 
-      <div className="space-y-3 p-4 bg-slate-50 rounded-lg border border-slate-200">
+      <div className="space-y-3 p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-600">
         <div className="flex items-center justify-between">
           <div>
-            <Label className="font-semibold">QR Code Size</Label>
-            <p className="text-xs text-muted-foreground mt-1">Minimum 80px for easy scanning</p>
+            <Label className="font-semibold dark:text-slate-200">QR Code Size</Label>
+            <p className="text-xs text-muted-foreground dark:text-slate-400 mt-1">Minimum 80px for easy scanning</p>
           </div>
-          <span className="text-sm font-bold text-blue-600">{qrSize[0]}px</span>
+          <span className="text-sm font-bold text-blue-600 dark:text-blue-400">{qrSize[0]}px</span>
         </div>
         <Slider
           value={qrSize}
@@ -64,8 +64,8 @@ export const QRTab: React.FC<QRTabProps> = ({
               onClick={() => onQRStyleChange(style.value)}
               className={`p-2 sm:p-3 rounded-lg border-2 transition-all ${
                 qrStyle === style.value
-                  ? "border-blue-600 ring-2 ring-blue-200 bg-blue-50"
-                  : "border-gray-200 hover:border-gray-300"
+                  ? "border-blue-600 dark:border-blue-500 ring-2 ring-blue-200 dark:ring-blue-800 bg-blue-50 dark:bg-blue-900/30"
+                  : "border-gray-200 dark:border-slate-600 hover:border-gray-300 dark:hover:border-slate-500"
               }`}
             >
               {/* QR Style Visual */}
@@ -82,14 +82,14 @@ export const QRTab: React.FC<QRTabProps> = ({
                   }`}
                 ></div>
               </div>
-              <p className="text-xs font-medium text-center line-clamp-1">{style.name}</p>
+              <p className="text-xs font-medium text-center line-clamp-1 dark:text-slate-300">{style.name}</p>
             </button>
           ))}
         </div>
       </div>
 
-      <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
-        <p className="text-sm text-amber-800">
+      <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-lg">
+        <p className="text-sm text-amber-800 dark:text-amber-300">
           <strong>📱 QR Contains:</strong> Student Code, Email, Member ID
         </p>
       </div>

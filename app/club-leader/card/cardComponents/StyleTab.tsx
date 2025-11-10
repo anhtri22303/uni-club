@@ -36,8 +36,8 @@ export const StyleTab: React.FC<StyleTabProps> = ({
               onClick={() => onPatternChange(p.value)}
               className={`p-2 sm:p-3 rounded-lg border-2 transition-all hover:scale-105 ${
                 pattern === p.value
-                  ? "border-blue-600 ring-2 ring-blue-200 bg-blue-50"
-                  : "border-gray-200 hover:border-gray-300"
+                  ? "border-blue-600 dark:border-blue-500 ring-2 ring-blue-200 dark:ring-blue-800 bg-blue-50 dark:bg-blue-900/30"
+                  : "border-gray-200 dark:border-slate-600 hover:border-gray-300 dark:hover:border-slate-500"
               }`}
             >
               {/* Pattern Preview Mini Card */}
@@ -139,22 +139,22 @@ export const StyleTab: React.FC<StyleTabProps> = ({
                   </svg>
                 )}
               </div>
-              <p className="text-xs font-medium text-center line-clamp-1">{p.name}</p>
+              <p className="text-xs font-medium text-center line-clamp-1 dark:text-slate-300">{p.name}</p>
             </button>
           ))}
         </div>
       </div>
 
       {pattern !== "none" && (
-        <div className="space-y-3 p-4 bg-slate-50 rounded-lg border border-slate-200">
+        <div className="space-y-3 p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-600">
           <div className="flex items-center justify-between">
             <div>
-              <Label className="font-semibold">Pattern Opacity</Label>
-              <p className="text-xs text-muted-foreground mt-1">
+              <Label className="font-semibold dark:text-slate-200">Pattern Opacity</Label>
+              <p className="text-xs text-muted-foreground dark:text-slate-400 mt-1">
                 Adjust the visibility of the background pattern
               </p>
             </div>
-            <span className="text-sm font-bold text-blue-600">{patternOpacity[0]}%</span>
+            <span className="text-sm font-bold text-blue-600 dark:text-blue-400">{patternOpacity[0]}%</span>
           </div>
           <Slider
             value={patternOpacity}
@@ -183,22 +183,22 @@ export const StyleTab: React.FC<StyleTabProps> = ({
               onClick={() => onBorderRadiusChange(option.value)}
               className={`p-2 sm:p-3 md:p-4 rounded-lg border-2 transition-all ${
                 borderRadius === option.value
-                  ? "border-blue-600 ring-2 ring-blue-200 bg-blue-50"
-                  : "border-gray-200 hover:border-gray-300"
+                  ? "border-blue-600 dark:border-blue-500 ring-2 ring-blue-200 dark:ring-blue-800 bg-blue-50 dark:bg-blue-900/30"
+                  : "border-gray-200 dark:border-slate-600 hover:border-gray-300 dark:hover:border-slate-500"
               }`}
             >
               {/* Border Radius Visual */}
               <div
                 className={`w-full h-10 sm:h-12 bg-gradient-to-r from-blue-600 to-purple-600 ${option.value} mb-2`}
               ></div>
-              <p className="text-xs sm:text-sm font-medium text-center">{option.name}</p>
+              <p className="text-xs sm:text-sm font-medium text-center dark:text-slate-300">{option.name}</p>
             </button>
           ))}
         </div>
       </div>
 
-      <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-        <p className="text-sm text-green-800">
+      <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/50 rounded-lg">
+        <p className="text-sm text-green-800 dark:text-green-300">
           <strong>💡 Tip:</strong> Patterns at 5-15% opacity look more professional!
         </p>
       </div>

@@ -37,21 +37,21 @@ const MinimalPager = ({
 			<button
 				onClick={onPrev}
 				disabled={current === 1}
-				className="h-10 w-10 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
+				className="h-10 w-10 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors dark:bg-slate-900 dark:hover:bg-slate-800 dark:border-slate-700"
 				aria-label="Previous page"
 			>
-				<ChevronLeft className="h-5 w-5 text-gray-600" />
+				<ChevronLeft className="h-5 w-5 text-gray-600 dark:text-slate-200" />
 			</button>
-			<div className="px-4 py-2 text-sm font-medium text-gray-700">
+			<div className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-slate-200">
 				Page {current} of {total}
 			</div>
 			<button
 				onClick={onNext}
 				disabled={current === total}
-				className="h-10 w-10 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
+				className="h-10 w-10 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors dark:bg-slate-900 dark:hover:bg-slate-800 dark:border-slate-700"
 				aria-label="Next page"
 			>
-				<ChevronRight className="h-5 w-5 text-gray-600" />
+				<ChevronRight className="h-5 w-5 text-gray-600 dark:text-slate-200" />
 			</button>
 		</div>
 	) : null
@@ -286,10 +286,10 @@ export default function MemberGiftPage() {
 					</div>
 
 					{/* Search and Filter Section */}
-					<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+					<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 dark:bg-slate-900 dark:border-slate-800">
 						<div className="flex flex-col md:flex-row gap-3">
 							<div className="relative flex-1">
-								<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+								<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-slate-400" />
 								<Input
 									placeholder="Search for gifts..."
 									value={searchTerm}
@@ -297,7 +297,7 @@ export default function MemberGiftPage() {
 										setSearchTerm(e.target.value)
 										setCurrentPage(1)
 									}}
-									className="pl-10 h-11 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+									className="pl-10 h-11 border-gray-300 focus:border-blue-500 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-950/50 dark:text-slate-100"
 								/>
 							</div>
 
@@ -310,9 +310,9 @@ export default function MemberGiftPage() {
 										setCurrentPage(1)
 									}}
 								>
-									<SelectTrigger className="w-full md:w-[280px] h-11 border-gray-300">
+									<SelectTrigger className="w-full md:w-[280px] h-11 border-gray-300 dark:border-slate-700 dark:bg-slate-950/50">
 										<div className="flex items-center gap-2">
-											<Layers className="h-4 w-4 text-gray-500" />
+											<Layers className="h-4 w-4 text-gray-500 dark:text-slate-300" />
 											<SelectValue placeholder="Select a club" />
 										</div>
 									</SelectTrigger>
@@ -332,22 +332,22 @@ export default function MemberGiftPage() {
 				<div className="grid gap-4 grid-cols-4">
 						{(isLoading || profileLoading) ? (
 							<div className="col-span-full">
-								<div className="bg-white rounded-lg border border-gray-200 p-16 text-center">
-									<div className="w-20 h-20 mx-auto mb-6 rounded-full bg-blue-100 flex items-center justify-center">
+								<div className="bg-white rounded-lg border border-gray-200 p-16 text-center dark:bg-slate-900 dark:border-slate-800">
+									<div className="w-20 h-20 mx-auto mb-6 rounded-full bg-blue-100 flex items-center justify-center dark:bg-blue-900/40">
 										<Loader2 className="h-10 w-10 text-blue-600 animate-spin" />
 									</div>
-									<h3 className="text-xl font-semibold mb-2 text-gray-900">Loading Amazing Gifts...</h3>
-									<p className="text-gray-600">Please wait while we fetch the best rewards for you</p>
+									<h3 className="text-xl font-semibold mb-2 text-gray-900 dark:text-slate-100">Loading Amazing Gifts...</h3>
+									<p className="text-gray-600 dark:text-slate-400">Please wait while we fetch the best rewards for you</p>
 								</div>
 							</div>
 						) : isFetching ? (
 							<div className="col-span-full">
-								<div className="bg-white rounded-lg border border-gray-200 p-16 text-center">
-									<div className="w-20 h-20 mx-auto mb-6 rounded-full bg-purple-100 flex items-center justify-center">
+								<div className="bg-white rounded-lg border border-gray-200 p-16 text-center dark:bg-slate-900 dark:border-slate-800">
+									<div className="w-20 h-20 mx-auto mb-6 rounded-full bg-purple-100 flex items-center justify-center dark:bg-purple-900/40">
 										<Loader2 className="h-10 w-10 text-purple-600 animate-spin" />
 									</div>
-									<h3 className="text-xl font-semibold mb-2 text-gray-900">Loading Products...</h3>
-									<p className="text-gray-600">Fetching gifts from this club</p>
+									<h3 className="text-xl font-semibold mb-2 text-gray-900 dark:text-slate-100">Loading Products...</h3>
+									<p className="text-gray-600 dark:text-slate-400">Fetching gifts from this club</p>
 								</div>
 							</div>
 						) : userClubIds.length === 0 ? (
@@ -369,18 +369,18 @@ export default function MemberGiftPage() {
 							</div>
 						) : paginatedProducts.length === 0 ? (
 							<div className="col-span-full">
-								<div className="bg-white rounded-lg border border-gray-200 p-16 text-center">
-									<div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gray-100 flex items-center justify-center">
-										<Package className="h-10 w-10 text-gray-400" />
+								<div className="bg-white rounded-lg border border-gray-200 p-16 text-center dark:bg-slate-900 dark:border-slate-800">
+									<div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gray-100 flex items-center justify-center dark:bg-slate-800">
+										<Package className="h-10 w-10 text-gray-400 dark:text-slate-400" />
 									</div>
-									<h3 className="text-2xl font-bold mb-2 text-gray-900">No Products Found</h3>
+									<h3 className="text-2xl font-bold mb-2 text-gray-900 dark:text-slate-100">No Products Found</h3>
 									<p className="text-gray-600 mb-4">
 										{searchTerm ? "Try adjusting your search terms" : `No ${selectedTab === "CLUB_ITEM" ? "club" : "event"} gifts available`}
 									</p>
 									{searchTerm && (
 										<button 
 											onClick={() => setSearchTerm("")}
-											className="px-6 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium rounded-lg transition-colors"
+											className="px-6 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium rounded-lg transition-colors dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-100"
 										>
 											Clear Search
 										</button>
@@ -397,11 +397,11 @@ export default function MemberGiftPage() {
 								return (
 									<div
 										key={p.id}
-										className="group bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-1 flex flex-col"
+										className="group bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-1 flex flex-col dark:bg-slate-900 dark:border-slate-800"
 									>
 										{/* Image Section */}
 										<div 
-											className="relative aspect-square overflow-hidden bg-gray-100 cursor-pointer"
+											className="relative aspect-square overflow-hidden bg-gray-100 cursor-pointer dark:bg-slate-800"
 											onClick={() => router.push(detailUrl)}
 										>
 											<img
@@ -422,7 +422,7 @@ export default function MemberGiftPage() {
 										<div className="p-3 flex flex-col gap-2 grow">
 											{/* Title */}
 											<h3
-												className="text-sm font-bold line-clamp-2 cursor-pointer hover:text-blue-600 transition-colors min-h-10"
+												className="text-sm font-bold line-clamp-2 cursor-pointer hover:text-blue-600 transition-colors min-h-10 dark:text-slate-100 dark:hover:text-blue-400"
 												title={p.name}
 												onClick={() => router.push(detailUrl)}
 											>
@@ -430,7 +430,7 @@ export default function MemberGiftPage() {
 											</h3>
 
 											{/* Description */}
-											<p className="text-xs text-gray-600 line-clamp-2">
+											<p className="text-xs text-gray-600 line-clamp-2 dark:text-slate-300">
 												{p.description || "An amazing reward waiting for you!"}
 											</p>
 
@@ -440,13 +440,13 @@ export default function MemberGiftPage() {
 													{p.tags.slice(0, 2).map((tag) => (
 														<span
 															key={tag}
-															className="text-xs font-medium px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200"
+															className="text-xs font-medium px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800"
 														>
 															{tag}
 														</span>
 													))}
 													{p.tags.length > 2 && (
-														<span className="text-xs font-medium px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded">
+														<span className="text-xs font-medium px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded dark:bg-slate-800 dark:text-slate-200">
 															+{p.tags.length - 2}
 														</span>
 													)}
@@ -454,16 +454,16 @@ export default function MemberGiftPage() {
 											)}
 
 											{/* Price and Stock Info */}
-											<div className="mt-auto pt-2 border-t border-gray-200 space-y-2">
+											<div className="mt-auto pt-2 border-t border-gray-200 space-y-2 dark:border-slate-800">
 												<div className="flex items-center justify-between">
 													<div>
-														<p className="text-xs text-gray-500">Points</p>
-														<p className="text-lg font-bold text-gray-900">
+														<p className="text-xs text-gray-500 dark:text-slate-400">Points</p>
+														<p className="text-lg font-bold text-gray-900 dark:text-white">
 															{p.pointCost.toLocaleString('en-US')}
 														</p>
 													</div>
 													<div className="text-right">
-														<p className="text-xs text-gray-500">Stock</p>
+														<p className="text-xs text-gray-500 dark:text-slate-400">Stock</p>
 														<p className={`text-sm font-bold ${isOutOfStock ? 'text-red-500' : 'text-green-600'}`}>
 															{p.stockQuantity.toLocaleString('en-US')}
 														</p>

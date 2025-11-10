@@ -19,6 +19,40 @@ import Link from "next/link"
 import { fetchEvent } from "@/service/eventApi"
 import { useRouter } from "next/navigation"
 
+// Bảng màu theo ngành học (giống như trong clubs page)
+const majorColors: Record<string, string> = {
+  "Software Engineering": "#0052CC",
+  "Artificial Intelligence": "#6A00FF",
+  "Information Assurance": "#243447",
+  "Data Science": "#00B8A9",
+  "Business Administration": "#1E2A78",
+  "Digital Marketing": "#FF3366",
+  "Graphic Design": "#FFC300",
+  "Multimedia Communication": "#FF6B00",
+  "Hospitality Management": "#E1B382",
+  "International Business": "#007F73",
+  "Finance and Banking": "#006B3C",
+  "Japanese Language": "#D80032",
+  "Korean Language": "#5DADEC",
+}
+
+// Helper function để lấy màu cho major name
+const getMajorColor = (majorName?: string | null): string => {
+  if (!majorName) return "#E2E8F0"
+  return majorColors[majorName] || "#E2E8F0"
+}
+
+// Tính màu chữ tương phản (đen/trắng) dựa trên nền HEX
+const getContrastTextColor = (hexColor: string): string => {
+  const hex = hexColor.replace('#', '')
+  const r = parseInt(hex.substring(0, 2), 16)
+  const g = parseInt(hex.substring(2, 4), 16)
+  const b = parseInt(hex.substring(4, 6), 16)
+  // YIQ luma
+  const yiq = (r * 299 + g * 587 + b * 114) / 1000
+  return yiq >= 140 ? "#111827" : "#FFFFFF" // text-slate-900 or white
+}
+
 // events will be fetched from the API. The API returns a paginated object
 // and the UI should display only the `content` array.
 
@@ -55,7 +89,10 @@ export default function UniStaffEventRequestsPage() {
 	}
 
 	// Helper to get event status based on date and time
-	const getEventStatus = (eventDate: string, eventTime: string | any) => {
+	const getEventStatus = (eventDate: string, eventTime: string | any, eventStatus?: string) => {
+		// Nếu event.status là ONGOING thì bắt buộc phải là "Now"
+		if (eventStatus === "ONGOING") return "Now"
+		
 		if (!eventDate) return "Finished"
 		// Get current time in Vietnam timezone (UTC+7)
 		const now = new Date()
@@ -67,7 +104,7 @@ export default function UniStaffEventRequestsPage() {
 			const pad = (n: number) => n.toString().padStart(2, '0')
 			eventTimeStr = `${pad(eventTime.hour || 0)}:${pad(eventTime.minute || 0)}:${pad(eventTime.second || 0)}`
 		}
-		
+
 		// Parse event date and time
 		const [hour = "00", minute = "00"] = (eventTimeStr || "00:00").split(":")
 		const [year, month, day] = eventDate.split('-').map(Number)
@@ -91,7 +128,7 @@ export default function UniStaffEventRequestsPage() {
 	const isEventExpired = (event: any) => {
 		// COMPLETED status is always considered expired
 		if (event.status === "COMPLETED") return true
-		
+
 		// Check if date and endTime are present
 		if (!event.date || !event.endTime) return false
 
@@ -102,7 +139,7 @@ export default function UniStaffEventRequestsPage() {
 
 			// Parse event date (format: YYYY-MM-DD)
 			const [year, month, day] = event.date.split('-').map(Number)
-			
+
 			// Parse endTime (format: HH:MM:SS or HH:MM)
 			const [hours, minutes] = event.endTime.split(':').map(Number)
 
@@ -125,34 +162,34 @@ export default function UniStaffEventRequestsPage() {
 				console.log("🔄 Starting to fetch data for events-req page...")
 				// fetch events, locations, clubs, and settled events in parallel
 				const [eventsRes, locationsRes, clubsRes, settledEventsRes] = await Promise.all([
-					fetchEvent(), 
-					fetchLocation(), 
+					fetchEvent(),
+					fetchLocation(),
 					fetchClub(),
 					getEventSettle().catch(err => {
 						console.warn("Failed to fetch settled events:", err)
 						return []
 					})
 				])
-				
+
 				console.log("✅ Received API responses:", { eventsRes, locationsRes, clubsRes, settledEventsRes })
-				
-				const eventsContent = (eventsRes as any) && Array.isArray((eventsRes as any).content) 
-					? (eventsRes as any).content 
+
+				const eventsContent = (eventsRes as any) && Array.isArray((eventsRes as any).content)
+					? (eventsRes as any).content
 					: Array.isArray(eventsRes) ? eventsRes : []
-				const locationsContent = (locationsRes as any) && Array.isArray((locationsRes as any).content) 
-					? (locationsRes as any).content 
+				const locationsContent = (locationsRes as any) && Array.isArray((locationsRes as any).content)
+					? (locationsRes as any).content
 					: Array.isArray(locationsRes) ? locationsRes : []
-				const clubsContent = (clubsRes as any) && Array.isArray((clubsRes as any).content) 
-					? (clubsRes as any).content 
+				const clubsContent = (clubsRes as any) && Array.isArray((clubsRes as any).content)
+					? (clubsRes as any).content
 					: Array.isArray(clubsRes) ? clubsRes : []
-				
+
 				// Create a set of settled event IDs
 				const settledIds = new Set(
-					Array.isArray(settledEventsRes) 
-						? settledEventsRes.map((e: any) => e.id) 
+					Array.isArray(settledEventsRes)
+						? settledEventsRes.map((e: any) => e.id)
 						: []
 				)
-				
+
 				if (mounted) {
 					console.log("📝 Setting state with data:", { eventsContent, locationsContent, clubsContent, settledIds })
 					setEvents(eventsContent)
@@ -185,7 +222,7 @@ export default function UniStaffEventRequestsPage() {
 			// First filter by active tab status
 			// PENDING_COCLUB events should appear in the PENDING_UNISTAFF tab
 			const eventStatus = (evt.status ?? "").toUpperCase()
-			const matchTab = eventStatus === activeTab || 
+			const matchTab = eventStatus === activeTab ||
 				(activeTab === "PENDING_UNISTAFF" && eventStatus === "PENDING_COCLUB")
 
 			const q = searchTerm.trim().toLowerCase()
@@ -211,7 +248,7 @@ export default function UniStaffEventRequestsPage() {
 			} else if (expiredFilter === "only") {
 				matchExpired = isExpired
 			} else if (expiredFilter === "Soon" || expiredFilter === "Finished") {
-				const status = getEventStatus(evt.date, evt.startTime || evt.time)
+				const status = getEventStatus(evt.date, evt.startTime || evt.time, evt.status)
 				matchExpired = status.toLowerCase() === expiredFilter.toLowerCase()
 			}
 			// "show" means show all - no filtering needed
@@ -225,9 +262,9 @@ export default function UniStaffEventRequestsPage() {
 			return dateB - dateA // Descending order (latest first)
 		})
 
-		// Minimal pagination state
-		const [page, setPage] = useState(0)
-		const [pageSize, setPageSize] = useState(3)
+	// Minimal pagination state
+	const [page, setPage] = useState(0)
+	const [pageSize, setPageSize] = useState(3)
 
 	// Clamp page when filteredRequests or pageSize change
 	useEffect(() => {
@@ -244,27 +281,27 @@ export default function UniStaffEventRequestsPage() {
 		}
 	}, [activeTab])
 
-		const paginated = (() => {
-			const start = page * pageSize
-			return filteredRequests.slice(start, start + pageSize)
-		})()
+	const paginated = (() => {
+		const start = page * pageSize
+		return filteredRequests.slice(start, start + pageSize)
+	})()
 
 	const getStatusBadge = (status: string, isExpired: boolean = false, isCompleted: boolean = false) => {
 		// COMPLETED status gets dark blue badge - highest priority
 		if (isCompleted || status === "COMPLETED") {
 			return (
-				<Badge variant="secondary" className="bg-blue-900 text-white border-blue-900 font-semibold">
-					<span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
-					Completed
+				<Badge variant="secondary" className="bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-700 font-semibold">
+					<span className="inline-block w-2 h-2 rounded-full bg-blue-600 dark:bg-blue-400 mr-1.5"></span>
+					Complete
 				</Badge>
 			)
 		}
-		
+
 		// Override with Expired badge if expired - gray color to override approval status
 		if (isExpired) {
 			return (
-				<Badge variant="secondary" className="bg-gray-400 text-white font-semibold">
-					<span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
+				<Badge variant="secondary" className="bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 font-semibold">
+					<span className="inline-block w-2 h-2 rounded-full bg-gray-500 dark:bg-gray-400 mr-1.5"></span>
 					Expired
 				</Badge>
 			)
@@ -273,36 +310,36 @@ export default function UniStaffEventRequestsPage() {
 		switch (status) {
 			case "ONGOING":
 				return (
-					<Badge variant="default" className="bg-purple-600 text-white border-purple-600 font-semibold">
-						<span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
+					<Badge variant="default" className="bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-900/50 dark:text-purple-300 dark:border-purple-700 font-semibold">
+						<span className="inline-block w-2 h-2 rounded-full bg-purple-600 dark:bg-purple-400 mr-1.5"></span>
 						Ongoing
 					</Badge>
 				)
 			case "PENDING_UNISTAFF":
 				return (
-					<Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-500 font-semibold">
-						<span className="inline-block w-2 h-2 rounded-full bg-yellow-500 mr-1.5"></span>
+					<Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/50 dark:text-yellow-300 dark:border-yellow-700 font-semibold">
+						<span className="inline-block w-2 h-2 rounded-full bg-yellow-500 dark:bg-yellow-400 mr-1.5"></span>
 						Pending Uni-Staff
 					</Badge>
 				)
 			case "APPROVED":
 				return (
-					<Badge variant="default" className="bg-green-600 text-white border-green-600 font-semibold">
-						<span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
+					<Badge variant="default" className="bg-green-100 text-green-700 border-green-300 dark:bg-green-900/50 dark:text-green-300 dark:border-green-700 font-semibold">
+						<span className="inline-block w-2 h-2 rounded-full bg-green-600 dark:bg-green-400 mr-1.5"></span>
 						Approved
 					</Badge>
 				)
 			case "PENDING_COCLUB":
 				return (
-					<Badge variant="outline" className="bg-orange-100 text-orange-700 border-orange-500 font-semibold">
-						<span className="inline-block w-2 h-2 rounded-full bg-orange-500 mr-1.5"></span>
+					<Badge variant="outline" className="bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-900/50 dark:text-orange-300 dark:border-orange-700 font-semibold">
+						<span className="inline-block w-2 h-2 rounded-full bg-orange-500 dark:bg-orange-400 mr-1.5"></span>
 						Waiting
 					</Badge>
 				)
 			case "REJECTED":
 				return (
-					<Badge variant="destructive" className="font-semibold">
-						<span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
+					<Badge variant="destructive" className="bg-red-100 text-red-700 border-red-300 dark:bg-red-900/50 dark:text-red-300 dark:border-red-700 font-semibold">
+						<span className="inline-block w-2 h-2 rounded-full bg-red-600 dark:bg-red-400 mr-1.5"></span>
 						Rejected
 					</Badge>
 				)
@@ -343,7 +380,7 @@ export default function UniStaffEventRequestsPage() {
 
 					{/* Stats Cards */}
 					<div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-						<Card className="border-0 shadow-md bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-950 dark:to-yellow-900">
+						<Card className="border-0 shadow-md bg-linear-to-br from-yellow-50 to-yellow-100 dark:from-yellow-950 dark:to-yellow-900">
 							<CardHeader className="pb-3 px-4 pt-3">
 								<CardTitle className="text-sm font-medium text-yellow-700 dark:text-yellow-300">
 									Pending Approval
@@ -356,15 +393,15 @@ export default function UniStaffEventRequestsPage() {
 									</div>
 									<div>
 										<div className="text-2xl font-bold text-yellow-900 dark:text-yellow-100">
-																{waitingUniStaffCount}
-															</div>
-															<p className="text-sm text-yellow-600 dark:text-yellow-400">Waiting events</p>
+											{waitingUniStaffCount}
+										</div>
+										<p className="text-sm text-yellow-600 dark:text-yellow-400">Waiting events</p>
 									</div>
 								</div>
 							</CardContent>
 						</Card>
 
-						<Card className="border-0 shadow-md bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900">
+						<Card className="border-0 shadow-md bg-linear-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900">
 							<CardHeader className="pb-3 px-4 pt-3">
 								<CardTitle className="text-sm font-medium text-green-700 dark:text-green-300">
 									Approved
@@ -377,15 +414,15 @@ export default function UniStaffEventRequestsPage() {
 									</div>
 									<div>
 										<div className="text-2xl font-bold text-green-900 dark:text-green-100">
-																{approvedCount}
-															</div>
-															<p className="text-sm text-green-600 dark:text-green-400">Approved events</p>
+											{approvedCount}
+										</div>
+										<p className="text-sm text-green-600 dark:text-green-400">Approved events</p>
 									</div>
 								</div>
 							</CardContent>
 						</Card>
 
-						<Card className="border-0 shadow-md bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900">
+						<Card className="border-0 shadow-md bg-linear-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900">
 							<CardHeader className="pb-3 px-4 pt-3">
 								<CardTitle className="text-sm font-medium text-blue-700 dark:text-blue-300">
 									Completed
@@ -398,15 +435,15 @@ export default function UniStaffEventRequestsPage() {
 									</div>
 									<div>
 										<div className="text-2xl font-bold text-blue-900 dark:text-blue-100">
-																{completedCount}
-															</div>
-															<p className="text-sm text-blue-600 dark:text-blue-400">Completed events</p>
+											{completedCount}
+										</div>
+										<p className="text-sm text-blue-600 dark:text-blue-400">Completed events</p>
 									</div>
 								</div>
 							</CardContent>
 						</Card>
 
-						<Card className="border-0 shadow-md bg-gradient-to-br from-red-50 to-red-100 dark:from-red-950 dark:to-red-900">
+						<Card className="border-0 shadow-md bg-linear-to-br from-red-50 to-red-100 dark:from-red-950 dark:to-red-900">
 							<CardHeader className="pb-3 px-4 pt-3">
 								<CardTitle className="text-sm font-medium text-red-700 dark:text-red-300">Rejected</CardTitle>
 							</CardHeader>
@@ -417,9 +454,9 @@ export default function UniStaffEventRequestsPage() {
 									</div>
 									<div>
 										<div className="text-2xl font-bold text-red-900 dark:text-red-100">
-																{rejectedCount}
-															</div>
-															<p className="text-sm text-red-600 dark:text-red-400">Rejected events</p>
+											{rejectedCount}
+										</div>
+										<p className="text-sm text-red-600 dark:text-red-400">Rejected events</p>
 									</div>
 								</div>
 							</CardContent>
@@ -431,11 +468,10 @@ export default function UniStaffEventRequestsPage() {
 						<Button
 							variant={activeTab === "PENDING_UNISTAFF" ? "default" : "ghost"}
 							size="lg"
-							className={`flex-1 rounded-b-none py-6 text-base font-semibold transition-all ${
-								activeTab === "PENDING_UNISTAFF"
-									? "border-b-4 border-yellow-500 bg-yellow-50 text-yellow-700 hover:bg-yellow-100 dark:bg-yellow-950 dark:text-yellow-300"
-									: "border-b-4 border-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
-							}`}
+							className={`flex-1 rounded-b-none py-6 text-base font-semibold transition-all ${activeTab === "PENDING_UNISTAFF"
+								? "border-b-4 border-yellow-500 bg-yellow-50 text-yellow-700 hover:bg-yellow-100 dark:bg-yellow-950 dark:text-yellow-300"
+								: "border-b-4 border-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
+								}`}
 							onClick={() => setActiveTab("PENDING_UNISTAFF")}
 						>
 							<Clock className="h-5 w-5 mr-2" />
@@ -444,11 +480,10 @@ export default function UniStaffEventRequestsPage() {
 						<Button
 							variant={activeTab === "APPROVED" ? "default" : "ghost"}
 							size="lg"
-							className={`flex-1 rounded-b-none py-6 text-base font-semibold transition-all ${
-								activeTab === "APPROVED"
-									? "border-b-4 border-green-500 bg-green-50 text-green-700 hover:bg-green-100 dark:bg-green-950 dark:text-green-300"
-									: "border-b-4 border-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
-							}`}
+							className={`flex-1 rounded-b-none py-6 text-base font-semibold transition-all ${activeTab === "APPROVED"
+								? "border-b-4 border-green-500 bg-green-50 text-green-700 hover:bg-green-100 dark:bg-green-950 dark:text-green-300"
+								: "border-b-4 border-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
+								}`}
 							onClick={() => setActiveTab("APPROVED")}
 						>
 							<CheckCircle className="h-5 w-5 mr-2" />
@@ -457,11 +492,10 @@ export default function UniStaffEventRequestsPage() {
 						<Button
 							variant={activeTab === "ONGOING" ? "default" : "ghost"}
 							size="lg"
-							className={`flex-1 rounded-b-none py-6 text-base font-semibold transition-all ${
-								activeTab === "ONGOING"
-									? "border-b-4 border-purple-500 bg-purple-50 text-purple-700 hover:bg-purple-100 dark:bg-purple-950 dark:text-purple-300"
-									: "border-b-4 border-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
-							}`}
+							className={`flex-1 rounded-b-none py-6 text-base font-semibold transition-all ${activeTab === "ONGOING"
+								? "border-b-4 border-purple-500 bg-purple-50 text-purple-700 hover:bg-purple-100 dark:bg-purple-950 dark:text-purple-300"
+								: "border-b-4 border-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
+								}`}
 							onClick={() => setActiveTab("ONGOING")}
 						>
 							<Clock className="h-5 w-5 mr-2" />
@@ -470,11 +504,10 @@ export default function UniStaffEventRequestsPage() {
 						<Button
 							variant={activeTab === "COMPLETED" ? "default" : "ghost"}
 							size="lg"
-							className={`flex-1 rounded-b-none py-6 text-base font-semibold transition-all ${
-								activeTab === "COMPLETED"
-									? "border-b-4 border-blue-500 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-950 dark:text-blue-300"
-									: "border-b-4 border-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
-							}`}
+							className={`flex-1 rounded-b-none py-6 text-base font-semibold transition-all ${activeTab === "COMPLETED"
+								? "border-b-4 border-blue-500 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-950 dark:text-blue-300"
+								: "border-b-4 border-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
+								}`}
 							onClick={() => setActiveTab("COMPLETED")}
 						>
 							<CheckCircle className="h-5 w-5 mr-2" />
@@ -483,11 +516,10 @@ export default function UniStaffEventRequestsPage() {
 						<Button
 							variant={activeTab === "REJECTED" ? "default" : "ghost"}
 							size="lg"
-							className={`flex-1 rounded-b-none py-6 text-base font-semibold transition-all ${
-								activeTab === "REJECTED"
-									? "border-b-4 border-red-500 bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-950 dark:text-red-300"
-									: "border-b-4 border-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
-							}`}
+							className={`flex-1 rounded-b-none py-6 text-base font-semibold transition-all ${activeTab === "REJECTED"
+								? "border-b-4 border-red-500 bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-950 dark:text-red-300"
+								: "border-b-4 border-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
+								}`}
 							onClick={() => setActiveTab("REJECTED")}
 						>
 							<XCircle className="h-5 w-5 mr-2" />
@@ -548,8 +580,8 @@ export default function UniStaffEventRequestsPage() {
 								<Filter className="h-4 w-4" />
 								{showWaitingCoClub ? "Hide" : "Show"} Pending Co-Club
 								{waitingCoClubCount > 0 && (
-									<Badge 
-										variant="secondary" 
+									<Badge
+										variant="secondary"
 										className={`ml-1 ${showWaitingCoClub ? "bg-white/20" : "bg-orange-100 text-orange-700"}`}
 									>
 										{waitingCoClubCount}
@@ -577,7 +609,7 @@ export default function UniStaffEventRequestsPage() {
 								// COMPLETED status means event has ended, regardless of date/time
 								const isCompleted = request.status === "COMPLETED"
 								const expired = isCompleted || isEventExpired(request)
-								
+
 								// Left border color based on status
 								let borderClass = ""
 								if (isCompleted) {
@@ -593,165 +625,128 @@ export default function UniStaffEventRequestsPage() {
 								} else if (request.status === "REJECTED") {
 									borderClass = 'border-l-4 border-l-red-500'
 								}
-								
+
 								return (
-								<Card key={request.id} className={`hover:shadow-md transition-shadow cursor-pointer ${borderClass}`}>
-									<Link href={`/uni-staff/events-req/${request.id}`}>
-										<CardContent className="p-6">
-											<div className="flex items-start justify-between">
-												<div className="flex-1">
-													<div className="flex items-center gap-3 mb-2">
-														<Calendar className="h-5 w-5 text-muted-foreground" />
-														<h3 className="font-semibold text-lg">{request.name || request.eventName}</h3>
-														{renderTypeBadge(request.type || request.eventType)}
-														{/* category not provided by API example */}
-														{getStatusBadge(request.status || request.type, expired, isCompleted)}
-														{/* Show "Need Settle" badge if event is COMPLETED but not in settled list */}
+									<Card key={request.id} className={`hover:shadow-md transition-shadow cursor-pointer dark:border-slate-700 ${borderClass}`}>
+										<Link href={`/uni-staff/events-req/${request.id}`}>
+											<CardContent className="p-6">
+												<div className="flex items-start justify-between">
+													<div className="flex-1">
+														<div className="flex items-center gap-3 mb-2 flex-wrap">
+															<Calendar className="h-5 w-5 text-muted-foreground" />
+															<h3 className="font-semibold text-lg">{request.name || request.eventName}</h3>
+															{renderTypeBadge(request.type || request.eventType)}
+															{/* Major Name Badge - lấy từ majorName, category, hoặc hostClub.majorName */}
+															{(request.majorName || request.category || request.hostClub?.majorName) && (
+																<Badge
+																	variant="secondary"
+																	className="max-w-[160px] truncate"
+																	style={{
+																		backgroundColor: getMajorColor(request.majorName || request.category || request.hostClub?.majorName),
+																		color: getContrastTextColor(getMajorColor(request.majorName || request.category || request.hostClub?.majorName)),
+																	}}
+																>
+																	{request.majorName || request.category || request.hostClub?.majorName}
+																</Badge>
+															)}
+															{getStatusBadge(request.status || request.type, expired, isCompleted)}
+															{/* Show "Need Settle" badge if event is COMPLETED but not in settled list */}
+															{isCompleted && !settledEventIds.has(request.id) && (
+																<Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/50 dark:text-amber-300 dark:border-amber-700 font-semibold animate-pulse">
+																	<DollarSign className="h-3 w-3 mr-1" />
+																	Need Settle
+																</Badge>
+															)}
+														</div>
+
+														<p className="text-muted-foreground mb-3 line-clamp-2">{request.description}</p>
+
+														<div className="flex items-center gap-6 text-sm text-muted-foreground">
+															<div className="flex items-center gap-1">
+																<Calendar className="h-4 w-4" />
+																<span>{request.date ? new Date(request.date).toLocaleDateString() : request.eventDate}</span>
+															</div>
+															<div className="flex items-center gap-1">
+																<MapPin className="h-4 w-4" />
+																<span>
+																	{request.locationName || `ID: ${request.locationId || 'N/A'}`}
+																</span>
+															</div>
+															<div className="flex items-center gap-1">
+																<Users className="h-4 w-4" />
+																<span>{
+																	(() => {
+																		const cap = getLocationCapacity(request.locationId)
+																		if (cap !== null && cap !== undefined) return `${cap} capacity`
+																		if (request.expectedAttendees) return `${request.expectedAttendees} attendees`
+																		return "-"
+																	})()
+																}</span>
+															</div>
+															<div className="flex items-center gap-1">
+																<Building className="h-4 w-4" />
+																<span>
+																	{request.hostClub?.name || request.clubName || `ID: ${request.clubId || '?'}`}
+																</span>
+															</div>
+														</div>
+													</div>
+
+													<div className="flex items-center gap-2 ml-4">
+														{/* Show "Need Settle" button for completed events not yet settled */}
 														{isCompleted && !settledEventIds.has(request.id) && (
-															<Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-500 font-semibold animate-pulse">
+															<Button
+																size="sm"
+																variant="default"
+																className="h-8 bg-amber-600 hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-800"
+															>
 																<DollarSign className="h-3 w-3 mr-1" />
 																Need Settle
-															</Badge>
+															</Button>
 														)}
-													</div>
-
-													<p className="text-muted-foreground mb-3 line-clamp-2">{request.description}</p>
-
-													<div className="flex items-center gap-6 text-sm text-muted-foreground">
-														<div className="flex items-center gap-1">
-															<Calendar className="h-4 w-4" />
-															<span>{request.date ? new Date(request.date).toLocaleDateString() : request.eventDate}</span>
-														</div>
-														<div className="flex items-center gap-1">
-															<MapPin className="h-4 w-4" />
-															<span>{
-																(() => {
-																	const loc = locations.find((l) => String(l.id) === String(request.locationId))
-																	if (loc && loc.name) return loc.name
-																	if (request.venue) return request.venue
-																	return `Location #${request.locationId ?? "N/A"}`
-																})()
-															}</span>
-														</div>
-														<div className="flex items-center gap-1">
-															<Users className="h-4 w-4" />
-															<span>{
-																(() => {
-																	const cap = getLocationCapacity(request.locationId)
-																	if (cap !== null && cap !== undefined) return `${cap} capacity`
-																	if (request.expectedAttendees) return `${request.expectedAttendees} attendees`
-																	return "-"
-																})()
-															}</span>
-														</div>
-														<div className="flex items-center gap-1">
-															<Building className="h-4 w-4" />
-															<span>{
-																(() => {
-																	const club = clubs.find((c) => String(c.id) === String(request.clubId))
-																	if (club && club.name) return club.name
-																	if (request.requestedBy) return request.requestedBy
-																	return `Club #${request.clubId || "?"}`
-																})()
-															}</span>
-														</div>
-													</div>
-												</div>
-
-												<div className="flex items-center gap-2 ml-4">
-													{request.status === "PENDING_UNISTAFF" && !expired && (
-														<>
-															<Button size="sm" variant="default" className="h-8 w-8 p-0" onClick={async (e) => {
-																e.preventDefault()
-																if (processingId) return
-																setProcessingId(request.id)
-																try {
-																	await putEventStatus(request.id, "APPROVED", request.budgetPoints || 0)
-																	// optimistic update in local state
-																	setEvents(prev => prev.map(ev => ev.id === request.id ? { ...ev, status: "APPROVED" } : ev))
-																	toast({ title: 'Approved', description: `Event ${request.name || request.id} approved.` })
-																} catch (err: any) {
-																	console.error('Approve failed', err)
-																	toast({ title: 'Error', description: err?.message || 'Failed to approve event' })
-																} finally {
-																	setProcessingId(null)
-																}
-															}}>
-																<CheckCircle className="h-4 w-4" />
-															</Button>
-															<Button size="sm" variant="destructive" className="h-8 w-8 p-0" onClick={async (e) => {
-																e.preventDefault()
-																if (processingId) return
-																setProcessingId(request.id)
-																try {
-																	await putEventStatus(request.id, "REJECTED", request.budgetPoints || 0)
-																	setEvents(prev => prev.map(ev => ev.id === request.id ? { ...ev, status: "REJECTED" } : ev))
-																	toast({ title: 'Rejected', description: `Event ${request.name || request.id} rejected.` })
-																} catch (err: any) {
-																	console.error('Reject failed', err)
-																	toast({ title: 'Error', description: err?.message || 'Failed to reject event' })
-																} finally {
-																	setProcessingId(null)
-																}
-															}}>
-																<XCircle className="h-4 w-4" />
-															</Button>
-														</>
-													)}
-													{/* Show "Need Settle" button for completed events not yet settled */}
-													{isCompleted && !settledEventIds.has(request.id) && (
-														<Button 
-															size="sm" 
-															variant="default"
-															className="h-8 bg-amber-600 hover:bg-amber-700"
-														>
-															<DollarSign className="h-3 w-3 mr-1" />
-															Need Settle
+														<Button size="sm" variant="outline" className="h-8 bg-transparent dark:border-slate-600 dark:hover:bg-slate-800">
+															<Eye className="h-3 w-3 mr-1" />
+															View Details
 														</Button>
-													)}
-													<Button size="sm" variant="outline" className="h-8 bg-transparent">
-														<Eye className="h-3 w-3 mr-1" />
-														View Details
-													</Button>
+													</div>
 												</div>
-											</div>
-										</CardContent>
-									</Link>
-								</Card>
+											</CardContent>
+										</Link>
+									</Card>
 								)
 							})
 						)}
-						</div>
+					</div>
 
-						{/* Pagination controls */}
-						<div className="flex items-center justify-between mt-2">
-							<div className="text-sm text-muted-foreground">
-								Showing {filteredRequests.length === 0 ? 0 : page * pageSize + 1} to {Math.min((page + 1) * pageSize, filteredRequests.length)} of {filteredRequests.length} requests
-							</div>
-							<div className="flex items-center gap-2">
-								<Button size="sm" variant="outline" onClick={() => setPage(0)} disabled={page === 0}>First</Button>
-								<Button size="sm" variant="outline" onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}>Prev</Button>
-								<div className="px-2 text-sm">Page {filteredRequests.length === 0 ? 0 : page + 1} / {Math.max(1, Math.ceil(filteredRequests.length / pageSize))}</div>
-								<Button size="sm" variant="outline" onClick={() => setPage(p => Math.min(p + 1, Math.max(0, Math.ceil(filteredRequests.length / pageSize) - 1)))} disabled={(page + 1) * pageSize >= filteredRequests.length}>Next</Button>
-								<Button size="sm" variant="outline" onClick={() => setPage(Math.max(0, Math.ceil(filteredRequests.length / pageSize) - 1))} disabled={(page + 1) * pageSize >= filteredRequests.length}>Last</Button>
-								<select aria-label="Items per page" className="ml-2 rounded border px-2 py-1 text-sm" value={pageSize} onChange={(e) => { setPageSize(Number((e.target as HTMLSelectElement).value)); setPage(0) }}>
-									<option value={3}>3</option>
-									<option value={6}>6</option>
-									<option value={12}>12</option>
-								</select>
-							</div>
+					{/* Pagination controls */}
+					<div className="flex items-center justify-between mt-2">
+						<div className="text-sm text-muted-foreground">
+							Showing {filteredRequests.length === 0 ? 0 : page * pageSize + 1} to {Math.min((page + 1) * pageSize, filteredRequests.length)} of {filteredRequests.length} requests
 						</div>
+						<div className="flex items-center gap-2">
+							<Button size="sm" variant="outline" onClick={() => setPage(0)} disabled={page === 0}>First</Button>
+							<Button size="sm" variant="outline" onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}>Prev</Button>
+							<div className="px-2 text-sm">Page {filteredRequests.length === 0 ? 0 : page + 1} / {Math.max(1, Math.ceil(filteredRequests.length / pageSize))}</div>
+							<Button size="sm" variant="outline" onClick={() => setPage(p => Math.min(p + 1, Math.max(0, Math.ceil(filteredRequests.length / pageSize) - 1)))} disabled={(page + 1) * pageSize >= filteredRequests.length}>Next</Button>
+							<Button size="sm" variant="outline" onClick={() => setPage(Math.max(0, Math.ceil(filteredRequests.length / pageSize) - 1))} disabled={(page + 1) * pageSize >= filteredRequests.length}>Last</Button>
+							<select aria-label="Items per page" className="ml-2 rounded border px-2 py-1 text-sm" value={pageSize} onChange={(e) => { setPageSize(Number((e.target as HTMLSelectElement).value)); setPage(0) }}>
+								<option value={3}>3</option>
+								<option value={6}>6</option>
+								<option value={12}>12</option>
+							</select>
+						</div>
+					</div>
 
-						{/* Calendar Modal */}
-						<CalendarModal
-							open={showCalendarModal}
-							onOpenChange={setShowCalendarModal}
-							events={events}
-							onEventClick={(event) => {
-								setShowCalendarModal(false)
-								router.push(`/uni-staff/events-req/${event.id}`)
-							}}
-						/>
+					{/* Calendar Modal */}
+					<CalendarModal
+						open={showCalendarModal}
+						onOpenChange={setShowCalendarModal}
+						events={events}
+						onEventClick={(event) => {
+							setShowCalendarModal(false)
+							router.push(`/uni-staff/events-req/${event.id}`)
+						}}
+					/>
 				</div>
 			</AppShell>
 		</ProtectedRoute>

@@ -59,7 +59,7 @@ export function ClubApplicationsList({ clubApplications, pendingClubApplications
   const goClubAppsNext = () => setClubAppsCurrentPage(Math.min(clubAppsTotalPages, clubAppsCurrentPage + 1))
 
   return (
-    <Card className="border-2">
+    <Card className="border-2 dark:border-slate-700">
       <CardHeader className="pb-2 sm:pb-3">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex-1 min-w-0">
@@ -71,7 +71,7 @@ export function ClubApplicationsList({ clubApplications, pendingClubApplications
             </CardTitle>
             <CardDescription className="text-[10px] sm:text-xs mt-1">
               <span className="hidden sm:inline">Sorted by latest submission date • </span>
-              <span className="font-semibold text-amber-600 dark:text-amber-500">{pendingClubApplications} pending</span>
+              <span className="font-semibold text-amber-600 dark:text-amber-400">{pendingClubApplications} pending</span>
             </CardDescription>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
@@ -103,7 +103,7 @@ export function ClubApplicationsList({ clubApplications, pendingClubApplications
               return (
                 <div
                   key={app.applicationId}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between p-2 sm:p-3 border rounded-lg hover:bg-muted/50 transition-colors gap-2 sm:gap-0"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between p-2 sm:p-3 border rounded-lg hover:bg-muted/50 dark:border-slate-700 dark:hover:bg-slate-800/50 transition-colors gap-2 sm:gap-0"
                 >
                   <div className="flex items-start sm:items-center gap-2 sm:gap-3 flex-1 min-w-0">
                     <div className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full flex-shrink-0 mt-1 sm:mt-0 ${statusClass}`} />
@@ -128,7 +128,13 @@ export function ClubApplicationsList({ clubApplications, pendingClubApplications
                           ? "secondary"
                           : "destructive"
                       }
-                      className="text-[10px] sm:text-xs px-2 py-0.5"
+                      className={`text-[10px] sm:text-xs px-2 py-0.5 ${
+                        app.status === "APPROVED"
+                          ? "bg-green-500 text-white dark:bg-green-600 dark:text-white"
+                          : app.status === "PENDING"
+                          ? "bg-yellow-500 text-white dark:bg-yellow-600 dark:text-white"
+                          : "bg-red-500 text-white dark:bg-red-600 dark:text-white"
+                      }`}
                     >
                       {app.status === "PENDING" ? "Pending" : app.status === "APPROVED" ? "Approved" : "Rejected"}
                     </Badge>
@@ -141,29 +147,41 @@ export function ClubApplicationsList({ clubApplications, pendingClubApplications
 
         {clubAppsTotalPages > 1 && (
           <div className="mt-3 sm:mt-4 flex items-center justify-center gap-1.5 sm:gap-2">
-            <Button
-              variant="outline"
-              size="sm"
+            <button
               onClick={goClubAppsPrev}
               disabled={clubAppsCurrentPage === 1}
-              className="h-7 sm:h-8 text-[10px] sm:text-xs px-2 sm:px-3"
+              className={`
+                flex items-center gap-1 px-2 sm:px-3 py-1.5 text-[10px] sm:text-xs font-medium
+                transition-colors
+                ${clubAppsCurrentPage === 1 
+                  ? 'text-muted-foreground/50 cursor-not-allowed' 
+                  : 'text-cyan-500 hover:text-cyan-400 dark:text-cyan-400 dark:hover:text-cyan-300 cursor-pointer'
+                }
+              `}
+              aria-label="Previous page"
             >
-              <ChevronLeft className="h-3 w-3 sm:mr-1" />
+              <ChevronLeft className="h-3 w-3 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">Previous</span>
-            </Button>
-            <span className="text-[10px] sm:text-xs font-medium px-1">
+            </button>
+            <span className="text-[10px] sm:text-xs font-medium text-cyan-500 dark:text-cyan-400 px-1 sm:px-2">
               {clubAppsCurrentPage}/{clubAppsTotalPages}
             </span>
-            <Button
-              variant="outline"
-              size="sm"
+            <button
               onClick={goClubAppsNext}
               disabled={clubAppsCurrentPage === clubAppsTotalPages}
-              className="h-7 sm:h-8 text-[10px] sm:text-xs px-2 sm:px-3"
+              className={`
+                flex items-center gap-1 px-2 sm:px-3 py-1.5 text-[10px] sm:text-xs font-medium
+                transition-colors
+                ${clubAppsCurrentPage === clubAppsTotalPages 
+                  ? 'text-muted-foreground/50 cursor-not-allowed' 
+                  : 'text-cyan-500 hover:text-cyan-400 dark:text-cyan-400 dark:hover:text-cyan-300 cursor-pointer'
+                }
+              `}
+              aria-label="Next page"
             >
               <span className="hidden sm:inline">Next</span>
-              <ChevronRight className="h-3 w-3 sm:ml-1" />
-            </Button>
+              <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+            </button>
           </div>
         )}
       </CardContent>

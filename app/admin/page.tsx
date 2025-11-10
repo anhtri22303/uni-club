@@ -5,7 +5,10 @@ import { ProtectedRoute } from "@/contexts/protected-route"
 import { StatsCard } from "@/components/stats-card"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { Gift, TrendingUp, CheckCircle, Clock, Users as UsersIcon, UserCheck, UserX, Shield, Building2, UserPlus, UsersRound, Calendar, MapPin, Eye, ChevronLeft, ChevronRight, BarChart3, PieChart as PieChartIcon } from "lucide-react"
+import {
+  Gift, TrendingUp, CheckCircle, Clock, Users as UsersIcon, UserCheck, UserX, Shield, Building2, UserPlus, UsersRound, Calendar, MapPin,
+  Eye, ChevronLeft, ChevronRight, BarChart3, PieChart as PieChartIcon, Wallet, Server, AlertCircle,
+} from "lucide-react"
 import { useEvents } from "@/hooks/use-query-hooks"
 import { getClubStats } from "@/service/clubApi"
 import { getUserStats } from "@/service/userApi"
@@ -14,6 +17,11 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useRouter } from "next/navigation"
+import { fetchAdminDashboardSummary } from "@/service/adminApi/adminDashboardApi"
+import { useQuery } from "@tanstack/react-query"
+import { fetchAdminMonitorStatus } from "@/service/adminApi/adminMonitorApi" // <-- API MỚI
+import { fetchAdminErrorLogs } from "@/service/adminApi/adminLogApi" // <-- API MỚI
+import { Skeleton } from "@/components/ui/skeleton"
 
 export default function PartnerDashboard() {
   const router = useRouter()
@@ -23,13 +31,43 @@ export default function PartnerDashboard() {
   const [approvalFilter, setApprovalFilter] = useState<string>("all")
   const [currentPage, setCurrentPage] = useState(1)
   const ITEMS_PER_PAGE = 5
-  
+
   // Tab states for each section
   const [userStatsTab, setUserStatsTab] = useState<string>("table")
   const [clubStatsTab, setClubStatsTab] = useState<string>("table")
   const [eventStatsTab, setEventStatsTab] = useState<string>("table")
 
-  // ✅ USE REACT QUERY for events
+  //Lấy dữ liệu tổng hợp cho các StatsCard
+  const { data: summaryData } = useQuery({
+    queryKey: ["adminDashboardSummary"],
+    queryFn: fetchAdminDashboardSummary,
+    initialData: {
+      totalUsers: 0,
+      totalClubs: 0,
+      totalEvents: 0,
+      totalRedeems: 0,
+      totalTransactions: 0,
+    },
+  })
+
+  // Lấy Tình trạng Hệ thống
+  const { data: monitorStatus, isLoading: monitorLoading } = useQuery({
+    queryKey: ["adminMonitorStatus"],
+    queryFn: fetchAdminMonitorStatus,
+    // Tự động fetch lại sau mỗi 30 giây
+    refetchInterval: 30000,
+  })
+
+  // Lấy Log Lỗi
+  const { data: errorLogs, isLoading: logsLoading } = useQuery({
+    queryKey: ["adminErrorLogs"],
+    queryFn: fetchAdminErrorLogs,
+    // Tự động fetch lại sau mỗi 60 giây
+    refetchInterval: 60000,
+  })
+
+
+  // USE REACT QUERY for events
   const { data: events = [], isLoading: eventsLoading } = useEvents()
 
   // Fetch club stats and user stats when component mounts
@@ -50,6 +88,16 @@ export default function PartnerDashboard() {
     loadData()
   }, [])
 
+  // --- Biến cho StatsCard (từ API mới) ---
+  const {
+    totalClubs: summaryTotalClubs,
+    totalEvents: summaryTotalEvents,
+    totalUsers: summaryTotalUsers,
+    totalTransactions,
+  } = summaryData
+
+
+
   const totalClubs = clubStats?.totalClubs || 0
   const totalMembers = clubStats?.totalMembers || 0
   const activeMembers = clubStats?.activeMembers || 0
@@ -59,7 +107,10 @@ export default function PartnerDashboard() {
   const inactiveUsers = userStats?.inactive || 0
 
   // Helper to get event status based on date and time
-  const getEventStatus = (eventDate: string, eventTime: string) => {
+  const getEventStatus = (eventDate: string, eventTime: string, eventStatus?: string) => {
+    // Nếu event.status là ONGOING thì bắt buộc phải là "Now"
+    if (eventStatus === "ONGOING") return "Now"
+    
     if (!eventDate) return "Finished"
     const now = new Date()
     const [hour = "00", minute = "00"] = (eventTime || "00:00").split(":")
@@ -85,17 +136,17 @@ export default function PartnerDashboard() {
     const waitingCoClub = events.filter((e: any) => e.status === "PENDING_COCLUB").length
     const pending = waitingUniStaff + waitingCoClub // Total pending (both types)
     const rejected = events.filter((e: any) => e.status === "REJECTED").length
-    const now = events.filter((e: any) => getEventStatus(e.date, e.time) === "Now").length
-    const soon = events.filter((e: any) => getEventStatus(e.date, e.time) === "Soon").length
-    const finished = events.filter((e: any) => getEventStatus(e.date, e.time) === "Finished").length
-    
+    const now = events.filter((e: any) => getEventStatus(e.date, e.time, e.status) === "Now").length
+    const soon = events.filter((e: any) => getEventStatus(e.date, e.time, e.status) === "Soon").length
+    const finished = events.filter((e: any) => getEventStatus(e.date, e.time, e.status) === "Finished").length
+
     return { approved, pending, waitingUniStaff, waitingCoClub, rejected, now, soon, finished }
   }, [events])
 
   // Filtered events based on status and approval
   const filteredEvents = useMemo(() => {
     return events.filter((event: any) => {
-      const status = getEventStatus(event.date, event.time)
+      const status = getEventStatus(event.date, event.time, event.status)
       const matchesStatus = statusFilter === "all" || status.toLowerCase() === statusFilter.toLowerCase()
       const matchesApproval = approvalFilter === "all" || event.status === approvalFilter
       return matchesStatus && matchesApproval
@@ -185,7 +236,8 @@ export default function PartnerDashboard() {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <StatsCard
               title="Total Clubs"
-              value={totalClubs}
+              // value={totalClubs}
+              value={summaryTotalClubs}
               description="Active clubs"
               icon={Gift}
               variant="primary"
@@ -193,7 +245,8 @@ export default function PartnerDashboard() {
             />
             <StatsCard
               title="Total Events"
-              value={totalEvents}
+              // value={totalEvents}
+              value={summaryTotalEvents}
               description="All events"
               icon={TrendingUp}
               trend={{ value: 12, label: "from last month" }}
@@ -202,20 +255,133 @@ export default function PartnerDashboard() {
             />
             <StatsCard
               title="Total Users"
-              value={totalUsers}
+              //value={totalUsers}
+              value={summaryTotalUsers}
               description="Registered users"
               icon={CheckCircle}
               variant="info"
               onClick={() => router.push("/admin/users")}
             />
-            <StatsCard
+            {/* <StatsCard
               title="Total Members"
               value={totalMembers}
               description="Club members"
               icon={UsersIcon}
               variant="warning"
+            /> */}
+            <StatsCard
+              title="Total Transactions"
+              value={totalTransactions}
+              description="All wallet activity"
+              icon={Wallet}
+              variant="warning"
+              onClick={() => router.push("/admin/wallets")}
             />
           </div>
+
+          {/* --- SYSTEM HEALTH & LOGS --- */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+            {/* System Health Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Server className="h-5 w-5" />
+                  System Health
+                </CardTitle>
+                <CardDescription>
+                  Real-time status of system services.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {monitorLoading ? (
+                  <div className="space-y-3">
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {monitorStatus ? (
+                      <>
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                          <span className="font-medium text-sm">Database</span>
+                          <Badge variant={monitorStatus.databaseUp ? "default" : "destructive"} className={monitorStatus.databaseUp ? "bg-green-600 text-white" : ""}>
+                            {monitorStatus.databaseUp ? <CheckCircle className="h-3 w-3 mr-1" /> : <AlertCircle className="h-3 w-3 mr-1" />}
+                            {monitorStatus.databaseUp ? "UP" : "DOWN"}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                          <span className="font-medium text-sm">Redis</span>
+                          <Badge variant={monitorStatus.redisUp ? "default" : "destructive"} className={monitorStatus.redisUp ? "bg-green-600 text-white" : ""}>
+                            {monitorStatus.redisUp ? <CheckCircle className="h-3 w-3 mr-1" /> : <AlertCircle className="h-3 w-3 mr-1" />}
+                            {monitorStatus.redisUp ? "UP" : "DOWN"}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                          <span className="font-medium text-sm">RabbitMQ</span>
+                          <Badge variant={monitorStatus.rabbitmqUp ? "default" : "destructive"} className={monitorStatus.rabbitmqUp ? "bg-green-600 text-white" : ""}>
+                            {monitorStatus.rabbitmqUp ? <CheckCircle className="h-3 w-3 mr-1" /> : <AlertCircle className="h-3 w-3 mr-1" />}
+                            {monitorStatus.rabbitmqUp ? "UP" : "DOWN"}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                          <span className="font-medium text-sm">Cloudinary</span>
+                          <Badge variant={monitorStatus.cloudinaryUp ? "default" : "destructive"} className={monitorStatus.cloudinaryUp ? "bg-green-600 text-white" : ""}>
+                            {monitorStatus.cloudinaryUp ? <CheckCircle className="h-3 w-3 mr-1" /> : <AlertCircle className="h-3 w-3 mr-1" />}
+                            {monitorStatus.cloudinaryUp ? "UP" : "DOWN"}
+                          </Badge>
+                        </div>
+
+                        <div className="text-xs text-muted-foreground pt-3 border-t">
+                          <div className="flex justify-between">
+                            <span>App Version: <span className="font-medium">{monitorStatus.appVersion}</span></span>
+                            <span>Env: <span className="font-medium">{monitorStatus.environment}</span></span>
+                          </div>
+                          <div>
+                            Last checked: {new Date(monitorStatus.lastCheckedAt).toLocaleString("vi-VN")}
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-red-500">Could not load system status.</p>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Recent Error Logs Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertCircle className="h-5 w-5 text-red-500" />
+                  Recent Error Logs
+                </CardTitle>
+                <CardDescription>
+                  Last 100 error lines from the log file.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {logsLoading ? (
+                  <Skeleton className="h-72 w-full" />
+                ) : (
+                  <pre className="text-xs p-3 bg-muted rounded-md h-72 overflow-y-auto font-mono">
+                    {errorLogs && errorLogs.length > 0 ? (
+                      errorLogs.map((log, index) => (
+                        <div key={index}>{log}</div>
+                      ))
+                    ) : (
+                      <span className="text-muted-foreground">No recent errors found.</span>
+                    )}
+                  </pre>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+
 
           <div className="grid gap-6 md:grid-cols-2">
             {/* User Statistics Overview */}
@@ -369,7 +535,7 @@ export default function PartnerDashboard() {
                               <div className="text-xs text-muted-foreground">Total</div>
                             </div>
                           </div>
-                          
+
                           {/* Legend */}
                           <div className="flex-1 space-y-3 w-full">
                             <div className="flex items-center justify-between p-3 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900">
@@ -494,7 +660,7 @@ export default function PartnerDashboard() {
                         <div className="text-sm text-muted-foreground mb-2">Member Activity Rate</div>
                         <div className="flex items-center gap-3">
                           <div className="flex-1 h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                            <div 
+                            <div
                               className="h-full bg-gradient-to-r from-emerald-500 to-emerald-600 transition-all duration-500"
                               style={{ width: `${totalMembers > 0 ? Math.min((activeMembers / totalMembers) * 100, 100) : 0}%` }}
                             />
@@ -648,220 +814,220 @@ export default function PartnerDashboard() {
                   <TabsContent value="table" className="mt-0">
                     {/* Event Stats Cards */}
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6 mb-6">
-                  {/* Total Events */}
-                  <div className="flex flex-col items-center justify-center p-4 border rounded-lg bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900">
-                    <Calendar className="h-8 w-8 text-purple-600 dark:text-purple-400 mb-2" />
-                    <div className="text-3xl font-bold text-purple-700 dark:text-purple-300">{totalEvents}</div>
-                    <div className="text-xs text-purple-600 dark:text-purple-400 font-medium mt-1">Total</div>
-                  </div>
+                      {/* Total Events */}
+                      <div className="flex flex-col items-center justify-center p-4 border rounded-lg bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900">
+                        <Calendar className="h-8 w-8 text-purple-600 dark:text-purple-400 mb-2" />
+                        <div className="text-3xl font-bold text-purple-700 dark:text-purple-300">{totalEvents}</div>
+                        <div className="text-xs text-purple-600 dark:text-purple-400 font-medium mt-1">Total</div>
+                      </div>
 
-                  {/* Approved */}
-                  <div className="flex flex-col items-center justify-center p-4 border rounded-lg bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900">
-                    <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400 mb-2" />
-                    <div className="text-3xl font-bold text-green-700 dark:text-green-300">{eventStats.approved}</div>
-                    <div className="text-xs text-green-600 dark:text-green-400 font-medium mt-1">Approved</div>
-                  </div>
+                      {/* Approved */}
+                      <div className="flex flex-col items-center justify-center p-4 border rounded-lg bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900">
+                        <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400 mb-2" />
+                        <div className="text-3xl font-bold text-green-700 dark:text-green-300">{eventStats.approved}</div>
+                        <div className="text-xs text-green-600 dark:text-green-400 font-medium mt-1">Approved</div>
+                      </div>
 
-                  {/* Pending */}
-                  <div className="flex flex-col items-center justify-center p-4 border rounded-lg bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-950 dark:to-yellow-900">
-                    <Clock className="h-8 w-8 text-yellow-600 dark:text-yellow-400 mb-2" />
-                    <div className="text-3xl font-bold text-yellow-700 dark:text-yellow-300">{eventStats.pending}</div>
-                    <div className="text-xs text-yellow-600 dark:text-yellow-400 font-medium mt-1">Pending</div>
-                  </div>
+                      {/* Pending */}
+                      <div className="flex flex-col items-center justify-center p-4 border rounded-lg bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-950 dark:to-yellow-900">
+                        <Clock className="h-8 w-8 text-yellow-600 dark:text-yellow-400 mb-2" />
+                        <div className="text-3xl font-bold text-yellow-700 dark:text-yellow-300">{eventStats.pending}</div>
+                        <div className="text-xs text-yellow-600 dark:text-yellow-400 font-medium mt-1">Pending</div>
+                      </div>
 
-                  {/* Now */}
-                  <div className="flex flex-col items-center justify-center p-4 border rounded-lg bg-gradient-to-br from-red-50 to-red-100 dark:from-red-950 dark:to-red-900">
-                    <TrendingUp className="h-8 w-8 text-red-600 dark:text-red-400 mb-2" />
-                    <div className="text-3xl font-bold text-red-700 dark:text-red-300">{eventStats.now}</div>
-                    <div className="text-xs text-red-600 dark:text-red-400 font-medium mt-1">Now</div>
-                  </div>
+                      {/* Now */}
+                      <div className="flex flex-col items-center justify-center p-4 border rounded-lg bg-gradient-to-br from-red-50 to-red-100 dark:from-red-950 dark:to-red-900">
+                        <TrendingUp className="h-8 w-8 text-red-600 dark:text-red-400 mb-2" />
+                        <div className="text-3xl font-bold text-red-700 dark:text-red-300">{eventStats.now}</div>
+                        <div className="text-xs text-red-600 dark:text-red-400 font-medium mt-1">Now</div>
+                      </div>
 
-                  {/* Soon */}
-                  <div className="flex flex-col items-center justify-center p-4 border rounded-lg bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900">
-                    <Calendar className="h-8 w-8 text-blue-600 dark:text-blue-400 mb-2" />
-                    <div className="text-3xl font-bold text-blue-700 dark:text-blue-300">{eventStats.soon}</div>
-                    <div className="text-xs text-blue-600 dark:text-blue-400 font-medium mt-1">Soon</div>
-                  </div>
+                      {/* Soon */}
+                      <div className="flex flex-col items-center justify-center p-4 border rounded-lg bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900">
+                        <Calendar className="h-8 w-8 text-blue-600 dark:text-blue-400 mb-2" />
+                        <div className="text-3xl font-bold text-blue-700 dark:text-blue-300">{eventStats.soon}</div>
+                        <div className="text-xs text-blue-600 dark:text-blue-400 font-medium mt-1">Soon</div>
+                      </div>
 
-                  {/* Finished */}
-                  <div className="flex flex-col items-center justify-center p-4 border rounded-lg bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-gray-900">
-                    <CheckCircle className="h-8 w-8 text-gray-600 dark:text-gray-400 mb-2" />
-                    <div className="text-3xl font-bold text-gray-700 dark:text-gray-300">{eventStats.finished}</div>
-                    <div className="text-xs text-gray-600 dark:text-gray-400 font-medium mt-1">Finished</div>
-                  </div>
-                </div>
-
-                {/* Filters */}
-                <div className="flex gap-3 mb-4">
-                  <div className="flex-1">
-                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Status Filter</label>
-                    <Select value={statusFilter} onValueChange={setStatusFilter}>
-                      <SelectTrigger className="h-9">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Status</SelectItem>
-                        <SelectItem value="now">Now</SelectItem>
-                        <SelectItem value="soon">Soon</SelectItem>
-                        <SelectItem value="finished">Finished</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex-1">
-                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Approval Filter</label>
-                    <Select value={approvalFilter} onValueChange={setApprovalFilter}>
-                      <SelectTrigger className="h-9">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Approval</SelectItem>
-                        <SelectItem value="APPROVED">Approved</SelectItem>
-                        <SelectItem value="PENDING_UNISTAFF">Pending Uni-Staff</SelectItem>
-                        <SelectItem value="PENDING_COCLUB">Pending Co-Club</SelectItem>
-                        <SelectItem value="REJECTED">Rejected</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {(statusFilter !== "all" || approvalFilter !== "all") && (
-                    <div className="flex items-end">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setStatusFilter("all")
-                          setApprovalFilter("all")
-                        }}
-                        className="h-9"
-                      >
-                        Clear
-                      </Button>
+                      {/* Finished */}
+                      <div className="flex flex-col items-center justify-center p-4 border rounded-lg bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-gray-900">
+                        <CheckCircle className="h-8 w-8 text-gray-600 dark:text-gray-400 mb-2" />
+                        <div className="text-3xl font-bold text-gray-700 dark:text-gray-300">{eventStats.finished}</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400 font-medium mt-1">Finished</div>
+                      </div>
                     </div>
-                  )}
-                </div>
 
-                {/* Recent Events List */}
-                <div className="space-y-2">
-                  <div className="text-sm font-semibold mb-3 flex items-center justify-between">
-                    <span>Recent Events ({filteredEvents.length})</span>
-                    {filteredEvents.length > ITEMS_PER_PAGE && (
-                      <span className="text-xs text-muted-foreground">
-                        Page {currentPage} of {totalPages} ({startIndex + 1}-{Math.min(endIndex, sortedEvents.length)} of {filteredEvents.length})
-                      </span>
-                    )}
-                  </div>
-                  {eventsLoading ? (
-                    <div className="text-center py-8 text-muted-foreground">Loading events...</div>
-                  ) : paginatedEvents.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">No events found</div>
-                  ) : (
-                    paginatedEvents.map((event: any) => {
-                      const status = getEventStatus(event.date, event.time)
-                      return (
-                        <div
-                          key={event.id}
-                          className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
-                          onClick={() => router.push(`/admin/events/${event.id}`)}
-                        >
-                          <div className="flex-1 min-w-0 mr-4">
-                            <div className="flex items-center gap-2 mb-1">
-                              <p className="font-medium text-sm truncate">{event.name || event.title}</p>
-                              <Badge
-                                variant={
-                                  status === "Finished"
-                                    ? "secondary"
-                                    : status === "Soon"
-                                    ? "default"
-                                    : status === "Now"
-                                    ? "destructive"
-                                    : "outline"
-                                }
-                                className="text-xs"
-                              >
-                                {status}
-                              </Badge>
-                              {event.status === "ONGOING" && (
-                                <Badge variant="default" className="text-xs bg-purple-600 text-white">Ongoing</Badge>
-                              )}
-                              {event.status === "APPROVED" && (
-                                <Badge variant="default" className="text-xs bg-green-600">Approved</Badge>
-                              )}
-                              {event.status === "PENDING_COCLUB" && (
-                                <Badge variant="outline" className="text-xs bg-orange-100 text-orange-700 border-orange-500">Pending Co-Club</Badge>
-                              )}
-                              {event.status === "PENDING_UNISTAFF" && (
-                                <Badge variant="outline" className="text-xs bg-yellow-100 text-yellow-700 border-yellow-500">Pending Uni-Staff</Badge>
-                              )}
-                              {event.status === "REJECTED" && (
-                                <Badge variant="destructive" className="text-xs">Rejected</Badge>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                              <div className="flex items-center gap-1">
-                                <Calendar className="h-3 w-3" />
-                                {new Date(event.date).toLocaleDateString("en-US", {
-                                  month: "short",
-                                  day: "numeric",
-                                  year: "numeric",
-                                })}
-                              </div>
-                              {event.locationName && (
-                                <div className="flex items-center gap-1">
-                                  <MapPin className="h-3 w-3" />
-                                  {event.locationName}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          <Button variant="ghost" size="sm" className="flex-shrink-0">
-                            <Eye className="h-4 w-4" />
+                    {/* Filters */}
+                    <div className="flex gap-3 mb-4">
+                      <div className="flex-1">
+                        <label className="text-xs font-medium text-muted-foreground mb-1 block">Status Filter</label>
+                        <Select value={statusFilter} onValueChange={setStatusFilter}>
+                          <SelectTrigger className="h-9">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Status</SelectItem>
+                            <SelectItem value="now">Now</SelectItem>
+                            <SelectItem value="soon">Soon</SelectItem>
+                            <SelectItem value="finished">Finished</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex-1">
+                        <label className="text-xs font-medium text-muted-foreground mb-1 block">Approval Filter</label>
+                        <Select value={approvalFilter} onValueChange={setApprovalFilter}>
+                          <SelectTrigger className="h-9">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Approval</SelectItem>
+                            <SelectItem value="APPROVED">Approved</SelectItem>
+                            <SelectItem value="PENDING_UNISTAFF">Pending Uni-Staff</SelectItem>
+                            <SelectItem value="PENDING_COCLUB">Pending Co-Club</SelectItem>
+                            <SelectItem value="REJECTED">Rejected</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {(statusFilter !== "all" || approvalFilter !== "all") && (
+                        <div className="flex items-end">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setStatusFilter("all")
+                              setApprovalFilter("all")
+                            }}
+                            className="h-9"
+                          >
+                            Clear
                           </Button>
                         </div>
-                      )
-                    })
-                  )}
-                </div>
-
-                {/* Pagination Controls */}
-                {totalPages > 1 && (
-                  <div className="flex items-center justify-between pt-4 border-t">
-                    <div className="text-xs text-muted-foreground">
-                      Showing {startIndex + 1}-{Math.min(endIndex, sortedEvents.length)} of {filteredEvents.length} events
+                      )}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                        disabled={currentPage === 1}
-                        className="h-8 w-8 p-0"
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                      </Button>
-                      <div className="flex items-center gap-1">
-                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+
+                    {/* Recent Events List */}
+                    <div className="space-y-2">
+                      <div className="text-sm font-semibold mb-3 flex items-center justify-between">
+                        <span>Recent Events ({filteredEvents.length})</span>
+                        {filteredEvents.length > ITEMS_PER_PAGE && (
+                          <span className="text-xs text-muted-foreground">
+                            Page {currentPage} of {totalPages} ({startIndex + 1}-{Math.min(endIndex, sortedEvents.length)} of {filteredEvents.length})
+                          </span>
+                        )}
+                      </div>
+                      {eventsLoading ? (
+                        <div className="text-center py-8 text-muted-foreground">Loading events...</div>
+                      ) : paginatedEvents.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">No events found</div>
+                      ) : (
+                        paginatedEvents.map((event: any) => {
+                          const status = getEventStatus(event.date, event.time, event.status)
+                          return (
+                            <div
+                              key={event.id}
+                              className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+                              onClick={() => router.push(`/admin/events/${event.id}`)}
+                            >
+                              <div className="flex-1 min-w-0 mr-4">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <p className="font-medium text-sm truncate">{event.name || event.title}</p>
+                                  <Badge
+                                    variant={
+                                      status === "Finished"
+                                        ? "secondary"
+                                        : status === "Soon"
+                                          ? "default"
+                                          : status === "Now"
+                                            ? "destructive"
+                                            : "outline"
+                                    }
+                                    className="text-xs"
+                                  >
+                                    {status}
+                                  </Badge>
+                                  {event.status === "ONGOING" && (
+                                    <Badge variant="default" className="text-xs bg-purple-600 text-white">Ongoing</Badge>
+                                  )}
+                                  {event.status === "APPROVED" && (
+                                    <Badge variant="default" className="text-xs bg-green-600">Approved</Badge>
+                                  )}
+                                  {event.status === "PENDING_COCLUB" && (
+                                    <Badge variant="outline" className="text-xs bg-orange-100 text-orange-700 border-orange-500">Pending Co-Club</Badge>
+                                  )}
+                                  {event.status === "PENDING_UNISTAFF" && (
+                                    <Badge variant="outline" className="text-xs bg-yellow-100 text-yellow-700 border-yellow-500">Pending Uni-Staff</Badge>
+                                  )}
+                                  {event.status === "REJECTED" && (
+                                    <Badge variant="destructive" className="text-xs">Rejected</Badge>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                  <div className="flex items-center gap-1">
+                                    <Calendar className="h-3 w-3" />
+                                    {new Date(event.date).toLocaleDateString("en-US", {
+                                      month: "short",
+                                      day: "numeric",
+                                      year: "numeric",
+                                    })}
+                                  </div>
+                                  {event.locationName && (
+                                    <div className="flex items-center gap-1">
+                                      <MapPin className="h-3 w-3" />
+                                      {event.locationName}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <Button variant="ghost" size="sm" className="flex-shrink-0">
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          )
+                        })
+                      )}
+                    </div>
+
+                    {/* Pagination Controls */}
+                    {totalPages > 1 && (
+                      <div className="flex items-center justify-between pt-4 border-t">
+                        <div className="text-xs text-muted-foreground">
+                          Showing {startIndex + 1}-{Math.min(endIndex, sortedEvents.length)} of {filteredEvents.length} events
+                        </div>
+                        <div className="flex items-center gap-2">
                           <Button
-                            key={page}
-                            variant={currentPage === page ? "default" : "outline"}
+                            variant="outline"
                             size="sm"
-                            onClick={() => setCurrentPage(page)}
+                            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                            disabled={currentPage === 1}
                             className="h-8 w-8 p-0"
                           >
-                            {page}
+                            <ChevronLeft className="h-4 w-4" />
                           </Button>
-                        ))}
+                          <div className="flex items-center gap-1">
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                              <Button
+                                key={page}
+                                variant={currentPage === page ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => setCurrentPage(page)}
+                                className="h-8 w-8 p-0"
+                              >
+                                {page}
+                              </Button>
+                            ))}
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                            disabled={currentPage === totalPages}
+                            className="h-8 w-8 p-0"
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                        disabled={currentPage === totalPages}
-                        className="h-8 w-8 p-0"
-                      >
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
+                    )}
                   </TabsContent>
                   <TabsContent value="chart" className="mt-0">
                     <div className="grid gap-6 lg:grid-cols-2">

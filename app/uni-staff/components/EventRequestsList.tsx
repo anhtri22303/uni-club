@@ -81,7 +81,7 @@ export function EventRequestsList({ events, eventsLoading, pendingEvents }: Even
   const goEventsNext = () => setEventsCurrentPage(Math.min(eventsTotalPages, eventsCurrentPage + 1))
 
   return (
-    <Card className="border-2">
+    <Card className="border-2 dark:border-slate-700">
       <CardHeader className="pb-2 sm:pb-3">
         <div className="flex flex-col gap-3">
           <div className="flex items-start sm:items-center justify-between gap-2">
@@ -95,7 +95,7 @@ export function EventRequestsList({ events, eventsLoading, pendingEvents }: Even
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
             <CardDescription className="text-[10px] sm:text-xs">
               <span className="hidden sm:inline">Filter upcoming events (non-expired) • </span>
-              <span className="font-semibold text-amber-600 dark:text-amber-500">{pendingEvents} pending</span>
+              <span className="font-semibold text-amber-600 dark:text-amber-400">{pendingEvents} pending</span>
             </CardDescription>
             <div className="flex items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
               <Filter className="h-3 w-3 text-muted-foreground flex-shrink-0" />
@@ -146,7 +146,7 @@ export function EventRequestsList({ events, eventsLoading, pendingEvents }: Even
               return (
                 <div
                   key={event.id}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between p-2 sm:p-3 border rounded-lg hover:bg-muted/50 transition-colors gap-2 sm:gap-0"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between p-2 sm:p-3 border rounded-lg hover:bg-muted/50 dark:border-slate-700 dark:hover:bg-slate-800/50 transition-colors gap-2 sm:gap-0"
                 >
                   <div className="flex items-start sm:items-center gap-2 sm:gap-3 flex-1 min-w-0">
                     <div className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full flex-shrink-0 mt-1 sm:mt-0 ${statusClass}`} />
@@ -170,20 +170,20 @@ export function EventRequestsList({ events, eventsLoading, pendingEvents }: Even
                         variant="outline"
                         className={`text-[10px] sm:text-xs px-2 py-0.5 ${
                           event.status === "PENDING_COCLUB"
-                            ? "bg-orange-50 text-orange-700 border-orange-500"
+                            ? "bg-orange-50 text-orange-700 border-orange-500 dark:bg-orange-950/30 dark:text-orange-400 dark:border-orange-500"
                             : event.status === "PENDING_UNISTAFF" 
-                            ? "bg-amber-50 text-amber-700 border-amber-500"
+                            ? "bg-amber-50 text-amber-700 border-amber-500 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-500"
                             : event.status === "APPROVED"
-                            ? "bg-green-50 text-green-700 border-green-500"
+                            ? "bg-green-50 text-green-700 border-green-500 dark:bg-green-950/30 dark:text-green-400 dark:border-green-500"
                             : event.status === "ONGOING"
-                            ? "bg-blue-50 text-blue-700 border-blue-500"
+                            ? "bg-blue-50 text-blue-700 border-blue-500 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-500"
                             : event.status === "COMPLETED"
-                            ? "bg-emerald-50 text-emerald-700 border-emerald-500"
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-500 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-500"
                             : event.status === "REJECTED"
-                            ? "bg-red-50 text-red-700 border-red-500"
+                            ? "bg-red-50 text-red-700 border-red-500 dark:bg-red-950/30 dark:text-red-400 dark:border-red-500"
                             : event.status === "CANCELLED"
-                            ? "bg-gray-50 text-gray-700 border-gray-500"
-                            : "bg-slate-50 text-slate-700 border-slate-500"
+                            ? "bg-gray-50 text-gray-700 border-gray-500 dark:bg-gray-950/30 dark:text-gray-400 dark:border-gray-500"
+                            : "bg-slate-50 text-slate-700 border-slate-500 dark:bg-slate-950/30 dark:text-slate-400 dark:border-slate-500"
                         }`}
                       >
                         {event.status === "PENDING_COCLUB"
@@ -215,29 +215,41 @@ export function EventRequestsList({ events, eventsLoading, pendingEvents }: Even
 
         {eventsTotalPages > 1 && (
           <div className="mt-3 sm:mt-4 flex items-center justify-center gap-1.5 sm:gap-2">
-            <Button
-              variant="outline"
-              size="sm"
+            <button
               onClick={goEventsPrev}
               disabled={eventsCurrentPage === 1}
-              className="h-7 sm:h-8 text-[10px] sm:text-xs px-2 sm:px-3"
+              className={`
+                flex items-center gap-1 px-2 sm:px-3 py-1.5 text-[10px] sm:text-xs font-medium
+                transition-colors
+                ${eventsCurrentPage === 1 
+                  ? 'text-muted-foreground/50 cursor-not-allowed' 
+                  : 'text-cyan-500 hover:text-cyan-400 dark:text-cyan-400 dark:hover:text-cyan-300 cursor-pointer'
+                }
+              `}
+              aria-label="Previous page"
             >
-              <ChevronLeft className="h-3 w-3 sm:mr-1" />
+              <ChevronLeft className="h-3 w-3 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">Previous</span>
-            </Button>
-            <span className="text-[10px] sm:text-xs font-medium px-1">
+            </button>
+            <span className="text-[10px] sm:text-xs font-medium text-cyan-500 dark:text-cyan-400 px-1 sm:px-2">
               {eventsCurrentPage}/{eventsTotalPages}
             </span>
-            <Button
-              variant="outline"
-              size="sm"
+            <button
               onClick={goEventsNext}
               disabled={eventsCurrentPage === eventsTotalPages}
-              className="h-7 sm:h-8 text-[10px] sm:text-xs px-2 sm:px-3"
+              className={`
+                flex items-center gap-1 px-2 sm:px-3 py-1.5 text-[10px] sm:text-xs font-medium
+                transition-colors
+                ${eventsCurrentPage === eventsTotalPages 
+                  ? 'text-muted-foreground/50 cursor-not-allowed' 
+                  : 'text-cyan-500 hover:text-cyan-400 dark:text-cyan-400 dark:hover:text-cyan-300 cursor-pointer'
+                }
+              `}
+              aria-label="Next page"
             >
               <span className="hidden sm:inline">Next</span>
-              <ChevronRight className="h-3 w-3 sm:ml-1" />
-            </Button>
+              <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+            </button>
           </div>
         )}
       </CardContent>

@@ -19,7 +19,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { Input } from "@/components/ui/input"
-import { fetchClub } from "@/service/clubApi"
+import { fetchClub, type Club } from "@/service/clubApi"
 
 interface ClubRequestDetailPageProps {
   params: {
@@ -186,10 +186,10 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
       toast({ title: "Processing...", description: "Finding the newly approved club..." });
       // Fetch một lượng lớn để đảm bảo club mới nằm trong danh sách
       const clubListResponse = await fetchClub({ page: 0, size: 70, sort: ["name"] });
-      const allClubs = clubListResponse.content;
+      const allClubs = clubListResponse.data.content;
 
       // 2. Tìm club trong danh sách bằng cách so sánh tên
-      const foundClub = allClubs.find(club => club.name === request.clubName);
+      const foundClub = allClubs.find((club: Club) => club.name === request.clubName);
 
       // 3. Xử lý trường hợp không tìm thấy
       if (!foundClub) {

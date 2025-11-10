@@ -123,15 +123,15 @@ export default function UniStaffLocationsPage() {
     const category = getCapacityCategory(capacity)
     
     if (category === "small") {
-      return { label: "Small Space", color: "bg-blue-100 text-blue-700 border-blue-300" }
+      return { label: "Small Space", color: "bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-700" }
     }
     if (category === "medium") {
-      return { label: "Medium Space", color: "bg-green-100 text-green-700 border-green-300" }
+      return { label: "Medium Space", color: "bg-green-100 text-green-700 border-green-300 dark:bg-green-900/50 dark:text-green-300 dark:border-green-700" }
     }
     if (category === "large") {
-      return { label: "Large Space", color: "bg-orange-100 text-orange-700 border-orange-300" }
+      return { label: "Large Space", color: "bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-900/50 dark:text-orange-300 dark:border-orange-700" }
     }
-    return { label: "Extra Large", color: "bg-purple-100 text-purple-700 border-purple-300" }
+    return { label: "Extra Large", color: "bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-900/50 dark:text-purple-300 dark:border-purple-700" }
   }
 
   // Filter and search
@@ -419,7 +419,7 @@ export default function UniStaffLocationsPage() {
           </div>
 
           {/* Filters and Search */}
-          <Card>
+          <Card className="dark:border-slate-700">
             <CardHeader>
               <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
                 <div className="flex-1 w-full sm:w-auto">
@@ -513,7 +513,7 @@ export default function UniStaffLocationsPage() {
 
           {/* No Results */}
           {!loading && filteredLocations.length === 0 && (
-            <Card>
+            <Card className="dark:border-slate-700">
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <MapPin className="h-12 w-12 text-muted-foreground mb-4" />
                 <h3 className="text-lg font-semibold mb-2">No locations found</h3>
@@ -534,13 +534,13 @@ export default function UniStaffLocationsPage() {
                 return (
                   <Card 
                     key={location.id} 
-                    className="hover:shadow-lg transition-shadow cursor-pointer group relative"
+                    className="hover:shadow-lg transition-shadow cursor-pointer group relative dark:border-slate-700"
                   >
                     {/* Delete Button */}
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-red-100 hover:text-red-600"
+                      className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-red-100 dark:hover:bg-red-900/50 hover:text-red-600 dark:hover:text-red-400"
                       onClick={(e) => handleDeleteClick(location, e)}
                     >
                       <X className="h-4 w-4" />
@@ -548,7 +548,7 @@ export default function UniStaffLocationsPage() {
 
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between gap-2 pr-8">
-                        <CardTitle className="text-base sm:text-lg line-clamp-2 group-hover:text-blue-600 transition-colors min-w-0">
+                        <CardTitle className="text-base sm:text-lg line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors min-w-0">
                           {location.name}
                         </CardTitle>
                         <Badge 
@@ -575,15 +575,15 @@ export default function UniStaffLocationsPage() {
                       </div>
 
                       {/* Capacity */}
-                      <div className="flex items-center justify-between pt-2 border-t">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <Users className="h-4 w-4 text-blue-600 flex-shrink-0" />
-                          <span className="text-sm font-medium truncate">Capacity</span>
+                        <div className="flex items-center justify-between pt-2 border-t dark:border-slate-700">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Users className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                            <span className="text-sm font-medium truncate">Capacity</span>
+                          </div>
+                          <span className="text-base sm:text-lg font-bold text-blue-600 dark:text-blue-400 flex-shrink-0">
+                            {location.capacity}
+                          </span>
                         </div>
-                        <span className="text-base sm:text-lg font-bold text-blue-600 flex-shrink-0">
-                          {location.capacity}
-                        </span>
-                      </div>
                     </CardContent>
                   </Card>
                 )
@@ -599,13 +599,13 @@ export default function UniStaffLocationsPage() {
                 return (
                   <Card 
                     key={location.id} 
-                    className="hover:shadow-md transition-shadow cursor-pointer group relative"
+                    className="hover:shadow-md transition-shadow cursor-pointer group relative dark:border-slate-700"
                   >
                     {/* Delete Button */}
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-red-100 hover:text-red-600"
+                      className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-red-100 dark:hover:bg-red-900/50 hover:text-red-600 dark:hover:text-red-400"
                       onClick={(e) => handleDeleteClick(location, e)}
                     >
                       <X className="h-4 w-4" />
@@ -616,7 +616,7 @@ export default function UniStaffLocationsPage() {
                         {/* Left Side - Info */}
                         <div className="flex-1 space-y-2 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="text-base sm:text-lg font-semibold hover:text-blue-600 transition-colors truncate min-w-0">
+                            <h3 className="text-base sm:text-lg font-semibold hover:text-blue-600 dark:hover:text-blue-400 transition-colors truncate min-w-0">
                               {location.name}
                             </h3>
                             <Badge variant="outline" className="text-xs flex-shrink-0">
@@ -635,11 +635,11 @@ export default function UniStaffLocationsPage() {
                         </div>
 
                         {/* Right Side - Capacity */}
-                        <div className="flex items-center gap-2 shrink-0 bg-blue-50 px-4 py-3 rounded-lg">
-                          <Users className="h-5 w-5 text-blue-600 flex-shrink-0" />
+                        <div className="flex items-center gap-2 shrink-0 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 px-4 py-3 rounded-lg">
+                          <Users className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
                           <div className="text-right">
                             <div className="text-xs text-muted-foreground truncate">Capacity</div>
-                            <div className="text-xl sm:text-2xl font-bold text-blue-600">
+                            <div className="text-xl sm:text-2xl font-bold text-blue-600 dark:text-blue-400">
                               {location.capacity}
                             </div>
                           </div>
@@ -654,7 +654,7 @@ export default function UniStaffLocationsPage() {
 
           {/* Pagination */}
           {!loading && filteredLocations.length > 0 && totalPages > 1 && (
-            <Card>
+            <Card className="dark:border-slate-700">
               <CardContent className="py-4">
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                   <div className="text-xs sm:text-sm text-muted-foreground text-center sm:text-left">

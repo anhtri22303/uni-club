@@ -15,7 +15,7 @@ import { Calendar, Users, Trophy, Layers, History } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import { safeSessionStorage } from "@/lib/browser-utils"
-import { useClubEvents, useClubs, useMyEventRegistrations } from "@/hooks/use-query-hooks"
+import { useClubEvents, useClubs, useMyEventRegistrations, useEventsByClubId } from "@/hooks/use-query-hooks"
 import { timeObjectToString, registerForEvent } from "@/service/eventApi"
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -67,10 +67,12 @@ export default function MemberEventsPage() {
     }
   }, [])
 
-  // ✅ USE REACT QUERY - automatically filters by clubIds
-  const { data: eventsData = [], isLoading: loading } = useClubEvents(userClubIds)
+  // Fetch club data and registrations
   const { data: clubsData = [] } = useClubs()
   const { data: myRegistrations = [] } = useMyEventRegistrations()
+  // Counts for legend summary
+  const confirmedCount = (myRegistrations || []).filter((r: any) => r.status === "CONFIRMED").length
+  const checkedInCount = (myRegistrations || []).filter((r: any) => r.status === "CHECKED_IN").length
 
   // ✅ CẬP NHẬT: useEffect để lấy chi tiết club VÀ set default
   useEffect(() => {
@@ -86,10 +88,18 @@ export default function MemberEventsPage() {
         setSelectedClubId(String(details[0].id))
       }
     }
-  }, [userClubIds, clubsData]) // Chạy lại khi 3 danh sách này sẵn sàng
+  }, [userClubIds, clubsData, selectedClubId]) // Chạy lại khi 3 danh sách này sẵn sàng
 
-  const filteredEvents = eventsData.filter(
-    (event) =>
+  // ✅ USE REACT QUERY to fetch events for the SELECTED club only
+  const selectedClubIdNumber = selectedClubId ? Number(selectedClubId) : null
+  const { data: selectedClubEvents = [], isLoading: selectedClubLoading } = useEventsByClubId(
+    selectedClubIdNumber || 0, 
+    !!selectedClubIdNumber
+  )
+
+  // Use selectedClubEvents instead of eventsData for filtering
+  const filteredEvents = selectedClubEvents.filter(
+    (event: any) =>
       (event.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (event.hostClub?.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       clubsData.find((c: any) => c.id === event.hostClub?.id)?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -136,15 +146,15 @@ export default function MemberEventsPage() {
 
   const [activeFilters, setActiveFilters] = useState<Record<string, any>>({ expired: "hide" })
 
-  const finalFilteredEvents = filteredEvents.filter((event) => {
-    if (!selectedClubId) {
-      return false
+  const finalFilteredEvents = filteredEvents.filter((event: any) => {
+    // PRIVATE event filter: Only show PRIVATE events if user is a member of the host club
+    if (event.type === "PRIVATE") {
+      const hostClubId = event.hostClub?.id
+      if (!hostClubId || !userClubIds.includes(hostClubId)) {
+        return false // Hide PRIVATE events from clubs the user is not a member of
+      }
     }
-    // Lọc theo club ID đã chọn (bỏ qua "all")
-    if (String(event.hostClub?.id) !== selectedClubId) {
-      return false
-    }
-
+    
     // Filter by registered events only if showRegisteredOnly is true
     if (showRegisteredOnly && !isEventRegistered(event.id)) {
       return false
@@ -190,12 +200,33 @@ export default function MemberEventsPage() {
     initialPageSize: 6,
   })
 
-  const getEventStatus = (eventDate: string) => {
+  // Time-aware status similar to club-leader/events
+  const getEventStatus = (event: any) => {
+    // Nếu event.status là ONGOING thì bắt buộc phải là "Now"
+    if (event?.status === "ONGOING") return "Now"
+    
+    if (!event?.date) return "Finished"
     const now = new Date()
-    const event = new Date(eventDate)
-    if (event < now) return "past"
-    if (event.getTime() - now.getTime() < 7 * 24 * 60 * 60 * 1000) return "upcoming"
-    return "future"
+    const startTimeStr = timeObjectToString(event.startTime || event.time)
+    const endTimeStr = timeObjectToString(event.endTime)
+    const [startHour = "00", startMinute = "00"] = (startTimeStr || "00:00").split(":")
+    const [year, month, day] = event.date.split("-").map(Number)
+    const eventStart = new Date(year, month - 1, day, Number(startHour), Number(startMinute), 0, 0)
+    let eventEnd = eventStart
+    if (endTimeStr) {
+      const [endHour = "00", endMinute = "00"] = endTimeStr.split(":")
+      eventEnd = new Date(year, month - 1, day, Number(endHour), Number(endMinute), 0, 0)
+    } else {
+      eventEnd = new Date(eventStart.getTime() + 2 * 60 * 60 * 1000)
+    }
+    const start = eventStart.getTime()
+    const end = eventEnd.getTime()
+    if (now.getTime() < start) {
+      if (start - now.getTime() < 7 * 24 * 60 * 60 * 1000) return "Soon"
+      return "Future"
+    }
+    if (now.getTime() >= start && now.getTime() <= end) return "Now"
+    return "Finished"
   }
 
   const handleEventDetail = (eventId: string) => {
@@ -348,7 +379,7 @@ export default function MemberEventsPage() {
 
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {loading ? (
+            {selectedClubLoading ? (
               <div className="col-span-full text-center py-12">
                 <div className="text-muted-foreground">Loading events...</div>
               </div>
@@ -363,14 +394,15 @@ export default function MemberEventsPage() {
                 <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-lg font-semibold mb-2">No events found</h3>
                 <p className="text-muted-foreground">
-                  {filteredEvents.length === 0 && eventsData.length > 0
+                  {filteredEvents.length === 0 && selectedClubEvents.length > 0
                     ? "Try adjusting your search terms"
                     : "Your clubs haven't posted any events yet"}
                 </p>
               </div>
             ) : (
-              paginatedEvents.map((event) => {
-                const status = getEventStatus(event.date)
+              paginatedEvents.map((event: any) => {
+                const isExpired = isEventExpired(event)
+                const status = isExpired ? "Finished" : getEventStatus(event)
                 
                 // Determine border color based on event status
                 let borderColor = ""
@@ -408,7 +440,7 @@ export default function MemberEventsPage() {
                         ) : event.status === "APPROVED" ? (
                           <Badge variant="outline" className="bg-green-100 text-green-700 border-green-500 font-semibold">
                             <span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-1.5"></span>
-                            {status === "past" ? "Past" : status === "upcoming" ? "Soon" : "Approved"}
+                            {status === "Finished" ? "Past" : status === "Soon" ? "Upcoming" : "Approved"}
                           </Badge>
                         ) : event.status === "PENDING_UNISTAFF" ? (
                           <Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-500 font-semibold">
@@ -496,7 +528,7 @@ export default function MemberEventsPage() {
           <CalendarModal
             open={showCalendarModal}
             onOpenChange={setShowCalendarModal}
-            events={eventsData}
+            events={selectedClubEvents}
             onEventClick={(event) => {
               setShowCalendarModal(false)
               router.push(`/student/events/${event.id}`)
@@ -510,6 +542,35 @@ export default function MemberEventsPage() {
                 <DialogTitle>My Event Registrations</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
+                {/* Legend / Status meanings */}
+                <div className="rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <Badge 
+                        variant="outline"
+                        className="bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border-blue-500 dark:border-blue-700"
+                      >
+                        CONFIRMED
+                      </Badge>
+                      <Badge variant="secondary" className="px-2 py-0.5 text-[10px]">
+                        {confirmedCount}
+                      </Badge>
+                      <span>Registered successfully.</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge 
+                        variant="outline"
+                        className="bg-green-100 dark:bg-green-950/50 text-green-700 dark:text-green-400 border-green-500 dark:border-green-700"
+                      >
+                        CHECKED_IN
+                      </Badge>
+                      <Badge variant="secondary" className="px-2 py-0.5 text-[10px]">
+                        {checkedInCount}
+                      </Badge>
+                      <span>Checked in fully (attendance recorded).</span>
+                    </div>
+                  </div>
+                </div>
                 {myRegistrations.length === 0 ? (
                   <div className="py-12 text-center text-muted-foreground">
                     <History className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -535,7 +596,11 @@ export default function MemberEventsPage() {
                                 className={
                                   registration.status === "ATTENDED" 
                                     ? "bg-green-100 dark:bg-green-950/50 text-green-700 dark:text-green-400 border-green-500 dark:border-green-700" 
+                                    : registration.status === "CHECKED_IN"
+                                    ? "bg-green-100 dark:bg-green-950/50 text-green-700 dark:text-green-400 border-green-500 dark:border-green-700"
                                     : registration.status === "REGISTERED"
+                                    ? "bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border-blue-500 dark:border-blue-700"
+                                    : registration.status === "CONFIRMED"
                                     ? "bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border-blue-500 dark:border-blue-700"
                                     : registration.status === "ABSENT"
                                     ? "bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-400 border-red-500 dark:border-red-700"
@@ -566,6 +631,14 @@ export default function MemberEventsPage() {
                               <Trophy className="h-4 w-4" />
                               {registration.committedPoints} points committed
                             </div>
+                            {/* Extra note for key statuses */}
+                            {(registration.status === "CONFIRMED" || registration.status === "CHECKED_IN") && (
+                              <div className="col-span-2 text-xs text-muted-foreground">
+                                {registration.status === "CONFIRMED"
+                                  ? "You have registered for this event. Be sure to attend on time."
+                                  : "Your check-in was recorded successfully."}
+                              </div>
+                            )}
                             <div className="col-span-2 text-xs text-muted-foreground">
                               Registered: {new Date(registration.registeredAt).toLocaleString("en-US", {
                                 year: "numeric",
@@ -605,7 +678,7 @@ export default function MemberEventsPage() {
                     
                     <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 space-y-3">
                       <div className="flex items-start gap-3">
-                        <Trophy className="h-5 w-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+                            <Trophy className="h-5 w-5 text-yellow-600 mt-0.5 shrink-0" />
                         <div className="space-y-2 text-sm">
                           <p className="font-semibold text-yellow-900">
                             Point Cost: {selectedEventForRegistration.commitPointCost || 0} points

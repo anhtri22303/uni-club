@@ -500,17 +500,17 @@ export default function ClubAttendancePage() {
         <button
           onClick={onPrev}
           disabled={current === 1}
-          className="text-sm border rounded-md px-2 py-1"
+          className="text-sm border rounded-md px-2 py-1 dark:bg-slate-800 dark:text-white dark:border-slate-600 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <ChevronLeft className="inline h-4 w-4" /> Prev
         </button>
-        <span className="text-sm">
+        <span className="text-sm dark:text-white">
           Page {current} of {total}
         </span>
         <button
           onClick={onNext}
           disabled={current === total}
-          className="text-sm border rounded-md px-2 py-1"
+          className="text-sm border rounded-md px-2 py-1 dark:bg-slate-800 dark:text-white dark:border-slate-600 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Next <ChevronRight className="inline h-4 w-4" />
         </button>
@@ -540,27 +540,27 @@ export default function ClubAttendancePage() {
         <div className="flex items-start justify-between mb-10">
 
           <div>
-            <h1 className="text-3xl font-bold">Club Member Attendance</h1>
+            <h1 className="text-3xl font-bold text-white dark:text-white">Club Member Attendance</h1>
             {managedClub ? (
-              <p className="text-muted-foreground">
-                Members of "<span className="font-semibold text-primary">{managedClub.name}</span>"
+              <p className="text-muted-foreground dark:text-slate-400">
+                Members of "<span className="font-semibold text-primary dark:text-blue-400">{managedClub.name}</span>"
               </p>
             ) : (
-              <p className="text-destructive">
+              <p className="text-destructive dark:text-red-400">
                 Could not load club details. Please try again.
               </p>
             )}
           </div>
           <div className="text-right">
-            <span className="text-sm font-medium text-muted-foreground mr-5">Attendance Date</span>
+            <span className="text-sm font-medium text-muted-foreground dark:text-slate-400 mr-5">Attendance Date</span>
             {/* Date Picker */}
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant={"outline"}
                   className={cn(
-                    "w-[240px] justify-start text-left font-norma mt-4",
-                    !selectedDate && "text-muted-foreground",
+                    "w-[240px] justify-start text-left font-norma mt-4 dark:bg-slate-800 dark:text-white dark:border-slate-600 dark:hover:bg-slate-700",
+                    !selectedDate && "text-muted-foreground dark:text-slate-400",
                   )}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
@@ -591,7 +591,7 @@ export default function ClubAttendancePage() {
                   setSearchTerm(e.target.value)
                   setMembersPage(1)
                 }}
-                className="pl-4 pr-4 py-2.5 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                className="pl-4 pr-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm dark:text-white dark:placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all"
               />
             </div>
 
@@ -599,12 +599,12 @@ export default function ClubAttendancePage() {
               variant="outline"
               size="sm"
               onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2 rounded-lg border-slate-200 hover:bg-slate-50 transition-colors"
+              className="flex items-center gap-2 rounded-lg border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 dark:bg-slate-800 dark:text-white transition-colors"
             >
               <Filter className="h-4 w-4" />
               Filters
               {hasActiveFilters && (
-                <Badge className="ml-1 h-5 w-5 p-0 text-xs bg-blue-500 hover:bg-blue-600 text-white rounded-full flex items-center justify-center">
+                <Badge className="ml-1 h-5 w-5 p-0 text-xs bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-full flex items-center justify-center">
                   {Object.values(activeFilters).filter((v) => v && v !== "all").length + (searchTerm ? 1 : 0)}
                 </Badge>
               )}
@@ -612,15 +612,15 @@ export default function ClubAttendancePage() {
           </div>
 
           {showFilters && (
-            <div className="space-y-4 p-6 border border-slate-200 rounded-xl bg-gradient-to-br from-slate-50 to-white">
+            <div className="space-y-4 p-6 border border-slate-200 dark:border-slate-700 rounded-xl bg-gradient-to-br from-slate-50 to-white dark:from-slate-800 dark:to-slate-900">
               <div className="flex items-center justify-between">
-                <h4 className="text-sm font-semibold text-slate-900">Advanced Filters</h4>
+                <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Advanced Filters</h4>
                 {hasActiveFilters && (
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={clearFilters}
-                    className="h-auto p-1 text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-200/50 transition-colors"
+                    className="h-auto p-1 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors"
                   >
                     <X className="h-3 w-3 mr-1" />
                     Clear all
@@ -631,12 +631,12 @@ export default function ClubAttendancePage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Role Filter */}
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Role</label>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide">Role</label>
                   <Select
                     value={activeFilters["role"] || "all"}
                     onValueChange={(v) => handleFilterChange("role", v)}
                   >
-                    <SelectTrigger className="h-9 text-sm rounded-lg border-slate-200 bg-white hover:border-slate-300 transition-colors">
+                    <SelectTrigger className="h-9 text-sm rounded-lg border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 dark:text-white hover:border-slate-300 dark:hover:border-slate-500 transition-colors">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -651,12 +651,12 @@ export default function ClubAttendancePage() {
                 </div>
                 {/* Staff Filter */}
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Staff</label>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide">Staff</label>
                   <Select
                     value={activeFilters["staff"] || "all"}
                     onValueChange={(v) => handleFilterChange("staff", v)}
                   >
-                    <SelectTrigger className="h-9 text-sm rounded-lg border-slate-200 bg-white hover:border-slate-300 transition-colors">
+                    <SelectTrigger className="h-9 text-sm rounded-lg border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 dark:text-white hover:border-slate-300 dark:hover:border-slate-500 transition-colors">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -673,26 +673,26 @@ export default function ClubAttendancePage() {
 
         {/* Thêm cảnh báo nếu không có sessionId hoặc readonly */}
         {isReadOnly && (
-          <Alert variant="default" className="mb-4 bg-gray-100 border-gray-300">
-            <Info className="h-4 w-4 text-gray-700" />
-            <AlertTitle>Read-Only Mode</AlertTitle>
-            <AlertDescription>
+          <Alert variant="default" className="mb-4 bg-gray-100 dark:bg-gray-800/50 border-gray-300 dark:border-gray-700">
+            <Info className="h-4 w-4 text-gray-700 dark:text-gray-300" />
+            <AlertTitle className="text-gray-900 dark:text-white">Read-Only Mode</AlertTitle>
+            <AlertDescription className="text-gray-700 dark:text-gray-300">
               You are viewing attendance for a past date. Changes cannot be made.
             </AlertDescription>
           </Alert>
         )}
         {sessionError && (
-          <Alert variant="destructive" className="mb-4">
+          <Alert variant="destructive" className="mb-4 dark:bg-red-900/30 dark:border-red-800">
             <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Session Error</AlertTitle>
-            <AlertDescription>{sessionError}</AlertDescription>
+            <AlertTitle className="dark:text-red-200">Session Error</AlertTitle>
+            <AlertDescription className="dark:text-red-300">{sessionError}</AlertDescription>
           </Alert>
         )}
         {!isReadOnly && sessionId && (
-          <Alert variant="default" className="mb-4 bg-blue-50 border-blue-200">
-            <Info className="h-4 w-4 text-blue-700" />
-            <AlertTitle>Session is Ready</AlertTitle>
-            <AlertDescription>
+          <Alert variant="default" className="mb-4 bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800">
+            <Info className="h-4 w-4 text-blue-700 dark:text-blue-300" />
+            <AlertTitle className="text-blue-900 dark:text-blue-200">Session is Ready</AlertTitle>
+            <AlertDescription className="text-blue-800 dark:text-blue-300">
               Session (ID: {sessionId}) is active. Changes must be saved manually using the "Save" button.
             </AlertDescription>
           </Alert>
@@ -700,31 +700,39 @@ export default function ClubAttendancePage() {
 
         {/* Thống kê nhanh và Hành động hàng loạt */}
         {!membersLoading && filteredMembers.length > 0 && (
-          <Card className="mb-4">
+          <Card className="mb-4 dark:bg-slate-800/90 dark:border-slate-700">
             <CardContent className="p-4 flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-4 text-sm">
-                <span className="font-semibold">Total: {stats.total}</span>
-                <span className="text-green-600 font-medium flex items-center gap-1">
+                <span className="font-semibold dark:text-white">Total: {stats.total}</span>
+                <span className="text-green-600 dark:text-green-400 font-medium flex items-center gap-1">
                   <CheckCircle className="h-4 w-4" /> Present: {stats.present}
                 </span>
-                <span className="text-orange-500 font-medium flex items-center gap-1">
+                <span className="text-orange-500 dark:text-orange-400 font-medium flex items-center gap-1">
                   <Clock className="h-4 w-4" /> Late: {stats.late}
                 </span>
-                <span className="text-gray-500 font-medium flex items-center gap-1">
+                <span className="text-gray-500 dark:text-gray-400 font-medium flex items-center gap-1">
                   <AlertCircle className="h-4 w-4" /> Excused: {stats.excused}
                 </span>
-                <span className="text-red-600 font-medium flex items-center gap-1">
+                <span className="text-red-600 dark:text-red-400 font-medium flex items-center gap-1">
                   <XCircle className="h-4 w-4" /> Absent: {stats.absent}
                 </span>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => handleBulkAction("present")}
-                  disabled={isReadOnly || !sessionId} // Disable nếu không có session
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => handleBulkAction("present")}
+                  disabled={isReadOnly || !sessionId}
+                  className="dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:hover:bg-slate-600"
                 >
                   Mark All Present
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => handleBulkAction("absent")}
-                  disabled={isReadOnly || !sessionId} // Disable nếu không có session
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => handleBulkAction("absent")}
+                  disabled={isReadOnly || !sessionId}
+                  className="dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:hover:bg-slate-600"
                 >
                   Mark All Absent
                 </Button>
@@ -736,28 +744,28 @@ export default function ClubAttendancePage() {
 
         <div className="space-y-6">
           {membersLoading ? (
-            <Card>
+            <Card className="dark:bg-slate-800/90 dark:border-slate-700">
               <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                <Users className="h-10 w-10 text-muted-foreground mb-3" />
-                <h3 className="text-lg font-semibold mb-2">Loading members...</h3>
+                <Users className="h-10 w-10 text-muted-foreground dark:text-slate-400 mb-3" />
+                <h3 className="text-lg font-semibold mb-2 dark:text-white">Loading members...</h3>
               </CardContent>
             </Card>
           ) : membersError ? (
-            <Card>
-              <CardContent className="py-12 text-center text-destructive">
+            <Card className="dark:bg-slate-800/90 dark:border-slate-700">
+              <CardContent className="py-12 text-center text-destructive dark:text-red-400">
                 {membersError}
               </CardContent>
             </Card>
           ) : clubMembers.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center text-muted-foreground">
+            <Card className="dark:bg-slate-800/90 dark:border-slate-700">
+              <CardContent className="py-12 text-center text-muted-foreground dark:text-slate-400">
                 No active members in your club.
               </CardContent>
             </Card>
           ) : (
             <>
               {paginatedMembers.map((member) => (
-                <Card key={member.id}>
+                <Card key={member.id} className="dark:bg-slate-800/90 dark:border-slate-700">
                   <CardContent className="py-3 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <Avatar className="w-10 h-10">
@@ -765,18 +773,18 @@ export default function ClubAttendancePage() {
                           src={member.avatarUrl || ""}
                           alt={member.fullName}
                         />
-                        <AvatarFallback>
+                        <AvatarFallback className="dark:bg-slate-700 dark:text-white">
                           {member.fullName.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
 
                       <div>
-                        <p className="font-medium">{member.fullName}
-                          <span className="text-muted-foreground text-sm ml-2">
+                        <p className="font-medium dark:text-white">{member.fullName}
+                          <span className="text-muted-foreground dark:text-slate-400 text-sm ml-2">
                             ({member.studentCode})
                           </span>
                         </p>
-                        <Badge variant="secondary" className="text-xs">
+                        <Badge variant="secondary" className="text-xs dark:bg-slate-700/50 dark:text-slate-300 dark:border-slate-600">
                           {member.role}
                         </Badge>
                       </div>
@@ -794,13 +802,13 @@ export default function ClubAttendancePage() {
                         }}
                         disabled={isReadOnly || !sessionId} //: Disable nếu không có session
                         className={cn(
-                          "relative text-muted-foreground hover:text-primary",
-                          notes[member.id] && "text-blue-500 hover:text-blue-600",
+                          "relative text-muted-foreground dark:text-slate-400 hover:text-primary dark:hover:text-blue-400",
+                          notes[member.id] && "text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300",
                         )}
                       >
                         <MessageSquare className="h-5 w-5" />
                         {notes[member.id] && (
-                          <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-blue-500" />
+                          <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-blue-500 dark:bg-blue-400" />
                         )}
                       </Button>
 
@@ -812,11 +820,11 @@ export default function ClubAttendancePage() {
                       >
                         <SelectTrigger
                           className={cn(
-                            "w-[130px]",
-                            attendance[member.id] === "present" && "bg-green-100 text-green-800",
-                            attendance[member.id] === "absent" && "bg-red-100 text-red-800",
-                            attendance[member.id] === "late" && "bg-orange-100 text-orange-800",
-                            attendance[member.id] === "excused" && "bg-gray-100 text-gray-800",
+                            "w-[130px] dark:bg-slate-700 dark:text-white dark:border-slate-600",
+                            attendance[member.id] === "present" && "bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300 border-green-200 dark:border-green-700",
+                            attendance[member.id] === "absent" && "bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300 border-red-200 dark:border-red-700",
+                            attendance[member.id] === "late" && "bg-orange-100 dark:bg-orange-900/40 text-orange-800 dark:text-orange-300 border-orange-200 dark:border-orange-700",
+                            attendance[member.id] === "excused" && "bg-gray-100 dark:bg-gray-800/50 text-gray-800 dark:text-gray-300 border-gray-200 dark:border-gray-700",
                           )}
                         >
                           <SelectValue />
@@ -864,7 +872,7 @@ export default function ClubAttendancePage() {
                   <Button
                     onClick={handleSaveAttendance}
                     disabled={isSaving || !sessionId} // Disable khi đang lưu hoặc không có session
-                    className="flex items-center gap-2 mr-10 mb-5 w-[180px]" // Thêm độ rộng cố định
+                    className="flex items-center gap-2 mr-10 mb-5 w-[180px] bg-green-500 hover:bg-green-600 text-white dark:bg-green-600 dark:hover:bg-green-700" // Thêm độ rộng cố định
                   >
                     {isSaving ? (
                       // Thêm icon spinner đơn giản
@@ -908,9 +916,9 @@ export default function ClubAttendancePage() {
             }
           }}
         >
-          <DialogContent>
+          <DialogContent className="dark:bg-slate-900 dark:border-slate-700">
             <DialogHeader>
-              <DialogTitle>Add Note for {editingNoteMember?.fullName}</DialogTitle>
+              <DialogTitle className="dark:text-white">Add Note for {editingNoteMember?.fullName}</DialogTitle>
             </DialogHeader>
             <Textarea
               placeholder="E.g., Excused (sick), Late (traffic)..."
@@ -918,12 +926,13 @@ export default function ClubAttendancePage() {
               onChange={(e) => setCurrentNote(e.target.value)}
               rows={4}
               disabled={isReadOnly || !sessionId} // Disable
+              className="dark:bg-slate-800 dark:text-white dark:border-slate-600 dark:placeholder:text-slate-400"
             />
             <DialogFooter>
               <DialogClose asChild>
-                <Button variant="ghost">Cancel</Button>
+                <Button variant="ghost" className="dark:bg-slate-800 dark:text-white dark:hover:bg-slate-700">Cancel</Button>
               </DialogClose>
-              <Button onClick={handleSaveNote} disabled={isReadOnly}>
+              <Button onClick={handleSaveNote} disabled={isReadOnly} className="dark:bg-blue-600 dark:hover:bg-blue-700">
                 Save Note
               </Button>
             </DialogFooter>

@@ -14,6 +14,7 @@ interface AvatarCropModalProps {
   onCropComplete: (croppedBlob: Blob) => void | Promise<void>
   aspectRatio?: number // Optional: defaults to 1 (square) for avatars
   title?: string // Optional: custom title for the modal
+  minOutputWidth?: number // Optional: minimum width (in natural pixels) for the exported image
 }
 
 function getCroppedImg(
@@ -31,9 +32,11 @@ function getCroppedImg(
   const scaleX = image.naturalWidth / image.width
   const scaleY = image.naturalHeight / image.height
 
-  // Set canvas size to crop size
-  canvas.width = crop.width
-  canvas.height = crop.height
+  // Set canvas size based on the source image's natural pixels to avoid blurriness
+  const outputWidth = Math.round(crop.width * scaleX)
+  const outputHeight = Math.round(crop.height * scaleY)
+  canvas.width = outputWidth
+  canvas.height = outputHeight
 
   // Draw the cropped image
   ctx.drawImage(
@@ -44,8 +47,8 @@ function getCroppedImg(
     crop.height * scaleY,
     0,
     0,
-    crop.width,
-    crop.height
+    outputWidth,
+    outputHeight
   )
 
   return new Promise((resolve) => {
@@ -54,7 +57,7 @@ function getCroppedImg(
         throw new Error('Canvas is empty')
       }
       resolve(blob)
-    }, 'image/jpeg', 0.8)
+    }, 'image/jpeg', 0.9)
   })
 }
 
@@ -64,7 +67,8 @@ export function AvatarCropModal({
   imageSrc, 
   onCropComplete,
   aspectRatio = 1, // Default to square for avatars
-  title = "Crop Avatar" // Default title
+  title = "Crop Avatar", // Default title
+  minOutputWidth
 }: AvatarCropModalProps) {
   const [crop, setCrop] = useState<Crop>({
     unit: '%',
@@ -76,9 +80,11 @@ export function AvatarCropModal({
   const [completedCrop, setCompletedCrop] = useState<PixelCrop>()
   const [isProcessing, setIsProcessing] = useState(false)
   const imgRef = useRef<HTMLImageElement>(null)
+  const [minCropWidth, setMinCropWidth] = useState<number>(100)
+  const [minCropHeight, setMinCropHeight] = useState<number>(100)
 
   const onImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
-    const { width, height } = e.currentTarget
+    const { width, height, naturalWidth, naturalHeight } = e.currentTarget
     
     // Calculate initial crop based on aspect ratio
     let cropWidth: number
@@ -102,6 +108,36 @@ export function AvatarCropModal({
       }
     }
     
+    // Determine minimum crop size to meet desired min output resolution (in natural pixels)
+    const effectiveMinOutputWidth = Math.max(
+      1,
+      Math.round(
+        typeof minOutputWidth === 'number'
+          ? minOutputWidth
+          : (aspectRatio === 1 ? 512 : 1800)
+      )
+    )
+    const scaleX = naturalWidth / width
+    let computedMinCropWidth = Math.ceil(effectiveMinOutputWidth / scaleX)
+    let computedMinCropHeight = Math.ceil(computedMinCropWidth / aspectRatio)
+
+    // Ensure min crop fits within displayed image bounds
+    if (computedMinCropWidth > width) {
+      computedMinCropWidth = width
+      computedMinCropHeight = Math.min(height, Math.ceil(width / aspectRatio))
+    }
+    if (computedMinCropHeight > height) {
+      computedMinCropHeight = height
+      computedMinCropWidth = Math.min(width, Math.ceil(height * aspectRatio))
+    }
+
+    setMinCropWidth(Math.max(1, computedMinCropWidth))
+    setMinCropHeight(Math.max(1, computedMinCropHeight))
+
+    // Enforce initial crop not smaller than min
+    cropWidth = Math.max(cropWidth, computedMinCropWidth)
+    cropHeight = Math.max(cropHeight, computedMinCropHeight)
+
     const x = (width - cropWidth) / 2
     const y = (height - cropHeight) / 2
     
@@ -112,7 +148,7 @@ export function AvatarCropModal({
       x,
       y,
     })
-  }, [aspectRatio])
+  }, [aspectRatio, minOutputWidth])
 
   const handleCropComplete = async () => {
     if (!completedCrop || !imgRef.current) {
@@ -153,8 +189,8 @@ export function AvatarCropModal({
                 onChange={(_, percentCrop) => setCrop(percentCrop)}
                 onComplete={(c) => setCompletedCrop(c)}
                 aspect={aspectRatio}
-                minWidth={100}
-                minHeight={100}
+                minWidth={minCropWidth}
+                minHeight={minCropHeight}
               >
                 <img
                   ref={imgRef}

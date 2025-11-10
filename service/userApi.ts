@@ -130,7 +130,8 @@ export const editProfile = async (data: {
   fullName?: string  
   phone?: string
   bio?: string
-  majorId?: number   
+  majorId?: number
+  studentCode?: string
   // KHÔNG CẦN: email, avatarUrl, backgroundUrl
 }) => {
   try {

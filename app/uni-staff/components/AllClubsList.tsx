@@ -80,7 +80,7 @@ export function AllClubsList({ clubsWithMemberCountUnsorted, clubsLoading, unive
   const goClubsNext = () => setClubsCurrentPage(Math.min(clubsTotalPages, clubsCurrentPage + 1))
 
   return (
-    <Card className="border-2">
+    <Card className="border-2 dark:border-slate-700">
       <CardHeader className="pb-2 sm:pb-3">
         <CardTitle className="flex items-center gap-2 text-base sm:text-lg md:text-xl">
           <div className="p-1 sm:p-1.5 bg-blue-500 rounded-lg flex-shrink-0">
@@ -148,23 +148,23 @@ export function AllClubsList({ clubsWithMemberCountUnsorted, clubsLoading, unive
             paginatedClubsList.map((club: any, index: number) => (
               <div
                 key={club.id}
-                className="flex items-center justify-between p-2 sm:p-3 border rounded-lg hover:bg-muted/50 transition-colors gap-2 sm:gap-3"
+                className="flex items-center justify-between p-2 sm:p-3 border rounded-lg hover:bg-muted/50 dark:border-slate-700 dark:hover:bg-slate-800/50 transition-colors gap-2 sm:gap-3"
               >
                 <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                   {/* Rank Badge */}
                   {club.rank !== undefined && (
                     <div className={`
                       w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm flex-shrink-0
-                      ${club.rank === 1 ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-white shadow-lg' : 
-                        club.rank === 2 ? 'bg-gradient-to-br from-gray-300 to-gray-500 text-white shadow-md' :
-                        club.rank === 3 ? 'bg-gradient-to-br from-orange-400 to-orange-600 text-white shadow-md' :
-                        'bg-gradient-to-br from-blue-100 to-blue-200 text-blue-800'}
+                      ${club.rank === 1 ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 dark:from-yellow-500 dark:to-yellow-700 text-white shadow-lg' : 
+                        club.rank === 2 ? 'bg-gradient-to-br from-gray-300 to-gray-500 dark:from-gray-400 dark:to-gray-600 text-white shadow-md' :
+                        club.rank === 3 ? 'bg-gradient-to-br from-orange-400 to-orange-600 dark:from-orange-500 dark:to-orange-700 text-white shadow-md' :
+                        'bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-800 dark:to-blue-900 text-blue-800 dark:text-blue-200'}
                     `}>
                       #{club.rank}
                     </div>
                   )}
                   
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-xs sm:text-sm flex-shrink-0">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 dark:from-blue-600 dark:to-purple-600 flex items-center justify-center text-white font-bold text-xs sm:text-sm flex-shrink-0">
                     {club.name?.charAt(0) || "C"}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -179,15 +179,15 @@ export function AllClubsList({ clubsWithMemberCountUnsorted, clubsLoading, unive
                   {/* Points Display */}
                   <div className="text-center">
                     <div className="flex items-center justify-center gap-1">
-                      <Award className="h-3 w-3 sm:h-4 sm:w-4 text-purple-500" />
-                      <p className="text-lg sm:text-xl font-bold text-purple-600">{club.totalPoints?.toLocaleString() || 0}</p>
+                      <Award className="h-3 w-3 sm:h-4 sm:w-4 text-purple-500 dark:text-purple-400" />
+                      <p className="text-lg sm:text-xl font-bold text-purple-600 dark:text-purple-400">{club.totalPoints?.toLocaleString() || 0}</p>
                     </div>
                     <p className="text-[10px] sm:text-xs text-muted-foreground">Points</p>
                   </div>
                   
                   {/* Members Display */}
                   <div className="text-center">
-                    <p className="text-lg sm:text-xl font-bold text-blue-600">{club.memberCount || 0}</p>
+                    <p className="text-lg sm:text-xl font-bold text-blue-600 dark:text-blue-400">{club.memberCount || 0}</p>
                     <p className="text-[10px] sm:text-xs text-muted-foreground">Members</p>
                   </div>
                 </div>
@@ -198,29 +198,41 @@ export function AllClubsList({ clubsWithMemberCountUnsorted, clubsLoading, unive
 
         {clubsTotalPages > 1 && (
           <div className="mt-3 sm:mt-4 flex items-center justify-center gap-1.5 sm:gap-2">
-            <Button
-              variant="outline"
-              size="sm"
+            <button
               onClick={goClubsPrev}
               disabled={clubsCurrentPage === 1}
-              className="h-7 sm:h-8 text-[10px] sm:text-xs px-2 sm:px-3"
+              className={`
+                flex items-center gap-1 px-2 sm:px-3 py-1.5 text-[10px] sm:text-xs font-medium
+                transition-colors
+                ${clubsCurrentPage === 1 
+                  ? 'text-muted-foreground/50 cursor-not-allowed' 
+                  : 'text-cyan-500 hover:text-cyan-400 dark:text-cyan-400 dark:hover:text-cyan-300 cursor-pointer'
+                }
+              `}
+              aria-label="Previous page"
             >
-              <ChevronLeft className="h-3 w-3 sm:mr-1" />
+              <ChevronLeft className="h-3 w-3 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">Previous</span>
-            </Button>
-            <span className="text-[10px] sm:text-xs font-medium px-1">
+            </button>
+            <span className="text-[10px] sm:text-xs font-medium text-cyan-500 dark:text-cyan-400 px-1 sm:px-2">
               {clubsCurrentPage}/{clubsTotalPages}
             </span>
-            <Button
-              variant="outline"
-              size="sm"
+            <button
               onClick={goClubsNext}
               disabled={clubsCurrentPage === clubsTotalPages}
-              className="h-7 sm:h-8 text-[10px] sm:text-xs px-2 sm:px-3"
+              className={`
+                flex items-center gap-1 px-2 sm:px-3 py-1.5 text-[10px] sm:text-xs font-medium
+                transition-colors
+                ${clubsCurrentPage === clubsTotalPages 
+                  ? 'text-muted-foreground/50 cursor-not-allowed' 
+                  : 'text-cyan-500 hover:text-cyan-400 dark:text-cyan-400 dark:hover:text-cyan-300 cursor-pointer'
+                }
+              `}
+              aria-label="Next page"
             >
               <span className="hidden sm:inline">Next</span>
-              <ChevronRight className="h-3 w-3 sm:ml-1" />
-            </Button>
+              <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+            </button>
           </div>
         )}
       </CardContent>

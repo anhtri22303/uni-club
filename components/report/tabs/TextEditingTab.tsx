@@ -210,7 +210,7 @@ export function TextEditingTab({ onSync, compact = false, editorRef }: TextEditi
 
   return (
     <TooltipProvider>
-      <div className="overflow-x-auto overflow-y-hidden scrollbar-hide">
+      <div className="overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent hover:scrollbar-thumb-gray-400 dark:hover:scrollbar-thumb-gray-500">
         <div className={`flex items-center gap-1 ${compact ? 'p-1' : 'p-1.5 sm:p-2 bg-gray-50 dark:bg-gray-800/50 border-b'} min-w-max`}>
         {/* Undo/Redo */}
         <div className="flex items-center gap-0.5 pr-1.5 sm:pr-2 border-r">

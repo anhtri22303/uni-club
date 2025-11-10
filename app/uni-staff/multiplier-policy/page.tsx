@@ -93,7 +93,46 @@ const CLUB_STATUSES = {
 }
 
 const MEMBER_STATUSES = {
-  // Add member statuses here when available
+  LEGEND: { 
+    label: "Legend", 
+    color: "bg-gradient-to-br from-amber-500 to-yellow-500",
+    textColor: "text-amber-700 dark:text-amber-300",
+    bgColor: "bg-amber-50 dark:bg-amber-950/20",
+    borderColor: "border-amber-200 dark:border-amber-800",
+    icon: Award
+  },
+  ELITE: { 
+    label: "Elite", 
+    color: "bg-gradient-to-br from-purple-500 to-indigo-500",
+    textColor: "text-purple-700 dark:text-purple-300",
+    bgColor: "bg-purple-50 dark:bg-purple-950/20",
+    borderColor: "border-purple-200 dark:border-purple-800",
+    icon: Sparkles
+  },
+  CONTRIBUTOR: { 
+    label: "Contributor", 
+    color: "bg-gradient-to-br from-blue-500 to-cyan-500",
+    textColor: "text-blue-700 dark:text-blue-300",
+    bgColor: "bg-blue-50 dark:bg-blue-950/20",
+    borderColor: "border-blue-200 dark:border-blue-800",
+    icon: TrendingUp
+  },
+  ACTIVE: { 
+    label: "Active", 
+    color: "bg-gradient-to-br from-green-500 to-emerald-500",
+    textColor: "text-green-700 dark:text-green-300",
+    bgColor: "bg-green-50 dark:bg-green-950/20",
+    borderColor: "border-green-200 dark:border-green-800",
+    icon: CheckCircle2
+  },
+  BASIC: { 
+    label: "Basic", 
+    color: "bg-gradient-to-br from-gray-500 to-slate-500",
+    textColor: "text-gray-700 dark:text-gray-300",
+    bgColor: "bg-gray-50 dark:bg-gray-950/20",
+    borderColor: "border-gray-200 dark:border-gray-800",
+    icon: Target
+  }
 }
 
 const getStatusConfig = (targetType: PolicyTargetType, status: string) => {
@@ -186,40 +225,32 @@ export default function AdminMultiplierPolicyPage() {
 
   // Load policies on mount
   useEffect(() => {
-    loadClubPolicies()
-    loadMemberPolicies()
+    loadAllPolicies()
   }, [])
 
-  const loadClubPolicies = async () => {
+  const loadAllPolicies = async () => {
     try {
       setLoadingClub(true)
-      const data = await getMutiplierPolicy("CLUB")
-      setClubPolicies(data)
+      setLoadingMember(true)
+      
+      // Call the new API that returns all policies
+      const allPolicies = await getMutiplierPolicy()
+      
+      // Filter by target type
+      const clubPolicies = allPolicies.filter(policy => policy.targetType === "CLUB")
+      const memberPolicies = allPolicies.filter(policy => policy.targetType === "MEMBER")
+      
+      setClubPolicies(clubPolicies)
+      setMemberPolicies(memberPolicies)
     } catch (error) {
-      console.error("Error loading club policies:", error)
+      console.error("Error loading multiplier policies:", error)
       toast({
         title: "Error",
-        description: "Failed to load club policies. Please try again.",
+        description: "Failed to load multiplier policies. Please try again.",
         variant: "destructive",
       })
     } finally {
       setLoadingClub(false)
-    }
-  }
-
-  const loadMemberPolicies = async () => {
-    try {
-      setLoadingMember(true)
-      const data = await getMutiplierPolicy("MEMBER")
-      setMemberPolicies(data)
-    } catch (error) {
-      console.error("Error loading member policies:", error)
-      toast({
-        title: "Error",
-        description: "Failed to load member policies. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
       setLoadingMember(false)
     }
   }
@@ -264,12 +295,8 @@ export default function AdminMultiplierPolicyPage() {
       
       const newPolicy = await postMutiplierPolicy(formattedPayload)
       
-      // Update the appropriate list
-      if (newPolicy.targetType === "CLUB") {
-        setClubPolicies(prev => [...prev, newPolicy])
-      } else {
-        setMemberPolicies(prev => [...prev, newPolicy])
-      }
+      // Reload all policies to get the latest data
+      await loadAllPolicies()
       
       // Reset form and close modal
       setFormData({
@@ -334,29 +361,18 @@ export default function AdminMultiplierPolicyPage() {
     try {
       setIsEditing(true)
       
-      const updatedPolicy = await putMutiplierPolicy(editFormData.id, editFormData)
+      await putMutiplierPolicy(editFormData.id, editFormData)
       
-      // Update the appropriate list
-      if (updatedPolicy.targetType === "CLUB") {
-        setClubPolicies(prev => 
-          prev.map(p => p.id === updatedPolicy.id ? updatedPolicy : p)
-        )
-      } else {
-        setMemberPolicies(prev => 
-          prev.map(p => p.id === updatedPolicy.id ? updatedPolicy : p)
-        )
-      }
+      // Reload all policies to get the latest data
+      await loadAllPolicies()
       
-      // Close modal and reload page
+      // Close modal
       setIsEditModalOpen(false)
       
       toast({
         title: "Success",
         description: `Multiplier policy updated successfully`,
       })
-      
-      // Reload the page
-      window.location.reload()
     } catch (error: any) {
       console.error("Error updating policy:", error)
       toast({
@@ -383,12 +399,8 @@ export default function AdminMultiplierPolicyPage() {
       // Call delete API
       await deleteMutiplierPolicy(policyToDelete.id)
       
-      // Update local state
-      if (policyToDelete.targetType === "CLUB") {
-        setClubPolicies(prev => prev.filter(p => p.id !== policyToDelete.id))
-      } else {
-        setMemberPolicies(prev => prev.filter(p => p.id !== policyToDelete.id))
-      }
+      // Reload all policies to get the latest data
+      await loadAllPolicies()
       
       // Close modal
       setPolicyToDelete(null)
@@ -397,9 +409,6 @@ export default function AdminMultiplierPolicyPage() {
         title: "Success",
         description: `Multiplier policy deleted successfully`,
       })
-      
-      // Reload the page
-      window.location.reload()
     } catch (error: any) {
       console.error("Error deleting policy:", error)
       toast({
@@ -542,20 +551,34 @@ export default function AdminMultiplierPolicyPage() {
 
           {/* Metadata */}
           <div className="space-y-2 pt-2 border-t">
-            <div className="flex items-center justify-between text-xs sm:text-sm gap-2">
-              <span className="text-muted-foreground flex items-center gap-1 truncate">
-                <Clock className="h-3 w-3 flex-shrink-0" />
-                <span className="truncate">Effective From</span>
-              </span>
-              <span className="font-medium flex-shrink-0 text-xs sm:text-sm">{formatDate(policy.effectiveFrom)}</span>
-            </div>
+            {policy.effectiveFrom && (
+              <div className="flex items-center justify-between text-xs sm:text-sm gap-2">
+                <span className="text-muted-foreground flex items-center gap-1 truncate">
+                  <Clock className="h-3 w-3 flex-shrink-0" />
+                  <span className="truncate">Effective From</span>
+                </span>
+                <span className="font-medium flex-shrink-0 text-xs sm:text-sm">{formatDate(policy.effectiveFrom)}</span>
+              </div>
+            )}
+            
+            {policy.updatedAt && (
+              <div className="flex items-center justify-between text-xs sm:text-sm gap-2">
+                <span className="text-muted-foreground flex items-center gap-1 truncate">
+                  <Shield className="h-3 w-3 flex-shrink-0" />
+                  <span className="truncate">Last Updated</span>
+                </span>
+                <span className="font-medium flex-shrink-0 text-xs sm:text-sm">{formatDateTime(policy.updatedAt)}</span>
+              </div>
+            )}
             
             <div className="flex items-center justify-between text-xs sm:text-sm gap-2">
               <span className="text-muted-foreground flex items-center gap-1 truncate">
-                <Shield className="h-3 w-3 flex-shrink-0" />
-                <span className="truncate">Last Updated</span>
+                <CheckCircle2 className="h-3 w-3 flex-shrink-0" />
+                <span className="truncate">Status</span>
               </span>
-              <span className="font-medium flex-shrink-0 text-xs sm:text-sm">{formatDateTime(policy.updatedAt)}</span>
+              <Badge variant={policy.active ? "default" : "secondary"} className="flex-shrink-0">
+                {policy.active ? "Active" : "Inactive"}
+              </Badge>
             </div>
             
             <div className="flex items-center justify-between text-xs sm:text-sm gap-2">

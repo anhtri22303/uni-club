@@ -34,9 +34,9 @@ interface CustomizationTabsProps {
 
 export const CustomizationTabs: React.FC<CustomizationTabsProps> = (props) => {
   return (
-    <Card>
+    <Card className="dark:bg-slate-800 dark:border-slate-700">
       <CardHeader className="pb-3">
-        <CardTitle className="text-base sm:text-lg">Customization Options</CardTitle>
+        <CardTitle className="text-base sm:text-lg dark:text-white">Customization Options</CardTitle>
       </CardHeader>
       <CardContent className="px-2 sm:px-6">
         <Tabs defaultValue="colors" className="w-full">

@@ -8,9 +8,10 @@ export interface MultiplierPolicy {
   levelOrStatus: string
   minEvents: number
   multiplier: number
+  active: boolean
   updatedBy: string
-  updatedAt: string
-  effectiveFrom: string
+  updatedAt?: string
+  effectiveFrom?: string
 }
 
 export interface MultiplierPoliciesApiResponse {
@@ -20,13 +21,12 @@ export interface MultiplierPoliciesApiResponse {
   content?: MultiplierPolicy[]
 }
 
-export const getMutiplierPolicy = async (
-  type: PolicyTargetType
-): Promise<MultiplierPolicy[]> => {
+// Get all multiplier policies from the new university endpoint
+export const getMutiplierPolicy = async (): Promise<MultiplierPolicy[]> => {
   try {
-    const response = await axiosInstance.get<
-      MultiplierPoliciesApiResponse | MultiplierPolicy[]
-    >(`/api/admin/policies/${type}`)
+    const response = await axiosInstance.get<MultiplierPolicy[]>(
+      `/api/university/multiplier-policies`
+    )
     
     console.log("Fetched multiplier policies response:", response.data)
     
@@ -35,18 +35,22 @@ export const getMutiplierPolicy = async (
       return response.data
     }
     
-    if (response.data && typeof response.data === "object") {
-      if ("data" in response.data && response.data.data) {
-        return response.data.data
-      }
-      if ("content" in response.data && response.data.content) {
-        return response.data.content
-      }
-    }
-    
     return []
   } catch (error) {
     console.error("Error fetching multiplier policies:", error)
+    throw error
+  }
+}
+
+// Legacy function for backward compatibility - filters by type
+export const getMutiplierPolicyByType = async (
+  type: PolicyTargetType
+): Promise<MultiplierPolicy[]> => {
+  try {
+    const allPolicies = await getMutiplierPolicy()
+    return allPolicies.filter(policy => policy.targetType === type)
+  } catch (error) {
+    console.error("Error fetching multiplier policies by type:", error)
     throw error
   }
 }
@@ -87,7 +91,7 @@ export const createMultiplierPolicy = async (
 ): Promise<MultiplierPolicy> => {
   try {
     const response = await axiosInstance.post<MultiplierPolicy>(
-      `/api/admin/policies`,
+      `/api/university/multiplier-policies`,
       payload
     )
     console.log("Created multiplier policy response:", response.data)
@@ -103,7 +107,7 @@ export const postMutiplierPolicy = async (
 ): Promise<MultiplierPolicy> => {
   try {
     const response = await axiosInstance.post<MultiplierPolicy>(
-      `/api/admin/policies`,
+      `/api/university/multiplier-policies`,
       payload
     )
     console.log("Created multiplier policy response:", response.data)
@@ -126,7 +130,7 @@ export const putMutiplierPolicy = async (
 ): Promise<MultiplierPolicy> => {
   try {
     const response = await axiosInstance.put<MultiplierPolicy>(
-      `/api/admin/policies/${id}`,
+      `/api/university/multiplier-policies/${id}`,
       payload
     )
     console.log("Updated multiplier policy response:", response.data)

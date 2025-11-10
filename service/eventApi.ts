@@ -70,7 +70,7 @@ export const timeStringToObject = (timeStr: string): TimeObject => {
 export const timeObjectToString = (timeObj: TimeObject | string | null): string => {
   if (!timeObj) return "00:00:00"
   if (typeof timeObj === 'string') return timeObj
-  
+
   const pad = (n: number) => n.toString().padStart(2, '0')
   return `${pad(timeObj.hour)}:${pad(timeObj.minute)}:${pad(timeObj.second)}`
 }
@@ -91,7 +91,7 @@ export const fetchEvent = async ({ page = 0, size = 70, sort = "name" } = {}): P
     });
     const data: any = response.data;
     console.log(`fetchEvent at ${new Date().toISOString()}:`, data);
-    
+
     // Log first event to check structure
     if (data?.content?.[0]) {
       console.log("First event in response:", data.content[0]);
@@ -145,16 +145,22 @@ export const getEventById = async (id: string | number): Promise<Event> => {
   }
 }
 
-export const putEventStatus = async (id: string | number, status: string, budgetPoints: number = 0): Promise<Event> => {
+export const putEventStatus = async (id: string | number, approvedBudgetPoints: number): Promise<Event> => {
   try {
-    const response = await axiosInstance.put(`api/events/${id}/status`, { status, budgetPoints })
+    // Cập nhật endpoint và payload theo Swagger
+    const response = await axiosInstance.put(
+      `api/events/${id}/approve-budget`,
+      { approvedBudgetPoints }
+    )
+
     const data: any = response.data
-    console.log(`Updated event ${id} status -> ${status} with budgetPoints: ${budgetPoints}:`, data)
+    console.log(`Approved budget for event ${id} with points: ${approvedBudgetPoints}:`, data)
+
     // Response structure: { success: true, message: "success", data: {...event} }
     if (data && data.data) return data.data
     return data
   } catch (error) {
-    console.error(`Error updating event ${id} status:`, error)
+    console.error(`Error approving budget for event ${id}:`, error)
     throw error
   }
 }
@@ -248,11 +254,11 @@ export const deleteEvent = async (id: string | number): Promise<void> => {
 
 export const submitForUniversityApproval = async (eventId: string | number) => {
   // Đây là ví dụ, bạn cần API endpoint thực tế
-    const response = await axiosInstance.put(`/events/${eventId}/submit-to-staff`)
-    const data: any = response.data
-    // Response structure: { success: true, message: "success", data: {...event} }
-    if (data && data.data) return data.data
-    return data
+  const response = await axiosInstance.put(`/events/${eventId}/submit-to-staff`)
+  const data: any = response.data
+  // Response structure: { success: true, message: "success", data: {...event} }
+  if (data && data.data) return data.data
+  return data
   // return api.put(`/events/${eventId}/submit-to-staff`)
 }
 
@@ -345,6 +351,28 @@ export const getMyEventRegistrations = async (): Promise<EventRegistration[]> =>
     return []
   } catch (error) {
     console.error(`Error fetching my event registrations:`, error)
+    throw error
+  }
+}
+
+/**
+ * GET /api/events/my
+ * Get all events that the current user has registered for
+ * @returns Array of Event objects that the user has registered for
+ */
+export const getMyEvents = async (): Promise<Event[]> => {
+  try {
+    const response = await axiosInstance.get("api/events/my")
+    const data: any = response.data
+    console.log("Fetched my events:", data)
+    
+    // Response structure: { success: true, message: "success", data: [...events] }
+    if (data?.data && Array.isArray(data.data)) return data.data
+    if (Array.isArray(data)) return data
+    
+    return []
+  } catch (error) {
+    console.error("Error fetching my events:", error)
     throw error
   }
 }
@@ -510,9 +538,10 @@ export const getEventSettle = async () => {
  * @returns Updated event data
  */
 export interface EventTimeExtendPayload {
-  newEndDate: string  // Format: YYYY-MM-DD
-  newEndTime: string  // Format: HH:MM
-  reason: string      // Reason for extension
+  newDate: string       // Format: YYYY-MM-DD
+  newStartTime: string  // Format: HH:mm (e.g., 09:00)
+  newEndTime: string    // Format: HH:mm (e.g., 23:59)
+  reason: string        // Reason for extension
 }
 
 export const eventTimeExtend = async (eventId: string | number, payload: EventTimeExtendPayload): Promise<Event> => {
@@ -527,4 +556,123 @@ export const eventTimeExtend = async (eventId: string | number, payload: EventTi
     console.error(`Error extending time for event ${eventId}:`, error)
     throw error
   }
+}
+
+/**
+ * PUT /api/events/{eventId}/reject
+ * Từ chối sự kiện (University Staff hoặc Admin)
+ * (Khớp ảnh: image_df08d6.png)
+ * @param eventId - ID của sự kiện
+ * @param reason - Lý do từ chối
+ * @returns { success: boolean, message: string, data: string }
+ */
+export const rejectEvent = async (eventId: string | number, reason: string) => {
+  try {
+    const response = await axiosInstance.put(`/api/events/${eventId}/reject`, null, {
+      params: { reason }
+    });
+    const data: any = response.data;
+    console.log(`Rejected event ${eventId} with reason: ${reason}`, data);
+    // Response: { success: true, message: "string", data: "string" }
+    return data;
+  } catch (error) {
+    console.error(`Error rejecting event ${eventId}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * PUT /api/events/{eventId}/cancel
+ * Sinh viên hủy đăng ký sự kiện
+ * (Khớp ảnh: image_df0c02.png)
+ * @param eventId - ID của sự kiện
+ * @returns { success: boolean, message: string, data: string }
+ */
+export const cancelEventRegistration = async (eventId: string | number) => {
+  try {
+    const response = await axiosInstance.put(`/api/events/${eventId}/cancel`);
+    const data: any = response.data;
+    console.log(`Cancelled registration for event ${eventId}:`, data);
+    // Response: { success: true, message: "string", data: "string" }
+    return data;
+  } catch (error) {
+    console.error(`Error cancelling registration for event ${eventId}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * PUT /api/events/{eventId}/refund-product/{productId}
+ * Hoàn điểm sản phẩm thuộc sự kiện
+ * (Khớp ảnh: image_df0bbd.png)
+ * @param eventId - ID sự kiện
+ * @param productId - ID sản phẩm
+ * @param userId - ID của sinh viên
+ * @returns { } (200 OK với body rỗng)
+ */
+export const refundEventProduct = async (
+  eventId: string | number, 
+  productId: string | number, 
+  userId: string | number
+) => {
+  try {
+    const response = await axiosInstance.put(
+      `/api/events/${eventId}/refund-product/${productId}`, 
+      null, 
+      {
+        params: { userId }
+      }
+    );
+    const data: any = response.data;
+    console.log(`Refunded product ${productId} for user ${userId} from event ${eventId}:`, data);
+    // Response: 200 OK with empty body {}
+    return data; // Thường trả về data rỗng
+  } catch (error) {
+    console.error(`Error refunding product for event ${eventId}:`, error);
+    throw error;
+  }
+}
+
+// --- Interfaces cho Feedback ---
+
+export interface EventFeedback {
+  feedbackId: number;
+  eventId: number;
+  eventName: string;
+  clubName: string;
+  membershipId: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UpdateEventFeedbackPayload {
+  rating: number;
+  comment: string;
+}
+
+/**
+ * PUT /api/events/feedback/{feedbackId}
+ * Cập nhật feedback sự kiện
+ * (Khớp ảnh: image_df0c3e.png)
+ * @param feedbackId - ID của feedback
+ * @param payload - Dữ liệu feedback (rating, comment)
+ * @returns { success: boolean, message: string, data: EventFeedback }
+ */
+export const updateEventFeedback = async (
+  feedbackId: string | number, 
+  payload: UpdateEventFeedbackPayload
+): Promise<EventFeedback> => {
+  try {
+    const response = await axiosInstance.put(`/api/events/feedback/${feedbackId}`, payload);
+    const data: any = response.data;
+    console.log(`Updated feedback ${feedbackId}:`, data);
+    // Response: { success: true, message: "string", data: {...} }
+    if (data?.data) return data.data;
+    return data;
+  } catch (error) {
+    console.error(`Error updating feedback ${feedbackId}:`, error);
+    throw error;
+  }
 }

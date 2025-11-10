@@ -23,6 +23,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea" // <-- THÊM MỚI
 import { createPointRequest } from "@/service/pointRequestsApi" // <-- THÊM MỚI
 import { PlusCircle } from "lucide-react" // <-- THÊM MỚI (hoặc icon bạn muốn)
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip"
 
 interface ClubMember {
   id: string;
@@ -380,11 +381,11 @@ export default function ClubLeaderRewardDistributionPage() {
   const MinimalPager = ({ current, total, onPrev, onNext }: { current: number; total: number; onPrev: () => void; onNext: () => void }) =>
     total > 1 ? (
       <div className="flex items-center justify-center gap-3 mt-4">
-        <Button aria-label="Previous page" variant="outline" size="sm" className="h-8 w-8 p-0" onClick={onPrev} disabled={current === 1}>
+        <Button aria-label="Previous page" variant="outline" size="sm" className="h-8 w-8 p-0 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700" onClick={onPrev} disabled={current === 1}>
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        <div className="min-w-[2rem] text-center text-sm font-medium">Trang {current} / {total}</div>
-        <Button aria-label="Next page" variant="outline" size="sm" className="h-8 w-8 p-0" onClick={onNext} disabled={current === total}>
+        <div className="min-w-[2rem] text-center text-sm font-medium dark:text-slate-300">Trang {current} / {total}</div>
+        <Button aria-label="Next page" variant="outline" size="sm" className="h-8 w-8 p-0 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700" onClick={onNext} disabled={current === total}>
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
@@ -396,45 +397,45 @@ export default function ClubLeaderRewardDistributionPage() {
       <AppShell>
         <div className="space-y-6">
           <div>
-            <h1 className="text-3xl font-bold flex items-center gap-3">
-              <Award className="h-8 w-8 text-yellow-500" /> Reward Point Distribution
+            <h1 className="text-3xl font-bold flex items-center gap-3 dark:text-white">
+              <Award className="h-8 w-8 text-yellow-500 dark:text-yellow-400" /> Reward Point Distribution
             </h1>
-            <p className="text-muted-foreground">Distribute bonus points from club funds to members of "<span className="font-semibold text-primary">{managedClub?.name}</span>"</p>
+            <p className="text-muted-foreground dark:text-slate-400">Distribute bonus points from club funds to members of "<span className="font-semibold text-primary dark:text-blue-400">{managedClub?.name}</span>"</p>
           </div>
 
           {/* Club Wallet Balance Card */}
-          <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
+          <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 border-blue-200 dark:border-blue-800/50">
             <CardContent className="py-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="h-14 w-14 rounded-full bg-blue-500 flex items-center justify-center">
+                  <div className="h-14 w-14 rounded-full bg-blue-500 dark:bg-blue-600 flex items-center justify-center">
                     <Wallet className="h-7 w-7 text-white" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">Club Balance</p>
+                    <p className="text-sm font-medium text-muted-foreground dark:text-slate-400">Club Balance</p>
                     {walletLoading ? (
-                      <p className="text-3xl font-bold text-blue-600">Loading...</p>
+                      <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">Loading...</p>
                     ) : clubWallet && clubWallet.balancePoints !== undefined ? (
-                      <p className="text-3xl font-bold text-blue-600">
+                      <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
                         {clubWallet.balancePoints.toLocaleString()} pts
                       </p>
                     ) : (
-                      <p className="text-3xl font-bold text-gray-400">N/A</p>
+                      <p className="text-3xl font-bold text-gray-400 dark:text-slate-500">N/A</p>
                     )}
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
                   {clubWallet && (
                     <div className="text-right">
-                      <p className="text-xs text-muted-foreground">Wallet ID</p>
-                      <p className="text-sm font-medium text-gray-700">#{clubWallet.walletId}</p>
+                      <p className="text-xs text-muted-foreground dark:text-slate-400">Wallet ID</p>
+                      <p className="text-sm font-medium text-gray-700 dark:text-slate-300">#{clubWallet.walletId}</p>
                     </div>
                   )}
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handleOpenHistoryModal}
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
                   >
                     <History className="h-4 w-4" />
                     History
@@ -459,7 +460,7 @@ export default function ClubLeaderRewardDistributionPage() {
             >
 
               <DialogHeader>
-                <DialogTitle className="flex items-center gap-3 text-3xl font-bold">
+                <DialogTitle className="flex items-center gap-3 text-3xl font-bold dark:text-white">
                   <History className="h-9 w-9" />
                   Club to Member Transaction History
                 </DialogTitle>
@@ -468,49 +469,66 @@ export default function ClubLeaderRewardDistributionPage() {
               <div className="mt-4">
                 {transactionsLoading ? (
                   <div className="flex flex-col items-center justify-center py-12">
-                    <p className="text-muted-foreground">Loading transaction history...</p>
+                    <p className="text-muted-foreground dark:text-slate-400">Loading transaction history...</p>
                   </div>
                 ) : transactions.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <History className="h-12 w-12 text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">No Transactions Yet</h3>
-                    <p className="text-muted-foreground">No club-to-member transactions found.</p>
+                    <History className="h-12 w-12 text-muted-foreground dark:text-slate-400 mb-4" />
+                    <h3 className="text-lg font-semibold mb-2 dark:text-white">No Transactions Yet</h3>
+                    <p className="text-muted-foreground dark:text-slate-400">No club-to-member transactions found.</p>
                   </div>
                 ) : (
-                  <div className="rounded-md border overflow-x-auto">
-                    <Table className="min-w-full">
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-[80px]">ID</TableHead>
-                          <TableHead>Type</TableHead>
-                          <TableHead>Amount</TableHead>
-                          <TableHead className="w-[20%]">Sender</TableHead>
-                          <TableHead className="w-[20%]">Receiver</TableHead>
-                          <TableHead className="w-[25%]">Description</TableHead>
-                          <TableHead>Date</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {transactions.map((t) => (
-                          <TableRow key={t.id}>
-                            <TableCell className="font-medium">#{t.id}</TableCell>
-                            <TableCell><Badge variant="secondary">{t.type}</Badge></TableCell>
-                            <TableCell className="font-semibold text-green-600">+{t.amount} pts</TableCell>
-                            <TableCell className="font-medium text-purple-600">
-                              {t.senderName || "—"}
-                            </TableCell>
-                            <TableCell className="font-medium text-blue-600">
-                              {t.receiverName || "—"}
-                            </TableCell>
-                            <TableCell className="truncate">{t.description || "—"}</TableCell>
-                            <TableCell className="text-sm text-muted-foreground">
-                              {formatDate(t.createdAt)}
-                            </TableCell>
+                  <TooltipProvider>
+                    <div className="rounded-md border dark:border-slate-700 overflow-x-auto">
+                      <Table className="min-w-full">
+                        <TableHeader>
+                          <TableRow className="dark:border-slate-700">
+                            <TableHead className="w-[80px] dark:text-slate-300">ID</TableHead>
+                            <TableHead className="dark:text-slate-300">Type</TableHead>
+                            <TableHead className="dark:text-slate-300">Amount</TableHead>
+                            <TableHead className="w-[20%] dark:text-slate-300">Sender</TableHead>
+                            <TableHead className="w-[20%] dark:text-slate-300">Receiver</TableHead>
+                            <TableHead className="w-[15%] dark:text-slate-300 pr-2">Description</TableHead>
+                            <TableHead className="w-[180px] dark:text-slate-300 pl-2">Date</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
+                        </TableHeader>
+                        <TableBody>
+                          {transactions.map((t) => (
+                            <TableRow key={t.id} className="dark:border-slate-700 dark:hover:bg-slate-800">
+                              <TableCell className="font-medium dark:text-slate-300">#{t.id}</TableCell>
+                              <TableCell><Badge variant="secondary" className="dark:bg-slate-700 dark:text-slate-300">{t.type}</Badge></TableCell>
+                              <TableCell className="font-semibold text-green-600 dark:text-green-400">+{t.amount} pts</TableCell>
+                              <TableCell className="font-medium text-purple-600 dark:text-purple-400">
+                                {t.senderName || "—"}
+                              </TableCell>
+                              <TableCell className="font-medium text-blue-600 dark:text-blue-400">
+                                {t.receiverName || "—"}
+                              </TableCell>
+                              <TableCell className="dark:text-slate-300 max-w-[200px] pr-2">
+                                {t.description && t.description.length > 50 ? (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <div className="truncate cursor-help">
+                                        {t.description}
+                                      </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent className="max-w-[400px] break-words" side="top">
+                                      <p className="whitespace-normal">{t.description}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                ) : (
+                                  <div className="truncate">{t.description || "—"}</div>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground dark:text-slate-400 whitespace-nowrap pl-2">
+                                {formatDate(t.createdAt)}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </TooltipProvider>
                 )}
               </div>
             </DialogContent>
@@ -520,11 +538,11 @@ export default function ClubLeaderRewardDistributionPage() {
           <Dialog open={showRequestModal} onOpenChange={setShowRequestModal}>
             <DialogContent className="sm:max-w-[480px]">
               <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <PlusCircle className="h-6 w-6 text-green-600" />
+                <DialogTitle className="flex items-center gap-2 dark:text-white">
+                  <PlusCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
                   Request Additional Club Points
                 </DialogTitle>
-                <DialogDescription>
+                <DialogDescription className="dark:text-slate-400">
                   Submit a request to the university staff to add more points to your club's wallet.
                 </DialogDescription>
               </DialogHeader>
@@ -591,9 +609,9 @@ export default function ClubLeaderRewardDistributionPage() {
             </DialogContent>
           </Dialog>
 
-          <Card>
+          <Card className="dark:bg-slate-800 dark:border-slate-700">
             <CardHeader>
-              <CardTitle>Set up the Point Distribution Index</CardTitle>
+              <CardTitle className="dark:text-white">Set up the Point Distribution Index</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -671,14 +689,14 @@ export default function ClubLeaderRewardDistributionPage() {
                   disabled={isDistributing}
                 />
               </div>
-              <p className="text-sm text-muted-foreground">Total number of members who will receive the bonus points: {clubMembers.length}</p>
+              <p className="text-sm text-muted-foreground dark:text-slate-400">Total number of members who will receive the bonus points: {clubMembers.length}</p>
             </CardContent>
             {/* CardFooter đã được xóa vì nút đã chuyển lên trên */}
           </Card>
 
 
 
-          <Separator />
+          <Separator className="dark:bg-slate-700" />
 
           {/* === Tìm kiếm Thành viên === */}
           <div className="space-y-4">
@@ -692,7 +710,7 @@ export default function ClubLeaderRewardDistributionPage() {
                     setSearchTerm(e.target.value)
                     setMembersPage(1)
                   }}
-                  className="pl-4 pr-4 py-2.5 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  className="pl-4 pr-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm dark:text-slate-200 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all"
                 />
               </div>
 
@@ -701,7 +719,7 @@ export default function ClubLeaderRewardDistributionPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center gap-2 rounded-lg border-slate-200 hover:bg-slate-50 transition-colors"
+                className="flex items-center gap-2 rounded-lg border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 dark:text-slate-300 transition-colors"
               >
                 <Filter className="h-4 w-4" />
                 Filters
@@ -715,15 +733,15 @@ export default function ClubLeaderRewardDistributionPage() {
 
             {/* ✅ THÊM MỚI: Bảng điều khiển Filter */}
             {showFilters && (
-              <div className="space-y-4 p-6 border border-slate-200 rounded-xl bg-gradient-to-br from-slate-50 to-white">
+              <div className="space-y-4 p-6 border border-slate-200 dark:border-slate-600 rounded-xl bg-gradient-to-br from-slate-50 to-white dark:from-slate-800 dark:to-slate-700">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-semibold text-slate-900">Advanced Filters</h4>
+                  <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Advanced Filters</h4>
                   {hasActiveFilters && (
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={clearFilters}
-                      className="h-auto p-1 text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-200/50 transition-colors"
+                      className="h-auto p-1 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/50 dark:hover:bg-slate-600 transition-colors"
                     >
                       <X className="h-3 w-3 mr-1" />
                       Clear all
@@ -734,12 +752,12 @@ export default function ClubLeaderRewardDistributionPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Role Filter */}
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Role</label>
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide">Role</label>
                     <Select
                       value={activeFilters["role"] || "all"}
                       onValueChange={(v) => handleFilterChange("role", v)}
                     >
-                      <SelectTrigger className="h-9 text-sm rounded-lg border-slate-200 bg-white hover:border-slate-300 transition-colors">
+                      <SelectTrigger className="h-9 text-sm rounded-lg border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-500 transition-colors">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -755,12 +773,12 @@ export default function ClubLeaderRewardDistributionPage() {
 
                   {/* Staff Filter */}
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Staff</label>
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide">Staff</label>
                     <Select
                       value={activeFilters["staff"] || "all"}
                       onValueChange={(v) => handleFilterChange("staff", v)}
                     >
-                      <SelectTrigger className="h-9 text-sm rounded-lg border-slate-200 bg-white hover:border-slate-300 transition-colors">
+                      <SelectTrigger className="h-9 text-sm rounded-lg border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-500 transition-colors">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -777,7 +795,7 @@ export default function ClubLeaderRewardDistributionPage() {
 
           {/* === Danh sách Thành viên === */}
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-semibold">
+            <h2 className="text-2xl font-semibold dark:text-white">
               List of Members ({filteredMembers.length})
             </h2>
 
@@ -787,7 +805,7 @@ export default function ClubLeaderRewardDistributionPage() {
                 variant="outline"
                 size="sm"
                 onClick={handleToggleSelectAll}
-                className="rounded-lg"
+                className="rounded-lg dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
               >
                 {allFilteredSelected ? "Deselect All" : "Select All"}
               </Button>
@@ -795,42 +813,42 @@ export default function ClubLeaderRewardDistributionPage() {
           </div>
           <div className="space-y-4">
             {membersLoading ? (
-              <Card>
+              <Card className="dark:bg-slate-800 dark:border-slate-700">
                 <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                  <Users className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Loading member list...</h3>
-                  <p className="text-muted-foreground">Please wait for the system to fetch the list.</p>
+                  <Users className="h-12 w-12 text-muted-foreground dark:text-slate-400 mb-4" />
+                  <h3 className="text-lg font-semibold mb-2 dark:text-white">Loading member list...</h3>
+                  <p className="text-muted-foreground dark:text-slate-400">Please wait for the system to fetch the list.</p>
                 </CardContent>
               </Card>
             ) : membersError ? (
-              <Card>
+              <Card className="dark:bg-slate-800 dark:border-slate-700">
                 <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                  <Users className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Error loading member list</h3>
-                  <p className="text-muted-foreground">{membersError}</p>
+                  <Users className="h-12 w-12 text-muted-foreground dark:text-slate-400 mb-4" />
+                  <h3 className="text-lg font-semibold mb-2 dark:text-white">Error loading member list</h3>
+                  <p className="text-muted-foreground dark:text-slate-400">{membersError}</p>
                 </CardContent>
               </Card>
             ) : clubMembers.length === 0 ? (
-              <Card>
+              <Card className="dark:bg-slate-800 dark:border-slate-700">
                 <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                  <Users className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No members yet</h3>
-                  <p className="text-muted-foreground">Please review the application to add members.</p>
+                  <Users className="h-12 w-12 text-muted-foreground dark:text-slate-400 mb-4" />
+                  <h3 className="text-lg font-semibold mb-2 dark:text-white">No members yet</h3>
+                  <p className="text-muted-foreground dark:text-slate-400">Please review the application to add members.</p>
                 </CardContent>
               </Card>
             ) : filteredMembers.length === 0 ? (
-              <Card>
+              <Card className="dark:bg-slate-800 dark:border-slate-700">
                 <CardContent className="flex flex-col items-center justify-center py-20 text-center">
-                  <div className="h-20 w-20 rounded-full bg-slate-100 flex items-center justify-center mb-4">
-                    <Filter className="h-10 w-10 text-slate-400" />
+                  <div className="h-20 w-20 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center mb-4">
+                    <Filter className="h-10 w-10 text-slate-400 dark:text-slate-500" />
                   </div>
-                  <h3 className="text-lg font-semibold text-slate-900 mb-2">No Members Found</h3>
-                  <p className="text-sm text-slate-500 mb-4">No members match your search term.</p>
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">No Members Found</h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">No members match your search term.</p>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={clearFilters}
-                    className="rounded-lg border-slate-200 hover:bg-slate-50 bg-transparent"
+                    className="rounded-lg border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 bg-transparent dark:text-slate-300"
                   >
                     <X className="h-4 w-4 mr-2" />
                     Clear Search
@@ -846,9 +864,9 @@ export default function ClubLeaderRewardDistributionPage() {
                   return (
                     <Card
                       key={member.id}
-                      className={`transition-all duration-200 border-2 ${isSelected
-                        ? "border-primary/70 bg-primary/5 shadow-sm"
-                        : "border-transparent hover:border-muted"
+                      className={`transition-all duration-200 border-2 dark:bg-slate-800 dark:border-slate-700 ${isSelected
+                        ? "border-primary/70 bg-primary/5 dark:bg-primary/10 dark:border-primary/50 shadow-sm"
+                        : "border-transparent hover:border-muted dark:hover:border-slate-600"
                         }`}
                     >
                       <CardContent className="py-3 flex items-center justify-between">
@@ -858,13 +876,13 @@ export default function ClubLeaderRewardDistributionPage() {
                             <AvatarFallback>{member.fullName.charAt(0).toUpperCase()}</AvatarFallback>
                           </Avatar>
                           <div>
-                            <p className="font-medium">
+                            <p className="font-medium dark:text-white">
                               {member.fullName}
-                              <span className="text-muted-foreground text-sm ml-2">
+                              <span className="text-muted-foreground dark:text-slate-400 text-sm ml-2">
                                 ({member.studentCode})
                               </span>
                             </p>
-                            <Badge variant="secondary" className="text-xs">{member.role}</Badge>
+                            <Badge variant="secondary" className="text-xs dark:bg-slate-700 dark:text-slate-300">{member.role}</Badge>
                           </div>
                         </div>
 
@@ -880,7 +898,7 @@ export default function ClubLeaderRewardDistributionPage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            className={isSelected ? "border-primary text-primary" : ""}
+                            className={`dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700 ${isSelected ? "border-primary text-primary dark:border-primary dark:text-primary" : ""}`}
                           >
                             + {rewardAmount || 0} pts
                           </Button>

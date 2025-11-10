@@ -565,9 +565,9 @@ export const CardPreview = forwardRef<HTMLDivElement, CardPreviewProps>(
     // Otherwise, wrap in Card component with header
     return (
       <>
-      <Card>
+      <Card className="dark:bg-slate-800 dark:border-slate-700">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle>Card Preview</CardTitle>
+          <CardTitle className="dark:text-white">Card Preview</CardTitle>
             <Button
               variant="ghost"
               size="sm"

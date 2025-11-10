@@ -17,6 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group" // ✨ THÊM DÒNG NÀY
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip"
 // ✨ --- IMPORT API THẬT --- ✨
 import { fetchClub } from "@/service/clubApi"
 import { pointsToClubs, getUniToClubTransactions, ApiUniToClubTransaction } from "@/service/walletApi"
@@ -67,8 +68,8 @@ export default function UniversityStaffRewardPage() {
                 const response = await fetchClub({ page: 0, size: 70, sort: ["name"] });
 
                 // ✨ THAY ĐỔI QUAN TRỌNG: Truy cập trực tiếp vào response.content ✨
-                if (response && response.content) {
-                    setAllClubs(response.content);
+                if (response && (response as any).data && (response as any).data.content) {
+                    setAllClubs((response as any).data.content);
                 } else {
                     setAllClubs([]);
                 }
@@ -363,40 +364,57 @@ export default function UniversityStaffRewardPage() {
                                         <p className="text-muted-foreground">No university-to-club transactions found.</p>
                                     </div>
                                 ) : (
-                                    <div className="rounded-md border overflow-x-auto">
-                                        <Table className="min-w-full">
-                                            <TableHeader>
-                                                <TableRow>
-                                                    <TableHead className="w-[80px]">ID</TableHead>
-                                                    <TableHead>Type</TableHead>
-                                                    <TableHead>Amount</TableHead>
-                                                    <TableHead className="w-[20%]">Sender</TableHead>
-                                                    <TableHead className="w-[20%]">Receiver Club</TableHead>
-                                                    <TableHead className="w-[25%]">Description</TableHead>
-                                                    <TableHead>Date</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {transactions.map((t) => (
-                                                    <TableRow key={t.id}>
-                                                        <TableCell className="font-medium">#{t.id}</TableCell>
-                                                        <TableCell><Badge variant="secondary">{t.type}</Badge></TableCell>
-                                                        <TableCell className="font-semibold text-green-600">+{t.amount} pts</TableCell>
-                                                        <TableCell className="font-medium text-purple-600">
-                                                            {t.senderName || "—"}
-                                                        </TableCell>
-                                                        <TableCell className="font-medium text-blue-600">
-                                                            {t.receiverName || "—"}
-                                                        </TableCell>
-                                                        <TableCell className="truncate">{t.description || "—"}</TableCell>
-                                                        <TableCell className="text-sm text-muted-foreground">
-                                                            {formatDate(t.createdAt)}
-                                                        </TableCell>
+                                    <TooltipProvider>
+                                        <div className="rounded-md border overflow-x-auto">
+                                            <Table className="min-w-full">
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead className="w-[80px]">ID</TableHead>
+                                                        <TableHead>Type</TableHead>
+                                                        <TableHead>Amount</TableHead>
+                                                        <TableHead className="w-[20%]">Sender</TableHead>
+                                                        <TableHead className="w-[20%]">Receiver Club</TableHead>
+                                                        <TableHead className="w-[15%] pr-2">Description</TableHead>
+                                                        <TableHead className="w-[180px] pl-2">Date</TableHead>
                                                     </TableRow>
-                                                ))}
-                                            </TableBody>
-                                        </Table>
-                                    </div>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {transactions.map((t) => (
+                                                        <TableRow key={t.id}>
+                                                            <TableCell className="font-medium">#{t.id}</TableCell>
+                                                            <TableCell><Badge variant="secondary">{t.type}</Badge></TableCell>
+                                                            <TableCell className="font-semibold text-green-600">+{t.amount} pts</TableCell>
+                                                            <TableCell className="font-medium text-slate-800 dark:text-blue-300">
+                                                                {t.senderName || "—"}
+                                                            </TableCell>
+                                                            <TableCell className="font-medium text-slate-800 dark:text-purple-300">
+                                                                {t.receiverName || "—"}
+                                                            </TableCell>
+                                                            <TableCell className="max-w-[200px] pr-2">
+                                                                {t.description && t.description.length > 50 ? (
+                                                                    <Tooltip>
+                                                                        <TooltipTrigger asChild>
+                                                                            <div className="truncate cursor-help">
+                                                                                {t.description}
+                                                                            </div>
+                                                                        </TooltipTrigger>
+                                                                        <TooltipContent className="max-w-[400px] break-words" side="top">
+                                                                            <p className="whitespace-normal">{t.description}</p>
+                                                                        </TooltipContent>
+                                                                    </Tooltip>
+                                                                ) : (
+                                                                    <div className="truncate">{t.description || "—"}</div>
+                                                                )}
+                                                            </TableCell>
+                                                            <TableCell className="text-sm text-muted-foreground whitespace-nowrap pl-2">
+                                                                {formatDate(t.createdAt)}
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        </div>
+                                    </TooltipProvider>
                                 )}
                             </div>
                         </DialogContent>

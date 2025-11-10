@@ -11,8 +11,9 @@ import { Calendar, Clock, Loader2 } from "lucide-react"
 interface TimeExtensionModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSubmit: (newEndDate: string, newEndTime: string, reason: string) => Promise<void>
-  currentEndDate: string
+  onSubmit: (newDate: string, newStartTime: string, newEndTime: string, reason: string) => Promise<void>
+  currentDate: string
+  currentStartTime: string
   currentEndTime: string
   eventName: string
   isSubmitting?: boolean
@@ -22,35 +23,41 @@ export function TimeExtensionModal({
   open,
   onOpenChange,
   onSubmit,
-  currentEndDate,
+  currentDate,
+  currentStartTime,
   currentEndTime,
   eventName,
   isSubmitting = false
 }: TimeExtensionModalProps) {
-  const [newEndDate, setNewEndDate] = useState(currentEndDate)
+  const [newDate, setNewDate] = useState(currentDate)
   const [newEndTime, setNewEndTime] = useState(currentEndTime)
   const [reason, setReason] = useState("")
-  const [errors, setErrors] = useState<{ date?: string; time?: string; reason?: string }>({})
+  const [errors, setErrors] = useState<{ date?: string; endTime?: string; reason?: string }>({})
 
   const validateForm = () => {
-    const newErrors: { date?: string; time?: string; reason?: string } = {}
+    const newErrors: { date?: string; endTime?: string; reason?: string } = {}
 
     // Validate date
-    if (!newEndDate) {
-      newErrors.date = "End date is required"
+    if (!newDate) {
+      newErrors.date = "Date is required"
     } else {
-      const selectedDate = new Date(newEndDate)
-      const currentDate = new Date(currentEndDate)
-      if (selectedDate < currentDate) {
-        newErrors.date = "New end date must be after or equal to current end date"
+      const selectedDate = new Date(newDate)
+      const currDate = new Date(currentDate)
+      if (selectedDate < currDate) {
+        newErrors.date = "New date must be after or equal to current date"
       }
     }
 
-    // Validate time
+    // Validate end time
     if (!newEndTime) {
-      newErrors.time = "End time is required"
+      newErrors.endTime = "End time is required"
     } else if (!/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/.test(newEndTime)) {
-      newErrors.time = "Invalid time format (HH:MM)"
+      newErrors.endTime = "Invalid time format (HH:mm)"
+    }
+
+    // Validate time range (end time should be after start time if on same date)
+    if (newDate === currentDate && newEndTime <= currentStartTime) {
+      newErrors.endTime = "End time must be after current start time on the same date"
     }
 
     // Validate reason
@@ -72,7 +79,8 @@ export function TimeExtensionModal({
     }
 
     try {
-      await onSubmit(newEndDate, newEndTime, reason.trim())
+      // Always use current start time (no change)
+      await onSubmit(newDate, currentStartTime, newEndTime, reason.trim())
       // Reset form on success
       setReason("")
       setErrors({})
@@ -85,7 +93,7 @@ export function TimeExtensionModal({
   const handleOpenChange = (open: boolean) => {
     if (!open && !isSubmitting) {
       // Reset form when closing
-      setNewEndDate(currentEndDate)
+      setNewDate(currentDate)
       setNewEndTime(currentEndTime)
       setReason("")
       setErrors({})
@@ -104,41 +112,58 @@ export function TimeExtensionModal({
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          {/* Current End Time Display */}
+          {/* Current Time Display */}
           <div className="p-4 bg-muted/50 rounded-lg border border-muted">
-            <div className="text-sm font-medium text-muted-foreground mb-2">Current End Time</div>
-            <div className="flex items-center gap-4">
+            <div className="text-sm font-medium text-muted-foreground mb-2">Current Event Time</div>
+            <div className="flex items-center gap-4 flex-wrap">
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-primary" />
-                <span className="font-medium">{currentEndDate}</span>
+                <span className="font-medium">{currentDate}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-primary" />
-                <span className="font-medium">{currentEndTime}</span>
+                <span className="font-medium">{currentStartTime} - {currentEndTime}</span>
               </div>
             </div>
           </div>
 
-          {/* New End Date */}
+          {/* New Date */}
           <div className="space-y-2">
-            <Label htmlFor="newEndDate" className="text-sm font-medium">
-              New End Date <span className="text-destructive">*</span>
+            <Label htmlFor="newDate" className="text-sm font-medium">
+              New Date <span className="text-destructive">*</span>
             </Label>
             <Input
-              id="newEndDate"
+              id="newDate"
               type="date"
-              value={newEndDate}
+              value={newDate}
               onChange={(e) => {
-                setNewEndDate(e.target.value)
+                setNewDate(e.target.value)
                 setErrors({ ...errors, date: undefined })
               }}
-              min={currentEndDate}
+              min={currentDate}
               disabled={isSubmitting}
               className={errors.date ? "border-destructive" : ""}
             />
             {errors.date && (
               <p className="text-sm text-destructive">{errors.date}</p>
             )}
+          </div>
+
+          {/* New Start Time - DISABLED (Read-only) */}
+          <div className="space-y-2">
+            <Label htmlFor="newStartTime" className="text-sm font-medium">
+              Start Time <span className="text-muted-foreground text-xs">(unchanged)</span>
+            </Label>
+            <Input
+              id="newStartTime"
+              type="time"
+              value={currentStartTime}
+              disabled
+              className="bg-muted cursor-not-allowed"
+            />
+            <p className="text-xs text-muted-foreground">
+              Start time cannot be changed. Only date and end time can be extended.
+            </p>
           </div>
 
           {/* New End Time */}
@@ -152,13 +177,13 @@ export function TimeExtensionModal({
               value={newEndTime}
               onChange={(e) => {
                 setNewEndTime(e.target.value)
-                setErrors({ ...errors, time: undefined })
+                setErrors({ ...errors, endTime: undefined })
               }}
               disabled={isSubmitting}
-              className={errors.time ? "border-destructive" : ""}
+              className={errors.endTime ? "border-destructive" : ""}
             />
-            {errors.time && (
-              <p className="text-sm text-destructive">{errors.time}</p>
+            {errors.endTime && (
+              <p className="text-sm text-destructive">{errors.endTime}</p>
             )}
           </div>
 

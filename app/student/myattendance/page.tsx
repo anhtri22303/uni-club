@@ -120,10 +120,15 @@ export default function MemberAttendancePage() {
     isLoading: isLoadingHistory
   } = useMemberAttendanceHistory(selectedClubId)
 
-  // LỌC DỮ LIỆU (SEARCH TERM)
+  // LỌC VÀ SẮP XẾP DỮ LIỆU (SORT BY DATE - MỚI NHẤT TRƯỚC)
   const filteredHistory = useMemo(() => {
-    // Chỉ cần trả về dữ liệu, hoặc mảng rỗng nếu chưa có
-    return rawHistoryResponse?.data?.attendanceHistory || []
+    const history = rawHistoryResponse?.data?.attendanceHistory || []
+    // Sắp xếp theo ngày giảm dần (mới nhất trước)
+    return [...history].sort((a, b) => {
+      const dateA = a.date ? new Date(a.date).getTime() : 0
+      const dateB = b.date ? new Date(b.date).getTime() : 0
+      return dateB - dateA // Giảm dần: dateB - dateA
+    })
   }, [rawHistoryResponse])
 
   // PHÂN TRANG

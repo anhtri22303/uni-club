@@ -353,14 +353,14 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                         {/* Main Information */}
                         <div className="lg:col-span-2 space-y-6">
                             {/* Product Information Card */}
-                            <Card className="border-0 shadow-xl overflow-hidden">
+                            <Card className="border-0 shadow-xl overflow-hidden dark:bg-slate-800 dark:border-slate-700">
                                 {/* Colorful top border */}
                                 <div className="h-2 w-full bg-gradient-to-r from-purple-400 via-pink-400 to-orange-400" />
                                 
-                                <CardHeader className="bg-gradient-to-br from-gray-50 to-white">
-                                    <CardTitle className="flex items-center gap-3 text-2xl">
-                                        <div className="p-2 rounded-lg bg-gradient-to-br from-purple-100 to-pink-100">
-                                            <Package className="h-6 w-6 text-purple-600" />
+                                <CardHeader className="bg-gradient-to-br from-gray-50 to-white dark:from-slate-800 dark:to-slate-800">
+                                    <CardTitle className="flex items-center gap-3 text-2xl dark:text-white">
+                                        <div className="p-2 rounded-lg bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/50 dark:to-pink-900/50">
+                                            <Package className="h-6 w-6 text-purple-600 dark:text-purple-400" />
                                         </div>
                                         Product Information
                                     </CardTitle>
@@ -368,43 +368,43 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                 
                                 <CardContent className="space-y-6 pt-6">
                                     {/* Product Name - Featured */}
-                                    <div className="p-4 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl border border-purple-200">
-                                        <label className="text-xs font-semibold text-purple-700 uppercase tracking-wide mb-2 block">
+                                    <div className="p-4 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl border border-purple-200 dark:border-purple-800/50">
+                                        <label className="text-xs font-semibold text-purple-700 dark:text-purple-300 uppercase tracking-wide mb-2 block">
                                             Event Product Name
                                         </label>
-                                        <p className="text-2xl font-bold text-gray-900">{order.productName}</p>
+                                        <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{order.productName}</p>
                                     </div>
 
                                     {/* Stats Grid */}
                                     <div className="grid grid-cols-2 gap-4">
                                         {/* Quantity Card */}
-                                        <div className="p-5 bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl border border-indigo-200 shadow-sm hover:shadow-md transition-shadow">
+                                        <div className="p-5 bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 rounded-xl border border-indigo-200 dark:border-indigo-800/50 shadow-sm hover:shadow-md transition-shadow">
                                             <div className="flex items-center gap-3 mb-3">
                                                 <div className="p-2 rounded-lg bg-gradient-to-br from-indigo-400 to-indigo-500 shadow-md">
                                                     <ShoppingCart className="h-5 w-5 text-white" />
                                                 </div>
-                                                <label className="text-sm font-semibold text-indigo-700">Quantity</label>
+                                                <label className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">Quantity</label>
                                             </div>
-                                            <p className="text-3xl font-bold text-indigo-900">{order.quantity.toLocaleString('en-US')}</p>
+                                            <p className="text-3xl font-bold text-indigo-900 dark:text-indigo-200">{order.quantity.toLocaleString('en-US')}</p>
                                         </div>
                                         
                                         {/* Total Points Card */}
-                                        <div className="p-5 bg-gradient-to-br from-cyan-50 to-teal-50 rounded-xl border border-cyan-200 shadow-sm hover:shadow-md transition-shadow">
+                                        <div className="p-5 bg-gradient-to-br from-cyan-50 to-teal-50 dark:from-cyan-900/20 dark:to-teal-900/20 rounded-xl border border-cyan-200 dark:border-cyan-800/50 shadow-sm hover:shadow-md transition-shadow">
                                             <div className="flex items-center gap-3 mb-3">
                                                 <div className="p-2 rounded-lg bg-gradient-to-br from-cyan-400 to-teal-500 shadow-md">
                                                     <WalletCards className="h-5 w-5 text-white" />
                                                 </div>
-                                                <label className="text-sm font-semibold text-cyan-700">Total Points</label>
+                                                <label className="text-sm font-semibold text-cyan-700 dark:text-cyan-300">Total Points</label>
                                             </div>
-                                            <p className="text-3xl font-bold text-cyan-900">{order.totalPoints.toLocaleString('en-US')}</p>
+                                            <p className="text-3xl font-bold text-cyan-900 dark:text-cyan-200">{order.totalPoints.toLocaleString('en-US')}</p>
                                         </div>
                                     </div>
 
                                     {/* Points calculation footer */}
-                                    <div className="pt-4 border-t border-gray-200">
-                                        <p className="text-sm text-gray-600 flex items-center gap-2">
+                                    <div className="pt-4 border-t border-gray-200 dark:border-slate-700">
+                                        <p className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-2">
                                             <Info className="h-4 w-4" />
-                                            <span>Price per item: <span className="font-semibold text-gray-900">{(order.totalPoints / order.quantity).toLocaleString('en-US')} points</span></span>
+                                            <span>Price per item: <span className="font-semibold text-gray-900 dark:text-gray-100">{(order.totalPoints / order.quantity).toLocaleString('en-US')} points</span></span>
                                         </p>
                                     </div>
                                 </CardContent>
@@ -412,13 +412,13 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
 
                             {/* Status Log Card */}
                             {order.status !== "PENDING" && (
-                                <Card className="border-0 shadow-xl">
+                                <Card className="border-0 shadow-xl dark:bg-slate-800 dark:border-slate-700">
                                     <CardHeader className={`bg-gradient-to-br ${
-                                        order.status === "COMPLETED" ? "from-green-50 to-emerald-50" :
-                                        order.status === "PARTIALLY_REFUNDED" ? "from-orange-50 to-amber-50" :
-                                        "from-blue-50 to-cyan-50"
+                                        order.status === "COMPLETED" ? "from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20" :
+                                        order.status === "PARTIALLY_REFUNDED" ? "from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20" :
+                                        "from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20"
                                     }`}>
-                                        <CardTitle className="flex items-center gap-3 text-xl">
+                                        <CardTitle className="flex items-center gap-3 text-xl dark:text-white">
                                             <div className={`p-2 rounded-lg bg-gradient-to-br ${
                                                 order.status === "COMPLETED" ? "from-green-400 to-emerald-500" :
                                                 order.status === "PARTIALLY_REFUNDED" ? "from-orange-400 to-amber-500" :
@@ -432,17 +432,17 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                     <CardContent className="space-y-4 pt-6">
                                         {/* Completed Status */}
                                         {order.status === "COMPLETED" && (
-                                            <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-200">
+                                            <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl border border-green-200 dark:border-green-800/50">
                                                 <div className="flex items-start gap-3">
                                                     <div className="p-2 rounded-lg bg-gradient-to-br from-green-400 to-emerald-500 shadow-md mt-1">
                                                         <CheckCircle className="h-5 w-5 text-white" />
                                                     </div>
                                                     <div className="flex-1">
-                                                        <p className="text-sm font-semibold text-green-700 mb-1">Order Delivered Successfully</p>
-                                                        <p className="text-sm text-green-600">
+                                                        <p className="text-sm font-semibold text-green-700 dark:text-green-300 mb-1">Order Delivered Successfully</p>
+                                                        <p className="text-sm text-green-600 dark:text-green-400">
                                                             This order was successfully delivered and completed.
                                                         </p>
-                                                        <p className="text-xs text-green-600 mt-2 flex items-center gap-1.5">
+                                                        <p className="text-xs text-green-600 dark:text-green-400 mt-2 flex items-center gap-1.5">
                                                             <Calendar className="h-3.5 w-3.5" />
                                                             {new Date(order.completedAt).toLocaleDateString('en-US', { 
                                                                 weekday: 'long', 
@@ -460,17 +460,17 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
 
                                         {/* Partially Refunded Status */}
                                         {order.status === "PARTIALLY_REFUNDED" && (
-                                            <div className="p-4 bg-gradient-to-br from-orange-50 to-amber-50 rounded-xl border border-orange-200">
+                                            <div className="p-4 bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20 rounded-xl border border-orange-200 dark:border-orange-800/50">
                                                 <div className="flex items-start gap-3">
                                                     <div className="p-2 rounded-lg bg-gradient-to-br from-orange-400 to-amber-500 shadow-md mt-1">
                                                         <Undo2 className="h-5 w-5 text-white" />
                                                     </div>
                                                     <div className="flex-1">
-                                                        <p className="text-sm font-semibold text-orange-700 mb-1">Partial Refund Processed</p>
-                                                        <p className="text-sm text-orange-600">
+                                                        <p className="text-sm font-semibold text-orange-700 dark:text-orange-300 mb-1">Partial Refund Processed</p>
+                                                        <p className="text-sm text-orange-600 dark:text-orange-400">
                                                             A portion of this order has been refunded to the member.
                                                         </p>
-                                                        <p className="text-xs text-orange-600 mt-2 flex items-center gap-1.5">
+                                                        <p className="text-xs text-orange-600 dark:text-orange-400 mt-2 flex items-center gap-1.5">
                                                             <Calendar className="h-3.5 w-3.5" />
                                                             {new Date(order.completedAt).toLocaleDateString('en-US', { 
                                                                 weekday: 'long', 
@@ -488,17 +488,17 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
 
                                         {/* Fully Refunded Status */}
                                         {order.status === "REFUNDED" && (
-                                            <div className="p-4 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl border border-blue-200">
+                                            <div className="p-4 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-xl border border-blue-200 dark:border-blue-800/50">
                                                 <div className="flex items-start gap-3">
                                                     <div className="p-2 rounded-lg bg-gradient-to-br from-blue-400 to-cyan-500 shadow-md mt-1">
                                                         <Undo2 className="h-5 w-5 text-white" />
                                                     </div>
                                                     <div className="flex-1">
-                                                        <p className="text-sm font-semibold text-blue-700 mb-1">Full Refund Completed</p>
-                                                        <p className="text-sm text-blue-600">
+                                                        <p className="text-sm font-semibold text-blue-700 dark:text-blue-300 mb-1">Full Refund Completed</p>
+                                                        <p className="text-sm text-blue-600 dark:text-blue-400">
                                                             This order has been fully refunded and cancelled.
                                                         </p>
-                                                        <p className="text-xs text-blue-600 mt-2 flex items-center gap-1.5">
+                                                        <p className="text-xs text-blue-600 dark:text-blue-400 mt-2 flex items-center gap-1.5">
                                                             <Calendar className="h-3.5 w-3.5" />
                                                             {new Date(order.completedAt).toLocaleDateString('en-US', { 
                                                                 weekday: 'long', 
@@ -521,46 +521,46 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                         {/* Sidebar Information */}
                         <div className="space-y-6">
                             {/* Member & Order Details Card */}
-                            <Card className="border-0 shadow-xl">
-                                <CardHeader className="bg-gradient-to-br from-gray-50 to-white">
-                                    <CardTitle className="text-lg flex items-center gap-2">
-                                        <User className="h-5 w-5 text-gray-600" />
+                            <Card className="border-0 shadow-xl dark:bg-slate-800 dark:border-slate-700">
+                                <CardHeader className="bg-gradient-to-br from-gray-50 to-white dark:from-slate-800 dark:to-slate-800">
+                                    <CardTitle className="text-lg flex items-center gap-2 dark:text-white">
+                                        <User className="h-5 w-5 text-gray-600 dark:text-gray-400" />
                                         Order Details
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-5 pt-6">
                                     {/* Member Name - Highlighted */}
-                                    <div className="p-4 bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl border border-blue-200">
-                                        <label className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                                    <div className="p-4 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-xl border border-blue-200 dark:border-blue-800/50">
+                                        <label className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wide mb-2 flex items-center gap-1.5">
                                             <User className="h-3.5 w-3.5" />
                                             Member Name
                                         </label>
-                                        <p className="text-lg font-bold text-gray-900">{order.memberName}</p>
+                                        <p className="text-lg font-bold text-gray-900 dark:text-gray-100">{order.memberName}</p>
                                     </div>
 
-                                    <Separator />
+                                    <Separator className="dark:bg-slate-700" />
 
                                     {/* Order Code */}
                                     <div>
-                                        <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                                        <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-2 flex items-center gap-1.5">
                                             <Hash className="h-3.5 w-3.5" />
                                             Order Code
                                         </label>
-                                        <div className="p-3 bg-gray-50 rounded-lg border border-gray-200 font-mono text-sm">
+                                        <div className="p-3 bg-gray-50 dark:bg-slate-700 rounded-lg border border-gray-200 dark:border-slate-600 font-mono text-sm dark:text-gray-200">
                                             {order.orderCode}
                                         </div>
                                     </div>
 
-                                    <Separator />
+                                    <Separator className="dark:bg-slate-700" />
 
                                     {/* Order Date */}
                                     <div>
-                                        <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                                        <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-2 flex items-center gap-1.5">
                                             <Calendar className="h-3.5 w-3.5" />
                                             Order Date
                                         </label>
                                         <div className="space-y-1">
-                                            <p className="text-sm font-semibold text-gray-900">
+                                            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                                                 {new Date(order.createdAt).toLocaleDateString('en-US', { 
                                                     weekday: 'long', 
                                                     year: 'numeric', 
@@ -568,17 +568,17 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                                     day: 'numeric' 
                                                 })}
                                             </p>
-                                            <p className="text-xs text-gray-500">
+                                            <p className="text-xs text-gray-500 dark:text-gray-400">
                                                 {new Date(order.createdAt).toLocaleTimeString('en-US')}
                                             </p>
                                         </div>
                                     </div>
 
-                                    <Separator />
+                                    <Separator className="dark:bg-slate-700" />
 
                                     {/* Current Status - Centered */}
                                     <div>
-                                        <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-3 block text-center">
+                                        <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-3 block text-center">
                                             Current Status
                                         </label>
                                         <div className="flex justify-center">
@@ -589,13 +589,13 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                     {/* Refund Reason */}
                                     {(order.status === "REFUNDED" || order.status === "PARTIALLY_REFUNDED") && order.reasonRefund && (
                                         <>
-                                            <Separator className="my-4" />
-                                            <div className="p-4 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border border-amber-200">
-                                                <label className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-2 flex items-center gap-2">
+                                            <Separator className="my-4 dark:bg-slate-700" />
+                                            <div className="p-4 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-xl border border-amber-200 dark:border-amber-800/50">
+                                                <label className="text-xs font-semibold text-amber-700 dark:text-amber-300 uppercase tracking-wide mb-2 flex items-center gap-2">
                                                     <Info className="h-3.5 w-3.5" />
                                                     Refund Reason
                                                 </label>
-                                                <p className="text-sm text-gray-700 leading-relaxed italic">&quot;{order.reasonRefund}&quot;</p>
+                                                <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed italic">&quot;{order.reasonRefund}&quot;</p>
                                             </div>
                                         </>
                                     )}

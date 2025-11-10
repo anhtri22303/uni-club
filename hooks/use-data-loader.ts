@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
+import { usePathname } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { useData } from "@/contexts/data-context"
 import { fetchClub } from "@/service/clubApi"
@@ -15,6 +16,7 @@ import { getClubApplications } from "@/service/clubApplicationAPI"
  */
 export function useDataLoader() {
   const { auth, isAuthenticated } = useAuth()
+  const pathname = usePathname()
   const {
     updateEvents,
     updateClubs,
@@ -51,16 +53,21 @@ export function useDataLoader() {
               .catch((err) => console.error("❌ Failed to load events:", err))
           )
 
-          promises.push(
-            fetchClub({ page: 0, size: 70, sort: ["name"] })
-              .then((res: any) => {
-                if (!mounted) return
-                const clubs = res?.data?.content ?? []
-                console.log("✅ useDataLoader: Loaded clubs for student:", clubs.length)
-                updateClubs(clubs)
-              })
-              .catch((err) => console.error("❌ Failed to load clubs:", err))
-          )
+          // Không fetch clubs nếu đang ở trang /profile
+          if (pathname !== "/profile") {
+            promises.push(
+              fetchClub({ page: 0, size: 70, sort: ["name"] })
+                .then((res: any) => {
+                  if (!mounted) return
+                  const clubs = res?.data?.content ?? []
+                  console.log("✅ useDataLoader: Loaded clubs for student:", clubs.length)
+                  updateClubs(clubs)
+                })
+                .catch((err) => console.error("❌ Failed to load clubs:", err))
+            )
+          } else {
+            console.log("⏭️ useDataLoader: Skipping clubs fetch on /profile page")
+          }
         }
 
         // CLUB_LEADER role - load events and clubs only
@@ -194,7 +201,7 @@ export function useDataLoader() {
     return () => {
       mounted = false
     }
-  }, [isAuthenticated, auth.user, auth.role]) // Re-run when auth changes
+  }, [isAuthenticated, auth.user, auth.role, pathname]) // Re-run when auth or pathname changes
 
   // This hook doesn't return anything, it just loads data into context
   return null

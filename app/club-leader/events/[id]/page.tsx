@@ -542,13 +542,14 @@ export default function EventDetailPage() {
     }
   }
 
-  const handleExtendTime = async (newEndDate: string, newEndTime: string, reason: string) => {
+  const handleExtendTime = async (newDate: string, newStartTime: string, newEndTime: string, reason: string) => {
     if (!event) return
 
     try {
       setIsExtendingTime(true)
       const response = await eventTimeExtend(event.id, {
-        newEndDate,
+        newDate,
+        newStartTime,
         newEndTime,
         reason
       })
@@ -1371,7 +1372,8 @@ export default function EventDetailPage() {
             open={showTimeExtensionModal}
             onOpenChange={setShowTimeExtensionModal}
             onSubmit={handleExtendTime}
-            currentEndDate={event.date}
+            currentDate={event.date}
+            currentStartTime={timeObjectToString(event.startTime)}
             currentEndTime={timeObjectToString(event.endTime)}
             eventName={event.name}
             isSubmitting={isExtendingTime}
