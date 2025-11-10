@@ -9,11 +9,13 @@ import { Pagination } from "@/components/pagination"
 import { usePagination } from "@/hooks/use-pagination"
 import { useAuth } from "@/contexts/auth-context"
 import { useData } from "@/contexts/data-context"
-import { useMyMemberApplications, useMyClubApplications, useMyRedeemOrders } from "@/hooks/use-query-hooks"
+import { useMyMemberApplications, useMyClubApplications, useMyRedeemOrders, useMyEvents } from "@/hooks/use-query-hooks"
 import { Skeleton } from "@/components/ui/skeleton"
-import { History, UserPlus, Gift, CheckCircle, Users, Building2, Package, } from "lucide-react"
+import { History, UserPlus, Gift, CheckCircle, Users, Building2, Package, Calendar } from "lucide-react"
 import { useState, useMemo } from "react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { timeObjectToString } from "@/service/eventApi"
+import { useRouter } from "next/navigation"
 
 // Removed static `src/data` imports — use empty fallbacks. Prefer remote `clubName` from activity data when available.
 const clubs: any[] = []
@@ -22,17 +24,19 @@ const offers: any[] = []
 export default function MemberHistoryPage() {
   const { auth } = useAuth()
   const { membershipApplications, vouchers } = useData()
-  const [activeTab, setActiveTab] = useState<"member" | "club" | "order">("member")
+  const router = useRouter()
+  const [activeTab, setActiveTab] = useState<"member" | "club" | "order" | "event">("member")
   // USE REACT QUERY for applications
   const { data: remoteApps, isLoading: memberLoading, error: memberError } = useMyMemberApplications()
   const { data: clubApps, isLoading: clubLoading, error: clubError } = useMyClubApplications()
   const { data: remoteOrdersData, isLoading: orderLoading, error: orderError, } = useMyRedeemOrders()
+  const { data: myEventsData, isLoading: eventLoading, error: eventError } = useMyEvents()
   // Ensure arrays (API may return wrapped response)
   const remoteApplications: any[] = Array.isArray(remoteApps) ? remoteApps : ((remoteApps as any)?.data || [])
   const clubApplications: any[] = Array.isArray(clubApps) ? clubApps : ((clubApps as any)?.data || [])
   // FILTER
   const [filter, setFilter] = useState<string>("all")
-  const handleTabChange = (tab: "member" | "club" | "order") => {
+  const handleTabChange = (tab: "member" | "club" | "order" | "event") => {
     setActiveTab(tab)
     setFilter("all") // Reset filter khi đổi tab
   }
@@ -40,6 +44,10 @@ export default function MemberHistoryPage() {
   const remoteOrders: any[] = Array.isArray(remoteOrdersData)
     ? remoteOrdersData
     : ((remoteOrdersData as any)?.data || [])
+
+  const myEvents: any[] = Array.isArray(myEventsData)
+    ? myEventsData
+    : ((myEventsData as any)?.data || [])
 
   // const loading = activeTab === "member" ? memberLoading : clubLoading
   // const error = activeTab === "member" ? memberError : clubError
@@ -49,13 +57,17 @@ export default function MemberHistoryPage() {
       ? memberLoading
       : activeTab === "club"
         ? clubLoading
-        : orderLoading
+        : activeTab === "order"
+          ? orderLoading
+          : eventLoading
   const error =
     activeTab === "member"
       ? memberError
       : activeTab === "club"
         ? clubError
-        : orderError
+        : activeTab === "order"
+          ? orderError
+          : eventError
 
   // LOGIC ĐỂ CHỌN FILTER CHO TỪNG TAB
   const filterOptions = useMemo(() => {
@@ -83,6 +95,15 @@ export default function MemberHistoryPage() {
           { value: "REFUNDED", label: "Refunded" },
           { value: "PARTIALLY_REFUNDED", label: "Partially Refunded" },
           { value: "CANCELLED", label: "Cancelled" },
+        ]
+      case "event":
+        return [
+          { value: "all", label: "All Statuses" },
+          { value: "PENDING_UNISTAFF", label: "Pending" },
+          { value: "APPROVED", label: "Approved" },
+          { value: "REJECTED", label: "Rejected" },
+          { value: "ONGOING", label: "Ongoing" },
+          { value: "COMPLETED", label: "Completed" },
         ]
       default:
         return [{ value: "all", label: "All Statuses" }]
@@ -164,6 +185,32 @@ export default function MemberHistoryPage() {
     }))
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
+  // EVENT HISTORY
+  const eventActivities = (myEvents || [])
+    .map((event: any) => ({
+      type: "event" as const,
+      date: event.date || new Date().toISOString(),
+      data: {
+        id: event.id,
+        name: event.name,
+        description: event.description,
+        type: event.type,
+        date: event.date,
+        startTime: event.startTime,
+        endTime: event.endTime,
+        status: event.status,
+        checkInCode: event.checkInCode,
+        budgetPoints: event.budgetPoints,
+        locationName: event.locationName,
+        maxCheckInCount: event.maxCheckInCount,
+        currentCheckInCount: event.currentCheckInCount,
+        commitPointCost: event.commitPointCost,
+        hostClub: event.hostClub,
+        coHostedClubs: event.coHostedClubs,
+      },
+    }))
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+
   // Switch activities based on active tab
   //const activities = activeTab === "member" ? memberActivities : clubActivitiesData 
   const activities =
@@ -171,7 +218,9 @@ export default function MemberHistoryPage() {
       ? memberActivities
       : activeTab === "club"
         ? clubActivitiesData
-        : orderActivities
+        : activeTab === "order"
+          ? orderActivities
+          : eventActivities
 
   // LOGIC LỌC
   const filteredActivities = useMemo(() => {
@@ -312,6 +361,27 @@ export default function MemberHistoryPage() {
                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400" />
               )}
             </button>
+            {/* My Events */}
+            <button
+              onClick={() => handleTabChange("event")}
+              className={`px-4 py-2 font-medium transition-colors relative ${activeTab === "event"
+                ? "text-blue-600 dark:text-blue-400"
+                : "text-muted-foreground hover:text-foreground"
+                }`}
+            >
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                My Events
+                {myEvents.length > 0 && (
+                  <Badge variant="secondary" className="ml-1">
+                    {myEvents.length}
+                  </Badge>
+                )}
+              </div>
+              {activeTab === "event" && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400" />
+              )}
+            </button>
           </div>
 
           {/* Filter */}
@@ -344,7 +414,9 @@ export default function MemberHistoryPage() {
                   ? "Your member applications and voucher redemptions will appear here"
                   : activeTab === "club"
                     ? "Your club creation applications will appear here"
-                    : "Your product order history will appear here"
+                    : activeTab === "order"
+                      ? "Your product order history will appear here"
+                      : "Your registered events will appear here"
               }
               action={{
                 label:
@@ -352,14 +424,18 @@ export default function MemberHistoryPage() {
                     ? "Browse Clubs"
                     : activeTab === "club"
                       ? "Create Club"
-                      : "Browse Gift",
+                      : activeTab === "order"
+                        ? "Browse Gift"
+                        : "Browse Events",
                 onClick: () =>
                 (window.location.href =
                   activeTab === "member"
                     ? "/student/clubs"
                     : activeTab === "club"
                       ? "/student/clubs"
-                      : "/student/gift"),
+                      : activeTab === "order"
+                        ? "/student/gift"
+                        : "/student/events"),
               }}
             />
           ) : (
@@ -381,6 +457,16 @@ export default function MemberHistoryPage() {
                       orderStatus === "PARTIALLY_REFUNDED"
                     )
                       return "border-l-red-500"
+                    return "border-l-gray-300"
+                  }
+
+                  // LOGIC MÀU CHO EVENT
+                  if (activity.type === "event") {
+                    const eventStatus = activity.data.status
+                    if (eventStatus === "APPROVED" || eventStatus === "COMPLETED") return "border-l-green-500"
+                    if (eventStatus === "ONGOING") return "border-l-blue-500"
+                    if (eventStatus === "PENDING_UNISTAFF") return "border-l-yellow-500"
+                    if (eventStatus === "REJECTED") return "border-l-red-500"
                     return "border-l-gray-300"
                   }
 
@@ -410,7 +496,10 @@ export default function MemberHistoryPage() {
                             <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center">
                               <Package className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                             </div>
-
+                          ) : activity.type === "event" ? (
+                            <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900 rounded-full flex items-center justify-center">
+                              <Calendar className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                            </div>
                           ) : (
                             <div className="w-10 h-10 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center">
                               <Gift className="h-5 w-5 text-green-600 dark:text-green-400" />
@@ -452,6 +541,24 @@ export default function MemberHistoryPage() {
                                   {/* Hiển thị điểm đã tiêu */}
                                   <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
                                     Total points: {activity.data.totalPoints} points
+                                  </p>
+                                </>
+                              ) : activity.type === "event" ? (
+                                <>
+                                  <h3 
+                                    className="font-medium hover:underline cursor-pointer"
+                                    onClick={() => router.push(`/student/events/${activity.data.id}`)}
+                                  >
+                                    {activity.data.name}
+                                  </h3>
+                                  <p className="text-sm text-muted-foreground">
+                                    Host: {activity.data.hostClub?.name || "Unknown Club"}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    📍 {activity.data.locationName} | 🕒 {timeObjectToString(activity.data.startTime)} - {timeObjectToString(activity.data.endTime)}
+                                  </p>
+                                  <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                                    Commit points: {activity.data.commitPointCost} points
                                   </p>
                                 </>
                               ) : (
@@ -515,6 +622,31 @@ export default function MemberHistoryPage() {
                                   {activity.data.status}
                                 </Badge>
                               )}
+                              {/* Badge cho Event */}
+                              {activity.type === "event" && (
+                                <Badge
+                                  variant={
+                                    activity.data.status === "APPROVED" || activity.data.status === "COMPLETED"
+                                      ? "default"
+                                      : activity.data.status === "ONGOING"
+                                        ? "default"
+                                        : activity.data.status === "PENDING_UNISTAFF"
+                                          ? "secondary"
+                                          : "destructive"
+                                  }
+                                  className={
+                                    activity.data.status === "APPROVED" || activity.data.status === "COMPLETED"
+                                      ? "bg-green-100 text-green-800 border-green-300 hover:bg-green-100"
+                                      : activity.data.status === "ONGOING"
+                                        ? "bg-blue-100 text-blue-800 border-blue-300 hover:bg-blue-100"
+                                        : activity.data.status === "PENDING_UNISTAFF"
+                                          ? "bg-yellow-100 text-yellow-800 border-yellow-300 hover:bg-yellow-100"
+                                          : "bg-red-100 text-red-800 border-red-300 hover:bg-red-100"
+                                  }
+                                >
+                                  {activity.data.status}
+                                </Badge>
+                              )}
                               {activity.type === "redemption" &&
                                 activity.data.used && (
                                   <Badge variant="outline">
@@ -569,6 +701,20 @@ export default function MemberHistoryPage() {
                               <p className="text-sm text-muted-foreground">
                                 {activity.data.reason}
                               </p>
+                            ) : activity.type === "event" ? (
+                              <>
+                                <p className="text-sm text-muted-foreground line-clamp-2">
+                                  {activity.data.description}
+                                </p>
+                                {activity.data.coHostedClubs && activity.data.coHostedClubs.length > 0 && (
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    Co-hosts: {activity.data.coHostedClubs.map((c: any) => c.name).join(", ")}
+                                  </p>
+                                )}
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Event Type: {activity.data.type}
+                                </p>
+                              </>
                             ) : null}
 
                             {/* Common fields */}

@@ -1261,7 +1261,13 @@ export default function ClubLeaderEventsPage() {
                     <Label htmlFor="type" className="text-sm">Type *</Label>
                     <Select
                       value={formData.type}
-                      onValueChange={(value) => setFormData({ ...formData, type: value })}
+                      onValueChange={(value) => {
+                        setFormData({ ...formData, type: value })
+                        // Clear co-host clubs when switching to PRIVATE
+                        if (value === "PRIVATE") {
+                          setSelectedCoHostClubIds([])
+                        }
+                      }}
                       required
                     >
                       <SelectTrigger id="type" className="h-9 border-slate-300">
@@ -1455,12 +1461,19 @@ export default function ClubLeaderEventsPage() {
                           ({selectedCoHostClubIds.length} selected)
                         </span>
                       )}
+                      {formData.type === "PRIVATE" && (
+                        <span className="text-xs text-amber-600 dark:text-amber-400 ml-2">
+                          (Not available for private events)
+                        </span>
+                      )}
                     </Label>
-                    <div className="border rounded-md p-2 min-h-[2.25rem] bg-muted/30 flex items-center gap-1 flex-wrap border-slate-300">
+                    <div className={`border rounded-md p-2 min-h-[2.25rem] bg-muted/30 flex items-center gap-1 flex-wrap border-slate-300 ${formData.type === "PRIVATE" ? "opacity-50 cursor-not-allowed" : ""}`}>
                       {clubsLoading ? (
                         <p className="text-xs text-muted-foreground">Loading...</p>
                       ) : allClubs.length === 0 ? (
                         <p className="text-xs text-muted-foreground">No clubs available</p>
+                      ) : formData.type === "PRIVATE" ? (
+                        <p className="text-xs text-muted-foreground">Co-hosting is not available for private events</p>
                       ) : selectedCoHostClubIds.length === 0 ? (
                         <p className="text-xs text-muted-foreground">Click below to select clubs</p>
                       ) : (
@@ -1491,9 +1504,25 @@ export default function ClubLeaderEventsPage() {
                 {/* Expandable co-host section for selecting clubs */}
                 {allClubs.filter(club => club.id !== userClubId).length > 0 && (
                   <details className="space-y-2">
-                    <summary className="text-sm font-medium cursor-pointer hover:text-primary flex items-center gap-2">
+                    <summary 
+                      className={`text-sm font-medium flex items-center gap-2 ${
+                        formData.type === "PRIVATE" 
+                          ? "cursor-not-allowed opacity-50 pointer-events-none" 
+                          : "cursor-pointer hover:text-primary"
+                      }`}
+                      onClick={(e) => {
+                        if (formData.type === "PRIVATE") {
+                          e.preventDefault()
+                        }
+                      }}
+                    >
                       <Plus className="h-4 w-4" />
                       Select Co-Host Clubs ({allClubs.filter(club => club.id !== userClubId).length} available)
+                      {formData.type === "PRIVATE" && (
+                        <span className="text-xs text-amber-600 dark:text-amber-400">
+                          - Disabled for private events
+                        </span>
+                      )}
                     </summary>
                     <div className="border rounded-md p-3 max-h-40 overflow-y-auto bg-muted/30 mt-2">
                       <div className="grid grid-cols-2 gap-2">
@@ -1511,6 +1540,7 @@ export default function ClubLeaderEventsPage() {
                                     setSelectedCoHostClubIds(selectedCoHostClubIds.filter(id => id !== club.id))
                                   }
                                 }}
+                                disabled={formData.type === "PRIVATE"}
                                 className="h-4 w-4"
                               />
                               <label

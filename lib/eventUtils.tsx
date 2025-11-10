@@ -12,7 +12,7 @@ export function renderTypeBadge(type?: string) {
       )
     case "PRIVATE":
       return (
-        <Badge variant="destructive" className="bg-red-100 text-red-700 border-red-300">
+        <Badge variant="secondary" className="bg-red-100 text-red-700 border-red-300">
           Private
         </Badge>
       )

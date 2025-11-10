@@ -27,11 +27,14 @@ export function CoHostEventsSection({ activeCoHostEvents, clubId, coHostEventsLo
               Co-Host Event Invitations
             </CardTitle>
             <CardDescription className="text-xs sm:text-sm mt-1">
-              Active events where your club is invited as co-host
+              Pending invitations where your club is invited as co-host
             </CardDescription>
           </div>
-          <Badge variant="outline" className="text-orange-600 border-orange-300 bg-orange-50">
-            {activeCoHostEvents.length} Active
+          <Badge
+            variant="outline"
+            className="text-orange-600 border-orange-300 bg-orange-50 dark:text-orange-300 dark:border-orange-400/60 dark:bg-orange-950/40"
+          >
+            {activeCoHostEvents.length} Pending
           </Badge>
         </div>
       </CardHeader>
@@ -59,43 +62,29 @@ export function CoHostEventsSection({ activeCoHostEvents, clubId, coHostEventsLo
               return (
                 <div
                   key={event.id}
-                  className={`p-4 border-2 rounded-lg hover:shadow-md transition-all cursor-pointer ${
-                    myCoHostStatus === "PENDING" 
-                      ? "border-yellow-300 bg-yellow-50 hover:border-yellow-400" 
-                      : "border-green-300 bg-green-50 hover:border-green-400"
-                  }`}
+                  className={`p-4 border-2 rounded-lg hover:shadow-md transition-all cursor-pointer border-orange-300 bg-yellow-50 hover:border-orange-400 dark:border-orange-400/60 dark:bg-orange-950/30 dark:hover:border-orange-400`}
                   onClick={() => router.push(`/club-leader/events/${event.id}`)}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2">
-                        <h3 className="font-semibold text-base truncate">{event.name}</h3>
-                        <Badge 
-                          variant="outline" 
-                          className={
-                            myCoHostStatus === "PENDING" 
-                              ? "border-yellow-500 text-yellow-700 bg-yellow-100" 
-                              : "border-green-500 text-green-700 bg-green-100"
-                          }
-                        >
-                          {myCoHostStatus}
-                        </Badge>
+                        <h3 className="font-semibold text-base truncate text-foreground">{event.name}</h3>
                       </div>
                       
-                      <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+                      <p className="text-sm text-foreground/80 line-clamp-2 mb-3">
                         {event.description}
                       </p>
                       
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                        <div className="flex items-center gap-1 text-muted-foreground">
+                        <div className="flex items-center gap-1 text-foreground/70">
                           <Users className="h-3 w-3" />
                           <span className="truncate">Host: {event.hostClub?.name}</span>
                         </div>
-                        <div className="flex items-center gap-1 text-muted-foreground">
+                        <div className="flex items-center gap-1 text-foreground/70">
                           <Calendar className="h-3 w-3" />
                           <span>{eventDate}</span>
                         </div>
-                        <div className="flex items-center gap-1 text-muted-foreground">
+                        <div className="flex items-center gap-1 text-foreground/70">
                           <Clock className="h-3 w-3" />
                           <span>{startTimeStr} - {endTimeStr}</span>
                         </div>
@@ -108,7 +97,7 @@ export function CoHostEventsSection({ activeCoHostEvents, clubId, coHostEventsLo
                       
                       {event.coHostedClubs && event.coHostedClubs.length > 1 && (
                         <div className="mt-2 pt-2 border-t">
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-xs text-foreground/70">
                             Co-hosts: {event.coHostedClubs.map((c: any) => c.name).join(", ")}
                           </p>
                         </div>
@@ -116,46 +105,26 @@ export function CoHostEventsSection({ activeCoHostEvents, clubId, coHostEventsLo
                     </div>
                     
                     <div className="flex flex-col items-end gap-2">
-                      <Badge 
+                      <Badge
                         variant="outline"
                         className={
-                          event.status === "PENDING_COCLUB" 
-                            ? "border-orange-500 text-orange-700 bg-orange-50"
-                            : event.status === "PENDING_UNISTAFF"
-                            ? "border-amber-500 text-amber-700 bg-amber-50"
-                            : event.status === "APPROVED"
-                            ? "border-green-500 text-green-700 bg-green-50"
-                            : event.status === "ONGOING"
-                            ? "border-blue-500 text-blue-700 bg-blue-50"
-                            : event.status === "COMPLETED"
-                            ? "border-emerald-500 text-emerald-700 bg-emerald-50"
-                            : event.status === "REJECTED"
-                            ? "border-red-500 text-red-700 bg-red-50"
-                            : event.status === "CANCELLED"
-                            ? "border-gray-500 text-gray-700 bg-gray-50"
-                            : "border-slate-500 text-slate-700 bg-slate-50"
+                          myCoHostStatus === "PENDING"
+                            ? "border-orange-500 text-orange-700 bg-orange-50 dark:border-orange-400 dark:text-orange-300 dark:bg-orange-950/40"
+                            : myCoHostStatus === "APPROVED"
+                            ? "border-green-500 text-green-700 bg-green-50 dark:border-green-400 dark:text-green-300 dark:bg-green-950/40"
+                            : myCoHostStatus === "REJECTED"
+                            ? "border-red-500 text-red-700 bg-red-50 dark:border-red-400 dark:text-red-300 dark:bg-red-950/40"
+                            : "border-slate-500 text-slate-700 bg-slate-50 dark:border-slate-500/60 dark:text-slate-300 dark:bg-slate-900/40"
                         }
                       >
-                        {event.status === "PENDING_COCLUB" 
-                          ? "⏳ Pending Co-club"
-                          : event.status === "PENDING_UNISTAFF"
-                          ? "🕓 Pending UniStaff"
-                          : event.status === "APPROVED"
-                          ? "✅ Approved"
-                          : event.status === "ONGOING"
-                          ? "🟢 Ongoing"
-                          : event.status === "COMPLETED"
-                          ? "🏁 Completed"
-                          : event.status === "REJECTED"
-                          ? "❌ Rejected"
-                          : event.status === "CANCELLED"
-                          ? "🚫 Cancelled"
-                          : event.status}
+                        {myCoHostStatus === "PENDING"
+                          ? "⏳ Pending Co-host"
+                          : myCoHostStatus === "APPROVED"
+                          ? "✅ Accepted"
+                          : myCoHostStatus === "REJECTED"
+                          ? "❌ Declined"
+                          : myCoHostStatus || "Unknown"}
                       </Badge>
-                      <div className="text-xs text-muted-foreground text-right">
-                        <div>{event.currentCheckInCount}/{event.maxCheckInCount}</div>
-                        <div>Check-ins</div>
-                      </div>
                     </div>
                   </div>
                 </div>

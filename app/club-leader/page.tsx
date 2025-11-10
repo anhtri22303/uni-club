@@ -308,7 +308,7 @@ export default function ClubLeaderDashboardPage() {
   const activeCoHostEvents = rawCoHostEvents.filter((event: any) => {
     if (isEventExpired(event)) return false
     const myCoHostStatus = event.coHostedClubs?.find((club: any) => club.id === clubId)?.coHostStatus
-    return myCoHostStatus === "PENDING" || myCoHostStatus === "APPROVED"
+    return myCoHostStatus === "PENDING"
   })
 
   if (loading) {

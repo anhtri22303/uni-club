@@ -355,6 +355,28 @@ export const getMyEventRegistrations = async (): Promise<EventRegistration[]> =>
   }
 }
 
+/**
+ * GET /api/events/my
+ * Get all events that the current user has registered for
+ * @returns Array of Event objects that the user has registered for
+ */
+export const getMyEvents = async (): Promise<Event[]> => {
+  try {
+    const response = await axiosInstance.get("api/events/my")
+    const data: any = response.data
+    console.log("Fetched my events:", data)
+    
+    // Response structure: { success: true, message: "success", data: [...events] }
+    if (data?.data && Array.isArray(data.data)) return data.data
+    if (Array.isArray(data)) return data
+    
+    return []
+  } catch (error) {
+    console.error("Error fetching my events:", error)
+    throw error
+  }
+}
+
 export interface EventCheckinPayload {
   eventJwtToken: string
   level: string
@@ -516,9 +538,10 @@ export const getEventSettle = async () => {
  * @returns Updated event data
  */
 export interface EventTimeExtendPayload {
-  newEndDate: string  // Format: YYYY-MM-DD
-  newEndTime: string  // Format: HH:MM
-  reason: string      // Reason for extension
+  newDate: string       // Format: YYYY-MM-DD
+  newStartTime: string  // Format: HH:mm (e.g., 09:00)
+  newEndTime: string    // Format: HH:mm (e.g., 23:59)
+  reason: string        // Reason for extension
 }
 
 export const eventTimeExtend = async (eventId: string | number, payload: EventTimeExtendPayload): Promise<Event> => {

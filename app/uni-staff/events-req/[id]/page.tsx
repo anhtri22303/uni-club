@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { Calendar, Users, MapPin, Mail, Building, FileText, CheckCircle, XCircle, ArrowLeft, Clock, DollarSign, Loader2, } from "lucide-react"
+import { Calendar, Users, MapPin, Mail, Building, FileText, CheckCircle, XCircle, ArrowLeft, Clock, DollarSign, Loader2, Star, Filter, ChevronLeft, ChevronRight, } from "lucide-react"
 import Link from "next/link"
 import { useState, useEffect } from "react"
 import { getEventById, putEventStatus, getEventSummary, EventSummary, eventSettle, getEventSettle, rejectEvent } from "@/service/eventApi"
@@ -18,6 +18,39 @@ import { EventWalletHistoryModal } from "@/components/event-wallet-history-modal
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
+import { getFeedback, Feedback } from "@/service/feedbackApi"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+
+// Bảng màu theo ngành học (giống như trong clubs page)
+const majorColors: Record<string, string> = {
+  "Software Engineering": "#0052CC",
+  "Artificial Intelligence": "#6A00FF",
+  "Information Assurance": "#243447",
+  "Data Science": "#00B8A9",
+  "Business Administration": "#1E2A78",
+  "Digital Marketing": "#FF3366",
+  "Graphic Design": "#FFC300",
+  "Multimedia Communication": "#FF6B00",
+  "Hospitality Management": "#E1B382",
+  "International Business": "#007F73",
+  "Finance and Banking": "#006B3C",
+  "Japanese Language": "#D80032",
+  "Korean Language": "#5DADEC",
+}
+
+const getMajorColor = (majorName?: string | null): string => {
+  if (!majorName) return "#E2E8F0"
+  return majorColors[majorName] || "#E2E8F0"
+}
+
+const getContrastTextColor = (hexColor: string): string => {
+  const hex = hexColor.replace('#', '')
+  const r = parseInt(hex.substring(0, 2), 16)
+  const g = parseInt(hex.substring(2, 4), 16)
+  const b = parseInt(hex.substring(4, 6), 16)
+  const yiq = (r * 299 + g * 587 + b * 114) / 1000
+  return yiq >= 140 ? "#111827" : "#FFFFFF"
+}
 
 interface EventRequestDetailPageProps {
   params: {
@@ -45,6 +78,12 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
   const [checkingSettled, setCheckingSettled] = useState(false)
   const [showRejectModal, setShowRejectModal] = useState(false)
   const [rejectReason, setRejectReason] = useState("")
+  // Feedback states
+  const [feedbacks, setFeedbacks] = useState<Feedback[]>([])
+  const [feedbackLoading, setFeedbackLoading] = useState(false)
+  const [ratingFilter, setRatingFilter] = useState<string>("all")
+  const [currentPage, setCurrentPage] = useState(1)
+  const FEEDBACKS_PER_PAGE = 5
 
   useEffect(() => {
     let mounted = true
@@ -120,6 +159,17 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
             if (mounted) setClubLoading(false)
           }
         }
+
+        // Fetch feedback for ALL statuses (requested)
+        try {
+          setFeedbackLoading(true)
+          const feedbackData = await getFeedback(params.id)
+          if (mounted) setFeedbacks(feedbackData)
+        } catch (feedbackError) {
+          console.error("Failed to load feedback:", feedbackError)
+        } finally {
+          if (mounted) setFeedbackLoading(false)
+        }
       } catch (err: any) {
         console.error(err)
         if (!mounted) return
@@ -134,6 +184,11 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
       mounted = false
     }
   }, [params.id])
+
+  // Reset to page 1 when filter changes (must be before any conditional returns)
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [ratingFilter])
 
   if (loading) {
     return (
@@ -384,6 +439,45 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
     }
   }
 
+  // Helper function to render star rating
+  const renderStars = (rating: number) => {
+    return (
+      <div className="flex items-center gap-1">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <Star
+            key={star}
+            className={`h-4 w-4 ${star <= rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`}
+          />
+        ))}
+      </div>
+    )
+  }
+
+  // Filtered feedbacks by rating
+  const filteredFeedbacks = ratingFilter === "all"
+    ? feedbacks
+    : feedbacks.filter(fb => fb.rating === parseInt(ratingFilter))
+
+  // Average rating
+  const averageRating = feedbacks.length > 0
+    ? (feedbacks.reduce((sum, fb) => sum + fb.rating, 0) / feedbacks.length).toFixed(1)
+    : "0.0"
+
+  // Rating counts
+  const ratingCounts = {
+    5: feedbacks.filter(fb => fb.rating === 5).length,
+    4: feedbacks.filter(fb => fb.rating === 4).length,
+    3: feedbacks.filter(fb => fb.rating === 3).length,
+    2: feedbacks.filter(fb => fb.rating === 2).length,
+    1: feedbacks.filter(fb => fb.rating === 1).length,
+  }
+
+  // Pagination
+  const totalPages = Math.ceil(filteredFeedbacks.length / FEEDBACKS_PER_PAGE)
+  const startIndex = (currentPage - 1) * FEEDBACKS_PER_PAGE
+  const endIndex = startIndex + FEEDBACKS_PER_PAGE
+  const paginatedFeedbacks = filteredFeedbacks.slice(startIndex, endIndex)
+
   return (
     <ProtectedRoute allowedRoles={["uni_staff"]}>
       <AppShell>
@@ -453,11 +547,20 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                         </div>
                       </div>
                     )}
-                    {request.category && (
+                    {(request.category || request.majorName || request.hostClub?.majorName) && (
                       <div>
-                        <label className="text-sm font-medium text-muted-foreground">Category</label>
+                        <label className="text-sm font-medium text-muted-foreground">Major Name</label>
                         <div className="mt-1">
-                          <Badge variant="outline">{request.category}</Badge>
+                          <Badge
+                            variant="secondary"
+                            className="max-w-[160px] truncate"
+                            style={{
+                              backgroundColor: getMajorColor(request.majorName || request.category || request.hostClub?.majorName),
+                              color: getContrastTextColor(getMajorColor(request.majorName || request.category || request.hostClub?.majorName)),
+                            }}
+                          >
+                            {request.majorName || request.category || request.hostClub?.majorName}
+                          </Badge>
                         </div>
                       </div>
                     )}
@@ -576,7 +679,7 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                             </span>
                           </div>
                         </div>
-                        <div className="p-3 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-200">
+                        <div className="p-3 bg-linear-to-br from-green-50 to-emerald-50 rounded-lg border border-green-200">
                           <div className="flex items-center justify-between mb-1">
                             <label className="text-sm text-green-700 font-medium">
                               Budget Points
@@ -599,7 +702,7 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                       {/* Event Summary - Only shown when APPROVED, ONGOING or COMPLETED */}
                       {(request.status === "APPROVED" || request.status === "ONGOING" || request.status === "COMPLETED") && eventSummary && (
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                          <div className="p-3 bg-gradient-to-br from-blue-50 to-sky-50 rounded-lg border border-blue-200">
+                          <div className="p-3 bg-linear-to-br from-blue-50 to-sky-50 rounded-lg border border-blue-200">
                             <label className="text-sm text-blue-700 font-medium">Total Registrations</label>
                             <div className="font-semibold text-blue-800 mt-1">
                               {summaryLoading ? (
@@ -609,7 +712,7 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                               )}
                             </div>
                           </div>
-                          <div className="p-3 bg-gradient-to-br from-amber-50 to-orange-50 rounded-lg border border-amber-200">
+                          <div className="p-3 bg-linear-to-br from-amber-50 to-orange-50 rounded-lg border border-amber-200">
                             <label className="text-sm text-amber-700 font-medium">Refunded</label>
                             <div className="font-semibold text-amber-800 mt-1">
                               {summaryLoading ? (
@@ -619,7 +722,7 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                               )}
                             </div>
                           </div>
-                          <div className="p-3 bg-gradient-to-br from-purple-50 to-violet-50 rounded-lg border border-purple-200">
+                          <div className="p-3 bg-linear-to-br from-purple-50 to-violet-50 rounded-lg border border-purple-200">
                             <label className="text-sm text-purple-700 font-medium">Total Commit Points</label>
                             <div className="font-semibold text-purple-800 mt-1">
                               {summaryLoading ? (
@@ -807,6 +910,170 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                 </Card>
               )}
             </div>
+          </div>
+
+          {/* Feedback Section - show for ALL statuses */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-6">
+              <Card className="shadow-lg">
+                <CardHeader className="pb-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-2xl font-bold">Event Feedback</CardTitle>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        See what participants thought about this event
+                      </p>
+                    </div>
+                    {feedbacks.length > 0 && (
+                      <div className="text-center">
+                        <div className="flex items-center gap-2">
+                          <Star className="h-6 w-6 fill-yellow-400 text-yellow-400" />
+                          <span className="text-3xl font-bold">{averageRating}</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {feedbacks.length} {feedbacks.length === 1 ? 'review' : 'reviews'}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </CardHeader>
+
+                <CardContent className="space-y-6">
+                  {feedbackLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                      <span className="ml-2 text-muted-foreground">Loading feedback...</span>
+                    </div>
+                  ) : feedbacks.length === 0 ? (
+                    <div className="text-center py-8">
+                      <div className="text-muted-foreground">No feedback available for this event yet.</div>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Rating Filter */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <Filter className="h-5 w-5 text-muted-foreground" />
+                          <span className="text-sm font-medium">Filter by rating:</span>
+                          <Select value={ratingFilter} onValueChange={setRatingFilter}>
+                            <SelectTrigger className="w-[180px]">
+                              <SelectValue placeholder="All ratings" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All ratings ({feedbacks.length})</SelectItem>
+                              <SelectItem value="5">5 stars ({ratingCounts[5]})</SelectItem>
+                              <SelectItem value="4">4 stars ({ratingCounts[4]})</SelectItem>
+                              <SelectItem value="3">3 stars ({ratingCounts[3]})</SelectItem>
+                              <SelectItem value="2">2 stars ({ratingCounts[2]})</SelectItem>
+                              <SelectItem value="1">1 star ({ratingCounts[1]})</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          Showing {filteredFeedbacks.length} of {feedbacks.length} {feedbacks.length === 1 ? 'feedback' : 'feedbacks'}
+                        </div>
+                      </div>
+
+                      <Separator />
+
+                      {/* Feedback List */}
+                      {filteredFeedbacks.length === 0 ? (
+                        <div className="text-center py-8">
+                          <div className="text-muted-foreground">No feedback found for the selected rating.</div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="space-y-4">
+                            {paginatedFeedbacks.map((feedback) => (
+                              <div
+                                key={feedback.feedbackId}
+                                className="p-4 bg-muted/30 rounded-lg border border-muted hover:bg-muted/50 transition-colors"
+                              >
+                                <div className="flex items-start justify-between mb-3">
+                                  <div className="flex items-center gap-3">
+                                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                                      <Users className="h-5 w-5 text-primary" />
+                                    </div>
+                                    <div>
+                                      <div className="font-medium">Member #{feedback.membershipId}</div>
+                                      <div className="text-sm text-muted-foreground">
+                                        {new Date(feedback.createdAt).toLocaleDateString("en-US", {
+                                          year: "numeric",
+                                          month: "long",
+                                          day: "numeric",
+                                          hour: "2-digit",
+                                          minute: "2-digit"
+                                        })}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  {renderStars(feedback.rating)}
+                                </div>
+                                <p className="text-sm leading-relaxed pl-13">
+                                  {feedback.comment}
+                                </p>
+                                {feedback.updatedAt && (
+                                  <div className="text-xs text-muted-foreground mt-2 pl-13">
+                                    Updated: {new Date(feedback.updatedAt).toLocaleDateString("en-US", {
+                                      year: "numeric",
+                                      month: "short",
+                                      day: "numeric"
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Pagination Controls */}
+                          {totalPages > 1 && (
+                            <div className="flex items-center justify-between pt-4 border-t">
+                              <div className="text-sm text-muted-foreground">
+                                Showing {startIndex + 1}-{Math.min(endIndex, filteredFeedbacks.length)} of {filteredFeedbacks.length}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                  disabled={currentPage === 1}
+                                >
+                                  <ChevronLeft className="h-4 w-4 mr-1" />
+                                  Previous
+                                </Button>
+                                <div className="flex items-center gap-1">
+                                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                                    <Button
+                                      key={page}
+                                      variant={currentPage === page ? "default" : "outline"}
+                                      size="sm"
+                                      onClick={() => setCurrentPage(page)}
+                                      className="min-w-[40px]"
+                                    >
+                                      {page}
+                                    </Button>
+                                  ))}
+                                </div>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                  disabled={currentPage === totalPages}
+                                >
+                                  Next
+                                  <ChevronRight className="h-4 w-4 ml-1" />
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+            <div className="space-y-6">{/* keep sidebar gap alignment */}</div>
           </div>
 
           {/* Wallet History Modal */}

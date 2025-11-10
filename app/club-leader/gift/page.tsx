@@ -34,7 +34,7 @@ import { ProductFilters, FilterState, SortState } from "@/components/product-fil
 import { Separator } from "@/components/ui/separator"
 import { Tag } from "@/service/tagApi"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
-import { getEventByClubId, Event } from "@/service/eventApi"
+import { getEventByClubId, getEventCoHost, Event } from "@/service/eventApi"
 
 // Hàm này giúp phân tích lỗi từ API để hiển thị thông báo thân thiện hơn
 const parseApiError = (error: any): string => {
@@ -186,39 +186,53 @@ export default function ClubLeaderGiftPage() {
     !!clubId // Chỉ fetch khi clubId tồn tại
   )
 
-  // Fetch events cho club
-  const { data: clubEvents = [], isLoading: eventsLoading } = useQuery<Event[]>({
+  // Fetch events cho club (hosted)
+  const { data: clubEvents = [], isLoading: eventsLoadingHost } = useQuery<Event[]>({
     // Cần queryKey duy nhất, thêm 'clubId' để nó fetch lại khi clubId thay đổi
-    queryKey: ['clubEvents', clubId],
+    queryKey: ['clubEvents_host', clubId],
     queryFn: () => getEventByClubId(clubId as number),
     // Chỉ fetch khi có clubId VÀ dialog đang mở (tối ưu)
     enabled: !!clubId && open,
   });
+  // Fetch events mà club là co-host
+  const { data: coHostEvents = [], isLoading: eventsLoadingCoHost } = useQuery<Event[]>({
+    queryKey: ['clubEvents_cohost', clubId],
+    queryFn: () => getEventCoHost(clubId as number),
+    enabled: !!clubId && open,
+  });
+  const eventsLoading = eventsLoadingHost || eventsLoadingCoHost;
+
   // Lọc các event hợp lệ (APPROVED và chưa/đang diễn ra, hoặc ON-GOING)
   const availableEvents = useMemo(() => {
-    if (!clubEvents) return [];
+    // Hợp nhất hosted + cohost và loại trùng theo id
+    const merged = [...(clubEvents || []), ...(coHostEvents || [])];
+    const uniqueById = Array.from(new Map(merged.map(e => [e.id, e])).values());
+    if (!uniqueById) return [];
 
     // Lấy thời điểm đầu ngày hôm nay (00:00:00) theo giờ địa phương
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    return clubEvents.filter(event => {
+    return uniqueById.filter(event => {
       const parts = event.date.split('-').map(Number);
       // new Date(year, monthIndex, day)
       const eventDate = new Date(parts[0], parts[1] - 1, parts[2]);
 
-      // Điều kiện 1: Event đang diễn ra (ON-GOING) thì luôn hiển thị
-      if (event.status === "ON-GOING") {
+      // Chuẩn hóa status để xử lý cả "ONGOING" và "ON-GOING"
+      const normalizedStatus = (event.status || "").toString().toUpperCase().replace(/-/g, "");
+
+      // Điều kiện 1: Event đang diễn ra (ONGOING) thì luôn hiển thị
+      if (normalizedStatus === "ONGOING") {
         return true;
       }
-      if (event.status === "APPROVED" && eventDate >= today) {
+      if (normalizedStatus === "APPROVED" && eventDate >= today) {
         return true;
       }
 
       // Tất cả các trường hợp khác (PENDING, REJECTED, APPROVED nhưng đã qua ngày)
       return false;
     });
-  }, [clubEvents]);
+  }, [clubEvents, coHostEvents]);
 
   // useEffect ĐỂ TÌM VÀ SET ID CỦA TAG CỐ ĐỊNH
   useEffect(() => {

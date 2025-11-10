@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { fetchClub, getClubById, getClubMemberCount } from "@/service/clubApi"
-import { fetchEvent, getEventById, getEventByClubId, getEventCoHost, getMyEventRegistrations } from "@/service/eventApi"
+import { fetchEvent, getEventById, getEventByClubId, getEventCoHost, getMyEventRegistrations, getMyEvents } from "@/service/eventApi"
 import { fetchUser, fetchUserById, fetchProfile } from "@/service/userApi"
 import { getMembersByClubId, ApiMembership, getMyClubs, } from "@/service/membershipApi"
 import { fetchMajors } from "@/service/majorApi"
@@ -88,6 +88,7 @@ export const queryKeys = {
     eventsByClubId: (clubId: number) => [...queryKeys.events, "club", clubId] as const,
     eventsCoHostByClubId: (clubId: number) => [...queryKeys.events, "club", clubId, "cohost"] as const,
     myEventRegistrations: () => [...queryKeys.events, "my-registrations"] as const,
+    myEvents: () => [...queryKeys.events, "my"] as const,
 
     // Users
     users: ["users"] as const,
@@ -378,6 +379,22 @@ export function useMyEventRegistrations(enabled = true) {
         },
         enabled,
         staleTime: 2 * 60 * 1000, // 2 minutes (registration data changes when user registers)
+    })
+}
+
+/**
+ * Hook to fetch current user's events (events they've registered for)
+ * Uses the dedicated API endpoint /api/events/my
+ */
+export function useMyEvents(enabled = true) {
+    return useQuery({
+        queryKey: queryKeys.myEvents(),
+        queryFn: async () => {
+            const events = await getMyEvents()
+            return events
+        },
+        enabled,
+        staleTime: 2 * 60 * 1000, // 2 minutes
     })
 }
 

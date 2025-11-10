@@ -19,6 +19,40 @@ import Link from "next/link"
 import { fetchEvent } from "@/service/eventApi"
 import { useRouter } from "next/navigation"
 
+// Bảng màu theo ngành học (giống như trong clubs page)
+const majorColors: Record<string, string> = {
+  "Software Engineering": "#0052CC",
+  "Artificial Intelligence": "#6A00FF",
+  "Information Assurance": "#243447",
+  "Data Science": "#00B8A9",
+  "Business Administration": "#1E2A78",
+  "Digital Marketing": "#FF3366",
+  "Graphic Design": "#FFC300",
+  "Multimedia Communication": "#FF6B00",
+  "Hospitality Management": "#E1B382",
+  "International Business": "#007F73",
+  "Finance and Banking": "#006B3C",
+  "Japanese Language": "#D80032",
+  "Korean Language": "#5DADEC",
+}
+
+// Helper function để lấy màu cho major name
+const getMajorColor = (majorName?: string | null): string => {
+  if (!majorName) return "#E2E8F0"
+  return majorColors[majorName] || "#E2E8F0"
+}
+
+// Tính màu chữ tương phản (đen/trắng) dựa trên nền HEX
+const getContrastTextColor = (hexColor: string): string => {
+  const hex = hexColor.replace('#', '')
+  const r = parseInt(hex.substring(0, 2), 16)
+  const g = parseInt(hex.substring(2, 4), 16)
+  const b = parseInt(hex.substring(4, 6), 16)
+  // YIQ luma
+  const yiq = (r * 299 + g * 587 + b * 114) / 1000
+  return yiq >= 140 ? "#111827" : "#FFFFFF" // text-slate-900 or white
+}
+
 // events will be fetched from the API. The API returns a paginated object
 // and the UI should display only the `content` array.
 
@@ -253,9 +287,9 @@ export default function UniStaffEventRequestsPage() {
 		// COMPLETED status gets dark blue badge - highest priority
 		if (isCompleted || status === "COMPLETED") {
 			return (
-				<Badge variant="secondary" className="bg-blue-900 text-white border-blue-900 font-semibold">
-					<span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
-					Completed
+				<Badge variant="secondary" className="bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-700 font-semibold">
+					<span className="inline-block w-2 h-2 rounded-full bg-blue-600 dark:bg-blue-400 mr-1.5"></span>
+					Complete
 				</Badge>
 			)
 		}
@@ -263,8 +297,8 @@ export default function UniStaffEventRequestsPage() {
 		// Override with Expired badge if expired - gray color to override approval status
 		if (isExpired) {
 			return (
-				<Badge variant="secondary" className="bg-gray-400 text-white font-semibold">
-					<span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
+				<Badge variant="secondary" className="bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 font-semibold">
+					<span className="inline-block w-2 h-2 rounded-full bg-gray-500 dark:bg-gray-400 mr-1.5"></span>
 					Expired
 				</Badge>
 			)
@@ -273,36 +307,36 @@ export default function UniStaffEventRequestsPage() {
 		switch (status) {
 			case "ONGOING":
 				return (
-					<Badge variant="default" className="bg-purple-600 text-white border-purple-600 font-semibold">
-						<span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
+					<Badge variant="default" className="bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-900/50 dark:text-purple-300 dark:border-purple-700 font-semibold">
+						<span className="inline-block w-2 h-2 rounded-full bg-purple-600 dark:bg-purple-400 mr-1.5"></span>
 						Ongoing
 					</Badge>
 				)
 			case "PENDING_UNISTAFF":
 				return (
-					<Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-500 font-semibold">
-						<span className="inline-block w-2 h-2 rounded-full bg-yellow-500 mr-1.5"></span>
+					<Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/50 dark:text-yellow-300 dark:border-yellow-700 font-semibold">
+						<span className="inline-block w-2 h-2 rounded-full bg-yellow-500 dark:bg-yellow-400 mr-1.5"></span>
 						Pending Uni-Staff
 					</Badge>
 				)
 			case "APPROVED":
 				return (
-					<Badge variant="default" className="bg-green-600 text-white border-green-600 font-semibold">
-						<span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
+					<Badge variant="default" className="bg-green-100 text-green-700 border-green-300 dark:bg-green-900/50 dark:text-green-300 dark:border-green-700 font-semibold">
+						<span className="inline-block w-2 h-2 rounded-full bg-green-600 dark:bg-green-400 mr-1.5"></span>
 						Approved
 					</Badge>
 				)
 			case "PENDING_COCLUB":
 				return (
-					<Badge variant="outline" className="bg-orange-100 text-orange-700 border-orange-500 font-semibold">
-						<span className="inline-block w-2 h-2 rounded-full bg-orange-500 mr-1.5"></span>
+					<Badge variant="outline" className="bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-900/50 dark:text-orange-300 dark:border-orange-700 font-semibold">
+						<span className="inline-block w-2 h-2 rounded-full bg-orange-500 dark:bg-orange-400 mr-1.5"></span>
 						Waiting
 					</Badge>
 				)
 			case "REJECTED":
 				return (
-					<Badge variant="destructive" className="font-semibold">
-						<span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
+					<Badge variant="destructive" className="bg-red-100 text-red-700 border-red-300 dark:bg-red-900/50 dark:text-red-300 dark:border-red-700 font-semibold">
+						<span className="inline-block w-2 h-2 rounded-full bg-red-600 dark:bg-red-400 mr-1.5"></span>
 						Rejected
 					</Badge>
 				)
@@ -343,7 +377,7 @@ export default function UniStaffEventRequestsPage() {
 
 					{/* Stats Cards */}
 					<div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-						<Card className="border-0 shadow-md bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-950 dark:to-yellow-900">
+						<Card className="border-0 shadow-md bg-linear-to-br from-yellow-50 to-yellow-100 dark:from-yellow-950 dark:to-yellow-900">
 							<CardHeader className="pb-3 px-4 pt-3">
 								<CardTitle className="text-sm font-medium text-yellow-700 dark:text-yellow-300">
 									Pending Approval
@@ -364,7 +398,7 @@ export default function UniStaffEventRequestsPage() {
 							</CardContent>
 						</Card>
 
-						<Card className="border-0 shadow-md bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900">
+						<Card className="border-0 shadow-md bg-linear-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900">
 							<CardHeader className="pb-3 px-4 pt-3">
 								<CardTitle className="text-sm font-medium text-green-700 dark:text-green-300">
 									Approved
@@ -385,7 +419,7 @@ export default function UniStaffEventRequestsPage() {
 							</CardContent>
 						</Card>
 
-						<Card className="border-0 shadow-md bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900">
+						<Card className="border-0 shadow-md bg-linear-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900">
 							<CardHeader className="pb-3 px-4 pt-3">
 								<CardTitle className="text-sm font-medium text-blue-700 dark:text-blue-300">
 									Completed
@@ -406,7 +440,7 @@ export default function UniStaffEventRequestsPage() {
 							</CardContent>
 						</Card>
 
-						<Card className="border-0 shadow-md bg-gradient-to-br from-red-50 to-red-100 dark:from-red-950 dark:to-red-900">
+						<Card className="border-0 shadow-md bg-linear-to-br from-red-50 to-red-100 dark:from-red-950 dark:to-red-900">
 							<CardHeader className="pb-3 px-4 pt-3">
 								<CardTitle className="text-sm font-medium text-red-700 dark:text-red-300">Rejected</CardTitle>
 							</CardHeader>
@@ -590,20 +624,32 @@ export default function UniStaffEventRequestsPage() {
 								}
 
 								return (
-									<Card key={request.id} className={`hover:shadow-md transition-shadow cursor-pointer ${borderClass}`}>
+									<Card key={request.id} className={`hover:shadow-md transition-shadow cursor-pointer dark:border-slate-700 ${borderClass}`}>
 										<Link href={`/uni-staff/events-req/${request.id}`}>
 											<CardContent className="p-6">
 												<div className="flex items-start justify-between">
 													<div className="flex-1">
-														<div className="flex items-center gap-3 mb-2">
+														<div className="flex items-center gap-3 mb-2 flex-wrap">
 															<Calendar className="h-5 w-5 text-muted-foreground" />
 															<h3 className="font-semibold text-lg">{request.name || request.eventName}</h3>
 															{renderTypeBadge(request.type || request.eventType)}
-															{/* category not provided by API example */}
+															{/* Major Name Badge - lấy từ majorName, category, hoặc hostClub.majorName */}
+															{(request.majorName || request.category || request.hostClub?.majorName) && (
+																<Badge
+																	variant="secondary"
+																	className="max-w-[160px] truncate"
+																	style={{
+																		backgroundColor: getMajorColor(request.majorName || request.category || request.hostClub?.majorName),
+																		color: getContrastTextColor(getMajorColor(request.majorName || request.category || request.hostClub?.majorName)),
+																	}}
+																>
+																	{request.majorName || request.category || request.hostClub?.majorName}
+																</Badge>
+															)}
 															{getStatusBadge(request.status || request.type, expired, isCompleted)}
 															{/* Show "Need Settle" badge if event is COMPLETED but not in settled list */}
 															{isCompleted && !settledEventIds.has(request.id) && (
-																<Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-500 font-semibold animate-pulse">
+																<Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/50 dark:text-amber-300 dark:border-amber-700 font-semibold animate-pulse">
 																	<DollarSign className="h-3 w-3 mr-1" />
 																	Need Settle
 																</Badge>
@@ -649,13 +695,13 @@ export default function UniStaffEventRequestsPage() {
 															<Button
 																size="sm"
 																variant="default"
-																className="h-8 bg-amber-600 hover:bg-amber-700"
+																className="h-8 bg-amber-600 hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-800"
 															>
 																<DollarSign className="h-3 w-3 mr-1" />
 																Need Settle
 															</Button>
 														)}
-														<Button size="sm" variant="outline" className="h-8 bg-transparent">
+														<Button size="sm" variant="outline" className="h-8 bg-transparent dark:border-slate-600 dark:hover:bg-slate-800">
 															<Eye className="h-3 w-3 mr-1" />
 															View Details
 														</Button>
