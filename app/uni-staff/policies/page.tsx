@@ -35,9 +35,9 @@ export default function UniStaffPoliciesPage() {
   const router = useRouter()
   const queryClient = useQueryClient()
 
-  // ✅ USE REACT QUERY for policies
+  // USE REACT QUERY for policies
   const { data: policies = [], isLoading: loading } = usePolicies()
-  // [THÊM VÀO] Dùng React Query để fetch danh sách Majors
+  // Dùng React Query để fetch danh sách Majors
   const { data: majors = [], isLoading: majorsLoading } = useQuery({
     queryKey: ["majors"],
     queryFn: fetchMajors,
@@ -114,7 +114,7 @@ export default function UniStaffPoliciesPage() {
         maxClubJoin: editMaxClubJoin,
         active: editActive, // Thêm 'active'
       }
-      // [MODIFIED] updatePolicyById giờ trả về Policy
+      // updatePolicyById giờ trả về Policy
       const res: Policy = await updatePolicyById(selected.id, payload)
 
       // Nếu 'await' thành công (không ném lỗi), thì đã cập nhật
@@ -319,16 +319,6 @@ export default function UniStaffPoliciesPage() {
                   <Input id="policy-name" className="mt-2 border-slate-300" value={editPolicyName} onChange={(e) => setEditPolicyName((e.target as HTMLInputElement).value)} />
                 </div>
 
-                {/* <div>
-                  <Label htmlFor="policy-major">Major Name</Label>
-                  <Input id="policy-major" className="mt-2 border-slate-300" value={editMajorName || ''} onChange={(e) => setEditMajorName((e.target as HTMLInputElement).value || undefined)} />
-                </div>
-
-                <div>
-                  <Label htmlFor="policy-major-id">Major ID</Label>
-                  <Input id="policy-major-id" className="mt-2 border-slate-300" type="number" value={editMajorId ?? ''} onChange={(e) => setEditMajorId(e.target.value === '' ? undefined : Number(e.target.value))} />
-                </div> */}
-                {/* [THAY THẾ] Thay thế Input Major Name/ID bằng Select */}
                 <div>
                   <Label htmlFor="edit-major">Major</Label>
                   <Select
@@ -356,7 +346,6 @@ export default function UniStaffPoliciesPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                {/* [KẾT THÚC THAY THẾ] */}
 
                 <div>
                   <Label htmlFor="policy-desc">Description</Label>
@@ -429,7 +418,7 @@ export default function UniStaffPoliciesPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                {/* [KẾT THÚC THAY THẾ] */}
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="create-max">Max Club Join</Label>
@@ -444,7 +433,7 @@ export default function UniStaffPoliciesPage() {
                     setCreating(true)
                     try {
 
-                      // [MODIFIED] Cập nhật payload
+                      // Cập nhật payload
                       const payload: Partial<Policy> = {
                         policyName: createPolicyName,
                         // name: createPolicyName,
@@ -454,7 +443,7 @@ export default function UniStaffPoliciesPage() {
                         maxClubJoin: createMaxClubJoin,
                         active: true, // Mặc định là active khi tạo mới (theo Swagger)
                       }
-                      // [THÊM VÀO] Đây là dòng bạn yêu cầu
+                      // Đây là dòng bạn yêu cầu
                       console.log("Data to be sent:", payload)
                       // createPolicy giờ trả về Policy
                       const res: Policy = await createPolicy(payload)
