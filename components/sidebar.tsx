@@ -32,6 +32,7 @@ type NavItem = {
 }
 
 const navigationConfig = {
+
   student: [
     // { href: "/student", label: "Dashboard", icon: LayoutDashboard },
     { href: "/student/clubs", label: "Clubs", icon: Users },
@@ -104,6 +105,7 @@ const navigationConfig = {
     { href: "/admin/events", label: "Events", icon: Calendar },
     { href: "/admin/products", label: "Products", icon: Gift },
     { href: "/admin/policies", label: "Policies", icon: FileText },
+    { href: "/admin/locations", label: "Locations", icon: MapPin },
 
   ],
 } as const
