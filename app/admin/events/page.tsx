@@ -427,7 +427,10 @@ export default function AdminEventsPage() {
   }
 
   // Helper mới để get status (dùng startTime ISO string)
-  const getEventStatus = (startTimeIso: string) => {
+  const getEventStatus = (startTimeIso: string, eventStatus?: string) => {
+    // Nếu event.status là ONGOING thì bắt buộc phải là "Now"
+    if (eventStatus === "ONGOING") return "Now"
+    
     if (!startTimeIso) return "Finished"
     try {
       const now = new Date()
@@ -596,6 +599,7 @@ export default function AdminEventsPage() {
                   const isCompleted = event.status === "COMPLETED"
                   const isCancelled = event.status === "CANCELLED" // CHANGED: Thêm check
                   const expired = isCompleted || isCancelled || isEventExpired(event)
+                  const status = expired ? "Finished" : getEventStatus(event.startTime, event.status)
 
                   let borderColor = ""
                   if (isCompleted) {
@@ -642,6 +646,21 @@ export default function AdminEventsPage() {
                           <div className="flex-1">
                             <CardTitle className="text-lg">{event.title}</CardTitle>
                           </div>
+                          {!expired && !isCompleted && !isCancelled && (
+                            <Badge
+                              variant={
+                                status === "Finished"
+                                  ? "secondary"
+                                  : status === "Soon"
+                                    ? "default"
+                                    : status === "Now"
+                                      ? "destructive"
+                                      : "outline"
+                              }
+                            >
+                              {status}
+                            </Badge>
+                          )}
                         </div>
                         {/* Approval status badge */}
                         <div className="mt-2">
