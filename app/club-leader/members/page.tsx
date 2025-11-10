@@ -649,7 +649,7 @@ export default function ClubLeaderMembersPage() {
             <DialogHeader>
               <DialogTitle className="text-2xl font-bold text-white dark:text-white">Leave Requests</DialogTitle>
               <DialogDescription className="text-slate-400 dark:text-slate-400">
-                Danh sách yêu cầu rời câu lạc bộ từ các thành viên
+                  List of requests to leave the club from club members
               </DialogDescription>
             </DialogHeader>
 
@@ -679,9 +679,9 @@ export default function ClubLeaderMembersPage() {
                     }
 
                     const statusText = {
-                      PENDING: "Chờ duyệt",
-                      APPROVED: "Đã duyệt",
-                      REJECTED: "Đã từ chối",
+                      PENDING: "Pending",
+                      APPROVED: "Approved",
+                      REJECTED: "Rejected",
                     }
 
                     return (
@@ -712,19 +712,19 @@ export default function ClubLeaderMembersPage() {
                                 <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
                                   <Calendar className="h-3.5 w-3.5 text-blue-500 dark:text-blue-400" />
                                   <span>
-                                    Gửi lúc: {new Date(request.createdAt).toLocaleString("vi-VN")}
+                                    Sent at: {new Date(request.createdAt).toLocaleString("vi-VN")}
                                   </span>
                                 </div>
                               </div>
 
                               <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
-                                <p className="text-xs font-semibold text-slate-700 dark:text-slate-400 mb-1">Lý do:</p>
+                                <p className="text-xs font-semibold text-slate-700 dark:text-slate-400 mb-1">Reason:</p>
                                 <p className="text-sm text-slate-600 dark:text-slate-300 italic">"{request.reason}"</p>
                               </div>
 
                               {request.processedAt && (
                                 <div className="text-xs text-slate-500 dark:text-slate-400">
-                                  Xử lý lúc: {new Date(request.processedAt).toLocaleString("vi-VN")}
+                                  Processing time: {new Date(request.processedAt).toLocaleString("vi-VN")}
                                 </div>
                               )}
                             </div>
@@ -767,14 +767,14 @@ export default function ClubLeaderMembersPage() {
                 onClick={() => setShowLeaveRequestModal(false)}
                 className="dark:bg-slate-800 dark:text-white dark:border-slate-600 dark:hover:bg-slate-700"
               >
-                Đóng
+                Close
               </Button>
               <Button 
                 onClick={loadLeaveRequests} 
                 disabled={loadingLeaveRequests}
                 className="bg-green-500 hover:bg-green-600 text-white dark:bg-green-600 dark:hover:bg-green-700"
               >
-                {loadingLeaveRequests ? "Đang tải..." : "Làm mới"}
+                {loadingLeaveRequests ? "Loading..." : "Refesh"}
               </Button>
             </div>
           </DialogContent>
