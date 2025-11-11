@@ -45,14 +45,14 @@ export interface CreateEventPayload {
   coHostClubIds?: number[]
   name: string
   description: string
-  type: "PUBLIC" | "PRIVATE"
+  type: "PUBLIC" | "PRIVATE" | "SPECIAL"
   date: string // Format: YYYY-MM-DD
   startTime: string  // Format: HH:MM (e.g., "09:00")
   endTime: string    // Format: HH:MM (e.g., "15:00")
+  registrationDeadline: string // Format: YYYY-MM-DD
   locationId: number
   maxCheckInCount: number
   commitPointCost: number
-  budgetPoints: number
 }
 
 // Helper function to convert time string (HH:MM:SS or HH:MM) to TimeObject

@@ -222,6 +222,7 @@ export default function AdminEventsPage() {
     description: "",
     type: "PUBLIC",
     date: "",
+    registrationDeadline: "",
     startTime: "09:00:00",
     endTime: "11:00:00",
     locationName: "",
@@ -244,6 +245,7 @@ export default function AdminEventsPage() {
     description: "",
     type: "PUBLIC",
     date: "",
+    registrationDeadline: "",
     startTime: "09:00:00",
     endTime: "11:00:00",
     locationName: "",
@@ -251,7 +253,7 @@ export default function AdminEventsPage() {
   })
 
   const handleCreate = async () => {
-    if (!formData.name || !formData.date || !formData.startTime || !formData.endTime) {
+    if (!formData.name || !formData.date || !formData.registrationDeadline || !formData.startTime || !formData.endTime) {
       toast({ title: "Missing Information", description: "Please fill in all required fields", variant: "destructive" })
       return
     }
@@ -267,12 +269,12 @@ export default function AdminEventsPage() {
         description: formData.description,
         type: formData.type as "PUBLIC" | "PRIVATE",
         date: formData.date,
+        registrationDeadline: formData.registrationDeadline,
         startTime: startTime,
         endTime: endTime,
         locationId: 1, // Default location
         maxCheckInCount: formData.maxCheckInCount,
         commitPointCost: 0,
-        budgetPoints: 0,
       }
       const res: any = await createEvent(payload)
       toast({ title: "Event Created", description: "Event created successfully" })
@@ -518,6 +520,7 @@ export default function AdminEventsPage() {
                         <SelectItem value="all">All Types</SelectItem>
                         <SelectItem value="PUBLIC">Public</SelectItem>
                         <SelectItem value="PRIVATE">Private</SelectItem>
+                        <SelectItem value="SPECIAL">Special</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -837,6 +840,16 @@ export default function AdminEventsPage() {
                     className="h-9"
                   />
                 </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="registrationDeadline" className="text-sm">Registration Deadline<span className="text-red-500">*</span></Label>
+                <Input
+                  id="registrationDeadline"
+                  type="date"
+                  value={formData.registrationDeadline}
+                  onChange={(e) => setFormData({ ...formData, registrationDeadline: e.target.value })}
+                  className="h-9"
+                />
+              </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="type" className="text-sm">Type<span className="text-red-500">*</span></Label>
                   <Select
@@ -849,6 +862,7 @@ export default function AdminEventsPage() {
                     <SelectContent>
                       <SelectItem value="PUBLIC">Public</SelectItem>
                       <SelectItem value="PRIVATE">Private</SelectItem>
+                      <SelectItem value="SPECIAL">Special</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

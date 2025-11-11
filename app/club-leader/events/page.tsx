@@ -325,12 +325,12 @@ export default function ClubLeaderEventsPage() {
     description: "",
     type: "PUBLIC",
     date: "",
+    registrationDeadline: "",
     startTime: "09:00:00",
     endTime: "11:00:00",
     locationId: 0,
     maxCheckInCount: 100,
     commitPointCost: 0,
-    budgetPoints: 0,
   })
 
   // Update formData clubId when userClubId changes
@@ -473,7 +473,7 @@ export default function ClubLeaderEventsPage() {
   }) || Boolean(searchTerm)
 
   const resetForm = () => {
-    setFormData({ clubId: userClubId || 0, name: "", description: "", type: "PUBLIC", date: "", startTime: "09:00:00", endTime: "11:00:00", locationId: 0, maxCheckInCount: 100, commitPointCost: 0, budgetPoints: 0 })
+    setFormData({ clubId: userClubId || 0, name: "", description: "", type: "PUBLIC", date: "", registrationDeadline: "", startTime: "09:00:00", endTime: "11:00:00", locationId: 0, maxCheckInCount: 100, commitPointCost: 0 })
     setSelectedLocationId("")
     setSelectedLocationCapacity(null)
     setSelectedCoHostClubIds([])
@@ -499,6 +499,10 @@ export default function ClubLeaderEventsPage() {
       validationErrors.push("Date is required")
     }
 
+    if (!formData.registrationDeadline) {
+      validationErrors.push("Registration Deadline is required")
+    }
+
     if (!formData.startTime) {
       validationErrors.push("Start Time is required")
     }
@@ -517,10 +521,6 @@ export default function ClubLeaderEventsPage() {
 
     if (formData.commitPointCost < 0) {
       validationErrors.push("Point Cost cannot be negative")
-    }
-
-    if (formData.budgetPoints < 0) {
-      validationErrors.push("Budget Points cannot be negative")
     }
 
     // Validate time range
@@ -564,13 +564,10 @@ export default function ClubLeaderEventsPage() {
       const endTime = formData.endTime.substring(0, 5)     // Convert HH:MM:SS to HH:MM
 
       // Ensure numeric values are properly converted (not NaN or null)
-      const budgetPoints = Number(formData.budgetPoints) || 0
       const commitPointCost = Number(formData.commitPointCost) || 0
 
       console.log('📊 Form data before sending:', {
-        budgetPoints: formData.budgetPoints,
         commitPointCost: formData.commitPointCost,
-        convertedBudgetPoints: budgetPoints,
         convertedCommitPointCost: commitPointCost
       })
 
@@ -580,12 +577,12 @@ export default function ClubLeaderEventsPage() {
         description: formData.description,
         type: formData.type as "PUBLIC" | "PRIVATE",
         date: formData.date,
+        registrationDeadline: formData.registrationDeadline,
         startTime: startTime,
         endTime: endTime,
         locationId: formData.locationId,
         maxCheckInCount: formData.maxCheckInCount,
         commitPointCost: commitPointCost,
-        budgetPoints: budgetPoints,
       }
 
       console.log('📤 Payload being sent to API:', payload)
@@ -852,6 +849,7 @@ export default function ClubLeaderEventsPage() {
                         <SelectItem value="all">All</SelectItem>
                         <SelectItem value="PUBLIC">Public</SelectItem>
                         <SelectItem value="PRIVATE">Private</SelectItem>
+                        <SelectItem value="SPECIAL">Special</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -1260,6 +1258,18 @@ export default function ClubLeaderEventsPage() {
                     />
                   </div>
 
+                <div className="space-y-1.5">
+                  <Label htmlFor="registrationDeadline" className="text-sm">Registration Deadline *</Label>
+                  <Input
+                    id="registrationDeadline"
+                    type="date"
+                    value={formData.registrationDeadline}
+                    onChange={(e) => setFormData({ ...formData, registrationDeadline: e.target.value })}
+                    className="h-9 border-slate-300"
+                    required
+                  />
+                </div>
+
                   <div className="space-y-1.5">
                     <Label htmlFor="type" className="text-sm">Type *</Label>
                     <Select
@@ -1279,6 +1289,7 @@ export default function ClubLeaderEventsPage() {
                       <SelectContent className="z-[70]">
                         <SelectItem value="PUBLIC">Public</SelectItem>
                         <SelectItem value="PRIVATE">Private</SelectItem>
+                        <SelectItem value="SPECIAL">Special</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -1393,33 +1404,8 @@ export default function ClubLeaderEventsPage() {
                 <div className="grid grid-cols-3 gap-3">
                   <div className="space-y-1.5">
                     <Label htmlFor="budgetPoints" className="text-sm flex items-center gap-1.5">
-                      Budget Points *
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); setShowPolicyModal(!showPolicyModal); }}
-                        className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-                        title="View policy guidelines"
-                      >
-                        <AlertCircle className="h-3.5 w-3.5" />
-                      </button>
+                      {/* Removed Budget Points field per latest API */}
                     </Label>
-                    {/* Code mới cho Budget Points */}
-                    <Input
-                      id="budgetPoints"
-                      type="text"
-                      inputMode="numeric" // Tốt cho di động
-                      value={formData.budgetPoints.toLocaleString('en-US')}
-                      onChange={(e) => {
-                        const cleanValue = e.target.value.replace(/[^0-9]/g, ''); // Xóa mọi thứ không phải số
-                        const numValue = cleanValue === '' ? 0 : Number.parseInt(cleanValue, 10);
-                        setFormData({ ...formData, budgetPoints: numValue });
-                      }}
-                      onClick={(e) => { e.stopPropagation(); setShowPolicyModal(true); }}
-                      onFocus={() => setShowPolicyModal(true)}
-                      className="h-9 transition-all duration-200 focus:ring-2 focus:ring-blue-500 cursor-pointer border-slate-300"
-                      placeholder="0"
-                      required
-                    />
                   </div>
                 </div>
 

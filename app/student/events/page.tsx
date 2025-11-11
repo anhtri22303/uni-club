@@ -426,6 +426,22 @@ export default function MemberEventsPage() {
                             <Users className="h-3 w-3" />
                             {event.hostClub?.name || "Unknown Club"}
                           </CardDescription>
+                          <div className="mt-2 flex items-center gap-2">
+                            <Badge
+                              variant="outline"
+                              className={
+                                event.type === "PRIVATE"
+                                  ? "bg-purple-100 text-purple-700 border-purple-300"
+                                  : "bg-blue-100 text-blue-700 border-blue-300"
+                              }
+                            >
+                              {event.type || "UNKNOWN"}
+                            </Badge>
+                            <Badge variant="secondary" className="flex items-center gap-1">
+                              <Trophy className="h-3 w-3" />
+                              {(event.commitPointCost ?? 0)} pts
+                            </Badge>
+                          </div>
                         </div>
                         {event.status === "COMPLETED" ? (
                           <Badge variant="outline" className="bg-blue-900 text-white border-blue-900 font-semibold">
@@ -480,14 +496,15 @@ export default function MemberEventsPage() {
                           </div>
                         )}
 
-                          <div className="flex gap-2">
-                            <Button
-                              className="flex-1"
-                              variant="outline"
-                              onClick={() => handleEventDetail(String(event.id))}
-                            >
-                              View Detail
-                            </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            className="flex-1"
+                            variant="outline"
+                            onClick={() => handleEventDetail(String(event.id))}
+                          >
+                            View Detail
+                          </Button>
+                          {event.type !== "PUBLIC" && (
                             <Button
                               className="flex-1"
                               variant="default"
@@ -502,7 +519,8 @@ export default function MemberEventsPage() {
                                     ? "Ended" 
                                     : "Register"}
                             </Button>
-                          </div>
+                          )}
+                        </div>
                       </div>
                     </CardContent>
                   </Card>

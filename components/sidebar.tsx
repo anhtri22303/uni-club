@@ -203,7 +203,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
   const { data: uniStaffEventsData } = useEvents()
 
   // Call API for UNI_STAFF role to get point requests
-  const { data: uniStaffPointRequestsData } = usePointRequests()
+  const { data: uniStaffPointRequestsData } = usePointRequests(auth.role === "uni_staff")
 
   // Check clubIds for STUDENT role on every component mount/auth change
   useEffect(() => {

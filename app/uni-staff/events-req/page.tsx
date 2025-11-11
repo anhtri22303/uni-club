@@ -674,14 +674,9 @@ export default function UniStaffEventRequestsPage() {
 															</div>
 															<div className="flex items-center gap-1">
 																<Users className="h-4 w-4" />
-																<span>{
-																	(() => {
-																		const cap = getLocationCapacity(request.locationId)
-																		if (cap !== null && cap !== undefined) return `${cap} capacity`
-																		if (request.expectedAttendees) return `${request.expectedAttendees} attendees`
-																		return "-"
-																	})()
-																}</span>
+																<span>
+																	{typeof request.maxCheckInCount === 'number' ? `${request.maxCheckInCount} max check-ins` : "-"}
+																</span>
 															</div>
 															<div className="flex items-center gap-1">
 																<Building className="h-4 w-4" />
