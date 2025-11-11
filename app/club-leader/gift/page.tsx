@@ -605,7 +605,8 @@ export default function ClubLeaderGiftPage() {
                   )}
 
                   <div className="space-y-1">
-                    <Label htmlFor="name" className="dark:text-white">Product name</Label>
+                    <Label htmlFor="name" className="dark:text-white">Product name<span className="text-red-500">*</span>
+</Label>
                     <Input id="name" className="mt-2 border-slate-300 dark:bg-slate-800 dark:text-white dark:border-slate-600 dark:placeholder:text-slate-400" name="name" value={form.name} onChange={handleChange} placeholder="e.g., F-Code Club T-Shirt" />
                   </div>
 

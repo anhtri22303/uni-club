@@ -676,3 +676,83 @@ export const updateEventFeedback = async (
     throw error;
   }
 }
+
+/**
+ * Interface cho dữ liệu trả về của API tổng hợp feedback.
+ * Thường là một object với các key động (ví dụ: số sao) và value là số đếm.
+ * Ví dụ: { "1": 10, "2": 5, "5": 20 }
+ */
+export interface EventFeedbackSummary {
+  [key: string]: any; // Dùng 'any' để linh hoạt, có thể là 'number' nếu bạn chắc chắn
+}
+
+/**
+ * GET /api/events/{eventId}/feedback
+ * Lấy danh sách phản hồi (feedback) của một sự kiện
+ * (Khớp ảnh: image_cb4b7a.png)
+ * @param eventId - ID của sự kiện
+ * @returns {Promise<EventFeedback[]>} - Danh sách feedback
+ */
+export const getEventFeedbacks = async (eventId: string | number): Promise<EventFeedback[]> => {
+  try {
+    const response = await axiosInstance.get(`/api/events/${eventId}/feedback`);
+    const data: any = response.data;
+    console.log(`Fetched feedbacks for event ${eventId}:`, data);
+    
+    // Response: { success: true, message: "string", data: [...] }
+    if (data?.data && Array.isArray(data.data)) return data.data;
+    if (Array.isArray(data)) return data; // Fallback nếu API trả về mảng trực tiếp
+    
+    return [];
+  } catch (error) {
+    console.error(`Error fetching feedbacks for event ${eventId}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * GET /api/events/{eventId}/feedback/summary
+ * Tổng hợp thống kê feedback của sự kiện
+ * (Khớp ảnh: image_cb4e24.png)
+ * @param eventId - ID của sự kiện
+ * @returns {Promise<EventFeedbackSummary>} - Đối tượng thống kê
+ */
+export const getEventFeedbackSummary = async (eventId: string | number): Promise<EventFeedbackSummary> => {
+  try {
+    const response = await axiosInstance.get(`/api/events/${eventId}/feedback/summary`);
+    const data: any = response.data;
+    console.log(`Fetched feedback summary for event ${eventId}:`, data);
+    
+    // Response: { success: true, message: "string", data: {...} }
+    if (data?.data) return data.data;
+    
+    return data; // Fallback nếu API trả về object data trực tiếp
+  } catch (error) {
+    console.error(`Error fetching feedback summary for event ${eventId}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * GET /api/events/memberships/{membershipId}/feedbacks
+ * Lấy feedback theo membership (của sinh viên)
+ * (Khớp ảnh: image_cb5685.png)
+ * @param membershipId - ID của membership
+ * @returns {Promise<EventFeedback[]>} - Danh sách feedback
+ */
+export const getFeedbacksByMembership = async (membershipId: string | number): Promise<EventFeedback[]> => {
+  try {
+    const response = await axiosInstance.get(`/api/events/memberships/${membershipId}/feedbacks`);
+    const data: any = response.data;
+    console.log(`Fetched feedbacks for membership ${membershipId}:`, data);
+    
+    // Response: { success: true, message: "string", data: [...] }
+    if (data?.data && Array.isArray(data.data)) return data.data;
+    if (Array.isArray(data)) return data; // Fallback
+    
+    return [];
+  } catch (error) {
+    console.error(`Error fetching feedbacks for membership ${membershipId}:`, error);
+    throw error;
+  }
+}
