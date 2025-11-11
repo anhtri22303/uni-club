@@ -356,7 +356,7 @@ export default function StudentProductViewPage() {
                         <Button
                             variant="ghost"
                             onClick={handleBack}
-                            className="group hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 transition-all duration-300"
+                            className="group rounded-md border border-transparent hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
                         >
                             <ArrowLeft className="h-4 w-4 mr-2 group-hover:-translate-x-1 transition-transform" />
                             Back to Gift Shop

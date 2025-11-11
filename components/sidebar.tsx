@@ -99,6 +99,7 @@ const navigationConfig = {
       ]
     },
     { href: "/uni-staff/points", label: "Points Staff", icon: HandCoins },
+    { href: "/uni-staff/report", label: "Report", icon: FileBarChart },
     // { href: "/uni-staff/reports", label: "Reports", icon: BarChart3 },
   ],
   admin: [
