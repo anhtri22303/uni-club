@@ -606,31 +606,47 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
     })
   }
 
+  // const handleNavigation = (href: string) => {
+  //   if (pathname === href) {
+  //     // Nếu đang ở trang student/clubs và click lại, reload trang
+  //     if (href === "/student/clubs") {
+  //       window.location.reload()
+  //       return
+  //     }
+  //     return
+  //   }
+  //   setLoadingPath(href)
+
+  //   // Nếu điều hướng đến student/clubs, reload trang sau khi push
+  //   if (href === "/student/clubs") {
+  //     router.push(href)
+  //     onNavigate?.()
+  //     // Reload trang sau một khoảng thời gian ngắn để đảm bảo navigation đã hoàn tất
+  //     setTimeout(() => {
+  //       window.location.reload()
+  //     }, 100)
+  //   } else {
+  //     router.push(href)
+  //     onNavigate?.()
+  //     // Clear loading state after a short delay to show visual feedback
+  //     setTimeout(() => setLoadingPath(null), 150)
+  //   }
+  // }
   const handleNavigation = (href: string) => {
+    // 1. Nếu bấm vào link của trang hiện tại, không làm gì cả
     if (pathname === href) {
-      // Nếu đang ở trang student/clubs và click lại, reload trang
-      if (href === "/student/clubs") {
-        window.location.reload()
-        return
-      }
       return
     }
+
+    // 2. Đặt trạng thái loading
     setLoadingPath(href)
 
-    // Nếu điều hướng đến student/clubs, reload trang sau khi push
-    if (href === "/student/clubs") {
-      router.push(href)
-      onNavigate?.()
-      // Reload trang sau một khoảng thời gian ngắn để đảm bảo navigation đã hoàn tất
-      setTimeout(() => {
-        window.location.reload()
-      }, 100)
-    } else {
-      router.push(href)
-      onNavigate?.()
-      // Clear loading state after a short delay to show visual feedback
-      setTimeout(() => setLoadingPath(null), 150)
-    }
+    // 3. Sử dụng router.push cho TẤT CẢ các link
+    router.push(href)
+    onNavigate?.()
+
+    // 4. Xóa trạng thái loading sau một chút
+    setTimeout(() => setLoadingPath(null), 150)
   }
 
   // Prefetch data on hover for instant navigation
