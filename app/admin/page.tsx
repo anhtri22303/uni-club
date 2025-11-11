@@ -1,5 +1,6 @@
 "use client"
 
+import { useAuth } from "@/contexts/auth-context";
 import { AppShell } from "@/components/app-shell"
 import { ProtectedRoute } from "@/contexts/protected-route"
 import { StatsCard } from "@/components/stats-card"
@@ -25,6 +26,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 export default function PartnerDashboard() {
   const router = useRouter()
+  const { isAuthenticated, initialized } = useAuth();
   const [userStats, setUserStats] = useState<any>(null)
   const [clubStats, setClubStats] = useState<any>(null)
   const [statusFilter, setStatusFilter] = useState<string>("all")
@@ -38,17 +40,22 @@ export default function PartnerDashboard() {
   const [eventStatsTab, setEventStatsTab] = useState<string>("table")
 
   //Lấy dữ liệu tổng hợp cho các StatsCard
-  const { data: summaryData } = useQuery({
-    queryKey: ["adminDashboardSummary"],
+  const {
+    data: summaryDataFromServer, // 1. Đổi tên biến data
+    isLoading: isSummaryLoading // 2. Lấy thêm isLoading
+  } = useQuery({
+    queryKey: ["adminDashboardSummary", initialized, isAuthenticated],
     queryFn: fetchAdminDashboardSummary,
-    initialData: {
-      totalUsers: 0,
-      totalClubs: 0,
-      totalEvents: 0,
-      totalRedeems: 0,
-      totalTransactions: 0,
-    },
+    enabled: initialized && isAuthenticated,
   })
+
+  const summaryData = summaryDataFromServer || {
+    totalUsers: 0,
+    totalClubs: 0,
+    totalEvents: 0,
+    totalRedeems: 0,
+    totalTransactions: 0,
+  };
 
   // Lấy Tình trạng Hệ thống
   const { data: monitorStatus, isLoading: monitorLoading } = useQuery({
@@ -94,6 +101,7 @@ export default function PartnerDashboard() {
     totalEvents: summaryTotalEvents,
     totalUsers: summaryTotalUsers,
     totalTransactions,
+    totalRedeems,
   } = summaryData
 
 
@@ -110,7 +118,7 @@ export default function PartnerDashboard() {
   const getEventStatus = (eventDate: string, eventTime: string, eventStatus?: string) => {
     // Nếu event.status là ONGOING thì bắt buộc phải là "Now"
     if (eventStatus === "ONGOING") return "Now"
-    
+
     if (!eventDate) return "Finished"
     const now = new Date()
     const [hour = "00", minute = "00"] = (eventTime || "00:00").split(":")
@@ -233,50 +241,71 @@ export default function PartnerDashboard() {
             <h1 className="text-3xl font-bold text-balance">Admin Dashboard</h1>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">            {isSummaryLoading ? (
+            <Skeleton className="h-32 rounded-lg" />
+          ) : (
             <StatsCard
               title="Total Clubs"
-              // value={totalClubs}
               value={summaryTotalClubs}
               description="Active clubs"
               icon={Gift}
               variant="primary"
               onClick={() => router.push("/admin/clubs")}
             />
-            <StatsCard
-              title="Total Events"
-              // value={totalEvents}
-              value={summaryTotalEvents}
-              description="All events"
-              icon={TrendingUp}
-              trend={{ value: 12, label: "from last month" }}
-              variant="success"
-              onClick={() => router.push("/admin/events")}
-            />
-            <StatsCard
-              title="Total Users"
-              //value={totalUsers}
-              value={summaryTotalUsers}
-              description="Registered users"
-              icon={CheckCircle}
-              variant="info"
-              onClick={() => router.push("/admin/users")}
-            />
-            {/* <StatsCard
-              title="Total Members"
-              value={totalMembers}
-              description="Club members"
-              icon={UsersIcon}
-              variant="warning"
-            /> */}
-            <StatsCard
-              title="Total Transactions"
-              value={totalTransactions}
-              description="All wallet activity"
-              icon={Wallet}
-              variant="warning"
-              onClick={() => router.push("/admin/wallets")}
-            />
+          )}
+
+            {isSummaryLoading ? (
+              <Skeleton className="h-32 rounded-lg" />
+            ) : (
+              <StatsCard
+                title="Total Events"
+                value={summaryTotalEvents}
+                description="All events"
+                icon={TrendingUp}
+                trend={{ value: 12, label: "from last month" }}
+                variant="success"
+                onClick={() => router.push("/admin/events")}
+              />
+            )}
+
+            {isSummaryLoading ? (
+              <Skeleton className="h-32 rounded-lg" />
+            ) : (
+              <StatsCard
+                title="Total Users"
+                value={summaryTotalUsers}
+                description="Registered users"
+                icon={CheckCircle}
+                variant="info"
+                onClick={() => router.push("/admin/users")}
+              />
+            )}
+
+            {isSummaryLoading ? (
+              <Skeleton className="h-32 rounded-lg" />
+            ) : (
+              <StatsCard
+                title="Total Transactions"
+                value={totalTransactions}
+                description="All wallet activity"
+                icon={Wallet}
+                variant="warning"
+                onClick={() => router.push("/admin/wallets")}
+              />
+            )}
+
+            {isSummaryLoading ? (
+              <Skeleton className="h-32 rounded-lg" />
+            ) : (
+              <StatsCard
+                title="Total Redeems" // số lượng đơn đổi product
+                value={totalRedeems}
+                description="All item redemptions"
+                icon={Gift}
+                variant="success"
+                onClick={() => router.push("/admin/redeems")} // (Bạn có thể đổi route này)
+              />
+            )}
           </div>
 
           {/* --- SYSTEM HEALTH & LOGS --- */}
