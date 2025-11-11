@@ -482,8 +482,8 @@ export function ReportPage({ allowedRoles }: ReportPageProps) {
     logoDiv.contentEditable = "false"
     logoDiv.style.cssText = `
       position: absolute;
-      top: -20mm;
-      left: -20mm;
+      top: 0;
+      left: 0;
       height: 60px;
       width: auto;
       z-index: 10;
