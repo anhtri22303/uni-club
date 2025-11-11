@@ -240,10 +240,8 @@ export default function MemberClubsPage() {
         majorColor: majorColor ?? "#E2E8F0", // [THÊM] Thêm màu (với fallback)
         description: club.description,
         members: club.memberCount ?? 0,
-        events: club.approvedEvents ?? 0,
         founded: 0,
         location: "",
-        policy: club.majorPolicyName ?? "",
         status: getClubStatus(String(club.id)),
         actions: undefined,
       }
@@ -492,37 +490,23 @@ export default function MemberClubsPage() {
       ),
     },
     {
-      key: "events" as const,
-      label: "Events",
-      render: (value: number) => (
-        <div className="flex items-center gap-1">
-          <Calendar className="h-4 w-4" />
-          {value ?? 0}
-        </div>
-      ),
-    },
-    {
       key: "status" as const,
       label: "Status",
       render: (_: any, club: any) => {
         const status = getClubStatus(club.id)
         return (
-          <Badge variant={status === "member" ? "default" : status === "pending" ? "secondary" : "outline"}>
+          <Badge 
+            variant={status === "member" ? "default" : status === "pending" ? "secondary" : "outline"}
+            className={
+              status === "member"
+                ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-green-300 dark:border-green-700 hover:bg-green-100 dark:hover:bg-green-900/40"
+                : status === "pending"
+                ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700 hover:bg-yellow-100 dark:hover:bg-yellow-900/40"
+                : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-400 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800"
+            }
+          >
             {status === "member" ? "Member" : status === "pending" ? "Pending" : "Not Applied"}
           </Badge>
-        )
-      },
-    },
-    {
-      key: "policy" as const,
-      label: "Major Policy",
-      render: (value: string) => {
-        return (
-          <div className="max-w-[220px]">
-            <Badge title={value || ""} variant={"outline"} className="truncate max-w-full">
-              {value || "-"}
-            </Badge>
-          </div>
         )
       },
     },

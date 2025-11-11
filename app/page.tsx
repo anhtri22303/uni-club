@@ -136,7 +136,7 @@ export default function LoginPage() {
     setConfirmPasswordError(""); return true;
   }
 
-  // nextParam này chỉ dùng cho mục đích hiển thị trên UI
+  // nextParam is only used for display purposes on the UI
   const nextParamForDisplay = searchParams.get('next')
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -144,12 +144,12 @@ export default function LoginPage() {
     const normalizedEmail = email.trim().toLowerCase();
 
     if (isSignUpMode) {
-      // Validate từng trường
+      // Validate each field
       if (!fullName) {
         toast({ title: "Missing Full Name", description: "Please enter your full name.", variant: "destructive" });
         return;
       }
-      // Mã số sinh viên: 2 chữ cái đầu (in hoa), 6 số liền kề
+      // Student ID: 2 uppercase letters followed by 6 digits
       if (!studentCode) {
         toast({ title: "Missing Student ID", description: "Please enter your student ID.", variant: "destructive" });
         return;
@@ -158,7 +158,7 @@ export default function LoginPage() {
         toast({ title: "Invalid Student ID", description: "Student ID must start with 2 letters followed by 6 digits (e.g. SE123456).", variant: "destructive" });
         return;
       }
-      // chuyên ngành
+      // Major
       if (!majorName) {
         toast({ title: "Missing Major", description: "Please enter your major name.", variant: "destructive" });
         return;
@@ -171,7 +171,7 @@ export default function LoginPage() {
         toast({ title: "Invalid Email", description: "Please enter a valid email address.", variant: "destructive" });
         return;
       }
-      // Số điện thoại; chỉ cho phép số, đúng 10 số
+      // Phone number: only digits, exactly 10 digits
       if (!phone) {
         toast({ title: "Missing Phone", description: "Please enter your phone number.", variant: "destructive" });
         return;
@@ -180,7 +180,7 @@ export default function LoginPage() {
         toast({ title: "Invalid Phone Number", description: "Phone number must be exactly 10 digits.", variant: "destructive" });
         return;
       }
-      // Mật khẩu và xác nhận mật khẩu
+      // Password and confirm password
       if (!password) {
         toast({ title: "Missing Password", description: "Please enter your password.", variant: "destructive" });
         return;
@@ -545,19 +545,19 @@ export default function LoginPage() {
                       required
                     >
                       <option value="" disabled>Select your major</option>
-                      <option value="Software Engineering">Software Engineering - Kỹ thuật phần mềm</option>
-                      <option value="Artificial Intelligence">Artificial Intelligence - Trí tuệ nhân tạo</option>
-                      <option value="Information Assurance">Information Assurance - Đảm bảo thông tin</option>
-                      <option value="Data Science">Data Science - Khoa học dữ liệu</option>
-                      <option value="Business Administration">Business Administration - Quản lý doanh nghiệp</option>
-                      <option value="Digital Marketing">Digital Marketing - Tiếp thị số</option>
-                      <option value="Graphic Design">Graphic Design - Thiết kế đồ hoạ</option>
-                      <option value="Multimedia Communication">Multimedia Communication - Truyền thông đa phương tiện</option>
-                      <option value="Hospitality Management">Hospitality Management - Quản trị khách sạn</option>
-                      <option value="International Business">International Business - Kinh doanh quốc tế</option>
-                      <option value="Finance and Banking">Finance and Banking - Tài chính và ngân hàng</option>
-                      <option value="Japanese Language">Japanese Language - Ngôn ngữ Nhật</option>
-                      <option value="Korean Language">Korean Language - Ngôn ngữ Hàn</option>
+                      <option value="Software Engineering">Software Engineering</option>
+                      <option value="Artificial Intelligence">Artificial Intelligence</option>
+                      <option value="Information Assurance">Information Assurance</option>
+                      <option value="Data Science">Data Science</option>
+                      <option value="Business Administration">Business Administration</option>
+                      <option value="Digital Marketing">Digital Marketing</option>
+                      <option value="Graphic Design">Graphic Design</option>
+                      <option value="Multimedia Communication">Multimedia Communication</option>
+                      <option value="Hospitality Management">Hospitality Management</option>
+                      <option value="International Business">International Business</option>
+                      <option value="Finance and Banking">Finance and Banking</option>
+                      <option value="Japanese Language">Japanese Language</option>
+                      <option value="Korean Language">Korean Language</option>
                     </select>
                     {majorNameError && <div className="text-xs text-red-500 mt-1">{majorNameError}</div>}
                   </div>
