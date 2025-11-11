@@ -9,7 +9,7 @@ import { Separator } from "@/components/ui/separator"
 import { ArrowLeft, Calendar, Clock, MapPin, Users, Eye, XCircle, Loader2, Star, Filter, ChevronLeft, ChevronRight, MessageSquare } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { getEventById, timeObjectToString } from "@/service/eventApi"
-import { getFeedback, Feedback, postFeedback } from "@/service/feedbackApi"
+import { getFeedbackByEventId, Feedback, postFeedback } from "@/service/feedbackApi"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { FeedbackModal } from "@/components/feedback-modal"
 import { AppShell } from "@/components/app-shell"
@@ -83,7 +83,7 @@ export default function EventDetailPage() {
         if (data.status === "APPROVED" || data.status === "ONGOING" || data.status === "COMPLETED") {
           try {
             setFeedbackLoading(true)
-            const feedbackData = await getFeedback(params.id as string)
+            const feedbackData = await getFeedbackByEventId(params.id as string)
             setFeedbacks(feedbackData)
           } catch (feedbackError) {
             console.error("Failed to load feedback:", feedbackError)

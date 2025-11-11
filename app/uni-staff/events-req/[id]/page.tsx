@@ -18,7 +18,7 @@ import { EventWalletHistoryModal } from "@/components/event-wallet-history-modal
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { getFeedback, Feedback } from "@/service/feedbackApi"
+import { getFeedbackByEventId, Feedback } from "@/service/feedbackApi"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ApproveBudgetModal } from "@/components/approve-budget-modal"
 
@@ -165,7 +165,7 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
         // Fetch feedback for ALL statuses (requested)
         try {
           setFeedbackLoading(true)
-          const feedbackData = await getFeedback(params.id)
+          const feedbackData = await getFeedbackByEventId(params.id)
           if (mounted) setFeedbacks(feedbackData)
         } catch (feedbackError) {
           console.error("Failed to load feedback:", feedbackError)

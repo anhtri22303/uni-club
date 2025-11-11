@@ -6,6 +6,8 @@ export interface Feedback {
   eventId: number
   eventName: string
   clubName: string
+  // Optional: present in some endpoints
+  memberName?: string
   membershipId: number
   rating: number
   comment: string
@@ -20,11 +22,29 @@ interface FeedbackApiResponse {
 }
 
 /**
+ * Get current member's feedbacks by membershipId
+ * Endpoint: /api/events/memberships/{membershipId}/feedbacks
+ */
+export const getMyFeedbackByMembershipId = async (
+  membershipId: string | number
+): Promise<Feedback[]> => {
+  try {
+    const response = await axiosInstance.get<FeedbackApiResponse>(
+      `/api/events/memberships/${membershipId}/feedbacks`
+    )
+    return response.data.data
+  } catch (error) {
+    console.error(`Failed to fetch feedbacks for membership ${membershipId}:`, error)
+    throw error
+  }
+}
+
+/**
  * Get all feedback for a specific event
  * @param eventId - The ID of the event
  * @returns Promise with array of feedback
  */
-export const getFeedback = async (eventId: string | number): Promise<Feedback[]> => {
+export const getFeedbackByEventId = async (eventId: string | number): Promise<Feedback[]> => {
   try {
     const response = await axiosInstance.get<FeedbackApiResponse>(
       `/api/events/${eventId}/feedback`

@@ -22,7 +22,7 @@ import { getEventById, submitForUniversityApproval, timeObjectToString, coHostRe
 import { EventWalletHistoryModal } from "@/components/event-wallet-history-modal"
 import { getClubIdFromToken } from "@/service/clubApi"
 import { Loader2, Star, Filter, ClockIcon } from "lucide-react" // 👈 Thêm Loader2, Star, Filter, ClockIcon
-import { getFeedback, Feedback } from "@/service/feedbackApi"
+import { getFeedbackByEventId, Feedback } from "@/service/feedbackApi"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { TimeExtensionModal } from "@/components/time-extension-modal"
@@ -144,7 +144,7 @@ export default function EventDetailPage() {
         if (data.status === "APPROVED" || data.status === "ONGOING" || data.status === "COMPLETED") {
           try {
             setFeedbackLoading(true)
-            const feedbackData = await getFeedback(params.id as string)
+            const feedbackData = await getFeedbackByEventId(params.id as string)
             setFeedbacks(feedbackData)
           } catch (feedbackError) {
             console.error("Failed to load feedback:", feedbackError)
