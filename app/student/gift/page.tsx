@@ -89,6 +89,19 @@ export default function MemberGiftPage() {
 	// Kết hợp trạng thái loading
 	const isLoading = clubsLoading || profileLoading || (productsLoading && !selectedClubId); // Chỉ loading chính khi đang tải club hoặc chưa chọn club
 
+	// Luôn refresh khi mở trang Gift để đảm bảo dữ liệu mới
+	useEffect(() => {
+		// Làm mới cache các query liên quan và yêu cầu refresh UI
+		queryClient.invalidateQueries({ queryKey: queryKeys.profile })
+		if (selectedClubId) {
+			queryClient.invalidateQueries({ queryKey: queryKeys.productsByClubId(Number(selectedClubId)) })
+		}
+		// Soft refresh để cập nhật dữ liệu server/client (không full reload)
+		router.refresh()
+		// Chỉ chạy khi vào trang này và khi club đang chọn thay đổi
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [selectedClubId])
+
 	useEffect(() => {
 		try {
 			const saved = safeSessionStorage.getItem("uniclub-auth")

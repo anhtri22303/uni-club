@@ -9,12 +9,13 @@ import { Separator } from "@/components/ui/separator"
 import { ArrowLeft, Calendar, Clock, MapPin, Users, Eye, XCircle, Loader2, Star, Filter, ChevronLeft, ChevronRight, MessageSquare } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { getEventById, timeObjectToString } from "@/service/eventApi"
-import { getFeedback, Feedback, postFeedback } from "@/service/feedbackApi"
+import { getFeedbackByEventId, Feedback, postFeedback } from "@/service/feedbackApi"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { FeedbackModal } from "@/components/feedback-modal"
 import { AppShell } from "@/components/app-shell"
 import { ProtectedRoute } from "@/contexts/protected-route"
 import { LoadingSkeleton } from "@/components/loading-skeleton"
+import { renderTypeBadge } from "@/lib/eventUtils"
 
 interface EventDetail {
   id: number
@@ -78,11 +79,11 @@ export default function EventDetailPage() {
         }
         setEvent(normalizedEvent)
 
-        // Fetch feedback for COMPLETED events
-        if (data.status === "COMPLETED") {
+        // Fetch feedback for APPROVED, ONGOING, COMPLETED events
+        if (data.status === "APPROVED" || data.status === "ONGOING" || data.status === "COMPLETED") {
           try {
             setFeedbackLoading(true)
-            const feedbackData = await getFeedback(params.id as string)
+            const feedbackData = await getFeedbackByEventId(params.id as string)
             setFeedbacks(feedbackData)
           } catch (feedbackError) {
             console.error("Failed to load feedback:", feedbackError)
@@ -285,7 +286,7 @@ export default function EventDetailPage() {
                 <div className="space-y-2">
                   <CardTitle className="text-2xl font-bold">{event.name}</CardTitle>
                   <div className="flex items-center gap-3">
-                    {getTypeBadge(event.type)}
+                    {renderTypeBadge(event.type)}
                   </div>
                 </div>
                 <div className="text-right">
@@ -405,8 +406,8 @@ export default function EventDetailPage() {
             </CardContent>
           </Card>
 
-          {/* Feedback Section - Only show for COMPLETED events */}
-          {event.status === "COMPLETED" && (
+          {/* Feedback Section - Show for APPROVED, ONGOING, COMPLETED */}
+          {(event.status === "APPROVED" || event.status === "ONGOING" || event.status === "COMPLETED") && (
             <Card className="shadow-lg">
               <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">

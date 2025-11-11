@@ -48,10 +48,7 @@ interface PageLayoutTabProps {
 }
 
 const PAPER_SIZES = [
-  { label: 'A4 (210 x 297 mm)', value: 'A4' },
-  { label: 'A5 (148 x 210 mm)', value: 'A5' },
-  { label: 'Letter (8.5 x 11 in)', value: 'Letter' },
-  { label: 'Legal (8.5 x 14 in)', value: 'Legal' }
+  { label: 'A4 (210 x 297 mm)', value: 'A4' }
 ]
 
 const WATERMARK_PRESETS = [

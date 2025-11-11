@@ -8,12 +8,13 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { ArrowLeft, Calendar, Clock, MapPin, Users, CheckCircle, AlertCircle, XCircle, Eye, QrCode, Shield } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { getEventById, timeObjectToString, getEventWallet, EventWallet, eventQR, getEventSummary, EventSummary } from "@/service/eventApi"
+import { getEventById, timeObjectToString, getEventWallet, EventWallet, eventQR, getEventSummary, EventSummary, TimeObject } from "@/service/eventApi"
 import QRCode from "qrcode"
 import { AppShell } from "@/components/app-shell"
 import { QRModal } from "@/components/qr-modal"
 import { ProtectedRoute } from "@/contexts/protected-route"
 import { LoadingSkeleton } from "@/components/loading-skeleton"
+import { renderTypeBadge } from "@/lib/eventUtils"
 import { PhaseSelectionModal } from "@/components/phase-selection-modal"
 
 interface EventDetail {
@@ -22,8 +23,8 @@ interface EventDetail {
   description: string
   type: string
   date: string
-  startTime: string | null
-  endTime: string | null
+  startTime: TimeObject | string | null
+  endTime: TimeObject | string | null
   status: string
   checkInCode: string
   locationName: string
@@ -255,13 +256,7 @@ export default function AdminEventDetailPage() {
     }
   }
 
-  const getTypeBadge = (type: string) => {
-    return (
-      <Badge variant={type === "PUBLIC" ? "default" : "secondary"}>
-        {type}
-      </Badge>
-    )
-  }
+  const getTypeBadge = (type: string) => renderTypeBadge(type)
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("vi-VN", {

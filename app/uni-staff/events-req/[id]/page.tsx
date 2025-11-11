@@ -18,8 +18,9 @@ import { EventWalletHistoryModal } from "@/components/event-wallet-history-modal
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { getFeedback, Feedback } from "@/service/feedbackApi"
+import { getFeedbackByEventId, Feedback } from "@/service/feedbackApi"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ApproveBudgetModal } from "@/components/approve-budget-modal"
 
 // Bảng màu theo ngành học (giống như trong clubs page)
 const majorColors: Record<string, string> = {
@@ -78,6 +79,7 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
   const [checkingSettled, setCheckingSettled] = useState(false)
   const [showRejectModal, setShowRejectModal] = useState(false)
   const [rejectReason, setRejectReason] = useState("")
+  const [showApproveModal, setShowApproveModal] = useState(false)
   // Feedback states
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([])
   const [feedbackLoading, setFeedbackLoading] = useState(false)
@@ -163,7 +165,7 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
         // Fetch feedback for ALL statuses (requested)
         try {
           setFeedbackLoading(true)
-          const feedbackData = await getFeedback(params.id)
+          const feedbackData = await getFeedbackByEventId(params.id)
           if (mounted) setFeedbacks(feedbackData)
         } catch (feedbackError) {
           console.error("Failed to load feedback:", feedbackError)
@@ -511,7 +513,7 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
               )}
               {effectiveStatus !== "APPROVED" && effectiveStatus !== "REJECTED" && effectiveStatus !== "COMPLETED" && (
                 <div className="flex gap-2">
-                  <Button variant="default" size="sm" className="h-8 w-8 p-0" onClick={handleApprove} disabled={processing}>
+                  <Button variant="default" size="sm" className="h-8 w-8 p-0" onClick={() => setShowApproveModal(true)} disabled={processing}>
                     <CheckCircle className="h-4 w-4" />
                   </Button>
                   <Button variant="destructive" size="sm" className="h-8 w-8 p-0" onClick={handleReject} disabled={processing}>
@@ -894,9 +896,9 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                     <CardTitle className="text-lg">Actions</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <Button className="w-full" variant="default" onClick={handleApprove} disabled={processing}>
+                    <Button className="w-full" variant="default" onClick={() => setShowApproveModal(true)} disabled={processing}>
                       <CheckCircle className="h-4 w-4 mr-2" />
-                      {processing ? 'Approving...' : 'Approve Request'}
+                      Approve Request
                     </Button>
                     <Button className="w-full" variant="destructive" onClick={handleReject} disabled={processing}>
                       <XCircle className="h-4 w-4 mr-2" />
@@ -1125,6 +1127,21 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
               </DialogFooter>
             </DialogContent>
           </Dialog>
+
+          {/* Approve Budget Modal */}
+          {request && (
+            <ApproveBudgetModal
+              open={showApproveModal}
+              onOpenChange={setShowApproveModal}
+              eventId={request.id}
+              hostClubId={request.hostClub?.id || request.clubId}
+              hostClubName={request.hostClub?.name || (club?.name || club?.clubName)}
+              defaultRequestPoints={request.budgetPoints || 0}
+              onApproved={(approvedBudgetPoints) => {
+                setRequest((prev: any) => prev ? { ...prev, status: "APPROVED", budgetPoints: approvedBudgetPoints } : prev)
+              }}
+            />
+          )}
 
         </div>
       </AppShell>

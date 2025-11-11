@@ -145,11 +145,14 @@ export const fetchPointRequestById = async (
 /**
  * Hook để gọi API số 4 (Lấy tất cả)
  * Đây là hook mà file page.tsx của bạn đang dùng
+ * 
+ * enabled: cho phép bật/tắt việc gọi API (để tránh gọi ở role không cần)
  */
-export const usePointRequests = () => {
+export const usePointRequests = (enabled: boolean = true) => {
   return useQuery({
     queryKey: ["point-requests"],
     queryFn: fetchAllPointRequests, // <-- Sẽ gọi hàm số 4
+    enabled,
   })
 }
 

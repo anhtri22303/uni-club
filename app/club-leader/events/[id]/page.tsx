@@ -16,12 +16,13 @@ import { QRModal } from "@/components/qr-modal"
 import { ProtectedRoute } from "@/contexts/protected-route"
 import { LoadingSkeleton } from "@/components/loading-skeleton"
 import { PhaseSelectionModal } from "@/components/phase-selection-modal"
+import { renderTypeBadge } from "@/lib/eventUtils"
 
 import { getEventById, submitForUniversityApproval, timeObjectToString, coHostRespond, TimeObject, getEventSummary, EventSummary, completeEvent, eventQR, eventTimeExtend } from "@/service/eventApi" // 👈 Thêm submitForUniversityApproval, eventQR và eventTimeExtend
 import { EventWalletHistoryModal } from "@/components/event-wallet-history-modal"
 import { getClubIdFromToken } from "@/service/clubApi"
 import { Loader2, Star, Filter, ClockIcon } from "lucide-react" // 👈 Thêm Loader2, Star, Filter, ClockIcon
-import { getFeedback, Feedback } from "@/service/feedbackApi"
+import { getFeedbackByEventId, Feedback } from "@/service/feedbackApi"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { TimeExtensionModal } from "@/components/time-extension-modal"
@@ -140,10 +141,10 @@ export default function EventDetailPage() {
         }
 
         // Fetch feedback for COMPLETED events
-        if (data.status === "COMPLETED") {
+        if (data.status === "APPROVED" || data.status === "ONGOING" || data.status === "COMPLETED") {
           try {
             setFeedbackLoading(true)
-            const feedbackData = await getFeedback(params.id as string)
+            const feedbackData = await getFeedbackByEventId(params.id as string)
             setFeedbacks(feedbackData)
           } catch (feedbackError) {
             console.error("Failed to load feedback:", feedbackError)
@@ -322,13 +323,7 @@ export default function EventDetailPage() {
     }
   }
 
-  const getTypeBadge = (type: string) => {
-    return (
-      <Badge variant={type === "PUBLIC" ? "default" : "secondary"}>
-        {type}
-      </Badge>
-    )
-  }
+  const getTypeBadge = (type: string) => renderTypeBadge(type)
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("vi-VN", {
@@ -1170,8 +1165,8 @@ export default function EventDetailPage() {
             </CardContent>
           </Card>
 
-          {/* Feedback Section - Only show for COMPLETED events */}
-          {event.status === "COMPLETED" && (
+          {/* Feedback Section - Show for APPROVED, ONGOING, COMPLETED */}
+          {(event.status === "APPROVED" || event.status === "ONGOING" || event.status === "COMPLETED") && (
             <Card className="shadow-lg">
               <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">

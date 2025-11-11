@@ -232,8 +232,8 @@ export default function MyClubPage() {
   const handleOpenLeaveModal = () => {
     if (!selectedClubId) {
       toast({
-        title: "Lỗi",
-        description: "Vui lòng chọn một câu lạc bộ trước",
+        title: "Error",
+        description: "Please select a club first",
         variant: "destructive",
       })
       return
@@ -247,8 +247,8 @@ export default function MyClubPage() {
     
     if (!leaveReason.trim()) {
       toast({
-        title: "Lỗi",
-        description: "Vui lòng nhập lý do rời câu lạc bộ",
+        title: "Error",
+        description: "Please enter reason for leaving the club",
         variant: "destructive",
       })
       return
@@ -258,16 +258,16 @@ export default function MyClubPage() {
     try {
       const result = await postLeaveReq(selectedClubId, leaveReason)
       toast({
-        title: "Thành công",
-        description: result || "Yêu cầu rời câu lạc bộ đã được gửi thành công",
+        title: "Success",
+        description: result || "Request to leave the club has been sent successfully",
       })
       setShowLeaveModal(false)
       setLeaveReason("")
     } catch (error: any) {
       console.error("Failed to submit leave request:", error)
       toast({
-        title: "Lỗi",
-        description: error?.response?.data?.message || "Không thể gửi yêu cầu rời câu lạc bộ",
+        title: "Error",
+        description: error?.response?.data?.message || "Unable to submit a request to leave the club",
         variant: "destructive",
       })
     } finally {
@@ -370,7 +370,7 @@ export default function MyClubPage() {
                       className="ml-auto flex items-center gap-2 bg-red-500 hover:bg-red-600"
                     >
                       <LogOut className="h-4 w-4" />
-                      Out Club
+                      Leave Club
                     </Button>
                   )}
                 </div>
@@ -390,7 +390,7 @@ export default function MyClubPage() {
                       setSearchTerm(e.target.value)
                       setMembersPage(1)
                     }}
-                    className="pl-4 pr-4 py-2.5 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="pl-4 pr-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm dark:text-slate-200 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all"
                   />
                 </div>
 
@@ -398,7 +398,7 @@ export default function MyClubPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => setShowFilters(!showFilters)}
-                  className="flex items-center gap-2 rounded-lg border-slate-200 hover:bg-slate-50 transition-colors"
+                  className="flex items-center gap-2 rounded-lg border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 dark:text-slate-300 transition-colors"
                 >
                   <Filter className="h-4 w-4" />
                   Filters
@@ -411,15 +411,15 @@ export default function MyClubPage() {
               </div>
 
               {showFilters && (
-                <div className="space-y-4 p-6 border border-slate-200 rounded-xl bg-gradient-to-br from-slate-50 to-white">
+                <div className="space-y-4 p-6 border border-slate-200 dark:border-slate-700 rounded-xl bg-gradient-to-br from-slate-50 to-white dark:from-slate-800 dark:to-slate-900">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-semibold text-slate-900">Advanced Filters</h4>
+                    <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Advanced Filters</h4>
                     {hasActiveFilters && (
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={clearFilters}
-                        className="h-auto p-1 text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-200/50 transition-colors"
+                        className="h-auto p-1 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-colors"
                       >
                         <X className="h-3 w-3 mr-1" />
                         Clear all
@@ -430,12 +430,12 @@ export default function MyClubPage() {
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     {/* Role Filter */}
                     <div className="space-y-2">
-                      <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Role</label>
+                      <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide">Role</label>
                       <Select
                         value={activeFilters["role"] || "all"}
                         onValueChange={(v) => handleFilterChange("role", v)}
                       >
-                        <SelectTrigger className="h-9 text-sm rounded-lg border-slate-200 bg-white hover:border-slate-300 transition-colors">
+                        <SelectTrigger className="h-9 text-sm rounded-lg border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-500 transition-colors">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -451,12 +451,12 @@ export default function MyClubPage() {
 
                     {/* Staff Filter */}
                     <div className="space-y-2">
-                      <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Staff</label>
+                      <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide">Staff</label>
                       <Select
                         value={activeFilters["staff"] || "all"}
                         onValueChange={(v) => handleFilterChange("staff", v)}
                       >
-                        <SelectTrigger className="h-9 text-sm rounded-lg border-slate-200 bg-white hover:border-slate-300 transition-colors">
+                        <SelectTrigger className="h-9 text-sm rounded-lg border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-500 transition-colors">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -469,12 +469,12 @@ export default function MyClubPage() {
 
                     {/* Major Filter */}
                     <div className="space-y-2">
-                      <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Major</label>
+                      <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide">Major</label>
                       <Select
                         value={activeFilters["major"] || "all"}
                         onValueChange={(v) => handleFilterChange("major", v)}
                       >
-                        <SelectTrigger className="h-9 text-sm rounded-lg border-slate-200 bg-white hover:border-slate-300 transition-colors">
+                        <SelectTrigger className="h-9 text-sm rounded-lg border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-500 transition-colors">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -490,12 +490,12 @@ export default function MyClubPage() {
 
                     {/* Join Month Filter */}
                     <div className="space-y-2">
-                      <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Join Month</label>
+                      <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide">Join Month</label>
                       <Input
                         type="month"
                         value={activeFilters["joinMonth"] || ""}
                         onChange={(e) => handleFilterChange("joinMonth", e.target.value)}
-                        className="h-9 text-sm rounded-lg border-slate-200 bg-white hover:border-slate-300 transition-colors"
+                        className="h-9 text-sm rounded-lg border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-500 transition-colors"
                       />
                     </div>
                   </div>
@@ -701,26 +701,26 @@ export default function MyClubPage() {
         <Dialog open={showLeaveModal} onOpenChange={setShowLeaveModal}>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
-              <DialogTitle className="text-xl font-bold">Rời câu lạc bộ</DialogTitle>
-              <DialogDescription>
-                Bạn có chắc chắn muốn rời khỏi câu lạc bộ{" "}
-                <span className="font-semibold text-slate-900">"{selectedClub?.name}"</span>?
+              <DialogTitle className="text-xl font-bold dark:text-slate-100">Leave the club</DialogTitle>
+              <DialogDescription className="dark:text-slate-300">
+                Are you sure you want to leave the club?{" "}
+                <span className="font-semibold text-slate-900 dark:text-slate-100">"{selectedClub?.name}"</span>?
                 <br />
-                Vui lòng nhập lý do để Leader xem xét.
+                Please enter a reason for Leader to review.
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <label htmlFor="leave-reason" className="text-sm font-medium text-slate-700">
-                  Lý do rời câu lạc bộ <span className="text-red-500">*</span>
+                <label htmlFor="leave-reason" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                Reason for leaving the club <span className="text-red-500">*</span>
                 </label>
                 <Textarea
                   id="leave-reason"
-                  placeholder="Nhập lý do của bạn..."
+                  placeholder="Enter your reason..."
                   value={leaveReason}
                   onChange={(e) => setLeaveReason(e.target.value)}
-                  className="min-h-[120px] resize-none"
+                  className="min-h-[120px] resize-none dark:bg-slate-800 dark:text-slate-200 dark:border-slate-600"
                   disabled={isSubmittingLeave}
                 />
               </div>
@@ -735,7 +735,7 @@ export default function MyClubPage() {
                 }}
                 disabled={isSubmittingLeave}
               >
-                Hủy
+                Cancel
               </Button>
               <Button
                 variant="destructive"
@@ -743,7 +743,7 @@ export default function MyClubPage() {
                 disabled={isSubmittingLeave || !leaveReason.trim()}
                 className="bg-red-500 hover:bg-red-600"
               >
-                {isSubmittingLeave ? "Đang gửi..." : "Out"}
+                {isSubmittingLeave ? "Sending..." : "Leave"}
               </Button>
             </DialogFooter>
           </DialogContent>

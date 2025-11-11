@@ -9,10 +9,11 @@ import { Pagination } from "@/components/pagination"
 import { usePagination } from "@/hooks/use-pagination"
 import { useAuth } from "@/contexts/auth-context"
 import { useData } from "@/contexts/data-context"
-import { useMyMemberApplications, useMyClubApplications, useMyRedeemOrders, useMyEvents } from "@/hooks/use-query-hooks"
+import { useMyMemberApplications, useMyClubApplications, useMyRedeemOrders, useMyEvents, useProfile } from "@/hooks/use-query-hooks"
 import { Skeleton } from "@/components/ui/skeleton"
-import { History, UserPlus, Gift, CheckCircle, Users, Building2, Package, Calendar } from "lucide-react"
-import { useState, useMemo } from "react"
+import { History, UserPlus, Gift, CheckCircle, Users, Building2, Package, Calendar, MessageSquare, ChevronDown, ChevronUp, Star } from "lucide-react"
+import { useState, useMemo, useEffect } from "react"
+import { getMyFeedbackByMembershipId, Feedback } from "@/service/feedbackApi"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { timeObjectToString } from "@/service/eventApi"
 import { useRouter } from "next/navigation"
@@ -31,6 +32,7 @@ export default function MemberHistoryPage() {
   const { data: clubApps, isLoading: clubLoading, error: clubError } = useMyClubApplications()
   const { data: remoteOrdersData, isLoading: orderLoading, error: orderError, } = useMyRedeemOrders()
   const { data: myEventsData, isLoading: eventLoading, error: eventError } = useMyEvents()
+  const { data: myMemberships } = useProfile()
   // Ensure arrays (API may return wrapped response)
   const remoteApplications: any[] = Array.isArray(remoteApps) ? remoteApps : ((remoteApps as any)?.data || [])
   const clubApplications: any[] = Array.isArray(clubApps) ? clubApps : ((clubApps as any)?.data || [])
@@ -48,6 +50,53 @@ export default function MemberHistoryPage() {
   const myEvents: any[] = Array.isArray(myEventsData)
     ? myEventsData
     : ((myEventsData as any)?.data || [])
+
+  // === My Feedback state (within My Events tab) ===
+  const [showMyFeedback, setShowMyFeedback] = useState(false)
+  const [selectedMembershipId, setSelectedMembershipId] = useState<string | number | null>(null)
+  const [myFeedbackLoading, setMyFeedbackLoading] = useState(false)
+  const [myFeedbackError, setMyFeedbackError] = useState<string | null>(null)
+  const [myFeedbacks, setMyFeedbacks] = useState<Feedback[]>([])
+  const [expandedEventKey, setExpandedEventKey] = useState<string | null>(null)
+
+  // Initialize default membership when available
+  useEffect(() => {
+    if (!showMyFeedback) return
+    if (selectedMembershipId) return
+    const list = Array.isArray(myMemberships) ? myMemberships : []
+    if (list.length > 0) setSelectedMembershipId(list[0].membershipId)
+  }, [showMyFeedback, myMemberships, selectedMembershipId])
+
+  // Fetch my feedbacks when toggled on and membership chosen
+  useEffect(() => {
+    const load = async () => {
+      if (!showMyFeedback || !selectedMembershipId) return
+      try {
+        setMyFeedbackLoading(true)
+        setMyFeedbackError(null)
+        const data = await getMyFeedbackByMembershipId(selectedMembershipId)
+        setMyFeedbacks(Array.isArray(data) ? data : [])
+      } catch (err: any) {
+        setMyFeedbackError(err?.response?.data?.message || err?.message || "Failed to load feedbacks")
+      } finally {
+        setMyFeedbackLoading(false)
+      }
+    }
+    load()
+  }, [showMyFeedback, selectedMembershipId])
+
+  // Group feedbacks by eventId
+  const feedbackGroups = useMemo(() => {
+    const groups: Record<number, { eventId: number; eventName: string; clubName: string; items: Feedback[] }> = {}
+    for (const fb of myFeedbacks) {
+      const key = fb.eventId
+      if (!groups[key]) {
+        groups[key] = { eventId: fb.eventId, eventName: fb.eventName, clubName: fb.clubName, items: [] }
+      }
+      groups[key].items.push(fb)
+    }
+    return Object.values(groups).sort((a, b) => b.eventId - a.eventId)
+  }, [myFeedbacks])
 
   // const loading = activeTab === "member" ? memberLoading : clubLoading
   // const error = activeTab === "member" ? memberError : clubError
@@ -385,23 +434,131 @@ export default function MemberHistoryPage() {
           </div>
 
           {/* Filter */}
-          <div className="flex justify-end">
-            <Select value={filter} onValueChange={setFilter}>
-              <SelectTrigger className="w-full sm:w-[240px]">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                {filterOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="flex flex-col sm:flex-row justify-between gap-2">
+            {/* Left: My Feedback toggle within My Events tab */}
+            {activeTab === "event" && (
+              <div className="flex items-center gap-2">
+                <button
+                  className={`px-3 py-2 rounded-md border transition-colors flex items-center gap-2 ${showMyFeedback ? "bg-blue-50 border-blue-300 text-blue-700 dark:bg-blue-900/20 dark:border-blue-700 dark:text-blue-300" : "hover:bg-muted"}`}
+                  onClick={() => setShowMyFeedback((v) => !v)}
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  My Feedback
+                </button>
+                {showMyFeedback && (
+                  <Select value={selectedMembershipId ? String(selectedMembershipId) : ""} onValueChange={(val) => setSelectedMembershipId(Number(val))}>
+                    <SelectTrigger className="w-[220px]">
+                      <SelectValue placeholder="Select membership (club)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(Array.isArray(myMemberships) ? myMemberships : []).map((m: any) => (
+                        <SelectItem key={m.membershipId} value={String(m.membershipId)}>
+                          {m.clubName} (#{m.membershipId})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            )}
+
+            {/* Right: Status filter (hidden when My Feedback is active) */}
+            <div className="flex justify-end">
+              {!(activeTab === "event" && showMyFeedback) && (
+                <Select value={filter} onValueChange={setFilter}>
+                  <SelectTrigger className="w-full sm:w-[240px]">
+                    <SelectValue placeholder="Filter by status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {filterOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
           </div>
 
-          {/* Loading State */}
-          {loading ? (
+          {/* Loading State (override for My Feedback) */}
+          {(activeTab === "event" && showMyFeedback) ? (
+            myFeedbackLoading ? (
+              <div className="text-center text-sm text-muted-foreground py-8">Loading my feedback...</div>
+            ) : myFeedbackError ? (
+              <div className="text-center text-sm text-destructive py-8">Error: {myFeedbackError}</div>
+            ) : feedbackGroups.length === 0 ? (
+              <EmptyState
+                icon={MessageSquare}
+                title="No feedback yet"
+                description="You have not submitted any feedback for your events."
+              />
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {feedbackGroups.map((group, idx) => {
+                  const cardKey = `${group.eventId}-${idx}`
+                  const expanded = expandedEventKey === cardKey
+                  return (
+                    <Card key={cardKey} className="border-l-4 border-l-blue-500 dark:border-l-blue-400 transition-all hover:shadow-md">
+                      <CardContent className="pt-6">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <h3
+                              className="font-medium hover:underline cursor-pointer truncate"
+                              onClick={() => setExpandedEventKey((prev) => (prev === cardKey ? null : cardKey))}
+                              title={group.eventName}
+                            >
+                              {group.eventName}
+                            </h3>
+                            <p className="text-sm text-muted-foreground truncate">
+                              {group.clubName}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {group.items.length} feedback{group.items.length > 1 ? "s" : ""}
+                            </p>
+                          </div>
+                          <button
+                            className="px-2 py-1 rounded-md border hover:bg-muted"
+                            onClick={() => setExpandedEventKey((prev) => (prev === cardKey ? null : cardKey))}
+                            aria-label="Toggle feedback list"
+                          >
+                            {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                          </button>
+                        </div>
+
+                        {expanded && (
+                          <div className="mt-4 space-y-3">
+                            {group.items.map((fb) => (
+                              <div key={fb.feedbackId} className="p-3 rounded-md border bg-muted/30">
+                                <div className="flex items-center justify-between gap-3">
+                                  <div className="text-sm font-medium truncate">
+                                    {fb.memberName || "You"}
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    {[1,2,3,4,5].map((i) => (
+                                      <Star
+                                        key={i}
+                                        className={`h-3.5 w-3.5 ${i <= fb.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`}
+                                      />
+                                    ))}
+                                  </div>
+                                </div>
+                                <p className="text-sm mt-1">{fb.comment}</p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {new Date(fb.createdAt).toLocaleString()}
+                                  {fb.updatedAt ? ` • Updated: ${new Date(fb.updatedAt).toLocaleDateString()}` : ""}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )
+                })}
+              </div>
+            )
+          ) : loading ? (
             <div className="text-center text-sm text-muted-foreground py-8">Loading applications...</div>
           ) : error ? (
             <div className="text-center text-sm text-destructive py-8">Error: {String(error)}</div>

@@ -22,6 +22,7 @@ import { useEffect, useState, useRef, useCallback } from "react"
 import { Send, MessageCircle, Users, Loader2, Building2, Trash2, X, Reply, Smile, Pin } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import axios from "axios"
+import axiosInstance from "@/lib/axiosInstance"
 import { EmojiPicker } from "@/components/emoji-picker"
 import {
   AlertDialog,
@@ -63,6 +64,42 @@ interface ClubDetails {
   name: string
 }
 
+// Helper function to get profile object (handles both array and object)
+const getProfileObject = (profile: any): any => {
+  if (!profile) return null
+  if (Array.isArray(profile)) {
+    return profile.length > 0 ? profile[0] : null
+  }
+  return profile
+}
+
+// Helper function to get avatar URL with proper fallback
+const getAvatarUrl = (avatarUrl: string | null | undefined, baseUrl?: string): string => {
+  if (!avatarUrl || avatarUrl.trim() === "") {
+    return "/placeholder-user.jpg"
+  }
+  
+  // If avatarUrl is already a full URL (starts with http:// or https://), return as is
+  if (avatarUrl.startsWith("http://") || avatarUrl.startsWith("https://")) {
+    return avatarUrl
+  }
+  
+  // If avatarUrl starts with /, it's a relative path - use as is
+  if (avatarUrl.startsWith("/")) {
+    return avatarUrl
+  }
+  
+  // Otherwise, prepend base URL if provided
+  if (baseUrl) {
+    const base = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl
+    const fullUrl = `${base}/${avatarUrl}`
+    console.log("Avatar URL constructed:", { raw: avatarUrl, base: baseUrl, full: fullUrl })
+    return fullUrl
+  }
+  
+  return avatarUrl
+}
+
 export default function StudentChatPage() {
   const { auth } = useAuth()
   const [availableClubIds, setAvailableClubIds] = useState<number[]>([])
@@ -83,6 +120,8 @@ export default function StudentChatPage() {
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesTopRef = useRef<HTMLDivElement>(null)
+  const [isNearBottom, setIsNearBottom] = useState(true)
+  const [isInitialLoad, setIsInitialLoad] = useState(true)
 
   // Fetch all clubs data for names
   const { data: allClubsData = [] } = useClubs()
@@ -139,9 +178,79 @@ export default function StudentChatPage() {
   const { data: selectedClub, isLoading: clubLoading } = useClub(selectedClubId || 0, !!selectedClubId)
 
   // Scroll to bottom of messages
-  const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  const scrollToBottom = useCallback((immediate = false) => {
+    if (immediate) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "auto" })
+    } else {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    }
   }, [])
+
+  // Load more older messages
+  const loadMoreMessages = useCallback(async () => {
+    if (!selectedClubId || !oldestTimestamp || loadingMore || !hasMoreMessages) return
+
+    setLoadingMore(true)
+    try {
+      // Save current scroll position
+      const viewport = scrollAreaRef.current?.querySelector('[data-slot="scroll-area-viewport"]') as HTMLElement
+      const previousScrollHeight = viewport?.scrollHeight || 0
+      const previousScrollTop = viewport?.scrollTop || 0
+      
+      const response = await axios.get(
+        `/api/chat/messages?clubId=${selectedClubId}&limit=30&before=${oldestTimestamp}`
+      )
+      const olderMessages = response.data.messages || []
+      
+      if (olderMessages.length > 0) {
+        const reversedOlder = olderMessages.reverse()
+        
+        // Prepend older messages to the beginning
+        setMessages((prev) => [...reversedOlder, ...prev])
+        setOldestTimestamp(reversedOlder[0].timestamp)
+        
+        // Restore scroll position after messages are added
+        setTimeout(() => {
+          if (viewport) {
+            const newScrollHeight = viewport.scrollHeight
+            const scrollDifference = newScrollHeight - previousScrollHeight
+            viewport.scrollTop = previousScrollTop + scrollDifference
+          }
+        }, 0)
+        
+        // If we got less than requested, no more messages available
+        if (olderMessages.length < 30) {
+          setHasMoreMessages(false)
+        }
+      } else {
+        setHasMoreMessages(false)
+      }
+    } catch (error) {
+      console.error("Error loading more messages:", error)
+    } finally {
+      setLoadingMore(false)
+    }
+  }, [selectedClubId, oldestTimestamp, loadingMore, hasMoreMessages])
+
+  // Check if user is near bottom of scroll and handle infinite scroll
+  const checkScrollPosition = useCallback(() => {
+    if (!scrollAreaRef.current) return
+    
+    // Find the viewport element inside ScrollArea
+    const viewport = scrollAreaRef.current.querySelector('[data-slot="scroll-area-viewport"]') as HTMLElement
+    if (!viewport) return
+
+    const { scrollTop, scrollHeight, clientHeight } = viewport
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight
+    
+    // Consider "near bottom" if within 100px
+    setIsNearBottom(distanceFromBottom < 100)
+    
+    // Auto-load more messages when scrolling near top (within 200px)
+    if (scrollTop < 200 && hasMoreMessages && !loadingMore && !isInitialLoad) {
+      loadMoreMessages()
+    }
+  }, [hasMoreMessages, loadingMore, isInitialLoad, loadMoreMessages])
 
   // Fetch initial messages
   const fetchMessages = useCallback(async () => {
@@ -162,7 +271,12 @@ export default function StudentChatPage() {
       setHasMoreMessages(fetchedMessages.length >= 50)
       setError(null)
       setLoading(false)
-      setTimeout(scrollToBottom, 100)
+      setIsInitialLoad(true)
+      // Scroll to bottom immediately on initial load
+      setTimeout(() => {
+        scrollToBottom(true)
+        setIsInitialLoad(false)
+      }, 50)
     } catch (error: any) {
       console.error("Error fetching messages:", error)
       if (error.response?.status === 503) {
@@ -173,38 +287,6 @@ export default function StudentChatPage() {
       setLoading(false)
     }
   }, [selectedClubId, scrollToBottom])
-
-  // Load more older messages
-  const loadMoreMessages = useCallback(async () => {
-    if (!selectedClubId || !oldestTimestamp || loadingMore || !hasMoreMessages) return
-
-    setLoadingMore(true)
-    try {
-      const response = await axios.get(
-        `/api/chat/messages?clubId=${selectedClubId}&limit=30&before=${oldestTimestamp}`
-      )
-      const olderMessages = response.data.messages || []
-      
-      if (olderMessages.length > 0) {
-        const reversedOlder = olderMessages.reverse()
-        
-        // Prepend older messages to the beginning
-        setMessages((prev) => [...reversedOlder, ...prev])
-        setOldestTimestamp(reversedOlder[0].timestamp)
-        
-        // If we got less than requested, no more messages available
-        if (olderMessages.length < 30) {
-          setHasMoreMessages(false)
-        }
-      } else {
-        setHasMoreMessages(false)
-      }
-    } catch (error) {
-      console.error("Error loading more messages:", error)
-    } finally {
-      setLoadingMore(false)
-    }
-  }, [selectedClubId, oldestTimestamp, loadingMore, hasMoreMessages])
 
   // Poll for new messages (realtime updates)
   const pollMessages = useCallback(async () => {
@@ -228,12 +310,15 @@ export default function StudentChatPage() {
           return [...prev, ...uniqueNewMessages]
         })
         setLatestTimestamp(response.data.latestTimestamp)
-        setTimeout(scrollToBottom, 100)
+        // Only auto-scroll if user is near bottom
+        if (isNearBottom) {
+          setTimeout(() => scrollToBottom(false), 100)
+        }
       }
     } catch (error) {
       console.error("Error polling messages:", error)
     }
-  }, [selectedClubId, latestTimestamp, scrollToBottom])
+  }, [selectedClubId, latestTimestamp, scrollToBottom, isNearBottom])
 
   // Initial load - reset when club changes
   useEffect(() => {
@@ -258,15 +343,44 @@ export default function StudentChatPage() {
     return () => clearInterval(interval)
   }, [selectedClubId, pollMessages])
 
+  // Set up scroll listener for infinite scroll
+  useEffect(() => {
+    if (!scrollAreaRef.current) return
+
+    const viewport = scrollAreaRef.current.querySelector('[data-slot="scroll-area-viewport"]') as HTMLElement
+    if (!viewport) return
+
+    viewport.addEventListener('scroll', checkScrollPosition)
+    
+    return () => {
+      viewport.removeEventListener('scroll', checkScrollPosition)
+    }
+  }, [checkScrollPosition])
+
   // Send message
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !selectedClubId || !profile || sending) return
+    if (!newMessage.trim() || !selectedClubId || sending) return
+
+    // Get user info from profile or auth as fallback
+    const profileObj = getProfileObject(profile)
+    const userName = profileObj?.fullName || auth.user?.fullName || "Unknown User"
+    const baseUrl = axiosInstance.defaults.baseURL || ""
+    const rawAvatarUrl = profileObj?.avatarUrl || auth.user?.avatarUrl
+    console.log("Profile data when sending message:", { 
+      profile: profile, 
+      profileObj: profileObj,
+      profileAvatarUrl: profileObj?.avatarUrl, 
+      authAvatarUrl: auth.user?.avatarUrl,
+      rawAvatarUrl,
+      baseUrl 
+    })
+    const userAvatar = getAvatarUrl(rawAvatarUrl, baseUrl)
 
     setSending(true)
     const messageToSend = newMessage.trim()
     const replyData = replyingTo ? {
       id: replyingTo.id,
-      userName: replyingTo.userName,
+      userName: replyingTo.userName || "Unknown User",
       message: replyingTo.message
     } : undefined
     
@@ -278,8 +392,8 @@ export default function StudentChatPage() {
         clubId: selectedClubId,
         message: messageToSend,
         userId: auth.userId,
-        userName: (profile as any).fullName || "Unknown User",
-        userAvatar: (profile as any).avatarUrl || "/placeholder-user.jpg",
+        userName: userName,
+        userAvatar: userAvatar,
         replyTo: replyData,
       })
 
@@ -294,7 +408,8 @@ export default function StudentChatPage() {
       
       setLatestTimestamp(sentMessage.timestamp)
       setError(null)
-      setTimeout(scrollToBottom, 100)
+      // Always scroll when user sends a message
+      setTimeout(() => scrollToBottom(false), 100)
     } catch (error: any) {
       console.error("Error sending message:", error)
       // Restore message and reply state on error
@@ -556,7 +671,9 @@ export default function StudentChatPage() {
                   {/* Pinned Message Display */}
                   {messages.some(msg => msg.isPinned) && (
                     <div className="bg-amber-50 dark:bg-amber-950/20 border-b border-amber-200 dark:border-amber-900/30 p-3">
-                      {messages.filter(msg => msg.isPinned).map(pinnedMsg => (
+                      {messages.filter(msg => msg.isPinned).map(pinnedMsg => {
+                        const pinnedDisplayName = pinnedMsg.userName || "Unknown User"
+                        return (
                         <div key={pinnedMsg.id} className="flex items-start gap-2">
                           <Pin className="h-4 w-4 text-amber-600 dark:text-amber-500 shrink-0 mt-0.5" />
                           <div className="flex-1 min-w-0">
@@ -565,7 +682,7 @@ export default function StudentChatPage() {
                                 Pinned Message
                               </span>
                               <span className="text-xs text-amber-700 dark:text-amber-500">
-                                by {pinnedMsg.userName}
+                                by {pinnedDisplayName}
                               </span>
                             </div>
                             <p className="text-sm text-amber-900 dark:text-amber-300 line-clamp-2 break-words whitespace-pre-wrap">
@@ -582,13 +699,17 @@ export default function StudentChatPage() {
                             <X className="h-3.5 w-3.5 text-amber-700 dark:text-amber-500" />
                           </Button>
                         </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   )}
 
                   {/* Messages Container with ScrollArea */}
                   <div className="flex-1 overflow-hidden">
-                    <ScrollArea className="h-full p-3 md:p-4" ref={scrollAreaRef}>
+                    <ScrollArea 
+                      className="h-full p-3 md:p-4" 
+                      ref={scrollAreaRef}
+                    >
                       {messages.length === 0 ? (
                         <div className="h-full flex flex-col items-center justify-center text-center py-8 md:py-12 px-4">
                           <MessageCircle className="h-12 w-12 md:h-16 md:w-16 text-muted-foreground/50 mb-3 md:mb-4" />
@@ -601,18 +722,8 @@ export default function StudentChatPage() {
                         </div>
                       ) : (
                         <div className="space-y-3 md:space-y-4">
-                          {/* Load more button at top */}
+                          {/* Load more indicator at top */}
                           <div ref={messagesTopRef} className="flex justify-center py-2">
-                            {hasMoreMessages && !loadingMore && messages.length >= 50 && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={loadMoreMessages}
-                                className="text-xs h-8 md:h-9"
-                              >
-                                Load older messages
-                              </Button>
-                            )}
                             {loadingMore && (
                               <div className="flex items-center gap-2 text-xs md:text-sm text-muted-foreground">
                                 <Loader2 className="h-3 w-3 md:h-4 md:w-4 animate-spin" />
@@ -629,6 +740,13 @@ export default function StudentChatPage() {
                           
                           {messages.map((msg) => {
                             const isOwnMessage = msg.userId === auth.userId
+                            // Fallback for missing userName/userAvatar
+                            const profileObj = getProfileObject(profile)
+                            const displayName = msg.userName || (isOwnMessage ? (profileObj?.fullName || auth.user?.fullName || "You") : "Unknown User")
+                            const baseUrl = axiosInstance.defaults.baseURL || ""
+                            const rawAvatarUrl = msg.userAvatar || (isOwnMessage ? (profileObj?.avatarUrl || auth.user?.avatarUrl) : null)
+                            const displayAvatar = getAvatarUrl(rawAvatarUrl, baseUrl)
+                            
                             return (
                               <div
                                 key={msg.id}
@@ -637,9 +755,9 @@ export default function StudentChatPage() {
                                 }`}
                               >
                                 <Avatar className="h-7 w-7 md:h-8 md:w-8 border-2 border-background shrink-0">
-                                  <AvatarImage src={msg.userAvatar} alt={msg.userName} />
+                                  <AvatarImage src={displayAvatar} alt={displayName} />
                                   <AvatarFallback className="bg-primary/10 text-primary text-[10px] md:text-xs">
-                                    {getInitials(msg.userName)}
+                                    {getInitials(displayName)}
                                   </AvatarFallback>
                                 </Avatar>
                                 <div
@@ -649,7 +767,7 @@ export default function StudentChatPage() {
                                 >
                                   <div className="flex items-center gap-1.5 md:gap-2 mb-1">
                                     <span className="text-[10px] md:text-xs font-medium text-muted-foreground truncate max-w-[120px] sm:max-w-none">
-                                      {isOwnMessage ? "You" : msg.userName}
+                                      {isOwnMessage ? "You" : displayName}
                                     </span>
                                     <span className="text-[10px] md:text-xs text-muted-foreground whitespace-nowrap">
                                       {formatTime(msg.timestamp)}

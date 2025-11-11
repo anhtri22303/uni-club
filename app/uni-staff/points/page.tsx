@@ -18,6 +18,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group" // ✨ THÊM DÒNG NÀY
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip"
+import { useSearchParams } from "next/navigation"
 // ✨ --- IMPORT API THẬT --- ✨
 import { fetchClub } from "@/service/clubApi"
 import { pointsToClubs, getUniToClubTransactions, ApiUniToClubTransaction } from "@/service/walletApi"
@@ -34,6 +35,7 @@ interface Club {
 
 export default function UniversityStaffRewardPage() {
     const { toast } = useToast()
+    const searchParams = useSearchParams()
     const [allClubs, setAllClubs] = useState<Club[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -81,6 +83,23 @@ export default function UniversityStaffRewardPage() {
         };
         loadClubs();
     }, []);
+
+    // Preselect club and preset reason from query params
+    useEffect(() => {
+        const qpClubId = searchParams?.get("clubId")
+        const qpReason = searchParams?.get("reason")
+        if (!qpClubId && !qpReason) return
+
+        if (qpReason) {
+            setReasonType("other")
+            setCustomReason(qpReason)
+        }
+
+        if (qpClubId) {
+            const targetId = String(qpClubId)
+            setSelectedClubs((prev) => ({ ...prev, [targetId]: true }))
+        }
+    }, [searchParams, allClubs])
 
     // Initialize selection state for all clubs
     useEffect(() => {
