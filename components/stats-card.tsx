@@ -11,7 +11,7 @@ interface StatsCardProps {
     value: number
     label: string
   }
-  variant?: "default" | "primary" | "success" | "warning" | "info"
+  variant?: "default" | "primary" | "success" | "warning" | "info" | "failure"
   onClick?: () => void
 }
 
@@ -22,6 +22,7 @@ export function StatsCard({ title, value, description, icon: Icon, trend, varian
     success: "bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-200",
     warning: "bg-gradient-to-br from-orange-50 to-red-50 border-orange-200",
     info: "bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200",
+    failure: "bg-gradient-to-br from-yellow-50 to-amber-50 border-yellow-200",
   }
 
   const iconClasses = {
@@ -30,6 +31,7 @@ export function StatsCard({ title, value, description, icon: Icon, trend, varian
     success: "text-emerald-600 bg-emerald-100",
     warning: "text-orange-600 bg-orange-100",
     info: "text-blue-600 bg-blue-100",
+    failure: "text-red-600 bg-yellow-100",
   }
 
   const valueClasses = {
@@ -38,6 +40,7 @@ export function StatsCard({ title, value, description, icon: Icon, trend, varian
     success: "text-emerald-900",
     warning: "text-orange-900",
     info: "text-blue-900",
+    failure: "text-yellow-900",
   }
 
   return (

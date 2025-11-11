@@ -9,6 +9,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import {
   Gift, TrendingUp, CheckCircle, Clock, Users as UsersIcon, UserCheck, UserX, Shield, Building2, UserPlus, UsersRound, Calendar, MapPin,
   Eye, ChevronLeft, ChevronRight, BarChart3, PieChart as PieChartIcon, Wallet, Server, AlertCircle,
+  Building,
+  Users,
 } from "lucide-react"
 import { useEvents } from "@/hooks/use-query-hooks"
 import { getClubStats } from "@/service/clubApi"
@@ -241,14 +243,14 @@ export default function PartnerDashboard() {
             <h1 className="text-3xl font-bold text-balance">Admin Dashboard</h1>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">            {isSummaryLoading ? (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">{isSummaryLoading ? (
             <Skeleton className="h-32 rounded-lg" />
           ) : (
             <StatsCard
               title="Total Clubs"
               value={summaryTotalClubs}
               description="Active clubs"
-              icon={Gift}
+              icon={Building}
               variant="primary"
               onClick={() => router.push("/admin/clubs")}
             />
@@ -261,8 +263,8 @@ export default function PartnerDashboard() {
                 title="Total Events"
                 value={summaryTotalEvents}
                 description="All events"
-                icon={TrendingUp}
-                trend={{ value: 12, label: "from last month" }}
+                icon={Calendar}
+                // trend={{ value: 1, label: "from last month" }}
                 variant="success"
                 onClick={() => router.push("/admin/events")}
               />
@@ -275,7 +277,7 @@ export default function PartnerDashboard() {
                 title="Total Users"
                 value={summaryTotalUsers}
                 description="Registered users"
-                icon={CheckCircle}
+                icon={Users}
                 variant="info"
                 onClick={() => router.push("/admin/users")}
               />
@@ -302,7 +304,7 @@ export default function PartnerDashboard() {
                 value={totalRedeems}
                 description="All item redemptions"
                 icon={Gift}
-                variant="success"
+                variant="failure"
                 onClick={() => router.push("/admin/redeems")} // (Bạn có thể đổi route này)
               />
             )}
