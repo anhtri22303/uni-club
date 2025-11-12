@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Input } from "@/components/ui/input"
 import { useAuth } from "@/contexts/auth-context"
 import { useData } from "@/contexts/data-context"
 import { useToast } from "@/hooks/use-toast"
@@ -643,8 +644,9 @@ export default function MemberClubsPage() {
             open={showCreateClubModal}
             onOpenChange={setShowCreateClubModal}
             title="Create Club Application"
+            className="sm:max-w-2xl max-h-[90vh] overflow-y-auto"
           >
-            <div className="space-y-4">
+            <div className="space-y-4 overflow-x-hidden">
               {/* Club Name */}
               <div className="space-y-2">
                 <Label htmlFor="clubName">Club Name</Label>
@@ -653,31 +655,43 @@ export default function MemberClubsPage() {
                   value={newClubName}
                   onChange={(e) => setNewClubName(e.target.value)}
                   placeholder="Enter club name"
-                  className="border-slate-400"
+                  className="border-slate-400 break-words"
                 />
               </div>
 
               {/* Description */}
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="description">
+                  Description ({newDescription.length}/300)
+                </Label>
                 <Textarea
                   id="description"
                   value={newDescription}
-                  onChange={(e) => setNewDescription(e.target.value)}
+                  onChange={(e) => {
+                    if (e.target.value.length <= 300) {
+                      setNewDescription(e.target.value)
+                    }
+                  }}
                   placeholder="Enter description"
-                  className="border-slate-400"
+                  className="border-slate-400 break-words"
+                  maxLength={300}
                 />
               </div>
 
               {/* Vision */}
               <div className="space-y-2">
-                <Label htmlFor="vision">Vision</Label>
+                <Label htmlFor="vision">Vision ({newVision.length}/300)</Label>
                 <Textarea
                   id="vision"
                   value={newVision}
-                  onChange={(e) => setNewVision(e.target.value)}
+                  onChange={(e) => {
+                    if (e.target.value.length <= 300) {
+                      setNewVision(e.target.value)
+                    }
+                  }}
                   placeholder="Enter the club's vision"
-                  className="border-slate-400"
+                  className="border-slate-400 break-words"
+                  maxLength={300}
                 />
               </div>
 
@@ -704,73 +718,40 @@ export default function MemberClubsPage() {
 
               {/* Proposer Reason */}
               <div className="space-y-2">
-                <Label htmlFor="proposerReason">Proposer Reason</Label>
+                <Label htmlFor="proposerReason">
+                  Proposer Reason ({newProposerReason.length}/300)
+                </Label>
                 <Textarea
                   id="proposerReason"
                   value={newProposerReason}
-                  onChange={(e) => setNewProposerReason(e.target.value)}
+                  onChange={(e) => {
+                    if (e.target.value.length <= 300) {
+                      setNewProposerReason(e.target.value)
+                    }
+                  }}
                   placeholder="Why do you want to create this club?"
-                  className="border-slate-400"
+                  className="border-slate-400 break-words"
+                  maxLength={300}
                 />
               </div>
 
-              {/* Send OTP Button */}
-              <div className="flex justify-start">
-                <Button
-                  variant="outline"
-                  onClick={async () => {
-                    if (!auth.user?.email) {
-                      toast({
-                        title: "Error",
-                        description: "Unable to get your email address",
-                        variant: "destructive",
-                      })
-                      return
-                    }
-
-                    setIsSendingOtp(true)
-                    try {
-                      const { sendOtp } = await import("@/service/clubApplicationAPI")
-                      const result = await sendOtp(auth.user.email)
-                      
-                      toast({
-                        title: "OTP Sent",
-                        description: result || "OTP has been sent to your email",
-                      })
-                    } catch (err: any) {
-                      console.error("Error sending OTP:", err)
-                      toast({
-                        title: "Error",
-                        description: err?.response?.data?.message || err?.message || "Failed to send OTP",
-                        variant: "destructive",
-                      })
-                    } finally {
-                      setIsSendingOtp(false)
-                    }
-                  }}
-                  disabled={isSendingOtp}
-                >
-                  {isSendingOtp ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Sending OTP...
-                    </>
-                  ) : (
-                    "Send OTP"
-                  )}
-                </Button>
-              </div>
 
               {/* OTP Input */}
               <div className="space-y-2">
-                <Label htmlFor="otpCode">OTP Code</Label>
-                <Textarea
+                <Label htmlFor="otpCode">OTP Code (6 digits)</Label>
+                <Input
                   id="otpCode"
+                  type="text"
                   value={otpCode}
-                  onChange={(e) => setOtpCode(e.target.value)}
-                  placeholder="Enter the OTP code sent to your email"
-                  className="border-slate-400"
-                  rows={1}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, '') // Only allow digits
+                    if (value.length <= 6) {
+                      setOtpCode(value)
+                    }
+                  }}
+                  placeholder="Enter 6-digit OTP"
+                  className="border-slate-400 break-words"
+                  maxLength={6}
                 />
               </div>
 
