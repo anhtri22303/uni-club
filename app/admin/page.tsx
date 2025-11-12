@@ -11,6 +11,7 @@ import {
   Eye, ChevronLeft, ChevronRight, BarChart3, PieChart as PieChartIcon, Wallet, Server, AlertCircle,
   Building,
   Users,
+  TicketCheck,
 } from "lucide-react"
 import { useEvents } from "@/hooks/use-query-hooks"
 import { getClubStats } from "@/service/clubApi"
@@ -303,7 +304,7 @@ export default function PartnerDashboard() {
                 title="Total Redeems" // số lượng đơn đổi product
                 value={totalRedeems}
                 description="All item redemptions"
-                icon={Gift}
+                icon={TicketCheck}
                 variant="failure"
                 onClick={() => router.push("/admin/redeems")} // (Bạn có thể đổi route này)
               />

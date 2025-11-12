@@ -56,6 +56,23 @@ export const getFeedbackByEventId = async (eventId: string | number): Promise<Fe
   }
 }
 
+/**
+ * Get all feedback for a specific club
+ * @param clubId - The ID of the club
+ * @returns Promise with array of feedback
+ */
+export const getFeedbackByClubId = async (clubId: string | number): Promise<Feedback[]> => {
+  try {
+    const response = await axiosInstance.get<FeedbackApiResponse>(
+      `/api/events/clubs/${clubId}/feedbacks`
+    )
+    return response.data.data
+  } catch (error) {
+    console.error(`Failed to fetch feedback for club ${clubId}:`, error)
+    throw error
+  }
+}
+
 // Request interface for posting feedback
 export interface PostFeedbackRequest {
   rating: number // 1-5
