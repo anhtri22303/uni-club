@@ -449,6 +449,33 @@ export const getUniToClubTransactions = async (): Promise<ApiUniToClubTransactio
   }
 }
 
+export type ApiUniToEventTransaction = {
+  id: number;
+  type: string;
+  amount: number;
+  description: string;
+  createdAt: string;
+  signedAmount: string;
+  senderName: string | null;
+  receiverName: string | null;
+}
+
+export const getUniToEventTransactions = async (): Promise<ApiUniToEventTransaction[]> => {
+  try {
+    const res = await axiosInstance.get("/api/wallets/transactions/uni-to-event")
+    console.log("getUniToEventTransactions:", res.data)
+    // If response has a 'data' wrapper, extract it
+    if (res.data && typeof res.data === 'object' && 'data' in res.data) {
+      const nestedData = (res.data as any).data
+      return Array.isArray(nestedData) ? nestedData : []
+    }
+    return Array.isArray(res.data) ? res.data : []
+  } catch (err) {
+    console.error("Failed to get uni-to-event transactions", err)
+    throw err
+  }
+}
+
 export default {
   getWallet,
   // rewardPointsToMember, // Deprecated
@@ -458,6 +485,7 @@ export default {
   pointsToClubs,
   getClubToMemberTransactions,
   getUniToClubTransactions,
+  getUniToEventTransactions,
   transferPoints,
   adminAddPoints,
   adminReducePoints,

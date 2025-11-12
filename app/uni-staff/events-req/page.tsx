@@ -18,6 +18,11 @@ import { fetchClub } from "@/service/clubApi"
 import Link from "next/link"
 import { fetchEvent } from "@/service/eventApi"
 import { useRouter } from "next/navigation"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip"
+import { getUniToEventTransactions, ApiUniToEventTransaction } from "@/service/walletApi"
+import { History } from "lucide-react"
 
 // Bảng màu theo ngành học (giống như trong clubs page)
 const majorColors: Record<string, string> = {
@@ -72,6 +77,11 @@ export default function UniStaffEventRequestsPage() {
 	const [error, setError] = useState<string | null>(null)
 	const [showCalendarModal, setShowCalendarModal] = useState(false)
 	const [settledEventIds, setSettledEventIds] = useState<Set<number>>(new Set())
+
+	// Event Points modal state
+	const [showEventPointsModal, setShowEventPointsModal] = useState(false)
+	const [eventTransactions, setEventTransactions] = useState<ApiUniToEventTransaction[]>([])
+	const [eventTransactionsLoading, setEventTransactionsLoading] = useState(false)
 
 	const { toast } = useToast()
 	const [processingId, setProcessingId] = useState<number | string | null>(null)
@@ -355,6 +365,38 @@ export default function UniStaffEventRequestsPage() {
 		}).format(amount)
 	}
 
+	const formatDate = (dateString: string) => {
+		const date = new Date(dateString)
+		return date.toLocaleString('en-US', {
+			year: 'numeric',
+			month: 'short',
+			day: 'numeric',
+			hour: '2-digit',
+			minute: '2-digit'
+		})
+	}
+
+	const loadEventTransactionHistory = async () => {
+		setEventTransactionsLoading(true)
+		try {
+			const data = await getUniToEventTransactions()
+			setEventTransactions(data)
+		} catch (err: any) {
+			toast({
+				title: "Error",
+				description: err?.response?.data?.message || "Failed to load event transaction history",
+				variant: "destructive"
+			})
+		} finally {
+			setEventTransactionsLoading(false)
+		}
+	}
+
+	const handleOpenEventPointsModal = () => {
+		setShowEventPointsModal(true)
+		loadEventTransactionHistory()
+	}
+
 	// Compute counts by status (prefer `status` field). Fallback to type-based heuristics when missing
 	const totalCount = events.length
 	const waitingUniStaffCount = events.filter((e) => (e.status ?? "").toUpperCase() === "PENDING_UNISTAFF").length
@@ -373,9 +415,14 @@ export default function UniStaffEventRequestsPage() {
 							<h1 className="text-3xl font-bold">Event Requests</h1>
 							<p className="text-muted-foreground">Review and manage event organization requests</p>
 						</div>
-						<Button variant="outline" onClick={() => setShowCalendarModal(true)}>
-							<Calendar className="h-4 w-4 mr-2" /> Calendar View
-						</Button>
+						<div className="flex gap-2">
+							<Button variant="outline" onClick={handleOpenEventPointsModal}>
+								<History className="h-4 w-4 mr-2" /> Event Points
+							</Button>
+							<Button variant="outline" onClick={() => setShowCalendarModal(true)}>
+								<Calendar className="h-4 w-4 mr-2" /> Calendar View
+							</Button>
+						</div>
 					</div>
 
 					{/* Stats Cards */}
@@ -742,6 +789,94 @@ export default function UniStaffEventRequestsPage() {
 							router.push(`/uni-staff/events-req/${event.id}`)
 						}}
 					/>
+
+					{/* Event Points Transaction History Modal */}
+					<Dialog open={showEventPointsModal} onOpenChange={setShowEventPointsModal}>
+						<DialogContent
+							className="
+								!max-w-none
+								w-[72vw]
+								lg:w-[68vw]
+								md:w-[78vw]
+								sm:w-[92vw]
+								h-[85vh]
+								overflow-y-auto p-8 rounded-xl shadow-2xl
+							"
+						>
+							<DialogHeader>
+								<DialogTitle className="flex items-center gap-3 text-3xl font-bold">
+									<History className="h-8 w-8" />
+									University to Event Transaction History
+								</DialogTitle>
+							</DialogHeader>
+
+							<div className="mt-4">
+								{eventTransactionsLoading ? (
+									<div className="flex flex-col items-center justify-center py-12">
+										<p className="text-muted-foreground">Loading event transaction history...</p>
+									</div>
+								) : eventTransactions.length === 0 ? (
+									<div className="flex flex-col items-center justify-center py-12 text-center">
+										<History className="h-12 w-12 text-muted-foreground mb-4" />
+										<h3 className="text-lg font-semibold mb-2">No Event Transactions Yet</h3>
+										<p className="text-muted-foreground">No university-to-event transactions found.</p>
+									</div>
+								) : (
+									<TooltipProvider>
+										<div className="rounded-md border overflow-x-auto">
+											<Table className="min-w-full">
+												<TableHeader>
+													<TableRow>
+														<TableHead className="w-[80px]">ID</TableHead>
+														<TableHead>Type</TableHead>
+														<TableHead>Amount</TableHead>
+														<TableHead className="w-[20%]">Sender</TableHead>
+														<TableHead className="w-[20%]">Receiver Event</TableHead>
+														<TableHead className="w-[15%] pr-2">Description</TableHead>
+														<TableHead className="w-[180px] pl-2">Date</TableHead>
+													</TableRow>
+												</TableHeader>
+												<TableBody>
+													{eventTransactions.map((t) => (
+														<TableRow key={t.id}>
+															<TableCell className="font-medium">#{t.id}</TableCell>
+															<TableCell><Badge variant="secondary">{t.type}</Badge></TableCell>
+															<TableCell className="font-semibold text-green-600">{t.signedAmount} pts</TableCell>
+															<TableCell className="font-medium text-slate-800 dark:text-blue-300">
+																{t.senderName || "—"}
+															</TableCell>
+															<TableCell className="font-medium text-slate-800 dark:text-purple-300">
+																{t.receiverName || "—"}
+															</TableCell>
+															<TableCell className="max-w-[200px] pr-2">
+																{t.description && t.description.length > 50 ? (
+																	<Tooltip>
+																		<TooltipTrigger asChild>
+																			<div className="truncate cursor-help">
+																				{t.description}
+																			</div>
+																		</TooltipTrigger>
+																		<TooltipContent className="max-w-[400px] break-words" side="top">
+																			<p className="whitespace-normal">{t.description}</p>
+																		</TooltipContent>
+																	</Tooltip>
+																) : (
+																	<div className="truncate">{t.description || "—"}</div>
+																)}
+															</TableCell>
+															<TableCell className="text-sm text-muted-foreground whitespace-nowrap pl-2">
+																{formatDate(t.createdAt)}
+															</TableCell>
+														</TableRow>
+													))}
+												</TableBody>
+											</Table>
+										</div>
+									</TooltipProvider>
+								)}
+							</div>
+						</DialogContent>
+					</Dialog>
 				</div>
 			</AppShell>
 		</ProtectedRoute>
