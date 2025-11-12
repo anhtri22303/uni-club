@@ -19,7 +19,8 @@ import {
   LayoutDashboard, Users, Calendar, Gift, Wallet, History, BarChart3,
   Building, Home, CheckCircle, FileText, FileUser, HandCoins, CalendarDays,
   CreditCard, LibraryBig, MessageCircle, MapPin, Percent, ChevronDown, ChevronRight, ListOrdered,
-  FileBarChart
+  FileBarChart,
+  TicketCheck
 } from "lucide-react"
 
 interface SidebarProps {
@@ -55,6 +56,7 @@ const navigationConfig = {
     { href: "/club-leader/members", label: "Members", icon: Users },
     { href: "/club-leader/events", label: "Events", icon: Calendar },
     { href: "/club-leader/attendances", label: "Attendances", icon: CalendarDays },
+    { href: "/club-leader/feedbacks", label: "Feedbacks", icon: MessageCircle },
     {
       label: "Gifts",
       icon: LayoutDashboard,
@@ -80,6 +82,7 @@ const navigationConfig = {
     { href: "/uni-staff", label: "Dashboard", icon: LayoutDashboard },
     { href: "/uni-staff/clubs", label: "Clubs", icon: Building },
     { href: "/uni-staff/locations", label: "Locations", icon: MapPin },
+    { href: "/uni-staff/feedbacks", label: "Feedbacks", icon: MessageCircle },
     {
       label: "Policy Management",
       icon: FileText,
@@ -109,6 +112,7 @@ const navigationConfig = {
     // { href: "/admin/attendances", label: "Attendances", icon: FileText },
     { href: "/admin/events", label: "Events", icon: Calendar },
     { href: "/admin/products", label: "Products", icon: Gift },
+     { href: "/admin/redeems", label: "Redeems", icon: TicketCheck  },
     { href: "/admin/policies", label: "Policies", icon: FileText },
     { href: "/admin/locations", label: "Locations", icon: MapPin },
     { href: "/admin/wallets", label: "Wallets", icon: Wallet },
