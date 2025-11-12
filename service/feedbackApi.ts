@@ -89,3 +89,19 @@ export const postFeedback = async (
     throw error
   }
 }
+
+/**
+ * Get all feedbacks for the currently authenticated student
+ * Endpoint: /api/events/my-feedbacks
+ */
+export const getMyFeedbacks = async (): Promise<Feedback[]> => {
+  try {
+    const response = await axiosInstance.get<FeedbackApiResponse>(
+      "/api/events/my-feedbacks"
+    )
+    return response.data.data
+  } catch (error) {
+    console.error("Failed to fetch my feedbacks:", error)
+    throw error
+  }
+}

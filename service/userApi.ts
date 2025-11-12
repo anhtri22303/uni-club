@@ -74,6 +74,8 @@ export const fetchProfile = async () => {
         majorName: profileData?.majorName,
         bio: profileData?.bio,
         role: profileData?.role,
+        roleName: profileData?.roleName,
+        needCompleteProfile: profileData?.needCompleteProfile,
         clubs: profileData?.clubs || [],
         // Support both singular wallet and plural wallets
         wallet: profileData?.wallet,

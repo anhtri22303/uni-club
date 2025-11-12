@@ -19,6 +19,7 @@ import {
 import { editProfile, fetchProfile, uploadAvatar, uploadBackground, getProfileStats, ProfileStats } from "@/service/userApi"
 import { AvatarCropModal } from "@/components/avatar-crop-modal"
 import { ChangePasswordModal } from "@/components/change-password"
+import { CompleteProfileModal } from "@/components/complete-profile-modal"
 import { ApiMembershipWallet } from "@/service/walletApi"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from "@/components/ui/select"
 import { Major, fetchMajors } from "@/service/majorApi" // Import từ majorApi
@@ -34,6 +35,8 @@ interface ProfileData {
   avatarUrl: string
   backgroundUrl: string
   userPoints: number
+  needCompleteProfile?: boolean
+  roleName?: string
 }
 
 interface ProfileState {
@@ -82,6 +85,9 @@ export default function ProfilePage() {
 
   // State for change password modal
   const [showChangePassword, setShowChangePassword] = useState(false)
+
+  // State for complete profile modal
+  const [showCompleteProfile, setShowCompleteProfile] = useState(false)
 
   // State for user profile statistics (real data from API)
   const [userStats, setUserStats] = useState<ProfileStats | null>(null)
@@ -144,6 +150,8 @@ export default function ProfilePage() {
         avatarUrl: profile?.avatarUrl ?? "",
         backgroundUrl: profile?.backgroundUrl ?? "",
         userPoints: Number(profile?.wallet?.balancePoints ?? 0),
+        needCompleteProfile: profile?.needCompleteProfile ?? false,
+        roleName: profile?.roleName ?? auth.role ?? "",
       }
 
       // Xử lý danh sách majors
@@ -173,6 +181,11 @@ export default function ProfilePage() {
         error: null,
         saving: false,
       })
+
+      // Check if profile needs to be completed (for students only)
+      if (profileData.needCompleteProfile && profileData.roleName === "STUDENT") {
+        setShowCompleteProfile(true)
+      }
 
       // Clear validation errors when profile loads
       setStudentCodeError(null)
@@ -1079,6 +1092,20 @@ export default function ProfilePage() {
           open={showChangePassword}
           onOpenChange={setShowChangePassword}
         />
+
+        {/* Complete Profile Modal - Also for admin if needed */}
+        <CompleteProfileModal
+          open={showCompleteProfile}
+          onOpenChange={setShowCompleteProfile}
+          profileData={{
+            fullName: profileState.data?.fullName,
+            phone: profileState.data?.phone,
+            bio: profileState.data?.bio,
+            avatarUrl: profileState.data?.avatarUrl,
+            backgroundUrl: profileState.data?.backgroundUrl,
+          }}
+          onComplete={loadProfile}
+        />
       </ProtectedRoute>
     )
   }
@@ -1427,6 +1454,20 @@ export default function ProfilePage() {
       <ChangePasswordModal
         open={showChangePassword}
         onOpenChange={setShowChangePassword}
+      />
+
+      {/* Complete Profile Modal */}
+      <CompleteProfileModal
+        open={showCompleteProfile}
+        onOpenChange={setShowCompleteProfile}
+        profileData={{
+          fullName: profileState.data?.fullName,
+          phone: profileState.data?.phone,
+          bio: profileState.data?.bio,
+          avatarUrl: profileState.data?.avatarUrl,
+          backgroundUrl: profileState.data?.backgroundUrl,
+        }}
+        onComplete={loadProfile}
       />
     </ProtectedRoute>
   )
