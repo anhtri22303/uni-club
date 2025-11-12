@@ -27,7 +27,7 @@ const formatRoleName = (roleId: string) => {
   const map: Record<string, string> = {
     student: "STUDENT",
     club_leader: "CLUB LEADER",
-    uni_admin: "UNIVERSITY ADMIN",
+    uni_admin: "UNIVERSITY STAFF",
     admin: "ADMIN",
     staff: "STAFF",
   }
@@ -672,7 +672,7 @@ export default function AdminUsersPage() {
                     >
                       <option value="STUDENT">STUDENT</option>
                       <option value="CLUB_LEADER">CLUB LEADER</option>
-                      <option value="UNI_ADMIN">UNIVERSITY ADMIN</option>
+                      <option value="UNI_STAFF">UNIVERSITY STAFF</option>
                       <option value="ADMIN">ADMIN</option>
                       <option value="STAFF">STAFF</option>
                     </select>
@@ -852,7 +852,7 @@ export default function AdminUsersPage() {
                   <SelectContent>
                     <SelectItem value="STUDENT">STUDENT</SelectItem>
                     <SelectItem value="CLUB_LEADER">CLUB LEADER</SelectItem>
-                    <SelectItem value="UNI_ADMIN">UNIVERSITY ADMIN</SelectItem>
+                    <SelectItem value="UNI_ADMIN">UNIVERSITY STAFF</SelectItem>
                     <SelectItem value="ADMIN">ADMIN</SelectItem>
                     <SelectItem value="STAFF">STAFF</SelectItem>
                   </SelectContent>
