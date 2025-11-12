@@ -16,7 +16,7 @@ import { CalendarModal } from "@/components/calendar-modal"
 import { useToast } from "@/hooks/use-toast"
 import { usePagination } from "@/hooks/use-pagination"
 import { useClub, useEventsByClubId, useEventCoHostByClubId } from "@/hooks/use-query-hooks"
-import { Calendar, Plus, MapPin, Trophy, ChevronLeft, ChevronRight, Filter, X, Eye, Loader2, Users, QrCode } from "lucide-react"
+import { Calendar, Plus, MapPin, Trophy, ChevronLeft, ChevronRight, Filter, X, Eye, Loader2, Users, QrCode, BarChart3 } from "lucide-react"
 import QRCode from "qrcode"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -1088,6 +1088,20 @@ export default function ClubLeaderEventsPage() {
                             <Eye className="h-4 w-4 mr-2" />
                             View Detail
                           </Button>
+                          
+                          {/* Stats Button - Show for APPROVED, ONGOING, and COMPLETED events */}
+                          {(event.status === "APPROVED" || event.status === "ONGOING" || event.status === "COMPLETED") && (
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              className="w-full"
+                              onClick={() => router.push(`/club-leader/events/${event.id}/stats`)}
+                            >
+                              <BarChart3 className="h-4 w-4 mr-2" />
+                              Stats
+                            </Button>
+                          )}
+                          
                           {/* QR Code Section - Only show if ONGOING and event is still active */}
                           {isEventActive(event) && (
                             <div className="mt-3 pt-3 border-t border-muted">
