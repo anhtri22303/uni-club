@@ -168,8 +168,11 @@ export async function createClubAccount(
 export async function sendOtp(studentEmail: string): Promise<string> {
   const response = await axiosInstance.post(
     `/api/club-applications/send-otp`,
-    { studentEmail },
-    { headers: { "Content-Type": "application/json" } }
+    null, // No body needed
+    { 
+      headers: { "Content-Type": "application/json" },
+      params: { studentEmail } // Send as query parameter
+    }
   );
 
   // API trả về: { success, message, data: "string" }
