@@ -50,17 +50,23 @@ export async function getClubApplications(): Promise<ClubApplication[]> {
   return result.data
 }
 
-export async function postClubApplication(body: {
-  clubName: string
-  description: string
-  majorId: number
-  vision: string
-  proposerReason: string
-}) {
+export async function postClubApplication(
+  body: {
+    clubName: string
+    description: string
+    majorId: number
+    vision: string
+    proposerReason: string
+  },
+  otp: string
+) {
   const response = await axiosInstance.post(
     "/api/club-applications",
     body,
-    { headers: { "Content-Type": "application/json" } }
+    { 
+      headers: { "Content-Type": "application/json" },
+      params: { otp } // Add OTP as query parameter
+    }
   )
 
   // Backend trả về: { success, message, data }
@@ -154,6 +160,31 @@ export async function createClubAccount(
   return result.data;
 }
 
+/**
+ * ✅ NEW: Gửi mã OTP cho sinh viên xin lập CLB (POST /api/club-applications/send-otp)
+ * @param studentEmail Email của sinh viên
+ * @returns Trả về một chuỗi string thông báo từ backend
+ */
+export async function sendOtp(studentEmail: string): Promise<string> {
+  const response = await axiosInstance.post(
+    `/api/club-applications/send-otp`,
+    { studentEmail },
+    { headers: { "Content-Type": "application/json" } }
+  );
+
+  // API trả về: { success, message, data: "string" }
+  const result = response.data as {
+    success: boolean;
+    message: string;
+    data: string;
+  };
+
+  if (!result.success) {
+    throw new Error(result.message || "Failed to send OTP");
+  }
+  return result.data;
+}
+
 
 
 
@@ -163,5 +194,6 @@ export default {
   putClubApplicationStatus,
   getMyClubApply,
   processClubApplication,
-  createClubAccount
+  createClubAccount,
+  sendOtp
 }

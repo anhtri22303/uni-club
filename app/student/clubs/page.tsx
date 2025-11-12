@@ -49,6 +49,8 @@ export default function MemberClubsPage() {
   const [newDescription, setNewDescription] = useState("")
   const [newMajor, setNewMajor] = useState("")
   const [newProposerReason, setNewProposerReason] = useState("")
+  const [isSendingOtp, setIsSendingOtp] = useState(false)
+  const [otpCode, setOtpCode] = useState("")
 
   // ✅ USE REACT QUERY instead of manual state
   const { data: clubs = [], isLoading: loading, error: queryError } = useClubs({ page: 0, size: 70, sort: ["name"] })
@@ -712,6 +714,66 @@ export default function MemberClubsPage() {
                 />
               </div>
 
+              {/* Send OTP Button */}
+              <div className="flex justify-start">
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    if (!auth.user?.email) {
+                      toast({
+                        title: "Error",
+                        description: "Unable to get your email address",
+                        variant: "destructive",
+                      })
+                      return
+                    }
+
+                    setIsSendingOtp(true)
+                    try {
+                      const { sendOtp } = await import("@/service/clubApplicationAPI")
+                      const result = await sendOtp(auth.user.email)
+                      
+                      toast({
+                        title: "OTP Sent",
+                        description: result || "OTP has been sent to your email",
+                      })
+                    } catch (err: any) {
+                      console.error("Error sending OTP:", err)
+                      toast({
+                        title: "Error",
+                        description: err?.response?.data?.message || err?.message || "Failed to send OTP",
+                        variant: "destructive",
+                      })
+                    } finally {
+                      setIsSendingOtp(false)
+                    }
+                  }}
+                  disabled={isSendingOtp}
+                >
+                  {isSendingOtp ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Sending OTP...
+                    </>
+                  ) : (
+                    "Send OTP"
+                  )}
+                </Button>
+              </div>
+
+              {/* OTP Input */}
+              <div className="space-y-2">
+                <Label htmlFor="otpCode">OTP Code</Label>
+                <Textarea
+                  id="otpCode"
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value)}
+                  placeholder="Enter the OTP code sent to your email"
+                  className="border-slate-400"
+                  rows={1}
+                />
+              </div>
+
               {/* Buttons */}
               <div className="flex justify-end gap-2 pt-2">
                 <Button variant="outline" onClick={() => setShowCreateClubModal(false)}>
@@ -734,6 +796,15 @@ export default function MemberClubsPage() {
                       return
                     }
 
+                    if (!otpCode.trim()) {
+                      toast({
+                        title: "OTP Required",
+                        description: "Please enter the OTP code sent to your email.",
+                        variant: "destructive",
+                      })
+                      return
+                    }
+
                     try {
                       const { postClubApplication } = await import("@/service/clubApplicationAPI")
                       const payload = {
@@ -745,7 +816,7 @@ export default function MemberClubsPage() {
                       }
 
                       console.log("Submitting club application:", payload)
-                      const created = await postClubApplication(payload)
+                      const created = await postClubApplication(payload, otpCode.trim())
                       console.log("API response:", created)
 
                       toast({
@@ -761,6 +832,7 @@ export default function MemberClubsPage() {
                       setSelectedMajorId("")
                       setNewVision("")
                       setNewProposerReason("")
+                      setOtpCode("")
                     } catch (err: any) {
                       console.error("Error submitting application:", err)
                       toast({
