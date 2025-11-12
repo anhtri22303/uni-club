@@ -4,10 +4,14 @@ import { useEffect, useState } from "react"
 import { AppShell } from "@/components/app-shell"
 import { ProtectedRoute } from "@/contexts/protected-route"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Modal } from "@/components/modal"
 // Remove Button import (no add club modal)
 import { DataTable } from "@/components/data-table"
 import { useToast } from "@/hooks/use-toast"
-import { Users, Trash, Plus } from "lucide-react"
+import { Users, Trash, Plus, Loader2, Mail } from "lucide-react"
 import { fetchClub, getClubMemberCount } from "@/service/clubApi"
 // Thêm import useRef nếu cần
 // Remove useRef import (not needed)
@@ -46,6 +50,11 @@ export default function UniStaffClubsPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   // Remove add club modal and related states
+  
+  // OTP Modal states
+  const [showOtpModal, setShowOtpModal] = useState(false)
+  const [otpEmail, setOtpEmail] = useState("")
+  const [isSendingOtp, setIsSendingOtp] = useState(false)
 
   // Fetch club list
   useEffect(() => {
@@ -225,6 +234,18 @@ export default function UniStaffClubsPage() {
   return (
     <ProtectedRoute allowedRoles={["uni_staff"]}>
       <AppShell>
+        {/* Floating Send OTP button */}
+        <Button
+          aria-label="Send OTP to student"
+          size="sm"
+          variant="default"
+          className="fixed top-4 right-4 z-50 rounded-full flex items-center justify-center gap-2"
+          onClick={() => setShowOtpModal(true)}
+        >
+          <Mail className="h-5 w-5" />
+          <span className="font-medium">Send OTP</span>
+        </Button>
+
         <div className="space-y-6">
           <div>
             <h1 className="text-3xl font-bold">Club Management</h1>
@@ -253,6 +274,97 @@ export default function UniStaffClubsPage() {
             </div>
           )}
         </div>
+
+        {/* OTP Modal */}
+        <Modal
+          open={showOtpModal}
+          onOpenChange={setShowOtpModal}
+          title="Send OTP to Student"
+          description="Enter student email to send OTP for club application"
+        >
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="studentEmail">Student Email</Label>
+              <Input
+                id="studentEmail"
+                type="email"
+                value={otpEmail}
+                onChange={(e) => setOtpEmail(e.target.value)}
+                placeholder="student@university.edu"
+                className="border-slate-400"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setShowOtpModal(false)
+                  setOtpEmail("")
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={async () => {
+                  if (!otpEmail.trim()) {
+                    toast({
+                      title: "Email Required",
+                      description: "Please enter a student email address",
+                      variant: "destructive",
+                    })
+                    return
+                  }
+
+                  // Basic email validation
+                  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+                  if (!emailRegex.test(otpEmail.trim())) {
+                    toast({
+                      title: "Invalid Email",
+                      description: "Please enter a valid email address",
+                      variant: "destructive",
+                    })
+                    return
+                  }
+
+                  setIsSendingOtp(true)
+                  try {
+                    const { sendOtp } = await import("@/service/clubApplicationAPI")
+                    const result = await sendOtp(otpEmail.trim())
+                    
+                    toast({
+                      title: "OTP Sent Successfully",
+                      description: result || `OTP has been sent to ${otpEmail}`,
+                    })
+
+                    // Reset and close modal
+                    setShowOtpModal(false)
+                    setOtpEmail("")
+                  } catch (err: any) {
+                    console.error("Error sending OTP:", err)
+                    toast({
+                      title: "Failed to Send OTP",
+                      description: err?.response?.data?.message || err?.message || "An error occurred while sending OTP",
+                      variant: "destructive",
+                    })
+                  } finally {
+                    setIsSendingOtp(false)
+                  }
+                }}
+                disabled={isSendingOtp}
+              >
+                {isSendingOtp ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  "Send OTP"
+                )}
+              </Button>
+            </div>
+          </div>
+        </Modal>
       </AppShell>
     </ProtectedRoute>
   )

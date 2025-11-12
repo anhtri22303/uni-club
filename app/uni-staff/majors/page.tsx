@@ -13,12 +13,37 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { BookMarked, Search, Eye, Trash, Plus } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import { useMajors } from "@/hooks/use-query-hooks"
 import { useQueryClient } from "@tanstack/react-query"
 import { Skeleton } from "@/components/ui/skeleton"
+
+// Danh sách các màu phổ biến để chọn
+const COLOR_OPTIONS = [
+    { value: "#FF6B6B", label: "Red" },
+    { value: "#4ECDC4", label: "Turquoise" },
+    { value: "#45B7D1", label: "Sky Blue" },
+    { value: "#FFA07A", label: "Light Salmon" },
+    { value: "#98D8C8", label: "Mint" },
+    { value: "#F7DC6F", label: "Yellow" },
+    { value: "#BB8FCE", label: "Purple" },
+    { value: "#85C1E2", label: "Light Blue" },
+    { value: "#F8B739", label: "Orange" },
+    { value: "#52B788", label: "Green" },
+    { value: "#E76F51", label: "Coral" },
+    { value: "#2A9D8F", label: "Teal" },
+    { value: "#E9C46A", label: "Gold" },
+    { value: "#F4A261", label: "Sandy Brown" },
+    { value: "#264653", label: "Dark Slate" },
+    { value: "#8338EC", label: "Violet" },
+    { value: "#FB5607", label: "Orange Red" },
+    { value: "#FFBE0B", label: "Amber" },
+    { value: "#3A86FF", label: "Blue" },
+    { value: "#06FFA5", label: "Aquamarine" },
+]
 
 
 export default function UniStaffMajorsPage() {
@@ -397,31 +422,52 @@ export default function UniStaffMajorsPage() {
                                     <Input id="major-code" className="mt-2 border-slate-300" value={editMajorCode} onChange={(e) => setEditMajorCode((e.target as HTMLInputElement).value)} />
                                 </div>
 
-                                {/* Input cho Color Hex (Edit) */}
+                                {/* Dropdown cho Color Hex (Edit) */}
                                 <div>
                                     <Label htmlFor="major-color">Color Hex</Label>
-                                    <Input
-                                        id="major-color"
-                                        className={`mt-2 border-slate-300 ${colorError ? "border-red-500 ring-red-500" : "" // Thêm style lỗi
-                                            }`}
+                                    <Select
                                         value={editColorHex}
-                                        onChange={(e) => {
-                                            const newColor = e.target.value
-                                            setEditColorHex(newColor)
-
-                                            // Chạy validation ngay lập tức
-                                            if (!newColor.trim()) {
-                                                setColorError("Color hex is required.") // Hoặc null nếu bạn cho phép rỗng
-                                            } else if (!isValidHex(newColor)) {
+                                        onValueChange={(value) => {
+                                            setEditColorHex(value)
+                                            // Validation khi chọn màu
+                                            if (!value.trim()) {
+                                                setColorError("Color hex is required.")
+                                            } else if (!isValidHex(value)) {
                                                 setColorError("Invalid format. Must be #FFF or #FFFFFF")
-                                            } else if (isColorInUse(newColor)) {
+                                            } else if (isColorInUse(value)) {
                                                 setColorError("This color is already in use by another major.")
                                             } else {
-                                                setColorError(null) // Không có lỗi
+                                                setColorError(null)
                                             }
                                         }}
-                                        placeholder="#FFFFFF"
-                                    />
+                                    >
+                                        <SelectTrigger className={`mt-2 border-slate-300 ${colorError ? "border-red-500 ring-red-500" : ""}`}>
+                                            <SelectValue placeholder="Select a color">
+                                                {editColorHex && (
+                                                    <div className="flex items-center gap-2">
+                                                        <div
+                                                            className="w-4 h-4 rounded border"
+                                                            style={{ backgroundColor: editColorHex }}
+                                                        />
+                                                        <span>{editColorHex}</span>
+                                                    </div>
+                                                )}
+                                            </SelectValue>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {COLOR_OPTIONS.map((color) => (
+                                                <SelectItem key={color.value} value={color.value}>
+                                                    <div className="flex items-center gap-2">
+                                                        <div
+                                                            className="w-4 h-4 rounded border"
+                                                            style={{ backgroundColor: color.value }}
+                                                        />
+                                                        <span>{color.label} ({color.value})</span>
+                                                    </div>
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                     {/* Hiển thị thông báo lỗi */}
                                     {colorError && <p className="text-xs text-red-600 mt-1">{colorError}</p>}
                                 </div>
@@ -499,17 +545,40 @@ export default function UniStaffMajorsPage() {
                                     {createCodeError && <p className="text-xs text-red-600 mt-1">{createCodeError}</p>}
                                 </div>
 
-                                {/* Input Color Hex (không đổi) */}
+                                {/* Dropdown cho Color Hex (Create) */}
                                 <div>
                                     <Label htmlFor="create-major-color">Color Hex</Label>
-                                    <Input
-                                        id="create-major-color"
-                                        className="mt-2 border-slate-300"
+                                    <Select
                                         value={createColorHex}
-                                        onChange={(e) => setCreateColorHex((e.target as HTMLInputElement).value)}
-                                        placeholder="#FFFFFF"
-                                    />
-                                    {/* Bạn có thể thêm validation cho color hex ở đây nếu muốn */}
+                                        onValueChange={(value) => setCreateColorHex(value)}
+                                    >
+                                        <SelectTrigger className="mt-2 border-slate-300">
+                                            <SelectValue placeholder="Select a color">
+                                                {createColorHex && (
+                                                    <div className="flex items-center gap-2">
+                                                        <div
+                                                            className="w-4 h-4 rounded border"
+                                                            style={{ backgroundColor: createColorHex }}
+                                                        />
+                                                        <span>{createColorHex}</span>
+                                                    </div>
+                                                )}
+                                            </SelectValue>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {COLOR_OPTIONS.map((color) => (
+                                                <SelectItem key={color.value} value={color.value}>
+                                                    <div className="flex items-center gap-2">
+                                                        <div
+                                                            className="w-4 h-4 rounded border"
+                                                            style={{ backgroundColor: color.value }}
+                                                        />
+                                                        <span>{color.label} ({color.value})</span>
+                                                    </div>
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                 </div>
 
                                 {/* Input Description (không đổi) */}
