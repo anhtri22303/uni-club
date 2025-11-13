@@ -11,108 +11,37 @@ import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from "@/components/ui/select"
-import { getMutiplierPolicyByType, createMultiplierPolicy, updateMultiplierPolicy, deleteMutiplierPolicy, MultiplierPolicy, PolicyTargetType, } from "@/service/mutiplierPolicyApi"
-import { TrendingUp, TrendingDown, Minus, Users, Shield, Target, Calendar, Clock, Award, Percent, CheckCircle2, XCircle, AlertCircle, Sparkles, Plus, X } from "lucide-react"
+import {
+  getMutiplierPolicy, createMultiplierPolicy, updateMultiplierPolicy, deleteMutiplierPolicy, MultiplierPolicy, PolicyTargetType, ConditionType,
+} from "@/service/multiplierPolicyApi"
+import {
+  TrendingUp, TrendingDown, Minus, Users, Shield, Target, Calendar, Clock, Award, Percent, CheckCircle2, XCircle, AlertCircle, Sparkles, Plus, X, Activity,
+  Gauge, Layers, FileText,
+} from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
-// Status/Level configuration for different target types
-const CLUB_STATUSES = {
-  EXCELLENT: {
-    label: "Excellent",
-    color: "bg-gradient-to-br from-purple-500 to-pink-500",
-    textColor: "text-purple-700 dark:text-purple-300",
-    bgColor: "bg-purple-50 dark:bg-purple-950/20",
-    borderColor: "border-purple-200 dark:border-purple-800",
-    icon: Sparkles
-  },
-  ACTIVE: {
-    label: "Active",
-    color: "bg-gradient-to-br from-green-500 to-emerald-500",
-    textColor: "text-green-700 dark:text-green-300",
-    bgColor: "bg-green-50 dark:bg-green-950/20",
-    borderColor: "border-green-200 dark:border-green-800",
-    icon: CheckCircle2
-  },
-  INACTIVE: {
-    label: "Inactive",
-    color: "bg-gradient-to-br from-orange-500 to-amber-500",
-    textColor: "text-orange-700 dark:text-orange-300",
-    bgColor: "bg-orange-50 dark:bg-orange-950/20",
-    borderColor: "border-orange-200 dark:border-orange-800",
-    icon: AlertCircle
-  },
-  SUSPENDED: {
-    label: "Suspended",
-    color: "bg-gradient-to-br from-red-500 to-rose-500",
-    textColor: "text-red-700 dark:text-red-300",
-    bgColor: "bg-red-50 dark:bg-red-950/20",
-    borderColor: "border-red-200 dark:border-red-800",
-    icon: XCircle
+// REBUILT: Simplified config as 'levelOrStatus' no longer exists.
+// We base colors/icons on TargetType only, per user request.
+const getStatusConfig = (targetType: PolicyTargetType) => {
+  if (targetType === "CLUB") {
+    return {
+      label: "Club Policy",
+      icon: Shield,
+      color: "bg-gradient-to-br from-blue-500 to-cyan-500",
+      textColor: "text-blue-700 dark:text-blue-300",
+      bgColor: "bg-blue-50 dark:bg-blue-950/20",
+      borderColor: "border-blue-200 dark:border-blue-800",
+    }
   }
-}
-
-const MEMBER_STATUSES = {
-  LEGEND: {
-    label: "Legend",
-    color: "bg-gradient-to-br from-amber-500 to-yellow-500",
-    textColor: "text-amber-700 dark:text-amber-300",
-    bgColor: "bg-amber-50 dark:bg-amber-950/20",
-    borderColor: "border-amber-200 dark:border-amber-800",
-    icon: Award
-  },
-  ELITE: {
-    label: "Elite",
+  return {
+    // MEMBER
+    label: "Member Policy",
+    icon: Users,
     color: "bg-gradient-to-br from-purple-500 to-indigo-500",
     textColor: "text-purple-700 dark:text-purple-300",
     bgColor: "bg-purple-50 dark:bg-purple-950/20",
     borderColor: "border-purple-200 dark:border-purple-800",
-    icon: Sparkles
-  },
-  CONTRIBUTOR: {
-    label: "Contributor",
-    color: "bg-gradient-to-br from-blue-500 to-cyan-500",
-    textColor: "text-blue-700 dark:text-blue-300",
-    bgColor: "bg-blue-50 dark:bg-blue-950/20",
-    borderColor: "border-blue-200 dark:border-blue-800",
-    icon: TrendingUp
-  },
-  ACTIVE: {
-    label: "Active",
-    color: "bg-gradient-to-br from-green-500 to-emerald-500",
-    textColor: "text-green-700 dark:text-green-300",
-    bgColor: "bg-green-50 dark:bg-green-950/20",
-    borderColor: "border-green-200 dark:border-green-800",
-    icon: CheckCircle2
-  },
-  BASIC: {
-    label: "Basic",
-    color: "bg-gradient-to-br from-gray-500 to-slate-500",
-    textColor: "text-gray-700 dark:text-gray-300",
-    bgColor: "bg-gray-50 dark:bg-gray-950/20",
-    borderColor: "border-gray-200 dark:border-gray-800",
-    icon: Target
-  }
-}
-
-const getStatusConfig = (targetType: PolicyTargetType, status: string) => {
-  if (targetType === "CLUB") {
-    return CLUB_STATUSES[status as keyof typeof CLUB_STATUSES] || {
-      label: status,
-      color: "bg-gradient-to-br from-gray-500 to-slate-500",
-      textColor: "text-gray-700 dark:text-gray-300",
-      bgColor: "bg-gray-50 dark:bg-gray-950/20",
-      borderColor: "border-gray-200 dark:border-gray-800",
-      icon: Target
-    }
-  }
-  return MEMBER_STATUSES[status as keyof typeof MEMBER_STATUSES] || {
-    label: status,
-    color: "bg-gradient-to-br from-gray-500 to-slate-500",
-    textColor: "text-gray-700 dark:text-gray-300",
-    bgColor: "bg-gray-50 dark:bg-gray-950/20",
-    borderColor: "border-gray-200 dark:border-gray-800",
-    icon: Target
   }
 }
 
@@ -123,11 +52,56 @@ const getMultiplierIcon = (multiplier: number) => {
 }
 
 const getMultiplierBadgeColor = (multiplier: number) => {
-  if (multiplier > 1.2) return "bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-700"
-  if (multiplier > 1) return "bg-green-100 text-green-700 border-green-300 dark:bg-green-950 dark:text-green-300 dark:border-green-700"
-  if (multiplier === 1) return "bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-700"
-  if (multiplier > 0) return "bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-950 dark:text-orange-300 dark:border-orange-700"
-  return "bg-red-100 text-red-700 border-red-300 dark:bg-red-950 dark:text-red-300 dark:border-red-700"
+  // 1. Mốc = 0 (Không có điểm)
+  if (multiplier === 0) {
+    return "bg-red-100 text-red-700 border-red-300 dark:bg-red-950 dark:text-red-300 dark:border-red-700"
+  }
+  // 2. Mốc (0 < x < 1) (Giảm điểm)
+  if (multiplier < 1) {
+    return "bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-950 dark:text-orange-300 dark:border-orange-700"
+  }
+  // 3. Mốc = 1 (Chuẩn, không đổi)
+  if (multiplier === 1) {
+    return "bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-700"
+  }
+  // 5. Mốc > 2 (Thưởng cao)
+  if (multiplier > 2) {
+    return "bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-700"
+  }
+  // 4. Mốc (1 < x <= 2) (Thưởng)
+  // (Chúng ta kiểm tra điều này sau khi đã kiểm tra > 2)
+  if (multiplier > 1) {
+    return "bg-green-100 text-green-700 border-green-300 dark:bg-green-950 dark:text-green-300 dark:border-green-700"
+  }
+  // Trường hợp dự phòng (ví dụ: số âm, dù logic của bạn đã chặn)
+  return "bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-950 dark:text-gray-300 dark:border-gray-700"
+}
+
+const formatNumberWithCommas = (value: number | string | undefined): string => {
+  if (value === undefined || value === null || value === "") return ""
+
+  // Xóa các dấu phẩy cũ để định dạng lại
+  const stringValue = String(value).replace(/,/g, '')
+
+  const parts = stringValue.split('.')
+  // Thêm dấu phẩy cho phần nguyên
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+
+  return parts.join('.')
+}
+
+// Hàm này sẽ xóa dấu phẩy và ký tự không phải số (trừ dấu chấm)
+const parseNumber = (value: string): number => {
+  // Cho phép số và dấu chấm (cho multiplier)
+  const cleanedValue = value.replace(/[^0-9.]/g, '')
+  return parseFloat(cleanedValue) || 0
+}
+
+// Hàm này sẽ xóa dấu phẩy và chỉ lấy số nguyên (cho threshold)
+const parseIntWithCommas = (value: string): number => {
+  // Chỉ cho phép số
+  const cleanedValue = value.replace(/[^0-9]/g, '')
+  return parseInt(cleanedValue) || 0
 }
 
 const formatDate = (dateString: string) => {
@@ -159,55 +133,89 @@ export default function AdminMultiplierPolicyPage() {
   const [activeTab, setActiveTab] = useState<PolicyTargetType>("CLUB")
 
   // Create modal state
+  // REBUILT: Create modal state for NEW API fields
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
-  const [formData, setFormData] = useState<Omit<MultiplierPolicy, "id" | "updatedBy" | "updatedAt">>({ // CHANGED type
+
+  const initialFormData: Omit<MultiplierPolicy, "id" | "updatedBy"> & {
+    // Thêm các trường string này
+    minThresholdString: string
+    maxThresholdString: string
+    multiplierString: string
+  } = {
     targetType: "CLUB",
-    levelOrStatus: "",
-    minEvents: 0,
+    activityType: "",
+    ruleName: "",
+    conditionType: "PERCENTAGE",
+    minThreshold: 0,
+    maxThreshold: 0,
+    policyDescription: "",
     multiplier: 1,
-    effectiveFrom: new Date().toISOString().split('T')[0],
-    active: true // ADDED
-  })
+    active: true,
+    // Thêm giá trị mặc định cho chuỗi
+    minThresholdString: "0",
+    maxThresholdString: "0",
+    multiplierString: "1",
+  }
+
+  // const [formData, setFormData] =
+  //   useState<Omit<MultiplierPolicy, "id" | "updatedBy">>(initialFormData)
+  const [formData, setFormData] = useState(initialFormData)
 
   // Edit modal state
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [selectedPolicy, setSelectedPolicy] = useState<MultiplierPolicy | null>(null)
-  const [editFormData, setEditFormData] = useState<Partial<MultiplierPolicy>>({ // CHANGED type
-    multiplier: 0,
-    updatedBy: ""
-    // id: 0, // REMOVED
-  })
+  // const [editFormData, setEditFormData] = useState<Partial<MultiplierPolicy>>({})
+  // Thêm các trường string để người dùng có thể nhập số thập phân/số có dấu phẩy mà không bị parse ngay lập tức
+  const [editFormData, setEditFormData] = useState<Partial<MultiplierPolicy> & {
+    minThresholdString?: string
+    maxThresholdString?: string
+    multiplierString?: string
+  }>({})
+
   // Delete state
   const [isDeleting, setIsDeleting] = useState(false)
   const [policyToDelete, setPolicyToDelete] = useState<MultiplierPolicy | null>(null)
-
+  const [currentUserInfo, setCurrentUserInfo] = useState({ id: "system", name: "System" });
   // Load policies on mount
   useEffect(() => {
     loadAllPolicies()
+    // Tải thông tin user hiện tại từ session
+    const authData = sessionStorage.getItem("uniclub-auth");
+    if (authData) {
+      try {
+        const parsedAuth = JSON.parse(authData);
+        // Lấy ID
+        const id = parsedAuth.userId || parsedAuth.id || "system";
+        // CỐ GẮNG TÌM TÊN (ưu tiên fullName, name, rồi email, cuối cùng là ID)
+        const name = parsedAuth.fullName || parsedAuth.name || parsedAuth.email || id;
+        setCurrentUserInfo({ id, name });
+      } catch (e) {
+        console.error("Failed to parse auth data", e);
+      }
+    }
   }, [])
 
+  // REBUILT: loadAllPolicies to use ONE API call and filter
   const loadAllPolicies = async () => {
     try {
       setLoadingClub(true)
       setLoadingMember(true)
 
-      // // Call the new API that returns all policies
-      // const allPolicies = await getMutiplierPolicy()
-      // // Filter by target type
-      // const clubPolicies = allPolicies.filter(policy => policy.targetType === "CLUB")
-      // const memberPolicies = allPolicies.filter(policy => policy.targetType === "MEMBER")
-      // setClubPolicies(clubPolicies)
-      // setMemberPolicies(memberPolicies)
+      // Call the new API that returns all policies
+      const allPolicies = await getMutiplierPolicy() // FIXED TYPO
 
-      // OPTIMIZED: Call specific endpoints in parallel
-      const [clubData, memberData] = await Promise.all([
-        getMutiplierPolicyByType("CLUB"),
-        getMutiplierPolicyByType("MEMBER")
-      ])
-      setClubPolicies(clubData)
-      setMemberPolicies(memberData)
+      // Filter by target type
+      const clubPolicies = allPolicies.filter(
+        policy => policy.targetType === "CLUB"
+      )
+      const memberPolicies = allPolicies.filter(
+        policy => policy.targetType === "MEMBER"
+      )
+
+      setClubPolicies(clubPolicies)
+      setMemberPolicies(memberPolicies)
     } catch (error) {
       console.error("Error loading multiplier policies:", error)
       toast({
@@ -221,35 +229,33 @@ export default function AdminMultiplierPolicyPage() {
     }
   }
 
+  // REBUILT: handleCreatePolicy for NEW API fields
   const handleCreatePolicy = async () => {
     // Validation
-    if (!formData.levelOrStatus.trim()) {
+    if (!formData.ruleName.trim()) {
       toast({
         title: "Validation Error",
-        description: "Level or Status is required",
+        description: "Rule Name is required",
         variant: "destructive",
       })
       return
     }
-
-    if (!formData.effectiveFrom) {
+    if (!formData.activityType.trim()) {
       toast({
         title: "Validation Error",
-        description: "Effective From date is required",
+        description: "Activity Type is required",
         variant: "destructive",
       })
       return
     }
-
-    if (formData.minEvents < 0) {
+    if (formData.minThreshold < 0 || formData.maxThreshold < 0) {
       toast({
         title: "Validation Error",
-        description: "Minimum events must be 0 or greater",
+        description: "Thresholds must be 0 or greater",
         variant: "destructive",
       })
       return
     }
-
     if (formData.multiplier < 0) {
       toast({
         title: "Validation Error",
@@ -259,39 +265,81 @@ export default function AdminMultiplierPolicyPage() {
       return
     }
 
+    // Parse các giá trị string về number
+    const minThreshold = parseIntWithCommas(formData.minThresholdString)
+    const maxThreshold = parseIntWithCommas(formData.maxThresholdString)
+    const multiplier = parseNumber(formData.multiplierString)
+
+    if (minThreshold < 0 || maxThreshold < 0) {
+      toast({
+        title: "Validation Error",
+        description: "Thresholds must be 0 or greater",
+        variant: "destructive",
+      })
+      return
+    }
+    if (multiplier < 0) {
+      toast({
+        title: "Validation Error",
+        description: "Multiplier must be 0 or greater",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Get user from session for 'updatedBy'
+    const authData = sessionStorage.getItem("uniclub-auth")
+    let userId = "system"
+    if (authData) {
+      try {
+        const parsedAuth = JSON.parse(authData)
+        userId = parsedAuth.userId || parsedAuth.id || parsedAuth.email || "system"
+      } catch (error) {
+        console.error("Error parsing auth data:", error)
+      }
+    }
+
     try {
       setIsCreating(true)
 
-      // Format the effectiveFrom date to ISO format with time
-      const formattedPayload = {
+      // const payload = {
+      //   ...formData,
+      //   updatedBy: userId, // Set the user
+      // }
+      const payload = {
         ...formData,
-        effectiveFrom: new Date(formData.effectiveFrom).toISOString()
+        // Ghi đè bằng các giá trị số đã parse
+        minThreshold,
+        maxThreshold,
+        multiplier,
+        updatedBy: userId, // Set the user
       }
+      // Xóa các trường string tạm thời trước khi gửi
+      delete (payload as any).minThresholdString
+      delete (payload as any).maxThresholdString
+      delete (payload as any).multiplierString
 
-      const newPolicy = await createMultiplierPolicy(formattedPayload) // CHANGED from postMutiplierPolicy
+
+      const newPolicy = await createMultiplierPolicy(payload)
+
       // Reload all policies to get the latest data
       await loadAllPolicies()
 
       // Reset form and close modal
-      setFormData({
-        targetType: "CLUB",
-        levelOrStatus: "",
-        minEvents: 0,
-        multiplier: 1,
-        effectiveFrom: new Date().toISOString().split('T')[0],
-        active: true // ADDED
-      })
+      setFormData(initialFormData)
       setIsCreateModalOpen(false)
 
       toast({
         title: "Success",
-        description: `Multiplier policy for ${newPolicy.levelOrStatus} created successfully`,
+        description: `Multiplier policy "${newPolicy.ruleName}" created successfully`,
       })
     } catch (error: any) {
       console.error("Error creating policy:", error)
       toast({
         title: "Error",
-        description: error.response?.data?.message || "Failed to create policy. Please try again.",
+        description:
+          error.response?.data?.message ||
+          "Failed to create policy. Please try again.",
         variant: "destructive",
       })
     } finally {
@@ -300,7 +348,9 @@ export default function AdminMultiplierPolicyPage() {
   }
 
   const handleOpenEditModal = (policy: MultiplierPolicy) => {
-    // Get userId from sessionStorage
+    setSelectedPolicy(policy);
+
+    // Lấy userId từ sessionStorage
     const authData = sessionStorage.getItem("uniclub-auth")
     let userId = "unknown"
 
@@ -313,41 +363,77 @@ export default function AdminMultiplierPolicyPage() {
       }
     }
 
-    setSelectedPolicy(policy)
+    // Tải TẤT CẢ dữ liệu từ policy vào form
+    // ĐẶC BIỆT: Khởi tạo các trường `...String` từ giá trị số đã có của policy
     setEditFormData({
-      // id: policy.id,
-      multiplier: policy.multiplier,
-      updatedBy: userId
-    })
-    setIsEditModalOpen(true)
+      ...policy,
+      minThresholdString: formatNumberWithCommas(policy.minThreshold),
+      maxThresholdString: formatNumberWithCommas(policy.maxThreshold),
+      multiplierString: formatNumberWithCommas(policy.multiplier),
+      updatedBy: currentUserInfo.id, // Vẫn dùng currentUserInfo.id cho updatedBy khi lưu
+    });
+    setIsEditModalOpen(true);
   }
 
   const handleEditPolicy = async () => {
-    // Validation
-    if (editFormData.multiplier === undefined || editFormData.multiplier < 0) {
-      toast({
-        title: "Validation Error",
-        description: "Multiplier must be 0 or greater",
-        variant: "destructive",
-      })
-      return
+    // --- BẮT ĐẦU VALIDATION VÀ PARSE ---
+    // Kiểm tra và parse các giá trị từ string sang number
+    const ruleName = editFormData.ruleName?.trim()
+    const activityType = editFormData.activityType?.trim()
+
+    if (!ruleName) {
+      toast({ title: "Validation Error", description: "Rule Name is required", variant: "destructive" }); return;
+    }
+    if (!activityType) {
+      toast({ title: "Validation Error", description: "Activity Type is required", variant: "destructive" }); return;
     }
 
+    // Parse từ string sang number
+    const minThreshold = parseIntWithCommas(editFormData.minThresholdString || "");
+    const maxThreshold = parseIntWithCommas(editFormData.maxThresholdString || "");
+    const multiplier = parseNumber(editFormData.multiplierString || "");
+
+    // Validation cho các giá trị đã parse
+    if (minThreshold < 0 || maxThreshold < 0) {
+      toast({ title: "Validation Error", description: "Thresholds must be 0 or greater", variant: "destructive" }); return;
+    }
+    if (multiplier < 0) {
+      toast({ title: "Validation Error", description: "Multiplier must be 0 or greater", variant: "destructive" }); return;
+    }
+    // --- KẾT THÚC VALIDATION VÀ PARSE ---
+
     if (!selectedPolicy) {
-      toast({ title: "Error", description: "No policy selected", variant: "destructive" })
+      toast({
+        title: "Error",
+        description: "No policy selected",
+        variant: "destructive",
+      })
       return
     }
 
     try {
       setIsEditing(true)
 
-      await updateMultiplierPolicy(selectedPolicy.id, editFormData) // CHANGED from putMutiplierPolicy
-      // Reload all policies to get the latest data
+      const payload = {
+        ...editFormData,
+        // Ghi đè các trường number bằng giá trị đã parse
+        ruleName,
+        activityType,
+        minThreshold,
+        maxThreshold,
+        multiplier,
+        // Đảm bảo không gửi các trường string tạm thời đi
+        minThresholdString: undefined,
+        maxThresholdString: undefined,
+        multiplierString: undefined,
+      };
+
+      // Gửi TOÀN BỘ đối tượng 'editFormData' đi (với các trường number đã được parse)
+      await updateMultiplierPolicy(selectedPolicy.id, payload as MultiplierPolicy);
+
+      // Tải lại
       await loadAllPolicies()
-
-      // Close modal
       setIsEditModalOpen(false)
-
       toast({
         title: "Success",
         description: `Multiplier policy updated successfully`,
@@ -356,7 +442,9 @@ export default function AdminMultiplierPolicyPage() {
       console.error("Error updating policy:", error)
       toast({
         title: "Error",
-        description: error.response?.data?.message || "Failed to update policy. Please try again.",
+        description:
+          error.response?.data?.message ||
+          "Failed to update policy. Please try again.",
         variant: "destructive",
       })
     } finally {
@@ -376,7 +464,7 @@ export default function AdminMultiplierPolicyPage() {
       setIsDeleting(true)
 
       // Call delete API
-      await deleteMutiplierPolicy(policyToDelete.id)
+      await deleteMutiplierPolicy(policyToDelete.id) // FIXED TYPO
 
       // Reload all policies to get the latest data
       await loadAllPolicies()
@@ -403,8 +491,7 @@ export default function AdminMultiplierPolicyPage() {
   // Calculate statistics
   const clubStats = useMemo(() => {
     const avgMultiplier = clubPolicies.length > 0
-      ? clubPolicies.reduce((sum, p) => sum + p.multiplier, 0) / clubPolicies.length
-      : 0
+      ? clubPolicies.reduce((sum, p) => sum + p.multiplier, 0) / clubPolicies.length : 0
     const maxMultiplier = Math.max(...clubPolicies.map(p => p.multiplier), 0)
     const totalPolicies = clubPolicies.length
     return { avgMultiplier, maxMultiplier, totalPolicies }
@@ -424,10 +511,11 @@ export default function AdminMultiplierPolicyPage() {
   const currentLoading = activeTab === "CLUB" ? loadingClub : loadingMember
 
   // Render policy card
+  // REBUILT: renderPolicyCard to use NEW API fields
   const renderPolicyCard = (policy: MultiplierPolicy) => {
-    const statusConfig = getStatusConfig(policy.targetType, policy.levelOrStatus)
+    const statusConfig = getStatusConfig(policy.targetType) // CHANGED: Simplified
     const MultiplierIcon = getMultiplierIcon(policy.multiplier)
-    const StatusIcon = statusConfig.icon
+    const StatusIcon = statusConfig.icon // CHANGED: Simplified
 
     return (
       <Card
@@ -441,35 +529,44 @@ export default function AdminMultiplierPolicyPage() {
         <CardHeader className={`${statusConfig.bgColor}`}>
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-              <div className={`p-2 rounded-lg ${statusConfig.color} flex-shrink-0`}>
+              <div
+                className={`p-2 rounded-lg ${statusConfig.color} flex-shrink-0`}
+              >
                 <StatusIcon className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
               </div>
               <div className="min-w-0">
-                <CardTitle className="text-base sm:text-xl truncate">{statusConfig.label}</CardTitle>
+                <CardTitle className="text-base sm:text-xl truncate">
+                  {policy.ruleName}
+                </CardTitle>{" "}
+                {/* CHANGED: policy.ruleName */}
                 <CardDescription className="flex items-center gap-1 sm:gap-2 mt-1 text-xs sm:text-sm">
-                  <Target className="h-3 w-3 flex-shrink-0" />
-                  <span className="truncate">{policy.targetType} Policy</span>
+                  <Activity className="h-3 w-3 flex-shrink-0" />{" "}
+                  {/* CHANGED: Icon */}
+                  <span className="truncate">{policy.activityType}</span>{" "}
+                  {/* CHANGED: policy.activityType */}
                 </CardDescription>
               </div>
             </div>
 
             <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-              {/* Multiplier Badge - Large and Prominent */}
+              {/* Multiplier Badge - This is UNCHANGED as 'multiplier' still exists */}
               <Badge
                 variant="outline"
-                className={`px-2 sm:px-4 py-1 sm:py-2 text-sm sm:text-lg font-bold ${getMultiplierBadgeColor(policy.multiplier)}`}
+                className={`px-2 sm:px-4 py-1 sm:py-2 text-sm sm:text-lg font-bold ${getMultiplierBadgeColor(
+                  policy.multiplier
+                )}`}
               >
                 <MultiplierIcon className="h-4 w-4 sm:h-5 sm:w-5 sm:mr-1" />
                 <span className="hidden sm:inline">{policy.multiplier}x</span>
                 <span className="sm:hidden">{policy.multiplier}</span>
               </Badge>
 
-              {/* Delete Button */}
+              {/* Delete Button - UNCHANGED */}
               <Button
                 variant="ghost"
                 size="icon"
                 className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                onClick={(e) => {
+                onClick={e => {
                   e.stopPropagation()
                   handleDeletePolicy(policy)
                 }}
@@ -481,39 +578,60 @@ export default function AdminMultiplierPolicyPage() {
         </CardHeader>
 
         <CardContent className="space-y-4 pt-4 sm:pt-6">
-          {/* Key Metrics Grid */}
+          {/* Key Metrics Grid - REBUILT */}
           <div className="grid grid-cols-2 gap-3 sm:gap-4">
-            {/* Minimum Events */}
-            <div className={`p-3 sm:p-4 rounded-lg border ${statusConfig.borderColor} ${statusConfig.bgColor}`}>
+            {/* Min Threshold */}
+            <div
+              className={`p-3 sm:p-4 rounded-lg border ${statusConfig.borderColor} ${statusConfig.bgColor}`}
+            >
               <div className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm text-muted-foreground mb-1">
-                <Calendar className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="truncate">Min Events</span>
+                <Gauge className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />{" "}
+                {/* CHANGED: Icon */}
+                <span className="truncate">Min Threshold</span>{" "}
+                {/* CHANGED: Text */}
               </div>
-              <div className={`text-xl sm:text-2xl font-bold ${statusConfig.textColor} truncate`}>
-                {policy.minEvents}
+              <div
+                className={`text-xl sm:text-2xl font-bold ${statusConfig.textColor} truncate`}
+              >
+                {policy.minThreshold}{" "}
+                {/* CHANGED: policy.minThreshold */}
               </div>
             </div>
 
-            {/* Points Example */}
-            <div className={`p-3 sm:p-4 rounded-lg border ${statusConfig.borderColor} ${statusConfig.bgColor}`}>
+            {/* Max Threshold */}
+            <div
+              className={`p-3 sm:p-4 rounded-lg border ${statusConfig.borderColor} ${statusConfig.bgColor}`}
+            >
               <div className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm text-muted-foreground mb-1">
-                <Award className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="truncate">Example (100 pts)</span>
+                <Gauge className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />{" "}
+                {/* CHANGED: Icon */}
+                <span className="truncate">Max Threshold</span>{" "}
+                {/* CHANGED: Text */}
               </div>
-              <div className={`text-xl sm:text-2xl font-bold ${statusConfig.textColor} truncate`}>
-                {(100 * policy.multiplier).toFixed(0)} pts
+              <div
+                className={`text-xl sm:text-2xl font-bold ${statusConfig.textColor} truncate`}
+              >
+                {policy.maxThreshold}{" "}
+                {/* CHANGED: policy.maxThreshold */}
               </div>
             </div>
           </div>
 
-          {/* Points Calculation Visual */}
+          {/* Points Calculation Visual - UNCHANGED (only depends on multiplier) */}
           <div className="p-3 sm:p-4 rounded-lg bg-muted/50 border border-muted">
             <div className="flex items-center justify-center gap-2 sm:gap-3 text-xs sm:text-sm flex-wrap">
               <span className="font-mono font-bold truncate">Base Points</span>
               <span className="text-lg sm:text-xl flex-shrink-0">×</span>
-              <Badge variant="outline" className={`${getMultiplierBadgeColor(policy.multiplier)} text-xs sm:text-sm`}>
+              <Badge
+                variant="outline"
+                className={`${getMultiplierBadgeColor(
+                  policy.multiplier
+                )} text-xs sm:text-sm`}
+              >
                 <Percent className="h-3 w-3 mr-1 flex-shrink-0" />
-                <span className="truncate">{(policy.multiplier * 100).toFixed(0)}%</span>
+                <span className="truncate">
+                  {(policy.multiplier * 100).toFixed(0)}%
+                </span>
               </Badge>
               <span className="text-lg sm:text-xl flex-shrink-0">=</span>
               <span className="font-mono font-bold truncate">Final Points</span>
@@ -523,43 +641,38 @@ export default function AdminMultiplierPolicyPage() {
                 ? `+${((policy.multiplier - 1) * 100).toFixed(0)}% bonus points`
                 : policy.multiplier < 1
                   ? `${((1 - policy.multiplier) * 100).toFixed(0)}% point reduction`
-                  : "No modification to base points"
-              }
+                  : "No modification to base points"}
             </div>
           </div>
 
-          {/* Metadata */}
+          {/* Metadata - REBUILT */}
           <div className="space-y-2 pt-2 border-t">
-            {policy.effectiveFrom && (
-              <div className="flex items-center justify-between text-xs sm:text-sm gap-2">
-                <span className="text-muted-foreground flex items-center gap-1 truncate">
-                  <Clock className="h-3 w-3 flex-shrink-0" />
-                  <span className="truncate">Effective From</span>
-                </span>
-                <span className="font-medium flex-shrink-0 text-xs sm:text-sm">{formatDate(policy.effectiveFrom)}</span>
-              </div>
-            )}
+            {/* ADDED: Condition Type */}
+            <div className="flex items-center justify-between text-xs sm:text-sm gap-2">
+              <span className="text-muted-foreground flex items-center gap-1 truncate">
+                <Layers className="h-3 w-3 flex-shrink-0" />
+                <span className="truncate">Condition Type</span>
+              </span>
+              <Badge variant="outline" className="flex-shrink-0">
+                {policy.conditionType}
+              </Badge>
+            </div>
 
-            {policy.updatedAt && (
-              <div className="flex items-center justify-between text-xs sm:text-sm gap-2">
-                <span className="text-muted-foreground flex items-center gap-1 truncate">
-                  <Shield className="h-3 w-3 flex-shrink-0" />
-                  <span className="truncate">Last Updated</span>
-                </span>
-                <span className="font-medium flex-shrink-0 text-xs sm:text-sm">{formatDateTime(policy.updatedAt)}</span>
-              </div>
-            )}
-
+            {/* UNCHANGED: Status (active) */}
             <div className="flex items-center justify-between text-xs sm:text-sm gap-2">
               <span className="text-muted-foreground flex items-center gap-1 truncate">
                 <CheckCircle2 className="h-3 w-3 flex-shrink-0" />
                 <span className="truncate">Status</span>
               </span>
-              <Badge variant={policy.active ? "default" : "secondary"} className="flex-shrink-0">
+              <Badge
+                variant={policy.active ? "default" : "secondary"}
+                className="flex-shrink-0"
+              >
                 {policy.active ? "Active" : "Inactive"}
               </Badge>
             </div>
 
+            {/* UNCHANGED: Updated By */}
             <div className="flex items-center justify-between text-xs sm:text-sm gap-2">
               <span className="text-muted-foreground flex items-center gap-1 truncate">
                 <Users className="h-3 w-3 flex-shrink-0" />
@@ -571,7 +684,7 @@ export default function AdminMultiplierPolicyPage() {
             </div>
           </div>
 
-          {/* Policy ID Badge */}
+          {/* Policy ID Badge - UNCHANGED */}
           <div className="flex items-center justify-center pt-2">
             <Badge variant="outline" className="text-xs truncate">
               Policy ID: #{policy.id}
@@ -599,7 +712,11 @@ export default function AdminMultiplierPolicyPage() {
             </div>
 
             {/* Create Button with Modal */}
-            <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+            {/* REBUILT: Create Button with Modal (New Form) */}
+            <Dialog
+              open={isCreateModalOpen}
+              onOpenChange={setIsCreateModalOpen}
+            >
               <DialogTrigger asChild>
                 <Button className="gap-2 w-full sm:w-auto flex-shrink-0">
                   <Plus className="h-4 w-4" />
@@ -620,14 +737,14 @@ export default function AdminMultiplierPolicyPage() {
                 <div className="space-y-4 py-4">
                   {/* Target Type */}
                   <div className="space-y-2">
-                    <Label htmlFor="targetType">Target Type *</Label>
+                    <Label htmlFor="targetType">Target Type <span className="text-red-500">*</span></Label>
                     <Select
                       value={formData.targetType}
                       onValueChange={(value: PolicyTargetType) =>
                         setFormData({ ...formData, targetType: value })
                       }
                     >
-                      <SelectTrigger id="targetType">
+                      <SelectTrigger id="targetType" className="border-slate-300">
                         <SelectValue placeholder="Select target type" />
                       </SelectTrigger>
                       <SelectContent>
@@ -647,74 +764,135 @@ export default function AdminMultiplierPolicyPage() {
                     </Select>
                   </div>
 
-                  {/* Level or Status */}
+                  {/* Rule Name */}
                   <div className="space-y-2">
-                    <Label htmlFor="levelOrStatus">Level or Status *</Label>
+                    <Label htmlFor="ruleName">Rule Name <span className="text-red-500">*</span></Label>
                     <Input
-                      id="levelOrStatus"
-                      placeholder="e.g., EXCELLENT, ACTIVE, INACTIVE"
-                      value={formData.levelOrStatus}
-                      onChange={(e) =>
-                        setFormData({ ...formData, levelOrStatus: e.target.value })
+                      id="ruleName"
+                      placeholder="e.g., High Activity Bonus"
+                      value={formData.ruleName}
+                      onChange={e =>
+                        setFormData({ ...formData, ruleName: e.target.value })
                       }
+                      className="border-slate-300"
                     />
-                    <p className="text-xs text-muted-foreground">
-                      {formData.targetType === "CLUB"
-                        ? "Common values: EXCELLENT, ACTIVE, INACTIVE, SUSPENDED"
-                        : "Enter the member level or status"}
-                    </p>
                   </div>
 
-                  {/* Min Events */}
+                  {/* Activity Type */}
                   <div className="space-y-2">
-                    <Label htmlFor="minEvents">Minimum Events *</Label>
+                    <Label htmlFor="activityType">Activity Type <span className="text-red-500">*</span></Label>
                     <Input
-                      id="minEvents"
-                      type="number"
-                      min="0"
-                      placeholder="0"
-                      value={formData.minEvents}
-                      onChange={(e) =>
-                        setFormData({ ...formData, minEvents: parseInt(e.target.value) || 0 })
+                      id="activityType"
+                      placeholder="e.g., EVENT_PARTICIPATION"
+                      value={formData.activityType}
+                      onChange={e =>
+                        setFormData({
+                          ...formData,
+                          activityType: e.target.value,
+                        })
                       }
+                      className="border-slate-300"
                     />
-                    <p className="text-xs text-muted-foreground">
-                      Minimum number of events required for this policy to apply
-                    </p>
+                  </div>
+
+                  {/* Condition Type */}
+                  <div className="space-y-2">
+                    <Label htmlFor="conditionType">Condition Type <span className="text-red-500">*</span></Label>
+                    <Select
+                      value={formData.conditionType}
+                      onValueChange={(value: ConditionType) =>
+                        setFormData({ ...formData, conditionType: value })
+                      }
+                    >
+                      <SelectTrigger id="conditionType" className="border-slate-300">
+                        <SelectValue placeholder="Select condition type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="PERCENTAGE">PERCENTAGE</SelectItem>
+                        <SelectItem value="ABSOLUTE">ABSOLUTE</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Min/Max Threshold */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="minThreshold">Min Threshold <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="minThreshold"
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="0"
+                        // value={formatNumberWithCommas(formData.minThreshold)}
+                        // onChange={e =>
+                        //   setFormData({
+                        //     ...formData,
+                        //     minThreshold: parseIntWithCommas(e.target.value),
+                        //   })
+                        // }
+                        value={formData.minThresholdString}
+                        onChange={e =>
+                          setFormData({
+                            ...formData,
+                            minThresholdString: e.target.value.replace(/[^0-9]/g, ''),
+                          })
+                        }
+                        className="border-slate-300"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="maxThreshold">Max Threshold <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="maxThreshold"
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="0"
+                        // value={formatNumberWithCommas(formData.maxThreshold)}
+                        // onChange={e =>
+                        //   setFormData({
+                        //     ...formData,
+                        //     maxThreshold: parseIntWithCommas(e.target.value),
+                        //   })
+                        // }
+                        value={formData.maxThresholdString}
+                        onChange={e =>
+                          setFormData({
+                            ...formData,
+                            maxThresholdString: e.target.value.replace(/[^0-9]/g, ''),
+                          })
+                        }
+                        className="border-slate-300"
+                      />
+                    </div>
                   </div>
 
                   {/* Multiplier */}
                   <div className="space-y-2">
-                    <Label htmlFor="multiplier">Multiplier *</Label>
+                    <Label htmlFor="multiplier">Multiplier <span className="text-red-500">*</span></Label>
                     <Input
                       id="multiplier"
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       step="0.1"
-                      min="0"
                       placeholder="1.0"
-                      value={formData.multiplier}
-                      onChange={(e) =>
-                        setFormData({ ...formData, multiplier: parseFloat(e.target.value) || 0 })
+                      // value={formatNumberWithCommas(formData.multiplier)}
+                      // onChange={e =>
+                      //   setFormData({
+                      //     ...formData,
+                      //     multiplier: parseNumber(e.target.value),
+                      //   })
+                      // }
+                      value={formData.multiplierString}
+                      onChange={e =>
+                        setFormData({
+                          ...formData,
+                          multiplierString: e.target.value.replace(/[^0-9,.]/g, ''),
+                        })
                       }
+                      className="border-slate-300"
                     />
                     <p className="text-xs text-muted-foreground">
-                      Point multiplier (e.g., 1.5 = +50%, 0.8 = -20%, 1.0 = no change)
-                    </p>
-                  </div>
-
-                  {/* Effective From */}
-                  <div className="space-y-2">
-                    <Label htmlFor="effectiveFrom">Effective From *</Label>
-                    <Input
-                      id="effectiveFrom"
-                      type="date"
-                      value={formData.effectiveFrom || ""}
-                      onChange={(e) =>
-                        setFormData({ ...formData, effectiveFrom: e.target.value })
-                      }
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Date when this policy becomes active
+                      e.g., 1.5 = +50%, 0.8 = -20%, 1.0 = no change
                     </p>
                   </div>
                 </div>
@@ -750,6 +928,7 @@ export default function AdminMultiplierPolicyPage() {
           </div>
 
           {/* Edit Policy Modal */}
+          {/* REBUILT: Edit Policy Modal (FULL EDIT MODE) */}
           <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
             <DialogContent className="sm:max-w-[500px]">
               <DialogHeader>
@@ -758,90 +937,219 @@ export default function AdminMultiplierPolicyPage() {
                   Edit Multiplier Policy
                 </DialogTitle>
                 <DialogDescription>
-                  Update the multiplier value for this policy
+                  Update the details for this multiplier policy.
                 </DialogDescription>
               </DialogHeader>
 
-              {selectedPolicy && (
-                <div className="space-y-4 py-4">
-                  {/* ID Field (disabled) */}
+              {selectedPolicy && editFormData && (
+                <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-6">
+                  {/* Policy ID (display only) */}
                   <div className="space-y-2">
-                    <Label htmlFor="editId">Policy ID</Label>
+                    <Label>Policy ID</Label>
                     <Input
-                      id="editId"
-                      type="number"
                       value={selectedPolicy.id}
                       disabled
                       className="bg-muted cursor-not-allowed"
                     />
-                    <p className="text-xs text-muted-foreground">
-                      Policy identifier (cannot be changed)
-                    </p>
                   </div>
 
-                  {/* Target Type (display only) */}
+                  {/* Target Type (editable) */}
                   <div className="space-y-2">
-                    <Label>Target Type</Label>
-                    <div className="flex items-center gap-2 p-3 rounded-md border bg-muted">
-                      {selectedPolicy.targetType === "CLUB" ? (
-                        <Shield className="h-4 w-4" />
-                      ) : (
-                        <Users className="h-4 w-4" />
-                      )}
-                      <span className="font-medium">{selectedPolicy.targetType}</span>
+                    <Label htmlFor="editTargetType">
+                      Target Type <span className="text-red-500">*</span>
+                    </Label>
+                    <Select
+                      value={editFormData.targetType}
+                      onValueChange={(value: PolicyTargetType) =>
+                        setEditFormData({ ...editFormData, targetType: value })
+                      }
+                    >
+                      <SelectTrigger id="editTargetType">
+                        <SelectValue placeholder="Select target type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="CLUB">
+                          <div className="flex items-center gap-2">
+                            <Shield className="h-4 w-4" />
+                            Club
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="MEMBER">
+                          <div className="flex items-center gap-2">
+                            <Users className="h-4 w-4" />
+                            Member
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Rule Name (editable) */}
+                  <div className="space-y-2">
+                    <Label htmlFor="editRuleName">
+                      Rule Name <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="editRuleName"
+                      placeholder="e.g., High Activity Bonus"
+                      value={editFormData.ruleName}
+                      onChange={e =>
+                        setEditFormData({
+                          ...editFormData,
+                          ruleName: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+
+                  {/* Activity Type (editable) */}
+                  <div className="space-y-2">
+                    <Label htmlFor="editActivityType">
+                      Activity Type <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="editActivityType"
+                      placeholder="e.g., EVENT_PARTICIPATION"
+                      value={editFormData.activityType}
+                      onChange={e =>
+                        setEditFormData({
+                          ...editFormData,
+                          activityType: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+
+                  {/* Condition Type (editable) */}
+                  <div className="space-y-2">
+                    <Label htmlFor="editConditionType">
+                      Condition Type <span className="text-red-500">*</span>
+                    </Label>
+                    <Select
+                      value={editFormData.conditionType}
+                      onValueChange={(value: ConditionType) =>
+                        setEditFormData({
+                          ...editFormData,
+                          conditionType: value,
+                        })
+                      }
+                    >
+                      <SelectTrigger id="editConditionType">
+                        <SelectValue placeholder="Select condition type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="PERCENTAGE">PERCENTAGE</SelectItem>
+                        <SelectItem value="ABSOLUTE">ABSOLUTE</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Min/Max Threshold (editable) */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="editMinThreshold">
+                        Min Threshold <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        id="editMinThreshold"
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="0"
+                        value={editFormData.minThresholdString || ""} // Lấy từ trường string mới
+                        onChange={e =>
+                          setEditFormData({
+                            ...editFormData,
+                            minThresholdString: e.target.value.replace(/[^0-9]/g, ''), // Chỉ cho phép số
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="editMaxThreshold">
+                        Max Threshold <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        id="editMaxThreshold"
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="0"
+                        value={editFormData.maxThresholdString || ""} // Lấy từ trường string mới
+                        onChange={e =>
+                          setEditFormData({
+                            ...editFormData,
+                            maxThresholdString: e.target.value.replace(/[^0-9]/g, ''), // Chỉ cho phép số
+                          })
+                        }
+                      />
                     </div>
                   </div>
 
-                  {/* Level/Status (display only) */}
+                  {/* Multiplier (editable) */}
                   <div className="space-y-2">
-                    <Label>Level / Status</Label>
-                    <div className="p-3 rounded-md border bg-muted">
-                      <span className="font-medium">{selectedPolicy.levelOrStatus}</span>
-                    </div>
-                  </div>
-
-                  {/* Min Events (display only) */}
-                  <div className="space-y-2">
-                    <Label>Minimum Events</Label>
-                    <div className="flex items-center gap-2 p-3 rounded-md border bg-muted">
-                      <Calendar className="h-4 w-4" />
-                      <span className="font-medium">{selectedPolicy.minEvents} events</span>
-                    </div>
-                  </div>
-
-                  {/* Multiplier Field (editable) */}
-                  <div className="space-y-2">
-                    <Label htmlFor="editMultiplier">Multiplier *</Label>
+                    <Label htmlFor="editMultiplier">
+                      Multiplier <span className="text-red-500">*</span>
+                    </Label>
                     <Input
                       id="editMultiplier"
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       step="0.01"
-                      min="0"
                       placeholder="1.0"
-                      value={editFormData.multiplier}
-                      onChange={(e) =>
-                        setEditFormData({ ...editFormData, multiplier: parseFloat(e.target.value) || 0 })
+                      value={editFormData.multiplierString || ""} // Lấy từ trường string mới
+                      onChange={e =>
+                        setEditFormData({
+                          ...editFormData,
+                          multiplierString: e.target.value.replace(/[^0-9,.]/g, ''), // Cho phép số, dấu phẩy, dấu chấm
+                        })
                       }
                       className="font-mono text-lg"
                     />
-                    <p className="text-xs text-muted-foreground">
-                      Point multiplier (e.g., 1.5 = +50%, 0.8 = -20%, 1.0 = no change)
-                    </p>
                   </div>
 
-                  {/* Updated By Field (disabled) */}
+                  {/* Status (editable) */}
+                  <div className="space-y-2">
+                    <Label htmlFor="editStatus">
+                      Status <span className="text-red-500">*</span>
+                    </Label>
+                    <Select
+                      value={String(editFormData.active)} // Chuyển boolean thành string
+                      onValueChange={(value: string) =>
+                        setEditFormData({
+                          ...editFormData,
+                          active: value === "true", // Chuyển string về boolean
+                        })
+                      }
+                    >
+                      <SelectTrigger id="editStatus">
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="true">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                            Active
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="false">
+                          <div className="flex items-center gap-2">
+                            <XCircle className="h-4 w-4 text-red-500" />
+                            Inactive
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Updated By (display only) */}
                   <div className="space-y-2">
                     <Label htmlFor="editUpdatedBy">Updated By</Label>
                     <Input
                       id="editUpdatedBy"
                       type="text"
-                      value={editFormData.updatedBy}
+                      value={currentUserInfo.name}
                       disabled
                       className="bg-muted cursor-not-allowed"
                     />
-                    <p className="text-xs text-muted-foreground">
-                      User making this update (auto-filled from session)
-                    </p>
                   </div>
                 </div>
               )}
@@ -867,7 +1175,7 @@ export default function AdminMultiplierPolicyPage() {
                   ) : (
                     <>
                       <Percent className="h-4 w-4" />
-                      Edit
+                      Save Changes
                     </>
                   )}
                 </Button>
@@ -876,7 +1184,11 @@ export default function AdminMultiplierPolicyPage() {
           </Dialog>
 
           {/* Delete Confirmation Dialog */}
-          <Dialog open={!!policyToDelete} onOpenChange={() => setPolicyToDelete(null)}>
+          {/* REBUILT: Delete Confirmation Dialog (Updated fields) */}
+          <Dialog
+            open={!!policyToDelete}
+            onOpenChange={() => setPolicyToDelete(null)}
+          >
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2 text-destructive">
@@ -884,7 +1196,8 @@ export default function AdminMultiplierPolicyPage() {
                   Delete Multiplier Policy
                 </DialogTitle>
                 <DialogDescription>
-                  Are you sure you want to delete this policy? This action cannot be undone.
+                  Are you sure you want to delete this policy? This action
+                  cannot be undone.
                 </DialogDescription>
               </DialogHeader>
 
@@ -893,20 +1206,38 @@ export default function AdminMultiplierPolicyPage() {
                   <div className="p-4 rounded-lg border-2 border-destructive/20 bg-destructive/5">
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-muted-foreground">Policy ID:</span>
-                        <span className="font-bold">{policyToDelete.id}</span>
+                        <span className="text-sm font-medium text-muted-foreground">
+                          Policy ID:
+                        </span>
+                        <span className="font-bold">
+                          #{policyToDelete.id}
+                        </span>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-muted-foreground">Target Type:</span>
-                        <Badge variant="outline">{policyToDelete.targetType}</Badge>
+                        <span className="text-sm font-medium text-muted-foreground">
+                          Rule Name:
+                        </span>
+                        <span className="font-semibold text-right">
+                          {policyToDelete.ruleName}
+                        </span>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-muted-foreground">Level/Status:</span>
-                        <span className="font-semibold">{policyToDelete.levelOrStatus}</span>
+                        <span className="text-sm font-medium text-muted-foreground">
+                          Target Type:
+                        </span>
+                        <Badge variant="outline">
+                          {policyToDelete.targetType}
+                        </Badge>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-muted-foreground">Multiplier:</span>
-                        <Badge className={`${getMultiplierBadgeColor(policyToDelete.multiplier)}`}>
+                        <span className="text-sm font-medium text-muted-foreground">
+                          Multiplier:
+                        </span>
+                        <Badge
+                          className={`${getMultiplierBadgeColor(
+                            policyToDelete.multiplier
+                          )}`}
+                        >
                           {policyToDelete.multiplier}x
                         </Badge>
                       </div>
@@ -916,7 +1247,8 @@ export default function AdminMultiplierPolicyPage() {
                   <div className="flex items-start gap-2 p-3 rounded-lg bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800">
                     <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-400 mt-0.5" />
                     <p className="text-xs text-yellow-800 dark:text-yellow-200">
-                      Warning: Deleting this policy will affect how points are calculated for this level/status.
+                      Warning: Deleting this policy will immediately affect all
+                      future point calculations.
                     </p>
                   </div>
                 </div>
@@ -1090,6 +1422,7 @@ export default function AdminMultiplierPolicyPage() {
           </Tabs>
 
           {/* Info Card */}
+          {/* REBUILT: Info Card (Updated text) */}
           <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
@@ -1099,16 +1432,30 @@ export default function AdminMultiplierPolicyPage() {
             </CardHeader>
             <CardContent className="space-y-2 text-sm text-muted-foreground">
               <p>
-                <strong>Point Multipliers</strong> adjust the base points earned based on club status or member level:
+                <strong>Point Multipliers</strong> adjust the base points earned
+                based on the rules defined:
               </p>
               <ul className="list-disc list-inside space-y-1 ml-2">
-                <li><strong>Multiplier &gt; 1.0:</strong> Bonus points (e.g., 1.3x = +30% points)</li>
-                <li><strong>Multiplier = 1.0:</strong> Standard points (no change)</li>
-                <li><strong>Multiplier &lt; 1.0:</strong> Reduced points (e.g., 0.8x = -20% points)</li>
-                <li><strong>Multiplier = 0:</strong> No points awarded</li>
+                <li>
+                  <strong>Multiplier &gt; 1.0:</strong> Bonus points (e.g., 1.3x =
+                  +30% points)
+                </li>
+                <li>
+                  <strong>Multiplier = 1.0:</strong> Standard points (no
+                  change)
+                </li>
+                <li>
+                  <strong>Multiplier &lt; 1.0:</strong> Reduced points (e.g.,
+                  0.8x = -20% points)
+                </li>
+                <li>
+                  <strong>Multiplier = 0:</strong> No points awarded
+                </li>
               </ul>
               <p className="pt-2">
-                <strong>Minimum Events</strong> requirement must be met for the status/level to apply.
+                <strong>Min/Max Thresholds</strong> define the range for which
+                this policy rule applies (e.g., applies when activity count is
+                between 10 and 20).
               </p>
             </CardContent>
           </Card>
