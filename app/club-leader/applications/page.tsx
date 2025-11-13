@@ -24,15 +24,15 @@ type MemberApplication = {
   applicationId: number
   clubId: number
   clubName: string
-  applicantId: number      // <- Sửa từ userId
-  applicantName: string    // <- Sửa từ userName
-  applicantEmail: string   // <- Thêm trường này từ API
+  applicantId: number
+  applicantName: string
+  applicantEmail: string
   status: "PENDING" | "APPROVED" | "REJECTED"
   message: string          // <- Đây là lời nhắn của người nộp đơn
   reason?: string | null     // <- Đây là lý do duyệt/từ chối của leader
   handledById?: number | null
-  handledByName?: string | null // <- Sửa từ reviewedBy
-  createdAt: string        // <- Sửa từ submittedAt
+  handledByName?: string | null
+  createdAt: string
   updatedAt: string
   studentCode?: string | null
   // client-side only note when reviewer rejects:
@@ -42,7 +42,6 @@ type MemberApplication = {
 interface Club {
   id: number;
   name: string;
-  // Thêm các trường khác nếu cần
   description: string;
   majorName: string;
   leaderId: number;
@@ -73,7 +72,7 @@ export default function ClubLeaderApplicationsPage() {
   const [activeFilters, setActiveFilters] = useState<Record<string, any>>({})
   const [showFilters, setShowFilters] = useState(false)
 
-  // ✅ USE REACT QUERY for member applications
+  // USE REACT QUERY for member applications
   const { data: applications = [], isLoading: loading } = useMemberApplicationsByClub(
     managedClubId || 0,
     !!managedClubId
@@ -147,9 +146,6 @@ export default function ClubLeaderApplicationsPage() {
   const pendingApplications = applyFilters(allPendingApplications, true)
   const processedApplications = applyFilters(allProcessedApplications, false)
 
-  // Get unique values for filters
-  // (uniqueHandlers removed)
-
   // Filter handlers
   const handleFilterChange = (filterKey: string, value: any) => {
     setActiveFilters((prev) => ({ ...prev, [filterKey]: value }))
@@ -172,14 +168,14 @@ export default function ClubLeaderApplicationsPage() {
     totalPages: pendingPages,
     paginatedData: paginatedPending,
     setCurrentPage: setPendingPage,
-  } = usePagination({ data: pendingApplications, initialPageSize: 8 })
+  } = usePagination({ data: pendingApplications, initialPageSize: 10 })
 
   const {
     currentPage: reviewedPage,
     totalPages: reviewedPages,
     paginatedData: paginatedReviewed,
     setCurrentPage: setReviewedPage,
-  } = usePagination({ data: processedApplications, initialPageSize: 8 })
+  } = usePagination({ data: processedApplications, initialPageSize: 10 })
 
   const handleViewApplication = (application: MemberApplication) => {
     setSelectedApplication(application)
@@ -195,7 +191,7 @@ export default function ClubLeaderApplicationsPage() {
         title: "Application approved",
         description: `${app.applicantName}'s application has been approved.`,
       })
-      // ✅ Refetch with React Query
+      // Refetch with React Query
       queryClient.invalidateQueries({ queryKey: ["member-applications", "club", managedClubId] })
     } catch (error) {
       toast({
@@ -220,7 +216,7 @@ export default function ClubLeaderApplicationsPage() {
         title: "Application rejected",
         description: `${app.applicantName}'s application was rejected.`,
       })
-      // ✅ Refetch with React Query
+      // Refetch with React Query
       queryClient.invalidateQueries({ queryKey: ["member-applications", "club", managedClubId] })
     } catch (error) {
       toast({
@@ -437,7 +433,7 @@ export default function ClubLeaderApplicationsPage() {
                       disabled={bulkProcessing}
                       onClick={async () => {
                         const confirmReject = window.confirm(
-                          `Bạn có chắc muốn từ chối tất cả ${pendingApplications.length} đơn xin gia nhập?`
+                          `Are you sure you want to reject all ${pendingApplications.length} applications?`
                         )
                         if (!confirmReject) return
 
@@ -452,7 +448,7 @@ export default function ClubLeaderApplicationsPage() {
                             title: "Rejected all",
                             description: `${pendingApplications.length} application has been rejected.`,
                           })
-                          // ✅ Refetch with React Query
+                          // Refetch with React Query
                           queryClient.invalidateQueries({ queryKey: ["member-applications", "club", managedClubId] })
                         } catch (error) {
                           toast({
@@ -473,7 +469,7 @@ export default function ClubLeaderApplicationsPage() {
                       disabled={bulkProcessing}
                       onClick={async () => {
                         const confirmApprove = window.confirm(
-                          `Are you sure you want to browse all ${pendingApplications.length} applications?`
+                          `Are you sure you want to approve all ${pendingApplications.length} applications?`
                         )
                         if (!confirmApprove) return
 
@@ -486,7 +482,7 @@ export default function ClubLeaderApplicationsPage() {
                             title: "All approved",
                             description: `${pendingApplications.length} application has been approved.`,
                           })
-                          // ✅ Refetch with React Query
+                          // Refetch with React Query
                           queryClient.invalidateQueries({ queryKey: ["member-applications", "club", managedClubId] })
                         } catch (error) {
                           toast({
@@ -536,10 +532,15 @@ export default function ClubLeaderApplicationsPage() {
               ) : (
                 <>
                   {paginatedPending.map((app: any) => (
-                    <Card key={app.applicationId}>
+                    // <Card key={app.applicationId}>
+                    <Card
+                      key={app.applicationId}
+                      onClick={() => handleViewApplication(app)}
+                      className="cursor-pointer transition-all hover:shadow-md"
+                    >
                       <CardContent className="pt-6">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
+                        <div>
+                          <div >
                             <h3 className="font-semibold">{app.applicantName}</h3>
                             {app.studentCode && (
                               <p className="text-sm text-muted-foreground">
@@ -550,41 +551,6 @@ export default function ClubLeaderApplicationsPage() {
                               Submitted day: {new Date(app.createdAt).toLocaleDateString()}
                             </p>
                             {app.message && <p className="text-sm mt-2 p-2 bg-muted rounded">"{app.message}"</p>}
-                          </div>
-                          <div className="flex gap-2 ml-4">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleViewApplication(app)}
-                              title="View details"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => handleReject(app)}
-                              disabled={processingIds.has(app.applicationId)}
-                              title="Reject application"
-                            >
-                              {processingIds.has(app.applicationId) ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <XCircle className="h-4 w-4" />
-                              )}
-                            </Button>
-                            <Button
-                              size="sm"
-                              onClick={() => handleApprove(app)}
-                              disabled={processingIds.has(app.applicationId)}
-                              title="Approve application"
-                            >
-                              {processingIds.has(app.applicationId) ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <CheckCircle className="h-4 w-4" />
-                              )}
-                            </Button>
                           </div>
                         </div>
                       </CardContent>
@@ -732,10 +698,10 @@ export default function ClubLeaderApplicationsPage() {
                 )}
 
                 <div className="space-y-2">
-                  <Label htmlFor="reviewNote">Review Note (Optional)</Label>
+                  <Label htmlFor="reviewNote">Rejection/ Approval Reason</Label>
                   <Textarea
                     id="reviewNote"
-                    placeholder="Add a note about your decision..."
+                    placeholder="Please provide a reason for rejecting this application..."
                     value={reviewNote}
                     onChange={(e) => setReviewNote(e.target.value)}
                     rows={3}
@@ -752,7 +718,11 @@ export default function ClubLeaderApplicationsPage() {
                   </Button>
                   <Button
                     variant="destructive"
-                    disabled={selectedApplication && processingIds.has(selectedApplication.applicationId)}
+                    // disabled={selectedApplication && processingIds.has(selectedApplication.applicationId)}
+                    disabled={
+                      (selectedApplication && processingIds.has(selectedApplication.applicationId)) ||
+                      !reviewNote.trim()
+                    }
                     onClick={async () => {
                       if (!selectedApplication) return
                       setProcessingIds(prev => new Set([...prev, selectedApplication.applicationId]))
@@ -763,7 +733,7 @@ export default function ClubLeaderApplicationsPage() {
                           description: `${selectedApplication.applicantName}'s application was rejected.`,
                         })
                         setShowApplicationModal(false)
-                        // ✅ Refetch with React Query
+                        // Refetch with React Query
                         queryClient.invalidateQueries({ queryKey: ["member-applications", "club", managedClubId] })
                       } catch (error) {
                         toast({
@@ -802,7 +772,7 @@ export default function ClubLeaderApplicationsPage() {
                           description: `${selectedApplication.applicantName}'s application has been approved.`,
                         })
                         setShowApplicationModal(false)
-                        // ✅ Refetch with React Query
+                        // Refetch with React Query
                         queryClient.invalidateQueries({ queryKey: ["member-applications", "club", managedClubId] })
                       } catch (error) {
                         toast({
@@ -834,7 +804,7 @@ export default function ClubLeaderApplicationsPage() {
             )}
           </Modal>
         </div>
-      </AppShell>
-    </ProtectedRoute>
+      </AppShell >
+    </ProtectedRoute >
   )
 }

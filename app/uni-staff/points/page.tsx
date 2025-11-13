@@ -614,7 +614,7 @@ export default function UniversityStaffRewardPage() {
                                         <div className="flex items-center space-x-2">
                                             <RadioGroupItem value="other" id="r-other" />
                                             <Label htmlFor="r-other" className="font-normal cursor-pointer">
-                                                Khác
+                                                Other
                                             </Label>
                                         </div>
                                     </RadioGroup>

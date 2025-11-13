@@ -9,81 +9,41 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-} from "@/components/ui/dialog"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { 
-  getMutiplierPolicy, 
-  postMutiplierPolicy,
-  putMutiplierPolicy,
-  deleteMutiplierPolicy,
-  MultiplierPolicy, 
-  PolicyTargetType,
-  CreateMultiplierPolicyPayload,
-  UpdateMultiplierPolicyPayload
-} from "@/service/mutiplierPolicyApi"
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  Minus,
-  Users, 
-  Shield, 
-  Target,
-  Calendar,
-  Clock,
-  Award,
-  Percent,
-  CheckCircle2,
-  XCircle,
-  AlertCircle,
-  Sparkles,
-  Plus,
-  X
-} from "lucide-react"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, } from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from "@/components/ui/select"
+import { getMutiplierPolicyByType, createMultiplierPolicy, updateMultiplierPolicy, deleteMutiplierPolicy, MultiplierPolicy, PolicyTargetType, } from "@/service/mutiplierPolicyApi"
+import { TrendingUp, TrendingDown, Minus, Users, Shield, Target, Calendar, Clock, Award, Percent, CheckCircle2, XCircle, AlertCircle, Sparkles, Plus, X } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 // Status/Level configuration for different target types
 const CLUB_STATUSES = {
-  EXCELLENT: { 
-    label: "Excellent", 
+  EXCELLENT: {
+    label: "Excellent",
     color: "bg-gradient-to-br from-purple-500 to-pink-500",
     textColor: "text-purple-700 dark:text-purple-300",
     bgColor: "bg-purple-50 dark:bg-purple-950/20",
     borderColor: "border-purple-200 dark:border-purple-800",
     icon: Sparkles
   },
-  ACTIVE: { 
-    label: "Active", 
+  ACTIVE: {
+    label: "Active",
     color: "bg-gradient-to-br from-green-500 to-emerald-500",
     textColor: "text-green-700 dark:text-green-300",
     bgColor: "bg-green-50 dark:bg-green-950/20",
     borderColor: "border-green-200 dark:border-green-800",
     icon: CheckCircle2
   },
-  INACTIVE: { 
-    label: "Inactive", 
+  INACTIVE: {
+    label: "Inactive",
     color: "bg-gradient-to-br from-orange-500 to-amber-500",
     textColor: "text-orange-700 dark:text-orange-300",
     bgColor: "bg-orange-50 dark:bg-orange-950/20",
     borderColor: "border-orange-200 dark:border-orange-800",
     icon: AlertCircle
   },
-  SUSPENDED: { 
-    label: "Suspended", 
+  SUSPENDED: {
+    label: "Suspended",
     color: "bg-gradient-to-br from-red-500 to-rose-500",
     textColor: "text-red-700 dark:text-red-300",
     bgColor: "bg-red-50 dark:bg-red-950/20",
@@ -93,40 +53,40 @@ const CLUB_STATUSES = {
 }
 
 const MEMBER_STATUSES = {
-  LEGEND: { 
-    label: "Legend", 
+  LEGEND: {
+    label: "Legend",
     color: "bg-gradient-to-br from-amber-500 to-yellow-500",
     textColor: "text-amber-700 dark:text-amber-300",
     bgColor: "bg-amber-50 dark:bg-amber-950/20",
     borderColor: "border-amber-200 dark:border-amber-800",
     icon: Award
   },
-  ELITE: { 
-    label: "Elite", 
+  ELITE: {
+    label: "Elite",
     color: "bg-gradient-to-br from-purple-500 to-indigo-500",
     textColor: "text-purple-700 dark:text-purple-300",
     bgColor: "bg-purple-50 dark:bg-purple-950/20",
     borderColor: "border-purple-200 dark:border-purple-800",
     icon: Sparkles
   },
-  CONTRIBUTOR: { 
-    label: "Contributor", 
+  CONTRIBUTOR: {
+    label: "Contributor",
     color: "bg-gradient-to-br from-blue-500 to-cyan-500",
     textColor: "text-blue-700 dark:text-blue-300",
     bgColor: "bg-blue-50 dark:bg-blue-950/20",
     borderColor: "border-blue-200 dark:border-blue-800",
     icon: TrendingUp
   },
-  ACTIVE: { 
-    label: "Active", 
+  ACTIVE: {
+    label: "Active",
     color: "bg-gradient-to-br from-green-500 to-emerald-500",
     textColor: "text-green-700 dark:text-green-300",
     bgColor: "bg-green-50 dark:bg-green-950/20",
     borderColor: "border-green-200 dark:border-green-800",
     icon: CheckCircle2
   },
-  BASIC: { 
-    label: "Basic", 
+  BASIC: {
+    label: "Basic",
     color: "bg-gradient-to-br from-gray-500 to-slate-500",
     textColor: "text-gray-700 dark:text-gray-300",
     bgColor: "bg-gray-50 dark:bg-gray-950/20",
@@ -190,35 +150,35 @@ const formatDateTime = (dateString: string) => {
 
 export default function AdminMultiplierPolicyPage() {
   const { toast } = useToast()
-  
+
   // State management
   const [clubPolicies, setClubPolicies] = useState<MultiplierPolicy[]>([])
   const [memberPolicies, setMemberPolicies] = useState<MultiplierPolicy[]>([])
   const [loadingClub, setLoadingClub] = useState(true)
   const [loadingMember, setLoadingMember] = useState(true)
   const [activeTab, setActiveTab] = useState<PolicyTargetType>("CLUB")
-  
+
   // Create modal state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
-  const [formData, setFormData] = useState<CreateMultiplierPolicyPayload>({
+  const [formData, setFormData] = useState<Omit<MultiplierPolicy, "id" | "updatedBy" | "updatedAt">>({ // CHANGED type
     targetType: "CLUB",
     levelOrStatus: "",
     minEvents: 0,
     multiplier: 1,
-    effectiveFrom: new Date().toISOString().split('T')[0]
+    effectiveFrom: new Date().toISOString().split('T')[0],
+    active: true // ADDED
   })
-  
+
   // Edit modal state
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [selectedPolicy, setSelectedPolicy] = useState<MultiplierPolicy | null>(null)
-  const [editFormData, setEditFormData] = useState<UpdateMultiplierPolicyPayload>({
-    id: 0,
+  const [editFormData, setEditFormData] = useState<Partial<MultiplierPolicy>>({ // CHANGED type
     multiplier: 0,
     updatedBy: ""
+    // id: 0, // REMOVED
   })
-  
   // Delete state
   const [isDeleting, setIsDeleting] = useState(false)
   const [policyToDelete, setPolicyToDelete] = useState<MultiplierPolicy | null>(null)
@@ -232,16 +192,22 @@ export default function AdminMultiplierPolicyPage() {
     try {
       setLoadingClub(true)
       setLoadingMember(true)
-      
-      // Call the new API that returns all policies
-      const allPolicies = await getMutiplierPolicy()
-      
-      // Filter by target type
-      const clubPolicies = allPolicies.filter(policy => policy.targetType === "CLUB")
-      const memberPolicies = allPolicies.filter(policy => policy.targetType === "MEMBER")
-      
-      setClubPolicies(clubPolicies)
-      setMemberPolicies(memberPolicies)
+
+      // // Call the new API that returns all policies
+      // const allPolicies = await getMutiplierPolicy()
+      // // Filter by target type
+      // const clubPolicies = allPolicies.filter(policy => policy.targetType === "CLUB")
+      // const memberPolicies = allPolicies.filter(policy => policy.targetType === "MEMBER")
+      // setClubPolicies(clubPolicies)
+      // setMemberPolicies(memberPolicies)
+
+      // OPTIMIZED: Call specific endpoints in parallel
+      const [clubData, memberData] = await Promise.all([
+        getMutiplierPolicyByType("CLUB"),
+        getMutiplierPolicyByType("MEMBER")
+      ])
+      setClubPolicies(clubData)
+      setMemberPolicies(memberData)
     } catch (error) {
       console.error("Error loading multiplier policies:", error)
       toast({
@@ -261,6 +227,15 @@ export default function AdminMultiplierPolicyPage() {
       toast({
         title: "Validation Error",
         description: "Level or Status is required",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (!formData.effectiveFrom) {
+      toast({
+        title: "Validation Error",
+        description: "Effective From date is required",
         variant: "destructive",
       })
       return
@@ -286,28 +261,28 @@ export default function AdminMultiplierPolicyPage() {
 
     try {
       setIsCreating(true)
-      
+
       // Format the effectiveFrom date to ISO format with time
       const formattedPayload = {
         ...formData,
         effectiveFrom: new Date(formData.effectiveFrom).toISOString()
       }
-      
-      const newPolicy = await postMutiplierPolicy(formattedPayload)
-      
+
+      const newPolicy = await createMultiplierPolicy(formattedPayload) // CHANGED from postMutiplierPolicy
       // Reload all policies to get the latest data
       await loadAllPolicies()
-      
+
       // Reset form and close modal
       setFormData({
         targetType: "CLUB",
         levelOrStatus: "",
         minEvents: 0,
         multiplier: 1,
-        effectiveFrom: new Date().toISOString().split('T')[0]
+        effectiveFrom: new Date().toISOString().split('T')[0],
+        active: true // ADDED
       })
       setIsCreateModalOpen(false)
-      
+
       toast({
         title: "Success",
         description: `Multiplier policy for ${newPolicy.levelOrStatus} created successfully`,
@@ -328,7 +303,7 @@ export default function AdminMultiplierPolicyPage() {
     // Get userId from sessionStorage
     const authData = sessionStorage.getItem("uniclub-auth")
     let userId = "unknown"
-    
+
     if (authData) {
       try {
         const parsedAuth = JSON.parse(authData)
@@ -337,10 +312,10 @@ export default function AdminMultiplierPolicyPage() {
         console.error("Error parsing auth data:", error)
       }
     }
-    
+
     setSelectedPolicy(policy)
     setEditFormData({
-      id: policy.id,
+      // id: policy.id,
       multiplier: policy.multiplier,
       updatedBy: userId
     })
@@ -349,7 +324,7 @@ export default function AdminMultiplierPolicyPage() {
 
   const handleEditPolicy = async () => {
     // Validation
-    if (editFormData.multiplier < 0) {
+    if (editFormData.multiplier === undefined || editFormData.multiplier < 0) {
       toast({
         title: "Validation Error",
         description: "Multiplier must be 0 or greater",
@@ -358,17 +333,21 @@ export default function AdminMultiplierPolicyPage() {
       return
     }
 
+    if (!selectedPolicy) {
+      toast({ title: "Error", description: "No policy selected", variant: "destructive" })
+      return
+    }
+
     try {
       setIsEditing(true)
-      
-      await putMutiplierPolicy(editFormData.id, editFormData)
-      
+
+      await updateMultiplierPolicy(selectedPolicy.id, editFormData) // CHANGED from putMutiplierPolicy
       // Reload all policies to get the latest data
       await loadAllPolicies()
-      
+
       // Close modal
       setIsEditModalOpen(false)
-      
+
       toast({
         title: "Success",
         description: `Multiplier policy updated successfully`,
@@ -395,16 +374,16 @@ export default function AdminMultiplierPolicyPage() {
 
     try {
       setIsDeleting(true)
-      
+
       // Call delete API
       await deleteMutiplierPolicy(policyToDelete.id)
-      
+
       // Reload all policies to get the latest data
       await loadAllPolicies()
-      
+
       // Close modal
       setPolicyToDelete(null)
-      
+
       toast({
         title: "Success",
         description: `Multiplier policy deleted successfully`,
@@ -449,16 +428,16 @@ export default function AdminMultiplierPolicyPage() {
     const statusConfig = getStatusConfig(policy.targetType, policy.levelOrStatus)
     const MultiplierIcon = getMultiplierIcon(policy.multiplier)
     const StatusIcon = statusConfig.icon
-    
+
     return (
-      <Card 
-        key={policy.id} 
+      <Card
+        key={policy.id}
         className={`relative overflow-hidden border-2 ${statusConfig.borderColor} transition-all hover:shadow-lg cursor-pointer`}
         onClick={() => handleOpenEditModal(policy)}
       >
         {/* Status indicator stripe */}
         <div className={`h-2 w-full ${statusConfig.color}`} />
-        
+
         <CardHeader className={`${statusConfig.bgColor}`}>
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
@@ -473,18 +452,18 @@ export default function AdminMultiplierPolicyPage() {
                 </CardDescription>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
               {/* Multiplier Badge - Large and Prominent */}
-              <Badge 
-                variant="outline" 
+              <Badge
+                variant="outline"
                 className={`px-2 sm:px-4 py-1 sm:py-2 text-sm sm:text-lg font-bold ${getMultiplierBadgeColor(policy.multiplier)}`}
               >
                 <MultiplierIcon className="h-4 w-4 sm:h-5 sm:w-5 sm:mr-1" />
                 <span className="hidden sm:inline">{policy.multiplier}x</span>
                 <span className="sm:hidden">{policy.multiplier}</span>
               </Badge>
-              
+
               {/* Delete Button */}
               <Button
                 variant="ghost"
@@ -540,9 +519,9 @@ export default function AdminMultiplierPolicyPage() {
               <span className="font-mono font-bold truncate">Final Points</span>
             </div>
             <div className="text-center text-xs text-muted-foreground mt-2 truncate">
-              {policy.multiplier > 1 
-                ? `+${((policy.multiplier - 1) * 100).toFixed(0)}% bonus points` 
-                : policy.multiplier < 1 
+              {policy.multiplier > 1
+                ? `+${((policy.multiplier - 1) * 100).toFixed(0)}% bonus points`
+                : policy.multiplier < 1
                   ? `${((1 - policy.multiplier) * 100).toFixed(0)}% point reduction`
                   : "No modification to base points"
               }
@@ -560,7 +539,7 @@ export default function AdminMultiplierPolicyPage() {
                 <span className="font-medium flex-shrink-0 text-xs sm:text-sm">{formatDate(policy.effectiveFrom)}</span>
               </div>
             )}
-            
+
             {policy.updatedAt && (
               <div className="flex items-center justify-between text-xs sm:text-sm gap-2">
                 <span className="text-muted-foreground flex items-center gap-1 truncate">
@@ -570,7 +549,7 @@ export default function AdminMultiplierPolicyPage() {
                 <span className="font-medium flex-shrink-0 text-xs sm:text-sm">{formatDateTime(policy.updatedAt)}</span>
               </div>
             )}
-            
+
             <div className="flex items-center justify-between text-xs sm:text-sm gap-2">
               <span className="text-muted-foreground flex items-center gap-1 truncate">
                 <CheckCircle2 className="h-3 w-3 flex-shrink-0" />
@@ -580,7 +559,7 @@ export default function AdminMultiplierPolicyPage() {
                 {policy.active ? "Active" : "Inactive"}
               </Badge>
             </div>
-            
+
             <div className="flex items-center justify-between text-xs sm:text-sm gap-2">
               <span className="text-muted-foreground flex items-center gap-1 truncate">
                 <Users className="h-3 w-3 flex-shrink-0" />
@@ -618,7 +597,7 @@ export default function AdminMultiplierPolicyPage() {
                 Configure point multipliers for different club statuses and member levels
               </p>
             </div>
-            
+
             {/* Create Button with Modal */}
             <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
               <DialogTrigger asChild>
@@ -637,7 +616,7 @@ export default function AdminMultiplierPolicyPage() {
                     Add a new multiplier policy for clubs or members
                   </DialogDescription>
                 </DialogHeader>
-                
+
                 <div className="space-y-4 py-4">
                   {/* Target Type */}
                   <div className="space-y-2">
@@ -680,8 +659,8 @@ export default function AdminMultiplierPolicyPage() {
                       }
                     />
                     <p className="text-xs text-muted-foreground">
-                      {formData.targetType === "CLUB" 
-                        ? "Common values: EXCELLENT, ACTIVE, INACTIVE, SUSPENDED" 
+                      {formData.targetType === "CLUB"
+                        ? "Common values: EXCELLENT, ACTIVE, INACTIVE, SUSPENDED"
                         : "Enter the member level or status"}
                     </p>
                   </div>
@@ -729,7 +708,7 @@ export default function AdminMultiplierPolicyPage() {
                     <Input
                       id="effectiveFrom"
                       type="date"
-                      value={formData.effectiveFrom}
+                      value={formData.effectiveFrom || ""}
                       onChange={(e) =>
                         setFormData({ ...formData, effectiveFrom: e.target.value })
                       }
@@ -782,7 +761,7 @@ export default function AdminMultiplierPolicyPage() {
                   Update the multiplier value for this policy
                 </DialogDescription>
               </DialogHeader>
-              
+
               {selectedPolicy && (
                 <div className="space-y-4 py-4">
                   {/* ID Field (disabled) */}
@@ -791,7 +770,7 @@ export default function AdminMultiplierPolicyPage() {
                     <Input
                       id="editId"
                       type="number"
-                      value={editFormData.id}
+                      value={selectedPolicy.id}
                       disabled
                       className="bg-muted cursor-not-allowed"
                     />
@@ -908,7 +887,7 @@ export default function AdminMultiplierPolicyPage() {
                   Are you sure you want to delete this policy? This action cannot be undone.
                 </DialogDescription>
               </DialogHeader>
-              
+
               {policyToDelete && (
                 <div className="space-y-3 py-4">
                   <div className="p-4 rounded-lg border-2 border-destructive/20 bg-destructive/5">
@@ -933,7 +912,7 @@ export default function AdminMultiplierPolicyPage() {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-start gap-2 p-3 rounded-lg bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800">
                     <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-400 mt-0.5" />
                     <p className="text-xs text-yellow-800 dark:text-yellow-200">
