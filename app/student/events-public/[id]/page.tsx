@@ -1,0 +1,545 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { useRouter, useParams } from "next/navigation"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
+import { AppShell } from "@/components/app-shell"
+import { ProtectedRoute } from "@/contexts/protected-route"
+import { LoadingSkeleton } from "@/components/loading-skeleton"
+import { FeedbackModal } from "@/components/feedback-modal"
+import {
+  ArrowLeft, Calendar, Clock, MapPin, Users, Eye, XCircle, Star, Filter,
+  Loader2, MessageSquare
+} from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
+import { getEventById, timeObjectToString } from "@/service/eventApi"
+import { getFeedbackByEventId, postFeedback, type Feedback } from "@/service/feedbackApi"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+
+interface EventDetail {
+  id: number
+  name: string
+  description: string
+  type: string
+  date: string
+  startTime: string | null
+  endTime: string | null
+  status: string
+  checkInCode: string
+  locationName: string
+  maxCheckInCount: number
+  currentCheckInCount: number
+  hostClub: {
+    id: number
+    name: string
+    coHostStatus?: string
+  }
+  coHostedClubs?: Array<{
+    id: number
+    name: string
+    coHostStatus: string
+  }>
+  // Legacy fields for backward compatibility
+  clubId?: number
+  time?: string
+  locationId?: number
+}
+
+export default function PublicEventDetailPage() {
+  const router = useRouter()
+  const params = useParams()
+  const { toast } = useToast()
+  const [event, setEvent] = useState<EventDetail | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  // Feedback states
+  const [feedbacks, setFeedbacks] = useState<Feedback[]>([])
+  const [feedbackLoading, setFeedbackLoading] = useState(false)
+  const [ratingFilter, setRatingFilter] = useState<string>("all")
+  const [currentPage, setCurrentPage] = useState(1)
+  const FEEDBACKS_PER_PAGE = 5
+
+  // Feedback modal states
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false)
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false)
+
+  useEffect(() => {
+    const loadEventDetail = async () => {
+      if (!params.id) return
+
+      try {
+        setLoading(true)
+        const data = await getEventById(params.id as string)
+        // Normalize TimeObject to string for EventDetail type
+        const normalizedEvent: EventDetail = {
+          ...data,
+          startTime: data.startTime ? timeObjectToString(data.startTime) : null,
+          endTime: data.endTime ? timeObjectToString(data.endTime) : null,
+        }
+        setEvent(normalizedEvent)
+
+        // Fetch feedback for APPROVED, ONGOING, COMPLETED events
+        if (data.status === "APPROVED" || data.status === "ONGOING" || data.status === "COMPLETED") {
+          try {
+            setFeedbackLoading(true)
+            const feedbackData = await getFeedbackByEventId(params.id as string)
+            setFeedbacks(feedbackData)
+          } catch (feedbackError) {
+            console.error("Failed to load feedback:", feedbackError)
+            // Don't show error toast for feedback, it's not critical
+          } finally {
+            setFeedbackLoading(false)
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load event detail:", error)
+        toast({
+          title: "Error",
+          description: "Failed to load event details",
+          variant: "destructive"
+        })
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadEventDetail()
+  }, [params.id, toast])
+
+  const renderTypeBadge = (type: string) => {
+    return (
+      <Badge variant={type === "PUBLIC" ? "default" : "secondary"}>
+        {type}
+      </Badge>
+    )
+  }
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("vi-VN", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    })
+  }
+
+  // Helper function to render star rating
+  const renderStars = (rating: number) => {
+    return (
+      <div className="flex items-center gap-1">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <Star
+            key={star}
+            className={`h-4 w-4 ${
+              star <= rating
+                ? "fill-yellow-400 text-yellow-400"
+                : "text-gray-300"
+            }`}
+          />
+        ))}
+      </div>
+    )
+  }
+
+  // Filter feedbacks by rating
+  const filteredFeedbacks = ratingFilter === "all" 
+    ? feedbacks 
+    : feedbacks.filter(fb => fb.rating === parseInt(ratingFilter))
+
+  // Calculate average rating
+  const averageRating = feedbacks.length > 0
+    ? (feedbacks.reduce((sum, fb) => sum + fb.rating, 0) / feedbacks.length).toFixed(1)
+    : "0.0"
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredFeedbacks.length / FEEDBACKS_PER_PAGE)
+  const startIndex = (currentPage - 1) * FEEDBACKS_PER_PAGE
+  const endIndex = startIndex + FEEDBACKS_PER_PAGE
+  const paginatedFeedbacks = filteredFeedbacks.slice(startIndex, endIndex)
+
+  // Reset to page 1 when filter changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [ratingFilter])
+
+  // Handle feedback submission
+  const handleFeedbackSubmit = async (rating: number, comment: string) => {
+    if (!event) return
+
+    try {
+      setIsSubmittingFeedback(true)
+      await postFeedback(event.id, { rating, comment })
+      
+      toast({
+        title: "Success",
+        description: "Your feedback has been submitted successfully!",
+      })
+
+      // Close modal
+      setShowFeedbackModal(false)
+
+      // Reload the page to show updated feedback
+      window.location.reload()
+    } catch (error: any) {
+      console.error("Failed to submit feedback:", error)
+      toast({
+        title: "Error",
+        description: error?.response?.data?.message || "Failed to submit feedback. Please try again.",
+        variant: "destructive"
+      })
+      throw error // Re-throw to prevent modal from closing
+    } finally {
+      setIsSubmittingFeedback(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <ProtectedRoute allowedRoles={["student"]}>
+        <AppShell>
+          <div className="space-y-6">
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" onClick={() => router.back()}>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back
+              </Button>
+            </div>
+            <LoadingSkeleton className="h-96" />
+          </div>
+        </AppShell>
+      </ProtectedRoute>
+    )
+  }
+
+  if (!event) {
+    return (
+      <ProtectedRoute allowedRoles={["student"]}>
+        <AppShell>
+          <div className="space-y-6">
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" onClick={() => router.back()}>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back
+              </Button>
+            </div>
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                <XCircle className="h-12 w-12 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Event Not Found</h3>
+                <p className="text-muted-foreground">The event you're looking for doesn't exist.</p>
+              </CardContent>
+            </Card>
+          </div>
+        </AppShell>
+      </ProtectedRoute>
+    )
+  }
+
+  return (
+    <ProtectedRoute allowedRoles={["student"]}>
+      <AppShell>
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" onClick={() => router.back()}>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Public Events
+              </Button>
+            </div>
+            <div className="flex items-center gap-3">
+              {/* Show Feedback button for APPROVED, ONGOING, or COMPLETED events */}
+              {event && (event.status === "APPROVED" || event.status === "ONGOING" || event.status === "COMPLETED") && (
+                <Button
+                  onClick={() => setShowFeedbackModal(true)}
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200"
+                >
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Give Feedback
+                </Button>
+              )}
+              <div className="flex items-center gap-2">
+                <Eye className="h-5 w-5 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Event Details</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Event Detail Card */}
+          <Card className="shadow-lg">
+            <CardHeader className="pb-4">
+              <div className="flex items-start justify-between">
+                <div className="space-y-2">
+                  <CardTitle className="text-2xl font-bold">{event.name}</CardTitle>
+                  <div className="flex items-center gap-3">
+                    {renderTypeBadge(event.type)}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm text-muted-foreground">Event ID</div>
+                  <div className="font-mono text-lg font-semibold">#{event.id}</div>
+                </div>
+              </div>
+            </CardHeader>
+
+            <CardContent className="space-y-6">
+              {/* Description */}
+              {event.description && (
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold">Description</h3>
+                  <p className="text-muted-foreground leading-relaxed">{event.description}</p>
+                </div>
+              )}
+
+              <Separator />
+
+              {/* Event Information Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Date & Time */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Date & Time</h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                      <Calendar className="h-5 w-5 text-primary" />
+                      <div>
+                        <div className="font-medium">{formatDate(event.date)}</div>
+                        <div className="text-sm text-muted-foreground">{event.date}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                      <Clock className="h-5 w-5 text-primary" />
+                      <div>
+                        <div className="font-medium">
+                          {event.startTime && event.endTime 
+                            ? `${timeObjectToString(event.startTime)} - ${timeObjectToString(event.endTime)}`
+                            : event.time || "Time not set"}
+                        </div>
+                        <div className="text-sm text-muted-foreground">Event Duration</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Location & Club */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Location & Organization</h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                      <MapPin className="h-5 w-5 text-primary" />
+                      <div>
+                        <div className="font-medium">{event.locationName}</div>
+                        <div className="text-sm text-muted-foreground">Event Venue</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                      <Users className="h-5 w-5 text-primary" />
+                      <div>
+                        <div className="font-medium">{event.hostClub.name}</div>
+                        <div className="text-sm text-muted-foreground">Organizing Club</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Check-in Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Check-in Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-4 bg-muted/50 rounded-lg">
+                    <div className="text-sm text-muted-foreground">Check-in Code</div>
+                    <div className="font-mono font-semibold text-lg">{event.checkInCode}</div>
+                  </div>
+                  <div className="p-4 bg-muted/50 rounded-lg">
+                    <div className="text-sm text-muted-foreground">Max Capacity</div>
+                    <div className="font-semibold text-lg">{event.maxCheckInCount} people</div>
+                  </div>
+                  <div className="p-4 bg-muted/50 rounded-lg">
+                    <div className="text-sm text-muted-foreground">Current Check-ins</div>
+                    <div className="font-semibold text-lg">{event.currentCheckInCount} / {event.maxCheckInCount}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Co-hosted Clubs */}
+              {event.coHostedClubs && event.coHostedClubs.length > 0 && (
+                <>
+                  <Separator />
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold">Co-hosting Clubs</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {event.coHostedClubs.map((club) => (
+                        <div key={club.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <Users className="h-5 w-5 text-primary" />
+                            <div>
+                              <div className="font-medium">{club.name}</div>
+                            </div>
+                          </div>
+                          <Badge variant={club.coHostStatus === "APPROVED" ? "default" : "secondary"}>
+                            {club.coHostStatus}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+
+            </CardContent>
+          </Card>
+
+          {/* Feedback Section - Show for APPROVED, ONGOING, COMPLETED */}
+          {(event.status === "APPROVED" || event.status === "ONGOING" || event.status === "COMPLETED") && (
+            <Card className="shadow-lg">
+              <CardHeader className="pb-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-2xl font-bold">Event Feedback</CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      See what participants thought about this event
+                    </p>
+                  </div>
+                  {feedbacks.length > 0 && (
+                    <div className="text-center">
+                      <div className="flex items-center gap-2">
+                        <Star className="h-6 w-6 fill-yellow-400 text-yellow-400" />
+                        <span className="text-3xl font-bold">{averageRating}</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {feedbacks.length} {feedbacks.length === 1 ? 'review' : 'reviews'}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </CardHeader>
+
+              <CardContent className="space-y-6">
+                {feedbackLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    <span className="ml-2 text-muted-foreground">Loading feedback...</span>
+                  </div>
+                ) : feedbacks.length === 0 ? (
+                  <div className="text-center py-8">
+                    <div className="text-muted-foreground">No feedback available for this event yet.</div>
+                  </div>
+                ) : (
+                  <>
+                    {/* Rating Filter */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <Filter className="h-5 w-5 text-muted-foreground" />
+                        <span className="text-sm font-medium">Filter by rating:</span>
+                        <Select value={ratingFilter} onValueChange={setRatingFilter}>
+                          <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="All ratings" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All ratings</SelectItem>
+                            <SelectItem value="5">5 stars</SelectItem>
+                            <SelectItem value="4">4 stars</SelectItem>
+                            <SelectItem value="3">3 stars</SelectItem>
+                            <SelectItem value="2">2 stars</SelectItem>
+                            <SelectItem value="1">1 star</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Showing {filteredFeedbacks.length} of {feedbacks.length} {feedbacks.length === 1 ? 'feedback' : 'feedbacks'}
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    {/* Feedback List */}
+                    {filteredFeedbacks.length === 0 ? (
+                      <div className="text-center py-8">
+                        <div className="text-muted-foreground">No feedback found for the selected rating.</div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="space-y-4">
+                          {paginatedFeedbacks.map((feedback) => (
+                            <div
+                              key={feedback.feedbackId}
+                              className="p-4 bg-muted/30 rounded-lg border border-muted hover:bg-muted/50 transition-colors"
+                            >
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex items-center gap-2">
+                                  {renderStars(feedback.rating)}
+                                  <span className="text-sm font-medium text-muted-foreground">
+                                    {feedback.rating}/5
+                                  </span>
+                                </div>
+                                <span className="text-xs text-muted-foreground">
+                                  {new Date(feedback.createdAt).toLocaleDateString("vi-VN")}
+                                </span>
+                              </div>
+                              <p className="text-sm text-foreground whitespace-pre-wrap">{feedback.comment}</p>
+                              {feedback.updatedAt && (
+                                <p className="text-xs text-muted-foreground mt-2">
+                                  Edited: {new Date(feedback.updatedAt).toLocaleDateString("vi-VN")}
+                                </p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Pagination Controls */}
+                        {totalPages > 1 && (
+                          <div className="flex items-center justify-between pt-4 border-t">
+                            <div className="text-sm text-muted-foreground">
+                              Showing {startIndex + 1}-{Math.min(endIndex, filteredFeedbacks.length)} of {filteredFeedbacks.length}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                disabled={currentPage === 1}
+                              >
+                                Previous
+                              </Button>
+                              <span className="text-sm text-muted-foreground">
+                                Page {currentPage} of {totalPages}
+                              </span>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                disabled={currentPage === totalPages}
+                              >
+                                Next
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* Feedback Modal */}
+        {event && (
+          <FeedbackModal
+            open={showFeedbackModal}
+            onOpenChange={setShowFeedbackModal}
+            onSubmit={handleFeedbackSubmit}
+            eventName={event.name}
+            isSubmitting={isSubmittingFeedback}
+          />
+        )}
+      </AppShell>
+    </ProtectedRoute>
+  )
+}
