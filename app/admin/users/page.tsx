@@ -26,10 +26,9 @@ import { useAuth } from "@/contexts/auth-context" // <-- THÊM MỚI
 const formatRoleName = (roleId: string) => {
   const map: Record<string, string> = {
     student: "STUDENT",
-    club_leader: "CLUB LEADER",
-    uni_admin: "UNIVERSITY STAFF",
+    club_leader: "CLUB_LEADER",
+    university_staff: "UNIVERSITY_STAFF",
     admin: "ADMIN",
-    staff: "STAFF",
   }
   return map[roleId] || roleId.replace(/_/g, " ").toUpperCase()
 }
@@ -258,9 +257,8 @@ export default function AdminUsersPage() {
   const roleColors: Record<string, string> = {
     student: "bg-green-100 text-green-700 border-green-300",
     club_leader: "bg-purple-100 text-purple-700 border-purple-300",
-    uni_admin: "bg-blue-100 text-blue-700 border-blue-300",
+    university_staff: "bg-blue-100 text-blue-700 border-blue-300",
     admin: "bg-orange-100 text-orange-700 border-orange-300",
-    staff: "bg-gray-100 text-gray-700 border-gray-300",
   }
 
   // Build role/major options from data
@@ -347,111 +345,108 @@ export default function AdminUsersPage() {
     {
       key: "id" as const,
       label: "Actions",
-      render: (_: EnhancedUser["id"], user: EnhancedUser): JSX.Element => (
-        <div className="flex items-center gap-2">
-          <Button
-            size="icon"
-            variant="ghost"
-            aria-label={`Update user ${user.id}`}
-            onClick={async () => {
-              // open modal and load details
-              setEditingUserId(user.id)
-              setIsEditModalOpen(true)
-              try {
-                // Dùng 'any' để lấy cả studentCode (nếu có)
-                const details: any = await fetchAdminUserDetails(user.id as number)
-                setEditFullName(details?.fullName || "")
-                setEditEmail(details?.email || "")
-                setEditPhone(details?.phone ?? null)
-                setEditStudentCode(details?.studentCode || null) // 
-                setEditMajorName(details?.majorName || null) // 
-                const role = details?.role?.toUpperCase() || "STUDENT" // 
-                setEditRoleName(role) //
-                setOriginalEditRoleName(role) //
-              } catch (err) {
-                console.error("Failed to fetch user details:", err)
-                toast({
-                  title: "Error",
-                  description: "Unable to load user information.",
-                  variant: "destructive",
-                })
-                setIsEditModalOpen(false)
-              }
-            }}
-            title="Update user"
-          >
-            <Edit className="h-4 w-4" />
-          </Button>
+      render: (_: EnhancedUser["id"], user: EnhancedUser): JSX.Element => {
+        // Ẩn nút Edit và Ban/Unban nếu là ADMIN
+        if ((user.primaryRoleName || "").toUpperCase() === "ADMIN") {
+          return <div />
+        }
+        return (
+          <div className="flex items-center gap-2">
+            <Button
+              size="icon"
+              variant="ghost"
+              aria-label={`Update user ${user.id}`}
+              onClick={async () => {
+                // open modal and load details
+                setEditingUserId(user.id)
+                setIsEditModalOpen(true)
+                try {
+                  // Dùng 'any' để lấy cả studentCode (nếu có)
+                  const details: any = await fetchAdminUserDetails(user.id as number)
+                  setEditFullName(details?.fullName || "")
+                  setEditEmail(details?.email || "")
+                  setEditPhone(details?.phone ?? null)
+                  setEditStudentCode(details?.studentCode || null) // 
+                  setEditMajorName(details?.majorName || null) // 
+                  const role = details?.role?.toUpperCase() || "STUDENT" // 
+                  setEditRoleName(role) //
+                  setOriginalEditRoleName(role) //
+                } catch (err) {
+                  console.error("Failed to fetch user details:", err)
+                  toast({
+                    title: "Error",
+                    description: "Unable to load user information.",
+                    variant: "destructive",
+                  })
+                  setIsEditModalOpen(false)
+                }
+              }}
+              title="Update user"
+            >
+              <Edit className="h-4 w-4" />
+            </Button>
 
-          {/* --- Logic Ban / Unban --- */}
-          {user.active ? (
-            <Button
-              size="icon"
-              variant="ghost"
-              aria-label={`Ban user ${user.id}`}
-              onClick={async () => {
-                // --- VALIDATE: KHÔNG TỰ BAN ---
-                if (currentUser?.userId === user.id) {
-                  toast({
-                    title: "Invalid Action",
-                    description: "You cannot ban yourself.",
-                    variant: "destructive",
-                  })
-                  return // Dừng hàm tại đây
-                }
-                const ok = confirm("Are you sure you want to ban this user?")
-                if (!ok) return
-                try {
-                  await banUser(user.id as number)
-                  toast({
-                    title: "User Banned",
-                    description: "User account has been locked.",
-                  })
-                  await reloadUsers()
-                } catch (err) {
-                  console.error("Ban user failed:", err)
-                  toast({
-                    title: "Error",
-                    description: "An error occurred while banning user.",
-                    variant: "destructive",
-                  })
-                }
-              }}
-              title="Ban user"
-            >
-              <Trash className="h-4 w-4 text-destructive" />
-            </Button>
-          ) : (
-            <Button
-              size="icon"
-              variant="ghost"
-              aria-label={`Unban user ${user.id}`}
-              onClick={async () => {
-                const ok = confirm("Are you sure you want to unban this user?")
-                if (!ok) return
-                try {
-                  await unbanUser(user.id as number)
-                  toast({
-                    title: "User Unbanned",
-                    description: "User account has been activated.",
-                  })
-                  await reloadUsers()
-                } catch (err) {
-                  console.error("Unban user failed:", err)
-                  toast({
-                    title: "Error",
-                    description: "An error occurred while unbanning user.",
-                    variant: "destructive",
-                  })
-                }
-              }}
-              title="Unban user"
-            >
-              <CheckCircle className="h-4 w-4 text-green-500" />
-            </Button>
-          )}
-        </div>
-      ),
+            {/* --- Logic Ban / Unban --- */}
+            {user.active ? (
+              <Button
+                size="icon"
+                variant="ghost"
+                aria-label={`Ban user ${user.id}`}
+                onClick={async () => {
+                  const ok = confirm("Are you sure you want to ban this user?")
+                  if (!ok) return
+                  try {
+                    await banUser(user.id as number)
+                    toast({
+                      title: "User Banned",
+                      description: "User account has been locked.",
+                    })
+                    await reloadUsers()
+                  } catch (err) {
+                    console.error("Ban user failed:", err)
+                    toast({
+                      title: "Error",
+                      description: "An error occurred while banning user.",
+                      variant: "destructive",
+                    })
+                  }
+                }}
+                title="Ban user"
+              >
+                <Trash className="h-4 w-4 text-destructive" />
+              </Button>
+            ) : (
+              <Button
+                size="icon"
+                variant="ghost"
+                aria-label={`Unban user ${user.id}`}
+                onClick={async () => {
+                  const ok = confirm("Are you sure you want to unban this user?")
+                  if (!ok) return
+                  try {
+                    await unbanUser(user.id as number)
+                    toast({
+                      title: "User Unbanned",
+                      description: "User account has been activated.",
+                    })
+                    await reloadUsers()
+                  } catch (err) {
+                    console.error("Unban user failed:", err)
+                    toast({
+                      title: "Error",
+                      description: "An error occurred while unbanning user.",
+                      variant: "destructive",
+                    })
+                  }
+                }}
+                title="Unban user"
+              >
+                <CheckCircle className="h-4 w-4 text-green-500" />
+              </Button>
+            )}
+          </div>
+        )
+      },
     },
   ]
 
@@ -671,10 +666,9 @@ export default function AdminUsersPage() {
                       title="Role Name"
                     >
                       <option value="STUDENT">STUDENT</option>
-                      <option value="CLUB_LEADER">CLUB LEADER</option>
-                      <option value="UNI_STAFF">UNIVERSITY STAFF</option>
+                      <option value="CLUB_LEADER">CLUB_LEADER</option>
+                      <option value="UNIVERSITY_STAFF">UNIVERSITY_STAFF</option>
                       <option value="ADMIN">ADMIN</option>
-                      <option value="STAFF">STAFF</option>
                     </select>
                   </div>
                   <Button
@@ -851,10 +845,9 @@ export default function AdminUsersPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="STUDENT">STUDENT</SelectItem>
-                    <SelectItem value="CLUB_LEADER">CLUB LEADER</SelectItem>
-                    <SelectItem value="UNI_ADMIN">UNIVERSITY STAFF</SelectItem>
-                    <SelectItem value="ADMIN">ADMIN</SelectItem>
-                    <SelectItem value="STAFF">STAFF</SelectItem>
+                    <SelectItem value="CLUB_LEADER">CLUB_LEADER</SelectItem>
+                    <SelectItem value="UNIVERSITY_STAFF">UNIVERSITY_STAFF</SelectItem>
+                    {/* ADMIN role is hidden from selection */}
                   </SelectContent>
                 </Select>
               </div>

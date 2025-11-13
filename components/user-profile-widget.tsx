@@ -357,9 +357,7 @@ export function UserProfileWidget() {
                   <div className="p-3 flex items-center justify-between gap-2">
                     <div className="flex-1 min-w-0 overflow-hidden">
                       <p className={`text-xs font-medium transition-colors duration-300 ${pointsStyle.subtitleColorClassName} truncate`}>
-                        {memberships.length > 0
-                          ? memberships[0].clubName
-                          : "No Wallet"}
+                        {memberships.length > 0 ? "Points" : "No Wallet"}
                       </p>
                       <p className={`text-2xl font-bold transition-colors duration-300 ${pointsStyle.textColorClassName} truncate`}>{userPoints.toLocaleString()}</p>
                     </div>

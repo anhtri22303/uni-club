@@ -41,6 +41,7 @@ export default function UniversityStaffRewardPage() {
     const [error, setError] = useState<string | null>(null)
 
     const [selectedClubs, setSelectedClubs] = useState<Record<string, boolean>>({})
+    const [targetClubIds, setTargetClubIds] = useState<number[]>([]) // ✨ State lưu danh sách clubId đã chọn
     const [rewardAmount, setRewardAmount] = useState<number | ''>('')
     const [isDistributing, setIsDistributing] = useState(false)
 
@@ -130,7 +131,23 @@ export default function UniversityStaffRewardPage() {
     }, [allClubs])
 
     const handleToggleSelectClub = (clubId: string | number) => {
-        setSelectedClubs((prev) => ({ ...prev, [String(clubId)]: !prev[String(clubId)] }))
+        const numericId = Number(clubId)
+        setSelectedClubs((prev) => {
+            const newState = !prev[String(clubId)]
+            
+            // ✨ Cập nhật targetClubIds ngay lập tức
+            setTargetClubIds((prevIds) => {
+                if (newState) {
+                    // Thêm vào nếu chưa có
+                    return prevIds.includes(numericId) ? prevIds : [...prevIds, numericId]
+                } else {
+                    // Xóa khỏi danh sách
+                    return prevIds.filter(id => id !== numericId)
+                }
+            })
+            
+            return { ...prev, [String(clubId)]: newState }
+        })
     }
 
     const handleRewardAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -143,14 +160,32 @@ export default function UniversityStaffRewardPage() {
         const newSelectionState = !allSelected
         setSelectedClubs((prevSelected) => {
             const newSelected = { ...prevSelected }
-            // allClubs.forEach((club) => {
-            //     newSelected[String(club.id)] = newSelectionState
-            // })
-            filteredClubs.forEach((club) => { // ✨ THAY ĐỔI
+            filteredClubs.forEach((club) => {
                 newSelected[String(club.id)] = newSelectionState
             })
             return newSelected
         })
+        
+        // ✨ Cập nhật targetClubIds
+        if (newSelectionState) {
+            // Select all: thêm tất cả filteredClubs vào targetClubIds
+            setTargetClubIds((prevIds) => {
+                const newIds = filteredClubs.map(club => Number(club.id))
+                const merged = [...prevIds]
+                newIds.forEach(id => {
+                    if (!merged.includes(id)) {
+                        merged.push(id)
+                    }
+                })
+                return merged
+            })
+        } else {
+            // Deselect all: xóa tất cả filteredClubs khỏi targetClubIds
+            setTargetClubIds((prevIds) => {
+                const idsToRemove = filteredClubs.map(club => Number(club.id))
+                return prevIds.filter(id => !idsToRemove.includes(id))
+            })
+        }
     }
 
     const selectedCount = useMemo(() => {
@@ -200,9 +235,8 @@ export default function UniversityStaffRewardPage() {
             return
         }
 
-        // Get selected clubs
-        const selectedClubsList = allClubs.filter(club => selectedClubs[String(club.id)])
-        if (selectedClubsList.length === 0) {
+        // ✨ Kiểm tra targetClubIds thay vì filter lại
+        if (targetClubIds.length === 0) {
             toast({
                 title: "No clubs selected",
                 description: "Please select at least one club to distribute rewards.",
@@ -250,34 +284,38 @@ export default function UniversityStaffRewardPage() {
 
         setIsDistributing(true)
         try {
-            // Collect all club IDs as numbers
-            const targetIds = selectedClubsList.map(club => Number(club.id))
-
-            // Call the new batch API
+            // ✨ Sử dụng targetClubIds đã được chuẩn bị sẵn
             const response = await pointsToClubs(
-                targetIds,
+                targetClubIds,
                 rewardAmount as number,
-                //"Giving Point Month"
-                finalReason // ✨ THAY ĐỔI: Sử dụng lý do động
+                finalReason
             )
 
             if (response.success) {
                 toast({
                     title: "Success",
-                    description: response.message || `Distributed ${rewardAmount} points to ${selectedClubsList.length} club(s).`,
+                    description: response.message || `Distributed ${rewardAmount} points to ${targetClubIds.length} club(s).`,
                     variant: "default"
                 })
                 setRewardAmount('')
                 setCustomReason('')
                 setSelectedRequestId(null)
                 setReasonType("monthly")
+                // ✨ Reset selections
+                setSelectedClubs({})
+                setTargetClubIds([])
             } else {
                 throw new Error(response.message || "Failed to distribute points")
             }
         } catch (err: any) {
+            const errorMessage = err?.response?.data?.message || err.message || "An error occurred."
+            const isTimeout = err?.code === 'ECONNABORTED' || errorMessage.toLowerCase().includes('timeout')
+            
             toast({
-                title: "Distribution Error",
-                description: err?.response?.data?.message || err.message || "An error occurred.",
+                title: isTimeout ? "Request Timeout" : "Distribution Error",
+                description: isTimeout 
+                    ? `The request took too long (processing ${targetClubIds.length} clubs). The points may still be distributed successfully. Please check the transaction history.`
+                    : errorMessage,
                 variant: "destructive"
             })
         } finally {
@@ -614,7 +652,7 @@ export default function UniversityStaffRewardPage() {
                                         <div className="flex items-center space-x-2">
                                             <RadioGroupItem value="other" id="r-other" />
                                             <Label htmlFor="r-other" className="font-normal cursor-pointer">
-                                                Khác
+                                                Other
                                             </Label>
                                         </div>
                                     </RadioGroup>
@@ -689,7 +727,12 @@ export default function UniversityStaffRewardPage() {
                                     isReasonInvalid // ✨ THÊM ĐIỀU KIỆN VÔ HIỆU HÓA
                                 }
                             >
-                                {isDistributing ? "Distributing..." : (
+                                {isDistributing ? (
+                                    <div className="flex items-center gap-2">
+                                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                                        Distributing to {selectedCount} club(s)... Please wait
+                                    </div>
+                                ) : (
                                     <>
                                         <Send className="mr-2 h-4 w-4" />
                                         Distribute {rewardAmount || 0} points to {selectedCount} club(s)

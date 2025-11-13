@@ -33,24 +33,6 @@ export function GoogleSignInButton({ mode = "sign-in", onClick }: GoogleSignInBu
       
       console.log("✅ [Google OAuth] Credential Received:", credentialDetails)
       
-      // Save credential details to sessionStorage
-      if (typeof window !== "undefined") {
-        console.log("💾 [SessionStorage] Attempting to save credential...")
-        try {
-          sessionStorage.setItem("google_oauth_credential", JSON.stringify({
-            ...credentialDetails,
-            timestamp: credentialTimestamp
-          }))
-          console.log("✅ [SessionStorage] Credential saved successfully!")
-          console.log("💾 [SessionStorage] Keys:", Object.keys(sessionStorage).filter(k => k.startsWith("google_")))
-        } catch (e) {
-          console.error("❌ [SessionStorage] Failed to save credential:", e)
-          console.warn("⚠️ Failed to save credential to sessionStorage:", e)
-        }
-      } else {
-        console.warn("⚠️ [SessionStorage] window is undefined, cannot save to sessionStorage")
-      }
-      
       // Validate credential exists
       if (!credentialResponse.credential) {
         throw new Error("No credential received from Google")

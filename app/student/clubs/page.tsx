@@ -85,7 +85,23 @@ export default function MemberClubsPage() {
   const error = queryError ? (queryError as any)?.message ?? "Failed to load clubs" : null
 
   const [pendingClubIds, setPendingClubIds] = useState<string[]>([])
-  const [userClubIds, setUserClubIds] = useState<number[]>([])
+  // ✅ FIX: Khởi tạo userClubIds ngay từ đầu để tránh race condition
+  const [userClubIds, setUserClubIds] = useState<number[]>(() => {
+    try {
+      const saved = safeSessionStorage.getItem("uniclub-auth")
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (parsed.clubIds && Array.isArray(parsed.clubIds)) {
+          return parsed.clubIds.map((id: any) => Number(id)).filter((id: number) => !isNaN(id))
+        } else if (parsed.clubId) {
+          return [Number(parsed.clubId)]
+        }
+      }
+    } catch (error) {
+      console.error("Failed to get clubId from sessionStorage:", error)
+    }
+    return []
+  })
   const [userClubId, setUserClubId] = useState<number | null>(null) // Keep for backward compatibility
   const [majors, setMajors] = useState<Major[]>([])
   const [selectedMajorId, setSelectedMajorId] = useState<number | "">("")
@@ -109,36 +125,13 @@ export default function MemberClubsPage() {
   const userMemberships = clubMemberships.filter((m) => m.userId === auth.userId)
   const userApplications = membershipApplications.filter((a) => a.userId === auth.userId)
 
-  // Get user's club IDs from sessionStorage
+  // ✅ Đã khởi tạo userClubIds trong useState, không cần useEffect nữa
+  // Chỉ cần set userClubId cho backward compatibility
   useEffect(() => {
-    try {
-      const saved = safeSessionStorage.getItem("uniclub-auth")
-      console.log("Raw sessionStorage data:", saved)
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        console.log("Parsed sessionStorage data:", parsed)
-
-        // Check for clubIds array first, then fallback to single clubId
-        if (parsed.clubIds && Array.isArray(parsed.clubIds)) {
-          const clubIdNumbers = parsed.clubIds.map((id: any) => Number(id)).filter((id: number) => !isNaN(id))
-          console.log("Setting userClubIds from clubIds array to:", clubIdNumbers)
-          setUserClubIds(clubIdNumbers)
-          // Set the first club as primary for backward compatibility
-          if (clubIdNumbers.length > 0) {
-            setUserClubId(clubIdNumbers[0])
-          }
-        } else if (parsed.clubId) {
-          const clubIdNumber = Number(parsed.clubId)
-          console.log("Setting userClubId from single clubId to:", clubIdNumber)
-          setUserClubId(clubIdNumber)
-          setUserClubIds([clubIdNumber])
-        }
-      }
-    } catch (error) {
-      console.error("Failed to get clubId from sessionStorage:", error)
+    if (userClubIds.length > 0 && !userClubId) {
+      setUserClubId(userClubIds[0])
     }
-  }, [])
-
+  }, [userClubIds, userClubId])
 
   useEffect(() => {
     const loadMajors = async () => {
@@ -204,6 +197,8 @@ export default function MemberClubsPage() {
       console.log("⚠️ No clubs data available yet")
       return []
     }
+
+    console.log("✅ userClubIds loaded:", userClubIds, "filtering clubs now...")
 
     const filtered = clubsWithData.filter((club: ClubApiItem) => {
       // Hide clubs that user is already a member of

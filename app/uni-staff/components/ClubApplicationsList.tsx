@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { usePagination } from "@/hooks/use-pagination"
 import { ChevronLeft, ChevronRight, Clock, FileText, Filter } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
+import { useRouter } from "next/navigation"
 
 interface ClubApplicationsListProps {
   clubApplications: any[]
@@ -14,6 +15,7 @@ interface ClubApplicationsListProps {
 }
 
 export function ClubApplicationsList({ clubApplications, pendingClubApplications }: ClubApplicationsListProps) {
+  const router = useRouter()
   const [clubAppStatusFilter, setClubAppStatusFilter] = useState<string>("PENDING")
 
   // Filter club applications by status and sort by latest submittedAt
@@ -50,7 +52,7 @@ export function ClubApplicationsList({ clubApplications, pendingClubApplications
   }, [clubAppStatusFilter, setClubAppsCurrentPage])
 
   const statusDotClass: Record<string, string> = {
-    APPROVED: "bg-green-500",
+    COMPLETED: "bg-green-500",
     PENDING: "bg-yellow-500",
     REJECTED: "bg-red-500",
   }
@@ -83,7 +85,7 @@ export function ClubApplicationsList({ clubApplications, pendingClubApplications
               <SelectContent>
                 <SelectItem value="ALL">All Status</SelectItem>
                 <SelectItem value="PENDING">Pending</SelectItem>
-                <SelectItem value="APPROVED">Approved</SelectItem>
+                <SelectItem value="COMPLETED">Completed</SelectItem>
                 <SelectItem value="REJECTED">Rejected</SelectItem>
               </SelectContent>
             </Select>
@@ -103,7 +105,8 @@ export function ClubApplicationsList({ clubApplications, pendingClubApplications
               return (
                 <div
                   key={app.applicationId}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between p-2 sm:p-3 border rounded-lg hover:bg-muted/50 dark:border-slate-700 dark:hover:bg-slate-800/50 transition-colors gap-2 sm:gap-0"
+                  onClick={() => router.push('/uni-staff/clubs-req')}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between p-2 sm:p-3 border rounded-lg hover:bg-muted/50 dark:border-slate-700 dark:hover:bg-slate-800/50 transition-colors gap-2 sm:gap-0 cursor-pointer"
                 >
                   <div className="flex items-start sm:items-center gap-2 sm:gap-3 flex-1 min-w-0">
                     <div className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full flex-shrink-0 mt-1 sm:mt-0 ${statusClass}`} />
@@ -122,21 +125,21 @@ export function ClubApplicationsList({ clubApplications, pendingClubApplications
                   <div className="flex items-center justify-end sm:justify-start gap-3 flex-shrink-0">
                     <Badge
                       variant={
-                        app.status === "APPROVED"
+                        app.status === "COMPLETED"
                           ? "default"
                           : app.status === "PENDING"
                           ? "secondary"
                           : "destructive"
                       }
                       className={`text-[10px] sm:text-xs px-2 py-0.5 ${
-                        app.status === "APPROVED"
+                        app.status === "COMPLETED"
                           ? "bg-green-500 text-white dark:bg-green-600 dark:text-white"
                           : app.status === "PENDING"
                           ? "bg-yellow-500 text-white dark:bg-yellow-600 dark:text-white"
                           : "bg-red-500 text-white dark:bg-red-600 dark:text-white"
                       }`}
                     >
-                      {app.status === "PENDING" ? "Pending" : app.status === "APPROVED" ? "Approved" : "Rejected"}
+                      {app.status === "PENDING" ? "Pending" : app.status === "COMPLETED" ? "Completed" : "Rejected"}
                     </Badge>
                   </div>
                 </div>

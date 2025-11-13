@@ -210,7 +210,7 @@ export function ProductFilters({ onFilterChange, onSortChange, availableTags = [
                     <div className="flex flex-wrap items-center gap-2">
                         {filters.inStock && (
                             <Badge variant="outline" className="py-1">
-                                Sẵn hàng
+                                Available
                                 <Button
                                     variant="ghost"
                                     size="icon"
@@ -263,7 +263,7 @@ export function ProductFilters({ onFilterChange, onSortChange, availableTags = [
                         ))}
 
                         <Button variant="link" className="px-1 text-sm" onClick={clearAllFilters}>
-                            Bỏ chọn tất cả
+                            Deselect all
                         </Button>
                     </div>
                 </div>
