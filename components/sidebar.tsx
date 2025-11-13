@@ -8,7 +8,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { useState, useEffect } from "react"
 import { LoadingSpinner } from "@/components/loading-spinner"
 import { safeSessionStorage } from "@/lib/browser-utils"
-import { getUserStats } from "@/service/userApi"
+import { getUserStats, fetchProfile } from "@/service/userApi"
 import { getClubStats, getClubIdFromToken } from "@/service/clubApi"
 import { getEventByClubId, timeObjectToString, type Event } from "@/service/eventApi"
 import { getLeaveReq, type LeaveRequest } from "@/service/membershipApi"
@@ -43,6 +43,7 @@ const navigationConfig = {
     { href: "/student/clubs", label: "Clubs", icon: Users },
     { href: "/student/myclub", label: "My Club", icon: Building },
     { href: "/student/events", label: "Events", icon: Calendar },
+    { href: "/student/events-public", label: "Events Public", icon: Calendar },
     // { href: "/student/checkin", label: "Check In", icon: CheckCircle },
     { href: "/student/gift", label: "Gift", icon: Gift },
     // { href: "/student/wallet", label: "Wallet", icon: Wallet },
@@ -162,6 +163,9 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
   const [clubStatsTotal, setClubStatsTotal] = useState<number>(0)
   const [hasClubs, setHasClubs] = useState<boolean>(false)
   const [openDropdowns, setOpenDropdowns] = useState<Record<string, boolean>>({})
+  // Cache profile data for fast access
+  const [cachedProfile, setCachedProfile] = useState<any>(null)
+  const [isLoadingProfile, setIsLoadingProfile] = useState<boolean>(false)
   // State for profile page event counts (APPROVED and ONGOING)
   const [approvedEventsCount, setApprovedEventsCount] = useState<number>(0)
   const [ongoingEventsCount, setOngoingEventsCount] = useState<number>(0)
@@ -210,51 +214,73 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
   // Call API for UNI_STAFF role to get point requests
   const { data: uniStaffPointRequestsData } = usePointRequests(auth.role === "uni_staff")
 
-  // Check clubIds for STUDENT role on every component mount/auth change
+  // Helper function to fetch and cache profile
+  const fetchAndCacheProfile = async () => {
+    if (isLoadingProfile) return cachedProfile // Prevent duplicate requests
+    
+    setIsLoadingProfile(true)
+    try {
+      const profile = await fetchProfile()
+      setCachedProfile(profile)
+      const clubs = profile?.clubs || []
+      const studentHasClubs = clubs && Array.isArray(clubs) && clubs.length > 0
+      setHasClubs(studentHasClubs)
+      
+      console.log("Sidebar - Profile fetched:", { clubs, hasClubs: studentHasClubs })
+      return profile
+    } catch (error) {
+      console.error("Failed to fetch profile:", error)
+      setHasClubs(false)
+      return null
+    } finally {
+      setIsLoadingProfile(false)
+    }
+  }
+
+  // Initial fetch and polling for STUDENT role to detect club changes
   useEffect(() => {
     if (auth.role === "student") {
-      try {
-        const storedAuth = safeSessionStorage.getItem("uniclub-auth")
-        if (storedAuth) {
-          const parsedAuth = JSON.parse(storedAuth)
-          const clubIds = parsedAuth.clubIds
+      // Initial fetch
+      fetchAndCacheProfile()
 
-          // Check if student has clubs
-          const studentHasClubs = clubIds && Array.isArray(clubIds) && clubIds.length > 0
-          setHasClubs(studentHasClubs)
+      // Poll every 30 seconds to detect if user was kicked from club
+      const interval = setInterval(() => {
+        fetchAndCacheProfile()
+      }, 30000)
 
-          console.log("Sidebar check - Student clubIds:", clubIds, "hasClubs:", studentHasClubs)
-        } else {
-          setHasClubs(false)
-          console.log("Sidebar check - No auth data found, hasClubs: false")
-        }
-      } catch (error) {
-        console.warn("Failed to parse sessionStorage auth data:", error)
-        setHasClubs(false)
-      }
+      return () => clearInterval(interval)
+    } else {
+      // Reset when not student
+      setHasClubs(false)
+      setCachedProfile(null)
     }
-  }, [auth.role, pathname]) // Re-check on route changes
+  }, [auth.role])
 
-  // Fetch events by clubIds for STUDENT role (always, not just on profile page)
+  // Prefetch profile on route change for instant feedback
+  useEffect(() => {
+    if (auth.role === "student" && pathname) {
+      // Silently prefetch in background without blocking UI
+      fetchAndCacheProfile()
+    }
+  }, [pathname])
+
+  // Fetch events using cached profile for STUDENT role
   useEffect(() => {
     if (auth.role === "student") {
       const fetchEventsForStudent = async () => {
         try {
-          const storedAuth = safeSessionStorage.getItem("uniclub-auth")
-          if (!storedAuth) {
+          // Use cached profile if available, otherwise fetch
+          const profile = cachedProfile || await fetchAndCacheProfile()
+          const clubs = profile?.clubs || []
+
+          if (!clubs || !Array.isArray(clubs) || clubs.length === 0) {
             setApprovedEventsCount(0)
             setOngoingEventsCount(0)
             return
           }
 
-          const parsedAuth = JSON.parse(storedAuth)
-          const clubIds = parsedAuth.clubIds
-
-          if (!clubIds || !Array.isArray(clubIds) || clubIds.length === 0) {
-            setApprovedEventsCount(0)
-            setOngoingEventsCount(0)
-            return
-          }
+          // Extract clubIds from clubs array
+          const clubIds = clubs.map((club: any) => club.clubId)
 
           // Fetch events for all clubIds
           const allEventsPromises = clubIds.map((clubId: number) =>
@@ -295,7 +321,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
       setApprovedEventsCount(0)
       setOngoingEventsCount(0)
     }
-  }, [auth.role, pathname])
+  }, [auth.role, cachedProfile])
 
   // Calculate pending counts from 3 APIs for STUDENT role
   useEffect(() => {
@@ -578,16 +604,17 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
   // For STUDENT role, show limited or full navigation based on hasClubs state
   if (auth.role === "student") {
     if (!hasClubs) {
-      // Student has no clubs - show limited navigation
-      console.log("Student has no clubs, showing limited navigation")
+      // Student has no clubs - show limited navigation with Events Public
+      console.log("Student has no clubs, showing limited navigation with Events Public")
       navigation = [
         { href: "/student/clubs", label: "Clubs", icon: Users },
+        { href: "/student/events-public", label: "Events Public", icon: Calendar },
         { href: "/student/history", label: "History", icon: History },
       ]
     } else {
-      // Student has clubs - show full navigation from config
-      console.log("Student has clubs, showing full navigation")
-      // Keep the full navigation from navigationConfig
+      // Student has clubs - show full navigation but filter out Events Public
+      console.log("Student has clubs, showing full navigation without Events Public")
+      navigation = navigation.filter(item => item.href !== "/student/events-public")
     }
   }
 
@@ -636,20 +663,67 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
   //     setTimeout(() => setLoadingPath(null), 150)
   //   }
   // }
-  const handleNavigation = (href: string) => {
+  const handleNavigation = async (href: string) => {
     // 1. Nếu bấm vào link của trang hiện tại, không làm gì cả
     if (pathname === href) {
       return
     }
 
-    // 2. Đặt trạng thái loading
+    // 2. For STUDENT role, check club access before navigation
+    if (auth.role === "student") {
+      // Events Public page is only for students WITHOUT clubs
+      if (href.startsWith("/student/events-public")) {
+        const profile = cachedProfile || await fetchAndCacheProfile()
+        const clubs = profile?.clubs || []
+        const hasAccess = clubs && Array.isArray(clubs) && clubs.length > 0
+        
+        if (hasAccess) {
+          // User has club access - redirect to regular events page
+          console.warn("Access denied to Events Public - User has club membership. Redirecting to regular events.")
+          router.push("/student/events")
+          onNavigate?.()
+          return
+        }
+        // Allow access to Events Public for students without clubs
+        // Continue to navigation below
+      } else {
+        // Club-restricted pages (excluding Events Public)
+        const clubPages = ["/student/myclub", "/student/events", "/student/gift", "/student/myattendance", "/student/chat"]
+        const isClubPage = clubPages.some(page => href.startsWith(page))
+        
+        if (isClubPage) {
+          // Use cached profile for instant check
+          let profile = cachedProfile
+          
+          // If no cache, fetch immediately (this should be rare due to polling)
+          if (!profile) {
+            setLoadingPath(href) // Show loading only when fetching
+            profile = await fetchAndCacheProfile()
+            setLoadingPath(null)
+          }
+          
+          const clubs = profile?.clubs || []
+          const hasAccess = clubs && Array.isArray(clubs) && clubs.length > 0
+          
+          if (!hasAccess) {
+            // User doesn't have club access - redirect to clubs page
+            console.warn("Access denied - No club membership. Redirecting to clubs page.")
+            router.push("/student/clubs")
+            onNavigate?.()
+            return
+          }
+        }
+      }
+    }
+
+    // 3. Đặt trạng thái loading
     setLoadingPath(href)
 
-    // 3. Sử dụng router.push cho TẤT CẢ các link
+    // 4. Sử dụng router.push cho TẤT CẢ các link
     router.push(href)
     onNavigate?.()
 
-    // 4. Xóa trạng thái loading sau một chút
+    // 5. Xóa trạng thái loading sau một chút
     setTimeout(() => setLoadingPath(null), 150)
   }
 

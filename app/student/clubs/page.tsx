@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input"
 import { useAuth } from "@/contexts/auth-context"
 import { useData } from "@/contexts/data-context"
 import { useToast } from "@/hooks/use-toast"
-import { Users, PlusIcon, Calendar, Loader2 } from "lucide-react"
+import { Users, PlusIcon, Calendar, Loader2, Eye } from "lucide-react"
 import { Loading } from "@/components/ui/loading"
 import { fetchClub, getClubMemberCount } from "@/service/clubApi"
 import { postMemAppli } from "@/service/memberApplicationApi"
@@ -52,40 +52,43 @@ export default function MemberClubsPage() {
   const [newProposerReason, setNewProposerReason] = useState("")
   const [isSendingOtp, setIsSendingOtp] = useState(false)
   const [otpCode, setOtpCode] = useState("")
-
-  // ✅ USE REACT QUERY instead of manual state
+  // Thêm state cho modal xem mô tả
+  const [showDescriptionModal, setShowDescriptionModal] = useState(false)
+  const [selectedDescription, setSelectedDescription] = useState("")
+  const [selectedClubName, setSelectedClubName] = useState("")
+  // USE REACT QUERY instead of manual state
   const { data: clubs = [], isLoading: loading, error: queryError } = useClubs({ page: 0, size: 70, sort: ["name"] })
   const clubIds = clubs.map((club: ClubApiItem) => club.id)
   const { data: memberCounts = {}, isLoading: memberCountsLoading } = useClubMemberCounts(clubIds)
 
-  // ✅ Fetch user's existing applications
+  // Fetch user's existing applications
   const { data: myApplications = [], isLoading: applicationsLoading } = useMyMemberApplications()
 
   // Debug: Log clubs data when it loads
   useEffect(() => {
-    console.log("🔍 Clubs data state:", {
+    console.log(" Clubs data state:", {
       clubsCount: clubs.length,
       loading,
       error: queryError,
       clubIds: clubIds.length > 0 ? clubIds.slice(0, 5) : [],
     })
     if (clubs.length > 0) {
-      console.log("✅ Loaded clubs:", clubs.slice(0, 3).map((c: any) => ({ id: c.id, name: c.name })))
+      console.log(" Loaded clubs:", clubs.slice(0, 3).map((c: any) => ({ id: c.id, name: c.name })))
     }
   }, [clubs, loading, queryError, clubIds])
 
   // Debug: Log applications when they load
   useEffect(() => {
     if (myApplications.length > 0) {
-      console.log("📋 Loaded user applications:", myApplications)
-      console.log("📋 Pending applications:", myApplications.filter((app: any) => app.status === "PENDING"))
+      console.log(" Loaded user applications:", myApplications)
+      console.log(" Pending applications:", myApplications.filter((app: any) => app.status === "PENDING"))
     }
   }, [myApplications])
 
   const error = queryError ? (queryError as any)?.message ?? "Failed to load clubs" : null
 
   const [pendingClubIds, setPendingClubIds] = useState<string[]>([])
-  // ✅ FIX: Khởi tạo userClubIds ngay từ đầu để tránh race condition
+  // Khởi tạo userClubIds ngay từ đầu để tránh race condition
   const [userClubIds, setUserClubIds] = useState<number[]>(() => {
     try {
       const saved = safeSessionStorage.getItem("uniclub-auth")
@@ -107,7 +110,7 @@ export default function MemberClubsPage() {
   const [selectedMajorId, setSelectedMajorId] = useState<number | "">("")
   const [newVision, setNewVision] = useState("")
 
-  // ✅ OPTIMIZED: Combine clubs with member counts using useMemo (no extra API calls)
+  // Combine clubs with member counts using useMemo (no extra API calls)
   const clubsWithData = useMemo(() => {
     if (clubs.length === 0) return []
 
@@ -125,7 +128,7 @@ export default function MemberClubsPage() {
   const userMemberships = clubMemberships.filter((m) => m.userId === auth.userId)
   const userApplications = membershipApplications.filter((a) => a.userId === auth.userId)
 
-  // ✅ Đã khởi tạo userClubIds trong useState, không cần useEffect nữa
+  // Đã khởi tạo userClubIds trong useState, không cần useEffect nữa
   // Chỉ cần set userClubId cho backward compatibility
   useEffect(() => {
     if (userClubIds.length > 0 && !userClubId) {
@@ -145,23 +148,7 @@ export default function MemberClubsPage() {
     loadMajors()
   }, [])
 
-
-  // const majorColors: Record<string, string> = {
-  //   "Software Engineering": "#0052CC",
-  //   "Artificial Intelligence": "#6A00FF",
-  //   "Information Assurance": "#243447",
-  //   "Data Science": "#00B8A9",
-  //   "Business Administration": "#1E2A78",
-  //   "Digital Marketing": "#FF3366",
-  //   "Graphic Design": "#FFC300",
-  //   "Multimedia Communication": "#FF6B00",
-  //   "Hospitality Management": "#E1B382",
-  //   "International Business": "#007F73",
-  //   "Finance and Banking": "#006B3C",
-  //   "Japanese Language": "#D80032",
-  //   "Korean Language": "#5DADEC",
-  // }
-  // ✅ FIX: Wrap getClubStatus in useCallback to avoid unnecessary re-renders
+  //  Wrap getClubStatus in useCallback to avoid unnecessary re-renders
   const getClubStatus = useCallback((clubId: string) => {
     // If we have a local pending marker for this club, show pending immediately
     if (pendingClubIds.includes(clubId)) return "pending"
@@ -174,7 +161,7 @@ export default function MemberClubsPage() {
     const application = userApplications.find((a) => a.clubId === clubId)
     if (application?.status === "PENDING") return "pending"
 
-    // ✅ Check applications from API (server state)
+    // Check applications from API (server state)
     const apiApplication = myApplications.find((app: any) => {
       const appClubId = String(app.clubId)
       const matches = appClubId === clubId && app.status === "PENDING"
@@ -189,28 +176,28 @@ export default function MemberClubsPage() {
   }, [pendingClubIds, userMemberships, userApplications, myApplications])
 
   // Map API items to table rows and filter out user's current clubs
-  // ✅ FIX: Use useMemo to ensure proper dependency tracking and avoid race conditions
+  // Use useMemo to ensure proper dependency tracking and avoid race conditions
   const enhancedClubs = useMemo(() => {
-    console.log("🔄 Computing enhancedClubs - clubsWithData:", clubsWithData.length, "userClubIds:", userClubIds)
-    
+    console.log(" Computing enhancedClubs - clubsWithData:", clubsWithData.length, "userClubIds:", userClubIds)
+
     if (clubsWithData.length === 0) {
-      console.log("⚠️ No clubs data available yet")
+      console.log(" No clubs data available yet")
       return []
     }
 
-    console.log("✅ userClubIds loaded:", userClubIds, "filtering clubs now...")
+    console.log(" userClubIds loaded:", userClubIds, "filtering clubs now...")
 
     const filtered = clubsWithData.filter((club: ClubApiItem) => {
       // Hide clubs that user is already a member of
       const clubIdNumber = Number(club.id)
       if (userClubIds.length > 0 && userClubIds.includes(clubIdNumber)) {
-        console.log(`🚫 Hiding club ${club.name} (ID: ${club.id}) - user is member of this club`)
+        console.log(` Hiding club ${club.name} (ID: ${club.id}) - user is member of this club`)
         return false
       }
       return true
     })
 
-    console.log(`✅ Filtered clubs: ${filtered.length} out of ${clubsWithData.length} (hidden: ${clubsWithData.length - filtered.length})`)
+    console.log(`Filtered clubs: ${filtered.length} out of ${clubsWithData.length} (hidden: ${clubsWithData.length - filtered.length})`)
 
     return filtered.map((club: ClubApiItem) => {
       // 1. Thử lấy tên major trực tiếp (logic cũ)
@@ -227,7 +214,7 @@ export default function MemberClubsPage() {
           const majorFromList = majors.find(m => m.id === Number(clubMajorId))
           if (majorFromList) {
             majorName = majorFromList.name // Đã tìm thấy tên từ danh sách majors
-            majorColor = majorFromList.colorHex // [THÊM] Lấy colorHex từ danh sách
+            majorColor = majorFromList.colorHex // Lấy colorHex từ danh sách
           }
         }
       }
@@ -235,7 +222,7 @@ export default function MemberClubsPage() {
         id: String(club.id),
         name: club.name,
         major: majorName ?? "", // Sử dụng tên đã được tìm thấy
-        majorColor: majorColor ?? "#E2E8F0", // [THÊM] Thêm màu (với fallback)
+        majorColor: majorColor ?? "#E2E8F0",
         description: club.description,
         members: club.memberCount ?? 0,
         founded: 0,
@@ -245,8 +232,8 @@ export default function MemberClubsPage() {
       }
     })
   }, [clubsWithData, userClubIds, majors, getClubStatus, myApplications, userMemberships, userApplications, pendingClubIds])
-  
-  console.log("📊 Final enhancedClubs count:", enhancedClubs.length)
+
+  console.log(" Final enhancedClubs count:", enhancedClubs.length)
 
   const getMajorVariant = (major?: string) => {
     if (!major) return "outline"
@@ -399,7 +386,7 @@ export default function MemberClubsPage() {
         setSelectedClub(null)
         setIsSubmittingApplication(false)
 
-        // ✅ Invalidate React Query cache to refetch applications
+        //  Invalidate React Query cache to refetch applications
         queryClient.invalidateQueries({ queryKey: queryKeys.myMemberApplications() })
         queryClient.invalidateQueries({ queryKey: queryKeys.clubs })
 
@@ -468,12 +455,28 @@ export default function MemberClubsPage() {
     {
       key: "description" as const,
       label: "Description",
-      render: (value: string) => (
-        <div
-          className="text-sm text-muted-foreground max-w-[180px] truncate"
-          title={value}
-        >
-          {value || "-"}
+      render: (value: string, club: any) => (
+        <div className="flex items-center justify-between gap-2 max-w-[220px]">
+          <div
+            className="text-sm text-muted-foreground truncate"
+            // title={value}
+          >
+            {value || "-"}
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 flex-shrink-0"
+            onClick={(e) => {
+              e.stopPropagation() // Ngăn sự kiện click khác (nếu có)
+              setSelectedClubName(club.name)
+              setSelectedDescription(value)
+              setShowDescriptionModal(true)
+            }}
+            title="View full description"
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
         </div>
       ),
     },
@@ -493,14 +496,14 @@ export default function MemberClubsPage() {
       render: (_: any, club: any) => {
         const status = getClubStatus(club.id)
         return (
-          <Badge 
+          <Badge
             variant={status === "member" ? "default" : status === "pending" ? "secondary" : "outline"}
             className={
               status === "member"
                 ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-green-300 dark:border-green-700 hover:bg-green-100 dark:hover:bg-green-900/40"
                 : status === "pending"
-                ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700 hover:bg-yellow-100 dark:hover:bg-yellow-900/40"
-                : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-400 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800"
+                  ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700 hover:bg-yellow-100 dark:hover:bg-yellow-900/40"
+                  : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-400 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800"
             }
           >
             {status === "member" ? "Member" : status === "pending" ? "Pending" : "Not Applied"}
@@ -826,6 +829,41 @@ export default function MemberClubsPage() {
               </div>
             </div>
           </Modal>
+
+          {/* Thêm Modal để xem mô tả đầy đủ */}
+          <Modal
+            open={showDescriptionModal}
+            onOpenChange={setShowDescriptionModal}
+            // title={`-- ${selectedClubName} --`}
+            title=""
+            // description="Full club description"
+            showCloseButton={false}
+          >
+            <div className="space-y-4">
+              {/* Thêm header thủ công với padding top và căn giữa */}
+              <div className=" text-center">
+                <h2 className="text-lg font-semibold">
+                  {`--- ${selectedClubName} ---`}
+                </h2>
+              </div>
+
+              <div className="p-4 bg-muted rounded-md max-h-[60vh] overflow-y-auto">
+                <p className="text-base text-center whitespace-pre-wrap">
+                  {selectedDescription || "No description provided."}
+                </p>
+              </div>
+
+              <div className="flex justify-center">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowDescriptionModal(false)}
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          </Modal>
+
         </div>
       </AppShell>
     </ProtectedRoute>
