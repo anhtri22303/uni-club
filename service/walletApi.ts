@@ -52,9 +52,13 @@ export interface RewardPointsToClubParams {
 }
 
 export type ApiWallet = {
-  points: number;
-  memberships?: ApiMembershipWallet[]; // Array of membership wallets
-  [key: string]: any; // Cho phép các thuộc tính khác từ backend
+  walletId: number;
+  balancePoints: number;
+  ownerType: string;
+  clubId: number;
+  clubName: string;
+  userId: number;
+  userFullName: string;
 };
 
 export type ApiMembershipWallet = {
@@ -106,32 +110,43 @@ export interface Transaction {
   receiverName: string;
 }
 
-export const getWallet = async (): Promise<ApiWallet> => {
+export const getWallet = async (): Promise<ApiResponse<ApiWallet>> => {
   try {
-    const res = await axiosInstance.get("/api/wallets/me/memberships")
+    const res = await axiosInstance.get<ApiResponse<ApiWallet>>("/api/wallets/me")
 
-    // Response is an array of membership wallets
-    const memberships: ApiMembershipWallet[] = Array.isArray(res.data) ? res.data : []
+    console.log("getWallet:", res.data)
 
-    // Sum all membership balancePoints to get total points
-    const totalPoints = memberships.reduce((sum, membership) => {
-      return sum + (Number(membership.balancePoints) || 0)
-    }, 0)
-
-    const normalized: ApiWallet = {
-      points: totalPoints,
-      memberships: memberships
-    }
-
-    console.log("getWallet (memberships):", {
-      totalMemberships: memberships.length,
-      totalPoints,
-      memberships
-    })
-
-    return normalized
+    return res.data
   } catch (err) {
     console.error("walletApi.getWallet failed", err)
+    throw err
+  }
+}
+
+export type ApiWalletTransaction = {
+  id: number;
+  type: string;
+  amount: number;
+  description: string;
+  createdAt: string;
+  signedAmount: string;
+  senderName: string;
+  receiverName: string;
+}
+
+export type ApiWalletTransactionsResponse = {
+  success: boolean;
+  message: string;
+  data: ApiWalletTransaction[];
+}
+
+export const getWalletTransactions = async (): Promise<ApiWalletTransactionsResponse> => {
+  try {
+    const res = await axiosInstance.get<ApiWalletTransactionsResponse>("/api/wallets/me/transactions")
+    console.log("getWalletTransactions:", res.data)
+    return res.data
+  } catch (err) {
+    console.error("walletApi.getWalletTransactions failed", err)
     throw err
   }
 }
@@ -478,6 +493,7 @@ export const getUniToEventTransactions = async (): Promise<ApiUniToEventTransact
 
 export default {
   getWallet,
+  getWalletTransactions,
   // rewardPointsToMember, // Deprecated
   rewardPointsToMembers,
   getClubWallet,

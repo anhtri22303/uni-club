@@ -46,6 +46,7 @@ export default function ClubLeaderRewardDistributionPage() {
   const [membersLoading, setMembersLoading] = useState(false)
   const [membersError, setMembersError] = useState<string | null>(null)
   const [selectedMembers, setSelectedMembers] = useState<Record<string, boolean>>({})
+  const [targetUserIds, setTargetUserIds] = useState<number[]>([]) // ✨ State lưu danh sách userId đã chọn
   // State filters
   const [searchTerm, setSearchTerm] = useState("")
   const [activeFilters, setActiveFilters] = useState<Record<string, any>>({})
@@ -121,7 +122,27 @@ export default function ClubLeaderRewardDistributionPage() {
   }, [apiMembers])
 
   const handleToggleSelect = (memberId: string) => {
-    setSelectedMembers((prev) => ({ ...prev, [memberId]: !prev[memberId] }))
+    setSelectedMembers((prev) => {
+      const newState = !prev[memberId]
+      
+      // ✨ Cập nhật targetUserIds ngay lập tức
+      // Tìm member để lấy userId
+      const member = clubMembers.find(m => m.id === memberId)
+      if (member) {
+        const numericUserId = Number(member.userId)
+        setTargetUserIds((prevIds) => {
+          if (newState) {
+            // Thêm vào nếu chưa có
+            return prevIds.includes(numericUserId) ? prevIds : [...prevIds, numericUserId]
+          } else {
+            // Xóa khỏi danh sách
+            return prevIds.filter(id => id !== numericUserId)
+          }
+        })
+      }
+      
+      return { ...prev, [memberId]: newState }
+    })
   }
 
   const clubMembers = managedClub
@@ -197,17 +218,37 @@ export default function ClubLeaderRewardDistributionPage() {
   }
 
   const handleToggleSelectAll = () => {
-    const newSelectionState = !allFilteredSelected // Trạng thái mới (true hoặc false)
+    const newSelectionState = !allFilteredSelected
 
     // Cập nhật trạng thái chọn *chỉ* cho các thành viên trong danh sách đã lọc
-    // Những thành viên khác không bị ảnh hưởng
     setSelectedMembers((prevSelected) => {
-      const newSelected = { ...prevSelected } // Bắt đầu với trạng thái cũ
+      const newSelected = { ...prevSelected }
       filteredMembers.forEach((member) => {
-        newSelected[member.id] = newSelectionState // Áp dụng trạng thái mới
+        newSelected[member.id] = newSelectionState
       })
       return newSelected
     })
+    
+    // ✨ Cập nhật targetUserIds
+    if (newSelectionState) {
+      // Select all: thêm tất cả filteredMembers vào targetUserIds
+      setTargetUserIds((prevIds) => {
+        const newIds = filteredMembers.map(member => Number(member.userId))
+        const merged = [...prevIds]
+        newIds.forEach(id => {
+          if (!merged.includes(id)) {
+            merged.push(id)
+          }
+        })
+        return merged
+      })
+    } else {
+      // Deselect all: xóa tất cả filteredMembers khỏi targetUserIds
+      setTargetUserIds((prevIds) => {
+        const idsToRemove = filteredMembers.map(member => Number(member.userId))
+        return prevIds.filter(id => !idsToRemove.includes(id))
+      })
+    }
   }
 
   const handleCreatePointRequest = async () => {
@@ -285,9 +326,8 @@ export default function ClubLeaderRewardDistributionPage() {
     }
     setIsDistributing(true)
 
-    // Get selected members with their membershipIds
-    const selectedMembersList = clubMembers.filter(m => selectedMembers[m.id])
-    if (selectedMembersList.length === 0) {
+    // ✨ Kiểm tra targetUserIds thay vì filter lại
+    if (targetUserIds.length === 0) {
       toast({
         title: "No members selected",
         description: "Please select at least one member to distribute points.",
@@ -298,20 +338,17 @@ export default function ClubLeaderRewardDistributionPage() {
     }
 
     try {
-      // Collect all userIds as numbers
-      const targetIds = selectedMembersList.map(member => Number(member.userId))
-
-      // Call the new batch API
+      // ✨ Sử dụng targetUserIds đã được chuẩn bị sẵn
       const response = await rewardPointsToMembers(
-        targetIds,
+        targetUserIds,
         rewardAmount as number,
-        rewardReason.trim() // reason
+        rewardReason.trim()
       )
 
       if (response.success) {
         toast({
           title: "Success",
-          description: response.message || `Distributed ${rewardAmount} points to ${selectedMembersList.length} member(s) of ${managedClub.name}.`,
+          description: response.message || `Distributed ${rewardAmount} points to ${targetUserIds.length} member(s) of ${managedClub.name}.`,
           variant: "default"
         })
 
@@ -325,13 +362,21 @@ export default function ClubLeaderRewardDistributionPage() {
 
         setRewardAmount('') // Reset số điểm sau khi thành công
         setRewardReason('') // Reset reason sau khi thành công
+        // ✨ Reset selections
+        setSelectedMembers({})
+        setTargetUserIds([])
       } else {
         throw new Error(response.message || "Failed to distribute points")
       }
     } catch (err: any) {
+      const errorMessage = err?.response?.data?.message || err?.message || "An error occurred while distributing points."
+      const isTimeout = err?.code === 'ECONNABORTED' || errorMessage.toLowerCase().includes('timeout')
+      
       toast({
-        title: "Delivery error",
-        description: err?.response?.data?.message || err?.message || "An error occurred while distributing points.",
+        title: isTimeout ? "Request Timeout" : "Delivery error",
+        description: isTimeout 
+          ? `The request took too long (processing ${targetUserIds.length} members). The points may still be distributed successfully. Please check the transaction history.`
+          : errorMessage,
         variant: "destructive"
       })
     } finally {

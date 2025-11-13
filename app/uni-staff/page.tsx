@@ -101,8 +101,8 @@ export default function UniStaffReportsPage() {
   const totalClubApplications = clubApplications.length
   const totalEventRequests = events.length
   
-  // Count approved club applications
-  const approvedClubApplications = clubApplications.filter((app: any) => app.status === "APPROVED").length
+  // Count completed club applications
+  const completedClubApplications = clubApplications.filter((app: any) => app.status === "COMPLETED").length
   
   // Count pending club applications
   const pendingClubApplications = clubApplications.filter((app: any) => app.status === "PENDING").length
@@ -198,7 +198,7 @@ export default function UniStaffReportsPage() {
                 <div className="text-2xl sm:text-3xl font-bold text-green-900 dark:text-green-100">{totalClubApplications}</div>
                 <div className="flex items-center text-[10px] sm:text-xs text-green-600 dark:text-green-400 mt-1">
                       <CheckCircle className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1" />
-                      {approvedClubApplications} approved
+                      {completedClubApplications} completed
                     </div>
                   </div>
                   <ArrowUpRight className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 dark:text-green-400" />
@@ -296,7 +296,7 @@ export default function UniStaffReportsPage() {
               <AnalyticsTab 
                 clubsWithMemberCount={clubsWithMemberCountUnsorted}
                 totalClubApplications={totalClubApplications}
-                approvedClubApplications={approvedClubApplications}
+                completedClubApplications={completedClubApplications}
                 pendingClubApplications={pendingClubApplications}
                 rejectedClubApplications={rejectedClubApplications}
                 totalEventRequests={totalEventRequests}

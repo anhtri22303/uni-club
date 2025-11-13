@@ -6,7 +6,7 @@ import { Building, Calendar, FileText } from "lucide-react"
 interface AnalyticsTabProps {
   clubsWithMemberCount: any[]
   totalClubApplications: number
-  approvedClubApplications: number
+  completedClubApplications: number
   pendingClubApplications: number
   rejectedClubApplications: number
   totalEventRequests: number
@@ -22,7 +22,7 @@ interface AnalyticsTabProps {
 export function AnalyticsTab({
   clubsWithMemberCount,
   totalClubApplications,
-  approvedClubApplications,
+  completedClubApplications,
   pendingClubApplications,
   rejectedClubApplications,
   totalEventRequests,
@@ -69,7 +69,7 @@ export function AnalyticsTab({
                         strokeDasharray={`${(pendingClubApplications / totalClubApplications) * 251.2} 251.2`}
                         className="transition-all duration-500"
                       />
-                      {/* Approved Arc */}
+                      {/* Completed Arc */}
                       <circle
                         cx="50"
                         cy="50"
@@ -77,7 +77,7 @@ export function AnalyticsTab({
                         fill="none"
                         stroke="#22c55e"
                         strokeWidth="20"
-                        strokeDasharray={`${(approvedClubApplications / totalClubApplications) * 251.2} 251.2`}
+                        strokeDasharray={`${(completedClubApplications / totalClubApplications) * 251.2} 251.2`}
                         strokeDashoffset={`-${(pendingClubApplications / totalClubApplications) * 251.2}`}
                         className="transition-all duration-500"
                       />
@@ -90,7 +90,7 @@ export function AnalyticsTab({
                         stroke="#ef4444"
                         strokeWidth="20"
                         strokeDasharray={`${(rejectedClubApplications / totalClubApplications) * 251.2} 251.2`}
-                        strokeDashoffset={`-${((pendingClubApplications + approvedClubApplications) / totalClubApplications) * 251.2}`}
+                        strokeDashoffset={`-${((pendingClubApplications + completedClubApplications) / totalClubApplications) * 251.2}`}
                         className="transition-all duration-500"
                       />
                     </>
@@ -121,12 +121,12 @@ export function AnalyticsTab({
                 <div className="flex items-center justify-between p-2 sm:p-3 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900">
                   <div className="flex items-center gap-2 sm:gap-3">
                     <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-green-500 flex-shrink-0" />
-                    <span className="font-medium text-xs sm:text-sm">Approved</span>
+                    <span className="font-medium text-xs sm:text-sm">Completed</span>
                   </div>
                   <div className="flex items-center gap-1 sm:gap-2">
-                    <span className="text-lg sm:text-xl md:text-2xl font-bold text-green-600">{approvedClubApplications}</span>
+                    <span className="text-lg sm:text-xl md:text-2xl font-bold text-green-600">{completedClubApplications}</span>
                     <span className="text-[10px] sm:text-xs md:text-sm text-green-600">
-                      ({totalClubApplications > 0 ? Math.round((approvedClubApplications / totalClubApplications) * 100) : 0}%)
+                      ({totalClubApplications > 0 ? Math.round((completedClubApplications / totalClubApplications) * 100) : 0}%)
                     </span>
                   </div>
                 </div>
