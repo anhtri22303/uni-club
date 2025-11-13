@@ -137,8 +137,12 @@ export default function ClubLeaderApplicationsPage() {
     })
   }
 
-  const allPendingApplications = clubApplications.filter((a: any) => a.status === "PENDING")
-  const allProcessedApplications = clubApplications.filter((a: any) => a.status !== "PENDING")
+  const allPendingApplications = clubApplications
+    .filter((a: any) => a.status === "PENDING")
+    .sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+  const allProcessedApplications = clubApplications
+    .filter((a: any) => a.status !== "PENDING")
+    .sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
 
   const pendingApplications = applyFilters(allPendingApplications, true)
   const processedApplications = applyFilters(allProcessedApplications, false)
