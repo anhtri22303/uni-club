@@ -24,6 +24,26 @@ export interface CreateLocationRequest {
 }
 
 /**
+ * (MỚI) Dữ liệu để cập nhật một địa điểm
+ * Dựa trên: PUT /api/locations/{id} (Request body)
+ */
+export interface UpdateLocationRequest {
+  name: string;
+  address: string;
+  capacity: number;
+}
+
+/**
+ * (MỚI) Cấu trúc phản hồi API chung khi thành công
+ * Dựa trên: PUT /api/locations/{id} (Response 200)
+ */
+export interface ApiSuccessResponse<T> {
+  success: boolean;
+  message: string;
+  data: T;
+}
+
+/**
  * Các interface cho phản hồi phân trang (Pageable)
  * (Giữ nguyên từ file cũ của bạn, vì đây là cấu trúc Page chuẩn)
  */
@@ -138,11 +158,34 @@ export const deleteLocation = async (locationId: number): Promise<void> => {
 
     // Log status (ví dụ: 204) thay vì data
     console.log("Deleted location status:", response.status);
-    
+
     // Không trả về gì cả (Promise<void>)
     return;
   } catch (error) {
     console.error("Error deleting location:", error);
+    throw error;
+  }
+};
+
+/**
+ * (MỚI) Cập nhật một địa điểm bằng ID
+ * Tương ứng với: PUT /api/locations/{id}
+ * @param id ID của địa điểm cần cập nhật
+ * @param data Dữ liệu cập nhật (name, address, capacity)
+ */
+export const updateLocation = async (
+  id: number | string,
+  data: UpdateLocationRequest
+): Promise<ApiSuccessResponse<Location>> => {
+  try {
+    const response = await axiosInstance.put<ApiSuccessResponse<Location>>(
+      `/api/locations/${id}`,
+      data
+    );
+    console.log("Updated location response:", response.data);
+    return response.data;
+  } catch (error) {
+    console.error(`Error updating location ${id}:`, error);
     throw error;
   }
 };

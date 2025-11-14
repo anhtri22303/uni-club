@@ -10,11 +10,11 @@ import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Building, Users, Calendar, Search, CheckCircle, XCircle, Clock, Eye, Plus, CheckCheck, Filter } from "lucide-react"
 import Link from "next/link"
-import { postClubApplication } from "@/service/clubApplicationAPI"
-import { Modal } from "@/components/modal"
-import { useToast } from "@/hooks/use-toast"
+// import { postClubApplication } from "@/service/clubApplicationAPI"
+// import { Modal } from "@/components/modal"
+// import { useToast } from "@/hooks/use-toast"
 import { useClubApplications } from "@/hooks/use-query-hooks"
-import { useQueryClient } from "@tanstack/react-query"
+// import { useQueryClient } from "@tanstack/react-query"
 
 type UiClubRequest = {
 	id: string
@@ -39,13 +39,13 @@ type UiClubRequest = {
 
 export default function UniStaffClubRequestsPage() {
 	const [searchTerm, setSearchTerm] = useState("")
-	const [isModalOpen, setIsModalOpen] = useState<boolean>(false)
-	const [newClubName, setNewClubName] = useState<string>("")
-	const [newDescription, setNewDescription] = useState<string>("")
-	const [newMajor, setNewMajor] = useState<string>("")
-	const [newProposerReason, setNewProposerReason] = useState<string>("")
+	// const [isModalOpen, setIsModalOpen] = useState<boolean>(false)
+	// const [newClubName, setNewClubName] = useState<string>("")
+	// const [newDescription, setNewDescription] = useState<string>("")
+	// const [newMajor, setNewMajor] = useState<string>("")
+	// const [newProposerReason, setNewProposerReason] = useState<string>("")
 	const [activeTab, setActiveTab] = useState<string>("pending")
-	const [newVision, setNewVision] = useState<string>("")
+	// const [newVision, setNewVision] = useState<string>("")
 	// Pagination states
 	const [pendingPage, setPendingPage] = useState(0)
 	const [processedPage, setProcessedPage] = useState(0)
@@ -56,8 +56,8 @@ export default function UniStaffClubRequestsPage() {
 	const [dateFromFilter, setDateFromFilter] = useState<string>("")
 	const [dateToFilter, setDateToFilter] = useState<string>("")
 
-	const { toast } = useToast()
-	const queryClient = useQueryClient()
+	// const { toast } = useToast()
+	// const queryClient = useQueryClient()
 	// Use React Query hook to fetch club applications
 	const { data: applications = [], isLoading: loading, error } = useClubApplications()
 	// Map API shape to UI shape and sort by latest submittedAt
@@ -81,36 +81,36 @@ export default function UniStaffClubRequestsPage() {
 		}))
 		.sort((a, b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime())
 
-	async function handleSendNewApplication() {
-		if (!newClubName.trim() || !newDescription.trim() || !newMajor.trim() || !newProposerReason.trim() || !newVision.trim()) {
-			toast({ title: 'Missing Information', description: 'Please fill in all fields.', variant: 'destructive' });
-			return;
-		}
-		try {
-			const created = await postClubApplication({
-				clubName: newClubName,
-				description: newDescription,
-				vision: newVision,
-				majorId: parseInt(newMajor, 10),
-				proposerReason: newProposerReason,
-			});
-			toast({ title: 'Application sent', description: `${created.clubName} submitted`, variant: 'success' });
+	// async function handleSendNewApplication() {
+	// 	if (!newClubName.trim() || !newDescription.trim() || !newMajor.trim() || !newProposerReason.trim() || !newVision.trim()) {
+	// 		toast({ title: 'Missing Information', description: 'Please fill in all fields.', variant: 'destructive' });
+	// 		return;
+	// 	}
+	// 	try {
+	// 		const created = await postClubApplication({
+	// 			clubName: newClubName,
+	// 			description: newDescription,
+	// 			vision: newVision,
+	// 			majorId: parseInt(newMajor, 10),
+	// 			proposerReason: newProposerReason,
+	// 		});
+	// 		toast({ title: 'Application sent', description: `${created.clubName} submitted`, variant: 'success' });
 
-			// Invalidate cache to refetch updated list
-			queryClient.invalidateQueries({ queryKey: ["club-applications"] });
+	// 		// Invalidate cache to refetch updated list
+	// 		queryClient.invalidateQueries({ queryKey: ["club-applications"] });
 
-			// Reset form
-			setIsModalOpen(false);
-			setNewClubName("");
-			setNewDescription("");
-			setNewVision("");
-			setNewMajor("");
-			setNewProposerReason("");
-		} catch (err) {
-			console.error(err);
-			toast({ title: 'Error', description: 'Failed to send application', variant: 'destructive' });
-		}
-	}
+	// 		// Reset form
+	// 		setIsModalOpen(false);
+	// 		setNewClubName("");
+	// 		setNewDescription("");
+	// 		setNewVision("");
+	// 		setNewMajor("");
+	// 		setNewProposerReason("");
+	// 	} catch (err) {
+	// 		console.error(err);
+	// 		toast({ title: 'Error', description: 'Failed to send application', variant: 'destructive' });
+	// 	}
+	// }
 
 	const getFilteredRequests = (tabType: "pending" | "in_progress" | "processed") => {
 		return requests.filter((req) => {
@@ -119,7 +119,7 @@ export default function UniStaffClubRequestsPage() {
 				req.clubName.toLowerCase().includes(searchTerm.toLowerCase()) ||
 				req.requestedBy.toLowerCase().includes(searchTerm.toLowerCase()) ||
 				req.major.toLowerCase().includes(searchTerm.toLowerCase())
-			
+
 			// Status filter
 			let matchStatus = false
 			if (tabType === "pending") {
@@ -252,7 +252,7 @@ export default function UniStaffClubRequestsPage() {
 		<ProtectedRoute allowedRoles={["uni_staff"]}>
 			<AppShell>
 				{/* Floating add button (always visible) */}
-				<Button
+				{/* <Button
 					aria-label="Add club application"
 					size="sm"
 					variant="default"
@@ -260,7 +260,7 @@ export default function UniStaffClubRequestsPage() {
 					onClick={() => setIsModalOpen(true)}
 				>
 					<Plus className="h-5 w-5" />
-				</Button>
+				</Button> */}
 				<div className="space-y-6">
 					<div>
 						<div className="flex items-center gap-3">
@@ -272,24 +272,24 @@ export default function UniStaffClubRequestsPage() {
 					</div>
 
 					{/* Modal for creating new club application */}
-					<Modal open={isModalOpen} onOpenChange={setIsModalOpen} title="Create Club Application">
+					{/* <Modal open={isModalOpen} onOpenChange={setIsModalOpen} title="Create Club Application">
 						<div className="space-y-3">
 							<label className="text-sm font-medium">Club Name</label>
-							<Input value={newClubName} onChange={(e) => setNewClubName(e.target.value)} placeholder="Tri&Duc" />
+							<Input value={newClubName} className="mt-2 border-slate-300" onChange={(e) => setNewClubName(e.target.value)} placeholder="Enter name of club" />
 							<label className="text-sm font-medium">Description</label>
-							<Input value={newDescription} onChange={(e) => setNewDescription(e.target.value)} placeholder="Description" />
+							<Input value={newDescription} className="mt-2 border-slate-300" onChange={(e) => setNewDescription(e.target.value)} placeholder="Enter description of club" />
 							<label className="text-sm font-medium">Vision</label>
-							<Input value={newVision} onChange={(e) => setNewVision(e.target.value)} placeholder="Club's vision" />
+							<Input value={newVision} className="mt-2 border-slate-300" onChange={(e) => setNewVision(e.target.value)} placeholder="Enter vision of club" />
 							<label className="text-sm font-medium">Major</label>
-							<Input value={newMajor} onChange={(e) => setNewMajor(e.target.value)} placeholder="Major" />
+							<Input value={newMajor} className="mt-2 border-slate-300" onChange={(e) => setNewMajor(e.target.value)} placeholder="Enter major of club" />
 							<label className="text-sm font-medium">Proposer Reason</label>
-							<Input value={newProposerReason} onChange={(e) => setNewProposerReason(e.target.value)} placeholder="Why do you want to create this club?" />
+							<Input value={newProposerReason} className="mt-2 border-slate-300" onChange={(e) => setNewProposerReason(e.target.value)} placeholder="Why do you want to create this club?" />
 							<div className="flex justify-end gap-2 pt-2">
 								<Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
 								<Button onClick={handleSendNewApplication}>Send</Button>
 							</div>
 						</div>
-					</Modal>
+					</Modal> */}
 
 					{/* Stats Cards */}
 					<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -405,78 +405,78 @@ export default function UniStaffClubRequestsPage() {
 										onChange={(e) => setSearchTerm(e.target.value)}
 									/>
 								</div>
-							
-							<div className="flex items-center gap-2">
-								<label htmlFor="major-filter" className="text-sm font-medium whitespace-nowrap">Major:</label>
-								<select
-									id="major-filter"
-									className="rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-									value={majorFilter}
-									onChange={(e) => {
-										setMajorFilter(e.target.value)
-										setPendingPage(0)
-										setInProgressPage(0)
-										setProcessedPage(0)
-									}}
-								>
-									<option value="all">All Majors</option>
-									{uniqueMajors.map(major => (
-										<option key={major} value={major}>{major}</option>
-									))}
-								</select>
-							</div>
-						</div>
 
-						<div className="flex flex-col gap-3 md:flex-row md:items-center">
-							<div className="flex items-center gap-2">
-								<label className="text-sm font-medium whitespace-nowrap">From:</label>
-								<Input
-									type="date"
-									className="w-auto"
-									value={dateFromFilter}
-									onChange={(e) => {
-										setDateFromFilter(e.target.value)
-										setPendingPage(0)
-										setInProgressPage(0)
-										setProcessedPage(0)
-									}}
-								/>
-							</div>
-							
-							<div className="flex items-center gap-2">
-								<label className="text-sm font-medium whitespace-nowrap">To:</label>
-								<Input
-									type="date"
-									className="w-auto"
-									value={dateToFilter}
-									onChange={(e) => {
-										setDateToFilter(e.target.value)
-										setPendingPage(0)
-										setInProgressPage(0)
-										setProcessedPage(0)
-									}}
-								/>
+								<div className="flex items-center gap-2">
+									<label htmlFor="major-filter" className="text-sm font-medium whitespace-nowrap">Major:</label>
+									<select
+										id="major-filter"
+										className="rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+										value={majorFilter}
+										onChange={(e) => {
+											setMajorFilter(e.target.value)
+											setPendingPage(0)
+											setInProgressPage(0)
+											setProcessedPage(0)
+										}}
+									>
+										<option value="all">All Majors</option>
+										{uniqueMajors.map(major => (
+											<option key={major} value={major}>{major}</option>
+										))}
+									</select>
+								</div>
 							</div>
 
-							{(majorFilter !== "all" || dateFromFilter || dateToFilter) && (
-								<Button
-									variant="outline"
-									size="sm"
-									onClick={() => {
-										setMajorFilter("all")
-										setDateFromFilter("")
-										setDateToFilter("")
-										setPendingPage(0)
-										setInProgressPage(0)
-										setProcessedPage(0)
-									}}
-								>
-									Clear Filters
-								</Button>
-							)}
-						</div>
-					</CardContent>
-				</Card>
+							<div className="flex flex-col gap-3 md:flex-row md:items-center">
+								<div className="flex items-center gap-2">
+									<label className="text-sm font-medium whitespace-nowrap">From:</label>
+									<Input
+										type="date"
+										className="w-auto"
+										value={dateFromFilter}
+										onChange={(e) => {
+											setDateFromFilter(e.target.value)
+											setPendingPage(0)
+											setInProgressPage(0)
+											setProcessedPage(0)
+										}}
+									/>
+								</div>
+
+								<div className="flex items-center gap-2">
+									<label className="text-sm font-medium whitespace-nowrap">To:</label>
+									<Input
+										type="date"
+										className="w-auto"
+										value={dateToFilter}
+										onChange={(e) => {
+											setDateToFilter(e.target.value)
+											setPendingPage(0)
+											setInProgressPage(0)
+											setProcessedPage(0)
+										}}
+									/>
+								</div>
+
+								{(majorFilter !== "all" || dateFromFilter || dateToFilter) && (
+									<Button
+										variant="outline"
+										size="sm"
+										onClick={() => {
+											setMajorFilter("all")
+											setDateFromFilter("")
+											setDateToFilter("")
+											setPendingPage(0)
+											setInProgressPage(0)
+											setProcessedPage(0)
+										}}
+									>
+										Clear Filters
+									</Button>
+								)}
+							</div>
+						</CardContent>
+					</Card>
 
 					{/* Tabs */}
 					<Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

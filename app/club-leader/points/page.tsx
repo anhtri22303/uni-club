@@ -277,8 +277,7 @@ export default function ClubLeaderRewardDistributionPage() {
 
       toast({
         title: "Request Submitted",
-        description: "Your request for points has been sent to the university staff for review.",
-        variant: "default",
+        description: "Your request for points has been sent to the university staff for review."
       })
 
       // Reset form và đóng modal
@@ -319,8 +318,7 @@ export default function ClubLeaderRewardDistributionPage() {
     if (clubMembers.length === 0) {
       toast({
         title: "Notification",
-        description: "There are no members to distribute points to.",
-        variant: "default"
+        description: "There are no members to distribute points to."
       })
       return
     }
@@ -348,8 +346,7 @@ export default function ClubLeaderRewardDistributionPage() {
       if (response.success) {
         toast({
           title: "Success",
-          description: response.message || `Distributed ${rewardAmount} points to ${targetUserIds.length} member(s) of ${managedClub.name}.`,
-          variant: "default"
+          description: response.message || `Distributed ${rewardAmount} points to ${targetUserIds.length} member(s) of ${managedClub.name}.`
         })
 
         // Reload club wallet balance

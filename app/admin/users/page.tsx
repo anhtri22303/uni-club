@@ -6,7 +6,7 @@ import { DataTable } from "@/components/data-table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Mail, Shield, Users, Plus, Star, Activity, Edit, Trash, Filter, X, CheckCircle } from "lucide-react"
+import { Mail, Shield, Users, Plus, Star, Activity, Edit, Trash, Filter, X, CheckCircle, Eye, EyeOff, Ban } from "lucide-react"
 import React from "react"
 import { useUsers } from "@/hooks/use-query-hooks"
 import { fetchUserById, updateUserById } from "@/service/userApi"
@@ -19,8 +19,9 @@ import { useToast } from "@/hooks/use-toast"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useQueryClient, useQuery } from "@tanstack/react-query"
 import { fetchAdminUsers, fetchAdminUserDetails, banUser, unbanUser, AdminUser, AdminUserPaginationResponse, updateUserRole } from "@/service/adminApi/adminUserApi"
-import { useAuth } from "@/contexts/auth-context" // <-- THÊM MỚI
-
+import { useAuth } from "@/contexts/auth-context"
+import { fetchMajors, Major } from "@/service/majorApi"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger, AlertDialogDescription } from "@/components/ui/alert-dialog"
 
 // Role display formatter (produce uppercase readable labels)
 const formatRoleName = (roleId: string) => {
@@ -71,8 +72,16 @@ export default function AdminUsersPage() {
       }),
   })
 
-  console.log("📊 AdminUsersPage - isLoading:", loading)
-  console.log("📊 AdminUsersPage - error:", queryError)
+  const { data: majorsData, isLoading: majorsLoading } = useQuery<Major[], Error>({
+    queryKey: ["majors"], // Key cho query
+    queryFn: fetchMajors, // Hàm fetch
+    // Sắp xếp danh sách theo tên để hiển thị trong dropdown
+    select: (data) => data.sort((a, b) => a.name.localeCompare(b.name)),
+  })
+
+
+  console.log("AdminUsersPage - isLoading:", loading)
+  console.log("AdminUsersPage - error:", queryError)
 
   const getRoleName = (roleId: string) => formatRoleName(roleId)
 
@@ -80,7 +89,7 @@ export default function AdminUsersPage() {
   const users: UserRecord[] = (pagedData?.content || []).map((u: AdminUser) => {
     // Log first user to verify mapping
     if (pagedData?.content.indexOf(u) === 0) {
-      console.log("📋 First user object from API:", u)
+      console.log("First user object from API:", u)
     }
     return {
       id: u.id,
@@ -104,7 +113,7 @@ export default function AdminUsersPage() {
     return 0
   })
 
-  console.log("📋 Mapped users (total:", users.length, "):", users.slice(0, 2))
+  console.log("Mapped users (total:", users.length, "):", users.slice(0, 2))
 
   const error = queryError ? String(queryError) : null
 
@@ -116,11 +125,11 @@ export default function AdminUsersPage() {
   const [editFullName, setEditFullName] = useState("")
   const [editEmail, setEditEmail] = useState("")
   const [editPhone, setEditPhone] = useState<string | null>(null)
-  const [editStudentCode, setEditStudentCode] = useState<string | null>(null) // <-- THÊM MỚI
-  const [editMajorName, setEditMajorName] = useState<string | null>(null) // <-- THÊM MỚI
-  const [editRoleName, setEditRoleName] = useState("STUDENT") // <-- THÊM MỚI
-  const [originalEditRoleName, setOriginalEditRoleName] = useState("STUDENT") // <-- THÊM MỚI
-  const [editLoading, setEditLoading] = useState(false) // <-- THÊM MỚI
+  const [editStudentCode, setEditStudentCode] = useState<string | null>(null)
+  const [editMajorName, setEditMajorName] = useState<string | null>(null)
+  const [editRoleName, setEditRoleName] = useState("STUDENT")
+  const [originalEditRoleName, setOriginalEditRoleName] = useState("STUDENT")
+  const [editLoading, setEditLoading] = useState(false)
 
   // --- Create User Modal State ---
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
@@ -132,6 +141,9 @@ export default function AdminUsersPage() {
   const [createMajorName, setCreateMajorName] = useState("")
   const [createRoleName, setCreateRoleName] = useState("STUDENT")
   const [createLoading, setCreateLoading] = useState(false)
+  const [createConfirmPassword, setCreateConfirmPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   // --- Create User Handler ---
   const handleCreateUser = async () => {
@@ -172,6 +184,13 @@ export default function AdminUsersPage() {
       toast({ title: "Missing Password", description: "Please enter password.", variant: "destructive" });
       return;
     }
+
+    if (createPassword !== createConfirmPassword) {
+      toast({ title: "Passwords Do Not Match", description: "Please ensure both passwords are the same.", variant: "destructive" });
+      return;
+    }
+
+
     setCreateLoading(true);
     try {
       const res = await (await import("@/service/authApi")).signUp({
@@ -189,9 +208,12 @@ export default function AdminUsersPage() {
       setCreateEmail("");
       setCreatePhone("");
       setCreatePassword("");
+      setCreateConfirmPassword("");
       setCreateStudentCode("");
       setCreateMajorName("");
       setCreateRoleName("STUDENT");
+      setShowPassword(false);
+      setShowConfirmPassword(false);
       await reloadUsers();
     } catch (error: any) {
       toast({ title: "Create Failed", description: error.response?.data?.message || "Something went wrong", variant: "destructive" });
@@ -263,7 +285,9 @@ export default function AdminUsersPage() {
 
   // Build role/major options from data
   const uniqueRoles = Array.from(new Set(users.map((u) => (u.roleName || "").toLowerCase()))).filter(Boolean)
-  const uniqueMajors = Array.from(new Set(users.map((u) => u.majorName || ""))).filter((m) => m && m !== "")
+  // const uniqueMajors = Array.from(new Set(users.map((u) => u.majorName || ""))).filter((m) => m && m !== "")
+  // Dùng majorsData từ query mới - hiển thị TẤT CẢ các ngành có sẵn
+  const uniqueMajors = (majorsData || []).map(m => m.name).filter(Boolean);
 
   // ===== Columns: keys must match EnhancedUser/UserRecord =====
   const columns = [
@@ -388,62 +412,110 @@ export default function AdminUsersPage() {
 
             {/* --- Logic Ban / Unban --- */}
             {user.active ? (
-              <Button
-                size="icon"
-                variant="ghost"
-                aria-label={`Ban user ${user.id}`}
-                onClick={async () => {
-                  const ok = confirm("Are you sure you want to ban this user?")
-                  if (!ok) return
-                  try {
-                    await banUser(user.id as number)
-                    toast({
-                      title: "User Banned",
-                      description: "User account has been locked.",
-                    })
-                    await reloadUsers()
-                  } catch (err) {
-                    console.error("Ban user failed:", err)
-                    toast({
-                      title: "Error",
-                      description: "An error occurred while banning user.",
-                      variant: "destructive",
-                    })
-                  }
-                }}
-                title="Ban user"
-              >
-                <Trash className="h-4 w-4 text-destructive" />
-              </Button>
+              // --- 1. NÚT BAN USER (DÙNG ALERTDIALOG) ---
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    aria-label={`Ban user ${user.id}`}
+                    title="Ban user"
+                  >
+                    <Ban className="h-4 w-4 text-destructive" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="text-center">
+                      --- WARNING ---
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      <strong>Ban User: "{user.fullName}"?</strong>
+                      <br />
+                      Are you sure you want to ban this user? Their account will be locked and they will not be able to log in.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      onClick={async () => {
+                        // Bỏ confirm(), di chuyển logic vào đây
+                        try {
+                          await banUser(user.id as number)
+                          toast({
+                            title: "User Banned",
+                            description: `${user.fullName}'s account has been locked.`,
+                          })
+                          await reloadUsers()
+                        } catch (err) {
+                          console.error("Ban user failed:", err)
+                          toast({
+                            title: "Error",
+                            description: "An error occurred while banning user.",
+                            variant: "destructive",
+                          })
+                        }
+                      }}
+                    >
+                      Ban User
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             ) : (
-              <Button
-                size="icon"
-                variant="ghost"
-                aria-label={`Unban user ${user.id}`}
-                onClick={async () => {
-                  const ok = confirm("Are you sure you want to unban this user?")
-                  if (!ok) return
-                  try {
-                    await unbanUser(user.id as number)
-                    toast({
-                      title: "User Unbanned",
-                      description: "User account has been activated.",
-                    })
-                    await reloadUsers()
-                  } catch (err) {
-                    console.error("Unban user failed:", err)
-                    toast({
-                      title: "Error",
-                      description: "An error occurred while unbanning user.",
-                      variant: "destructive",
-                    })
-                  }
-                }}
-                title="Unban user"
-              >
-                <CheckCircle className="h-4 w-4 text-green-500" />
-              </Button>
+              // --- 2. NÚT UNBAN USER (DÙNG ALERTDIALOG) ---
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    aria-label={`Unban user ${user.id}`}
+                    title="Unban user"
+                  >
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="text-center">
+                      --- WARNING ---
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      <strong>Unban User: "{user.fullName}"?</strong>
+                      <br />
+                      Are you sure you want to unban this user? Their account will be reactivated.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={async () => {
+                        // Bỏ confirm(), di chuyển logic vào đây
+                        try {
+                          await unbanUser(user.id as number)
+                          toast({
+                            title: "User Unbanned",
+                            description: `${user.fullName}'s account has been activated.`,
+                          })
+                          await reloadUsers()
+                        } catch (err) {
+                          console.error("Unban user failed:", err)
+                          toast({
+                            title: "Error",
+                            description: "An error occurred while unbanning user.",
+                            variant: "destructive",
+                          })
+                        }
+                      }}
+                    >
+                      Unban User
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             )}
+
           </div>
         )
       },
@@ -606,81 +678,162 @@ export default function AdminUsersPage() {
             </Button>
 
             {/* Create User Modal */}
-            {isCreateModalOpen && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-                <div className="bg-white dark:bg-slate-900 rounded-lg shadow-lg p-6 w-full max-w-md relative">
-                  <button
-                    className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
-                    onClick={() => setIsCreateModalOpen(false)}
+            <Modal
+              open={isCreateModalOpen}
+              onOpenChange={setIsCreateModalOpen}
+              title="Create User"
+              description="Create a new user account."
+            >
+              <div className="space-y-4 p-2">
+                {/* Full Name */}
+                <div>
+                  <Label htmlFor="create-fullName">Full Name</Label>
+                  <Input
+                    id="create-fullName"
+                    placeholder="Enter your full name"
+                    value={createFullName}
+                    onChange={(e) => setCreateFullName(e.target.value)}
+                    className="mt-2 border-slate-300"
+                  />
+                </div>
+
+                {/* Student ID */}
+                <div>
+                  <Label htmlFor="create-studentCode">Student ID</Label>
+                  <Input
+                    id="create-studentCode"
+                    placeholder="Enter your student ID (e.g. SE123456)"
+                    value={createStudentCode}
+                    onChange={(e) => setCreateStudentCode(e.target.value.toUpperCase())}
+                    className="mt-2 border-slate-300"
+                  />
+                </div>
+
+                {/* Major Name */}
+                <div>
+                  <Label htmlFor="create-majorName">Major Name</Label>
+                  <Select
+                    value={createMajorName}
+                    onValueChange={setCreateMajorName}
+                    disabled={majorsLoading} // Vô hiệu hóa khi đang tải
                   >
-                    ×
-                  </button>
-                  <h2 className="text-xl font-bold mb-4">Create User</h2>
-                  <div className="space-y-3">
-                    <input
-                      type="text"
-                      placeholder="Full Name"
-                      className="w-full border rounded px-3 py-2"
-                      value={createFullName}
-                      onChange={e => setCreateFullName(e.target.value)}
-                    />
-                    <input
-                      type="text"
-                      placeholder="Student Code (e.g. SE123456)"
-                      className="w-full border rounded px-3 py-2"
-                      value={createStudentCode}
-                      onChange={e => setCreateStudentCode(e.target.value.toUpperCase())}
-                    />
-                    <input
-                      type="text"
-                      placeholder="Major Name"
-                      className="w-full border rounded px-3 py-2"
-                      value={createMajorName}
-                      onChange={e => setCreateMajorName(e.target.value)}
-                    />
-                    <input
-                      type="email"
-                      placeholder="Email"
-                      className="w-full border rounded px-3 py-2"
-                      value={createEmail}
-                      onChange={e => setCreateEmail(e.target.value)}
-                    />
-                    <input
-                      type="text"
-                      placeholder="Phone (10 digits)"
-                      className="w-full border rounded px-3 py-2"
-                      value={createPhone}
-                      onChange={e => setCreatePhone(e.target.value)}
-                    />
-                    <input
-                      type="password"
-                      placeholder="Password"
-                      className="w-full border rounded px-3 py-2"
+                    <SelectTrigger id="create-majorName" className="mt-2 border-slate-300">
+                      <SelectValue placeholder={majorsLoading ? "Loading majors..." : "Select your major"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(majorsData || []).map((major) => (
+                        <SelectItem key={major.id} value={major.name}>
+                          {major.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Phone */}
+                <div>
+                  <Label htmlFor="create-phone">Phone</Label>
+                  <Input
+                    id="create-phone"
+                    type="text"
+                    placeholder="Enter your phone number (10 digits)"
+                    value={createPhone}
+                    onChange={(e) => setCreatePhone(e.target.value)}
+                    className="mt-2 border-slate-300"
+                  />
+                </div>
+
+                {/* Email */}
+                <div>
+                  <Label htmlFor="create-email">Email</Label>
+                  <Input
+                    id="create-email"
+                    type="email"
+                    placeholder="Enter yours email"
+                    value={createEmail}
+                    onChange={(e) => setCreateEmail(e.target.value)}
+                    className="mt-2 border-slate-300"
+                  />
+                </div>
+
+                {/* Password */}
+                <div>
+                  <Label htmlFor="create-password">Password</Label>
+                  <div className="relative mt-2">
+                    <Input
+                      id="create-password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Enter your password"
                       value={createPassword}
-                      onChange={e => setCreatePassword(e.target.value)}
+                      onChange={(e) => setCreatePassword(e.target.value)}
+                      className="pr-10 border-slate-300"
                     />
-                    <select
-                      className="w-full border rounded px-3 py-2"
-                      value={createRoleName}
-                      onChange={e => setCreateRoleName(e.target.value)}
-                      title="Role Name"
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
                     >
-                      <option value="STUDENT">STUDENT</option>
-                      <option value="CLUB_LEADER">CLUB_LEADER</option>
-                      <option value="UNIVERSITY_STAFF">UNIVERSITY_STAFF</option>
-                      <option value="ADMIN">ADMIN</option>
-                    </select>
+                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    </button>
                   </div>
+                </div>
+
+                {/* Confirm Password */}
+                <div>
+                  <Label htmlFor="create-confirmPassword">Confirm Password</Label>
+                  <div className="relative mt-2">
+                    <Input
+                      id="create-confirmPassword"
+                      type={showConfirmPassword ? "text" : "password"}
+                      placeholder="Confirm your password"
+                      value={createConfirmPassword}
+                      onChange={(e) => setCreateConfirmPassword(e.target.value)}
+                      className="pr-10 border-slate-300"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
+                      aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                    >
+                      {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Role (Admin-only field) */}
+                <div>
+                  <Label htmlFor="create-roleName">Role</Label>
+                  <Select value={createRoleName} onValueChange={setCreateRoleName}>
+                    <SelectTrigger id="create-roleName" className="mt-2 border-slate-300">
+                      <SelectValue placeholder="Select a role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="STUDENT">STUDENT</SelectItem>
+                      <SelectItem value="CLUB_LEADER">CLUB_LEADER</SelectItem>
+                      <SelectItem value="UNIVERSITY_STAFF">UNIVERSITY_STAFF</SelectItem>
+                      <SelectItem value="ADMIN">ADMIN</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Buttons */}
+                <div className="flex items-center justify-end gap-2 pt-2">
                   <Button
-                    className="mt-5 w-full"
-                    onClick={handleCreateUser}
+                    variant="outline"
+                    onClick={() => setIsCreateModalOpen(false)}
                     disabled={createLoading}
                   >
-                    {createLoading ? "Creating..." : "Create"}
+                    Cancel
+                  </Button>
+                  <Button onClick={handleCreateUser} disabled={createLoading}>
+                    {createLoading ? "Creating..." : "Create Account"}
                   </Button>
                 </div>
               </div>
-            )}
+            </Modal>
+
           </div>
 
           {/* Filter UI giống admin/events */}
@@ -809,12 +962,22 @@ export default function AdminUsersPage() {
               {/* Major Name */}
               <div>
                 <Label htmlFor="edit-majorName">Major Name</Label>
-                <Input
-                  id="edit-majorName"
+                <Select
                   value={editMajorName || ""}
-                  onChange={(e) => setEditMajorName(e.target.value || null)}
-                  className="mt-2 border-slate-300"
-                />
+                  onValueChange={(value) => setEditMajorName(value || null)}
+                  disabled={majorsLoading} // Vô hiệu hóa khi đang tải
+                >
+                  <SelectTrigger id="edit-majorName" className="mt-2 border-slate-300">
+                    <SelectValue placeholder={majorsLoading ? "Loading majors..." : "Select major"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(majorsData || []).map((major) => (
+                      <SelectItem key={major.id} value={major.name}>
+                        {major.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div>
@@ -859,12 +1022,12 @@ export default function AdminUsersPage() {
                     setIsEditModalOpen(false)
                     setEditingUserId(null)
                   }}
-                  disabled={editLoading} // <-- THÊM MỚI
+                  disabled={editLoading}
                 >
                   Cancel
                 </Button>
-                <Button onClick={handleModalSave} disabled={editLoading}> {/* <-- THÊM MỚI */}
-                  {editLoading ? "Updating..." : "Update"} {/* <-- THÊM MỚI */}
+                <Button onClick={handleModalSave} disabled={editLoading}>
+                  {editLoading ? "Updating..." : "Update"}
                 </Button>
               </div>
             </div>

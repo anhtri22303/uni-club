@@ -381,11 +381,10 @@ export default function ClubAttendancePage() {
       if (leaderStatus === "absent" || !leaderStatus) {
         // 5. Hiển thị thông báo!
         toast({
-          variant: "default",
           title: "Attendance Reminder 🔔",
           description: "You are currently marked as 'Absent'. Please update your own status if this is incorrect.",
-          duration: 7000,
-          className: "bg-yellow-50 border-yellow-300 text-yellow-800",
+          duration: 3000,
+          className: "bg-yellow-50 border-yellow-300 text-yellow-800"
         });
       }
     }

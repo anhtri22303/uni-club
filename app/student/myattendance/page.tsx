@@ -83,8 +83,7 @@ export default function MemberAttendancePage() {
         if (clubIdNumbers.length === 0) {
           toast({
             title: "Thông báo",
-            description: "Bạn chưa tham gia CLB nào.",
-            variant: "default"
+            description: "Bạn chưa tham gia CLB nào."
           })
         }
       }

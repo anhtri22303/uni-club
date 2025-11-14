@@ -8,7 +8,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { useState, useEffect } from "react"
 import { LoadingSpinner } from "@/components/loading-spinner"
 import { safeSessionStorage } from "@/lib/browser-utils"
-import { getUserStats, fetchProfile } from "@/service/userApi"
+import { getUserStats, fetchProfile, type UserProfile } from "@/service/userApi"
 import { getClubStats, getClubIdFromToken } from "@/service/clubApi"
 import { getEventByClubId, timeObjectToString, type Event } from "@/service/eventApi"
 import { getLeaveReq, type LeaveRequest } from "@/service/membershipApi"
@@ -16,11 +16,8 @@ import { getClubRedeemOrders, type RedeemOrder } from "@/service/redeemApi"
 import { usePointRequests } from "@/service/pointRequestsApi"
 import { usePrefetchClubs, usePrefetchEvents, usePrefetchUsers, useMyMemberApplications, useMyClubApplications, useMyRedeemOrders, useClubApplications, useEvents } from "@/hooks/use-query-hooks"
 import {
-  LayoutDashboard, Users, Calendar, Gift, Wallet, History, BarChart3,
-  Building, Home, CheckCircle, FileText, FileUser, HandCoins, CalendarDays,
-  CreditCard, LibraryBig, MessageCircle, MapPin, Percent, ChevronDown, ChevronRight, ListOrdered,
-  FileBarChart,
-  TicketCheck
+  LayoutDashboard, Users, Calendar, Gift, Wallet, History, BarChart3, Building, Home, CheckCircle, FileText, FileUser, HandCoins, CalendarDays, CreditCard,
+  LibraryBig, MessageCircle, MapPin, Percent, ChevronDown, ChevronRight, ListOrdered, FileBarChart, TicketCheck, Tags
 } from "lucide-react"
 
 interface SidebarProps {
@@ -83,6 +80,7 @@ const navigationConfig = {
     { href: "/uni-staff", label: "Dashboard", icon: LayoutDashboard },
     { href: "/uni-staff/clubs", label: "Clubs", icon: Building },
     { href: "/uni-staff/locations", label: "Locations", icon: MapPin },
+    { href: "/uni-staff/tags", label: "Tags", icon: Tags },
     { href: "/uni-staff/feedbacks", label: "Feedbacks", icon: MessageCircle },
     {
       label: "Policy Management",
@@ -113,7 +111,7 @@ const navigationConfig = {
     // { href: "/admin/attendances", label: "Attendances", icon: FileText },
     { href: "/admin/events", label: "Events", icon: Calendar },
     { href: "/admin/products", label: "Products", icon: Gift },
-     { href: "/admin/redeems", label: "Redeems", icon: TicketCheck  },
+    { href: "/admin/redeems", label: "Redeems", icon: TicketCheck },
     { href: "/admin/policies", label: "Policies", icon: FileText },
     { href: "/admin/locations", label: "Locations", icon: MapPin },
     { href: "/admin/wallets", label: "Wallets", icon: Wallet },
@@ -164,7 +162,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
   const [hasClubs, setHasClubs] = useState<boolean>(false)
   const [openDropdowns, setOpenDropdowns] = useState<Record<string, boolean>>({})
   // Cache profile data for fast access
-  const [cachedProfile, setCachedProfile] = useState<any>(null)
+  const [cachedProfile, setCachedProfile] = useState<UserProfile | null>(null)
   const [isLoadingProfile, setIsLoadingProfile] = useState<boolean>(false)
   // State for profile page event counts (APPROVED and ONGOING)
   const [approvedEventsCount, setApprovedEventsCount] = useState<number>(0)
@@ -217,15 +215,25 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
   // Helper function to fetch and cache profile
   const fetchAndCacheProfile = async () => {
     if (isLoadingProfile) return cachedProfile // Prevent duplicate requests
-    
+
     setIsLoadingProfile(true)
     try {
-      const profile = await fetchProfile()
+      // const profile = await fetchProfile()
+      const profile: UserProfile | null = await fetchProfile()
+
+      // Thêm kiểm tra null để an toàn
+      if (!profile) {
+        console.error("Failed to fetch profile: Profile data is null")
+        setHasClubs(false)
+        return null
+      }
+
+      setCachedProfile(profile)
       setCachedProfile(profile)
       const clubs = profile?.clubs || []
       const studentHasClubs = clubs && Array.isArray(clubs) && clubs.length > 0
       setHasClubs(studentHasClubs)
-      
+
       console.log("Sidebar - Profile fetched:", { clubs, hasClubs: studentHasClubs })
       return profile
     } catch (error) {
@@ -637,32 +645,6 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
     })
   }
 
-  // const handleNavigation = (href: string) => {
-  //   if (pathname === href) {
-  //     // Nếu đang ở trang student/clubs và click lại, reload trang
-  //     if (href === "/student/clubs") {
-  //       window.location.reload()
-  //       return
-  //     }
-  //     return
-  //   }
-  //   setLoadingPath(href)
-
-  //   // Nếu điều hướng đến student/clubs, reload trang sau khi push
-  //   if (href === "/student/clubs") {
-  //     router.push(href)
-  //     onNavigate?.()
-  //     // Reload trang sau một khoảng thời gian ngắn để đảm bảo navigation đã hoàn tất
-  //     setTimeout(() => {
-  //       window.location.reload()
-  //     }, 100)
-  //   } else {
-  //     router.push(href)
-  //     onNavigate?.()
-  //     // Clear loading state after a short delay to show visual feedback
-  //     setTimeout(() => setLoadingPath(null), 150)
-  //   }
-  // }
   const handleNavigation = async (href: string) => {
     // 1. Nếu bấm vào link của trang hiện tại, không làm gì cả
     if (pathname === href) {
@@ -676,7 +658,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
         const profile = cachedProfile || await fetchAndCacheProfile()
         const clubs = profile?.clubs || []
         const hasAccess = clubs && Array.isArray(clubs) && clubs.length > 0
-        
+
         if (hasAccess) {
           // User has club access - redirect to regular events page
           console.warn("Access denied to Events Public - User has club membership. Redirecting to regular events.")
@@ -690,21 +672,21 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
         // Club-restricted pages (excluding Events Public)
         const clubPages = ["/student/myclub", "/student/events", "/student/gift", "/student/myattendance", "/student/chat"]
         const isClubPage = clubPages.some(page => href.startsWith(page))
-        
+
         if (isClubPage) {
           // Use cached profile for instant check
           let profile = cachedProfile
-          
+
           // If no cache, fetch immediately (this should be rare due to polling)
           if (!profile) {
             setLoadingPath(href) // Show loading only when fetching
             profile = await fetchAndCacheProfile()
             setLoadingPath(null)
           }
-          
+
           const clubs = profile?.clubs || []
           const hasAccess = clubs && Array.isArray(clubs) && clubs.length > 0
-          
+
           if (!hasAccess) {
             // User doesn't have club access - redirect to clubs page
             console.warn("Access denied - No club membership. Redirecting to clubs page.")
@@ -785,8 +767,10 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
       {/* Sidebar: translate-x to hide/show instead of unmounting */}
       <aside
         className={cn(
-          "fixed z-40 inset-y-0 left-0 w-64 border-r bg-sidebar border-sidebar-border transition-transform",
-          "md:static md:translate-x-0",
+          // Thêm 'h-full' và 'flex flex-col'
+          "fixed z-40 inset-y-0 left-0 w-64 border-r bg-sidebar border-sidebar-border transition-transform h-full flex flex-col",
+          // Thêm 'h-full' vào md:static
+          "md:static md:h-full md:translate-x-0",
           open ? "translate-x-0" : "-translate-x-full",
         )}
         aria-label="Sidebar"
@@ -799,7 +783,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
               src="/images/LogoSidebar.png"
               alt="UniClub Logo"
               // className="h-16 w-auto object-contain drop-shadow"
-              className="h-16 w-16 object-cover drop-shadow border-1 border-primary rounded" // <-- THAY ĐỔI Ở ĐÂY
+              className="h-16 w-16 object-cover drop-shadow border-1 border-primary rounded"
             />
           </div>
           {/* Nút đổi theme sát mép phải */}
@@ -809,7 +793,8 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
           </div>
         </div>
         {/* <div className="flex-1 overflow-auto py-4 pb-72"> */}
-        <div className="flex-1 overflow-auto py-4">
+        {/* <div className="flex-1 overflow-auto py-4"> */}
+        <div className="flex-1 overflow-auto py-4 min-h-0">
           <nav className="grid gap-1 px-2">
             {navigation.map((item, index) => {
               const Icon = item.icon

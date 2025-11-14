@@ -42,7 +42,7 @@ import {
 
 export default function ClubLeaderDashboardPage() {
   const { auth } = useAuth()
-  const { clubMemberships, membershipApplications, updateClubLeaderApplications, updateClubLeaderEventCounts } = useData()
+  const { clubMemberships, membershipApplications, clubLeaderApplications, clubLeaderEventCounts, updateClubLeaderApplications, updateClubLeaderEventCounts } = useData()
   const router = useRouter()
   const [clubId, setClubId] = useState<number | null>(null)
   const [activeTab, setActiveTab] = useState<"overview" | "analytics">("overview")
@@ -152,14 +152,14 @@ export default function ClubLeaderDashboardPage() {
 
   // Update DataContext with pending applications for sidebar badge
   useEffect(() => {
-    if (applications && applications.length > 0) {
-      const pendingApplications = applications.filter((app: any) => app.status === "PENDING")
+    const pendingApplications = applications.filter((app: any) => app.status === "PENDING")
+    
+    // Only update if the count has changed
+    if (pendingApplications.length !== clubLeaderApplications.length) {
       updateClubLeaderApplications(pendingApplications)
       console.log('📊 Club Leader Dashboard: Updated pending applications count:', pendingApplications.length)
-    } else {
-      updateClubLeaderApplications([])
     }
-  }, [applications, updateClubLeaderApplications])
+  }, [applications, clubLeaderApplications.length])
 
   // Update DataContext with event counts for sidebar badges
   useEffect(() => {
@@ -177,18 +177,25 @@ export default function ClubLeaderDashboardPage() {
       return myCoHostStatus === "PENDING"
     }).length
 
-    updateClubLeaderEventCounts({
-      pendingCoClub: pendingCoClubCount,
-      pendingUniStaff: pendingUniStaffCount,
-      coHostPending: coHostPendingCount
-    })
+    // Only update if counts have actually changed
+    if (
+      pendingCoClubCount !== clubLeaderEventCounts.pendingCoClub ||
+      pendingUniStaffCount !== clubLeaderEventCounts.pendingUniStaff ||
+      coHostPendingCount !== clubLeaderEventCounts.coHostPending
+    ) {
+      updateClubLeaderEventCounts({
+        pendingCoClub: pendingCoClubCount,
+        pendingUniStaff: pendingUniStaffCount,
+        coHostPending: coHostPendingCount
+      })
 
-    console.log('📊 Club Leader Dashboard: Updated event counts:', {
-      pendingCoClub: pendingCoClubCount,
-      pendingUniStaff: pendingUniStaffCount,
-      coHostPending: coHostPendingCount
-    })
-  }, [rawEvents, rawCoHostEvents, clubId, updateClubLeaderEventCounts])
+      console.log('📊 Club Leader Dashboard: Updated event counts:', {
+        pendingCoClub: pendingCoClubCount,
+        pendingUniStaff: pendingUniStaffCount,
+        coHostPending: coHostPendingCount
+      })
+    }
+  }, [rawEvents, rawCoHostEvents, clubId, clubLeaderEventCounts])
 
   // Transform API members data
   const allClubMembers = managedClub

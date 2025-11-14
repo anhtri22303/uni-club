@@ -352,7 +352,7 @@ export default function ClubLeaderEventsPage() {
   const getEventStatus = (event: any) => {
     // Nếu event.status là ONGOING thì bắt buộc phải là "Now"
     if (event?.status === "ONGOING") return "Now"
-    
+
     if (!event.date) return "Finished"
     // Get current time
     const now = new Date()
@@ -658,7 +658,7 @@ export default function ClubLeaderEventsPage() {
         description: `QR code downloaded for ${environment} environment`
       })
     } catch (err) {
-      toast({ title: 'Download failed', description: 'Could not download QR code' })
+      toast({ title: 'Download failed', description: 'Could not download QR code', variant: 'destructive' })
     }
   }
 
@@ -747,7 +747,7 @@ export default function ClubLeaderEventsPage() {
         description: `${environment.charAt(0).toUpperCase() + environment.slice(1)} link copied to clipboard`
       })
     } catch {
-      toast({ title: 'Copy failed', description: 'Could not copy link to clipboard' })
+      toast({ title: 'Copy failed', description: 'Could not copy link to clipboard', variant: 'destructive' })
     }
   }
 
@@ -1088,7 +1088,7 @@ export default function ClubLeaderEventsPage() {
                             <Eye className="h-4 w-4 mr-2" />
                             View Detail
                           </Button>
-                          
+
                           {/* Stats Button - Show for APPROVED, ONGOING, and COMPLETED events */}
                           {(event.status === "APPROVED" || event.status === "ONGOING" || event.status === "COMPLETED") && (
                             <Button
@@ -1101,7 +1101,7 @@ export default function ClubLeaderEventsPage() {
                               Stats
                             </Button>
                           )}
-                          
+
                           {/* QR Code Section - Only show if ONGOING and event is still active */}
                           {isEventActive(event) && (
                             <div className="mt-3 pt-3 border-t border-muted">
@@ -1163,7 +1163,8 @@ export default function ClubLeaderEventsPage() {
             onOpenChange={() => { }}
             title={eventPolicies.title}
             description="Important guidelines for Points & Budget"
-            className="p-2 sm:max-w-[500px] max-h-[90vh] overflow-hidden !fixed !left-[calc(50%+400px)] !top-[50%] !translate-x-0 !translate-y-[-50%] z-[60] border-2 border-blue-300/60 dark:border-blue-700/60 shadow-2xl pointer-events-auto flex flex-col"
+            // className="p-2 sm:max-w-[600px] max-h-[90vh] !fixed !right-[calc(50%+460px)] !top-[50%] !translate-y-[-50%] z-[60] border-2 border-blue-300/60 dark:border-blue-700/60 shadow-2xl pointer-events-auto flex flex-col"
+            className="sm:max-w-[600px] max-h-[90vh] !fixed !top-[50%] !translate-y-[-50%] z-[70] border-2 border-blue-300/60 dark:border-blue-700/60 shadow-2xl pointer-events-auto flex flex-col"
             showCloseButton={false}
             noOverlay={true}
             style={{ pointerEvents: 'auto' }}
@@ -1173,8 +1174,8 @@ export default function ClubLeaderEventsPage() {
             <div className="absolute top-0 right-0 w-72 h-72 bg-blue-400/20 dark:bg-blue-500/20 rounded-full blur-3xl -z-10 animate-pulse" />
             <div className="absolute bottom-0 left-0 w-72 h-72 bg-indigo-400/20 dark:bg-indigo-500/20 rounded-full blur-3xl -z-10 animate-pulse" style={{ animationDelay: '1s' }} />
 
-            <ScrollArea className="h-full mt-2">
-
+            {/* <ScrollArea style={{ height: 'calc(90vh - 8rem)' }}> */}
+            <ScrollArea className="flex-1 min-h-0 p-2">
               <div className="space-y-4">
                 {eventPolicies.sections.map((section, sectionIndex) => (
                   <div
@@ -1245,11 +1246,13 @@ export default function ClubLeaderEventsPage() {
             description="Add a new event for your club members"
             className="sm:max-w-[880px] max-h-[85vh] overflow-hidden !fixed !top-[50%] !translate-y-[-50%] z-[60] flex flex-col"
           >
-            <ScrollArea className="h-full pr-4">
+            {/* <ScrollArea className="h-full pr-4"> */}
+            <ScrollArea className="flex-1 pr-4 min-h-0">
               <div className="space-y-3" onClick={() => setShowPolicyModal(false)}>
                 <div className="grid grid-cols-3 gap-3">
                   <div className="space-y-1.5">
-                    <Label htmlFor="name" className="text-sm">Event Name *</Label>
+                    <Label htmlFor="name" className="text-sm">Event Name<span className="text-red-500">*</span>
+                    </Label>
                     <Input
                       id="name"
                       value={formData.name}
@@ -1272,20 +1275,22 @@ export default function ClubLeaderEventsPage() {
                     />
                   </div>
 
-                <div className="space-y-1.5">
-                  <Label htmlFor="registrationDeadline" className="text-sm">Registration Deadline *</Label>
-                  <Input
-                    id="registrationDeadline"
-                    type="date"
-                    value={formData.registrationDeadline}
-                    onChange={(e) => setFormData({ ...formData, registrationDeadline: e.target.value })}
-                    className="h-9 border-slate-300"
-                    required
-                  />
-                </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="registrationDeadline" className="text-sm">Registration Deadline<span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="registrationDeadline"
+                      type="date"
+                      value={formData.registrationDeadline}
+                      onChange={(e) => setFormData({ ...formData, registrationDeadline: e.target.value })}
+                      className="h-9 border-slate-300"
+                      required
+                    />
+                  </div>
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="type" className="text-sm">Type *</Label>
+                    <Label htmlFor="type" className="text-sm">Type<span className="text-red-500">*</span>
+                    </Label>
                     <Select
                       value={formData.type}
                       onValueChange={(value) => {
@@ -1310,7 +1315,8 @@ export default function ClubLeaderEventsPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="description" className="text-sm">Description *</Label>
+                  <Label htmlFor="description" className="text-sm">Description<span className="text-red-500">*</span>
+                  </Label>
                   <Textarea
                     id="description"
                     value={formData.description}
@@ -1324,7 +1330,8 @@ export default function ClubLeaderEventsPage() {
 
                 <div className="grid grid-cols-4 gap-3">
                   <div className="space-y-1.5">
-                    <Label htmlFor="startTime" className="text-sm">Start Time *</Label>
+                    <Label htmlFor="startTime" className="text-sm">Start Time<span className="text-red-500">*</span>
+                    </Label>
                     <Input
                       id="startTime"
                       type="time"
@@ -1336,7 +1343,8 @@ export default function ClubLeaderEventsPage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="endTime" className="text-sm">End Time *</Label>
+                    <Label htmlFor="endTime" className="text-sm">End Time<span className="text-red-500">*</span>
+                    </Label>
                     <Input
                       id="endTime"
                       type="time"
@@ -1348,7 +1356,8 @@ export default function ClubLeaderEventsPage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="maxCheckInCount" className="text-sm">Max Check-ins *</Label>
+                    <Label htmlFor="maxCheckInCount" className="text-sm">Max Check-ins<span className="text-red-500">*</span>
+                    </Label>
                     <Input
                       id="maxCheckInCount"
                       type="text"
@@ -1385,7 +1394,7 @@ export default function ClubLeaderEventsPage() {
 
                   <div className="space-y-1.5">
                     <Label htmlFor="commitPointCost" className="text-sm flex items-center gap-1.5">
-                      Point Cost *
+                      Point Cost<span className="text-red-500">*</span>
                       <button
                         type="button"
                         onClick={(e) => { e.stopPropagation(); setShowPolicyModal(!showPolicyModal); }}
@@ -1425,7 +1434,8 @@ export default function ClubLeaderEventsPage() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label htmlFor="locationName" className="text-sm">Location *</Label>
+                    <Label htmlFor="locationName" className="text-sm">Location<span className="text-red-500">*</span>
+                    </Label>
                     <Select
                       value={selectedLocationId}
                       onValueChange={(value) => {
@@ -1507,12 +1517,11 @@ export default function ClubLeaderEventsPage() {
                 {/* Expandable co-host section for selecting clubs */}
                 {allClubs.filter(club => club.id !== userClubId).length > 0 && (
                   <details className="space-y-2">
-                    <summary 
-                      className={`text-sm font-medium flex items-center gap-2 ${
-                        formData.type === "PRIVATE" 
-                          ? "cursor-not-allowed opacity-50 pointer-events-none" 
-                          : "cursor-pointer hover:text-primary"
-                      }`}
+                    <summary
+                      className={`text-sm font-medium flex items-center gap-2 ${formData.type === "PRIVATE"
+                        ? "cursor-not-allowed opacity-50 pointer-events-none"
+                        : "cursor-pointer hover:text-primary"
+                        }`}
                       onClick={(e) => {
                         if (formData.type === "PRIVATE") {
                           e.preventDefault()
@@ -1561,7 +1570,7 @@ export default function ClubLeaderEventsPage() {
 
                 <div className="space-y-2">
                   <p className="text-xs text-muted-foreground italic border-t pt-2 pb-0">
-                    * Required fields - All fields except Co-Host Clubs must be filled
+                    <span className="text-red-500">*</span> Required fields - All fields except Co-Host Clubs must be filled
                   </p>
                   <div className="flex gap-2 justify-end">
                     <Button variant="outline" onClick={() => setShowCreateModal(false)} disabled={isCreating} className="h-9">

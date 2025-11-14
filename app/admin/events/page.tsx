@@ -23,6 +23,8 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { fetchAdminEvents, AdminEvent, FetchAdminEventsParams } from "@/service/adminApi/adminEventApi"
 import { createEvent, eventQR, timeObjectToString } from "@/service/eventApi"
 import { PhaseSelectionModal } from "@/components/phase-selection-modal"
+import { fetchLocation, Location } from "@/service/locationApi"
+import { useQuery } from "@tanstack/react-query"
 
 // Helper mới để format thời gian ISO
 const formatIsoTime = (isoString: string) => {
@@ -50,6 +52,13 @@ export default function AdminEventsPage() {
   const [events, setEvents] = useState<AdminEvent[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const { toast } = useToast()
+  // --- Query để lấy danh sách Locations ---
+  const { data: locationsData, isLoading: locationsLoading } = useQuery({
+    queryKey: ["locations"],
+    queryFn: () => fetchLocation({ page: 0, size: 9999 }), // Lấy tất cả locations
+    select: (data) => data.content, // Chỉ lấy mảng 'content' từ response
+    staleTime: 1000 * 60 * 5, // Cache 5 phút
+  })
 
   // State cho pagination (server-side)
   const [currentPage, setCurrentPage] = useState(0) // API dùng 0-indexed
@@ -225,7 +234,8 @@ export default function AdminEventsPage() {
     registrationDeadline: "",
     startTime: "09:00:00",
     endTime: "11:00:00",
-    locationName: "",
+    // locationName: "",
+    locationId: "",
     maxCheckInCount: 100,
   })
 
@@ -248,12 +258,13 @@ export default function AdminEventsPage() {
     registrationDeadline: "",
     startTime: "09:00:00",
     endTime: "11:00:00",
-    locationName: "",
+    // locationName: "",
+    locationId: "",
     maxCheckInCount: 100
   })
 
   const handleCreate = async () => {
-    if (!formData.name || !formData.date || !formData.registrationDeadline || !formData.startTime || !formData.endTime) {
+    if (!formData.name || !formData.date || !formData.registrationDeadline || !formData.startTime || !formData.endTime || !formData.locationId) {
       toast({ title: "Missing Information", description: "Please fill in all required fields", variant: "destructive" })
       return
     }
@@ -272,7 +283,8 @@ export default function AdminEventsPage() {
         registrationDeadline: formData.registrationDeadline,
         startTime: startTime,
         endTime: endTime,
-        locationId: 1, // Default location
+        // locationId: 1, // Default location
+        locationId: Number(formData.locationId),
         maxCheckInCount: formData.maxCheckInCount,
         commitPointCost: 0,
       }
@@ -403,7 +415,7 @@ export default function AdminEventsPage() {
         description: `QR code downloaded for ${environment} environment`
       })
     } catch (err) {
-      toast({ title: 'Download failed', description: 'Could not download QR code' })
+      toast({ title: 'Download failed', description: 'Could not download QR code', variant: 'destructive' })
     }
   }
 
@@ -424,7 +436,7 @@ export default function AdminEventsPage() {
         description: `${environment.charAt(0).toUpperCase() + environment.slice(1)} link copied to clipboard`
       })
     } catch {
-      toast({ title: 'Copy failed', description: 'Could not copy link to clipboard' })
+      toast({ title: 'Copy failed', description: 'Could not copy link to clipboard', variant: 'destructive' })
     }
   }
 
@@ -432,7 +444,7 @@ export default function AdminEventsPage() {
   const getEventStatus = (startTimeIso: string, eventStatus?: string) => {
     // Nếu event.status là ONGOING thì bắt buộc phải là "Now"
     if (eventStatus === "ONGOING") return "Now"
-    
+
     if (!startTimeIso) return "Finished"
     try {
       const now = new Date()
@@ -600,7 +612,7 @@ export default function AdminEventsPage() {
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 {events.map((event: AdminEvent) => {
                   const isCompleted = event.status === "COMPLETED"
-                  const isCancelled = event.status === "CANCELLED" // CHANGED: Thêm check
+                  const isCancelled = event.status === "CANCELLED" // Thêm check
                   const expired = isCompleted || isCancelled || isEventExpired(event)
                   const status = expired ? "Finished" : getEventStatus(event.startTime, event.status)
 
@@ -827,9 +839,10 @@ export default function AdminEventsPage() {
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     placeholder="Enter event name"
-                    className="h-9"
+                    className="h-9 border-slate-300"
                   />
                 </div>
+
                 <div className="space-y-1.5">
                   <Label htmlFor="date" className="text-sm">Date<span className="text-red-500">*</span></Label>
                   <Input
@@ -837,26 +850,27 @@ export default function AdminEventsPage() {
                     type="date"
                     value={formData.date}
                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    className="h-9"
+                    className="h-9 border-slate-300"
                   />
                 </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="registrationDeadline" className="text-sm">Registration Deadline<span className="text-red-500">*</span></Label>
-                <Input
-                  id="registrationDeadline"
-                  type="date"
-                  value={formData.registrationDeadline}
-                  onChange={(e) => setFormData({ ...formData, registrationDeadline: e.target.value })}
-                  className="h-9"
-                />
-              </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="registrationDeadline" className="text-sm">Registration Deadline<span className="text-red-500">*</span></Label>
+                  <Input
+                    id="registrationDeadline"
+                    type="date"
+                    value={formData.registrationDeadline}
+                    onChange={(e) => setFormData({ ...formData, registrationDeadline: e.target.value })}
+                    className="h-9 border-slate-300"
+                  />
+                </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="type" className="text-sm">Type<span className="text-red-500">*</span></Label>
                   <Select
                     value={formData.type}
                     onValueChange={(value) => setFormData({ ...formData, type: value })}
                   >
-                    <SelectTrigger id="type" className="h-9">
+                    <SelectTrigger id="type" className="h-9 border-slate-300">
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
@@ -867,6 +881,7 @@ export default function AdminEventsPage() {
                   </Select>
                 </div>
               </div>
+
               <div className="space-y-1.5">
                 <Label htmlFor="description" className="text-sm">Description<span className="text-red-500">*</span></Label>
                 <Textarea
@@ -875,9 +890,10 @@ export default function AdminEventsPage() {
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Describe your event..."
                   rows={2}
-                  className="resize-none"
+                  className="resize-none border-slate-300"
                 />
               </div>
+
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="startTime" className="text-sm">Start Time<span className="text-red-500">*</span></Label>
@@ -886,7 +902,7 @@ export default function AdminEventsPage() {
                     type="time"
                     value={formData.startTime.substring(0, 5)}
                     onChange={(e) => setFormData({ ...formData, startTime: e.target.value + ":00" })}
-                    className="h-9"
+                    className="h-9 border-slate-300"
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -896,7 +912,7 @@ export default function AdminEventsPage() {
                     type="time"
                     value={formData.endTime.substring(0, 5)}
                     onChange={(e) => setFormData({ ...formData, endTime: e.target.value + ":00" })}
-                    className="h-9"
+                    className="h-9 border-slate-300"
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -906,21 +922,33 @@ export default function AdminEventsPage() {
                     type="number"
                     value={formData.maxCheckInCount}
                     onChange={(e) => setFormData({ ...formData, maxCheckInCount: Number.parseInt(e.target.value) || 100 })}
-                    className="h-9"
+                    className="h-9 border-slate-300"
                     placeholder="100"
                   />
                 </div>
               </div>
+
               <div className="space-y-1.5">
-                <Label htmlFor="locationName" className="text-sm">Location Name<span className="text-red-500">*</span></Label>
-                <Input
-                  id="locationName"
-                  value={formData.locationName}
-                  onChange={(e) => setFormData({ ...formData, locationName: e.target.value })}
-                  placeholder="Enter location name"
-                  className="h-9"
-                />
+                <Label htmlFor="locationId" className="text-sm">Location Name<span className="text-red-500">*</span></Label>
+                <Select
+                  value={formData.locationId}
+                  onValueChange={(value) => setFormData({ ...formData, locationId: value })}
+                  disabled={locationsLoading}
+                >
+                  <SelectTrigger id="locationId" className="h-9 border-slate-300">
+                    <SelectValue placeholder={locationsLoading ? "Loading locations..." : "Select a location"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {/* Map qua locationsData thay vì mảng cứng */}
+                    {(locationsData || []).map((loc) => (
+                      <SelectItem key={loc.id} value={String(loc.id)}>
+                        {loc.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
+
               <div className="flex gap-2 justify-end pt-2">
                 <Button variant="outline" onClick={() => setShowCreateModal(false)} className="h-9">
                   Cancel

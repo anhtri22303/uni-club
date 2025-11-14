@@ -294,8 +294,7 @@ export default function UniversityStaffRewardPage() {
             if (response.success) {
                 toast({
                     title: "Success",
-                    description: response.message || `Distributed ${rewardAmount} points to ${targetClubIds.length} club(s).`,
-                    variant: "default"
+                    description: response.message || `Distributed ${rewardAmount} points to ${targetClubIds.length} club(s).`
                 })
                 setRewardAmount('')
                 setCustomReason('')

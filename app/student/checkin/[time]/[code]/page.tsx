@@ -94,7 +94,7 @@ export default function MemberCheckinByTimeAndCodePage() {
       toast({ 
         title: "Check-in Successful! 🎉", 
         description: response?.message || "You've successfully checked in to the event!",
-        duration: 5000
+        duration: 3000
       })
       
       setIsCheckedIn(true)
@@ -113,7 +113,7 @@ export default function MemberCheckinByTimeAndCodePage() {
         title: "Check-in Failed", 
         description: String(errorMessage),
         variant: "destructive",
-        duration: 4000
+        duration: 3000
       })
     } finally {
       setIsCheckinLoading(false)

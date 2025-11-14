@@ -11,6 +11,17 @@ interface ApiResponse<T> {
 export interface Tag {
   tagId: number;
   name: string;
+  description: string; // Đã thêm
+  core: boolean;       // Đã thêm
+}
+
+// --- Interface for Tag Update Payload ---
+// DTO (Data Transfer Object) cho body của request PUT /api/tags/{id}
+// Dựa trên mô tả: "Cho phép chỉnh sửa tên và mô tả của tag"
+export interface UpdateTagDto {
+  name: string;
+  description: string;
+  core: boolean; // <-- ĐÃ THÊM
 }
 
 // --- API Functions ---
@@ -37,6 +48,20 @@ export async function addTag(name: string): Promise<Tag> {
   return res.data.data;
 }
 
+/**
+ * Cập nhật một tag (PUT /api/tags/{id})
+ * (CẬP NHẬT) Hàm này giờ đã chấp nhận data với 'core'
+ */
+export async function updateTag(
+  tagId: number | string,
+  data: UpdateTagDto // DTO này đã được cập nhật
+): Promise<Tag> {
+  const res = await axiosInstance.put<ApiResponse<Tag>>(
+    `/api/tags/${tagId}`,
+    data // Gửi 'data' (name, description, core)
+  );
+  return res.data.data;
+}
 /**
  * Xóa một tag (DELETE /api/tags/{id})
  */

@@ -13,6 +13,8 @@ import { useToast } from "@/hooks/use-toast"
 import { ArrowRight, UserPlus, Smartphone, Eye, EyeOff } from "lucide-react"
 import { GoogleSignInButton } from "@/components/GoogleSignInButton"
 import Image from "next/image"
+import { fetchMajors, Major } from "@/service/majorApi"
+import { useQuery } from "@tanstack/react-query"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -42,12 +44,20 @@ export default function LoginPage() {
   const [phoneError, setPhoneError] = useState("")
   const [btnPosition, setBtnPosition] = useState("")
   const positions = ["shift-left", "shift-right", "shift-top", "shift-bottom"]
-  
+
   // 3D and animation states
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
   const [logoHover, setLogoHover] = useState(false)
   const [floatingIcons, setFloatingIcons] = useState<Array<{ id: number; icon: string; x: number; y: number; rotation: number; scale: number; delay: number }>>([])
   const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 })
+  // ---  Query để lấy danh sách Majors ---
+  const { data: majorsData, isLoading: majorsLoading } = useQuery<Major[], Error>({
+    queryKey: ["majors"], // Key cho query
+    queryFn: fetchMajors, // Hàm fetch
+    // Sắp xếp danh sách theo tên để hiển thị trong dropdown
+    select: (data) => data.sort((a, b) => a.name.localeCompare(b.name)),
+    staleTime: 1000 * 60 * 5, // Cache danh sách này trong 5 phút
+  })
 
   // Initialize floating university-themed icons
   useEffect(() => {
@@ -245,7 +255,7 @@ export default function LoginPage() {
 
     if (success) {
       setShowLoginError(false) // Reset error state on success
-      
+
       // Check if CLUB_LEADER logged in with default password "123"
       const userRole = sessionStorage.getItem("userRole")
       if (userRole === "CLUB_LEADER" && password === "123") {
@@ -260,14 +270,14 @@ export default function LoginPage() {
             console.error("Failed to parse auth data:", e)
           }
         }
-        
+
         sessionStorage.setItem("requirePasswordReset", "true")
         sessionStorage.setItem("resetEmail", normalizedEmail)
         if (userId) {
           sessionStorage.setItem("resetUserId", String(userId))
         }
       }
-      
+
       toast({
         title: "Login Successful",
         description: "Redirecting...",
@@ -385,10 +395,10 @@ export default function LoginPage() {
             {/* Decorative corner elements */}
             <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-blue-500/20 to-transparent rounded-br-full"></div>
             <div className="absolute bottom-0 right-0 w-32 h-32 bg-gradient-to-tl from-cyan-500/20 to-transparent rounded-tl-full"></div>
-            
+
             <CardContent className="flex flex-col items-center justify-center h-full p-6 sm:p-8 lg:p-12 relative z-10">
               {/* 3D Interactive Logo */}
-              <div 
+              <div
                 className="relative group cursor-pointer"
                 onMouseEnter={() => setLogoHover(true)}
                 onMouseLeave={() => setLogoHover(false)}
@@ -399,7 +409,7 @@ export default function LoginPage() {
               >
                 {/* Glow effect behind logo */}
                 <div className="absolute inset-0 bg-gradient-to-br from-blue-500 via-cyan-500 to-emerald-500 rounded-3xl blur-2xl opacity-30 group-hover:opacity-50 transition-opacity duration-300 scale-110"></div>
-                
+
                 <div className="relative p-6 sm:p-8 lg:p-10 bg-white dark:bg-slate-800 rounded-3xl border-4 border-white dark:border-slate-700 shadow-2xl">
                   <Image
                     src="/images/Logo.png"
@@ -409,7 +419,7 @@ export default function LoginPage() {
                     className="w-[180px] h-[180px] sm:w-[220px] sm:h-[220px] lg:w-[260px] lg:h-[260px] object-contain animate-logo-float"
                     priority
                   />
-                  
+
                   {/* Animated rings around logo */}
                   <div className="absolute inset-0 rounded-3xl border-2 border-blue-500/30 animate-ping-slow"></div>
                   <div className="absolute inset-0 rounded-3xl border-2 border-cyan-500/30 animate-ping-slower"></div>
@@ -452,7 +462,7 @@ export default function LoginPage() {
           <Card className="w-full shadow-2xl border-2 border-blue-200/50 dark:border-blue-500/30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl relative overflow-hidden">
             {/* Animated gradient border effect */}
             <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-cyan-500/10 to-emerald-500/10 pointer-events-none"></div>
-            
+
             {/* Decorative elements */}
             <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-cyan-500/10 to-transparent rounded-bl-full"></div>
             <div className="absolute bottom-0 left-0 w-40 h-40 bg-gradient-to-tr from-blue-500/10 to-transparent rounded-tr-full"></div>
@@ -470,7 +480,7 @@ export default function LoginPage() {
                   {isSignUpMode ? "🎓" : "👋"}
                 </div>
               </div>
-              
+
               <CardTitle className="text-2xl sm:text-3xl font-black bg-gradient-to-r from-blue-600 via-cyan-500 to-emerald-500 bg-clip-text text-transparent animate-fade-in-up">
                 {isSignUpMode ? "Join UniClub!" : "Welcome Back!"}
               </CardTitle>
@@ -543,21 +553,17 @@ export default function LoginPage() {
                       onBlur={e => validateMajorName(e.target.value)}
                       className="h-10 sm:h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                       required
+                      disabled={majorsLoading} // Vô hiệu hóa khi đang tải
                     >
-                      <option value="" disabled>Select your major</option>
-                      <option value="Software Engineering">Software Engineering</option>
-                      <option value="Artificial Intelligence">Artificial Intelligence</option>
-                      <option value="Information Assurance">Information Assurance</option>
-                      <option value="Data Science">Data Science</option>
-                      <option value="Business Administration">Business Administration</option>
-                      <option value="Digital Marketing">Digital Marketing</option>
-                      <option value="Graphic Design">Graphic Design</option>
-                      <option value="Multimedia Communication">Multimedia Communication</option>
-                      <option value="Hospitality Management">Hospitality Management</option>
-                      <option value="International Business">International Business</option>
-                      <option value="Finance and Banking">Finance and Banking</option>
-                      <option value="Japanese Language">Japanese Language</option>
-                      <option value="Korean Language">Korean Language</option>
+                      <option value="" disabled>
+                        {majorsLoading ? "Loading majors..." : "Select your major"}
+                      </option>
+                      {/* Tự động tạo danh sách từ API */}
+                      {(majorsData || []).map((major) => (
+                        <option key={major.id} value={major.name}>
+                          {major.name}
+                        </option>
+                      ))}
                     </select>
                     {majorNameError && <div className="text-xs text-red-500 mt-1">{majorNameError}</div>}
                   </div>
@@ -659,7 +665,7 @@ export default function LoginPage() {
                 >
                   {/* Animated shimmer effect */}
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000"></div>
-                  
+
                   <span className="relative flex items-center justify-center">
                     {isSignUpMode ? (
                       <>
@@ -698,15 +704,20 @@ export default function LoginPage() {
               </form>
 
               {/* Google Sign-In Button */}
-              <GoogleSignInButton
+              {/* <GoogleSignInButton
                 mode={isSignUpMode ? "sign-up" : "sign-in"}
-              />
-
+              /> */}
+              <div className="flex justify-center">
+                <GoogleSignInButton
+                  mode={isSignUpMode ? "sign-up" : "sign-in"}
+                />
+              </div>
+              
               {/* Toggle mode section with gradient border */}
               <div className="relative text-center pt-4 sm:pt-6 mt-4 sm:mt-6">
                 {/* Gradient border line */}
                 <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-blue-500 to-transparent"></div>
-                
+
                 <button
                   onClick={toggleMode}
                   className="group relative inline-flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-blue-50 via-cyan-50 to-emerald-50 dark:from-blue-950/50 dark:via-cyan-950/50 dark:to-emerald-950/50 hover:shadow-lg transition-all duration-300 hover:scale-105 border-2 border-transparent hover:border-blue-200 dark:hover:border-blue-500/50"
