@@ -20,7 +20,6 @@ import { fetchClub, getClubMemberCount } from "@/service/clubApi"
 import { postMemAppli } from "@/service/memberApplicationApi"
 import { safeSessionStorage } from "@/lib/browser-utils"
 import { fetchMajors, Major } from "@/service/majorApi"
-import { fetchLocation, Location } from "@/service/locationApi"
 import { useClubs, useClubMemberCounts, useMyMemberApplications, queryKeys } from "@/hooks/use-query-hooks"
 import { useQueryClient } from "@tanstack/react-query"
 // We'll fetch clubs from the backend and only use the `content` array.
@@ -45,7 +44,7 @@ export default function MemberClubsPage() {
   const [applicationText, setApplicationText] = useState("")
   const [showApplicationModal, setShowApplicationModal] = useState(false)
   const [isSubmittingApplication, setIsSubmittingApplication] = useState(false)
-  // Create club modal state
+  // club modal state
   const [showCreateClubModal, setShowCreateClubModal] = useState(false)
   const [newClubName, setNewClubName] = useState("")
   const [newDescription, setNewDescription] = useState("")
@@ -53,7 +52,7 @@ export default function MemberClubsPage() {
   const [newProposerReason, setNewProposerReason] = useState("")
   const [isSendingOtp, setIsSendingOtp] = useState(false)
   const [otpCode, setOtpCode] = useState("")
-  // Thêm state cho modal xem mô tả
+  // state cho modal xem mô tả
   const [showDescriptionModal, setShowDescriptionModal] = useState(false)
   const [selectedDescription, setSelectedDescription] = useState("")
   const [selectedClubName, setSelectedClubName] = useState("")
@@ -61,7 +60,6 @@ export default function MemberClubsPage() {
   const { data: clubs = [], isLoading: loading, error: queryError } = useClubs({ page: 0, size: 70, sort: ["name"] })
   const clubIds = clubs.map((club: ClubApiItem) => club.id)
   const { data: memberCounts = {}, isLoading: memberCountsLoading } = useClubMemberCounts(clubIds)
-
   // Fetch user's existing applications
   const { data: myApplications = [], isLoading: applicationsLoading } = useMyMemberApplications()
 
@@ -120,7 +118,6 @@ export default function MemberClubsPage() {
   })
   const [userClubId, setUserClubId] = useState<number | null>(null) // Keep for backward compatibility
   const [majors, setMajors] = useState<Major[]>([])
-  const [locations, setLocations] = useState<Location[]>([])
   const [selectedMajorId, setSelectedMajorId] = useState<number | "">("")
   const [newVision, setNewVision] = useState("")
 
@@ -150,31 +147,15 @@ export default function MemberClubsPage() {
     }
   }, [userClubIds, userClubId])
 
-  // useEffect(() => {
-  //   const loadMajors = async () => {
-  //     try {
-  //       const data = await fetchMajors()
-  //       setMajors(data)
-  //     } catch (error) {
-  //       console.error("Failed to load majors:", error)
-  //     }
-  //   }
-  //   loadMajors()
-  // }, [])
   useEffect(() => {
     const loadDropdownData = async () => {
       try {
         // Tải song song majors và locations
-        const [majorsData, locationApiResponse] = await Promise.all([
-          fetchMajors(),
-          fetchLocation({ page: 0, size: 200, sort: ["name,asc"] }) // Lấy 200 locations, sắp xếp theo tên
-        ]);
-
+        const majorsData = await fetchMajors();
         setMajors(majorsData);
-        setLocations(locationApiResponse.content); // Lưu danh sách locations từ API
 
       } catch (error) {
-        console.error("Failed to load dropdown data (majors or locations):", error);
+        console.error("Failed to load dropdown data majors:", error);
         toast({
           title: "Error",
           description: "Could not load filter options.",
@@ -264,7 +245,7 @@ export default function MemberClubsPage() {
         description: club.description,
         members: club.memberCount ?? 0,
         founded: 0,
-        location: "",
+        // location: "",
         status: getClubStatus(String(club.id)),
         actions: undefined,
       }
@@ -283,7 +264,7 @@ export default function MemberClubsPage() {
     // fallback
     return "outline"
   }
-  
+
   // ĐỊNH NGHĨA `filters` MỚI Ở ĐÂY (BÊN TRONG COMPONENT)
   const filters = useMemo(() => {
     // 1. Chuyển đổi state `majors` thành options
@@ -294,14 +275,7 @@ export default function MemberClubsPage() {
         label: major.name,
       }));
 
-    // 2. Chuyển đổi state `locations` thành options
-    const locationOptions = locations
-      .map((location: Location) => ({
-        value: location.name, // Lọc theo tên
-        label: location.name,
-      }));
-
-    // 3. Trả về mảng filters
+    // Trả về mảng filters
     return [
       {
         key: "major",
@@ -329,15 +303,9 @@ export default function MemberClubsPage() {
         label: "Founded Year",
         type: "range" as const,
       },
-      {
-        key: "location",
-        label: "Location",
-        type: "select" as const,
-        options: locationOptions, // <-- DỮ LIỆU ĐỘNG
-      },
     ];
-  }, [majors, locations]); // Chỉ tính toán lại khi majors hoặc locations thay đổi
-  
+  }, [majors]); // Chỉ tính toán lại khi majors hoặc locations thay đổi
+
   const handleApply = (club: any) => {
     setSelectedClub(club)
     setShowApplicationModal(true)
@@ -622,7 +590,7 @@ export default function MemberClubsPage() {
               searchPlaceholder="Search clubs..."
               filters={filters}
               initialPageSize={8}
-              pageSizeOptions={[8, 20, 50]}
+              pageSizeOptions={[10, 20, 30]}
             />
           )}
 

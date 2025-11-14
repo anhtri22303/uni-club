@@ -16,12 +16,8 @@ import { getClubRedeemOrders, type RedeemOrder } from "@/service/redeemApi"
 import { usePointRequests } from "@/service/pointRequestsApi"
 import { usePrefetchClubs, usePrefetchEvents, usePrefetchUsers, useMyMemberApplications, useMyClubApplications, useMyRedeemOrders, useClubApplications, useEvents } from "@/hooks/use-query-hooks"
 import {
-  LayoutDashboard, Users, Calendar, Gift, Wallet, History, BarChart3,
-  Building, Home, CheckCircle, FileText, FileUser, HandCoins, CalendarDays,
-  CreditCard, LibraryBig, MessageCircle, MapPin, Percent, ChevronDown, ChevronRight, ListOrdered,
-  FileBarChart,
-  TicketCheck,
-  Tags
+  LayoutDashboard, Users, Calendar, Gift, Wallet, History, BarChart3, Building, Home, CheckCircle, FileText, FileUser, HandCoins, CalendarDays, CreditCard,
+  LibraryBig, MessageCircle, MapPin, Percent, ChevronDown, ChevronRight, ListOrdered, FileBarChart, TicketCheck, Tags
 } from "lucide-react"
 
 interface SidebarProps {
@@ -232,7 +228,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
         return null
       }
 
-      setCachedProfile(profile)
+      setCachedProfile(profile)
       setCachedProfile(profile)
       const clubs = profile?.clubs || []
       const studentHasClubs = clubs && Array.isArray(clubs) && clubs.length > 0
@@ -649,32 +645,6 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
     })
   }
 
-  // const handleNavigation = (href: string) => {
-  //   if (pathname === href) {
-  //     // Nếu đang ở trang student/clubs và click lại, reload trang
-  //     if (href === "/student/clubs") {
-  //       window.location.reload()
-  //       return
-  //     }
-  //     return
-  //   }
-  //   setLoadingPath(href)
-
-  //   // Nếu điều hướng đến student/clubs, reload trang sau khi push
-  //   if (href === "/student/clubs") {
-  //     router.push(href)
-  //     onNavigate?.()
-  //     // Reload trang sau một khoảng thời gian ngắn để đảm bảo navigation đã hoàn tất
-  //     setTimeout(() => {
-  //       window.location.reload()
-  //     }, 100)
-  //   } else {
-  //     router.push(href)
-  //     onNavigate?.()
-  //     // Clear loading state after a short delay to show visual feedback
-  //     setTimeout(() => setLoadingPath(null), 150)
-  //   }
-  // }
   const handleNavigation = async (href: string) => {
     // 1. Nếu bấm vào link của trang hiện tại, không làm gì cả
     if (pathname === href) {
@@ -797,8 +767,10 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
       {/* Sidebar: translate-x to hide/show instead of unmounting */}
       <aside
         className={cn(
-          "fixed z-40 inset-y-0 left-0 w-64 border-r bg-sidebar border-sidebar-border transition-transform",
-          "md:static md:translate-x-0",
+          // Thêm 'h-full' và 'flex flex-col'
+          "fixed z-40 inset-y-0 left-0 w-64 border-r bg-sidebar border-sidebar-border transition-transform h-full flex flex-col",
+          // Thêm 'h-full' vào md:static
+          "md:static md:h-full md:translate-x-0",
           open ? "translate-x-0" : "-translate-x-full",
         )}
         aria-label="Sidebar"
@@ -811,7 +783,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
               src="/images/LogoSidebar.png"
               alt="UniClub Logo"
               // className="h-16 w-auto object-contain drop-shadow"
-              className="h-16 w-16 object-cover drop-shadow border-1 border-primary rounded" // <-- THAY ĐỔI Ở ĐÂY
+              className="h-16 w-16 object-cover drop-shadow border-1 border-primary rounded"
             />
           </div>
           {/* Nút đổi theme sát mép phải */}
@@ -821,7 +793,8 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
           </div>
         </div>
         {/* <div className="flex-1 overflow-auto py-4 pb-72"> */}
-        <div className="flex-1 overflow-auto py-4">
+        {/* <div className="flex-1 overflow-auto py-4"> */}
+        <div className="flex-1 overflow-auto py-4 min-h-0">
           <nav className="grid gap-1 px-2">
             {navigation.map((item, index) => {
               const Icon = item.icon

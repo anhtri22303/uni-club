@@ -82,92 +82,11 @@ export function UserProfileWidget() {
   const { sidebarCollapsed, sidebarOpen } = useSidebarContext()
   // GỌI HOOK `useFullProfile`
   const { data: profile, isLoading: profileLoading } = useFullProfile(true);
-
-  // const [userPoints, setUserPoints] = useState<number>(0)
-  // const [avatarUrl, setAvatarUrl] = useState<string>("")
-  // const [userName, setUserName] = useState<string>("")
-  // const [userEmail, setUserEmail] = useState<string>("")
-  // const [memberships, setMemberships] = useState<ApiMembershipWallet[]>([])
   const [selectedWalletId, setSelectedWalletId] = useState<string>("")
   const [widgetCollapsed, setWidgetCollapsed] = useState<boolean>(true)
 
   if (!auth.role || !auth.user) return null
-
-  // Load profile and wallet data from API
-  // useEffect(() => {
-  //   let mounted = true
-  //   const load = async () => {
-  //     try {
-  //       // Load profile (includes avatar and wallets data)
-  //       const profileData: any = await fetchProfile()
-  //       console.debug("UserProfileWidget.fetchProfile ->", profileData)
-  //       if (!mounted) return
-
-  //       setAvatarUrl(profileData?.avatarUrl || "")
-  //       setUserName(profileData?.fullName || auth.user?.fullName || "User")
-  //       setUserEmail(profileData?.email || auth.user?.email || "")
-
-  //       // Load wallet points only for eligible roles from profile response
-  //       if (auth.role === "club_leader" || auth.role === "student") {
-  //         // Handle both singular wallet and plural wallets formats
-  //         let walletsList = profileData?.wallets || []
-
-  //         // If API returns singular wallet, convert to array
-  //         if (!walletsList || walletsList.length === 0) {
-  //           if (profileData?.wallet) {
-  //             // For singular wallet, create entry with club name from clubs array
-  //             const clubName = profileData?.clubs?.[0]?.clubName || "My Wallet"
-  //             const clubId = profileData?.clubs?.[0]?.clubId || null
-
-  //             walletsList = [{
-  //               walletId: profileData.wallet.walletId,
-  //               balancePoints: profileData.wallet.balancePoints,
-  //               ownerType: profileData.wallet.ownerType,
-  //               clubId: clubId,
-  //               clubName: clubName,
-  //               userId: profileData.wallet.userId,
-  //               userFullName: profileData.wallet.userFullName
-  //             }]
-  //           }
-  //         }
-
-  //         console.debug("UserProfileWidget.wallets ->", walletsList)
-
-  //         // Map wallets to membership format for compatibility
-  //         const membershipsList: ApiMembershipWallet[] = walletsList.map((w: any) => ({
-  //           walletId: w.walletId,
-  //           balancePoints: w.balancePoints,
-  //           ownerType: w.ownerType,
-  //           clubId: w.clubId,
-  //           clubName: w.clubName,
-  //           userId: w.userId,
-  //           userFullName: w.userFullName
-  //         }))
-
-  //         setMemberships(membershipsList)
-
-  //         // Always display first wallet by default, or 0 if no wallets
-  //         if (membershipsList.length > 0) {
-  //           setSelectedWalletId(membershipsList[0].walletId.toString())
-  //           setUserPoints(Number(membershipsList[0].balancePoints) || 0)
-  //         } else {
-  //           // No wallets - display 0
-  //           setSelectedWalletId("")
-  //           setUserPoints(0)
-  //         }
-  //       }
-  //     } catch (err) {
-  //       console.error("Failed to load profile in UserProfileWidget", err)
-  //       console.log("Role:", auth.role, "Will fallback to initials for avatar")
-  //       // Avatar will fallback to initials if failed to load
-  //     }
-  //   }
-  //   load()
-  //   return () => {
-  //     mounted = false
-  //   }
-  // }, [auth?.userId, auth?.role])
-  // 8. DÙNG useMemo ĐỂ LẤY DỮ LIỆU TỪ `profile` (thay thế cho useEffect)
+  // DÙNG useMemo ĐỂ LẤY DỮ LIỆU TỪ `profile` (thay thế cho useEffect)
   const memberships = useMemo((): ApiMembershipWallet[] => {
     if (!profile) return []; // Nếu chưa có profile (đang tải hoặc lỗi), trả về mảng rỗng
 
@@ -203,19 +122,10 @@ export function UserProfileWidget() {
       userId: w.userId,
       userFullName: w.userFullName
     }));
-  }, [profile]); // 👈 Chỉ tính toán lại khi `profile` thay đổi
-
+  }, [profile]); // Chỉ tính toán lại khi `profile` thay đổi
 
   // Update displayed points when wallet selection changes
-  // useEffect(() => {
-  //   if (selectedWalletId && memberships.length > 0) {
-  //     const selectedMembership = memberships.find(m => m.walletId.toString() === selectedWalletId)
-  //     if (selectedMembership) {
-  //       setUserPoints(Number(selectedMembership.balancePoints) || 0)
-  //     }
-  //   }
-  // }, [selectedWalletId, memberships])
-  // 9. DÙNG useEffect ĐỂ CHỌN WALLET MẶC ĐỊNH KHI `memberships` THAY ĐỔI
+  //  DÙNG useEffect ĐỂ CHỌN WALLET MẶC ĐỊNH KHI `memberships` THAY ĐỔI
   useEffect(() => {
     // Nếu chưa chọn wallet NÀO, VÀ memberships đã tải xong (có ít nhất 1)
     if (!selectedWalletId && memberships.length > 0) {
@@ -224,7 +134,7 @@ export function UserProfileWidget() {
       // Nếu profile update và không còn wallet nào, reset
       setSelectedWalletId("")
     }
-  }, [memberships, selectedWalletId]) // 👈 Chạy khi `memberships` thay đổi
+  }, [memberships, selectedWalletId]) // Chạy khi `memberships` thay đổi
 
   // 10. DÙNG useMemo ĐỂ TÍNH ĐIỂM (thay thế cho useEffect)
   const userPoints = useMemo(() => {
@@ -261,6 +171,7 @@ export function UserProfileWidget() {
 
   return (
     <div
+      id="profile-widget-container" // <-- THÊM ID NÀY
       className={`fixed bottom-4 left-4 z-50 bg-background border border-border rounded-lg shadow-lg transition-all duration-300
       ${isHidden ? "opacity-0 -translate-x-full pointer-events-none" : "opacity-100 translate-x-0"}
       pt-0 pb-4 px-4 space-y-3 ${widgetCollapsed ? "w-auto" : "w-[240px] max-w-[240px]"} block`}
@@ -404,10 +315,10 @@ export function UserProfileWidget() {
       {/* Collapsed state: Show only icon buttons */}
       {widgetCollapsed && (
         <div className="flex gap-2 overflow-hidden">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="h-9 w-9 p-0 bg-transparent overflow-hidden" 
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 w-9 p-0 bg-transparent overflow-hidden"
             onClick={handleProfile}
             title="Profile"
           >

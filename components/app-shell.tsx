@@ -52,6 +52,9 @@ export function AppShell({ children }: AppShellProps) {
 
   // Desktop: collapsed state
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  // [THÊM VÀO] State để lưu chiều cao của thẻ profile. 
+  // 88px là chiều cao an toàn khi thẻ bị thu gọn.
+  const [profileWidgetHeight, setProfileWidgetHeight] = useState(88);
 
   // Password reset banner and modal states
   const [showPasswordResetBanner, setShowPasswordResetBanner] = useState(false)
@@ -74,12 +77,43 @@ export function AppShell({ children }: AppShellProps) {
     localStorage.setItem("sidebarCollapsed", String(sidebarCollapsed))
   }, [sidebarCollapsed])
 
+  // [THÊM VÀO] useEffect để đo chiều cao của thẻ profile
+  useEffect(() => {
+    // Chỉ chạy ở client-side
+    if (typeof window === "undefined" || typeof document === "undefined") {
+      return;
+    }
+
+    // Tìm thẻ profile bằng ID ta đã thêm ở Bước 1
+    const profileWidget = document.getElementById("profile-widget-container");
+    if (!profileWidget) {
+      console.warn("AppShell: Không tìm thấy #profile-widget-container để đo chiều cao.");
+      return;
+    }
+
+    // Dùng ResizeObserver để theo dõi liên tục
+    const resizeObserver = new ResizeObserver(entries => {
+      for (let entry of entries) {
+        const height = entry.contentRect.height;
+        // Cập nhật state với chiều cao mới
+        // (Thêm 16px = 1rem cho khoảng cách bottom-4 của thẻ profile)
+        setProfileWidgetHeight(height + 40);
+      }
+    });
+
+    // Bắt đầu theo dõi
+    resizeObserver.observe(profileWidget);
+
+    // Dọn dẹp khi component unmount
+    return () => resizeObserver.unobserve(profileWidget);
+  }, []); // Chỉ chạy 1 lần khi AppShell mount
+
   // Check if password reset is required
   useEffect(() => {
     const requireReset = sessionStorage.getItem("requirePasswordReset")
     const email = sessionStorage.getItem("resetEmail")
     const userId = sessionStorage.getItem("resetUserId")
-    
+
     if (requireReset === "true" && email && userId) {
       setResetEmail(email)
       setResetUserId(userId)
@@ -109,15 +143,6 @@ export function AppShell({ children }: AppShellProps) {
       return
     }
 
-    // if (newPassword.length < 6) {
-    //   toast({
-    //     title: "Error",
-    //     description: "Password must be at least 6 characters long",
-    //     variant: "destructive",
-    //   })
-    //   return
-    // }
-
     if (newPassword !== confirmPassword) {
       toast({
         title: "Error",
@@ -131,7 +156,7 @@ export function AppShell({ children }: AppShellProps) {
 
     try {
       const response = await forceResetPassword(resetUserId, newPassword)
-      
+
       toast({
         title: "Password Reset Successful",
         description: response.message || "Your password has been successfully reset. Please login with your new password.",
@@ -145,7 +170,7 @@ export function AppShell({ children }: AppShellProps) {
       setShowPasswordResetBanner(false)
       setNewPassword("")
       setConfirmPassword("")
-      
+
       // Wait a moment for the toast to show, then logout
       setTimeout(() => {
         logout()
@@ -237,21 +262,24 @@ export function AppShell({ children }: AppShellProps) {
           <div
             className={cn(
               "hidden md:flex md:flex-col md:fixed md:top-4 md:left-4 z-40 bg-background",
-              "md:h-auto", // THAY ĐỔI 2: Chiều cao tự động co giãn theo nội dung
+              "md:h-auto", //Chiều cao tự động co giãn theo nội dung
               "rounded-2xl border shadow-lg overflow-hidden",
               "transition-[width] duration-300 ease-out",
               sidebarCollapsed ? "md:w-0 border-none" : "md:w-64"
             )}
+            // [THÊM VÀO] Đặt vị trí 'bottom' động dựa trên chiều cao thẻ profile
+            style={{ bottom: `${profileWidgetHeight}px` }}
           >
             <div
               className={cn(
                 "transition-transform duration-300 ease-out",
                 sidebarCollapsed ? "-translate-x-full" : "translate-x-0",
-                "w-64"
+                "w-64",
+                "h-full"
               )}
             >
-              {/* THAY ĐỔI 3: Bỏ wrapper và padding-top để logo lên sát cạnh trên */}
-              <Sidebar onNavigate={() => {}} />
+              {/* Bỏ wrapper và padding-top để logo lên sát cạnh trên */}
+              <Sidebar onNavigate={() => { }} />
             </div>
           </div>
 
@@ -414,8 +442,8 @@ export function AppShell({ children }: AppShellProps) {
         </Dialog>
 
         {/* Change Password Modal (for CLUB_LEADER) */}
-        <ChangePasswordModal 
-          open={showChangePasswordModal} 
+        <ChangePasswordModal
+          open={showChangePasswordModal}
           onOpenChange={handleChangePasswordClose}
         />
       </div>
