@@ -159,8 +159,7 @@ export default function StudentProductViewPage() {
             if (product && newQuantity > product.stockQuantity) {
                 toast({
                     title: "Warning",
-                    description: "Quantity cannot exceed stock.",
-                    variant: "default",
+                    description: "Quantity cannot exceed stock."
                 })
                 return product.stockQuantity; // Tối đa là tồn kho
             }

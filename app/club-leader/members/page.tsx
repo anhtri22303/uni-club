@@ -178,8 +178,7 @@ export default function ClubLeaderMembersPage() {
       
       toast({ 
         title: "Member Removed", 
-        description: `${member.fullName} has been removed from the club successfully`,
-        variant: "default"
+        description: `${member.fullName} has been removed from the club successfully`
       })
       
       setMembersPage(1)

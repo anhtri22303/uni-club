@@ -167,7 +167,7 @@ export default function AdminPoliciesPage() {
             }
         } catch (err: any) {
             console.error("Update policy failed:", err)
-            toast({ title: "Error", description: err.message || "Error updating policy." })
+            toast({ title: "Error", description: err.message || "Error updating policy.", variant: "destructive" })
         } finally {
             setSaving(false)
         }
@@ -577,6 +577,7 @@ export default function AdminPoliciesPage() {
                                         checked={editPolicy.active || false}
                                         onChange={(e) => handleFormChange("edit", "active", e.target.checked)}
                                         className="h-4 w-4"
+                                        title="Mark policy as active"
                                     />
                                     <Label htmlFor="edit-active">Active</Label>
                                 </div>

@@ -415,7 +415,7 @@ export default function AdminEventsPage() {
         description: `QR code downloaded for ${environment} environment`
       })
     } catch (err) {
-      toast({ title: 'Download failed', description: 'Could not download QR code' })
+      toast({ title: 'Download failed', description: 'Could not download QR code', variant: 'destructive' })
     }
   }
 
@@ -436,7 +436,7 @@ export default function AdminEventsPage() {
         description: `${environment.charAt(0).toUpperCase() + environment.slice(1)} link copied to clipboard`
       })
     } catch {
-      toast({ title: 'Copy failed', description: 'Could not copy link to clipboard' })
+      toast({ title: 'Copy failed', description: 'Could not copy link to clipboard', variant: 'destructive' })
     }
   }
 
