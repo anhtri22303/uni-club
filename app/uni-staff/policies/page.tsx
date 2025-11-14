@@ -127,7 +127,7 @@ export default function UniStaffPoliciesPage() {
       reloadPolicies()
     } catch (err) {
       console.error('Update policy failed:', err)
-      toast({ title: 'Error', description: 'Error updating policy.' })
+      toast({ title: 'Error', description: 'Error updating policy.', variant: 'destructive' })
     } finally {
       setSaving(false)
     }
@@ -253,11 +253,11 @@ export default function UniStaffPoliciesPage() {
                                                 await reloadPolicies()
                                                 try { router.refresh() } catch (e) { /* ignore */ }
                                               } else {
-                                                toast({ title: 'Failure', description: (res && res.message) || 'Delete policy failed.' })
+                                                toast({ title: 'Failure', description: (res && res.message) || 'Delete policy failed.', variant: 'destructive' })
                                               }
                                             } catch (err) {
                                               console.error('Delete policy failed:', err)
-                                              toast({ title: 'Error', description: 'Error deleting policy.' })
+                                              toast({ title: 'Error', description: 'Error deleting policy.', variant: 'destructive' })
                                             }
                                           }}
                                         >
@@ -463,7 +463,7 @@ export default function UniStaffPoliciesPage() {
                       console.error('Create policy failed:', err)
                       // Lấy thông báo lỗi chi tiết từ response của server
                       const errorMsg = err.response?.data?.message || 'Error creating policy.'
-                      toast({ title: 'Error', description: errorMsg }) // Hiển thị lỗi thật
+                      toast({ title: 'Error', description: errorMsg, variant: 'destructive' }) // Hiển thị lỗi thật
                     } finally {
                       setCreating(false)
                     }

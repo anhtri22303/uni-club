@@ -61,8 +61,7 @@ export default function UniStaffPointRequestsPage() {
         onSuccess: () => {
             toast({
                 title: "Success",
-                description: "Request reviewed successfully.",
-                variant: "default",
+                description: "Request reviewed successfully."
             })
             queryClient.invalidateQueries({ queryKey: ["point-requests"] })
             setShowReviewModal(false)

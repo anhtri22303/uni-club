@@ -213,8 +213,7 @@ export default function VirtualCardPage() {
         setCardDesign(null)
         toast({
           title: "⚠ Using Default Design",
-          description: "Unable to load club's card design. Using default template.",
-          variant: "default",
+          description: "Unable to load club's card design. Using default template."
         })
       } finally {
         setLoadingCard(false)
