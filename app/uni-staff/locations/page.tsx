@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
-import { fetchLocation, postLocation, deleteLocation, Location, LocationsApiResponse, CreateLocationRequest } from "@/service/locationApi"
+import { fetchLocation, postLocation, deleteLocation, Location, LocationsApiResponse, CreateLocationRequest, updateLocation, UpdateLocationRequest } from "@/service/locationApi"
 import {
   Search, MapPin, Building2, Users, ArrowUpDown, SortAsc, SortDesc, Grid3x3, List, ChevronLeft, ChevronRight, Plus, X, Trash2
 } from "lucide-react"
@@ -21,6 +21,8 @@ import { Label } from "@/components/ui/label"
 type SortField = "name" | "capacity" | "id"
 type SortOrder = "asc" | "desc"
 type ViewMode = "grid" | "list"
+// Định nghĩa kiểu cho form data, giống hệt nhau
+type LocationFormData = CreateLocationRequest | UpdateLocationRequest
 
 export default function UniStaffLocationsPage() {
   const { toast } = useToast()
@@ -40,8 +42,10 @@ export default function UniStaffLocationsPage() {
 
   // Modal and form state
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [isCreating, setIsCreating] = useState(false)
-  const [formData, setFormData] = useState<CreateLocationRequest>({
+  // const [isCreating, setIsCreating] = useState(false)
+  const [isSaving, setIsSaving] = useState(false) // <-- ĐỔI TÊN TỪ isCreating
+  const [editingLocation, setEditingLocation] = useState<Location | null>(null) // <-- STATE MỚI
+  const [formData, setFormData] = useState<LocationFormData>({
     name: "",
     address: "",
     capacity: 0,
@@ -155,57 +159,154 @@ export default function UniStaffLocationsPage() {
     }
   }
 
-  const handleCreateLocation = async () => {
+  /**
+     * (MỚI) Xử lý khi nhấn nút "Create Location" (mở modal ở chế độ tạo)
+     */
+  const handleOpenCreateModal = () => {
+    setEditingLocation(null) // Đảm bảo không ở chế độ edit
+    setFormData({ // Reset form
+      name: "",
+      address: "",
+      capacity: 0,
+    })
+    setIsModalOpen(true)
+  }
+
+  /**
+   * (MỚI) Xử lý khi nhấn vào Card (mở modal ở chế độ sửa)
+   */
+  const handleEditClick = (location: Location) => {
+    setEditingLocation(location)
+    setFormData({
+      name: location.name,
+      address: location.address,
+      capacity: location.capacity,
+    })
+    setIsModalOpen(true)
+  }
+
+  /**
+   * (MỚI) Xử lý khi đóng/mở modal
+   */
+  const handleModalOpenChange = (isOpen: boolean) => {
+    setIsModalOpen(isOpen)
+    if (!isOpen) {
+      // Reset state khi modal đóng
+      setEditingLocation(null)
+      setFormData({ name: "", address: "", capacity: 0 })
+    }
+  }
+
+  const handleFormChange = (field: keyof LocationFormData, value: string | number) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }))
+  }
+
+  /**
+   * (MỚI) Hàm Submit chính, kiểm tra validation và gọi create hoặc update
+   */
+  const handleFormSubmit = async () => {
     // Validation
     if (!formData.name.trim()) {
-      toast({
-        title: "Validation Error",
-        description: "Location name is required",
-        variant: "destructive",
-      })
+      toast({ title: "Validation Error", description: "Location name is required", variant: "destructive" })
       return
     }
-
     if (!formData.address.trim()) {
-      toast({
-        title: "Validation Error",
-        description: "Address is required",
-        variant: "destructive",
-      })
+      toast({ title: "Validation Error", description: "Address is required", variant: "destructive" })
       return
     }
-
     if (formData.capacity <= 0) {
-      toast({
-        title: "Validation Error",
-        description: "Capacity must be greater than 0",
-        variant: "destructive",
-      })
+      toast({ title: "Validation Error", description: "Capacity must be greater than 0", variant: "destructive" })
       return
     }
 
-    try {
-      setIsCreating(true)
-      await postLocation(formData)
+    // Quyết định gọi hàm create hay update
+    if (editingLocation) {
+      await handleUpdateLocation()
+    } else {
+      await handleCreateLocation()
+    }
+  }
 
-      // Success
+
+  // const handleCreateLocation = async () => {
+  //   // Validation
+  //   if (!formData.name.trim()) {
+  //     toast({
+  //       title: "Validation Error",
+  //       description: "Location name is required",
+  //       variant: "destructive",
+  //     })
+  //     return
+  //   }
+
+  //   if (!formData.address.trim()) {
+  //     toast({
+  //       title: "Validation Error",
+  //       description: "Address is required",
+  //       variant: "destructive",
+  //     })
+  //     return
+  //   }
+
+  //   if (formData.capacity <= 0) {
+  //     toast({
+  //       title: "Validation Error",
+  //       description: "Capacity must be greater than 0",
+  //       variant: "destructive",
+  //     })
+  //     return
+  //   }
+
+  //   try {
+  //     setIsCreating(true)
+  //     await postLocation(formData)
+
+  //     // Success
+  //     toast({
+  //       title: "Success",
+  //       description: "Location created successfully",
+  //     })
+
+  //     // Reset form
+  //     setFormData({
+  //       name: "",
+  //       address: "",
+  //       capacity: 0,
+  //     })
+
+  //     // Close modal
+  //     setIsModalOpen(false)
+
+  //     // Reload locations
+  //     loadLocations()
+  //   } catch (error) {
+  //     console.error("Error creating location:", error)
+  //     toast({
+  //       title: "Error",
+  //       description: "Failed to create location. Please try again.",
+  //       variant: "destructive",
+  //     })
+  //   } finally {
+  //     setIsCreating(false)
+  //   }
+  // }
+  /**
+     * (CẬP NHẬT) Chỉ chứa logic Create
+     */
+  const handleCreateLocation = async () => {
+    try {
+      setIsSaving(true)
+      await postLocation(formData as CreateLocationRequest)
+
       toast({
         title: "Success",
         description: "Location created successfully",
       })
-
-      // Reset form
-      setFormData({
-        name: "",
-        address: "",
-        capacity: 0,
-      })
-
-      // Close modal
-      setIsModalOpen(false)
-
-      // Reload locations
-      loadLocations()
+      handleModalOpenChange(false) // Đóng và reset modal
+      loadLocations() // Tải lại danh sách
     } catch (error) {
       console.error("Error creating location:", error)
       toast({
@@ -214,16 +315,44 @@ export default function UniStaffLocationsPage() {
         variant: "destructive",
       })
     } finally {
-      setIsCreating(false)
+      setIsSaving(false)
     }
   }
 
-  const handleFormChange = (field: keyof CreateLocationRequest, value: string | number) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }))
+  /**
+   * (MỚI) Logic Update
+   */
+  const handleUpdateLocation = async () => {
+    if (!editingLocation) return
+
+    try {
+      setIsSaving(true)
+      await updateLocation(editingLocation.id, formData as UpdateLocationRequest)
+
+      toast({
+        title: "Success",
+        description: `Location "${editingLocation.name}" updated successfully`,
+      })
+      handleModalOpenChange(false) // Đóng và reset modal
+      loadLocations() // Tải lại danh sách
+    } catch (error) {
+      console.error("Error updating location:", error)
+      toast({
+        title: "Error",
+        description: "Failed to update location. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSaving(false)
+    }
   }
+
+  // const handleFormChange = (field: keyof CreateLocationRequest, value: string | number) => {
+  //   setFormData(prev => ({
+  //     ...prev,
+  //     [field]: value
+  //   }))
+  // }
 
   const handleDeleteClick = (location: Location, e: React.MouseEvent) => {
     e.stopPropagation() // Prevent card click event
@@ -284,18 +413,23 @@ export default function UniStaffLocationsPage() {
             </div>
 
             {/* Create Location Button */}
-            <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+            <Dialog open={isModalOpen} onOpenChange={handleModalOpenChange}>
               <DialogTrigger asChild>
-                <Button className="gap-2 w-full sm:w-auto flex-shrink-0">
+                <Button className="gap-2 w-full sm:w-auto flex-shrink-0" onClick={handleOpenCreateModal}>
                   <Plus className="h-4 w-4" />
                   <span className="truncate">Create Location</span>
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader>
-                  <DialogTitle>Create New Location</DialogTitle>
+                  {/* (THAY ĐỔI) Title và Description động */}
+                  <DialogTitle>
+                    {editingLocation ? "Edit Location" : "Create New Location"}
+                  </DialogTitle>
                   <DialogDescription>
-                    Add a new event location to the campus venues
+                    {editingLocation
+                      ? `Update the details for "${editingLocation.name}"`
+                      : "Add a new event location to the campus venues"}
                   </DialogDescription>
                 </DialogHeader>
 
@@ -325,7 +459,6 @@ export default function UniStaffLocationsPage() {
                       value={formData.address}
                       onChange={(e) => handleFormChange("address", e.target.value)}
                       className="border-slate-300"
-
                     />
                   </div>
 
@@ -342,7 +475,6 @@ export default function UniStaffLocationsPage() {
                       value={formData.capacity || ""}
                       onChange={(e) => handleFormChange("capacity", parseInt(e.target.value) || 0)}
                       className="border-slate-300"
-
                     />
                     <p className="text-xs text-muted-foreground">
                       Maximum number of people this location can accommodate
@@ -350,23 +482,28 @@ export default function UniStaffLocationsPage() {
                   </div>
                 </div>
 
+                {/* (THAY ĐỔI) Cập nhật Dialog Footer */}
                 <DialogFooter>
                   <Button
                     variant="outline"
-                    onClick={() => setIsModalOpen(false)}
-                    disabled={isCreating}
+                    onClick={() => handleModalOpenChange(false)} // Dùng handler mới
+                    disabled={isSaving} // Dùng isSaving
                   >
                     Cancel
                   </Button>
                   <Button
-                    onClick={handleCreateLocation}
-                    disabled={isCreating}
+                    onClick={handleFormSubmit} // Dùng handler submit chung
+                    disabled={isSaving} // Dùng isSaving
                   >
-                    {isCreating ? "Creating..." : "Create Location"}
+                    {/* Text động */}
+                    {isSaving
+                      ? (editingLocation ? "Saving..." : "Creating...")
+                      : (editingLocation ? "Save Changes" : "Create Location")}
                   </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+
           </div>
 
           {/* Statistics Cards */}
@@ -513,6 +650,7 @@ export default function UniStaffLocationsPage() {
                   <Card
                     key={location.id}
                     className="hover:shadow-lg transition-shadow cursor-pointer group relative dark:border-slate-700"
+                    onClick={() => handleEditClick(location)} // mới
                   >
                     {/* Delete Button */}
                     <Button
@@ -578,6 +716,7 @@ export default function UniStaffLocationsPage() {
                   <Card
                     key={location.id}
                     className="hover:shadow-md transition-shadow cursor-pointer group relative dark:border-slate-700"
+                    onClick={() => handleEditClick(location)}
                   >
                     {/* Delete Button */}
                     <Button

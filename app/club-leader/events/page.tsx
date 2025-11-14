@@ -1163,7 +1163,8 @@ export default function ClubLeaderEventsPage() {
             onOpenChange={() => { }}
             title={eventPolicies.title}
             description="Important guidelines for Points & Budget"
-            className="p-2 sm:max-w-[500px] max-h-[90vh] overflow-hidden !fixed !left-[calc(50%+400px)] !top-[50%] !translate-x-0 !translate-y-[-50%] z-[60] border-2 border-blue-300/60 dark:border-blue-700/60 shadow-2xl pointer-events-auto flex flex-col"
+            // className="p-2 sm:max-w-[600px] max-h-[90vh] !fixed !right-[calc(50%+460px)] !top-[50%] !translate-y-[-50%] z-[60] border-2 border-blue-300/60 dark:border-blue-700/60 shadow-2xl pointer-events-auto flex flex-col"
+            className="sm:max-w-[600px] max-h-[90vh] !fixed !top-[50%] !translate-y-[-50%] z-[70] border-2 border-blue-300/60 dark:border-blue-700/60 shadow-2xl pointer-events-auto flex flex-col"
             showCloseButton={false}
             noOverlay={true}
             style={{ pointerEvents: 'auto' }}
@@ -1173,8 +1174,8 @@ export default function ClubLeaderEventsPage() {
             <div className="absolute top-0 right-0 w-72 h-72 bg-blue-400/20 dark:bg-blue-500/20 rounded-full blur-3xl -z-10 animate-pulse" />
             <div className="absolute bottom-0 left-0 w-72 h-72 bg-indigo-400/20 dark:bg-indigo-500/20 rounded-full blur-3xl -z-10 animate-pulse" style={{ animationDelay: '1s' }} />
 
-            {/* <ScrollArea className="h-full mt-2"> */}
-            <ScrollArea className="flex-1 mt-2 min-h-0">
+            {/* <ScrollArea style={{ height: 'calc(90vh - 8rem)' }}> */}
+            <ScrollArea className="flex-1 min-h-0 p-2">
               <div className="space-y-4">
                 {eventPolicies.sections.map((section, sectionIndex) => (
                   <div
@@ -1245,7 +1246,8 @@ export default function ClubLeaderEventsPage() {
             description="Add a new event for your club members"
             className="sm:max-w-[880px] max-h-[85vh] overflow-hidden !fixed !top-[50%] !translate-y-[-50%] z-[60] flex flex-col"
           >
-            <ScrollArea className="h-full pr-4">
+            {/* <ScrollArea className="h-full pr-4"> */}
+            <ScrollArea className="flex-1 pr-4 min-h-0">
               <div className="space-y-3" onClick={() => setShowPolicyModal(false)}>
                 <div className="grid grid-cols-3 gap-3">
                   <div className="space-y-1.5">

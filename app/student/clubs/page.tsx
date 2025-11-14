@@ -283,65 +283,7 @@ export default function MemberClubsPage() {
     // fallback
     return "outline"
   }
-
-  // const filters = [
-  //   {
-  //     key: "major",
-  //     label: "Major",
-  //     type: "select" as const,
-  //     options: [
-  //       { value: "Technology", label: "Technology" },
-  //       { value: "Sports", label: "Sports" },
-  //       { value: "Arts", label: "Arts" },
-  //       { value: "Academic", label: "Academic" },
-  //       { value: "Social", label: "Social" },
-  //     ],
-  //   },
-  //   {
-  //     key: "status",
-  //     label: "Membership Status",
-  //     type: "select" as const,
-  //     options: [
-  //       { value: "member", label: "Member" },
-  //       { value: "pending", label: "Pending" },
-  //       { value: "none", label: "Not Applied" },
-  //     ],
-  //   },
-  //   {
-  //     key: "members",
-  //     label: "Member Count",
-  //     type: "range" as const,
-  //   },
-  //   {
-  //     key: "founded",
-  //     label: "Founded Year",
-  //     type: "range" as const,
-  //   },
-  //   {
-  //     key: "location",
-  //     label: "Location",
-  //     type: "select" as const,
-  //     options: [
-  //       { value: "Campus A", label: "Campus A" },
-  //       { value: "Field B", label: "Field B" },
-  //       { value: "Studio C", label: "Studio C" },
-  //       { value: "Online", label: "Online" },
-  //       { value: "Hall D", label: "Hall D" },
-  //       { value: "Auditorium", label: "Auditorium" },
-  //       { value: "Lab E", label: "Lab E" },
-  //       { value: "Gym F", label: "Gym F" },
-  //       { value: "Studio G", label: "Studio G" },
-  //       { value: "Lab H", label: "Lab H" },
-  //       { value: "Campus I", label: "Campus I" },
-  //       { value: "Hall J", label: "Hall J" },
-  //       { value: "Court K", label: "Court K" },
-  //       { value: "Library L", label: "Library L" },
-  //       { value: "Community Center M", label: "Community Center M" },
-  //       { value: "Theater N", label: "Theater N" },
-  //       { value: "Lab O", label: "Lab O" },
-  //     ],
-  //   },
-  // ]
+  
   // ĐỊNH NGHĨA `filters` MỚI Ở ĐÂY (BÊN TRONG COMPONENT)
   const filters = useMemo(() => {
     // 1. Chuyển đổi state `majors` thành options

@@ -15,6 +15,42 @@ type PaginatedResponse<T> = {
   number?: number
 }
 
+interface ProfileClub {
+  clubId: number;
+  clubName: string; // <-- Đã sửa (từ 'name' thành 'clubName')
+}
+
+interface Wallet {
+  walletId: number;
+  balancePoints: number;
+  ownerType: string; // "CLUB"
+  clubId: number;
+  clubName: string;
+  userId: number;
+  userFullName: string;
+}
+
+// Export UserProfile để sidebar.tsx có thể dùng
+export interface UserProfile {
+  id: string | number;
+  email: string;
+  fullName: string;
+  phone: string;
+  status: string;
+  avatarUrl: string;
+  backgroundUrl: string;
+  studentCode: string;
+  majorName: string;
+  bio: string;
+  role: string; // Vẫn giữ, vì code của bạn xử lý nó
+  roleName: string;
+  needCompleteProfile: boolean;
+  clubs: ProfileClub[];
+  wallet: Wallet | null; // (CẬP NHẬT) Sử dụng kiểu Wallet
+  wallets: Wallet[]; // Vẫn giữ, vì code của bạn xử lý nó
+  memberships: any[]; // Vẫn giữ, vì code của bạn xử lý nó
+}
+
 export const fetchUser = async () => {
   try {
     console.log("🚀 fetchUser: Starting API call to api/users")
@@ -51,7 +87,7 @@ export const fetchUser = async () => {
 }
 
 // New: fetchProfile - returns the current authenticated user's profile (unwrapped `data`)
-export const fetchProfile = async () => {
+export const fetchProfile = async (): Promise<UserProfile | null> => {
   try {
     const response = await axiosInstance.get("api/users/profile")
     const body = response.data
@@ -62,7 +98,28 @@ export const fetchProfile = async () => {
       const profileData = (body as any).data
 
       // Transform the response to match expected format
-      return {
+      // return {
+      //   id: profileData?.id,
+      //   email: profileData?.email,
+      //   fullName: profileData?.fullName,
+      //   phone: profileData?.phone,
+      //   status: profileData?.status,
+      //   avatarUrl: profileData?.avatarUrl,
+      //   backgroundUrl: profileData?.backgroundUrl,
+      //   studentCode: profileData?.studentCode,
+      //   majorName: profileData?.majorName,
+      //   bio: profileData?.bio,
+      //   role: profileData?.role,
+      //   roleName: profileData?.roleName,
+      //   needCompleteProfile: profileData?.needCompleteProfile,
+      //   clubs: profileData?.clubs || [],
+      //   // Support both singular wallet and plural wallets
+      //   wallet: profileData?.wallet,
+      //   wallets: profileData?.wallets || [],
+      //   memberships: profileData?.memberships || []
+      // }
+      // (CẬP NHẬT) 2. Gán kiểu cho object trả về
+      const formattedProfile: UserProfile = {
         id: profileData?.id,
         email: profileData?.email,
         fullName: profileData?.fullName,
@@ -73,21 +130,24 @@ export const fetchProfile = async () => {
         studentCode: profileData?.studentCode,
         majorName: profileData?.majorName,
         bio: profileData?.bio,
-        role: profileData?.role,
+        role: profileData?.role, // Vẫn giữ, code của bạn đã xử lý
         roleName: profileData?.roleName,
         needCompleteProfile: profileData?.needCompleteProfile,
         clubs: profileData?.clubs || [],
-        // Support both singular wallet and plural wallets
         wallet: profileData?.wallet,
-        wallets: profileData?.wallets || [],
-        memberships: profileData?.memberships || []
+        wallets: profileData?.wallets || [], // Vẫn giữ, code của bạn đã xử lý
+        memberships: profileData?.memberships || [] // Vẫn giữ, code của bạn đã xử lý
       }
+      return formattedProfile;
     }
 
     // If the endpoint returns the profile object directly
-    if (body && typeof body === "object") {
-      return body
-    }
+    // if (body && typeof body === "object") {
+    //   return body
+    // }
+    if (body && typeof body === "object" && 'id' in body) { // <-- SỬA Ở ĐÂY
+      return body as UserProfile
+    }
 
     return null
   } catch (error) {
@@ -129,7 +189,7 @@ export const updateUserById = async (id: string | number, data: Record<string, a
 
 // editProfile - update current authenticated user's profile
 export const editProfile = async (data: {
-  fullName?: string  
+  fullName?: string
   phone?: string
   bio?: string
   majorId?: number

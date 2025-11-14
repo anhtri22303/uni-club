@@ -29,7 +29,7 @@ export function Modal({ open, onOpenChange, title, description, children, showCl
             onPointerDownOutside={(e) => e.preventDefault()}
             onInteractOutside={(e) => e.preventDefault()}
           >
-            <DialogHeader>
+            <DialogHeader className="p-2 pb-0">
               <DialogTitle>{title}</DialogTitle>
               {description && <DialogDescription>{description}</DialogDescription>}
             </DialogHeader>
