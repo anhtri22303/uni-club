@@ -756,44 +756,40 @@ export default function MemberHistoryPage() {
             <div className="text-center text-sm text-muted-foreground py-8">Loading applications...</div>
           ) : error ? (
             <div className="text-center text-sm text-destructive py-8">Error: {String(error)}</div>
-          ) : activitiesToDisplay.length === 0 ? (
+            ) : activitiesToDisplay.length === 0 ? (
             <EmptyState
               icon={History}
               title="No activity yet"
               description={
-                activeTab === "member"
-                  ? "Your member applications and voucher redemptions will appear here"
-                  : activeTab === "club"
-                    ? "Your club creation applications will appear here"
-                    : activeTab === "order"
-                      ? "Your product order history will appear here"
-                      : activeTab === "wallet"
-                        ? "Your wallet information will appear here"
-                        : "Your registered events will appear here"
+              activeTab === "member"
+                ? "Your member applications and voucher redemptions will appear here"
+                : activeTab === "club"
+                ? "Your club creation applications will appear here"
+                : activeTab === "order"
+                  ? "Your product order history will appear here"
+                  : "Your registered events will appear here"
               }
               action={{
-                label:
-                  activeTab === "member"
-                    ? "Browse Clubs"
-                    : activeTab === "club"
-                      ? "Create Club"
-                      : activeTab === "order"
-                        ? "Browse Gift"
-                        : activeTab === "wallet"
-                          ? undefined
-                          : "Browse Events",
-                onClick: activeTab === "wallet" ? undefined : () =>
-                (window.location.href =
-                  activeTab === "member"
-                    ? "/student/clubs"
-                    : activeTab === "club"
-                      ? "/student/clubs"
-                      : activeTab === "order"
-                        ? "/student/gift"
-                        : "/student/events"),
+              label:
+                activeTab === "member"
+                ? "Browse Clubs"
+                : activeTab === "club"
+                  ? "Create Club"
+                  : activeTab === "order"
+                  ? "Browse Gift"
+                  : "Browse Events",
+              onClick: () =>
+              (window.location.href =
+                activeTab === "member"
+                ? "/student/clubs"
+                : activeTab === "club"
+                  ? "/student/clubs"
+                  : activeTab === "order"
+                  ? "/student/gift"
+                  : "/student/events"),
               }}
             />
-          ) : (
+            ) : (
             // <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {paginatedActivities.map((activity, index) => {

@@ -11,10 +11,13 @@ import {
   useUniversityPoints,
   useAttendanceSummary,
   useAttendanceRanking,
-  useClubMemberCounts
+  useClubMemberCounts,
+  useLocations,
+  useMajors,
+  usePolicies
 } from "@/hooks/use-query-hooks"
 import { timeObjectToString } from "@/service/eventApi"
-import { useEffect, useMemo, useRef } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import {
   Calendar,
@@ -26,12 +29,19 @@ import {
   CheckCircle,
 } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { BarChart3, List } from "lucide-react"
+import { BarChart3, List, TrendingUp } from "lucide-react"
 import { ClubApplicationsList } from "./components/ClubApplicationsList"
 import { EventRequestsList } from "./components/EventRequestsList"
 import { AttendanceSummaryCard } from "./components/AttendanceSummaryCard"
 import { AllClubsList } from "./components/AllClubsList"
 import { AnalyticsTab } from "./components/AnalyticsTab"
+import { DashboardCharts } from "./components/DashboardCharts"
+import { StatisticsCards } from "./components/StatisticsCards"
+import { DataSummaryTables } from "./components/DataSummaryTables"
+import { getTags, Tag } from "@/service/tagApi"
+import { getFeedbackByClubId } from "@/service/feedbackApi"
+import { usePointRequests } from "@/service/pointRequestsApi"
+import { getMutiplierPolicy } from "@/service/multiplierPolicyApi"
 
 export default function UniStaffReportsPage() {
   const router = useRouter()
@@ -40,9 +50,18 @@ export default function UniStaffReportsPage() {
   // ✅ USE REACT QUERY for all data fetching
   const { data: events = [], isLoading: eventsLoading } = useEvents()
   const { data: clubs = [], isLoading: clubsLoading } = useClubs()
-  // const { data: policies = [] } = usePolicies() // COMMENTED OUT
-  const policies: any[] = [] // Mock data for policies
   const { data: clubApplications = [], isLoading: clubAppsLoading } = useClubApplications()
+  const { data: locations = [], isLoading: locationsLoading } = useLocations()
+  const { data: majors = [], isLoading: majorsLoading } = useMajors()
+  const { data: policies = [], isLoading: policiesLoading } = usePolicies()
+  const { data: pointRequests = [] } = usePointRequests()
+  
+  // Additional state for tags, multiplier policies, and feedbacks
+  const [tags, setTags] = useState<Tag[]>([])
+  const [multiplierPolicies, setMultiplierPolicies] = useState<any[]>([])
+  const [feedbackSummary, setFeedbackSummary] = useState<any[]>([])
+  const [loadingAdditional, setLoadingAdditional] = useState(true)
+  const [systemDataViewMode, setSystemDataViewMode] = useState<'table' | 'chart'>('table')
   
   // Cleanup on unmount
   useEffect(() => {
@@ -50,6 +69,58 @@ export default function UniStaffReportsPage() {
       isMountedRef.current = false
     }
   }, [])
+
+  // Fetch additional data (Tags, Multiplier Policies, Feedback Summary)
+  useEffect(() => {
+    const fetchAdditionalData = async () => {
+      try {
+        setLoadingAdditional(true)
+        
+        // Fetch Tags
+        const tagsData = await getTags()
+        setTags(tagsData || [])
+        
+        // Fetch Multiplier Policies
+        const multiplierData = await getMutiplierPolicy()
+        setMultiplierPolicies(multiplierData || [])
+        
+        // Fetch Feedback Summary for all clubs
+        if (clubs.length > 0) {
+          const feedbackPromises = clubs.map(async (club: any) => {
+            try {
+              const feedbacks = await getFeedbackByClubId(club.id)
+              if (feedbacks && feedbacks.length > 0) {
+                const totalRating = feedbacks.reduce((sum: number, f: any) => sum + f.rating, 0)
+                return {
+                  clubId: club.id,
+                  clubName: club.name,
+                  totalFeedbacks: feedbacks.length,
+                  avgRating: totalRating / feedbacks.length
+                }
+              }
+              return null
+            } catch (error) {
+              console.error(`Error fetching feedbacks for club ${club.id}:`, error)
+              return null
+            }
+          })
+          
+          const feedbackResults = await Promise.all(feedbackPromises)
+          setFeedbackSummary(feedbackResults.filter(Boolean))
+        }
+      } catch (error) {
+        console.error('Error fetching additional data:', error)
+      } finally {
+        setLoadingAdditional(false)
+      }
+    }
+    
+    if (clubs.length > 0) {
+      fetchAdditionalData()
+    } else if (!clubsLoading) {
+      setLoadingAdditional(false)
+    }
+  }, [clubs, clubsLoading])
 
   // ✅ USE REACT QUERY for university analytics
   const { data: universityPointsData, isLoading: pointsLoading } = useUniversityPoints()
@@ -100,6 +171,21 @@ export default function UniStaffReportsPage() {
   const totalPolicies = policies.length
   const totalClubApplications = clubApplications.length
   const totalEventRequests = events.length
+  
+  // Additional statistics - with safe array handling
+  const locationsArray = Array.isArray(locations) ? locations : (locations?.content || [])
+  const totalLocations = locationsArray.length
+  const totalTags = tags.length
+  const coreTags = tags.filter(tag => tag.core).length
+  const totalMajors = majors.length
+  const totalFeedbacks = feedbackSummary.reduce((sum, item) => sum + item.totalFeedbacks, 0)
+  const avgRating = feedbackSummary.length > 0 
+    ? feedbackSummary.reduce((sum, item) => sum + item.avgRating, 0) / feedbackSummary.length 
+    : 0
+  const totalMultiplierPolicies = multiplierPolicies.length
+  const pointRequestsArray = Array.isArray(pointRequests) ? pointRequests : (pointRequests?.data || [])
+  const totalPointRequests = pointRequestsArray.length
+  const pendingPointRequests = pointRequestsArray.filter((req: any) => req.status === "PENDING").length
   
   // Count completed club applications
   const completedClubApplications = clubApplications.filter((app: any) => app.status === "COMPLETED").length
@@ -155,7 +241,11 @@ export default function UniStaffReportsPage() {
               </h1>
             </div>
             <div className="flex gap-2 sm:gap-3 w-full sm:w-auto">
-              <Button size="sm" className="gap-2 bg-gradient-to-r from-primary to-secondary flex-1 sm:flex-initial">
+              <Button
+                size="sm"
+                className="gap-2 bg-gradient-to-r from-primary to-secondary flex-1 sm:flex-initial"
+                onClick={() => router.push('/uni-staff/reports')}
+              >
                 <Download className="h-4 w-4" />
                 <span className="hidden xs:inline">Export Report</span>
                 <span className="xs:hidden">Export</span>
@@ -251,9 +341,9 @@ export default function UniStaffReportsPage() {
             </Card>
           </div>
 
-          {/* Tabs for Overview and Analytics */}
+          {/* Tabs for Overview, Analytics, and System Data */}
           <Tabs defaultValue="overview" className="space-y-4 sm:space-y-6">
-            <TabsList className="w-full sm:w-auto grid grid-cols-2 sm:inline-flex">
+            <TabsList className="w-full sm:w-auto grid grid-cols-3 sm:inline-flex">
               <TabsTrigger value="overview" className="gap-1 sm:gap-2 text-xs sm:text-sm">
                 <List className="h-3 w-3 sm:h-4 sm:w-4" />
                 Overview
@@ -261,6 +351,10 @@ export default function UniStaffReportsPage() {
               <TabsTrigger value="analytics" className="gap-1 sm:gap-2 text-xs sm:text-sm">
                 <BarChart3 className="h-3 w-3 sm:h-4 sm:w-4" />
                 Analytics
+              </TabsTrigger>
+              <TabsTrigger value="system" className="gap-1 sm:gap-2 text-xs sm:text-sm">
+                <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" />
+                System Data
               </TabsTrigger>
             </TabsList>
 
@@ -293,6 +387,26 @@ export default function UniStaffReportsPage() {
             </TabsContent>
 
             <TabsContent value="analytics" className="space-y-4 sm:space-y-6">
+              {/* Dashboard Charts */}
+              <DashboardCharts 
+                events={events}
+                clubs={clubs}
+                clubApplications={clubApplications}
+                totalClubApplications={totalClubApplications}
+                completedClubApplications={completedClubApplications}
+                pendingClubApplications={pendingClubApplications}
+                rejectedClubApplications={rejectedClubApplications}
+                totalEventRequests={totalEventRequests}
+                pendingCoClubEvents={pendingCoClubEvents}
+                pendingUniStaffEvents={pendingUniStaffEvents}
+                approvedEventsCount={approvedEventsCount}
+                ongoingEventsCount={ongoingEventsCount}
+                completedEventsCount={completedEventsCount}
+                rejectedEventsCount={rejectedEventsCount}
+                cancelledEventsCount={cancelledEventsCount}
+              />
+              
+              {/* Original Analytics Tab */}
               <AnalyticsTab 
                 clubsWithMemberCount={clubsWithMemberCountUnsorted}
                 totalClubApplications={totalClubApplications}
@@ -307,6 +421,56 @@ export default function UniStaffReportsPage() {
                 completedEventsCount={completedEventsCount}
                 rejectedEventsCount={rejectedEventsCount}
                 cancelledEventsCount={cancelledEventsCount}
+              />
+            </TabsContent>
+
+            <TabsContent value="system" className="space-y-4 sm:space-y-6">
+              {/* View Mode Toggle Button */}
+              <div className="flex justify-end">
+                <div className="inline-flex items-center gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                  <Button
+                    variant={systemDataViewMode === 'table' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setSystemDataViewMode('table')}
+                    className="gap-2 text-xs sm:text-sm"
+                  >
+                    <List className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="hidden sm:inline">Table</span>
+                  </Button>
+                  <Button
+                    variant={systemDataViewMode === 'chart' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setSystemDataViewMode('chart')}
+                    className="gap-2 text-xs sm:text-sm"
+                  >
+                    <BarChart3 className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="hidden sm:inline">Chart</span>
+                  </Button>
+                </div>
+              </div>
+
+              {/* Statistics Cards for System Data */}
+              <StatisticsCards 
+                totalLocations={totalLocations}
+                totalTags={totalTags}
+                coreTags={coreTags}
+                totalMajors={totalMajors}
+                totalFeedbacks={totalFeedbacks}
+                avgRating={avgRating}
+                totalPolicies={totalPolicies}
+                totalMultiplierPolicies={totalMultiplierPolicies}
+                loading={loadingAdditional || locationsLoading || majorsLoading || policiesLoading}
+              />
+
+              {/* Data Summary Tables */}
+              <DataSummaryTables 
+                locations={locationsArray}
+                tags={tags && Array.isArray(tags) ? tags : []}
+                majors={majors}
+                feedbackSummary={feedbackSummary}
+                loading={loadingAdditional}
+                viewMode={systemDataViewMode}
+                onViewModeChange={setSystemDataViewMode}
               />
             </TabsContent>
           </Tabs>
