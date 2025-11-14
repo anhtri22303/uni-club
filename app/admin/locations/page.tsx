@@ -314,6 +314,7 @@ export default function AdminLocationsPage() {
                                             placeholder="e.g., Innovation Lab A3-201"
                                             value={formData.name}
                                             onChange={(e) => handleFormChange("name", e.target.value)}
+                                            className="border-slate-300"
                                         />
                                     </div>
 
@@ -327,6 +328,7 @@ export default function AdminLocationsPage() {
                                             placeholder="e.g., Building A3, Technical Area, FPT University"
                                             value={formData.address}
                                             onChange={(e) => handleFormChange("address", e.target.value)}
+                                            className="border-slate-300"
                                         />
                                     </div>
 
@@ -342,6 +344,7 @@ export default function AdminLocationsPage() {
                                             placeholder="e.g., 40"
                                             value={formData.capacity || ""}
                                             onChange={(e) => handleFormChange("capacity", parseInt(e.target.value) || 0)}
+                                            className="border-slate-300"
                                         />
                                         <p className="text-xs text-muted-foreground">
                                             Maximum number of people this location can accommodate

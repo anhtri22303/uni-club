@@ -545,30 +545,6 @@ export default function LoginPage() {
                     <Label htmlFor="majorName" className="text-sm font-medium">
                       Major Name
                     </Label>
-                    {/* <select
-                      id="majorName"
-                      aria-label="Select your major"
-                      value={majorName}
-                      onChange={e => setMajorName(e.target.value)}
-                      onBlur={e => validateMajorName(e.target.value)}
-                      className="h-10 sm:h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                      required
-                    >
-                      <option value="" disabled>Select your major</option>
-                      <option value="Software Engineering">Software Engineering</option>
-                      <option value="Artificial Intelligence">Artificial Intelligence</option>
-                      <option value="Information Assurance">Information Assurance</option>
-                      <option value="Data Science">Data Science</option>
-                      <option value="Business Administration">Business Administration</option>
-                      <option value="Digital Marketing">Digital Marketing</option>
-                      <option value="Graphic Design">Graphic Design</option>
-                      <option value="Multimedia Communication">Multimedia Communication</option>
-                      <option value="Hospitality Management">Hospitality Management</option>
-                      <option value="International Business">International Business</option>
-                      <option value="Finance and Banking">Finance and Banking</option>
-                      <option value="Japanese Language">Japanese Language</option>
-                      <option value="Korean Language">Korean Language</option>
-                    </select> */}
                     <select
                       id="majorName"
                       aria-label="Select your major"
@@ -728,10 +704,15 @@ export default function LoginPage() {
               </form>
 
               {/* Google Sign-In Button */}
-              <GoogleSignInButton
+              {/* <GoogleSignInButton
                 mode={isSignUpMode ? "sign-up" : "sign-in"}
-              />
-
+              /> */}
+              <div className="flex justify-center">
+                <GoogleSignInButton
+                  mode={isSignUpMode ? "sign-up" : "sign-in"}
+                />
+              </div>
+              
               {/* Toggle mode section with gradient border */}
               <div className="relative text-center pt-4 sm:pt-6 mt-4 sm:mt-6">
                 {/* Gradient border line */}

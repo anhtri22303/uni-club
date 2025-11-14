@@ -161,17 +161,18 @@ export function DataTable<T extends Record<string, any>>({
 
             {showFilters && filters.length > 0 && (
               <div className="space-y-3 p-4 border rounded-lg bg-muted/50">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-medium">Filters</h4>
-                  {hasActiveFilters && (
+                {/* <div className="flex items-center justify-between"> */}
+                {/* <h4 className="text-sm font-medium">Filters</h4> */}
+                {/* {hasActiveFilters && (
                     <Button variant="ghost" size="sm" onClick={clearFilters} className="h-auto p-1 text-xs">
                       <X className="h-3 w-3 mr-1" />
                       Clear all
                     </Button>
                   )}
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                </div> */}
+                
+                {/* <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"> */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-[repeat(auto-fit,_minmax(200px,_1fr))] gap-3">
                   {filters.map((filter) => (
                     <div key={filter.key} className="space-y-1">
                       <label className="text-xs font-medium text-muted-foreground">{filter.label}</label>
@@ -181,7 +182,7 @@ export function DataTable<T extends Record<string, any>>({
                           value={activeFilters[filter.key] || "all"}
                           onValueChange={(value) => handleFilterChange(filter.key, value)}
                         >
-                          <SelectTrigger className="h-8 text-xs">
+                          <SelectTrigger className="h-8 text-xs bg-white">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -200,7 +201,7 @@ export function DataTable<T extends Record<string, any>>({
                           value={activeFilters[filter.key] || "all"}
                           onValueChange={(value) => handleFilterChange(filter.key, value)}
                         >
-                          <SelectTrigger className="h-8 text-xs">
+                          <SelectTrigger className="h-8 text-xs bg-white">
                             <SelectValue placeholder="Select range" />
                           </SelectTrigger>
                           <SelectContent>
@@ -224,6 +225,16 @@ export function DataTable<T extends Record<string, any>>({
                     </div>
                   ))}
                 </div>
+
+                <div className="flex items-center justify-end">
+                  {hasActiveFilters && (
+                    <Button variant="ghost" size="sm" onClick={clearFilters} className="h-auto p-1 text-xs bg-white">
+                      <X className="h-3 w-3 mr-1" />
+                      Clear all
+                    </Button>
+                  )}
+                </div>
+                
               </div>
             )}
           </div>

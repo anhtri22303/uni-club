@@ -9,40 +9,13 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import { fetchLocation, postLocation, deleteLocation, Location, LocationsApiResponse, CreateLocationRequest } from "@/service/locationApi"
-import { 
-  Search, 
-  MapPin, 
-  Building2, 
-  Users, 
-  ArrowUpDown,
-  SortAsc,
-  SortDesc,
-  Grid3x3,
-  List,
-  ChevronLeft,
-  ChevronRight,
-  Plus,
-  X,
-  Trash2
+import {
+  Search, MapPin, Building2, Users, ArrowUpDown, SortAsc, SortDesc, Grid3x3, List, ChevronLeft, ChevronRight, Plus, X, Trash2
 } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 
 type SortField = "name" | "capacity" | "id"
@@ -51,7 +24,7 @@ type ViewMode = "grid" | "list"
 
 export default function UniStaffLocationsPage() {
   const { toast } = useToast()
-  
+
   // State management
   const [locations, setLocations] = useState<Location[]>([])
   const [loading, setLoading] = useState(true)
@@ -88,12 +61,12 @@ export default function UniStaffLocationsPage() {
     try {
       setLoading(true)
       const sortParam = sortOrder === "asc" ? [sortField] : [`${sortField},desc`]
-      const response = await fetchLocation({ 
-        page: currentPage, 
-        size: pageSize, 
-        sort: sortParam 
+      const response = await fetchLocation({
+        page: currentPage,
+        size: pageSize,
+        sort: sortParam
       })
-      
+
       if (response && response.content) {
         setLocations(response.content)
         setTotalPages(response.totalPages)
@@ -121,7 +94,7 @@ export default function UniStaffLocationsPage() {
 
   const getCapacityBadge = (capacity: number) => {
     const category = getCapacityCategory(capacity)
-    
+
     if (category === "small") {
       return { label: "Small Space", color: "bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-700" }
     }
@@ -138,12 +111,12 @@ export default function UniStaffLocationsPage() {
   const filteredLocations = useMemo(() => {
     return locations.filter((location) => {
       // Search filter
-      const matchesSearch = 
+      const matchesSearch =
         location.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         location.address.toLowerCase().includes(searchQuery.toLowerCase())
 
       // Capacity filter
-      const matchesCapacity = 
+      const matchesCapacity =
         capacityFilter === "all" ||
         getCapacityCategory(location.capacity) === capacityFilter
 
@@ -214,7 +187,7 @@ export default function UniStaffLocationsPage() {
     try {
       setIsCreating(true)
       await postLocation(formData)
-      
+
       // Success
       toast({
         title: "Success",
@@ -264,7 +237,7 @@ export default function UniStaffLocationsPage() {
     try {
       setIsDeleting(true)
       await deleteLocation(locationToDelete.id)
-      
+
       // Success
       toast({
         title: "Success",
@@ -309,7 +282,7 @@ export default function UniStaffLocationsPage() {
                 Browse and manage event locations across the campus
               </p>
             </div>
-            
+
             {/* Create Location Button */}
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
               <DialogTrigger asChild>
@@ -325,7 +298,7 @@ export default function UniStaffLocationsPage() {
                     Add a new event location to the campus venues
                   </DialogDescription>
                 </DialogHeader>
-                
+
                 <div className="space-y-4 py-4">
                   {/* Name Input */}
                   <div className="space-y-2">
@@ -337,6 +310,7 @@ export default function UniStaffLocationsPage() {
                       placeholder="e.g., Innovation Lab A3-201"
                       value={formData.name}
                       onChange={(e) => handleFormChange("name", e.target.value)}
+                      className="border-slate-300"
                     />
                   </div>
 
@@ -350,6 +324,8 @@ export default function UniStaffLocationsPage() {
                       placeholder="e.g., Building A3, Technical Area, FPT University"
                       value={formData.address}
                       onChange={(e) => handleFormChange("address", e.target.value)}
+                      className="border-slate-300"
+
                     />
                   </div>
 
@@ -365,6 +341,8 @@ export default function UniStaffLocationsPage() {
                       placeholder="e.g., 40"
                       value={formData.capacity || ""}
                       onChange={(e) => handleFormChange("capacity", parseInt(e.target.value) || 0)}
+                      className="border-slate-300"
+
                     />
                     <p className="text-xs text-muted-foreground">
                       Maximum number of people this location can accommodate
@@ -532,8 +510,8 @@ export default function UniStaffLocationsPage() {
               {filteredLocations.map((location) => {
                 const badge = getCapacityBadge(location.capacity)
                 return (
-                  <Card 
-                    key={location.id} 
+                  <Card
+                    key={location.id}
                     className="hover:shadow-lg transition-shadow cursor-pointer group relative dark:border-slate-700"
                   >
                     {/* Delete Button */}
@@ -551,15 +529,15 @@ export default function UniStaffLocationsPage() {
                         <CardTitle className="text-base sm:text-lg line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors min-w-0">
                           {location.name}
                         </CardTitle>
-                        <Badge 
-                          variant="outline" 
+                        <Badge
+                          variant="outline"
                           className="shrink-0 text-xs"
                         >
                           #{location.id}
                         </Badge>
                       </div>
-                      <Badge 
-                        variant="outline" 
+                      <Badge
+                        variant="outline"
                         className={`${badge.color} w-fit mt-2 text-xs truncate max-w-full`}
                       >
                         {badge.label}
@@ -575,15 +553,15 @@ export default function UniStaffLocationsPage() {
                       </div>
 
                       {/* Capacity */}
-                        <div className="flex items-center justify-between pt-2 border-t dark:border-slate-700">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <Users className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-                            <span className="text-sm font-medium truncate">Capacity</span>
-                          </div>
-                          <span className="text-base sm:text-lg font-bold text-blue-600 dark:text-blue-400 flex-shrink-0">
-                            {location.capacity}
-                          </span>
+                      <div className="flex items-center justify-between pt-2 border-t dark:border-slate-700">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Users className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                          <span className="text-sm font-medium truncate">Capacity</span>
                         </div>
+                        <span className="text-base sm:text-lg font-bold text-blue-600 dark:text-blue-400 flex-shrink-0">
+                          {location.capacity}
+                        </span>
+                      </div>
                     </CardContent>
                   </Card>
                 )
@@ -597,8 +575,8 @@ export default function UniStaffLocationsPage() {
               {filteredLocations.map((location) => {
                 const badge = getCapacityBadge(location.capacity)
                 return (
-                  <Card 
-                    key={location.id} 
+                  <Card
+                    key={location.id}
                     className="hover:shadow-md transition-shadow cursor-pointer group relative dark:border-slate-700"
                   >
                     {/* Delete Button */}
@@ -735,7 +713,7 @@ export default function UniStaffLocationsPage() {
                   Are you sure you want to delete this location? This action cannot be undone.
                 </DialogDescription>
               </DialogHeader>
-              
+
               {locationToDelete && (
                 <div className="py-4">
                   <Card className="bg-muted/50">

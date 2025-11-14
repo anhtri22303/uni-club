@@ -608,6 +608,7 @@ export default function AdminPoliciesPage() {
                                         placeholder="e.g., Bronze Member Bonus"
                                         value={createPolicy.name || ""}
                                         onChange={(e) => handleFormChange("create", "name", e.target.value)}
+                                        className="border-slate-300"
                                     />
                                 </div>
                                 <div className="space-y-2">
@@ -617,6 +618,7 @@ export default function AdminPoliciesPage() {
                                         placeholder="Policy for rewarding bronze members..."
                                         value={createPolicy.description || ""}
                                         onChange={(e) => handleFormChange("create", "description", e.target.value)}
+                                        className="border-slate-300"
                                     />
                                 </div>
 
@@ -627,7 +629,7 @@ export default function AdminPoliciesPage() {
                                             value={createPolicy.targetType || "MEMBER"}
                                             onValueChange={(value) => handleFormChange("create", "targetType", value)}
                                         >
-                                            <SelectTrigger id="create-targetType">
+                                            <SelectTrigger id="create-targetType" className="border-slate-300">
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -643,6 +645,7 @@ export default function AdminPoliciesPage() {
                                             placeholder="e.g., BRONZE, SILVER..."
                                             value={createPolicy.levelOrStatus || ""}
                                             onChange={(e) => handleFormChange("create", "levelOrStatus", e.target.value)}
+                                            className="border-slate-300"
                                         />
                                     </div>
                                 </div>
@@ -655,6 +658,7 @@ export default function AdminPoliciesPage() {
                                             type="number"
                                             value={createPolicy.minEvents || 0}
                                             onChange={(e) => handleFormChange("create", "minEvents", Number(e.target.value))}
+                                            className="border-slate-300"
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -665,6 +669,7 @@ export default function AdminPoliciesPage() {
                                             step="0.1"
                                             value={createPolicy.multiplier || 1}
                                             onChange={(e) => handleFormChange("create", "multiplier", Number(e.target.value))}
+                                            className="border-slate-300"
                                         />
                                     </div>
                                 </div>
@@ -676,6 +681,7 @@ export default function AdminPoliciesPage() {
                                         type="datetime-local"
                                         value={createPolicy.effectiveFrom || ""}
                                         onChange={(e) => handleFormChange("create", "effectiveFrom", e.target.value)}
+                                        className="border-slate-300"
                                     />
                                 </div>
 

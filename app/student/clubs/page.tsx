@@ -20,6 +20,7 @@ import { fetchClub, getClubMemberCount } from "@/service/clubApi"
 import { postMemAppli } from "@/service/memberApplicationApi"
 import { safeSessionStorage } from "@/lib/browser-utils"
 import { fetchMajors, Major } from "@/service/majorApi"
+import { fetchLocation, Location } from "@/service/locationApi"
 import { useClubs, useClubMemberCounts, useMyMemberApplications, queryKeys } from "@/hooks/use-query-hooks"
 import { useQueryClient } from "@tanstack/react-query"
 // We'll fetch clubs from the backend and only use the `content` array.
@@ -64,6 +65,18 @@ export default function MemberClubsPage() {
   // Fetch user's existing applications
   const { data: myApplications = [], isLoading: applicationsLoading } = useMyMemberApplications()
 
+  useEffect(() => {
+    // Tác dụng: Bất cứ khi nào bạn điều hướng đến trang này,
+    // nó sẽ đánh dấu dữ liệu "clubs" và "myApplications" trong cache là "cũ".
+    // Điều này buộc React Query phải tự động fetch lại dữ liệu mới,
+    // giống như khi bạn nhấn F5.
+    console.log("Điều hướng đến trang Clubs, vô hiệu hóa cache để fetch dữ liệu mới...");
+    queryClient.invalidateQueries({ queryKey: queryKeys.clubs });
+    queryClient.invalidateQueries({ queryKey: queryKeys.myMemberApplications() });
+
+  }, [queryClient]); // Chỉ chạy một lần khi component được mount (tải)
+
+
   // Debug: Log clubs data when it loads
   useEffect(() => {
     console.log(" Clubs data state:", {
@@ -107,6 +120,7 @@ export default function MemberClubsPage() {
   })
   const [userClubId, setUserClubId] = useState<number | null>(null) // Keep for backward compatibility
   const [majors, setMajors] = useState<Major[]>([])
+  const [locations, setLocations] = useState<Location[]>([])
   const [selectedMajorId, setSelectedMajorId] = useState<number | "">("")
   const [newVision, setNewVision] = useState("")
 
@@ -136,17 +150,41 @@ export default function MemberClubsPage() {
     }
   }, [userClubIds, userClubId])
 
+  // useEffect(() => {
+  //   const loadMajors = async () => {
+  //     try {
+  //       const data = await fetchMajors()
+  //       setMajors(data)
+  //     } catch (error) {
+  //       console.error("Failed to load majors:", error)
+  //     }
+  //   }
+  //   loadMajors()
+  // }, [])
   useEffect(() => {
-    const loadMajors = async () => {
+    const loadDropdownData = async () => {
       try {
-        const data = await fetchMajors()
-        setMajors(data)
+        // Tải song song majors và locations
+        const [majorsData, locationApiResponse] = await Promise.all([
+          fetchMajors(),
+          fetchLocation({ page: 0, size: 200, sort: ["name,asc"] }) // Lấy 200 locations, sắp xếp theo tên
+        ]);
+
+        setMajors(majorsData);
+        setLocations(locationApiResponse.content); // Lưu danh sách locations từ API
+
       } catch (error) {
-        console.error("Failed to load majors:", error)
+        console.error("Failed to load dropdown data (majors or locations):", error);
+        toast({
+          title: "Error",
+          description: "Could not load filter options.",
+          variant: "destructive"
+        })
       }
-    }
-    loadMajors()
-  }, [])
+    };
+
+    loadDropdownData();
+  }, [toast]); // Thêm toast vào dependency array vì nó được sử dụng trong catch
 
   //  Wrap getClubStatus in useCallback to avoid unnecessary re-renders
   const getClubStatus = useCallback((clubId: string) => {
@@ -246,65 +284,118 @@ export default function MemberClubsPage() {
     return "outline"
   }
 
-  const filters = [
-    {
-      key: "major",
-      label: "Major",
-      type: "select" as const,
-      options: [
-        { value: "Technology", label: "Technology" },
-        { value: "Sports", label: "Sports" },
-        { value: "Arts", label: "Arts" },
-        { value: "Academic", label: "Academic" },
-        { value: "Social", label: "Social" },
-      ],
-    },
-    {
-      key: "status",
-      label: "Membership Status",
-      type: "select" as const,
-      options: [
-        { value: "member", label: "Member" },
-        { value: "pending", label: "Pending" },
-        { value: "none", label: "Not Applied" },
-      ],
-    },
-    {
-      key: "members",
-      label: "Member Count",
-      type: "range" as const,
-    },
-    {
-      key: "founded",
-      label: "Founded Year",
-      type: "range" as const,
-    },
-    {
-      key: "location",
-      label: "Location",
-      type: "select" as const,
-      options: [
-        { value: "Campus A", label: "Campus A" },
-        { value: "Field B", label: "Field B" },
-        { value: "Studio C", label: "Studio C" },
-        { value: "Online", label: "Online" },
-        { value: "Hall D", label: "Hall D" },
-        { value: "Auditorium", label: "Auditorium" },
-        { value: "Lab E", label: "Lab E" },
-        { value: "Gym F", label: "Gym F" },
-        { value: "Studio G", label: "Studio G" },
-        { value: "Lab H", label: "Lab H" },
-        { value: "Campus I", label: "Campus I" },
-        { value: "Hall J", label: "Hall J" },
-        { value: "Court K", label: "Court K" },
-        { value: "Library L", label: "Library L" },
-        { value: "Community Center M", label: "Community Center M" },
-        { value: "Theater N", label: "Theater N" },
-        { value: "Lab O", label: "Lab O" },
-      ],
-    },
-  ]
+  // const filters = [
+  //   {
+  //     key: "major",
+  //     label: "Major",
+  //     type: "select" as const,
+  //     options: [
+  //       { value: "Technology", label: "Technology" },
+  //       { value: "Sports", label: "Sports" },
+  //       { value: "Arts", label: "Arts" },
+  //       { value: "Academic", label: "Academic" },
+  //       { value: "Social", label: "Social" },
+  //     ],
+  //   },
+  //   {
+  //     key: "status",
+  //     label: "Membership Status",
+  //     type: "select" as const,
+  //     options: [
+  //       { value: "member", label: "Member" },
+  //       { value: "pending", label: "Pending" },
+  //       { value: "none", label: "Not Applied" },
+  //     ],
+  //   },
+  //   {
+  //     key: "members",
+  //     label: "Member Count",
+  //     type: "range" as const,
+  //   },
+  //   {
+  //     key: "founded",
+  //     label: "Founded Year",
+  //     type: "range" as const,
+  //   },
+  //   {
+  //     key: "location",
+  //     label: "Location",
+  //     type: "select" as const,
+  //     options: [
+  //       { value: "Campus A", label: "Campus A" },
+  //       { value: "Field B", label: "Field B" },
+  //       { value: "Studio C", label: "Studio C" },
+  //       { value: "Online", label: "Online" },
+  //       { value: "Hall D", label: "Hall D" },
+  //       { value: "Auditorium", label: "Auditorium" },
+  //       { value: "Lab E", label: "Lab E" },
+  //       { value: "Gym F", label: "Gym F" },
+  //       { value: "Studio G", label: "Studio G" },
+  //       { value: "Lab H", label: "Lab H" },
+  //       { value: "Campus I", label: "Campus I" },
+  //       { value: "Hall J", label: "Hall J" },
+  //       { value: "Court K", label: "Court K" },
+  //       { value: "Library L", label: "Library L" },
+  //       { value: "Community Center M", label: "Community Center M" },
+  //       { value: "Theater N", label: "Theater N" },
+  //       { value: "Lab O", label: "Lab O" },
+  //     ],
+  //   },
+  // ]
+  // ĐỊNH NGHĨA `filters` MỚI Ở ĐÂY (BÊN TRONG COMPONENT)
+  const filters = useMemo(() => {
+    // 1. Chuyển đổi state `majors` thành options
+    const majorOptions = majors
+      .filter(m => m.active) // Chỉ hiển thị các ngành đang hoạt động
+      .map((major: Major) => ({
+        value: major.name, // Lọc theo tên
+        label: major.name,
+      }));
 
+    // 2. Chuyển đổi state `locations` thành options
+    const locationOptions = locations
+      .map((location: Location) => ({
+        value: location.name, // Lọc theo tên
+        label: location.name,
+      }));
+
+    // 3. Trả về mảng filters
+    return [
+      {
+        key: "major",
+        label: "Major",
+        type: "select" as const,
+        options: majorOptions, // <-- DỮ LIỆU ĐỘNG
+      },
+      {
+        key: "status",
+        label: "Membership Status",
+        type: "select" as const,
+        options: [
+          { value: "member", label: "Member" },
+          { value: "pending", label: "Pending" },
+          { value: "none", label: "Not Applied" },
+        ],
+      },
+      {
+        key: "members",
+        label: "Member Count",
+        type: "range" as const,
+      },
+      {
+        key: "founded",
+        label: "Founded Year",
+        type: "range" as const,
+      },
+      {
+        key: "location",
+        label: "Location",
+        type: "select" as const,
+        options: locationOptions, // <-- DỮ LIỆU ĐỘNG
+      },
+    ];
+  }, [majors, locations]); // Chỉ tính toán lại khi majors hoặc locations thay đổi
+  
   const handleApply = (club: any) => {
     setSelectedClub(club)
     setShowApplicationModal(true)
@@ -459,7 +550,7 @@ export default function MemberClubsPage() {
         <div className="flex items-center justify-between gap-2 max-w-[220px]">
           <div
             className="text-sm text-muted-foreground truncate"
-            // title={value}
+          // title={value}
           >
             {value || "-"}
           </div>

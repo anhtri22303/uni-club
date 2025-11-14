@@ -6,7 +6,7 @@ import { DataTable } from "@/components/data-table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Mail, Shield, Users, Plus, Star, Activity, Edit, Trash, Filter, X, CheckCircle, Eye, EyeOff } from "lucide-react"
+import { Mail, Shield, Users, Plus, Star, Activity, Edit, Trash, Filter, X, CheckCircle, Eye, EyeOff, Ban } from "lucide-react"
 import React from "react"
 import { useUsers } from "@/hooks/use-query-hooks"
 import { fetchUserById, updateUserById } from "@/service/userApi"
@@ -19,8 +19,9 @@ import { useToast } from "@/hooks/use-toast"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useQueryClient, useQuery } from "@tanstack/react-query"
 import { fetchAdminUsers, fetchAdminUserDetails, banUser, unbanUser, AdminUser, AdminUserPaginationResponse, updateUserRole } from "@/service/adminApi/adminUserApi"
-import { useAuth } from "@/contexts/auth-context" // <-- THÊM MỚI
+import { useAuth } from "@/contexts/auth-context"
 import { fetchMajors, Major } from "@/service/majorApi"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger, AlertDialogDescription } from "@/components/ui/alert-dialog"
 
 // Role display formatter (produce uppercase readable labels)
 const formatRoleName = (roleId: string) => {
@@ -79,8 +80,8 @@ export default function AdminUsersPage() {
   })
 
 
-  console.log("📊 AdminUsersPage - isLoading:", loading)
-  console.log("📊 AdminUsersPage - error:", queryError)
+  console.log("AdminUsersPage - isLoading:", loading)
+  console.log("AdminUsersPage - error:", queryError)
 
   const getRoleName = (roleId: string) => formatRoleName(roleId)
 
@@ -88,7 +89,7 @@ export default function AdminUsersPage() {
   const users: UserRecord[] = (pagedData?.content || []).map((u: AdminUser) => {
     // Log first user to verify mapping
     if (pagedData?.content.indexOf(u) === 0) {
-      console.log("📋 First user object from API:", u)
+      console.log("First user object from API:", u)
     }
     return {
       id: u.id,
@@ -112,7 +113,7 @@ export default function AdminUsersPage() {
     return 0
   })
 
-  console.log("📋 Mapped users (total:", users.length, "):", users.slice(0, 2))
+  console.log("Mapped users (total:", users.length, "):", users.slice(0, 2))
 
   const error = queryError ? String(queryError) : null
 
@@ -411,62 +412,110 @@ export default function AdminUsersPage() {
 
             {/* --- Logic Ban / Unban --- */}
             {user.active ? (
-              <Button
-                size="icon"
-                variant="ghost"
-                aria-label={`Ban user ${user.id}`}
-                onClick={async () => {
-                  const ok = confirm("Are you sure you want to ban this user?")
-                  if (!ok) return
-                  try {
-                    await banUser(user.id as number)
-                    toast({
-                      title: "User Banned",
-                      description: "User account has been locked.",
-                    })
-                    await reloadUsers()
-                  } catch (err) {
-                    console.error("Ban user failed:", err)
-                    toast({
-                      title: "Error",
-                      description: "An error occurred while banning user.",
-                      variant: "destructive",
-                    })
-                  }
-                }}
-                title="Ban user"
-              >
-                <Trash className="h-4 w-4 text-destructive" />
-              </Button>
+              // --- 1. NÚT BAN USER (DÙNG ALERTDIALOG) ---
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    aria-label={`Ban user ${user.id}`}
+                    title="Ban user"
+                  >
+                    <Ban className="h-4 w-4 text-destructive" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="text-center">
+                      --- WARNING ---
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      <strong>Ban User: "{user.fullName}"?</strong>
+                      <br />
+                      Are you sure you want to ban this user? Their account will be locked and they will not be able to log in.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      onClick={async () => {
+                        // Bỏ confirm(), di chuyển logic vào đây
+                        try {
+                          await banUser(user.id as number)
+                          toast({
+                            title: "User Banned",
+                            description: `${user.fullName}'s account has been locked.`,
+                          })
+                          await reloadUsers()
+                        } catch (err) {
+                          console.error("Ban user failed:", err)
+                          toast({
+                            title: "Error",
+                            description: "An error occurred while banning user.",
+                            variant: "destructive",
+                          })
+                        }
+                      }}
+                    >
+                      Ban User
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             ) : (
-              <Button
-                size="icon"
-                variant="ghost"
-                aria-label={`Unban user ${user.id}`}
-                onClick={async () => {
-                  const ok = confirm("Are you sure you want to unban this user?")
-                  if (!ok) return
-                  try {
-                    await unbanUser(user.id as number)
-                    toast({
-                      title: "User Unbanned",
-                      description: "User account has been activated.",
-                    })
-                    await reloadUsers()
-                  } catch (err) {
-                    console.error("Unban user failed:", err)
-                    toast({
-                      title: "Error",
-                      description: "An error occurred while unbanning user.",
-                      variant: "destructive",
-                    })
-                  }
-                }}
-                title="Unban user"
-              >
-                <CheckCircle className="h-4 w-4 text-green-500" />
-              </Button>
+              // --- 2. NÚT UNBAN USER (DÙNG ALERTDIALOG) ---
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    aria-label={`Unban user ${user.id}`}
+                    title="Unban user"
+                  >
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="text-center">
+                      --- WARNING ---
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      <strong>Unban User: "{user.fullName}"?</strong>
+                      <br />
+                      Are you sure you want to unban this user? Their account will be reactivated.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={async () => {
+                        // Bỏ confirm(), di chuyển logic vào đây
+                        try {
+                          await unbanUser(user.id as number)
+                          toast({
+                            title: "User Unbanned",
+                            description: `${user.fullName}'s account has been activated.`,
+                          })
+                          await reloadUsers()
+                        } catch (err) {
+                          console.error("Unban user failed:", err)
+                          toast({
+                            title: "Error",
+                            description: "An error occurred while unbanning user.",
+                            variant: "destructive",
+                          })
+                        }
+                      }}
+                    >
+                      Unban User
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             )}
+
           </div>
         )
       },
@@ -644,7 +693,7 @@ export default function AdminUsersPage() {
                     placeholder="Enter your full name"
                     value={createFullName}
                     onChange={(e) => setCreateFullName(e.target.value)}
-                    className="mt-2"
+                    className="mt-2 border-slate-300"
                   />
                 </div>
 
@@ -656,21 +705,11 @@ export default function AdminUsersPage() {
                     placeholder="Enter your student ID (e.g. SE123456)"
                     value={createStudentCode}
                     onChange={(e) => setCreateStudentCode(e.target.value.toUpperCase())}
-                    className="mt-2"
+                    className="mt-2 border-slate-300"
                   />
                 </div>
 
                 {/* Major Name */}
-                {/* <div>
-                  <Label htmlFor="create-majorName">Major Name</Label>
-                  <Input
-                    id="create-majorName"
-                    placeholder="Enter your major"
-                    value={createMajorName}
-                    onChange={(e) => setCreateMajorName(e.target.value)}
-                    className="mt-2"
-                  />
-                </div> */}
                 <div>
                   <Label htmlFor="create-majorName">Major Name</Label>
                   <Select
@@ -678,7 +717,7 @@ export default function AdminUsersPage() {
                     onValueChange={setCreateMajorName}
                     disabled={majorsLoading} // Vô hiệu hóa khi đang tải
                   >
-                    <SelectTrigger id="create-majorName" className="mt-2">
+                    <SelectTrigger id="create-majorName" className="mt-2 border-slate-300">
                       <SelectValue placeholder={majorsLoading ? "Loading majors..." : "Select your major"} />
                     </SelectTrigger>
                     <SelectContent>
@@ -700,7 +739,7 @@ export default function AdminUsersPage() {
                     placeholder="Enter your phone number (10 digits)"
                     value={createPhone}
                     onChange={(e) => setCreatePhone(e.target.value)}
-                    className="mt-2"
+                    className="mt-2 border-slate-300"
                   />
                 </div>
 
@@ -713,7 +752,7 @@ export default function AdminUsersPage() {
                     placeholder="Enter yours email"
                     value={createEmail}
                     onChange={(e) => setCreateEmail(e.target.value)}
-                    className="mt-2"
+                    className="mt-2 border-slate-300"
                   />
                 </div>
 
@@ -727,7 +766,7 @@ export default function AdminUsersPage() {
                       placeholder="Enter your password"
                       value={createPassword}
                       onChange={(e) => setCreatePassword(e.target.value)}
-                      className="pr-10"
+                      className="pr-10 border-slate-300"
                     />
                     <button
                       type="button"
@@ -750,7 +789,7 @@ export default function AdminUsersPage() {
                       placeholder="Confirm your password"
                       value={createConfirmPassword}
                       onChange={(e) => setCreateConfirmPassword(e.target.value)}
-                      className="pr-10"
+                      className="pr-10 border-slate-300"
                     />
                     <button
                       type="button"
@@ -767,7 +806,7 @@ export default function AdminUsersPage() {
                 <div>
                   <Label htmlFor="create-roleName">Role</Label>
                   <Select value={createRoleName} onValueChange={setCreateRoleName}>
-                    <SelectTrigger id="create-roleName" className="mt-2">
+                    <SelectTrigger id="create-roleName" className="mt-2 border-slate-300">
                       <SelectValue placeholder="Select a role" />
                     </SelectTrigger>
                     <SelectContent>
@@ -923,12 +962,22 @@ export default function AdminUsersPage() {
               {/* Major Name */}
               <div>
                 <Label htmlFor="edit-majorName">Major Name</Label>
-                <Input
-                  id="edit-majorName"
+                <Select
                   value={editMajorName || ""}
-                  onChange={(e) => setEditMajorName(e.target.value || null)}
-                  className="mt-2 border-slate-300"
-                />
+                  onValueChange={(value) => setEditMajorName(value || null)}
+                  disabled={majorsLoading} // Vô hiệu hóa khi đang tải
+                >
+                  <SelectTrigger id="edit-majorName" className="mt-2 border-slate-300">
+                    <SelectValue placeholder={majorsLoading ? "Loading majors..." : "Select major"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(majorsData || []).map((major) => (
+                      <SelectItem key={major.id} value={major.name}>
+                        {major.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div>
@@ -973,12 +1022,12 @@ export default function AdminUsersPage() {
                     setIsEditModalOpen(false)
                     setEditingUserId(null)
                   }}
-                  disabled={editLoading} // <-- THÊM MỚI
+                  disabled={editLoading}
                 >
                   Cancel
                 </Button>
-                <Button onClick={handleModalSave} disabled={editLoading}> {/* <-- THÊM MỚI */}
-                  {editLoading ? "Updating..." : "Update"} {/* <-- THÊM MỚI */}
+                <Button onClick={handleModalSave} disabled={editLoading}>
+                  {editLoading ? "Updating..." : "Update"}
                 </Button>
               </div>
             </div>
