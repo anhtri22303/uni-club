@@ -116,6 +116,7 @@ const navigationConfig = {
     { href: "/admin/policies", label: "Policies", icon: FileText },
     { href: "/admin/locations", label: "Locations", icon: MapPin },
     { href: "/admin/wallets", label: "Wallets", icon: Wallet },
+    { href: "/admin/tags", label: "Tags", icon: Tags },
 
   ],
 } as const

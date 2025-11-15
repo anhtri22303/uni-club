@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 // Sử dụng cùng một API service vì nó được chia sẻ
-import { fetchLocation, postLocation, deleteLocation, Location, LocationsApiResponse, CreateLocationRequest } from "@/service/locationApi"
+import { fetchLocation, postLocation, deleteLocation, Location, LocationsApiResponse, CreateLocationRequest, updateLocation, UpdateLocationRequest } from "@/service/locationApi"
 import {
     Search, MapPin, Building2, Users, ArrowUpDown, SortAsc, SortDesc, Grid3x3, List, ChevronLeft, ChevronRight, Plus, X, Trash2
 } from "lucide-react"
@@ -22,6 +22,8 @@ import { Label } from "@/components/ui/label"
 type SortField = "name" | "capacity" | "id"
 type SortOrder = "asc" | "desc"
 type ViewMode = "grid" | "list"
+
+type LocationFormData = CreateLocationRequest | UpdateLocationRequest
 
 export default function AdminLocationsPage() {
     const { toast } = useToast()
@@ -41,8 +43,9 @@ export default function AdminLocationsPage() {
 
     // Modal and form state
     const [isModalOpen, setIsModalOpen] = useState(false)
-    const [isCreating, setIsCreating] = useState(false)
-    const [formData, setFormData] = useState<CreateLocationRequest>({
+    const [isSaving, setIsSaving] = useState(false) // <-- ĐỔI TÊN TỪ isCreating
+    const [editingLocation, setEditingLocation] = useState<Location | null>(null) // <-- STATE MỚI
+    const [formData, setFormData] = useState<LocationFormData>({ // <-- DÙNG TYPE MỚI
         name: "",
         address: "",
         capacity: 0,
@@ -157,57 +160,20 @@ export default function AdminLocationsPage() {
         }
     }
 
+    /**
+   * (CẬP NHẬT) Chỉ chứa logic Create
+   */
     const handleCreateLocation = async () => {
-        // Validation
-        if (!formData.name.trim()) {
-            toast({
-                title: "Validation Error",
-                description: "Location name is required",
-                variant: "destructive",
-            })
-            return
-        }
-
-        if (!formData.address.trim()) {
-            toast({
-                title: "Validation Error",
-                description: "Address is required",
-                variant: "destructive",
-            })
-            return
-        }
-
-        if (formData.capacity <= 0) {
-            toast({
-                title: "Validation Error",
-                description: "Capacity must be greater than 0",
-                variant: "destructive",
-            })
-            return
-        }
-
         try {
-            setIsCreating(true)
-            await postLocation(formData)
+            setIsSaving(true) // Dùng isSaving
+            await postLocation(formData as CreateLocationRequest)
 
-            // Success
             toast({
                 title: "Success",
                 description: "Location created successfully",
             })
-
-            // Reset form
-            setFormData({
-                name: "",
-                address: "",
-                capacity: 0,
-            })
-
-            // Close modal
-            setIsModalOpen(false)
-
-            // Reload locations
-            loadLocations()
+            handleModalOpenChange(false) // Đóng và reset modal
+            loadLocations() // Tải lại danh sách
         } catch (error) {
             console.error("Error creating location:", error)
             toast({
@@ -216,15 +182,107 @@ export default function AdminLocationsPage() {
                 variant: "destructive",
             })
         } finally {
-            setIsCreating(false)
+            setIsSaving(false) // Dùng isSaving
         }
     }
 
-    const handleFormChange = (field: keyof CreateLocationRequest, value: string | number) => {
+    /**
+     * (MỚI) Logic Update
+     */
+    const handleUpdateLocation = async () => {
+        if (!editingLocation) return
+
+        try {
+            setIsSaving(true)
+            await updateLocation(editingLocation.id, formData as UpdateLocationRequest)
+
+            toast({
+                title: "Success",
+                description: `Location "${editingLocation.name}" updated successfully`,
+            })
+            handleModalOpenChange(false) // Đóng và reset modal
+            loadLocations() // Tải lại danh sách
+        } catch (error) {
+            console.error("Error updating location:", error)
+            toast({
+                title: "Error",
+                description: "Failed to update location. Please try again.",
+                variant: "destructive",
+            })
+        } finally {
+            setIsSaving(false)
+        }
+    }
+
+    /**
+     * (MỚI) Hàm Submit chính, kiểm tra validation và gọi create hoặc update
+     */
+    const handleFormSubmit = async () => {
+        // Validation (Lấy từ hàm handleCreateLocation cũ)
+        if (!formData.name.trim()) {
+            toast({ title: "Validation Error", description: "Location name is required", variant: "destructive" })
+            return
+        }
+        if (!formData.address.trim()) {
+            toast({ title: "Validation Error", description: "Address is required", variant: "destructive" })
+            return
+        }
+        if (formData.capacity <= 0) {
+            toast({ title: "Validation Error", description: "Capacity must be greater than 0", variant: "destructive" })
+            return
+        }
+
+        // Quyết định gọi hàm create hay update
+        if (editingLocation) {
+            await handleUpdateLocation()
+        } else {
+            await handleCreateLocation()
+        }
+    }
+
+    const handleFormChange = (field: keyof LocationFormData, value: string | number) => {
         setFormData(prev => ({
             ...prev,
             [field]: value
         }))
+    }
+
+    /**
+       * (MỚI) Xử lý khi nhấn nút "Create Location" (mở modal ở chế độ tạo)
+       */
+    const handleOpenCreateModal = () => {
+        setEditingLocation(null) // Đảm bảo không ở chế độ edit
+        setFormData({ // Reset form
+            name: "",
+            address: "",
+            capacity: 0,
+        })
+        setIsModalOpen(true)
+    }
+
+    /**
+     * (MỚI) Xử lý khi nhấn vào Card (mở modal ở chế độ sửa)
+     */
+    const handleEditClick = (location: Location) => {
+        setEditingLocation(location)
+        setFormData({
+            name: location.name,
+            address: location.address,
+            capacity: location.capacity,
+        })
+        setIsModalOpen(true)
+    }
+
+    /**
+     * (MỚI) Xử lý khi đóng/mở modal
+     */
+    const handleModalOpenChange = (isOpen: boolean) => {
+        setIsModalOpen(isOpen)
+        if (!isOpen) {
+            // Reset state khi modal đóng
+            setEditingLocation(null)
+            setFormData({ name: "", address: "", capacity: 0 })
+        }
     }
 
     const handleDeleteClick = (location: Location, e: React.MouseEvent) => {
@@ -288,18 +346,27 @@ export default function AdminLocationsPage() {
                         </div>
 
                         {/* Create Location Button */}
-                        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+                        <Dialog open={isModalOpen} onOpenChange={handleModalOpenChange}>
                             <DialogTrigger asChild>
-                                <Button className="gap-2 w-full sm:w-auto flex-shrink-0">
+                                <Button
+                                    className="gap-2 w-full sm:w-auto flex-shrink-0"
+                                    onClick={handleOpenCreateModal}
+                                >
                                     <Plus className="h-4 w-4" />
                                     <span className="truncate">Create Location</span>
                                 </Button>
                             </DialogTrigger>
+
                             <DialogContent className="sm:max-w-[500px]">
                                 <DialogHeader>
-                                    <DialogTitle>Create New Location</DialogTitle>
+                                    {/* (THAY ĐỔI) Title và Description động */}
+                                    <DialogTitle>
+                                        {editingLocation ? "Edit Location" : "Create New Location"}
+                                    </DialogTitle>
                                     <DialogDescription>
-                                        Add a new event location to the campus venues
+                                        {editingLocation
+                                            ? `Update the details for "${editingLocation.name}"`
+                                            : "Add a new event location to the campus venues"}
                                     </DialogDescription>
                                 </DialogHeader>
 
@@ -317,7 +384,6 @@ export default function AdminLocationsPage() {
                                             className="border-slate-300"
                                         />
                                     </div>
-
                                     {/* Address Input */}
                                     <div className="space-y-2">
                                         <Label htmlFor="address">
@@ -331,7 +397,6 @@ export default function AdminLocationsPage() {
                                             className="border-slate-300"
                                         />
                                     </div>
-
                                     {/* Capacity Input */}
                                     <div className="space-y-2">
                                         <Label htmlFor="capacity">
@@ -355,16 +420,19 @@ export default function AdminLocationsPage() {
                                 <DialogFooter>
                                     <Button
                                         variant="outline"
-                                        onClick={() => setIsModalOpen(false)}
-                                        disabled={isCreating}
+                                        onClick={() => handleModalOpenChange(false)} // Dùng handler mới
+                                        disabled={isSaving} // Dùng isSaving
                                     >
                                         Cancel
                                     </Button>
                                     <Button
-                                        onClick={handleCreateLocation}
-                                        disabled={isCreating}
+                                        onClick={handleFormSubmit} // Dùng handler submit chung
+                                        disabled={isSaving} // Dùng isSaving
                                     >
-                                        {isCreating ? "Creating..." : "Create Location"}
+                                        {/* Text động */}
+                                        {isSaving
+                                            ? (editingLocation ? "Saving..." : "Creating...")
+                                            : (editingLocation ? "Save Changes" : "Create Location")}
                                     </Button>
                                 </DialogFooter>
                             </DialogContent>
@@ -403,21 +471,32 @@ export default function AdminLocationsPage() {
                         <CardHeader>
                             <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
                                 <div className="flex-1 w-full sm:w-auto">
-                                    <div className="relative">
+                                    <div className="relative w-full sm:w-3/5">
                                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                         <Input
                                             placeholder="Search by name or address..."
                                             value={searchQuery}
                                             onChange={(e) => setSearchQuery(e.target.value)}
-                                            className="pl-10 w-full"
+                                            className="pl-10 pr-10 w-full border-slate-200"
                                         />
+                                        {/* Nút Clear (X) */}
+                                        {searchQuery && (
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="absolute right-3 top-1/2 transform -translate-y-1/2 h-8 w-8 rounded-full"
+                                                onClick={() => setSearchQuery("")}
+                                            >
+                                                <X className="h-4 w-4 text-muted-foreground" />
+                                            </Button>
+                                        )}
                                     </div>
                                 </div>
 
                                 <div className="flex gap-2 w-full sm:w-auto">
                                     {/* Capacity Filter */}
                                     <Select value={capacityFilter} onValueChange={setCapacityFilter}>
-                                        <SelectTrigger className="w-full sm:w-[140px]">
+                                        <SelectTrigger className="w-full sm:w-[150px]">
                                             <SelectValue placeholder="All Sizes" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -436,7 +515,7 @@ export default function AdminLocationsPage() {
                                         setSortOrder(order)
                                         setCurrentPage(0)
                                     }}>
-                                        <SelectTrigger className="w-full sm:w-[160px]">
+                                        <SelectTrigger className="w-full sm:w-[190px]">
                                             <ArrowUpDown className="h-4 w-4 mr-2 flex-shrink-0" />
                                             <SelectValue />
                                         </SelectTrigger>
@@ -454,7 +533,7 @@ export default function AdminLocationsPage() {
                                     <div className="flex border rounded-md">
                                         <Button
                                             variant={viewMode === "grid" ? "default" : "ghost"}
-                                            size="sm"
+                                            size="default"
                                             onClick={() => setViewMode("grid")}
                                             className="rounded-r-none"
                                         >
@@ -462,7 +541,7 @@ export default function AdminLocationsPage() {
                                         </Button>
                                         <Button
                                             variant={viewMode === "list" ? "default" : "ghost"}
-                                            size="sm"
+                                            size="default"
                                             onClick={() => setViewMode("list")}
                                             className="rounded-l-none"
                                         >
@@ -515,6 +594,7 @@ export default function AdminLocationsPage() {
                                     <Card
                                         key={location.id}
                                         className="hover:shadow-lg transition-shadow cursor-pointer group relative dark:border-slate-700"
+                                        onClick={() => handleEditClick(location)} // <-- THÊM MỚI
                                     >
                                         {/* Delete Button */}
                                         <Button
@@ -580,6 +660,7 @@ export default function AdminLocationsPage() {
                                     <Card
                                         key={location.id}
                                         className="hover:shadow-md transition-shadow cursor-pointer group relative dark:border-slate-700"
+                                        onClick={() => handleEditClick(location)} // <-- THÊM MỚI
                                     >
                                         {/* Delete Button */}
                                         <Button
