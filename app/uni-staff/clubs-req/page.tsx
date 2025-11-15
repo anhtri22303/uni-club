@@ -60,26 +60,37 @@ export default function UniStaffClubRequestsPage() {
 	// const queryClient = useQueryClient()
 	// Use React Query hook to fetch club applications
 	const { data: applications = [], isLoading: loading, error } = useClubApplications()
+	
+	// Debug: Log the raw data from API
+	console.log("📊 Raw applications data:", applications)
+	console.log("📊 Loading state:", loading)
+	console.log("📊 Error state:", error)
+	
 	// Map API shape to UI shape and sort by latest submittedAt
 	const requests: UiClubRequest[] = applications
-		.map((d: any) => ({
-			id: `req-${d.applicationId}`,
-			applicationId: d.applicationId,
-			clubName: d.clubName,
-			major: d.majorName ?? "Unknown",
-			description: d.description,
-			requestedBy: d.proposer?.fullName ?? "Unknown",
-			requestedByEmail: d.submittedBy?.email ?? "",
-			requestDate: d.submittedAt,
-			status: d.status,
-			expectedMembers: d.expectedMembers,
-			vision: d.vision,
-			proposerReason: d.proposerReason,
-			reviewedBy: d.reviewedBy,
-			rejectReason: d.rejectReason,
-			reviewedAt: d.reviewedAt,
-		}))
+		.map((d: any) => {
+			console.log("🔍 Mapping application:", d)
+			return {
+				id: `req-${d.applicationId}`,
+				applicationId: d.applicationId,
+				clubName: d.clubName,
+				major: d.majorName ?? "Unknown",
+				description: d.description,
+				requestedBy: d.proposer?.fullName ?? "Unknown",
+				requestedByEmail: d.proposer?.email ?? "", // Fixed: was using submittedBy, should be proposer
+				requestDate: d.submittedAt,
+				status: d.status,
+				expectedMembers: d.expectedMembers,
+				vision: d.vision,
+				proposerReason: d.proposerReason,
+				reviewedBy: d.reviewedBy,
+				rejectReason: d.rejectReason,
+				reviewedAt: d.reviewedAt,
+			}
+		})
 		.sort((a, b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime())
+	
+	console.log("✅ Mapped requests:", requests)
 
 	// async function handleSendNewApplication() {
 	// 	if (!newClubName.trim() || !newDescription.trim() || !newMajor.trim() || !newProposerReason.trim() || !newVision.trim()) {
@@ -127,7 +138,7 @@ export default function UniStaffClubRequestsPage() {
 			} else if (tabType === "in_progress") {
 				matchStatus = req.status === "APPROVED"
 			} else {
-				matchStatus = req.status === "COMPLETE" || req.status === "REJECTED"
+				matchStatus = req.status === "COMPLETED" || req.status === "REJECTED"
 			}
 
 			// Major filter
@@ -228,14 +239,14 @@ export default function UniStaffClubRequestsPage() {
 						Rejected
 					</Badge>
 				)
-			case "COMPLETE":
+			case "COMPLETED":
 				return (
 					<Badge
 						variant="outline"
 						className="bg-blue-50 text-blue-700 border-blue-300"
 					>
 						<CheckCheck className="h-3 w-3 mr-1" />
-						Complete
+						Completed
 					</Badge>
 				)
 			default:
@@ -246,7 +257,7 @@ export default function UniStaffClubRequestsPage() {
 	const pendingCount = requests.filter((req) => req.status === "PENDING").length
 	const approvedCount = requests.filter((req) => req.status === "APPROVED").length
 	const rejectedCount = requests.filter((req) => req.status === "REJECTED").length
-	const completedCount = requests.filter((req) => req.status === "COMPLETE").length
+	const completedCount = requests.filter((req) => req.status === "COMPLETED").length
 
 	return (
 		<ProtectedRoute allowedRoles={["uni_staff"]}>
@@ -291,101 +302,32 @@ export default function UniStaffClubRequestsPage() {
 						</div>
 					</Modal> */}
 
-					{/* Stats Cards */}
-					<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-						<Card className="border-0 shadow-md bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-950 dark:to-yellow-900">
-							<CardHeader className="pb-1 px-4 pt-3">
-								<CardTitle className="text-xs font-medium text-yellow-700 dark:text-yellow-300">
-									Pending Requests
-								</CardTitle>
-							</CardHeader>
-							<CardContent className="pb-3 px-4">
-								<div className="flex items-center gap-2">
-									<div className="p-1.5 bg-yellow-500 rounded-md">
-										<Clock className="h-4 w-4 text-white" />
-									</div>
-									<div>
-										<div className="text-lg font-bold text-yellow-900 dark:text-yellow-100">
-											{pendingCount}
-										</div>
-										<p className="text-xs text-yellow-600 dark:text-yellow-400">
-											Awaiting review
-										</p>
-									</div>
-								</div>
-							</CardContent>
-						</Card>
+					   {/* Redesigned Stat Cards */}
+					   <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
+						   {/* Pending Requests */}
+						   <div className="rounded-xl bg-yellow-100 dark:bg-yellow-900 shadow flex flex-col items-center justify-center py-6 px-4 border border-yellow-200 dark:border-yellow-800 transition hover:scale-[1.02]">
+							   <Clock className="h-8 w-8 text-yellow-500 mb-2" />
+							   <div className="text-3xl font-extrabold text-yellow-700 dark:text-yellow-200">{pendingCount}</div>
+							   <div className="text-base font-semibold text-yellow-800 dark:text-yellow-100 mt-1">Pending</div>
+							   <div className="text-xs text-yellow-600 dark:text-yellow-300 mt-1">Awaiting review</div>
+						   </div>
 
-						<Card className="border-0 shadow-md bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900">
-							<CardHeader className="pb-1 px-4 pt-3">
-								<CardTitle className="text-xs font-medium text-green-700 dark:text-green-300">
-									Approved
-								</CardTitle>
-							</CardHeader>
-							<CardContent className="pb-3 px-4">
-								<div className="flex items-center gap-2">
-									<div className="p-1.5 bg-green-500 rounded-md">
-										<CheckCircle className="h-4 w-4 text-white" />
-									</div>
-									<div>
-										<div className="text-lg font-bold text-green-900 dark:text-green-100">
-											{approvedCount}
-										</div>
-										<p className="text-xs text-green-600 dark:text-green-400">
-											Awaiting account creation
-										</p>
-									</div>
-								</div>
-							</CardContent>
-						</Card>
+						   {/* Complete */}
+						   <div className="rounded-xl bg-blue-100 dark:bg-blue-900 shadow flex flex-col items-center justify-center py-6 px-4 border border-blue-200 dark:border-blue-800 transition hover:scale-[1.02]">
+							   <CheckCheck className="h-8 w-8 text-blue-500 mb-2" />
+							   <div className="text-3xl font-extrabold text-blue-700 dark:text-blue-200">{completedCount}</div>
+							   <div className="text-base font-semibold text-blue-800 dark:text-blue-100 mt-1">Complete</div>
+							   <div className="text-xs text-blue-600 dark:text-blue-300 mt-1">Successfully processed</div>
+						   </div>
 
-						{/* THẺ MỚI CHO COMPLETE */}
-						<Card className="border-0 shadow-md bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900">
-							<CardHeader className="pb-1 px-4 pt-3">
-								<CardTitle className="text-xs font-medium text-blue-700 dark:text-blue-300">
-									Complete
-								</CardTitle>
-							</CardHeader>
-							<CardContent className="pb-3 px-4">
-								<div className="flex items-center gap-2">
-									<div className="p-1.5 bg-blue-500 rounded-md">
-										<CheckCheck className="h-4 w-4 text-white" />
-									</div>
-									<div>
-										<div className="text-lg font-bold text-blue-900 dark:text-blue-100">
-											{completedCount}
-										</div>
-										<p className="text-xs text-blue-600 dark:text-blue-400">
-											Successfully processed
-										</p>
-									</div>
-								</div>
-							</CardContent>
-						</Card>
-
-						<Card className="border-0 shadow-md bg-gradient-to-br from-red-50 to-red-100 dark:from-red-950 dark:to-red-900">
-							<CardHeader className="pb-1 px-4 pt-3">
-								<CardTitle className="text-xs font-medium text-red-700 dark:text-red-300">
-									Rejected
-								</CardTitle>
-							</CardHeader>
-							<CardContent className="pb-3 px-4">
-								<div className="flex items-center gap-2">
-									<div className="p-1.5 bg-red-500 rounded-md">
-										<XCircle className="h-4 w-4 text-white" />
-									</div>
-									<div>
-										<div className="text-lg font-bold text-red-900 dark:text-red-100">
-											{rejectedCount}
-										</div>
-										<p className="text-xs text-red-600 dark:text-red-400">
-											Not eligible
-										</p>
-									</div>
-								</div>
-							</CardContent>
-						</Card>
-					</div>
+						   {/* Rejected */}
+						   <div className="rounded-xl bg-red-100 dark:bg-red-900 shadow flex flex-col items-center justify-center py-6 px-4 border border-red-200 dark:border-red-800 transition hover:scale-[1.02]">
+							   <XCircle className="h-8 w-8 text-red-500 mb-2" />
+							   <div className="text-3xl font-extrabold text-red-700 dark:text-red-200">{rejectedCount}</div>
+							   <div className="text-base font-semibold text-red-800 dark:text-red-100 mt-1">Rejected</div>
+							   <div className="text-xs text-red-600 dark:text-red-300 mt-1">Not eligible</div>
+						   </div>
+					   </div>
 
 					{/* Filters */}
 					<Card className="border-muted">
