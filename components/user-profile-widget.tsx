@@ -172,17 +172,19 @@ export function UserProfileWidget() {
   return (
     <div
       id="profile-widget-container" // <-- THÊM ID NÀY
-      className={`fixed bottom-4 left-4 z-50 bg-background border border-border rounded-lg shadow-lg transition-all duration-300
+      // className={`fixed bottom-4 left-4 z-50 bg-background border border-border rounded-lg shadow-lg transition-all duration-300
+      className={`fixed bottom-4 left-4 z-50 bg-white border border-border rounded-2xl shadow-lg transition-all duration-300
+
       ${isHidden ? "opacity-0 -translate-x-full pointer-events-none" : "opacity-100 translate-x-0"}
       pt-0 pb-4 px-4 space-y-3 ${widgetCollapsed ? "w-auto" : "w-[240px] max-w-[240px]"} block`}
     >
       {/* Toggle Button */}
-      <div className="flex justify-end pt-2">
+      <div className="flex justify-end pt-2 pb-0 mb-2">
         <Button
           variant="ghost"
           size="sm"
           onClick={() => setWidgetCollapsed(!widgetCollapsed)}
-          className="h-6 w-6 p-0 hover:bg-muted"
+          className="h-8 w-8 p-0 hover:bg-primary"
           title={widgetCollapsed ? "Show profile" : "Hide profile"}
         >
           {widgetCollapsed ? (
@@ -281,7 +283,8 @@ export function UserProfileWidget() {
             )
           )}
           {/* hiển thị thông tin user lấy từ API */}
-          <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors overflow-hidden">
+          {/* <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors overflow-hidden"> */}
+          <div className="flex items-center gap-3 p-2 border border-primary/50 rounded-lg hover:bg-primary/30 transition-colors overflow-hidden">
             <Avatar className="h-10 w-10 flex-shrink-0">
               <AvatarImage src={avatarUrl || "/placeholder-user.jpg"} alt={userName || "User"} />
               <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
@@ -302,7 +305,8 @@ export function UserProfileWidget() {
             <Button
               variant="outline"
               size="sm"
-              className="flex-1 gap-2 text-destructive hover:text-destructive bg-transparent overflow-hidden"
+              // className="flex-1 gap-2 text-destructive hover:text-destructive bg-transparent overflow-hidden"
+              className="flex-1 gap-2 text-destructive hover:text-white hover:bg-destructive bg-transparent overflow-hidden"
               onClick={logout}
             >
               <LogOut className="h-3 w-3 flex-shrink-0" />
@@ -327,7 +331,8 @@ export function UserProfileWidget() {
           <Button
             variant="outline"
             size="sm"
-            className="h-9 w-9 p-0 text-destructive hover:text-destructive bg-transparent overflow-hidden"
+            // className="h-9 w-9 p-0 text-destructive hover:text-destructive bg-transparent overflow-hidden"
+            className="h-9 w-9 p-0 text-destructive hover:text-white hover:bg-destructive bg-transparent overflow-hidden"
             onClick={logout}
             title="Logout"
           >

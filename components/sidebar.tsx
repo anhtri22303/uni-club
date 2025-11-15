@@ -17,7 +17,8 @@ import { usePointRequests } from "@/service/pointRequestsApi"
 import { usePrefetchClubs, usePrefetchEvents, usePrefetchUsers, useMyMemberApplications, useMyClubApplications, useMyRedeemOrders, useClubApplications, useEvents } from "@/hooks/use-query-hooks"
 import {
   LayoutDashboard, Users, Calendar, Gift, Wallet, History, BarChart3, Building, Home, CheckCircle, FileText, FileUser, HandCoins, CalendarDays, CreditCard,
-  LibraryBig, MessageCircle, MapPin, Percent, ChevronDown, ChevronRight, ListOrdered, FileBarChart, TicketCheck, Tags
+  LibraryBig, MessageCircle, MapPin, Percent, ChevronDown, ChevronRight, ListOrdered, FileBarChart, TicketCheck, Tags, MessagesSquare,
+  Package, Truck
 } from "lucide-react"
 
 interface SidebarProps {
@@ -54,14 +55,14 @@ const navigationConfig = {
     { href: "/club-leader/members", label: "Members", icon: Users },
     { href: "/club-leader/events", label: "Events", icon: Calendar },
     { href: "/club-leader/attendances", label: "Attendances", icon: CalendarDays },
-    { href: "/club-leader/feedbacks", label: "Feedbacks", icon: MessageCircle },
+    { href: "/club-leader/feedbacks", label: "Feedbacks", icon: MessagesSquare },
     {
-      label: "Gifts",
-      icon: LayoutDashboard,
+      label: "Gifts Management",
+      icon: Package,
       children: [
         { href: "/club-leader/gift", label: "Gift list", icon: Gift },
-        { href: "/club-leader/club-order-list", label: "Club orders list", icon: ListOrdered },
-        { href: "/club-leader/event-order-list", label: "Event orders list", icon: ListOrdered },
+        { href: "/club-leader/club-order-list", label: "Club orders list", icon: Truck },
+        { href: "/club-leader/event-order-list", label: "Event orders list", icon: Truck },
       ]
     },
     {
@@ -81,13 +82,13 @@ const navigationConfig = {
     { href: "/uni-staff/clubs", label: "Clubs", icon: Building },
     { href: "/uni-staff/locations", label: "Locations", icon: MapPin },
     { href: "/uni-staff/tags", label: "Tags", icon: Tags },
-    { href: "/uni-staff/feedbacks", label: "Feedbacks", icon: MessageCircle },
+    { href: "/uni-staff/feedbacks", label: "Feedbacks", icon: MessagesSquare },
     {
       label: "Policy Management",
       icon: FileText,
       children: [
         { href: "/uni-staff/multiplier-policy", label: "Multiplier Policy", icon: Percent },
-        { href: "/uni-staff/policies", label: "Policies", icon: FileText },
+        { href: "/uni-staff/policies", label: "Major Policies", icon: FileText },
       ]
     },
     { href: "/uni-staff/majors", label: "Majors", icon: LibraryBig },
@@ -110,7 +111,7 @@ const navigationConfig = {
     { href: "/admin/clubs", label: "Clubs", icon: Building },
     // { href: "/admin/attendances", label: "Attendances", icon: FileText },
     { href: "/admin/events", label: "Events", icon: Calendar },
-    { href: "/admin/products", label: "Products", icon: Gift },
+    { href: "/admin/products", label: "Products", icon: Package },
     { href: "/admin/redeems", label: "Redeems", icon: TicketCheck },
     { href: "/admin/policies", label: "Policies", icon: FileText },
     { href: "/admin/locations", label: "Locations", icon: MapPin },
