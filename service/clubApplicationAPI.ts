@@ -47,6 +47,7 @@ export async function getClubApplications(): Promise<ClubApplication[]> {
   const resp = await axiosInstance.get("/api/club-applications/all")
   // The backend returns { success, message, data: [...] }
   const result = resp.data as { success: boolean; message: string; data: ClubApplication[] }
+  console.log("Fetched club applications:", result)
   return result.data
 }
 
