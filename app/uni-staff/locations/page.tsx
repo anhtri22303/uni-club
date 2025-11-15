@@ -544,7 +544,7 @@ export default function UniStaffLocationsPage() {
                       placeholder="Search by name or address..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10 pr-10 w-full border-slate-200"
+                      className="pl-10 pr-10 w-full border-slate-300"
                     />
                     {/* Nút Clear (X) */}
                     {searchQuery && (

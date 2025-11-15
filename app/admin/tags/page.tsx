@@ -342,7 +342,7 @@ export default function AdminTagsPage() {
                     <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
                             <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2 sm:gap-3">
-                                <Tags className="h-6 w-6 sm:h-8 sm:w-8 text-primary flex-shrink-0" />
+                                <Tags className="h-6 w-6 sm:h-8 sm:w-8 flex-shrink-0" />
                                 <span className="truncate">Tag Management</span>
                             </h1>
                             <p className="text-sm sm:text-base text-muted-foreground mt-1 line-clamp-2">

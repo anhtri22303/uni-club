@@ -6,7 +6,6 @@ export type ConditionType = "PERCENTAGE" | "ABSOLUTE"
 export interface MultiplierPolicy {
   id: number
   targetType: PolicyTargetType
-  
   // Các trường mới dựa trên Swagger
   activityType: string
   ruleName: string
@@ -14,7 +13,6 @@ export interface MultiplierPolicy {
   minThreshold: number
   maxThreshold: number
   policyDescription?: string | null // Thêm mới (để optional)
-
   // Các trường cũ được giữ lại
   multiplier: number
   active: boolean
