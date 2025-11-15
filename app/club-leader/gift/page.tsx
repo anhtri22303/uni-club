@@ -7,7 +7,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import Link from "next/link"
 import {
   Gift, Package, Calendar, Clock, CheckCircle, XCircle, Plus, ChevronLeft, ChevronRight, Loader2, Archive,
-  WalletCards, Tag as TagIcon,
+  WalletCards, Tag as TagIcon, Search, X
 } from "lucide-react"
 // --- Service ---
 import { addProduct, Product, AddProductPayload, } from "@/service/productApi"
@@ -494,14 +494,25 @@ export default function ClubLeaderGiftPage() {
           </div>
 
           {/* Search Bar - Full Width with Better Design */}
-          <div className="relative">
+          <div className="relative w-full sm:w-2/5">
             <Input
               placeholder="Search for products by name or description..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="h-12 pl-12 text-base border-2 focus:border-blue-500 dark:focus:border-blue-400 dark:bg-slate-800 dark:text-white dark:border-slate-700 dark:placeholder:text-slate-400 transition-colors"
+              className="h-12 pl-12 pr-12 text-base bg-white border-2 border-slate-200 focus:border-blue-500 dark:focus:border-blue-400 dark:bg-slate-800 dark:text-white dark:border-slate-700 dark:placeholder:text-slate-400 transition-colors"
             />
-            <Gift className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground dark:text-slate-400" />
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground dark:text-slate-400" />
+            {/* Nút Clear (X) */}
+            {searchTerm && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 h-8 w-8 rounded-full"
+                onClick={() => setSearchTerm("")}
+              >
+                <X className="h-5 w-5 text-muted-foreground dark:text-slate-400" />
+              </Button>
+            )}
           </div>
 
           {/* Filter Section with Modern Card Design */}
@@ -606,7 +617,7 @@ export default function ClubLeaderGiftPage() {
 
                   <div className="space-y-1">
                     <Label htmlFor="name" className="dark:text-white">Product name<span className="text-red-500">*</span>
-</Label>
+                    </Label>
                     <Input id="name" className="mt-2 border-slate-300 dark:bg-slate-800 dark:text-white dark:border-slate-600 dark:placeholder:text-slate-400" name="name" value={form.name} onChange={handleChange} placeholder="e.g., F-Code Club T-Shirt" />
                   </div>
 

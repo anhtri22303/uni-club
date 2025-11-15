@@ -538,21 +538,32 @@ export default function UniStaffLocationsPage() {
             <CardHeader>
               <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
                 <div className="flex-1 w-full sm:w-auto">
-                  <div className="relative">
+                  <div className="relative w-full sm:w-3/5">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                       placeholder="Search by name or address..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10 w-full"
+                      className="pl-10 pr-10 w-full border-slate-200"
                     />
+                    {/* Nút Clear (X) */}
+                    {searchQuery && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 h-8 w-8 rounded-full"
+                        onClick={() => setSearchQuery("")}
+                      >
+                        <X className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    )}
                   </div>
                 </div>
 
                 <div className="flex gap-2 w-full sm:w-auto">
                   {/* Capacity Filter */}
                   <Select value={capacityFilter} onValueChange={setCapacityFilter}>
-                    <SelectTrigger className="w-full sm:w-[140px]">
+                    <SelectTrigger className="w-full sm:w-[150px] border-slate-200">
                       <SelectValue placeholder="All Sizes" />
                     </SelectTrigger>
                     <SelectContent>
@@ -571,7 +582,7 @@ export default function UniStaffLocationsPage() {
                     setSortOrder(order)
                     setCurrentPage(0)
                   }}>
-                    <SelectTrigger className="w-full sm:w-[160px]">
+                    <SelectTrigger className="w-full sm:w-[190px] border-slate-200">
                       <ArrowUpDown className="h-4 w-4 mr-2 flex-shrink-0" />
                       <SelectValue />
                     </SelectTrigger>
@@ -589,7 +600,7 @@ export default function UniStaffLocationsPage() {
                   <div className="flex border rounded-md">
                     <Button
                       variant={viewMode === "grid" ? "default" : "ghost"}
-                      size="sm"
+                      size="default"
                       onClick={() => setViewMode("grid")}
                       className="rounded-r-none"
                     >
@@ -597,7 +608,7 @@ export default function UniStaffLocationsPage() {
                     </Button>
                     <Button
                       variant={viewMode === "list" ? "default" : "ghost"}
-                      size="sm"
+                      size="default"
                       onClick={() => setViewMode("list")}
                       className="rounded-l-none"
                     >

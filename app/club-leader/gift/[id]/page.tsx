@@ -17,14 +17,15 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import {
-    ArrowLeft, Save, Loader2, Package, DollarSign, Archive, Tag, Image as ImageIcon, CheckCircle, Upload, Trash, Star, History, Plus, XCircle, Video as VideoIcon, Play, Eye
+    ArrowLeft, Save, Loader2, Package, DollarSign, Archive, Tag, Image as ImageIcon, CheckCircle, Upload, Trash, Star, History, Plus, XCircle,
+    Video as VideoIcon, Play, Eye, HandCoins, Search
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
-import { ScrollArea } from "@/components/ui/scroll-area"
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { Switch } from "@/components/ui/switch"
 import { LoadingSkeleton } from "@/components/loading-skeleton"
 import { getClubIdFromToken } from "@/service/clubApi"
@@ -36,7 +37,7 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, } from "@/components/ui/table"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Skeleton } from "@/components/ui/skeleton"
-import { queryKeys } from "@/hooks/use-query-hooks" // 👈 THÊM IMPORT NÀY
+import { queryKeys } from "@/hooks/use-query-hooks"
 
 type ProductEditForm = UpdateProductPayload
 interface FixedTagIds {
@@ -86,11 +87,7 @@ export default function EditProductPage() {
     const [isCropDialogOpen, setIsCropDialogOpen] = useState(false);
     const [imageSrc, setImageSrc] = useState<string>("");
     const [crop, setCrop] = useState<Crop>({
-        unit: '%',
-        width: 90,
-        height: 90,
-        x: 5,
-        y: 5
+        unit: '%', width: 90, height: 90, x: 5, y: 5
     });
     const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
     const imgRef = useRef<HTMLImageElement>(null);
@@ -106,28 +103,28 @@ export default function EditProductPage() {
     // Hàm truncate tên file nếu quá dài
     const truncateFileName = (fileName: string, maxLength: number = 40): string => {
         if (fileName.length <= maxLength) return fileName;
-        
+
         const lastDotIndex = fileName.lastIndexOf('.');
         // Nếu không có extension hoặc extension quá dài
         if (lastDotIndex === -1 || lastDotIndex === 0) {
             // File không có extension, truncate từ đầu
             return fileName.substring(0, maxLength - 3) + '...';
         }
-        
+
         const extension = fileName.substring(lastDotIndex);
         const nameWithoutExt = fileName.substring(0, lastDotIndex);
-        
+
         // Đảm bảo extension không quá dài
         if (extension.length > maxLength / 2) {
             return fileName.substring(0, maxLength - 3) + '...';
         }
-        
+
         // Truncate phần tên, giữ lại extension
         const availableLength = maxLength - extension.length - 3; // 3 cho "..."
         if (availableLength <= 0) {
             return '...' + extension;
         }
-        
+
         const truncatedName = nameWithoutExt.substring(0, availableLength);
         return `${truncatedName}...${extension}`;
     };
@@ -155,15 +152,7 @@ export default function EditProductPage() {
         ctx.imageSmoothingQuality = 'high';
 
         ctx.drawImage(
-            image,
-            crop.x * scaleX,
-            crop.y * scaleY,
-            naturalCropWidth,
-            naturalCropHeight,
-            0,
-            0,
-            naturalCropWidth,
-            naturalCropHeight
+            image, crop.x * scaleX, crop.y * scaleY, naturalCropWidth, naturalCropHeight, 0, 0, naturalCropWidth, naturalCropHeight
         );
 
         return new Promise((resolve, reject) => {
@@ -218,11 +207,7 @@ export default function EditProductPage() {
         setIsCropDialogOpen(false);
         setImageSrc("");
         setCrop({
-            unit: '%',
-            width: 90,
-            height: 90,
-            x: 5,
-            y: 5
+            unit: '%', width: 90, height: 90, x: 5, y: 5
         });
         setCompletedCrop(undefined);
         setCroppedImageBlob(null);
@@ -302,7 +287,7 @@ export default function EditProductPage() {
         const { name, value } = e.target
         if (!form) return
 
-        // 👈 XỬ LÝ ĐẶC BIỆT CHO "pointCost"
+        // XỬ LÝ ĐẶC BIỆT CHO "pointCost"
         if (name === "pointCost") {
             // Chỉ cho phép số và dấu phẩy
             const numericValue = value.replace(/[^0-9]/g, '');
@@ -527,10 +512,10 @@ export default function EditProductPage() {
 
         // Kiểm tra xem có phải là video không - video không thể được set làm thumbnail
         if (currentMedia && currentMedia.type === "VIDEO") {
-            toast({ 
-                title: "Error", 
-                description: "Videos cannot be set as thumbnail.", 
-                variant: "destructive" 
+            toast({
+                title: "Error",
+                description: "Videos cannot be set as thumbnail.",
+                variant: "destructive"
             });
             return;
         }
@@ -720,15 +705,15 @@ export default function EditProductPage() {
                                 // 2. NẾU CHƯA ARCHIVED: Hiển thị nút Archive
                                 <AlertDialog>
                                     <AlertDialogTrigger asChild>
-                            <Button
-                                variant="outline"
-                                size="lg"
-                                className="border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 hover:border-red-300 dark:hover:border-red-700"
-                                disabled={isSaving || isDeleting}
-                            >
-                                <Trash className="h-4 w-4 mr-2" />
-                                Archive Product
-                            </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="lg"
+                                            className="border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 hover:border-red-300 dark:hover:border-red-700"
+                                            disabled={isSaving || isDeleting}
+                                        >
+                                            <Trash className="h-4 w-4 mr-2" />
+                                            Archive Product
+                                        </Button>
                                     </AlertDialogTrigger>
                                     <AlertDialogContent className="max-w-lg">
                                         <AlertDialogHeader>
@@ -830,20 +815,21 @@ export default function EditProductPage() {
                     </div>
 
                     {/* Form Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* <div className="grid grid-cols-1 md:grid-cols-3 gap-6"> */}
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
                         {/* Cột trái: Thông tin chính */}
-                        <div className="md:col-span-2 space-y-6">
+                        <div className="md:col-span-3 space-y-6">
                             <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 dark:bg-slate-800 dark:border-slate-700 overflow-hidden">
                                 <div className="h-2 bg-gradient-to-r from-blue-400 via-blue-500 to-indigo-500" />
-                                <CardHeader className="bg-gradient-to-br from-blue-50 via-blue-50/50 to-white dark:from-blue-900/20 dark:via-slate-800/50 dark:to-slate-800 border-b border-blue-100 dark:border-slate-700 pb-4">
+                                <CardHeader className="py-4 bg-gradient-to-br from-blue-200 to-blue-50 dark:from-blue-900/20 dark:via-slate-800/50 dark:to-slate-800 border-b border-blue-200 dark:border-slate-700">
                                     <div className="flex items-center gap-3">
                                         <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg">
-                                            <Package className="h-5 w-5 text-white" />
+                                            <Package className="h-4 w-5 text-white" />
                                         </div>
                                         <CardTitle className="text-xl font-bold dark:text-white">Product Details</CardTitle>
                                     </div>
                                 </CardHeader>
-                                <CardContent className="space-y-6 pt-6">
+                                <CardContent className="space-y-4 pt-0">
                                     <div className="space-y-2">
                                         <Label htmlFor="name" className="text-base font-semibold dark:text-white">
                                             Product Name <span className="text-red-500 dark:text-red-400">*</span>
@@ -879,7 +865,7 @@ export default function EditProductPage() {
                             {/* CARD IMAGE */}
                             <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 dark:bg-slate-800 dark:border-slate-700 overflow-hidden">
                                 <div className="h-2 bg-gradient-to-r from-purple-400 via-purple-500 to-pink-500" />
-                                <CardHeader className="flex flex-row items-center justify-between bg-gradient-to-br from-purple-50 via-purple-50/50 to-white dark:from-purple-900/20 dark:via-slate-800/50 dark:to-slate-800 border-b border-purple-100 dark:border-slate-700 pb-4">
+                                <CardHeader className="py-4 flex flex-row items-center justify-between bg-gradient-to-br from-purple-200 to-purple-50 dark:from-purple-900/20 dark:via-slate-800/50 dark:to-slate-800 border-b border-purple-200 dark:border-slate-700 pb-4">
                                     <div className="flex items-center gap-3">
                                         <div className="p-2.5 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 shadow-lg">
                                             <ImageIcon className="h-5 w-5 text-white" />
@@ -891,13 +877,13 @@ export default function EditProductPage() {
                                         size="sm"
                                         onClick={() => setIsMediaDialogOpen(true)}
                                         disabled={isArchived}
-                                        className="border-2 hover:bg-purple-50 dark:hover:bg-purple-900/30 hover:border-purple-300 dark:bg-slate-700 dark:text-white dark:border-slate-600"
+                                        className="border-2 hover:bg-purple-100 hover:text-purple-700 dark:hover:bg-purple-900/30 hover:border-purple-400 dark:bg-slate-700 dark:text-white dark:border-slate-600"
                                     >
                                         <Upload className="h-4 w-4 mr-2" />
                                         Upload Media
                                     </Button>
                                 </CardHeader>
-                                <CardContent className="pt-6">
+                                <CardContent className="pt-0">
                                     {isMediaLoading && ( // Hiển thị loading khi đang thao tác media
                                         <div className="absolute inset-0 bg-white/80 dark:bg-slate-900/80 flex items-center justify-center z-20 rounded-lg backdrop-blur-sm">
                                             <div className="text-center">
@@ -907,87 +893,94 @@ export default function EditProductPage() {
                                         </div>
                                     )}
                                     {product.media && product.media.length > 0 ? (
-                                        <div className="grid grid-cols-3 gap-4">
-                                            {product.media.map((m) => (
-                                                <div key={m.mediaId} className="relative aspect-square group rounded-lg overflow-hidden border-2 border-gray-200 dark:border-slate-600 hover:border-purple-300 dark:hover:border-purple-500 transition-all">
-                                                    {/* Render video or image based on type */}
-                                                    {m.type === "VIDEO" ? (
-                                                        <video
-                                                            src={m.url}
-                                                            controls
-                                                            className="object-cover w-full h-full"
-                                                        >
-                                                            Your browser does not support the video tag.
-                                                        </video>
-                                                    ) : (
-                                                        <img
-                                                            src={m.url}
-                                                            alt="Product media"
-                                                            className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-300"
-                                                        />
-                                                    )}
-
-                                                    {/* Media Type Badge */}
-                                                    <Badge className={`absolute top-3 right-3 z-10 ${m.type === "VIDEO" ? "bg-purple-500 text-white" : "bg-blue-500 text-white"} border-0 shadow-lg`}>
+                                        <ScrollArea className="w-full rounded-md border dark:border-slate-700">
+                                            <div className="flex w-max space-x-4 p-4">
+                                                {product.media.map((m) => (
+                                                    <div
+                                                        key={m.mediaId}
+                                                        // Thêm w-40 (160px) và shrink-0 để các item không bị co lại
+                                                        className="relative aspect-square w-40 group rounded-lg overflow-hidden border-2 border-gray-200 dark:border-slate-600 hover:border-purple-300 dark:hover:border-purple-500 transition-all shrink-0"
+                                                    >
+                                                        {/* Render video or image based on type */}
                                                         {m.type === "VIDEO" ? (
-                                                            <>
-                                                                <VideoIcon className="h-3 w-3 mr-1" />
-                                                                Video
-                                                            </>
+                                                            <video
+                                                                src={m.url}
+                                                                controls
+                                                                className="object-cover w-full h-full"
+                                                            >
+                                                                Your browser does not support the video tag.
+                                                            </video>
                                                         ) : (
-                                                            <>
-                                                                <ImageIcon className="h-3 w-3 mr-1" />
-                                                                Image
-                                                            </>
+                                                            <img
+                                                                src={m.url}
+                                                                alt="Product media"
+                                                                className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-300"
+                                                            />
                                                         )}
-                                                    </Badge>
 
-                                                    {/* Overlay khi hover */}
-                                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 z-10">
-                                                        <Button
-                                                            variant="secondary"
-                                                            size="icon"
-                                                            className="h-10 w-10 shadow-lg hover:scale-110 transition-transform bg-blue-500 hover:bg-blue-600"
-                                                            onClick={(e) => {
-                                                                e.preventDefault();
-                                                                setSelectedMedia({ url: m.url, type: m.type });
-                                                                setIsMediaViewerOpen(true);
-                                                            }}
-                                                        >
-                                                            <Eye className="h-5 w-5 text-white" />
-                                                        </Button>
-                                                        {!isArchived && (
-                                                            <>
-                                                                <Button
-                                                                    variant="destructive"
-                                                                    size="icon"
-                                                                    className="h-10 w-10 shadow-lg hover:scale-110 transition-transform"
-                                                                    onClick={(e) => { e.preventDefault(); handleDeleteMedia(m.mediaId) }}
-                                                                >
-                                                                    <Trash className="h-5 w-5" />
-                                                                </Button>
-                                                                {!m.thumbnail && m.type !== "VIDEO" && (
+                                                        {/* Media Type Badge */}
+                                                        <Badge className={`absolute top-3 right-3 z-10 ${m.type === "VIDEO" ? "bg-purple-500 text-white" : "bg-blue-500 text-white"} border-0 shadow-lg`}>
+                                                            {m.type === "VIDEO" ? (
+                                                                <>
+                                                                    <VideoIcon className="h-3 w-3 mr-1" />
+                                                                    Video
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <ImageIcon className="h-3 w-3 mr-1" />
+                                                                    Image
+                                                                </>
+                                                            )}
+                                                        </Badge>
+
+                                                        {/* Overlay khi hover */}
+                                                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 z-10">
+                                                            <Button
+                                                                variant="secondary"
+                                                                size="icon"
+                                                                className="h-10 w-10 shadow-lg hover:scale-110 transition-transform bg-blue-500 hover:bg-blue-600"
+                                                                onClick={(e) => {
+                                                                    e.preventDefault();
+                                                                    setSelectedMedia({ url: m.url, type: m.type });
+                                                                    setIsMediaViewerOpen(true);
+                                                                }}
+                                                            >
+                                                                <Eye className="h-5 w-5 text-white" />
+                                                            </Button>
+                                                            {!isArchived && (
+                                                                <>
                                                                     <Button
-                                                                        variant="secondary"
+                                                                        variant="destructive"
                                                                         size="icon"
-                                                                        className="h-10 w-10 shadow-lg hover:scale-110 transition-transform bg-yellow-400 hover:bg-yellow-500"
-                                                                        onClick={(e) => { e.preventDefault(); handleSetThumbnail(m.mediaId) }}
+                                                                        className="h-10 w-10 shadow-lg hover:scale-110 transition-transform"
+                                                                        onClick={(e) => { e.preventDefault(); handleDeleteMedia(m.mediaId) }}
                                                                     >
-                                                                        <Star className="h-5 w-5 text-yellow-900" />
+                                                                        <Trash className="h-5 w-5" />
                                                                     </Button>
-                                                                )}
-                                                            </>
+                                                                    {!m.thumbnail && m.type !== "VIDEO" && (
+                                                                        <Button
+                                                                            variant="secondary"
+                                                                            size="icon"
+                                                                            className="h-10 w-10 shadow-lg hover:scale-110 transition-transform bg-yellow-400 hover:bg-yellow-500"
+                                                                            onClick={(e) => { e.preventDefault(); handleSetThumbnail(m.mediaId) }}
+                                                                        >
+                                                                            <Star className="h-5 w-5 text-yellow-900" />
+                                                                        </Button>
+                                                                    )}
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                        {m.thumbnail && (
+                                                            <Badge className="absolute top-3 left-3 z-10 bg-yellow-400 text-yellow-900 border-2 border-yellow-300 shadow-lg">
+                                                                <Star className="h-3 w-3 mr-1 fill-yellow-900" />
+                                                                Thumbnail
+                                                            </Badge>
                                                         )}
                                                     </div>
-                                                    {m.thumbnail && (
-                                                        <Badge className="absolute top-3 left-3 z-10 bg-yellow-400 text-yellow-900 border-2 border-yellow-300 shadow-lg">
-                                                            <Star className="h-3 w-3 mr-1 fill-yellow-900" />
-                                                            Thumbnail
-                                                        </Badge>
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </div>
+                                                ))}
+                                            </div>
+                                            <ScrollBar orientation="horizontal" />
+                                        </ScrollArea>
                                     ) : (
                                         <div className="text-center py-12 bg-gray-50 dark:bg-slate-700/50 rounded-lg border-2 border-dashed border-gray-300 dark:border-slate-600">
                                             <ImageIcon className="h-12 w-12 text-gray-400 dark:text-slate-400 mx-auto mb-3" />
@@ -1000,201 +993,201 @@ export default function EditProductPage() {
                         </div>
 
                         {/* Cột phải: Thông tin phụ */}
-                        <div className="md:col-span-1 space-y-6">
-                            <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 dark:bg-slate-800 dark:border-slate-700 overflow-hidden">
-                                <div className="h-2 bg-gradient-to-r from-green-400 via-green-500 to-emerald-500" />
-                                <CardHeader className="bg-gradient-to-br from-green-50 via-green-50/50 to-white dark:from-green-900/20 dark:via-slate-800/50 dark:to-slate-800 border-b border-green-100 dark:border-slate-700 pb-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2.5 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg">
-                                            <CheckCircle className="h-5 w-5 text-white" />
-                                        </div>
-                                        <CardTitle className="text-xl font-bold dark:text-white">Status</CardTitle>
-                                    </div>
-                                </CardHeader>
-                                <CardContent className="space-y-4 pt-6">
-                                    <div className="space-y-2">
-                                        <Label className="text-base font-semibold dark:text-white">Product Status</Label>
-                                        {isArchived ? (
-                                            // Nếu đã Archived: Hiển thị Badge
-                                            <div className="p-3 bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-lg">
-                                                <Badge variant="destructive" className="text-base w-full justify-center py-2">
-                                                    <Archive className="h-4 w-4 mr-2" />
-                                                    Archived
-                                                </Badge>
-                                            </div>
-                                        ) : (
-                                            <Select
-                                                name="status"
-                                                value={form.status}
-                                                onValueChange={handleSelectChange("status")}
-                                                disabled={isArchived}
-                                            >
-                                                <SelectTrigger className="h-11 border-2 focus:border-green-500 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:focus:border-green-400">
-                                                    <SelectValue placeholder="Select status" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="ACTIVE">
-                                                        <div className="flex items-center gap-2">
-                                                            <CheckCircle className="h-4 w-4 text-green-600" />
-                                                            Active (On sale)
-                                                        </div>
-                                                    </SelectItem>
-                                                    <SelectItem value="INACTIVE">
-                                                        <div className="flex items-center gap-2">
-                                                            <XCircle className="h-4 w-4 text-gray-600" />
-                                                            Inactive (Hidden)
-                                                        </div>
-                                                    </SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        )}
-                                    </div>
-                                </CardContent>
-                            </Card>
-
+                        <div className="md:col-span-2 space-y-6">
                             <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 dark:bg-slate-800 dark:border-slate-700 overflow-hidden">
                                 <div className="h-2 bg-gradient-to-r from-orange-400 via-orange-500 to-amber-500" />
-                                <CardHeader className="bg-gradient-to-br from-orange-50 via-orange-50/50 to-white dark:from-orange-900/20 dark:via-slate-800/50 dark:to-slate-800 border-b border-orange-100 dark:border-slate-700 pb-4">
+                                <CardHeader className="py-4 bg-gradient-to-br from-orange-200 to-orange-50 dark:from-orange-900/20 dark:via-slate-800/50 dark:to-slate-800 border-b border-orange-200 dark:border-slate-700 pb-4">
                                     <div className="flex items-center gap-3">
                                         <div className="p-2.5 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 shadow-lg">
                                             <Tag className="h-5 w-5 text-white" />
                                         </div>
-                                        <CardTitle className="text-xl font-bold dark:text-white">Classification</CardTitle>
+                                        <CardTitle className="text-xl font-bold dark:text-white">Status & Classification</CardTitle>
                                     </div>
                                 </CardHeader>
-                                <CardContent className="space-y-4 pt-6">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="type" className="text-base font-semibold dark:text-white">Product Type</Label>
-                                        <Select
-                                            name="type"
-                                            value={form.type}
-                                            onValueChange={handleSelectChange("type")}
-                                            disabled={isArchived}
-                                        >
-                                            <SelectTrigger className="h-11 border-2 focus:border-orange-500 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:focus:border-orange-400">
-                                                <SelectValue placeholder="Select product type" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="CLUB_ITEM">Club Item</SelectItem>
-                                                <SelectItem value="EVENT_ITEM">Event Item</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    {form.type === "EVENT_ITEM" && (
+                                <CardContent className="space-y-4 pt-0 pb-0">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {/* STATUS CARD */}
                                         <div className="space-y-2">
-                                            <Label htmlFor="eventId" className="text-base font-semibold dark:text-white">Event ID</Label>
-                                            <Input
-                                                id="eventId"
-                                                className="h-11 border-2 focus:border-orange-500 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:placeholder:text-slate-400 dark:focus:border-orange-400"
-                                                name="eventId"
-                                                type="number"
-                                                value={form.eventId || 0}
-                                                onChange={handleChange}
-                                                min={1}
-                                                disabled={isArchived}
-                                            />
+                                            <Label className="text-base font-semibold dark:text-white">Product Status</Label>
+                                            {isArchived ? (
+                                                // Nếu đã Archived: Hiển thị Badge
+                                                <div className="p-3 bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-lg">
+                                                    <Badge variant="destructive" className="text-base w-full justify-center py-2">
+                                                        <Archive className="h-4 w-4 mr-2" />
+                                                        Archived
+                                                    </Badge>
+                                                </div>
+                                            ) : (
+                                                <Select
+                                                    name="status"
+                                                    value={form.status}
+                                                    onValueChange={handleSelectChange("status")}
+                                                    disabled={isArchived}
+                                                >
+                                                    <SelectTrigger className="h-11 border-2 border-slate-200 focus:border-orange-500 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:focus:border-orange-400">
+                                                        <SelectValue placeholder="Select status" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="ACTIVE">
+                                                            <div className="flex items-center gap-2">
+                                                                <CheckCircle className="h-4 w-4 text-green-600" />
+                                                                Active (On sale)
+                                                            </div>
+                                                        </SelectItem>
+                                                        <SelectItem value="INACTIVE">
+                                                            <div className="flex items-center gap-2">
+                                                                <XCircle className="h-4 w-4 text-gray-600" />
+                                                                Inactive (Hidden)
+                                                            </div>
+                                                        </SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            )}
                                         </div>
-                                    )}
+
+                                        {/* TYPE CARD */}
+                                        <div className="space-y-2">
+                                            <Label htmlFor="type" className="text-base font-semibold dark:text-white">Product Type</Label>
+                                            <Select
+                                                name="type"
+                                                value={form.type}
+                                                onValueChange={handleSelectChange("type")}
+                                                disabled={isArchived}
+                                            >
+                                                <SelectTrigger className="h-11 border-2 border-slate-200 focus:border-orange-500 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:focus:border-orange-400">
+                                                    <SelectValue placeholder="Select product type" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="CLUB_ITEM">Club Item</SelectItem>
+                                                    <SelectItem value="EVENT_ITEM">Event Item</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        {form.type === "EVENT_ITEM" && (
+                                            <div className="space-y-2">
+                                                <Label htmlFor="eventId" className="text-base font-semibold dark:text-white">Event ID</Label>
+                                                <Input
+                                                    id="eventId"
+                                                    className="h-11 border-2 focus:border-orange-500 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:placeholder:text-slate-400 dark:focus:border-orange-400"
+                                                    name="eventId"
+                                                    type="number"
+                                                    value={form.eventId || 0}
+                                                    onChange={handleChange}
+                                                    min={1}
+                                                    disabled={isArchived}
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
                                 </CardContent>
                             </Card>
 
                             {/* CARD PRICE & INVENTORY */}
                             <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 dark:bg-slate-800 dark:border-slate-700 overflow-hidden">
                                 <div className="h-2 bg-gradient-to-r from-indigo-400 via-indigo-500 to-blue-500" />
-                                <CardHeader className="bg-gradient-to-br from-indigo-50 via-indigo-50/50 to-white dark:from-indigo-900/20 dark:via-slate-800/50 dark:to-slate-800 border-b border-indigo-100 dark:border-slate-700 pb-4">
+                                <CardHeader className="py-4 bg-gradient-to-br from-indigo-200 to-indigo-50 dark:from-indigo-900/20 dark:via-slate-800/50 dark:to-slate-800 border-b border-indigo-200 dark:border-slate-700 pb-4">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-3">
                                             <div className="p-2.5 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 shadow-lg">
-                                                <DollarSign className="h-5 w-5 text-white" />
+                                                <HandCoins className="h-5 w-5 text-white" />
                                             </div>
-                                            <CardTitle className="text-xl font-bold dark:text-white">Price & Stock</CardTitle>
+                                            {/* <CardTitle className="text-xl font-bold dark:text-white">Price & Stock</CardTitle> */}
+                                            <CardTitle className="text-xl font-bold dark:text-white">Price, Stock & Tags</CardTitle>
                                         </div>
                                         {/* Cụm nút */}
                                         <div className="flex gap-2">
                                             <Button
                                                 variant="outline"
-                                                size="sm"
+                                                size="sm" // size="sm" đã bao gồm h-9 và px-3 (padding ngang)
                                                 onClick={() => setIsHistoryOpen(true)}
                                                 disabled={isArchived}
-                                                className="h-9 w-9 p-0 border-2 hover:bg-indigo-50 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:hover:bg-indigo-900/30"
+                                                // 1. Xóa w-20 và p-0
+                                                // 2. Thêm gap-2 để tạo khoảng cách giữa icon và chữ
+                                                className="border-2 hover:bg-indigo-100 hover:text-indigo-700 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:hover:bg-indigo-900/30 hover:border-indigo-400 flex items-center gap-2"
                                                 title="View Stock History"
                                             >
                                                 <History className="h-4 w-4" />
-                                            </Button>
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => setIsStockDialogOpen(true)}
-                                                disabled={isArchived}
-                                                className="h-9 w-9 p-0 border-2 hover:bg-indigo-50 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:hover:bg-indigo-900/30"
-                                                title="Update Stock"
-                                            >
-                                                <Plus className="h-4 w-4" />
+                                                {/* 3. Đổi <text> thành <span> và rút gọn chữ cho đẹp hơn */}
+                                                <span>Stock History</span>
                                             </Button>
                                         </div>
                                     </div>
                                 </CardHeader>
-                                <CardContent className="space-y-4 pt-6">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="pointCost" className="text-base font-semibold dark:text-white">
-                                            Price (Points) <span className="text-red-500 dark:text-red-400">*</span>
-                                        </Label>
-                                        <Input
-                                            id="pointCost"
-                                            className="h-11 border-2 focus:border-indigo-500 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:placeholder:text-slate-400 dark:focus:border-indigo-400"
-                                            name="pointCost"
-                                            type="text"
-                                            inputMode="numeric"
-                                            value={displayPrice}
-                                            onChange={handleChange}
-                                            disabled={isArchived}
-                                            placeholder="0"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <div className="flex items-center justify-between">
-                                            <Label htmlFor="stockQuantity" className="text-base font-semibold dark:text-white">Current Stock</Label>
-                                            {form.stockQuantity === 0 && (
-                                                <Badge variant="destructive" className="text-xs">Out of Stock</Badge>
-                                            )}
-                                        </div>
-                                        <div className="relative">
+                                <CardContent className="space-y-4 pt-0">
+                                    {/* PRICE & STOCK CARD*/}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {/* CỘT 1: PRICE */}
+                                        <div className="space-y-2">
+                                            <Label htmlFor="pointCost" className="text-base font-semibold dark:text-white">
+                                                Price (Points) <span className="text-red-500 dark:text-red-400">*</span>
+                                            </Label>
                                             <Input
-                                                id="stockQuantity"
-                                                className="h-11 border-2 bg-gray-50 dark:bg-slate-700 text-gray-600 dark:text-slate-300 font-semibold text-lg dark:border-slate-600"
-                                                name="stockQuantity"
-                                                type="number"
-                                                value={form.stockQuantity}
-                                                onChange={() => { }}
-                                                min={0}
-                                                disabled
-                                                readOnly
+                                                id="pointCost"
+                                                className="h-11 border-2 border-slate-200 focus:border-indigo-500 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:placeholder:text-slate-400 dark:focus:border-indigo-400"
+                                                name="pointCost"
+                                                type="text"
+                                                inputMode="numeric"
+                                                value={displayPrice}
+                                                onChange={handleChange}
+                                                disabled={isArchived}
+                                                placeholder="0"
                                             />
-                                            <Package className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-slate-400" />
                                         </div>
-                                        <p className="text-xs text-muted-foreground dark:text-slate-400">Use the + button to update stock</p>
-                                    </div>
-                                </CardContent>
-                            </Card>
 
-                            <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 dark:bg-slate-800 dark:border-slate-700 overflow-hidden">
-                                <div className="h-2 bg-gradient-to-r from-pink-400 via-pink-500 to-rose-500" />
-                                <CardHeader className="bg-gradient-to-br from-pink-50 via-pink-50/50 to-white dark:from-pink-900/20 dark:via-slate-800/50 dark:to-slate-800 border-b border-pink-100 dark:border-slate-700 pb-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2.5 rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 shadow-lg">
-                                            <Tag className="h-5 w-5 text-white" />
+                                        {/* CỘT 2: STOCK */}
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <Label htmlFor="stockQuantity" className="text-base font-semibold dark:text-white">Current Stock</Label>
+                                                {form.stockQuantity === 0 && (
+                                                    <Badge variant="destructive" className="text-xs">Out of Stock</Badge>
+                                                )}
+                                            </div>
+
+                                            {/* BỌC flex MỚI ĐỂ GOM INPUT VÀ BUTTON */}
+                                            <div className="flex items-center gap-2">
+                                                {/* Input field (vẫn giữ relative để chứa icon) */}
+                                                <div className="relative flex-1">
+                                                    <Input
+                                                        id="stockQuantity"
+                                                        className="h-11 border-2 border-slate-200 bg-gray-50 dark:bg-slate-700 text-gray-600 dark:text-slate-300 font-semibold text-lg dark:border-slate-600"
+                                                        name="stockQuantity"
+                                                        type="number"
+                                                        value={form.stockQuantity}
+                                                        onChange={() => { }}
+                                                        min={0}
+                                                        disabled
+                                                        readOnly
+                                                    />
+                                                    <Package className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-slate-400" />
+                                                </div>
+
+                                                {/* Nút Plus được chuyển đến đây */}
+                                                <Button
+                                                    variant="outline"
+                                                    size="icon" // Đổi size thành "icon"
+                                                    onClick={() => setIsStockDialogOpen(true)}
+                                                    disabled={isArchived}
+                                                    className="h-11 w-11 p-0 border-2 hover:bg-indigo-50 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:hover:bg-indigo-900/30 shrink-0"
+                                                    title="Update Stock"
+                                                >
+                                                    <Plus className="h-5 w-5" />
+                                                </Button>
+                                            </div>
                                         </div>
-                                        <CardTitle className="text-xl font-bold dark:text-white">Product Tags</CardTitle>
                                     </div>
-                                </CardHeader>
-                                <CardContent className="pt-6">
-                                    <Input
-                                        placeholder="Search tags..."
-                                        value={tagSearchTerm}
-                                        onChange={(e) => setTagSearchTerm(e.target.value)}
-                                        className="mb-4 h-10 border-2 focus:border-pink-500 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:placeholder:text-slate-400 dark:focus:border-pink-400"
-                                        disabled={isArchived}
-                                    />
+
+                                    <Separator className="my-6 dark:bg-slate-700" />
+                                    {/* TAGS CARD*/}
+                                    <div className="relative mb-4">
+                                        <Input
+                                            placeholder="Search tags..."
+                                            value={tagSearchTerm}
+                                            onChange={(e) => setTagSearchTerm(e.target.value)}
+                                            className="h-10 border-2 border-slate-200 focus:border-indigo-500 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:placeholder:text-slate-400 dark:focus:border-indigo-400 pl-10" // Bỏ mb-4, thêm pl-10
+                                            disabled={isArchived}
+                                        />
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-slate-400" />
+                                    </div>
 
                                     {allTags.length > 0 ? (
                                         <ScrollArea className="h-52 rounded-lg border-2 p-4 bg-gray-50 dark:bg-slate-700/50 dark:border-slate-600">
@@ -1369,8 +1362,8 @@ export default function EditProductPage() {
                                             <TableBody>
                                                 {stockHistory.map((entry) => {
                                                     const change = entry.newStock - entry.oldStock;
-                                                    const changeColor = change > 0 
-                                                        ? "text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-900/30" 
+                                                    const changeColor = change > 0
+                                                        ? "text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-900/30"
                                                         : "text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-900/30";
                                                     const changeSign = change > 0 ? "+" : "";
 
