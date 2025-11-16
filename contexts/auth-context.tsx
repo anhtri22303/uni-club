@@ -107,6 +107,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         student: "student",
         club_manager: "club_leader",
         "club manager": "club_leader",
+        club_leader: "club_leader",
         uni_admin: "uni_staff",
         university_admin: "uni_staff",
         university_staff: "uni_staff",
@@ -122,6 +123,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (normalizedRole) {
       sessionStorage.setItem("userRole", normalizedRole.toUpperCase());
     }
+
+    // Log response structure for debugging
+    console.log("📊 [Auth] Processing login response:", {
+      role: normalizedRole,
+      hasClubId: res.clubId !== undefined,
+      hasClubIds: res.clubIds !== undefined,
+      clubId: res.clubId,
+      clubIds: res.clubIds,
+      requirePasswordChange: res.requirePasswordChange
+    });
 
     setAuth({
       userId: res.userId,

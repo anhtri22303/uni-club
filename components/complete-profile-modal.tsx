@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -39,6 +39,9 @@ export function CompleteProfileModal({
   const [loadingMajors, setLoadingMajors] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [studentCodeError, setStudentCodeError] = useState<string | null>(null)
+  
+  // Track if we should allow closing (only after successful API call)
+  const allowCloseRef = useRef(false)
 
   // Load majors when modal opens
   useEffect(() => {
@@ -152,9 +155,15 @@ export function CompleteProfileModal({
         setSelectedMajorId(null)
         setStudentCodeError(null)
         
-        // Close modal and trigger callback
+        // Allow closing and close modal
+        allowCloseRef.current = true
         onOpenChange(false)
         onComplete()
+        
+        // Reset flag after closing
+        setTimeout(() => {
+          allowCloseRef.current = false
+        }, 100)
       } else {
         throw new Error(response?.message || "Failed to complete profile")
       }
@@ -196,16 +205,19 @@ export function CompleteProfileModal({
   }
 
   return (
-    <Dialog open={open} onOpenChange={(newOpen) => {
-      // Prevent closing the modal by clicking outside or pressing escape
-      // since profile completion is mandatory
-      if (!newOpen && !loading) {
-        // Only allow closing after successful completion or if not loading
-        return
-      }
-    }}>
+    <Dialog 
+      open={open} 
+      onOpenChange={(newOpen) => {
+        // Only allow closing if API call was successful
+        if (!newOpen && !allowCloseRef.current) {
+          return // Block all close attempts unless explicitly allowed
+        }
+        onOpenChange(newOpen)
+      }}
+    >
       <DialogContent 
         className="sm:max-w-md"
+        showCloseButton={false}
         onPointerDownOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
