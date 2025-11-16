@@ -13,6 +13,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 
 import { useFullProfile } from "@/hooks/use-query-hooks"
 import { LoadingSpinner } from "@/components/loading-spinner"
+import { CompleteProfileModal } from "@/components/complete-profile-modal"
+import { useQueryClient } from "@tanstack/react-query"
 
 function getTierInfo(points: number, role: string) {
   // Keep a minimal tier fallback for accessory data, but primary UI is points card.
@@ -80,10 +82,29 @@ export function UserProfileWidget() {
   const { auth, logout } = useAuth()
   const router = useRouter()
   const { sidebarCollapsed, sidebarOpen } = useSidebarContext()
+  const queryClient = useQueryClient()
+  
   // GỌI HOOK `useFullProfile`
   const { data: profile, isLoading: profileLoading } = useFullProfile(true);
   const [selectedWalletId, setSelectedWalletId] = useState<string>("")
   const [widgetCollapsed, setWidgetCollapsed] = useState<boolean>(true)
+  
+  // State for Complete Profile Modal
+  const [showCompleteProfileModal, setShowCompleteProfileModal] = useState(false)
+
+  // Check if profile is incomplete for Club Leader
+  useEffect(() => {
+    if (!profileLoading && profile) {
+      // Check API response: needCompleteProfile = true AND roleName = "CLUB_LEADER"
+      const shouldShowModal = profile.needCompleteProfile === true && profile.roleName === "CLUB_LEADER"
+      
+      if (shouldShowModal) {
+        console.log("🔔 Club Leader profile incomplete (needCompleteProfile=true), showing modal")
+        console.log("📋 Profile data:", { needCompleteProfile: profile.needCompleteProfile, roleName: profile.roleName })
+        setShowCompleteProfileModal(true)
+      }
+    }
+  }, [profile, profileLoading])
 
   if (!auth.role || !auth.user) return null
   // DÙNG useMemo ĐỂ LẤY DỮ LIỆU TỪ `profile` (thay thế cho useEffect)
@@ -338,6 +359,27 @@ export function UserProfileWidget() {
             <LogOut className="h-4 w-4" />
           </Button>
         </div>
+      )}
+      
+      {/* Complete Profile Modal */}
+      {(auth.role === "club_leader" || profile?.roleName === "CLUB_LEADER") && (
+        <CompleteProfileModal
+          open={showCompleteProfileModal}
+          onOpenChange={setShowCompleteProfileModal}
+          profileData={{
+            fullName: profile?.fullName,
+            phone: profile?.phone || undefined,
+            bio: profile?.bio || undefined,
+            avatarUrl: profile?.avatarUrl || undefined,
+            backgroundUrl: profile?.backgroundUrl || undefined
+          }}
+          onComplete={async () => {
+            console.log("✅ Profile completed, refreshing data...")
+            // Invalidate and refetch profile data
+            await queryClient.invalidateQueries({ queryKey: ['fullProfile'] })
+            setShowCompleteProfileModal(false)
+          }}
+        />
       )}
     </div>
   )
