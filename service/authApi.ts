@@ -7,8 +7,10 @@ export interface LoginResponse {
   email: string
   fullName: string
   role: string
-  staff: boolean
-  clubIds?: number[]
+  staff?: boolean
+  clubIds?: number[]  // For STUDENT role
+  clubId?: number     // For CLUB_LEADER role
+  requirePasswordChange?: boolean  // For CLUB_LEADER role
 }
 
 export interface LoginCredentials {
@@ -66,7 +68,9 @@ export interface GoogleAuthResponse {
     userId?: number | string
     role?: string
     staff?: boolean
-    clubIds?: number[]
+    clubIds?: number[]  // For STUDENT role
+    clubId?: number     // For CLUB_LEADER role
+    requirePasswordChange?: boolean  // For CLUB_LEADER role
   }
 }
 
@@ -118,7 +122,9 @@ export const loginWithGoogleToken = async (credentials: { token: string }): Prom
         role: response.data.data?.role,
         userId: response.data.data?.userId,
         staff: response.data.data?.staff,
-        clubIds: response.data.data?.clubIds
+        clubIds: response.data.data?.clubIds,
+        clubId: response.data.data?.clubId,
+        requirePasswordChange: response.data.data?.requirePasswordChange
       }
     }
 
@@ -132,15 +138,32 @@ export const loginWithGoogleToken = async (credentials: { token: string }): Prom
 
     // Transform Google OAuth response to LoginResponse format
     const userData = response.data.data
-    return {
+    const result: LoginResponse = {
       token: userData.token,
       userId: userData.userId || 0, // Backend might not return userId immediately
       email: userData.email,
       fullName: userData.fullName,
       role: userData.role || "student", // Default to student if not provided
-      staff: userData.staff || false,
-      clubIds: userData.clubIds || [],
     }
+    
+    // Add optional fields based on role
+    if (userData.staff !== undefined) result.staff = userData.staff
+    if (userData.clubId !== undefined) result.clubId = userData.clubId
+    if (userData.clubIds !== undefined) result.clubIds = userData.clubIds
+    if (userData.requirePasswordChange !== undefined) result.requirePasswordChange = userData.requirePasswordChange
+    
+    // Log the response structure for debugging
+    console.log("📊 [Google Login] Response structure:", {
+      role: result.role,
+      hasClubId: result.clubId !== undefined,
+      hasClubIds: result.clubIds !== undefined,
+      hasRequirePasswordChange: result.requirePasswordChange !== undefined,
+      clubId: result.clubId,
+      clubIds: result.clubIds,
+      requirePasswordChange: result.requirePasswordChange
+    })
+    
+    return result
   } catch (error: any) {
     // Prepare error details
     const errorDetails = {
