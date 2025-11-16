@@ -678,7 +678,7 @@ export default function EditProductPage() {
                             <Button
                                 variant="outline"
                                 onClick={() => router.back()}
-                                className="hover:bg-white dark:hover:bg-slate-700 dark:bg-slate-800 dark:text-white dark:border-slate-600 transition-colors"
+                                className="hover:bg-white hover:text-black dark:hover:bg-slate-700 dark:bg-slate-800 dark:text-white dark:border-slate-600 transition-colors"
                             >
                                 <ArrowLeft className="h-4 w-4 mr-2" />
                                 Back to Products
