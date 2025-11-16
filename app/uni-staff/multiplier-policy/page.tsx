@@ -22,7 +22,6 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
-// REBUILT: Simplified config as 'levelOrStatus' no longer exists.
 // We base colors/icons on TargetType only, per user request.
 const getStatusConfig = (targetType: PolicyTargetType) => {
   if (targetType === "CLUB") {
@@ -239,7 +238,6 @@ export default function AdminMultiplierPolicyPage() {
     }
   }
 
-  // REBUILT: handleCreatePolicy for NEW API fields
   const handleCreatePolicy = async () => {
     // Validation
     if (!formData.ruleName.trim()) {
@@ -258,22 +256,6 @@ export default function AdminMultiplierPolicyPage() {
       })
       return
     }
-    if (formData.minThreshold < 0 || formData.maxThreshold < 0) {
-      toast({
-        title: "Validation Error",
-        description: "Thresholds must be 0 or greater",
-        variant: "destructive",
-      })
-      return
-    }
-    if (formData.multiplier < 0) {
-      toast({
-        title: "Validation Error",
-        description: "Multiplier must be 0 or greater",
-        variant: "destructive",
-      })
-      return
-    }
 
     // Parse các giá trị string về number
     const minThreshold = parseIntWithCommas(formData.minThresholdString)
@@ -288,6 +270,25 @@ export default function AdminMultiplierPolicyPage() {
       })
       return
     }
+
+    if (formData.conditionType === 'PERCENTAGE' && maxThreshold > 101) {
+      toast({
+        title: "Validation Error",
+        description: "Max Threshold cannot be greater than 101 when the type is PERCENTAGE.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (minThreshold >= maxThreshold) {
+      toast({
+        title: "Validation Error",
+        description: "Min Threshold must be less than Max Threshold.",
+        variant: "destructive",
+      })
+      return
+    }
+
     if (multiplier < 0) {
       toast({
         title: "Validation Error",
@@ -297,7 +298,7 @@ export default function AdminMultiplierPolicyPage() {
       return
     }
 
-    // Get user from session for 'updatedBy'
+    // Get user from session... (Phần còn lại của hàm giữ nguyên)
     const authData = sessionStorage.getItem("uniclub-auth")
     let userId = "system"
     if (authData) {
@@ -314,13 +315,11 @@ export default function AdminMultiplierPolicyPage() {
 
       const payload = {
         ...formData,
-        // Ghi đè bằng các giá trị số đã parse
         minThreshold,
         maxThreshold,
         multiplier,
-        updatedBy: userId, // Set the user
+        updatedBy: userId,
       }
-      // Xóa các trường string tạm thời trước khi gửi
       delete (payload as any).minThresholdString
       delete (payload as any).maxThresholdString
       delete (payload as any).multiplierString
@@ -328,10 +327,7 @@ export default function AdminMultiplierPolicyPage() {
 
       const newPolicy = await createMultiplierPolicy(payload)
 
-      // Reload all policies to get the latest data
       await loadAllPolicies()
-
-      // Reset form and close modal
       setFormData(initialFormData)
       setIsCreateModalOpen(false)
 
@@ -352,6 +348,7 @@ export default function AdminMultiplierPolicyPage() {
       setIsCreating(false)
     }
   }
+
 
   const handleOpenEditModal = (policy: MultiplierPolicy) => {
     setSelectedPolicy(policy);
@@ -402,6 +399,27 @@ export default function AdminMultiplierPolicyPage() {
     if (minThreshold < 0 || maxThreshold < 0) {
       toast({ title: "Validation Error", description: "Thresholds must be 0 or greater", variant: "destructive" }); return;
     }
+
+    {/* --- START EDIT: Thêm validation cho PERCENTAGE --- */ }
+    if (editFormData.conditionType === 'PERCENTAGE' && maxThreshold > 101) {
+      toast({
+        title: "Validation Error",
+        description: "Max Threshold cannot be greater than 101 when the type is PERCENTAGE.",
+        variant: "destructive",
+      })
+      return
+    }
+    {/* --- END EDIT --- */ }
+
+    if (minThreshold >= maxThreshold) {
+      toast({
+        title: "Validation Error",
+        description: "Min Threshold must be less than Max Threshold.",
+        variant: "destructive",
+      })
+      return
+    }
+
     if (multiplier < 0) {
       toast({ title: "Validation Error", description: "Multiplier must be 0 or greater", variant: "destructive" }); return;
     }
@@ -430,10 +448,8 @@ export default function AdminMultiplierPolicyPage() {
         multiplierString: undefined,
       };
 
-      // Gửi TOÀN BỘ đối tượng 'editFormData' đi (với các trường number đã được parse)
       await updateMultiplierPolicy(selectedPolicy.id, payload as MultiplierPolicy);
 
-      // Tải lại
       await loadAllPolicies()
       setIsEditModalOpen(false)
       toast({
@@ -453,6 +469,7 @@ export default function AdminMultiplierPolicyPage() {
       setIsEditing(false)
     }
   }
+
 
   // Handle delete policy
   const handleDeletePolicy = async (policy: MultiplierPolicy) => {
@@ -808,9 +825,20 @@ export default function AdminMultiplierPolicyPage() {
                     <Label htmlFor="conditionType">Condition Type <span className="text-red-500">*</span></Label>
                     <Select
                       value={formData.conditionType}
-                      onValueChange={(value: ConditionType) =>
-                        setFormData({ ...formData, conditionType: value })
-                      }
+                      onValueChange={(value: ConditionType) => {
+                        let currentMax = formData.maxThresholdString;
+                        if (value === 'PERCENTAGE') {
+                          const numValue = parseIntWithCommas(currentMax);
+                          if (numValue > 101) {
+                            currentMax = "101"; // Giới hạn lại
+                          }
+                        }
+                        setFormData({
+                          ...formData,
+                          conditionType: value,
+                          maxThresholdString: currentMax, // Cập nhật lại max
+                        });
+                      }}
                     >
                       <SelectTrigger id="conditionType" className="border-slate-300">
                         <SelectValue placeholder="Select condition type" />
@@ -826,7 +854,7 @@ export default function AdminMultiplierPolicyPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="minThreshold">Min Threshold <span className="text-red-500">*</span></Label>
-                      <Input
+                      {/* <Input
                         id="minThreshold"
                         type="text"
                         inputMode="numeric"
@@ -839,24 +867,82 @@ export default function AdminMultiplierPolicyPage() {
                           })
                         }
                         className="border-slate-300"
-                      />
+                      /> */}
+                      <div className="relative">
+                        <Input
+                          id="minThreshold"
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="0"
+                          value={formData.minThresholdString}
+                          onChange={e =>
+                            setFormData({
+                              ...formData,
+                              minThresholdString: e.target.value.replace(/[^0-9]/g, ''),
+                            })
+                          }
+                          className="border-slate-300 pr-8" // Thêm padding
+                        />
+                        {formData.conditionType === 'PERCENTAGE' && (
+                          <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        )}
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="maxThreshold">Max Threshold <span className="text-red-500">*</span></Label>
-                      <Input
+                      {/* <Input
                         id="maxThreshold"
                         type="text"
                         inputMode="numeric"
                         placeholder="0"
                         value={formData.maxThresholdString}
-                        onChange={e =>
+                        onChange={e => {
+                          const cleanedValue = e.target.value.replace(/[^0-9]/g, '');
+                          let finalValue = cleanedValue;
+
+                          if (formData.conditionType === 'PERCENTAGE') {
+                            const numValue = parseInt(cleanedValue);
+                            if (!isNaN(numValue) && numValue > 101) {
+                              finalValue = "101"; // Giới hạn
+                            }
+                          }
+
                           setFormData({
                             ...formData,
-                            maxThresholdString: e.target.value.replace(/[^0-9]/g, ''),
-                          })
-                        }
+                            maxThresholdString: finalValue,
+                          });
+                        }}
                         className="border-slate-300"
-                      />
+                      /> */}
+                      <div className="relative">
+                        <Input
+                          id="maxThreshold"
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="0"
+                          value={formData.maxThresholdString}
+                          onChange={e => {
+                            const cleanedValue = e.target.value.replace(/[^0-9]/g, '');
+                            let finalValue = cleanedValue;
+
+                            if (formData.conditionType === 'PERCENTAGE') {
+                              const numValue = parseInt(cleanedValue);
+                              if (!isNaN(numValue) && numValue > 101) {
+                                finalValue = "101"; // Giới hạn
+                              }
+                            }
+
+                            setFormData({
+                              ...formData,
+                              maxThresholdString: finalValue,
+                            });
+                          }}
+                          className="border-slate-300 pr-8" // Thêm padding
+                        />
+                        {formData.conditionType === 'PERCENTAGE' && (
+                          <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -1034,12 +1120,26 @@ export default function AdminMultiplierPolicyPage() {
                     </Label>
                     <Select
                       value={editFormData.conditionType}
-                      onValueChange={(value: ConditionType) =>
+                      // onValueChange={(value: ConditionType) =>
+                      //   setEditFormData({
+                      //     ...editFormData,
+                      //     conditionType: value,
+                      //   })
+                      // }
+                      onValueChange={(value: ConditionType) => {
+                        let currentMax = editFormData.maxThresholdString || "";
+                        if (value === 'PERCENTAGE') {
+                          const numValue = parseIntWithCommas(currentMax);
+                          if (numValue > 101) {
+                            currentMax = "101"; // Giới hạn
+                          }
+                        }
                         setEditFormData({
                           ...editFormData,
                           conditionType: value,
-                        })
-                      }
+                          maxThresholdString: currentMax,
+                        });
+                      }}
                     >
                       <SelectTrigger id="editConditionType" className="border-slate-300">
                         <SelectValue placeholder="Select condition type" />
@@ -1057,7 +1157,7 @@ export default function AdminMultiplierPolicyPage() {
                       <Label htmlFor="editMinThreshold">
                         Min Threshold <span className="text-red-500">*</span>
                       </Label>
-                      <Input
+                      {/* <Input
                         id="editMinThreshold"
                         type="text"
                         inputMode="numeric"
@@ -1070,26 +1170,86 @@ export default function AdminMultiplierPolicyPage() {
                           })
                         }
                         className="border-slate-300"
-                      />
+                      /> */}
+                      <div className="relative">
+                        <Input
+                          id="editMinThreshold"
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="0"
+                          value={editFormData.minThresholdString || ""} // Lấy từ trường string mới
+                          onChange={e =>
+                            setEditFormData({
+                              ...editFormData,
+                              minThresholdString: e.target.value.replace(/[^0-9]/g, ''), // Chỉ cho phép số
+                            })
+                          }
+                          className="border-slate-300 pr-8" // Thêm padding
+                        />
+                        {editFormData.conditionType === 'PERCENTAGE' && (
+                          <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        )}
+                      </div>
+
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="editMaxThreshold">
                         Max Threshold <span className="text-red-500">*</span>
                       </Label>
-                      <Input
+                      {/* <Input
                         id="editMaxThreshold"
                         type="text"
                         inputMode="numeric"
                         placeholder="0"
                         value={editFormData.maxThresholdString || ""} // Lấy từ trường string mới
-                        onChange={e =>
+                        onChange={e => {
+                          const cleanedValue = e.target.value.replace(/[^0-9]/g, '');
+                          let finalValue = cleanedValue;
+
+                          if (editFormData.conditionType === 'PERCENTAGE') {
+                            const numValue = parseInt(cleanedValue);
+                            if (!isNaN(numValue) && numValue > 101) {
+                              finalValue = "101"; // Giới hạn
+                            }
+                          }
+
                           setEditFormData({
                             ...editFormData,
-                            maxThresholdString: e.target.value.replace(/[^0-9]/g, ''), // Chỉ cho phép số
-                          })
-                        }
+                            maxThresholdString: finalValue,
+                          });
+                        }}
                         className="border-slate-300"
-                      />
+                      /> */}
+                      <div className="relative">
+                        <Input
+                          id="editMaxThreshold"
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="0"
+                          value={editFormData.maxThresholdString || ""} // Lấy từ trường string mới
+                          onChange={e => {
+                            const cleanedValue = e.target.value.replace(/[^0-9]/g, '');
+                            let finalValue = cleanedValue;
+
+                            if (editFormData.conditionType === 'PERCENTAGE') {
+                              const numValue = parseInt(cleanedValue);
+                              if (!isNaN(numValue) && numValue > 101) {
+                                finalValue = "101"; // Giới hạn
+                              }
+                            }
+
+                            setEditFormData({
+                              ...editFormData,
+                              maxThresholdString: finalValue,
+                            });
+                          }}
+                          className="border-slate-300 pr-8" // Thêm padding
+                        />
+                        {editFormData.conditionType === 'PERCENTAGE' && (
+                          <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        )}
+                      </div>
+
                     </div>
                   </div>
 

@@ -26,36 +26,36 @@ import { History } from "lucide-react"
 
 // Bảng màu theo ngành học (giống như trong clubs page)
 const majorColors: Record<string, string> = {
-  "Software Engineering": "#0052CC",
-  "Artificial Intelligence": "#6A00FF",
-  "Information Assurance": "#243447",
-  "Data Science": "#00B8A9",
-  "Business Administration": "#1E2A78",
-  "Digital Marketing": "#FF3366",
-  "Graphic Design": "#FFC300",
-  "Multimedia Communication": "#FF6B00",
-  "Hospitality Management": "#E1B382",
-  "International Business": "#007F73",
-  "Finance and Banking": "#006B3C",
-  "Japanese Language": "#D80032",
-  "Korean Language": "#5DADEC",
+	"Software Engineering": "#0052CC",
+	"Artificial Intelligence": "#6A00FF",
+	"Information Assurance": "#243447",
+	"Data Science": "#00B8A9",
+	"Business Administration": "#1E2A78",
+	"Digital Marketing": "#FF3366",
+	"Graphic Design": "#FFC300",
+	"Multimedia Communication": "#FF6B00",
+	"Hospitality Management": "#E1B382",
+	"International Business": "#007F73",
+	"Finance and Banking": "#006B3C",
+	"Japanese Language": "#D80032",
+	"Korean Language": "#5DADEC",
 }
 
 // Helper function để lấy màu cho major name
 const getMajorColor = (majorName?: string | null): string => {
-  if (!majorName) return "#E2E8F0"
-  return majorColors[majorName] || "#E2E8F0"
+	if (!majorName) return "#E2E8F0"
+	return majorColors[majorName] || "#E2E8F0"
 }
 
 // Tính màu chữ tương phản (đen/trắng) dựa trên nền HEX
 const getContrastTextColor = (hexColor: string): string => {
-  const hex = hexColor.replace('#', '')
-  const r = parseInt(hex.substring(0, 2), 16)
-  const g = parseInt(hex.substring(2, 4), 16)
-  const b = parseInt(hex.substring(4, 6), 16)
-  // YIQ luma
-  const yiq = (r * 299 + g * 587 + b * 114) / 1000
-  return yiq >= 140 ? "#111827" : "#FFFFFF" // text-slate-900 or white
+	const hex = hexColor.replace('#', '')
+	const r = parseInt(hex.substring(0, 2), 16)
+	const g = parseInt(hex.substring(2, 4), 16)
+	const b = parseInt(hex.substring(4, 6), 16)
+	// YIQ luma
+	const yiq = (r * 299 + g * 587 + b * 114) / 1000
+	return yiq >= 140 ? "#111827" : "#FFFFFF" // text-slate-900 or white
 }
 
 // events will be fetched from the API. The API returns a paginated object
@@ -102,7 +102,7 @@ export default function UniStaffEventRequestsPage() {
 	const getEventStatus = (eventDate: string, eventTime: string | any, eventStatus?: string) => {
 		// Nếu event.status là ONGOING thì bắt buộc phải là "Now"
 		if (eventStatus === "ONGOING") return "Now"
-		
+
 		if (!eventDate) return "Finished"
 		// Get current time in Vietnam timezone (UTC+7)
 		const now = new Date()
@@ -594,6 +594,7 @@ export default function UniStaffEventRequestsPage() {
 									<SelectItem value="all">All Types</SelectItem>
 									<SelectItem value="PUBLIC">Public</SelectItem>
 									<SelectItem value="PRIVATE">Private</SelectItem>
+									<SelectItem value="SPECIAL">Special</SelectItem>
 								</SelectContent>
 							</Select>
 

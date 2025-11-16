@@ -99,7 +99,7 @@ export default function ClubLeaderEventsPage() {
     loadClubs()
   }, [])
 
-  // ✅ USE REACT QUERY for club and events
+  // USE REACT QUERY for club and events
   const { data: managedClub, isLoading: clubLoading } = useClub(userClubId || 0, !!userClubId)
   const { data: rawEvents = [], isLoading: eventsLoading } = useEventsByClubId(userClubId || 0, !!userClubId && viewMode === "hosted")
   const { data: rawCoHostEvents = [], isLoading: coHostEventsLoading } = useEventCoHostByClubId(userClubId || 0, !!userClubId && viewMode === "cohost")
@@ -1249,18 +1249,43 @@ export default function ClubLeaderEventsPage() {
             {/* <ScrollArea className="h-full pr-4"> */}
             <ScrollArea className="flex-1 pr-4 min-h-0">
               <div className="space-y-3" onClick={() => setShowPolicyModal(false)}>
+                <div className="space-y-1.5">
+                  <Label htmlFor="name" className="text-sm">Event Name<span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="Enter event name"
+                    className="h-9 border-slate-300"
+                    required
+                  />
+                </div>
+
                 <div className="grid grid-cols-3 gap-3">
                   <div className="space-y-1.5">
-                    <Label htmlFor="name" className="text-sm">Event Name<span className="text-red-500">*</span>
+                    <Label htmlFor="type" className="text-sm">Type<span className="text-red-500">*</span>
                     </Label>
-                    <Input
-                      id="name"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      placeholder="Enter event name"
-                      className="h-9 border-slate-300"
+                    <Select
+                      value={formData.type}
+                      onValueChange={(value) => {
+                        setFormData({ ...formData, type: value })
+                        // Clear co-host clubs when switching to PRIVATE
+                        if (value === "PRIVATE") {
+                          setSelectedCoHostClubIds([])
+                        }
+                      }}
                       required
-                    />
+                    >
+                      <SelectTrigger id="type" className="h-9 border-slate-300">
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent className="z-[70]">
+                        <SelectItem value="PUBLIC">Public</SelectItem>
+                        <SelectItem value="PRIVATE">Private</SelectItem>
+                        <SelectItem value="SPECIAL">Special</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div className="space-y-1.5">
@@ -1288,30 +1313,7 @@ export default function ClubLeaderEventsPage() {
                     />
                   </div>
 
-                  <div className="space-y-1.5">
-                    <Label htmlFor="type" className="text-sm">Type<span className="text-red-500">*</span>
-                    </Label>
-                    <Select
-                      value={formData.type}
-                      onValueChange={(value) => {
-                        setFormData({ ...formData, type: value })
-                        // Clear co-host clubs when switching to PRIVATE
-                        if (value === "PRIVATE") {
-                          setSelectedCoHostClubIds([])
-                        }
-                      }}
-                      required
-                    >
-                      <SelectTrigger id="type" className="h-9 border-slate-300">
-                        <SelectValue placeholder="Select type" />
-                      </SelectTrigger>
-                      <SelectContent className="z-[70]">
-                        <SelectItem value="PUBLIC">Public</SelectItem>
-                        <SelectItem value="PRIVATE">Private</SelectItem>
-                        <SelectItem value="SPECIAL">Special</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+
                 </div>
 
                 <div className="space-y-1.5">
