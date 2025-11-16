@@ -17,7 +17,7 @@ import { usePointRequests } from "@/service/pointRequestsApi"
 import { usePrefetchClubs, usePrefetchEvents, usePrefetchUsers, useMyMemberApplications, useMyClubApplications, useMyRedeemOrders, useClubApplications, useEvents } from "@/hooks/use-query-hooks"
 import {
   LayoutDashboard, Users, Calendar, Gift, Wallet, History, BarChart3, Building, Home, CheckCircle, FileText, FileUser, HandCoins, CalendarDays, CreditCard,
-  LibraryBig, MessageCircle, MapPin, Percent, ChevronDown, ChevronRight, ListOrdered, FileBarChart, TicketCheck, Tags, MessagesSquare,
+  LibraryBig, MessageCircle, MapPin, Percent, ChevronDown, ChevronRight, ListOrdered, FileBarChart, TicketCheck, Tags, MessagesSquare, Calculator, ClipboardPenLine,
   Package, Truck
 } from "lucide-react"
 
@@ -56,6 +56,7 @@ const navigationConfig = {
     { href: "/club-leader/events", label: "Events", icon: Calendar },
     { href: "/club-leader/attendances", label: "Attendances", icon: CalendarDays },
     { href: "/club-leader/feedbacks", label: "Feedbacks", icon: MessagesSquare },
+    { href: "/club-leader/activities", label: "Member Activities Report", icon: ClipboardPenLine },
     {
       label: "Gifts Management",
       icon: Package,
@@ -116,6 +117,7 @@ const navigationConfig = {
     { href: "/admin/policies", label: "Policies", icon: FileText },
     { href: "/admin/locations", label: "Locations", icon: MapPin },
     { href: "/admin/wallets", label: "Wallets", icon: Wallet },
+    { href: "/admin/tags", label: "Tags", icon: Tags },
 
   ],
 } as const

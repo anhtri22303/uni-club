@@ -539,7 +539,7 @@ export default function ClubAttendancePage() {
         <div className="flex items-start justify-between mb-10">
 
           <div>
-            <h1 className="text-3xl font-bold text-white dark:text-white">Club Member Attendance</h1>
+            <h1 className="text-3xl font-bold dark:text-white">Club Member Attendance</h1>
             {managedClub ? (
               <p className="text-muted-foreground dark:text-slate-400">
                 Members of "<span className="font-semibold text-primary dark:text-blue-400">{managedClub.name}</span>"

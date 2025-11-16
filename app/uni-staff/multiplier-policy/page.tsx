@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
+import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from "@/components/ui/select"
 import {
@@ -16,12 +17,11 @@ import {
 } from "@/service/multiplierPolicyApi"
 import {
   TrendingUp, TrendingDown, Minus, Users, Shield, Target, Calendar, Clock, Award, Percent, CheckCircle2, XCircle, AlertCircle, Sparkles, Plus, X, Activity,
-  Gauge, Layers, FileText,
+  Gauge, Layers, FileText, Search,
 } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
-// REBUILT: Simplified config as 'levelOrStatus' no longer exists.
 // We base colors/icons on TargetType only, per user request.
 const getStatusConfig = (targetType: PolicyTargetType) => {
   if (targetType === "CLUB") {
@@ -84,7 +84,7 @@ const formatNumberWithCommas = (value: number | string | undefined): string => {
   const stringValue = String(value).replace(/,/g, '')
 
   const parts = stringValue.split('.')
-  // Thêm dấu phẩy cho phần nguyên
+  // dấu phẩy cho phần nguyên
   parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',')
 
   return parts.join('.')
@@ -92,8 +92,20 @@ const formatNumberWithCommas = (value: number | string | undefined): string => {
 
 // Hàm này sẽ xóa dấu phẩy và ký tự không phải số (trừ dấu chấm)
 const parseNumber = (value: string): number => {
-  // Cho phép số và dấu chấm (cho multiplier)
-  const cleanedValue = value.replace(/[^0-9.]/g, '')
+  // 1. Thay thế tất cả dấu phẩy (,) bằng dấu chấm (.)
+  const dotValue = value.replace(/,/g, ".")
+  // 2. Xóa tất cả các ký tự không phải là số hoặc dấu chấm
+  const cleanedValue = dotValue.replace(/[^0-9.]/g, "")
+  // 3. Xử lý trường hợp nhập nhiều dấu chấm (ví dụ: "1.500.5" do nhập "1,500.5" hoặc "1.500,5")
+  // Bằng cách giữ lại dấu chấm cuối cùng làm dấu thập phân
+  const parts = cleanedValue.split('.')
+  if (parts.length > 1) {
+    const lastPart = parts.pop() // Lấy phần thập phân (ví dụ: "5")
+    const firstPart = parts.join('') // Ghép phần nguyên lại (ví dụ: "1500")
+    const finalValue = `${firstPart}.${lastPart}`
+    return parseFloat(finalValue) || 0
+  }
+  // 4. Nếu chỉ có một (hoặc không có) dấu chấm, parse bình thường
   return parseFloat(cleanedValue) || 0
 }
 
@@ -131,6 +143,7 @@ export default function AdminMultiplierPolicyPage() {
   const [loadingClub, setLoadingClub] = useState(true)
   const [loadingMember, setLoadingMember] = useState(true)
   const [activeTab, setActiveTab] = useState<PolicyTargetType>("CLUB")
+  const [searchQuery, setSearchQuery] = useState("")
 
   // Create modal state
   // REBUILT: Create modal state for NEW API fields
@@ -138,7 +151,6 @@ export default function AdminMultiplierPolicyPage() {
   const [isCreating, setIsCreating] = useState(false)
 
   const initialFormData: Omit<MultiplierPolicy, "id" | "updatedBy"> & {
-    // Thêm các trường string này
     minThresholdString: string
     maxThresholdString: string
     multiplierString: string
@@ -152,22 +164,19 @@ export default function AdminMultiplierPolicyPage() {
     policyDescription: "",
     multiplier: 1,
     active: true,
-    // Thêm giá trị mặc định cho chuỗi
+    // giá trị mặc định cho chuỗi
     minThresholdString: "0",
     maxThresholdString: "0",
     multiplierString: "1",
   }
 
   // const [formData, setFormData] =
-  //   useState<Omit<MultiplierPolicy, "id" | "updatedBy">>(initialFormData)
   const [formData, setFormData] = useState(initialFormData)
-
   // Edit modal state
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [selectedPolicy, setSelectedPolicy] = useState<MultiplierPolicy | null>(null)
-  // const [editFormData, setEditFormData] = useState<Partial<MultiplierPolicy>>({})
-  // Thêm các trường string để người dùng có thể nhập số thập phân/số có dấu phẩy mà không bị parse ngay lập tức
+  // các trường string để người dùng có thể nhập số thập phân/số có dấu phẩy mà không bị parse ngay lập tức
   const [editFormData, setEditFormData] = useState<Partial<MultiplierPolicy> & {
     minThresholdString?: string
     maxThresholdString?: string
@@ -229,7 +238,6 @@ export default function AdminMultiplierPolicyPage() {
     }
   }
 
-  // REBUILT: handleCreatePolicy for NEW API fields
   const handleCreatePolicy = async () => {
     // Validation
     if (!formData.ruleName.trim()) {
@@ -248,22 +256,6 @@ export default function AdminMultiplierPolicyPage() {
       })
       return
     }
-    if (formData.minThreshold < 0 || formData.maxThreshold < 0) {
-      toast({
-        title: "Validation Error",
-        description: "Thresholds must be 0 or greater",
-        variant: "destructive",
-      })
-      return
-    }
-    if (formData.multiplier < 0) {
-      toast({
-        title: "Validation Error",
-        description: "Multiplier must be 0 or greater",
-        variant: "destructive",
-      })
-      return
-    }
 
     // Parse các giá trị string về number
     const minThreshold = parseIntWithCommas(formData.minThresholdString)
@@ -278,6 +270,25 @@ export default function AdminMultiplierPolicyPage() {
       })
       return
     }
+
+    if (formData.conditionType === 'PERCENTAGE' && maxThreshold > 101) {
+      toast({
+        title: "Validation Error",
+        description: "Max Threshold cannot be greater than 101 when the type is PERCENTAGE.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (minThreshold >= maxThreshold) {
+      toast({
+        title: "Validation Error",
+        description: "Min Threshold must be less than Max Threshold.",
+        variant: "destructive",
+      })
+      return
+    }
+
     if (multiplier < 0) {
       toast({
         title: "Validation Error",
@@ -287,7 +298,7 @@ export default function AdminMultiplierPolicyPage() {
       return
     }
 
-    // Get user from session for 'updatedBy'
+    // Get user from session... (Phần còn lại của hàm giữ nguyên)
     const authData = sessionStorage.getItem("uniclub-auth")
     let userId = "system"
     if (authData) {
@@ -302,19 +313,13 @@ export default function AdminMultiplierPolicyPage() {
     try {
       setIsCreating(true)
 
-      // const payload = {
-      //   ...formData,
-      //   updatedBy: userId, // Set the user
-      // }
       const payload = {
         ...formData,
-        // Ghi đè bằng các giá trị số đã parse
         minThreshold,
         maxThreshold,
         multiplier,
-        updatedBy: userId, // Set the user
+        updatedBy: userId,
       }
-      // Xóa các trường string tạm thời trước khi gửi
       delete (payload as any).minThresholdString
       delete (payload as any).maxThresholdString
       delete (payload as any).multiplierString
@@ -322,10 +327,7 @@ export default function AdminMultiplierPolicyPage() {
 
       const newPolicy = await createMultiplierPolicy(payload)
 
-      // Reload all policies to get the latest data
       await loadAllPolicies()
-
-      // Reset form and close modal
       setFormData(initialFormData)
       setIsCreateModalOpen(false)
 
@@ -346,6 +348,7 @@ export default function AdminMultiplierPolicyPage() {
       setIsCreating(false)
     }
   }
+
 
   const handleOpenEditModal = (policy: MultiplierPolicy) => {
     setSelectedPolicy(policy);
@@ -376,7 +379,6 @@ export default function AdminMultiplierPolicyPage() {
   }
 
   const handleEditPolicy = async () => {
-    // --- BẮT ĐẦU VALIDATION VÀ PARSE ---
     // Kiểm tra và parse các giá trị từ string sang number
     const ruleName = editFormData.ruleName?.trim()
     const activityType = editFormData.activityType?.trim()
@@ -397,10 +399,30 @@ export default function AdminMultiplierPolicyPage() {
     if (minThreshold < 0 || maxThreshold < 0) {
       toast({ title: "Validation Error", description: "Thresholds must be 0 or greater", variant: "destructive" }); return;
     }
+
+    {/* --- START EDIT: Thêm validation cho PERCENTAGE --- */ }
+    if (editFormData.conditionType === 'PERCENTAGE' && maxThreshold > 101) {
+      toast({
+        title: "Validation Error",
+        description: "Max Threshold cannot be greater than 101 when the type is PERCENTAGE.",
+        variant: "destructive",
+      })
+      return
+    }
+    {/* --- END EDIT --- */ }
+
+    if (minThreshold >= maxThreshold) {
+      toast({
+        title: "Validation Error",
+        description: "Min Threshold must be less than Max Threshold.",
+        variant: "destructive",
+      })
+      return
+    }
+
     if (multiplier < 0) {
       toast({ title: "Validation Error", description: "Multiplier must be 0 or greater", variant: "destructive" }); return;
     }
-    // --- KẾT THÚC VALIDATION VÀ PARSE ---
 
     if (!selectedPolicy) {
       toast({
@@ -416,22 +438,18 @@ export default function AdminMultiplierPolicyPage() {
 
       const payload = {
         ...editFormData,
-        // Ghi đè các trường number bằng giá trị đã parse
         ruleName,
         activityType,
         minThreshold,
         maxThreshold,
         multiplier,
-        // Đảm bảo không gửi các trường string tạm thời đi
         minThresholdString: undefined,
         maxThresholdString: undefined,
         multiplierString: undefined,
       };
 
-      // Gửi TOÀN BỘ đối tượng 'editFormData' đi (với các trường number đã được parse)
       await updateMultiplierPolicy(selectedPolicy.id, payload as MultiplierPolicy);
 
-      // Tải lại
       await loadAllPolicies()
       setIsEditModalOpen(false)
       toast({
@@ -452,6 +470,7 @@ export default function AdminMultiplierPolicyPage() {
     }
   }
 
+
   // Handle delete policy
   const handleDeletePolicy = async (policy: MultiplierPolicy) => {
     setPolicyToDelete(policy)
@@ -464,7 +483,7 @@ export default function AdminMultiplierPolicyPage() {
       setIsDeleting(true)
 
       // Call delete API
-      await deleteMutiplierPolicy(policyToDelete.id) // FIXED TYPO
+      await deleteMutiplierPolicy(policyToDelete.id)
 
       // Reload all policies to get the latest data
       await loadAllPolicies()
@@ -509,13 +528,33 @@ export default function AdminMultiplierPolicyPage() {
   const currentStats = activeTab === "CLUB" ? clubStats : memberStats
   const currentPolicies = activeTab === "CLUB" ? clubPolicies : memberPolicies
   const currentLoading = activeTab === "CLUB" ? loadingClub : loadingMember
+  const filteredPolicies = useMemo(() => {
+    const lowerCaseQuery = searchQuery.toLowerCase()
 
-  // Render policy card
-  // REBUILT: renderPolicyCard to use NEW API fields
+    const filterPolicy = (policy: MultiplierPolicy) => {
+      if (!lowerCaseQuery) return true // Hiển thị tất cả nếu ô tìm kiếm trống
+
+      return (
+        // Tìm theo tên luật
+        policy.ruleName.toLowerCase().includes(lowerCaseQuery) ||
+        // Tìm theo loại hoạt động
+        policy.activityType.toLowerCase().includes(lowerCaseQuery) ||
+        // Tìm theo mô tả
+        (policy.policyDescription || "").toLowerCase().includes(lowerCaseQuery)
+      )
+    }
+
+    return {
+      club: clubPolicies.filter(filterPolicy),
+      member: memberPolicies.filter(filterPolicy),
+    }
+  }, [searchQuery, clubPolicies, memberPolicies])
+
+  // renderPolicyCard to use NEW API fields
   const renderPolicyCard = (policy: MultiplierPolicy) => {
-    const statusConfig = getStatusConfig(policy.targetType) // CHANGED: Simplified
+    const statusConfig = getStatusConfig(policy.targetType) //  Simplified
     const MultiplierIcon = getMultiplierIcon(policy.multiplier)
-    const StatusIcon = statusConfig.icon // CHANGED: Simplified
+    const StatusIcon = statusConfig.icon // Simplified
 
     return (
       <Card
@@ -535,90 +574,39 @@ export default function AdminMultiplierPolicyPage() {
                 <StatusIcon className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
               </div>
               <div className="min-w-0">
-                <CardTitle className="text-base sm:text-xl truncate">
+                {/* <CardTitle className="text-base sm:text-xl truncate"> */}
+                <CardTitle className="text-base sm:text-xl">
                   {policy.ruleName}
                 </CardTitle>{" "}
-                {/* CHANGED: policy.ruleName */}
+                {/* policy.ruleName */}
                 <CardDescription className="flex items-center gap-1 sm:gap-2 mt-1 text-xs sm:text-sm">
                   <Activity className="h-3 w-3 flex-shrink-0" />{" "}
-                  {/* CHANGED: Icon */}
-                  <span className="truncate">{policy.activityType}</span>{" "}
-                  {/* CHANGED: policy.activityType */}
+                  {/* Icon */}
+                  {/* <span className="truncate">{policy.activityType}</span>{" "} */}
+                  <span>{policy.activityType}</span>{" "}
+                  {/* policy.activityType */}
                 </CardDescription>
               </div>
-            </div>
-
-            <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-              {/* Multiplier Badge - This is UNCHANGED as 'multiplier' still exists */}
-              <Badge
-                variant="outline"
-                className={`px-2 sm:px-4 py-1 sm:py-2 text-sm sm:text-lg font-bold ${getMultiplierBadgeColor(
-                  policy.multiplier
-                )}`}
-              >
-                <MultiplierIcon className="h-4 w-4 sm:h-5 sm:w-5 sm:mr-1" />
-                <span className="hidden sm:inline">{policy.multiplier}x</span>
-                <span className="sm:hidden">{policy.multiplier}</span>
-              </Badge>
-
-              {/* Delete Button - UNCHANGED */}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                onClick={e => {
-                  e.stopPropagation()
-                  handleDeletePolicy(policy)
-                }}
-              >
-                <X className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              </Button>
             </div>
           </div>
         </CardHeader>
 
-        <CardContent className="space-y-4 pt-4 sm:pt-6">
-          {/* Key Metrics Grid - REBUILT */}
-          <div className="grid grid-cols-2 gap-3 sm:gap-4">
-            {/* Min Threshold */}
-            <div
-              className={`p-3 sm:p-4 rounded-lg border ${statusConfig.borderColor} ${statusConfig.bgColor}`}
+        <CardContent className="space-y-3 pt-3 sm:pt-0">
+          {/* Multiplier Badge */}
+          <div className="flex justify-center">
+            <Badge
+              variant="outline"
+              className={`px-3 sm:px-3 py-1 sm:py-1 text-sm sm:text-2xl font-bold ${getMultiplierBadgeColor(
+                policy.multiplier
+              )}`}
             >
-              <div className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm text-muted-foreground mb-1">
-                <Gauge className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />{" "}
-                {/* CHANGED: Icon */}
-                <span className="truncate">Min Threshold</span>{" "}
-                {/* CHANGED: Text */}
-              </div>
-              <div
-                className={`text-xl sm:text-2xl font-bold ${statusConfig.textColor} truncate`}
-              >
-                {policy.minThreshold}{" "}
-                {/* CHANGED: policy.minThreshold */}
-              </div>
-            </div>
-
-            {/* Max Threshold */}
-            <div
-              className={`p-3 sm:p-4 rounded-lg border ${statusConfig.borderColor} ${statusConfig.bgColor}`}
-            >
-              <div className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm text-muted-foreground mb-1">
-                <Gauge className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />{" "}
-                {/* CHANGED: Icon */}
-                <span className="truncate">Max Threshold</span>{" "}
-                {/* CHANGED: Text */}
-              </div>
-              <div
-                className={`text-xl sm:text-2xl font-bold ${statusConfig.textColor} truncate`}
-              >
-                {policy.maxThreshold}{" "}
-                {/* CHANGED: policy.maxThreshold */}
-              </div>
-            </div>
+              <MultiplierIcon className="h-4 w-4 sm:h-5 sm:w-5 sm:mr-1" />
+              <span className="hidden sm:inline">{policy.multiplier}x</span>
+              <span className="sm:hidden">{policy.multiplier}</span>
+            </Badge>
           </div>
-
-          {/* Points Calculation Visual - UNCHANGED (only depends on multiplier) */}
-          <div className="p-3 sm:p-4 rounded-lg bg-muted/50 border border-muted">
+          {/* Points Calculation Visual - (only depends on multiplier) */}
+          <div className="p-2 sm:p-3 rounded-lg bg-muted/50 border border-muted">
             <div className="flex items-center justify-center gap-2 sm:gap-3 text-xs sm:text-sm flex-wrap">
               <span className="font-mono font-bold truncate">Base Points</span>
               <span className="text-lg sm:text-xl flex-shrink-0">×</span>
@@ -645,9 +633,32 @@ export default function AdminMultiplierPolicyPage() {
             </div>
           </div>
 
-          {/* Metadata - REBUILT */}
-          <div className="space-y-2 pt-2 border-t">
-            {/* ADDED: Condition Type */}
+          {/* Metadata */}
+          <div className="space-y-1.5 pt-3 border-t">
+            {/*  Thresholds */}
+            <div className="flex items-center justify-between text-xs sm:text-sm gap-2">
+              <span className="text-muted-foreground flex items-center gap-1 truncate">
+                <Gauge className="h-3 w-3 flex-shrink-0" />
+                <span className="truncate">Min Threshold</span>
+              </span>
+              <span
+                className={`font-semibold ${statusConfig.textColor} truncate`}
+              >
+                {policy.minThreshold}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-xs sm:text-sm gap-2">
+              <span className="text-muted-foreground flex items-center gap-1 truncate">
+                <Gauge className="h-3 w-3 flex-shrink-0" />
+                <span className="truncate">Max Threshold</span>
+              </span>
+              <span
+                className={`font-semibold ${statusConfig.textColor} truncate`}
+              >
+                {policy.maxThreshold}
+              </span>
+            </div>
+            {/* Condition Type */}
             <div className="flex items-center justify-between text-xs sm:text-sm gap-2">
               <span className="text-muted-foreground flex items-center gap-1 truncate">
                 <Layers className="h-3 w-3 flex-shrink-0" />
@@ -658,7 +669,7 @@ export default function AdminMultiplierPolicyPage() {
               </Badge>
             </div>
 
-            {/* UNCHANGED: Status (active) */}
+            {/* Status (active) */}
             <div className="flex items-center justify-between text-xs sm:text-sm gap-2">
               <span className="text-muted-foreground flex items-center gap-1 truncate">
                 <CheckCircle2 className="h-3 w-3 flex-shrink-0" />
@@ -672,19 +683,19 @@ export default function AdminMultiplierPolicyPage() {
               </Badge>
             </div>
 
-            {/* UNCHANGED: Updated By */}
+            {/* Updated By */}
             <div className="flex items-center justify-between text-xs sm:text-sm gap-2">
               <span className="text-muted-foreground flex items-center gap-1 truncate">
                 <Users className="h-3 w-3 flex-shrink-0" />
                 <span className="truncate">Updated By</span>
               </span>
               <span className="font-mono text-xs bg-muted px-2 py-1 rounded flex-shrink-0 truncate max-w-[150px]">
-                {policy.updatedBy}
+                {policy.updatedBy || "Unknown"}
               </span>
             </div>
           </div>
 
-          {/* Policy ID Badge - UNCHANGED */}
+          {/* Policy ID Badge */}
           <div className="flex items-center justify-center pt-2">
             <Badge variant="outline" className="text-xs truncate">
               Policy ID: #{policy.id}
@@ -712,7 +723,7 @@ export default function AdminMultiplierPolicyPage() {
             </div>
 
             {/* Create Button with Modal */}
-            {/* REBUILT: Create Button with Modal (New Form) */}
+            {/* Create Button with Modal (New Form) */}
             <Dialog
               open={isCreateModalOpen}
               onOpenChange={setIsCreateModalOpen}
@@ -795,14 +806,39 @@ export default function AdminMultiplierPolicyPage() {
                     />
                   </div>
 
+                  {/* Policy Description */}
+                  <div className="space-y-2">
+                    <Label htmlFor="policyDescription">Policy Description</Label>
+                    <Textarea
+                      id="policyDescription"
+                      placeholder="e.g., Applies to clubs with high event participation..."
+                      value={formData.policyDescription || ""}
+                      onChange={e =>
+                        setFormData({ ...formData, policyDescription: e.target.value })
+                      }
+                      className="border-slate-300"
+                    />
+                  </div>
+
                   {/* Condition Type */}
                   <div className="space-y-2">
                     <Label htmlFor="conditionType">Condition Type <span className="text-red-500">*</span></Label>
                     <Select
                       value={formData.conditionType}
-                      onValueChange={(value: ConditionType) =>
-                        setFormData({ ...formData, conditionType: value })
-                      }
+                      onValueChange={(value: ConditionType) => {
+                        let currentMax = formData.maxThresholdString;
+                        if (value === 'PERCENTAGE') {
+                          const numValue = parseIntWithCommas(currentMax);
+                          if (numValue > 101) {
+                            currentMax = "101"; // Giới hạn lại
+                          }
+                        }
+                        setFormData({
+                          ...formData,
+                          conditionType: value,
+                          maxThresholdString: currentMax, // Cập nhật lại max
+                        });
+                      }}
                     >
                       <SelectTrigger id="conditionType" className="border-slate-300">
                         <SelectValue placeholder="Select condition type" />
@@ -818,18 +854,11 @@ export default function AdminMultiplierPolicyPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="minThreshold">Min Threshold <span className="text-red-500">*</span></Label>
-                      <Input
+                      {/* <Input
                         id="minThreshold"
                         type="text"
                         inputMode="numeric"
                         placeholder="0"
-                        // value={formatNumberWithCommas(formData.minThreshold)}
-                        // onChange={e =>
-                        //   setFormData({
-                        //     ...formData,
-                        //     minThreshold: parseIntWithCommas(e.target.value),
-                        //   })
-                        // }
                         value={formData.minThresholdString}
                         onChange={e =>
                           setFormData({
@@ -838,31 +867,82 @@ export default function AdminMultiplierPolicyPage() {
                           })
                         }
                         className="border-slate-300"
-                      />
+                      /> */}
+                      <div className="relative">
+                        <Input
+                          id="minThreshold"
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="0"
+                          value={formData.minThresholdString}
+                          onChange={e =>
+                            setFormData({
+                              ...formData,
+                              minThresholdString: e.target.value.replace(/[^0-9]/g, ''),
+                            })
+                          }
+                          className="border-slate-300 pr-8" // Thêm padding
+                        />
+                        {formData.conditionType === 'PERCENTAGE' && (
+                          <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        )}
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="maxThreshold">Max Threshold <span className="text-red-500">*</span></Label>
-                      <Input
+                      {/* <Input
                         id="maxThreshold"
                         type="text"
                         inputMode="numeric"
                         placeholder="0"
-                        // value={formatNumberWithCommas(formData.maxThreshold)}
-                        // onChange={e =>
-                        //   setFormData({
-                        //     ...formData,
-                        //     maxThreshold: parseIntWithCommas(e.target.value),
-                        //   })
-                        // }
                         value={formData.maxThresholdString}
-                        onChange={e =>
+                        onChange={e => {
+                          const cleanedValue = e.target.value.replace(/[^0-9]/g, '');
+                          let finalValue = cleanedValue;
+
+                          if (formData.conditionType === 'PERCENTAGE') {
+                            const numValue = parseInt(cleanedValue);
+                            if (!isNaN(numValue) && numValue > 101) {
+                              finalValue = "101"; // Giới hạn
+                            }
+                          }
+
                           setFormData({
                             ...formData,
-                            maxThresholdString: e.target.value.replace(/[^0-9]/g, ''),
-                          })
-                        }
+                            maxThresholdString: finalValue,
+                          });
+                        }}
                         className="border-slate-300"
-                      />
+                      /> */}
+                      <div className="relative">
+                        <Input
+                          id="maxThreshold"
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="0"
+                          value={formData.maxThresholdString}
+                          onChange={e => {
+                            const cleanedValue = e.target.value.replace(/[^0-9]/g, '');
+                            let finalValue = cleanedValue;
+
+                            if (formData.conditionType === 'PERCENTAGE') {
+                              const numValue = parseInt(cleanedValue);
+                              if (!isNaN(numValue) && numValue > 101) {
+                                finalValue = "101"; // Giới hạn
+                              }
+                            }
+
+                            setFormData({
+                              ...formData,
+                              maxThresholdString: finalValue,
+                            });
+                          }}
+                          className="border-slate-300 pr-8" // Thêm padding
+                        />
+                        {formData.conditionType === 'PERCENTAGE' && (
+                          <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -875,13 +955,6 @@ export default function AdminMultiplierPolicyPage() {
                       inputMode="decimal"
                       step="0.1"
                       placeholder="1.0"
-                      // value={formatNumberWithCommas(formData.multiplier)}
-                      // onChange={e =>
-                      //   setFormData({
-                      //     ...formData,
-                      //     multiplier: parseNumber(e.target.value),
-                      //   })
-                      // }
                       value={formData.multiplierString}
                       onChange={e =>
                         setFormData({
@@ -889,7 +962,7 @@ export default function AdminMultiplierPolicyPage() {
                           multiplierString: e.target.value.replace(/[^0-9,.]/g, ''),
                         })
                       }
-                      className="border-slate-300"
+                      className="border-slate-300 w-full sm:w-1/3"
                     />
                     <p className="text-xs text-muted-foreground">
                       e.g., 1.5 = +50%, 0.8 = -20%, 1.0 = no change
@@ -928,7 +1001,6 @@ export default function AdminMultiplierPolicyPage() {
           </div>
 
           {/* Edit Policy Modal */}
-          {/* REBUILT: Edit Policy Modal (FULL EDIT MODE) */}
           <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
             <DialogContent className="sm:max-w-[500px]">
               <DialogHeader>
@@ -944,12 +1016,12 @@ export default function AdminMultiplierPolicyPage() {
               {selectedPolicy && editFormData && (
                 <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-6">
                   {/* Policy ID (display only) */}
-                  <div className="space-y-2">
+                  <div className="space-y-2 w-full sm:w-1/3">
                     <Label>Policy ID</Label>
                     <Input
                       value={selectedPolicy.id}
                       disabled
-                      className="bg-muted cursor-not-allowed"
+                      className="bg-muted cursor-not-allowed border-slate-400"
                     />
                   </div>
 
@@ -964,7 +1036,7 @@ export default function AdminMultiplierPolicyPage() {
                         setEditFormData({ ...editFormData, targetType: value })
                       }
                     >
-                      <SelectTrigger id="editTargetType">
+                      <SelectTrigger id="editTargetType" className="border-slate-300">
                         <SelectValue placeholder="Select target type" />
                       </SelectTrigger>
                       <SelectContent>
@@ -999,6 +1071,7 @@ export default function AdminMultiplierPolicyPage() {
                           ruleName: e.target.value,
                         })
                       }
+                      className="border-slate-300"
                     />
                   </div>
 
@@ -1017,6 +1090,26 @@ export default function AdminMultiplierPolicyPage() {
                           activityType: e.target.value,
                         })
                       }
+                      className="border-slate-300"
+                    />
+                  </div>
+
+                  {/* Policy Description (editable) */}
+                  <div className="space-y-2">
+                    <Label htmlFor="editPolicyDescription">
+                      Policy Description
+                    </Label>
+                    <Textarea
+                      id="editPolicyDescription"
+                      placeholder="e.g., Applies to clubs with high event participation..."
+                      value={editFormData.policyDescription || ""}
+                      onChange={e =>
+                        setEditFormData({
+                          ...editFormData,
+                          policyDescription: e.target.value,
+                        })
+                      }
+                      className="border-slate-300"
                     />
                   </div>
 
@@ -1027,14 +1120,28 @@ export default function AdminMultiplierPolicyPage() {
                     </Label>
                     <Select
                       value={editFormData.conditionType}
-                      onValueChange={(value: ConditionType) =>
+                      // onValueChange={(value: ConditionType) =>
+                      //   setEditFormData({
+                      //     ...editFormData,
+                      //     conditionType: value,
+                      //   })
+                      // }
+                      onValueChange={(value: ConditionType) => {
+                        let currentMax = editFormData.maxThresholdString || "";
+                        if (value === 'PERCENTAGE') {
+                          const numValue = parseIntWithCommas(currentMax);
+                          if (numValue > 101) {
+                            currentMax = "101"; // Giới hạn
+                          }
+                        }
                         setEditFormData({
                           ...editFormData,
                           conditionType: value,
-                        })
-                      }
+                          maxThresholdString: currentMax,
+                        });
+                      }}
                     >
-                      <SelectTrigger id="editConditionType">
+                      <SelectTrigger id="editConditionType" className="border-slate-300">
                         <SelectValue placeholder="Select condition type" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1050,7 +1157,7 @@ export default function AdminMultiplierPolicyPage() {
                       <Label htmlFor="editMinThreshold">
                         Min Threshold <span className="text-red-500">*</span>
                       </Label>
-                      <Input
+                      {/* <Input
                         id="editMinThreshold"
                         type="text"
                         inputMode="numeric"
@@ -1062,25 +1169,87 @@ export default function AdminMultiplierPolicyPage() {
                             minThresholdString: e.target.value.replace(/[^0-9]/g, ''), // Chỉ cho phép số
                           })
                         }
-                      />
+                        className="border-slate-300"
+                      /> */}
+                      <div className="relative">
+                        <Input
+                          id="editMinThreshold"
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="0"
+                          value={editFormData.minThresholdString || ""} // Lấy từ trường string mới
+                          onChange={e =>
+                            setEditFormData({
+                              ...editFormData,
+                              minThresholdString: e.target.value.replace(/[^0-9]/g, ''), // Chỉ cho phép số
+                            })
+                          }
+                          className="border-slate-300 pr-8" // Thêm padding
+                        />
+                        {editFormData.conditionType === 'PERCENTAGE' && (
+                          <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        )}
+                      </div>
+
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="editMaxThreshold">
                         Max Threshold <span className="text-red-500">*</span>
                       </Label>
-                      <Input
+                      {/* <Input
                         id="editMaxThreshold"
                         type="text"
                         inputMode="numeric"
                         placeholder="0"
                         value={editFormData.maxThresholdString || ""} // Lấy từ trường string mới
-                        onChange={e =>
+                        onChange={e => {
+                          const cleanedValue = e.target.value.replace(/[^0-9]/g, '');
+                          let finalValue = cleanedValue;
+
+                          if (editFormData.conditionType === 'PERCENTAGE') {
+                            const numValue = parseInt(cleanedValue);
+                            if (!isNaN(numValue) && numValue > 101) {
+                              finalValue = "101"; // Giới hạn
+                            }
+                          }
+
                           setEditFormData({
                             ...editFormData,
-                            maxThresholdString: e.target.value.replace(/[^0-9]/g, ''), // Chỉ cho phép số
-                          })
-                        }
-                      />
+                            maxThresholdString: finalValue,
+                          });
+                        }}
+                        className="border-slate-300"
+                      /> */}
+                      <div className="relative">
+                        <Input
+                          id="editMaxThreshold"
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="0"
+                          value={editFormData.maxThresholdString || ""} // Lấy từ trường string mới
+                          onChange={e => {
+                            const cleanedValue = e.target.value.replace(/[^0-9]/g, '');
+                            let finalValue = cleanedValue;
+
+                            if (editFormData.conditionType === 'PERCENTAGE') {
+                              const numValue = parseInt(cleanedValue);
+                              if (!isNaN(numValue) && numValue > 101) {
+                                finalValue = "101"; // Giới hạn
+                              }
+                            }
+
+                            setEditFormData({
+                              ...editFormData,
+                              maxThresholdString: finalValue,
+                            });
+                          }}
+                          className="border-slate-300 pr-8" // Thêm padding
+                        />
+                        {editFormData.conditionType === 'PERCENTAGE' && (
+                          <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        )}
+                      </div>
+
                     </div>
                   </div>
 
@@ -1102,7 +1271,7 @@ export default function AdminMultiplierPolicyPage() {
                           multiplierString: e.target.value.replace(/[^0-9,.]/g, ''), // Cho phép số, dấu phẩy, dấu chấm
                         })
                       }
-                      className="font-mono text-lg"
+                      className="font-mono text-lg border-slate-300 w-full sm:w-1/3"
                     />
                   </div>
 
@@ -1154,37 +1323,55 @@ export default function AdminMultiplierPolicyPage() {
                 </div>
               )}
 
-              <DialogFooter>
+              <DialogFooter className="sm:justify-between">
                 <Button
-                  variant="outline"
-                  onClick={() => setIsEditModalOpen(false)}
-                  disabled={isEditing}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleEditPolicy}
-                  disabled={isEditing}
+                  variant="destructive"
                   className="gap-2"
+                  disabled={isEditing} // Vẫn disable khi đang editing
+                  onClick={() => {
+                    if (selectedPolicy) {
+                      handleDeletePolicy(selectedPolicy)
+                      setIsEditModalOpen(false) // Đóng modal edit
+                    }
+                  }}
                 >
-                  {isEditing ? (
-                    <>
-                      <span className="animate-spin">⏳</span>
-                      Updating...
-                    </>
-                  ) : (
-                    <>
-                      <Percent className="h-4 w-4" />
-                      Save Changes
-                    </>
-                  )}
+                  <X className="h-4 w-4" />
+                  Delete Policy
                 </Button>
+
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsEditModalOpen(false)}
+                    disabled={isEditing}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleEditPolicy}
+                    disabled={isEditing}
+                    className="gap-2"
+                  >
+                    {isEditing ? (
+                      <>
+                        <span className="animate-spin">⏳</span>
+                        Updating...
+                      </>
+                    ) : (
+                      <>
+                        <Percent className="h-4 w-4" />
+                        Save Changes
+                      </>
+                    )}
+                  </Button>
+                </div>
               </DialogFooter>
+
             </DialogContent>
           </Dialog>
 
           {/* Delete Confirmation Dialog */}
-          {/* REBUILT: Delete Confirmation Dialog (Updated fields) */}
+          {/* Delete Confirmation Dialog (Updated fields) */}
           <Dialog
             open={!!policyToDelete}
             onOpenChange={() => setPolicyToDelete(null)}
@@ -1287,12 +1474,12 @@ export default function AdminMultiplierPolicyPage() {
           {/* Statistics Cards */}
           <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
             {/* Total Policies */}
-            <Card className="border-2 border-blue-200 dark:border-blue-800">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20">
+            <Card className="border-2 border-blue-200 dark:border-blue-800 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-0">
                 <CardTitle className="text-sm font-medium truncate">Total Policies</CardTitle>
                 <Target className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
               </CardHeader>
-              <CardContent className="pt-6 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20">
+              <CardContent className="pt-0">
                 <div className="text-2xl sm:text-3xl font-bold text-blue-700 dark:text-blue-300 truncate">
                   {currentStats.totalPolicies}
                 </div>
@@ -1303,12 +1490,12 @@ export default function AdminMultiplierPolicyPage() {
             </Card>
 
             {/* Average Multiplier */}
-            <Card className="border-2 border-green-200 dark:border-green-800">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20">
+            <Card className="border-2 border-green-200 dark:border-green-800 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-0">
                 <CardTitle className="text-sm font-medium truncate">Average Multiplier</CardTitle>
                 <Percent className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0" />
               </CardHeader>
-              <CardContent className="pt-6 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20">
+              <CardContent className="pt-0">
                 <div className="text-2xl sm:text-3xl font-bold text-green-700 dark:text-green-300 truncate">
                   {currentStats.avgMultiplier.toFixed(2)}x
                 </div>
@@ -1319,12 +1506,12 @@ export default function AdminMultiplierPolicyPage() {
             </Card>
 
             {/* Max Multiplier */}
-            <Card className="border-2 border-purple-200 dark:border-purple-800">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20">
+            <Card className="border-2 border-purple-200 dark:border-purple-800 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-0">
                 <CardTitle className="text-sm font-medium truncate">Highest Multiplier</CardTitle>
                 <Award className="h-4 w-4 text-purple-600 dark:text-purple-400 flex-shrink-0" />
               </CardHeader>
-              <CardContent className="pt-6 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20">
+              <CardContent className="pt-0">
                 <div className="text-2xl sm:text-3xl font-bold text-purple-700 dark:text-purple-300 truncate">
                   {currentStats.maxMultiplier.toFixed(1)}x
                 </div>
@@ -1337,23 +1524,61 @@ export default function AdminMultiplierPolicyPage() {
 
           {/* Policy Type Tabs */}
           <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as PolicyTargetType)}>
-            <TabsList className="grid w-full max-w-md grid-cols-2">
-              <TabsTrigger value="CLUB" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
-                <Shield className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="truncate">Club Policies</span>
-                <Badge variant="secondary" className="ml-1 text-xs flex-shrink-0">{clubPolicies.length}</Badge>
-              </TabsTrigger>
-              <TabsTrigger value="MEMBER" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
-                <Users className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="truncate">Member Policies</span>
-                <Badge variant="secondary" className="ml-1 text-xs flex-shrink-0">{memberPolicies.length}</Badge>
-              </TabsTrigger>
-            </TabsList>
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              {/* Tabs List */}
+              {/* <TabsList className="grid w-full sm:w-auto sm:max-w-md grid-cols-2"> */}
+              <TabsList className="grid w-full sm:w-2/5 sm:max-w-2xl grid-cols-2">
+                <TabsTrigger value="CLUB" className="group flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                  <Shield className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                  <span className="truncate">Club Policies</span>
+                  {/* Cập nhật số lượng hiển thị */}
+                  <Badge variant="secondary"
+                    // className="ml-1 text-xs flex-shrink-0"
+                    className="ml-1 text-xs flex-shrink-0 group-data-[state=active]:bg-white group-data-[state=active]:text-black"
+                  >{filteredPolicies.club.length}
+                  </Badge>
+                </TabsTrigger>
+
+                <TabsTrigger value="MEMBER" className=" group flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                  <Users className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                  <span className="truncate">Member Policies</span>
+                  {/* Cập nhật số lượng hiển thị */}
+                  <Badge variant="secondary"
+                    // className="ml-1 text-xs flex-shrink-0"
+                    className="ml-1 text-xs flex-shrink-0 group-data-[state=active]:bg-white group-data-[state=active]:text-black"
+                  >{filteredPolicies.member.length}
+                  </Badge>
+                </TabsTrigger>
+              </TabsList>
+
+              {/* Thanh Tìm Kiếm Mới */}
+              {/* <div className="relative w-full sm:w-auto sm:max-w-xs"> */}
+              <div className="relative w-full sm:w-1/3">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by name, activity..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 pr-10 w-full border-slate-300 bg-white"
+                />
+                {/* Nút Clear (X) */}
+                {searchQuery && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 h-8 w-8 rounded-full"
+                    onClick={() => setSearchQuery("")}
+                  >
+                    <X className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                )}
+              </div>
+            </div>
 
             {/* Club Policies Tab */}
             <TabsContent value="CLUB" className="space-y-4 mt-6">
               {loadingClub ? (
-                <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
                   {[...Array(4)].map((_, i) => (
                     <Card key={i}>
                       <CardHeader>
@@ -1366,19 +1591,21 @@ export default function AdminMultiplierPolicyPage() {
                     </Card>
                   ))}
                 </div>
-              ) : clubPolicies.length === 0 ? (
+              ) : filteredPolicies.club.length === 0 ? (
                 <Card>
                   <CardContent className="flex flex-col items-center justify-center py-12">
                     <Shield className="h-12 w-12 text-muted-foreground mb-4" />
-                    <p className="text-base sm:text-lg font-medium">No Club Policies Found</p>
+                    <p className="text-base sm:text-lg font-medium">
+                      {searchQuery ? "No policies match your search" : "No Club Policies Found"}
+                    </p>
                     <p className="text-xs sm:text-sm text-muted-foreground text-center px-4">
-                      No multiplier policies are configured for clubs yet.
+                      {searchQuery ? "Try searching for a different name or activity type." : "No multiplier policies are configured for clubs yet."}
                     </p>
                   </CardContent>
                 </Card>
               ) : (
-                <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-                  {clubPolicies
+                <div className="grid gap-4 sm:gap-6 [grid-template-columns:repeat(auto-fill,minmax(20rem,1fr))]">
+                  {filteredPolicies.club
                     .sort((a, b) => b.multiplier - a.multiplier) // Sort by multiplier descending
                     .map(policy => renderPolicyCard(policy))}
                 </div>
@@ -1388,7 +1615,7 @@ export default function AdminMultiplierPolicyPage() {
             {/* Member Policies Tab */}
             <TabsContent value="MEMBER" className="space-y-4 mt-6">
               {loadingMember ? (
-                <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
                   {[...Array(4)].map((_, i) => (
                     <Card key={i}>
                       <CardHeader>
@@ -1401,28 +1628,31 @@ export default function AdminMultiplierPolicyPage() {
                     </Card>
                   ))}
                 </div>
-              ) : memberPolicies.length === 0 ? (
+              ) : filteredPolicies.member.length === 0 ? (
                 <Card>
                   <CardContent className="flex flex-col items-center justify-center py-12">
                     <Users className="h-12 w-12 text-muted-foreground mb-4" />
-                    <p className="text-base sm:text-lg font-medium">No Member Policies Found</p>
+                    <p className="text-base sm:text-lg font-medium">
+                      {searchQuery ? "No policies match your search" : "No Member Policies Found"}
+                    </p>
                     <p className="text-xs sm:text-sm text-muted-foreground text-center px-4">
-                      No multiplier policies are configured for members yet.
+                      {searchQuery ? "Try searching for a different name or activity type." : "No multiplier policies are configured for members yet."}
                     </p>
                   </CardContent>
                 </Card>
               ) : (
-                <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-                  {memberPolicies
+                <div className="grid gap-4 sm:gap-6 [grid-template-columns:repeat(auto-fill,minmax(20rem,1fr))]">
+                  {filteredPolicies.member
                     .sort((a, b) => b.multiplier - a.multiplier) // Sort by multiplier descending
                     .map(policy => renderPolicyCard(policy))}
                 </div>
+
               )}
             </TabsContent>
           </Tabs>
 
           {/* Info Card */}
-          {/* REBUILT: Info Card (Updated text) */}
+          {/* Info Card (Updated text) */}
           <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
@@ -1453,14 +1683,12 @@ export default function AdminMultiplierPolicyPage() {
                 </li>
               </ul>
               <p className="pt-2">
-                <strong>Min/Max Thresholds</strong> define the range for which
-                this policy rule applies (e.g., applies when activity count is
-                between 10 and 20).
+                <strong>Min/Max Thresholds</strong> define the range for which this policy rule applies (e.g., applies when activity count is between 10 and 20).
               </p>
             </CardContent>
           </Card>
         </div>
       </AppShell>
-    </ProtectedRoute>
+    </ProtectedRoute >
   )
 }
