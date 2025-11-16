@@ -26,6 +26,7 @@ import { getFeedbackByEventId, Feedback } from "@/service/feedbackApi"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { TimeExtensionModal } from "@/components/time-extension-modal"
+import AddStaffModal from "@/components/add-staff-modal"
 interface EventDetail {
   id: number
   name: string
@@ -86,6 +87,9 @@ export default function EventDetailPage() {
   // Time extension modal state
   const [showTimeExtensionModal, setShowTimeExtensionModal] = useState(false)
   const [isExtendingTime, setIsExtendingTime] = useState(false)
+
+  // Add Staff modal state
+  const [showAddStaffModal, setShowAddStaffModal] = useState(false)
 
   // QR Code states
   const [showQrModal, setShowQrModal] = useState(false)
@@ -825,6 +829,16 @@ export default function EventDetailPage() {
                   </Button>
                 </>
               )}
+              {/* Show List Staff button for events with PENDING_COCLUB, PENDING_UNISTAFF, APPROVED, ONGOING, or COMPLETED status */}
+              {(event.status === "PENDING_COCLUB" || event.status === "PENDING_UNISTAFF" || event.status === "APPROVED" || event.status === "ONGOING" || event.status === "COMPLETED") && (
+                <Button
+                  onClick={() => setShowAddStaffModal(true)}
+                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                >
+                  <Users className="h-4 w-4 mr-2" />
+                  List Staff
+                </Button>
+              )}
               {/* Show More Time and End Event buttons only when status is ONGOING */}
               {event.status === "ONGOING" && (
                 <>
@@ -1372,6 +1386,17 @@ export default function EventDetailPage() {
             currentEndTime={timeObjectToString(event.endTime)}
             eventName={event.name}
             isSubmitting={isExtendingTime}
+          />
+        )}
+
+        {/* Add Staff Modal */}
+        {event && (
+          <AddStaffModal
+            isOpen={showAddStaffModal}
+            onClose={() => setShowAddStaffModal(false)}
+            eventId={event.id}
+            clubId={event.hostClub.id}
+            eventStatus={event.status}
           />
         )}
       </AppShell>

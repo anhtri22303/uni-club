@@ -172,8 +172,7 @@ export function UserProfileWidget() {
   return (
     <div
       id="profile-widget-container" // <-- THÊM ID NÀY
-      // className={`fixed bottom-4 left-4 z-50 bg-background border border-border rounded-lg shadow-lg transition-all duration-300
-      className={`fixed bottom-4 left-4 z-50 bg-white border border-border rounded-2xl shadow-lg transition-all duration-300
+      className={`fixed bottom-4 left-4 z-50 bg-white dark:bg-gray-900 border border-border rounded-2xl shadow-lg transition-all duration-300
 
       ${isHidden ? "opacity-0 -translate-x-full pointer-events-none" : "opacity-100 translate-x-0"}
       pt-0 pb-4 px-4 space-y-3 ${widgetCollapsed ? "w-auto" : "w-[240px] max-w-[240px]"} block`}
