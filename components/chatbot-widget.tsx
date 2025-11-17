@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { MessageCircle, X, Send, Maximize2, Minimize2 } from "lucide-react"
+import { MessageCircle, X, Send, Maximize2, Minimize2, ShieldCheck } from "lucide-react"
 import { ChatbotPromptMenu } from "@/components/chatbot-prompt-menu"
+import { PolicyModal } from "@/components/policy-modal"
 import axios from "axios"
 import { fetchEvent, getEventByClubId, type Event } from "@/service/eventApi"
 import { fetchClub, getClubMemberCount } from "@/service/clubApi"
@@ -62,6 +63,7 @@ export function ChatbotWidget() {
   const [userRole, setUserRole] = useState<string>("")
   const [clubIds, setClubIds] = useState<number[]>([])
   const [activePrompts, setActivePrompts] = useState<Record<string, string>>(STUDENT_PROMPTS)
+  const [isPolicyOpen, setIsPolicyOpen] = useState(false)
 
   // Load user role and clubIds from sessionStorage
   useEffect(() => {
@@ -144,7 +146,21 @@ export function ChatbotWidget() {
 
       const inputLower = inputValue.toLowerCase()
 
-      let systemContent = "You are an AI assistant for a university club and event management system. Please respond concisely, friendly, and helpful. Format your responses clearly:\n- Use line breaks to separate different points\n- Use numbered lists (1., 2., 3.) for sequential items\n- Use bullet points (•) for related items\n- Keep paragraphs short and easy to read\n- Put important information on separate lines"
+      let systemContent = `You are UniBot, an AI assistant EXCLUSIVELY for the university club and event management system. 
+
+STRICT RULES:
+1. ONLY answer questions related to clubs, events, students, memberships, budgets, applications, gifts/products, and other features within this platform.
+2. If asked about topics OUTSIDE this system (weather, general knowledge, other universities, unrelated topics), respond with: "I'm sorry, I can only assist with questions related to the university club and event management system. Please ask about clubs, events, memberships, budgets, or other platform features."
+3. Do NOT provide information about topics unrelated to this platform.
+
+Response Format:
+- Use line breaks to separate different points
+- Use numbered lists (1., 2., 3.) for sequential items
+- Use bullet points (•) for related items
+- Keep paragraphs short and easy to read
+- Put important information on separate lines
+
+Please respond concisely, friendly, and helpful ONLY for platform-related questions.`
       
       let userContent = userMessage.text
 
@@ -153,11 +169,11 @@ export function ChatbotWidget() {
       if (inputLower.includes("clubs by major") || (inputLower.includes("club") && inputLower.includes("major"))) {
         try {
           const clubsResponse = await fetchClub({ page: 0, size: 500, sort: ["name"] })
-          const clubs = clubsResponse.content || []
+          const clubs = Array.isArray(clubsResponse) ? clubsResponse : (clubsResponse as any).data || []
           
           // Group clubs by majorName
           const clubsByMajor: Record<string, any[]> = {}
-          clubs.forEach(club => {
+          clubs.forEach((club: any) => {
             const majorName = club.majorName || "Unknown Major"
             if (!clubsByMajor[majorName]) {
               clubsByMajor[majorName] = []
@@ -210,7 +226,7 @@ Please present all clubs organized by their major, with each major's clubs sorte
       else if (inputLower.includes("create club")) {
         try {
           const clubsResponse = await fetchClub({ page: 0, size: 500, sort: ["name"] })
-          const clubs = clubsResponse.content || []
+          const clubs = Array.isArray(clubsResponse) ? clubsResponse : (clubsResponse as any).data || []
 
           systemContent = `You are an AI assistant for a university club and event management system.
 When suggesting a new club, provide ONE suggestion in this EXACT format:
@@ -238,12 +254,18 @@ When suggesting a new club, provide ONE suggestion in this EXACT format:
 
 Make sure the club is UNIQUE and doesn't overlap with existing clubs.`
 
-          userContent = `${userMessage.text}
+          interface ClubSummary {
+            name: string
+            description: string
+            majorName: string
+          }
 
-EXISTING CLUBS:
-${JSON.stringify(clubs.map(c => ({ name: c.name, description: c.description, majorName: c.majorName })), null, 2)}
+                    userContent = `${userMessage.text}
 
-Please suggest a NEW, UNIQUE club that would fill a gap in the current club offerings.`
+          EXISTING CLUBS:
+          ${JSON.stringify(clubs.map((c: any): ClubSummary => ({ name: c.name, description: c.description, majorName: c.majorName })), null, 2)}
+
+          Please suggest a NEW, UNIQUE club that would fill a gap in the current club offerings.`
         } catch (error) {
           console.error("Error fetching clubs:", error)
         }
@@ -504,12 +526,29 @@ Please analyze this data and suggest events for the current month (${currentMont
       else if (inputLower.includes("number of members") || (inputLower.includes("top") && inputLower.includes("members"))) {
         try {
           const clubsResponse = await fetchClub({ page: 0, size: 500, sort: ["name"] })
-          const clubs = clubsResponse.content || []
+          const clubs = Array.isArray(clubsResponse) ? clubsResponse : (clubsResponse as any).data || []
 
           // Fetch member counts for each club
-          const clubsWithCounts = await Promise.all(
-            clubs.map(async (club) => {
-              const counts = await getClubMemberCount(club.id)
+          interface ClubMemberCount {
+            activeMemberCount: number
+            approvedEvents: number
+          }
+
+          interface ClubWithCounts {
+            id: number
+            name: string
+            description?: string
+            majorName?: string
+            leaderName?: string
+            memberCount?: number
+            activeMemberCount: number
+            approvedEvents: number
+            [key: string]: any
+          }
+
+          const clubsWithCounts: ClubWithCounts[] = await Promise.all(
+            clubs.map(async (club: any): Promise<ClubWithCounts> => {
+              const counts: ClubMemberCount = await getClubMemberCount(club.id)
               return {
                 ...club,
                 activeMemberCount: counts.activeMemberCount,
@@ -562,14 +601,19 @@ Please present the top 10 clubs with the most members in a clean, organized form
           const applications = await getClubApplications()
           const pendingApplications = applications.filter(app => app.status === "PENDING")
           const clubsResponse = await fetchClub({ page: 0, size: 500, sort: ["name"] })
-          const clubs = clubsResponse.content || []
+          const clubs = Array.isArray(clubsResponse) ? clubsResponse : (clubsResponse as any).data || []
 
           // Group clubs by major
           const clubsByMajor: Record<string, number> = {}
-          clubs.forEach(club => {
-            const majorName = club.majorName || "Unknown"
+            interface Club {
+            majorName?: string | null
+            [key: string]: any
+            }
+
+            clubs.forEach((club: Club) => {
+            const majorName: string = club.majorName || "Unknown"
             clubsByMajor[majorName] = (clubsByMajor[majorName] || 0) + 1
-          })
+            })
 
           // Analyze applications by major
           const applicationsByMajor: Record<string, any[]> = {}
@@ -712,14 +756,29 @@ Please analyze the pending applications and recommend which ones to approve base
         </Button>
       </div>
 
+      {/* Policy Modal */}
+      <PolicyModal isOpen={isPolicyOpen} onClose={() => setIsPolicyOpen(false)} />
+
       {/* Chatbot Interface */}
       {isOpen && (
-        <div className={`fixed bottom-20 right-6 z-[1000] ${isExpanded ? 'inset-4 w-auto max-w-[calc(100vw-2rem)]' : 'w-80 max-w-[calc(100vw-2rem)]'}`}>
+        <div className={`fixed bottom-20 right-6 z-1000 ${isExpanded ? 'inset-4 w-auto max-w-[calc(100vw-2rem)]' : 'w-80 max-w-[calc(100vw-2rem)]'}`}>
           {/* Dropdown menu has been moved to the Input + Actions section */}
           <Card className="shadow-xl border-2 overflow-visible">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">Uniclub Bot</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-lg">Uniclub Bot</CardTitle>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 hover:bg-accent"
+                      onClick={() => setIsPolicyOpen(true)}
+                      aria-label="Chính sách & Hướng dẫn"
+                      title="Chính sách & Hướng dẫn"
+                    >
+                      <ShieldCheck className="h-4 w-4" />
+                    </Button>
+                  </div>
                   <div className="flex items-center gap-2">
                     <Button
                       variant="ghost"

@@ -2,39 +2,42 @@
   "title": "Event Policy",
   "sections": [
     {
-      "heading": "Points & Budget",
+      "heading": "Points & Rewards",
       "items": [
         {
-          "text": "Point Cost: The number of committed points that students must spend to register to buy tickets to participate in the event",
+          "text": "Point Cost: Registration fee students pay to join the event",
           "important": true
         },
         {
-          "text": "Higher point costs indicate more important or exclusive events"
+          "text": "Students get REFUNDED after checking in at Pre-Event and Mid-Event"
         },
         {
-          "text": "Students will be refunded their ticket purchase points after meeting the pre-event check-in and mid-event check-in requirements"
-        },
-        {
-          "text": "Students will receive additional reward points after completing the pre-event check-in, mid-event check-in, and post-event check-in requirements"
-        },
-        {
-          "text": "Budget Points: The total budget points allocated by the university to the event fund to support event organization expenses",
+          "text": "BONUS points awarded for completing all check-ins (Pre, Mid, and Post-Event)",
           "important": true
         },
         {
-          "text": "Budget points are used to cover reward points for participants who attend the entire duration of the event"
+          "text": "Higher point costs = more exclusive events"
+        }
+      ]
+    },
+    {
+      "heading": "Budget Points",
+      "items": [
+        {
+          "text": "Budget Points: Total event fund allocated by university",
+          "important": true
         },
         {
-          "text": "Unused budget points will be returned to the club after the event"
+          "text": "Used to pay bonus rewards for full attendance"
         },
         {
-          "text": "Budget must be justified with detailed expense breakdown for approval"
+          "text": "Unused budget returns to club after event"
         }
       ]
     }
   ],
   "footer": {
-    "text": "For questions or clarifications, please contact University Staff or refer to the full event management handbook.",
+    "text": "Contact University Staff for questions.",
     "important": false
   }
 }
