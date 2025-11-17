@@ -1160,11 +1160,12 @@ export default function ClubLeaderEventsPage() {
           {/* Event Policy Modal - Right Side */}
           <Modal
             open={showPolicyModal && showCreateModal}
-            onOpenChange={() => { }}
+            onOpenChange={() => {
+              // Không làm gì - chỉ đóng khi click vào overlay (không có overlay nên không đóng)
+            }}
             title={eventPolicies.title}
             description="Important guidelines for Points & Budget"
-            // className="p-2 sm:max-w-[600px] max-h-[90vh] !fixed !right-[calc(50%+460px)] !top-[50%] !translate-y-[-50%] z-[60] border-2 border-blue-300/60 dark:border-blue-700/60 shadow-2xl pointer-events-auto flex flex-col"
-            className="sm:max-w-[600px] max-h-[90vh] !fixed !top-[50%] !translate-y-[-50%] z-[70] border-2 border-blue-300/60 dark:border-blue-700/60 shadow-2xl pointer-events-auto flex flex-col"
+            className="w-[95vw] sm:max-w-[600px] max-h-[85vh] overflow-y-auto !fixed !top-[50%] !translate-y-[-50%] z-[70] border-2 border-blue-300/60 dark:border-blue-700/60 shadow-2xl pointer-events-auto"
             showCloseButton={false}
             noOverlay={true}
             style={{ pointerEvents: 'auto' }}
@@ -1174,9 +1175,7 @@ export default function ClubLeaderEventsPage() {
             <div className="absolute top-0 right-0 w-72 h-72 bg-blue-400/20 dark:bg-blue-500/20 rounded-full blur-3xl -z-10 animate-pulse" />
             <div className="absolute bottom-0 left-0 w-72 h-72 bg-indigo-400/20 dark:bg-indigo-500/20 rounded-full blur-3xl -z-10 animate-pulse" style={{ animationDelay: '1s' }} />
 
-            {/* <ScrollArea style={{ height: 'calc(90vh - 8rem)' }}> */}
-            <ScrollArea className="flex-1 min-h-0 p-2">
-              <div className="space-y-4">
+            <div className="space-y-4 p-2">
                 {eventPolicies.sections.map((section, sectionIndex) => (
                   <div
                     key={sectionIndex}
@@ -1235,7 +1234,6 @@ export default function ClubLeaderEventsPage() {
                   </div>
                 )}
               </div>
-            </ScrollArea>
           </Modal>
 
           {/* Create Event Modal - Left Side */}
@@ -1244,11 +1242,9 @@ export default function ClubLeaderEventsPage() {
             onOpenChange={setShowCreateModal}
             title="Create New Event"
             description="Add a new event for your club members"
-            className="sm:max-w-[880px] max-h-[85vh] overflow-hidden !fixed !top-[50%] !translate-y-[-50%] z-[60] flex flex-col"
+            className="sm:max-w-[880px] max-h-[85vh] overflow-y-auto !fixed !top-[50%] !translate-y-[-50%] z-[60]"
           >
-            {/* <ScrollArea className="h-full pr-4"> */}
-            <ScrollArea className="flex-1 pr-4 min-h-0">
-              <div className="space-y-3" onClick={() => setShowPolicyModal(false)}>
+            <div className="space-y-3" onClick={() => setShowPolicyModal(false)}>
                 <div className="space-y-1.5">
                   <Label htmlFor="name" className="text-sm">Event Name<span className="text-red-500">*</span>
                   </Label>
@@ -1570,8 +1566,8 @@ export default function ClubLeaderEventsPage() {
                   </details>
                 )}
 
-                <div className="space-y-2">
-                  <p className="text-xs text-muted-foreground italic border-t pt-2 pb-0">
+                <div className="space-y-2 border-t pt-3 mt-3">
+                  <p className="text-xs text-muted-foreground italic pb-2">
                     <span className="text-red-500">*</span> Required fields - All fields except Co-Host Clubs must be filled
                   </p>
                   <div className="flex gap-2 justify-end">
@@ -1598,7 +1594,6 @@ export default function ClubLeaderEventsPage() {
                   </div>
                 </div>
               </div>
-            </ScrollArea>
           </Modal>
 
           {/* QR Modal */}
