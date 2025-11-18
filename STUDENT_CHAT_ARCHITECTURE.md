@@ -9,7 +9,7 @@
                     │
                     ▼
         ┌──────────────────────┐
-        │ Check localStorage   │
+        │ Check sessionStorage │
         │  "uniclub-auth"      │
         │                      │
         │ clubIds: [1, 5, 7]?  │
@@ -91,7 +91,7 @@
 │  ┌─────────────────────────────────────────────────────┐    │
 │  │           app/student/chat/page.tsx                  │    │
 │  │                                                       │    │
-│  │  1. Load clubIds from localStorage                   │    │
+│  │  1. Load clubIds from sessionStorage                   │    │
 │  │     ↓                                                 │    │
 │  │  2. Fetch club details via useClubs()                │    │
 │  │     ↓                                                 │    │
@@ -313,7 +313,7 @@ INITIAL STATE
      │
      ▼
 ┌─────────────┐
-│  Loading    │  (Fetching clubIds from localStorage)
+│  Loading    │  (Fetching clubIds from sessionStorage)
 └─────┬───────┘
       │
       ├──────────┐

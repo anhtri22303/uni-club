@@ -1,11 +1,11 @@
 "use client"
 
-import React, { useRef, useEffect } from "react"
+import React, { useRef, useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Bot, X, Send } from "lucide-react"
+import { Bot, X, Send, ShieldCheck } from "lucide-react"
 import type { ChatMessage } from "./types"
 
 interface ChatAssistantProps {
@@ -17,6 +17,7 @@ interface ChatAssistantProps {
   onInputChange: (value: string) => void
   onSendMessage: () => void
   onQuickSuggestion: (suggestion: string) => void
+  onPolicyOpen: () => void
 }
 
 export const ChatAssistant: React.FC<ChatAssistantProps> = ({
@@ -28,6 +29,7 @@ export const ChatAssistant: React.FC<ChatAssistantProps> = ({
   onInputChange,
   onSendMessage,
   onQuickSuggestion,
+  onPolicyOpen,
 }) => {
   const chatScrollRef = useRef<HTMLDivElement>(null)
 
@@ -42,6 +44,16 @@ export const ChatAssistant: React.FC<ChatAssistantProps> = ({
           <div className="flex items-center gap-2">
             <Bot className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             <CardTitle className="text-base sm:text-lg dark:text-white">🤖 AI Design Assistant</CardTitle>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 hover:bg-accent"
+              onClick={onPolicyOpen}
+              aria-label="Design Policy & Guidelines"
+              title="Design Policy & Guidelines"
+            >
+              <ShieldCheck className="h-4 w-4" />
+            </Button>
           </div>
           <Button
             variant="ghost"

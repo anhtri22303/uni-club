@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Download, Save, RotateCcw, Share2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import QRCode from 'qrcode'
+import { CardPolicyModal } from "@/components/card-policy-modal"
+import { ChatbotWidget } from "@/components/chatbot-widget"
 import {
   CardPreview,
   ChatAssistant,
@@ -47,6 +49,7 @@ export default function CardEditorPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
+  const [isPolicyOpen, setIsPolicyOpen] = useState(false)
   
   // Sample card data
   const cardData: CardData = {
@@ -422,6 +425,7 @@ export default function CardEditorPage() {
                   onInputChange={setChatInput}
                   onSendMessage={handleChatMessage}
                   onQuickSuggestion={setChatInput}
+                  onPolicyOpen={() => setIsPolicyOpen(true)}
                 />
 
                 {/* Customization Tabs */}
@@ -458,9 +462,18 @@ export default function CardEditorPage() {
               onDownload={handleDownloadCard}
               isDownloading={isDownloading}
             />
+
+            {/* Card Policy Modal */}
+            <CardPolicyModal
+              isOpen={isPolicyOpen}
+              onClose={() => setIsPolicyOpen(false)}
+            />
           </div>
         </div>
       </AppShell>
+
+      {/* Global Chatbot Widget */}
+      <ChatbotWidget />
     </ProtectedRoute>
   )
 }

@@ -34,18 +34,18 @@ const generateYearOptions = () => {
 
 const generateMonthOptions = () => {
     return [
-        { value: 1, label: "Tháng 1" },
-        { value: 2, label: "Tháng 2" },
-        { value: 3, label: "Tháng 3" },
-        { value: 4, label: "Tháng 4" },
-        { value: 5, label: "Tháng 5" },
-        { value: 6, label: "Tháng 6" },
-        { value: 7, label: "Tháng 7" },
-        { value: 8, label: "Tháng 8" },
-        { value: 9, label: "Tháng 9" },
-        { value: 10, label: "Tháng 10" },
-        { value: 11, label: "Tháng 11" },
-        { value: 12, label: "Tháng 12" },
+        { value: 1, label: "January" },
+        { value: 2, label: "February" },
+        { value: 3, label: "March" },
+        { value: 4, label: "April" },
+        { value: 5, label: "May" },
+        { value: 6, label: "June" },
+        { value: 7, label: "July" },
+        { value: 8, label: "August" },
+        { value: 9, label: "September" },
+        { value: 10, label: "October" },
+        { value: 11, label: "November" },
+        { value: 12, label: "December" },
     ]
 }
 
@@ -84,18 +84,18 @@ const ActivityScoreDetail = ({ score }: { score: MemberActivityScore }) => {
             <div className="grid grid-cols-2 gap-4">
                 <Card>
                     <CardHeader className="pb-2">
-                        <CardDescription className="flex items-center gap-2 text-sm"><LineChart className="h-4 w-4" /> Điểm gốc (Base Score)</CardDescription>
+                        <CardDescription className="flex items-center gap-2 text-sm"><LineChart className="h-4 w-4" /> Base Score</CardDescription>
                         <CardTitle className="text-3xl">{score.baseScore.toFixed(0)}</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="text-xs text-muted-foreground">
-                            {score.baseScorePercent.toFixed(0)}% so với điểm tối đa
+                            {score.baseScorePercent.toFixed(0)}% of maximum score
                         </div>
                     </CardContent>
                 </Card>
                 <Card>
                     <CardHeader className="pb-2">
-                        <CardDescription className="flex items-center gap-2 text-sm"><BarChart2 className="h-4 w-4" /> Hệ số (Multiplier)</CardDescription>
+                        <CardDescription className="flex items-center gap-2 text-sm"><BarChart2 className="h-4 w-4" /> Multiplier</CardDescription>
                         <CardTitle className="text-3xl flex items-center">
                             {getMultiplierIcon(score.appliedMultiplier)}
                             {score.appliedMultiplier.toFixed(1)}x
@@ -103,9 +103,9 @@ const ActivityScoreDetail = ({ score }: { score: MemberActivityScore }) => {
                     </CardHeader>
                     <CardContent>
                         <Badge variant="outline" className={getMultiplierBadgeColor(score.appliedMultiplier)}>
-                            {score.appliedMultiplier > 1 ? `+${((score.appliedMultiplier - 1) * 100).toFixed(0)}% điểm` :
-                                score.appliedMultiplier < 1 ? `${((1 - score.appliedMultiplier) * 100).toFixed(0)}% giảm trừ` :
-                                    "Không thay đổi"}
+                            {score.appliedMultiplier > 1 ? `+${((score.appliedMultiplier - 1) * 100).toFixed(0)}% bonus` :
+                                score.appliedMultiplier < 1 ? `${((1 - score.appliedMultiplier) * 100).toFixed(0)}% penalty` :
+                                    "No change"}
                         </Badge>
                     </CardContent>
                 </Card>
@@ -113,36 +113,36 @@ const ActivityScoreDetail = ({ score }: { score: MemberActivityScore }) => {
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Chi tiết dữ liệu thô (Raw Data)</CardTitle>
-                    <CardDescription>Dữ liệu dùng để tính toán điểm số trong tháng.</CardDescription>
+                    <CardTitle>Raw Data Details</CardTitle>
+                    <CardDescription>Data used to calculate monthly score.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-2">
                     <div className="flex justify-between items-center">
-                        <span className="text-muted-foreground">Tỉ lệ điểm danh (Session):</span>
+                        <span className="text-muted-foreground">Session Attendance Rate:</span>
                         <span className="font-bold text-lg">{(score.sessionAttendanceRate * 100).toFixed(0)}%</span>
                     </div>
                     <div className="flex justify-between items-center text-sm">
-                        <span className="text-muted-foreground ml-4"> (Số buổi có mặt / Tổng số buổi)</span>
+                        <span className="text-muted-foreground ml-4"> (Sessions attended / Total sessions)</span>
                         <span>{score.totalClubPresent} / {score.totalClubSessions}</span>
                     </div>
-                    <hr className="my-2" />
+                    <hr className="my-2 dark:border-gray-700" />
                     <div className="flex justify-between items-center">
-                        <span className="text-muted-foreground">Tỉ lệ tham gia Event:</span>
+                        <span className="text-muted-foreground">Event Participation Rate:</span>
                         <span className="font-bold text-lg">{(score.eventAttendanceRate * 100).toFixed(0)}%</span>
                     </div>
                     <div className="flex justify-between items-center text-sm">
-                        <span className="text-muted-foreground ml-4"> (Số event tham gia / Tổng số event đã đăng ký)</span>
+                        <span className="text-muted-foreground ml-4"> (Events attended / Total events registered)</span>
                         <span>{score.totalEventAttended} / {score.totalEventRegistered}</span>
                     </div>
-                    <hr className="my-2" />
+                    <hr className="my-2 dark:border-gray-700" />
                     <div className="flex justify-between items-center">
-                        <span className="text-muted-foreground">Điểm hỗ trợ (Staff):</span>
+                        <span className="text-muted-foreground">Staff Performance Score:</span>
                         <span className="font-bold text-lg">{score.avgStaffPerformance.toFixed(1)} / 5 <Star className="h-4 w-4 inline text-yellow-500" /></span>
                     </div>
-                    <hr className="my-2" />
+                    <hr className="my-2 dark:border-gray-700" />
                     <div className="flex justify-between items-center">
-                        <span className="text-muted-foreground text-red-600">Điểm phạt (Penalty):</span>
-                        <span className="font-bold text-lg text-red-600">-{score.totalPenaltyPoints}</span>
+                        <span className="text-muted-foreground text-red-600 dark:text-red-400">Penalty Points:</span>
+                        <span className="font-bold text-lg text-red-600 dark:text-red-400">-{score.totalPenaltyPoints}</span>
                     </div>
                 </CardContent>
             </Card>
@@ -167,11 +167,11 @@ export default function ActivityReportPage() {
     // Hàm tải dữ liệu
     const loadActivities = async () => {
         if (!clubId) {
-            toast({ title: "Lỗi", description: "Không tìm thấy thông tin câu lạc bộ của bạn.", variant: "destructive" })
+            toast({ title: "Error", description: "Club information not found.", variant: "destructive" })
             return
         }
 
-        console.log(`Đang tải dữ liệu cho Club ID: ${clubId}, Năm: ${selectedYear}, Tháng: ${selectedMonth}`)
+        console.log(`Loading data for Club ID: ${clubId}, Year: ${selectedYear}, Month: ${selectedMonth}`)
         setIsLoading(true)
         try {
             const data = await getClubMemberActivity({
@@ -181,10 +181,10 @@ export default function ActivityReportPage() {
             })
             setActivities(data)
         } catch (error: any) {
-            console.error("Lỗi khi tải báo cáo hoạt động:", error)
+            console.error("Error loading activity report:", error)
             toast({
-                title: "Lỗi",
-                description: error.message || "Không thể tải báo cáo. Vui lòng thử lại.",
+                title: "Error",
+                description: error.message || "Unable to load report. Please try again.",
                 variant: "destructive",
             })
             setActivities([]) // Xóa dữ liệu cũ nếu có lỗi
@@ -207,30 +207,30 @@ export default function ActivityReportPage() {
                         <div className="flex-1 min-w-0">
                             <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
                                 <BarChart2 className="h-6 w-6 sm:h-8 sm:w-8 flex-shrink-0" />
-                                <span className="truncate">Báo cáo Hoạt động Thành viên</span>
+                                <span className="truncate">Member Activity Report</span>
                             </h1>
                             <p className="text-sm sm:text-base text-muted-foreground mt-1 line-clamp-2">
-                                Xem lại điểm hoạt động của thành viên theo tháng.
+                                Review member activity scores by month.
                             </p>
                         </div>
-                        {/* Nút Phê duyệt (Gợi ý) */}
+                        {/* Approve Button (Suggestion) */}
                         <Button className="gap-2 w-full sm:w-auto flex-shrink-0" disabled={isLoading || activities.length === 0}>
                             <Check className="h-4 w-4" />
-                            <span className="truncate">Phê duyệt Báo cáo Tháng {selectedMonth}</span>
+                            <span className="truncate">Approve Report for Month {selectedMonth}</span>
                         </Button>
                     </div>
 
-                    {/* Bộ lọc Tháng/Năm */}
+                    {/* Month/Year Filter */}
                     <Card>
                         <CardContent className="pt-6 flex flex-col sm:flex-row gap-4">
                             <div className="space-y-2 flex-1">
-                                <Label htmlFor="year-select">Chọn Năm</Label>
+                                <Label htmlFor="year-select">Select Year</Label>
                                 <Select
                                     value={String(selectedYear)}
                                     onValueChange={(value) => setSelectedYear(Number(value))}
                                 >
                                     <SelectTrigger id="year-select">
-                                        <SelectValue placeholder="Chọn năm" />
+                                        <SelectValue placeholder="Select year" />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {yearOptions.map(year => (
@@ -240,13 +240,13 @@ export default function ActivityReportPage() {
                                 </Select>
                             </div>
                             <div className="space-y-2 flex-1">
-                                <Label htmlFor="month-select">Chọn Tháng</Label>
+                                <Label htmlFor="month-select">Select Month</Label>
                                 <Select
                                     value={String(selectedMonth)}
                                     onValueChange={(value) => setSelectedMonth(Number(value))}
                                 >
                                     <SelectTrigger id="month-select">
-                                        <SelectValue placeholder="Chọn tháng" />
+                                        <SelectValue placeholder="Select month" />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {monthOptions.map(month => (
@@ -258,23 +258,23 @@ export default function ActivityReportPage() {
                         </CardContent>
                     </Card>
 
-                    {/* Bảng Dữ liệu */}
+                    {/* Data Table */}
                     <Card>
                         <CardHeader>
-                            <CardTitle>Báo cáo điểm tháng {selectedMonth}/{selectedYear}</CardTitle>
+                            <CardTitle>Score Report for {selectedMonth}/{selectedYear}</CardTitle>
                             <CardDescription>
-                                Tổng cộng có {activities.length} thành viên được ghi nhận. Nhấn vào một hàng để xem chi tiết.
+                                Total of {activities.length} members recorded. Click on a row to view details.
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Họ và Tên</TableHead>
-                                        <TableHead>Mã SV</TableHead>
-                                        <TableHead>Mức độ</TableHead>
-                                        <TableHead>Hệ số (Multiplier)</TableHead>
-                                        <TableHead className="text-right">Điểm cuối (Final)</TableHead>
+                                        <TableHead>Full Name</TableHead>
+                                        <TableHead>Student ID</TableHead>
+                                        <TableHead>Level</TableHead>
+                                        <TableHead>Multiplier</TableHead>
+                                        <TableHead className="text-right">Final Score</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -290,10 +290,10 @@ export default function ActivityReportPage() {
                                             </TableRow>
                                         ))
                                     ) : activities.length === 0 ? (
-                                        // Không có dữ liệu
+                                        // No data
                                         <TableRow>
                                             <TableCell colSpan={5} className="text-center h-24">
-                                                Không tìm thấy dữ liệu cho tháng {selectedMonth}/{selectedYear}.
+                                                No data found for {selectedMonth}/{selectedYear}.
                                             </TableCell>
                                         </TableRow>
                                     ) : (
@@ -322,14 +322,14 @@ export default function ActivityReportPage() {
                         </CardContent>
                     </Card>
 
-                    {/* Gợi ý: Thẻ báo cáo sai sót */}
-                    <Card className="border-orange-500 bg-orange-50/50">
+                    {/* Suggestion: Error reporting card */}
+                    <Card className="border-orange-500 bg-orange-50/50 dark:bg-orange-950/20 dark:border-orange-600">
                         <CardHeader className="flex-row items-center gap-4 space-y-0">
-                            <ShieldAlert className="h-8 w-8 text-orange-600" />
+                            <ShieldAlert className="h-8 w-8 text-orange-600 dark:text-orange-400" />
                             <div>
-                                <CardTitle className="text-orange-700">Phát hiện sai sót?</CardTitle>
-                                <CardDescription className="text-orange-600">
-                                    Nếu phát hiện dữ liệu thô (điểm danh, tham gia event) bị sai, vui lòng liên hệ UniStaff để điều chỉnh.
+                                <CardTitle className="text-orange-700 dark:text-orange-400">Found an Error?</CardTitle>
+                                <CardDescription className="text-orange-600 dark:text-orange-300">
+                                    If you find errors in raw data (attendance, event participation), please contact UniStaff for corrections.
                                 </CardDescription>
                             </div>
                         </CardHeader>
@@ -337,13 +337,13 @@ export default function ActivityReportPage() {
 
                 </div>
 
-                {/* Modal Chi tiết Thành viên */}
+                {/* Member Details Modal */}
                 <Dialog open={!!selectedMember} onOpenChange={(isOpen) => !isOpen && setSelectedMember(null)}>
                     <DialogContent className="sm:max-w-[600px]">
                         <DialogHeader>
-                            <DialogTitle>Chi tiết điểm: {selectedMember?.fullName}</DialogTitle>
+                            <DialogTitle>Score Details: {selectedMember?.fullName}</DialogTitle>
                             <DialogDescription>
-                                Phân tích điểm số tháng {selectedMember?.month}/{selectedMember?.year}
+                                Score analysis for {selectedMember?.month}/{selectedMember?.year}
                             </DialogDescription>
                         </DialogHeader>
                         {selectedMember && <ActivityScoreDetail score={selectedMember} />}

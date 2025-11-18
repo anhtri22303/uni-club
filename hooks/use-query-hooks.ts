@@ -37,7 +37,6 @@ interface ProfileClub {
 
 // (Interface 'Profile' đã sửa)
 interface Profile {
-    needCompleteProfile: any
     needCompleteProfile: boolean
     id: number;
     email: string;
