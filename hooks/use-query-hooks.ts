@@ -11,7 +11,7 @@ import { getTags, Tag as ProductTag } from "@/service/tagApi"
 import { fetchPolicies, fetchPolicyById } from "@/service/policyApi"
 import { fetchAttendanceByDate, fetchMemberAttendanceHistory } from "@/service/attendanceApi"
 import { getMemberApplyByClubId, getMyMemApply, fetchAllMemberApplications } from "@/service/memberApplicationApi"
-import { getClubApplications, getMyClubApply } from "@/service/clubApplicationAPI"
+import { getClubApplications, getClubApplyById, getMyClubApply } from "@/service/clubApplicationAPI"
 import { fetchUniversityPoints, fetchAttendanceSummary, fetchAttendanceRanking } from "@/service/universityApi"
 import { getWallet, ApiMembershipWallet } from "@/service/walletApi"
 import { getMemberRedeemOrders } from "@/service/redeemApi"
@@ -126,6 +126,7 @@ export const queryKeys = {
     // Club Applications
     clubApplications: ["club-applications"] as const,
     clubApplicationsList: () => [...queryKeys.clubApplications, "list"] as const,
+    clubApplicationDetail: (id: number) => [...queryKeys.clubApplications, "detail", id] as const,
     myClubApplications: () => [...queryKeys.clubApplications, "my"] as const,
 
     // Redeem Orders
@@ -848,6 +849,22 @@ export function useClubApplications(enabled = true) {
             return applications
         },
         enabled,
+        staleTime: 2 * 60 * 1000, // 2 minutes
+    })
+}
+
+/**
+ * Hook to fetch a single club application by ID
+ * @param applicationId - Club application ID
+ */
+export function useClubApplicationById(applicationId: number, enabled = true) {
+    return useQuery({
+        queryKey: queryKeys.clubApplicationDetail(applicationId),
+        queryFn: async () => {
+            const application = await getClubApplyById(applicationId)
+            return application
+        },
+        enabled: !!applicationId && enabled,
         staleTime: 2 * 60 * 1000, // 2 minutes
     })
 }
