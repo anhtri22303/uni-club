@@ -282,8 +282,24 @@ export default function PublicEventsPage() {
                             <span>{event.hostClub?.name || "Unknown Club"}</span>
                           </div>
                         </div>
-                        <Badge variant={event.type === "PUBLIC" ? "default" : "secondary"}>
-                          {event.type}
+                        {/* Status Badge (Soon/Now/Future) at top right */}
+                        <Badge
+                          variant={
+                            status === "Now"
+                              ? "default"
+                              : status === "Soon"
+                              ? "secondary"
+                              : "outline"
+                          }
+                          className={
+                            status === "Now"
+                              ? "bg-green-500"
+                              : status === "Soon"
+                              ? "bg-yellow-500"
+                              : ""
+                          }
+                        >
+                          {status}
                         </Badge>
                       </div>
                     </CardHeader>
@@ -306,25 +322,10 @@ export default function PublicEventsPage() {
                           <span>{event.locationName || "Location TBA"}</span>
                         </div>
 
-                        {/* Status Badge */}
-                        <div className="flex items-center gap-2">
-                          <Badge
-                            variant={
-                              status === "Now"
-                                ? "default"
-                                : status === "Soon"
-                                ? "secondary"
-                                : "outline"
-                            }
-                            className={
-                              status === "Now"
-                                ? "bg-green-500"
-                                : status === "Soon"
-                                ? "bg-yellow-500"
-                                : ""
-                            }
-                          >
-                            {status}
+                        {/* Public Badge at bottom left */}
+                        <div className="flex items-center gap-2 pt-2">
+                          <Badge variant={event.type === "PUBLIC" ? "default" : "secondary"}>
+                            {event.type}
                           </Badge>
                         </div>
 
@@ -362,7 +363,7 @@ export default function PublicEventsPage() {
           <Dialog open={showHistoryModal} onOpenChange={setShowHistoryModal}>
             <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>My Registered Events</DialogTitle>
+                <DialogTitle>My Events Joined</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 {myEventsLoading ? (
@@ -372,7 +373,7 @@ export default function PublicEventsPage() {
                 ) : myEvents.length === 0 ? (
                   <div className="py-12 text-center text-muted-foreground">
                     <History className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <p>You haven't registered for any events yet</p>
+                    <p>You haven't joined for any events yet</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

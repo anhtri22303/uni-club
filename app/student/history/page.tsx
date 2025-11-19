@@ -658,7 +658,12 @@ export default function MemberHistoryPage() {
                           </div>
                           <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
                             <span className="text-sm text-muted-foreground">Owner Type:</span>
-                            <Badge variant="outline">{myWallet.ownerType}</Badge>
+                            <Badge
+                              variant="outline"
+                              className={myWallet.ownerType === 'USER' ? 'bg-blue-600 text-white border-blue-600' : ''}
+                            >
+                              {myWallet.ownerType}
+                            </Badge>
                           </div>
                           {myWallet.clubId && (
                             <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
