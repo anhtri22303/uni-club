@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { AppShell } from "@/components/app-shell"
 import { ProtectedRoute } from "@/contexts/protected-route"
 import { Badge } from "@/components/ui/badge"
@@ -8,13 +8,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Modal } from "@/components/modal"
-// Remove Button import (no add club modal)
 import { DataTable } from "@/components/data-table"
 import { useToast } from "@/hooks/use-toast"
 import { Users, Trash, Plus, Loader2, Mail } from "lucide-react"
 import { fetchClub, getClubMemberCount } from "@/service/clubApi"
-// Thêm import useRef nếu cần
-// Remove useRef import (not needed)
+import { fetchMajors, Major } from "@/service/majorApi" // Thêm import fetchMajors và Major
 
 type ClubApiItem = {
   id: number
@@ -22,26 +20,10 @@ type ClubApiItem = {
   description?: string
   majorPolicyName?: string
   majorName?: string
-  major?: { name?: string }
+  major?: { name?: string; id?: number } // Thêm id cho major
   leaderName?: string
   memberCount?: number
   approvedEvents?: number
-}
-// Bảng màu theo ngành học
-const majorColors: Record<string, string> = {
-  "Software Engineering": "#0052CC",
-  "Artificial Intelligence": "#6A00FF",
-  "Information Assurance": "#243447",
-  "Data Science": "#00B8A9",
-  "Business Administration": "#1E2A78",
-  "Digital Marketing": "#FF3366",
-  "Graphic Design": "#FFC300",
-  "Multimedia Communication": "#FF6B00",
-  "Hospitality Management": "#E1B382",
-  "International Business": "#007F73",
-  "Finance and Banking": "#006B3C",
-  "Japanese Language": "#D80032",
-  "Korean Language": "#5DADEC",
 }
 
 export default function UniStaffClubsPage() {
@@ -50,11 +32,16 @@ export default function UniStaffClubsPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   // Remove add club modal and related states
-  
+  const [majors, setMajors] = useState<Major[]>([])
+
   // OTP Modal states
   const [showOtpModal, setShowOtpModal] = useState(false)
   const [otpEmail, setOtpEmail] = useState("")
   const [isSendingOtp, setIsSendingOtp] = useState(false)
+  // Thêm Delete Modal states
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [clubToDelete, setClubToDelete] = useState<{ id: string, name: string } | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // Fetch club list
   useEffect(() => {
@@ -92,37 +79,86 @@ export default function UniStaffClubsPage() {
     }
   }, [])
 
-  // Map API data to match admin/clubs
-  const enhancedClubs = clubs.map((club) => ({
-    id: String(club.id),
-    name: club.name,
-    major: club.majorName ?? "-",
-    leaderName: club.leaderName ?? "-",
-    members: club.memberCount ?? 0,
-    events: club.approvedEvents ?? 0,
-  }))
+  // Thêm useEffect để fetch Majors
+  useEffect(() => {
+    const loadMajors = async () => {
+      try {
+        const majorsData = await fetchMajors();
+        setMajors(majorsData);
+      } catch (error) {
+        console.error("Failed to load majors:", error);
+        // Có thể hiển thị toast lỗi ở đây nếu cần
+      }
+    };
+
+    loadMajors();
+  }, []);
+
+  // Map API data to match admin/clubs - Sử dụng useMemo để tính toán
+  const enhancedClubs = useMemo(() => {
+    return clubs.map((club) => {
+      // 1. Lấy tên major
+      let majorName = club.majorName ?? club.major?.name ?? "-";
+      let majorColor = "#E2E8F0"; // Màu mặc định
+
+      // 2. Tìm majorId (nếu có)
+      // Giả định majorId có thể nằm ở club.major?.id hoặc majorPolicyId (tên không khớp hoàn toàn, nhưng có thể là intent)
+      // Ta ưu tiên tìm major theo tên majorName mà API trả về (vì nó là cột chính)
+      const majorId = club.major?.id || (club as any).majorId;
+
+      // 3. Tìm Major trong danh sách đã fetch để lấy màu
+      let foundMajor = majors.find(m => m.name === majorName);
+
+      if (!foundMajor && majorId) {
+        // Nếu không tìm thấy theo tên, thử tìm theo ID
+        foundMajor = majors.find(m => m.id === Number(majorId));
+      }
+
+      if (foundMajor) {
+        majorColor = foundMajor.colorHex || majorColor;
+      }
+
+      return {
+        id: String(club.id),
+        name: club.name,
+        major: majorName, // Giữ nguyên tên major để lọc và hiển thị
+        majorColor: majorColor, // Thêm majorColor vào enhancedClubs
+        leaderName: club.leaderName ?? "-",
+        members: club.memberCount ?? 0,
+        events: club.approvedEvents ?? 0,
+      }
+    });
+  }, [clubs, majors]); // Depend on clubs và majors
 
   // Delete logic matches admin/clubs
-  const handleDelete = async (id: string, name: string) => {
-    if (!window.confirm(`Are you sure you want to delete club '${name}'?`)) return;
+  // Hàm này chỉ MỞ MODAL
+  const handleDelete = (id: string, name: string) => {
+    setClubToDelete({ id, name })
+    setShowDeleteModal(true)
+  }
+
+  // Hàm này THỰC HIỆN LOGIC XÓA
+  const confirmDelete = async () => {
+    if (!clubToDelete) return
+
+    const { id, name } = clubToDelete
+    setIsDeleting(true)
+
     try {
       await (await import("@/service/clubApi")).deleteClub(id);
       toast({ title: "Club Deleted", description: `Club '${name}' has been deleted.` });
+
       // Reload club list
       try {
         const res: any = await fetchClub({ page: 0, size: 70, sort: ["name"] });
 
-        // SỬA LỖI 1: Phải là res.data.content
         const clubList = res?.data?.content ?? [];
 
-        // SỬA LỖI 2: Xử lý đúng response từ getClubMemberCount
         const clubsWithMemberCount = await Promise.all(
           clubList.map(async (club: ClubApiItem) => {
-            // Lấy đúng object trả về
             const clubData = await getClubMemberCount(club.id);
             return {
               ...club,
-              // Gán đúng giá trị
               memberCount: clubData.activeMemberCount,
               approvedEvents: clubData.approvedEvents
             };
@@ -133,12 +169,18 @@ export default function UniStaffClubsPage() {
       } catch (err) {
         toast({ title: "Reload Error", description: "Failed to reload club list.", variant: "destructive" });
       }
+
+      // Sau khi xóa thành công hoặc thất bại do lỗi ràng buộc
     } catch (err) {
       toast({
         title: "Delete Failed",
         description: "Cannot delete this club. Please remove all related members and events before deleting.",
         variant: "destructive"
       });
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteModal(false);
+      setClubToDelete(null);
     }
   }
 
@@ -171,22 +213,25 @@ export default function UniStaffClubsPage() {
         </div>
       ),
     },
+
     {
       key: "major" as const,
       label: "Major Name",
-      render: (value: string) => {
-        const color = majorColors[value] || "#E2E8F0"
+      render: (value: string, club: any) => { // Nhận club object
+        // Lấy majorColor từ club object đã được tính toán trong useMemo
+        const color = club.majorColor || "#E2E8F0" // Sử dụng majorColor từ enhancedClubs
         return (
           <Badge
             variant="secondary"
             className="max-w-[160px] truncate"
-            style={{ backgroundColor: color, color: "#fff" }}
+            style={{ backgroundColor: color, color: "#fff" }} // Áp dụng màu động
           >
             {value || "-"}
           </Badge>
         )
       },
     },
+
     {
       key: "leaderName" as const,
       label: "Leader",
@@ -223,6 +268,7 @@ export default function UniStaffClubsPage() {
         <button
           className="p-2 rounded hover:bg-red-100"
           title="Delete club"
+          // SỬA: Gọi hàm handleDelete mới
           onClick={() => handleDelete(club.id, club.name)}
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -296,8 +342,8 @@ export default function UniStaffClubsPage() {
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => {
                   setShowOtpModal(false)
                   setOtpEmail("")
@@ -331,7 +377,7 @@ export default function UniStaffClubsPage() {
                   try {
                     const { sendOtp } = await import("@/service/clubApplicationAPI")
                     const result = await sendOtp(otpEmail.trim())
-                    
+
                     toast({
                       title: "OTP Sent Successfully",
                       description: result || `OTP has been sent to ${otpEmail}`,
@@ -365,6 +411,59 @@ export default function UniStaffClubsPage() {
             </div>
           </div>
         </Modal>
+
+        {/* Thêm Delete Confirmation Modal */}
+        <Modal
+          open={showDeleteModal}
+          onOpenChange={setShowDeleteModal}
+          title={`Delete Club: ${clubToDelete?.name ?? '...'}`}
+          description="Are you absolutely sure you want to delete this club? This action cannot be undone and will permanently remove all associated data."
+        >
+          <div className="space-y-4">
+            <p className="text-sm text-red-500 font-medium">
+              Type the club name **<span className="font-bold">{clubToDelete?.name}</span>** below to confirm deletion.
+            </p>
+
+            <Input
+              placeholder={clubToDelete?.name}
+              id="confirmDelete"
+              type="text"
+              // Sử dụng state otpEmail tạm thời để lưu giá trị nhập vào cho việc xác nhận tên
+              value={otpEmail}
+              onChange={(e) => setOtpEmail(e.target.value)}
+            />
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowDeleteModal(false)
+                  setClubToDelete(null)
+                  setOtpEmail("") // Reset input
+                }}
+                disabled={isDeleting}
+              >
+                Cancel
+              </Button>
+
+              <Button
+                variant="destructive"
+                onClick={confirmDelete}
+                disabled={isDeleting || otpEmail.trim() !== clubToDelete?.name}
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  "Confirm Delete"
+                )}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+
       </AppShell>
     </ProtectedRoute>
   )
