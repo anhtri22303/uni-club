@@ -46,6 +46,7 @@ interface UserRecord {
   status?: string // 'ACTIVE' hoặc 'INACTIVE'
   avatarUrl?: string
   active: boolean // để xử lý logic ban/unban
+  joinedClubs?: number // Số lượng câu lạc bộ đã tham gia
 }
 
 type EnhancedUser = UserRecord & {
@@ -102,6 +103,7 @@ export default function AdminUsersPage() {
       status: u.active ? "ACTIVE" : "INACTIVE",
       avatarUrl: (u as any).avatarUrl || "",
       active: u.active,
+      joinedClubs: u.joinedClubs ?? 0,
     }
   }).sort((a: any, b: any) => {
     if (a.roleName < b.roleName) return -1
@@ -266,8 +268,7 @@ export default function AdminUsersPage() {
 
   const enhancedUsers: EnhancedUser[] = filteredUsers.map((u) => ({
     ...u,
-    // membershipCount: getUserMembershipCount(u.id), // <-- THAY ĐỔI
-    membershipCount: (u as any).joinedClubs ?? 0, // <-- THAY ĐỔI (Sử dụng 'joinedClubs' từ API)
+    membershipCount: u.joinedClubs ?? 0, // Sử dụng 'joinedClubs' từ UserRecord
     primaryRoleName: getRoleName((u.roleName || "").toLowerCase()),
   }))
 

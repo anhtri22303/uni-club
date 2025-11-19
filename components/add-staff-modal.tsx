@@ -223,11 +223,21 @@ export default function AddStaffModal({
     setSelectedEvaluation(null)
   }
 
-  const filteredMembers = members.filter((member) =>
-    member.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    member.studentCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    member.email?.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const filteredMembers = members.filter((member) => {
+    // Exclude members who are already assigned as event staff
+    const isAlreadyStaff = eventStaff.some(
+      (staff) => staff.membershipId === member.membershipId
+    )
+    
+    if (isAlreadyStaff) return false
+    
+    // Filter by search query
+    return (
+      member.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      member.studentCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      member.email?.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+  })
 
   const filteredStaff = eventStaff.filter((staff) =>
     staff.memberName.toLowerCase().includes(searchQuery.toLowerCase()) ||
