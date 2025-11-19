@@ -259,7 +259,7 @@ export default function AdminEventDetailPage() {
   const getTypeBadge = (type: string) => renderTypeBadge(type)
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("vi-VN", {
+    return new Date(dateString).toLocaleDateString("en-US", {
       weekday: "long",
       year: "numeric",
       month: "long",
@@ -630,27 +630,7 @@ export default function AdminEventDetailPage() {
                   </div>
                 )}
 
-                <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <div className="font-medium text-blue-900">Check-in Code</div>
-                      <div className="text-sm text-blue-700">Administrative access to event check-in code</div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="font-mono text-xl font-bold text-blue-800 bg-white px-4 py-2 rounded-md border min-w-[120px] text-center">
-                        {showCheckInCode ? event.checkInCode : "••••••••"}
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowCheckInCode((v) => !v)}
-                        className="ml-2"
-                      >
-                        {showCheckInCode ? "Hide" : "Show"}
-                      </Button>
-                    </div>
-                  </div>
-                  
+                <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">                
                   {/* QR Code Generation Button - Admin can generate for APPROVED or ONGOING events */}
                   {(event.status === "APPROVED" || event.status === "ONGOING") && (
                     <div className="border-t border-blue-200 pt-4">
@@ -668,23 +648,6 @@ export default function AdminEventDetailPage() {
                           <QrCode className="h-4 w-4 mr-2" />
                           Generate QR Code
                         </Button>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Status message for non-ongoing events */}
-                  {event.status !== "ONGOING" && (
-                    <div className="border-t border-blue-200 pt-4">
-                      <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                        <div className="flex items-center gap-3">
-                          <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0" />
-                          <div>
-                            <div className="font-medium text-yellow-800">QR Code Unavailable</div>
-                            <div className="text-sm text-yellow-700">
-                              QR codes are only available for ongoing events. Current status: {event.status}
-                            </div>
-                          </div>
-                        </div>
                       </div>
                     </div>
                   )}
