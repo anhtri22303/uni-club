@@ -213,7 +213,12 @@ export default function UniStaffMajorsPage() {
             setSelected(updatedMajor)
             reloadMajors()
             setColorError(null) // Xóa lỗi sau khi thành công
-            // setDialogOpen(false) 
+            setDialogOpen(false) // Đóng modal sau khi cập nhật thành công
+            try {
+                router.refresh() // Reload lại trang
+            } catch (e) {
+                // ignore
+            }
         } catch (err: any) {
             console.error("Update major failed:", err)
             const errorMessage = err.response?.data?.message || err.message || "Error while updating major."

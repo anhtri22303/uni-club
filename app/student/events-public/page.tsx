@@ -10,28 +10,23 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AppShell } from "@/components/app-shell"
 import { ProtectedRoute } from "@/contexts/protected-route"
-import { Calendar, MapPin, Clock, Users, History, Trophy } from "lucide-react"
+import { Calendar, MapPin, Clock, Users, History } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { usePagination } from "@/hooks/use-pagination"
 import { Pagination } from "@/components/pagination"
 import { CalendarModal } from "@/components/calendar-modal"
-import { fetchEvent, registerForEvent, getMyEventRegistrations, timeObjectToString } from "@/service/eventApi"
-import { useQueryClient } from "@tanstack/react-query"
+import { fetchEvent, getMyEvents, timeObjectToString } from "@/service/eventApi"
 
 export default function PublicEventsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const router = useRouter()
   const [showCalendarModal, setShowCalendarModal] = useState(false)
   const [showHistoryModal, setShowHistoryModal] = useState(false)
-  const [registeringEventId, setRegisteringEventId] = useState<number | null>(null)
-  const [showRegisteredOnly, setShowRegisteredOnly] = useState(false)
-  const [showConfirmModal, setShowConfirmModal] = useState(false)
-  const [selectedEventForRegistration, setSelectedEventForRegistration] = useState<any>(null)
   const [events, setEvents] = useState<any[]>([])
-  const [myRegistrations, setMyRegistrations] = useState<any[]>([])
+  const [myEvents, setMyEvents] = useState<any[]>([])
+  const [myEventsLoading, setMyEventsLoading] = useState(false)
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
-  const queryClient = useQueryClient()
 
   // Fetch all events and filter PUBLIC only
   useEffect(() => {
@@ -42,10 +37,6 @@ export default function PublicEventsPage() {
         // Filter only PUBLIC events
         const publicEvents = allEvents.filter((event: any) => event.type === "PUBLIC")
         setEvents(publicEvents)
-        
-        // Fetch user registrations
-        const registrations = await getMyEventRegistrations()
-        setMyRegistrations(registrations)
       } catch (error) {
         console.error("Failed to load public events:", error)
         toast({
@@ -61,17 +52,28 @@ export default function PublicEventsPage() {
     loadEvents()
   }, [toast])
 
-  // Filter registrations to only include PUBLIC events
-  const publicEventIds = new Set(events.map(e => e.id))
-  const publicRegistrations = myRegistrations.filter((r: any) => publicEventIds.has(r.eventId))
+  // Load my events when opening history modal
+  const loadMyEvents = async () => {
+    try {
+      setMyEventsLoading(true)
+      const events = await getMyEvents()
+      setMyEvents(events)
+    } catch (error) {
+      console.error("Failed to load my events:", error)
+      toast({
+        title: "Error",
+        description: "Failed to load your events",
+        variant: "destructive"
+      })
+    } finally {
+      setMyEventsLoading(false)
+    }
+  }
 
-  // Counts for legend summary
-  const confirmedCount = publicRegistrations.filter((r: any) => r.status === "CONFIRMED").length
-  const checkedInCount = publicRegistrations.filter((r: any) => r.status === "CHECKED_IN").length
-
-  // Helper function to check if event is registered
-  const isEventRegistered = (eventId: number) => {
-    return publicRegistrations.some((reg) => reg.eventId === eventId)
+  // Open history modal and load data
+  const handleOpenHistory = () => {
+    setShowHistoryModal(true)
+    loadMyEvents()
   }
 
   // Helper function to check if event has expired (past endTime) or is COMPLETED
@@ -115,11 +117,6 @@ export default function PublicEventsPage() {
   )
 
   const finalFilteredEvents = filteredEvents.filter((event: any) => {
-    // Filter by registered events only if showRegisteredOnly is true
-    if (showRegisteredOnly && !isEventRegistered(event.id)) {
-      return false
-    }
-
     // Default: Show future APPROVED events (hide expired/completed and rejected)
     const isExpired = isEventExpired(event)
     const isFutureEvent = event.date && new Date(event.date) >= new Date(new Date().toDateString())
@@ -193,42 +190,6 @@ export default function PublicEventsPage() {
     router.push(`/student/events-public/${eventId}`)
   }
 
-  const handleRegisterClick = (event: any) => {
-    console.log("Selected event for registration:", event)
-    console.log("commitPointCost:", event.commitPointCost)
-    setSelectedEventForRegistration(event)
-    setShowConfirmModal(true)
-  }
-
-  const handleConfirmRegister = async () => {
-    if (!selectedEventForRegistration) return
-    
-    const eventId = selectedEventForRegistration.id
-    setRegisteringEventId(eventId)
-    setShowConfirmModal(false)
-    
-    try {
-      const result = await registerForEvent(eventId)
-      toast({
-        title: "Success",
-        description: result.message || "Successfully registered for the event!",
-      })
-      // Reload registrations
-      const registrations = await getMyEventRegistrations()
-      setMyRegistrations(registrations)
-    } catch (error: any) {
-      console.error("Error registering for event:", error)
-      toast({
-        title: "Error",
-        description: error?.response?.data?.message || "Failed to register for the event",
-        variant: "destructive"
-      })
-    } finally {
-      setRegisteringEventId(null)
-      setSelectedEventForRegistration(null)
-    }
-  }
-
   return (
     <ProtectedRoute allowedRoles={["student"]}>
       <AppShell>
@@ -241,7 +202,7 @@ export default function PublicEventsPage() {
               </p>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setShowHistoryModal(true)}>
+              <Button variant="outline" onClick={handleOpenHistory}>
                 <History className="h-4 w-4 mr-2" /> History
               </Button>
               <Button variant="outline" onClick={() => setShowCalendarModal(true)}>
@@ -278,32 +239,6 @@ export default function PublicEventsPage() {
                 <SelectItem value="only">Only Expired</SelectItem>
               </SelectContent>
             </Select>
-
-            {/* Toggle button for registered events only */}
-            <Button
-              variant={showRegisteredOnly ? "default" : "outline"}
-              onClick={() => {
-                const newShowRegisteredOnly = !showRegisteredOnly
-                setShowRegisteredOnly(newShowRegisteredOnly)
-                // When switching to "My Registrations", change filter to "show all"
-                // When switching back to "All Events", change filter to "hide expired"
-                if (newShowRegisteredOnly) {
-                  setActiveFilters({ ...activeFilters, expired: "show" })
-                } else {
-                  setActiveFilters({ ...activeFilters, expired: "hide" })
-                }
-                setCurrentPage(1)
-              }}
-              className="whitespace-nowrap"
-            >
-              <Trophy className="h-4 w-4 mr-2" />
-              {showRegisteredOnly ? "All Events" : "My Registrations"}
-              {showRegisteredOnly && myRegistrations.length > 0 && (
-                <Badge variant="secondary" className="ml-2">
-                  {myRegistrations.length}
-                </Badge>
-              )}
-            </Button>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -391,11 +326,6 @@ export default function PublicEventsPage() {
                           >
                             {status}
                           </Badge>
-                          {isEventRegistered(event.id) && (
-                            <Badge variant="outline" className="border-blue-500 text-blue-500">
-                              Registered
-                            </Badge>
-                          )}
                         </div>
 
                         <div className="flex gap-2 pt-2">
@@ -406,15 +336,6 @@ export default function PublicEventsPage() {
                           >
                             View Details
                           </Button>
-                          {!isEventRegistered(event.id) && status !== "Finished" && (
-                            <Button
-                              className="flex-1"
-                              onClick={() => handleRegisterClick(event)}
-                              disabled={registeringEventId === event.id}
-                            >
-                              {registeringEventId === event.id ? "Registering..." : "Register"}
-                            </Button>
-                          )}
                         </div>
                       </div>
                     </CardContent>
@@ -437,6 +358,97 @@ export default function PublicEventsPage() {
             pageSizeOptions={[6, 12, 24, 48]}
           />
 
+          {/* History Modal */}
+          <Dialog open={showHistoryModal} onOpenChange={setShowHistoryModal}>
+            <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>My Registered Events</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                {myEventsLoading ? (
+                  <div className="py-12 text-center text-muted-foreground">
+                    <div className="text-muted-foreground">Loading your events...</div>
+                  </div>
+                ) : myEvents.length === 0 ? (
+                  <div className="py-12 text-center text-muted-foreground">
+                    <History className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <p>You haven't registered for any events yet</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {myEvents.map((event) => {
+                      const status = event.status
+                      let borderColor = ""
+                      if (status === "COMPLETED") {
+                        borderColor = "border-l-4 border-l-blue-900"
+                      } else if (status === "APPROVED") {
+                        borderColor = "border-l-4 border-l-green-500"
+                      } else if (status === "ONGOING") {
+                        borderColor = "border-l-4 border-l-purple-500"
+                      } else if (status === "PENDING_UNISTAFF") {
+                        borderColor = "border-l-4 border-l-yellow-500"
+                      }
+
+                      return (
+                        <Card key={event.id} className={`hover:shadow-md transition-shadow ${borderColor}`}>
+                          <CardContent className="p-4">
+                            <div className="space-y-3">
+                              <div className="flex items-start justify-between">
+                                <div className="space-y-1 flex-1">
+                                  <h4 className="font-semibold line-clamp-2">{event.name}</h4>
+                                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <Users className="h-3 w-3" />
+                                    <span>{event.hostClub?.name || "Unknown Club"}</span>
+                                  </div>
+                                </div>
+                                <Badge variant={event.type === "PUBLIC" ? "default" : "secondary"}>
+                                  {event.type}
+                                </Badge>
+                              </div>
+
+                              <div className="space-y-2 text-sm">
+                                <div className="flex items-center gap-2">
+                                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                                  <span>{event.date}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Clock className="h-4 w-4 text-muted-foreground" />
+                                  <span>
+                                    {event.startTime && event.endTime
+                                      ? `${timeObjectToString(event.startTime)} - ${timeObjectToString(event.endTime)}`
+                                      : "Time not set"}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                                  <span>{event.locationName || "Location TBA"}</span>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center justify-between pt-2">
+                                <Badge variant="outline">{status}</Badge>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setShowHistoryModal(false)
+                                    router.push(`/student/events-public/${event.id}`)
+                                  }}
+                                >
+                                  View Details
+                                </Button>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
+
           {/* Calendar Modal */}
           <CalendarModal
             open={showCalendarModal}
@@ -447,119 +459,6 @@ export default function PublicEventsPage() {
               router.push(`/student/events-public/${event.id}`)
             }}
           />
-
-          {/* History Modal */}
-          <Dialog open={showHistoryModal} onOpenChange={setShowHistoryModal}>
-            <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>My Event Registrations</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                {/* Legend / Status meanings */}
-                <div className="rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <div className="flex items-center gap-1.5">
-                      <div className="h-3 w-3 rounded-full bg-green-500"></div>
-                      <span>Confirmed ({confirmedCount})</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <div className="h-3 w-3 rounded-full bg-blue-500"></div>
-                      <span>Checked In ({checkedInCount})</span>
-                    </div>
-                  </div>
-                </div>
-                {publicRegistrations.length === 0 ? (
-                  <div className="py-12 text-center text-muted-foreground">
-                    <History className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <p>You haven't registered for any public events yet</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {publicRegistrations.map((registration) => (
-                      <Card key={`${registration.eventId}-${registration.registeredAt}`}>
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between">
-                            <div className="space-y-1 flex-1">
-                              <h4 className="font-semibold">{registration.eventName}</h4>
-                              <p className="text-sm text-muted-foreground">{registration.clubName}</p>
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <Calendar className="h-3 w-3" />
-                                <span>{registration.date}</span>
-                              </div>
-                            </div>
-                            <Badge
-                              variant={registration.status === "CHECKED_IN" ? "default" : "secondary"}
-                              className={
-                                registration.status === "CONFIRMED"
-                                  ? "bg-green-500"
-                                  : registration.status === "CHECKED_IN"
-                                  ? "bg-blue-500"
-                                  : ""
-                              }
-                            >
-                              {registration.status}
-                            </Badge>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </DialogContent>
-          </Dialog>
-
-          {/* Registration Confirmation Modal */}
-          <Dialog open={showConfirmModal} onOpenChange={setShowConfirmModal}>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <DialogTitle>Confirm Event Registration</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                {selectedEventForRegistration && (
-                  <>
-                    <div className="space-y-2">
-                      <h4 className="font-semibold">{selectedEventForRegistration.name}</h4>
-                      <p className="text-sm text-muted-foreground">
-                        {selectedEventForRegistration.hostClub?.name}
-                      </p>
-                    </div>
-                    
-                    {selectedEventForRegistration.commitPointCost > 0 && (
-                      <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-3">
-                        <p className="text-sm font-medium text-yellow-800">
-                          Commitment Required
-                        </p>
-                        <p className="text-sm text-yellow-700 mt-1">
-                          {selectedEventForRegistration.commitPointCost} points will be held as commitment.
-                          These points will be returned after successful attendance.
-                        </p>
-                      </div>
-                    )}
-                  </>
-                )}
-                
-                <div className="flex gap-3 pt-2">
-                  <Button
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => {
-                      setShowConfirmModal(false)
-                      setSelectedEventForRegistration(null)
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    className="flex-1"
-                    onClick={handleConfirmRegister}
-                  >
-                    Confirm Registration
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
         </div>
       </AppShell>
     </ProtectedRoute>

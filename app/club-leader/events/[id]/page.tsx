@@ -330,7 +330,7 @@ export default function EventDetailPage() {
   const getTypeBadge = (type: string) => renderTypeBadge(type)
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("vi-VN", {
+    return new Date(dateString).toLocaleDateString("en-US", {
       weekday: "long",
       year: "numeric",
       month: "long",
