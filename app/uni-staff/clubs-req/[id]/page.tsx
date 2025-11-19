@@ -10,7 +10,7 @@ import { Building, Calendar, Mail, FileText, CheckCircle, XCircle, ArrowLeft, Cl
 import Link from "next/link"
 import { processClubApplication, ProcessApplicationBody, createClubAccount, CreateClubAccountBody } from "@/service/clubApplicationAPI"
 import { useState } from "react"
-import { useClubApplications } from "@/hooks/use-query-hooks"
+import { useClubApplicationById } from "@/hooks/use-query-hooks"
 import { useQueryClient } from "@tanstack/react-query"
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger,
@@ -43,13 +43,17 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
     rejectReason?: string | null // MỚI
   }
 
-  // Use React Query hook to fetch all club applications
-  const { data: applications = [], isLoading: loading, error } = useClubApplications()
+  // Extract applicationId from params
+  const applicationId = params.id.startsWith('req-') 
+    ? parseInt(params.id.replace('req-', '')) 
+    : parseInt(params.id)
+
+  // Use React Query hook to fetch single club application by ID
+  const { data: application, isLoading: loading, error } = useClubApplicationById(applicationId)
   const [isProcessing, setIsProcessing] = useState<boolean>(false)
   const queryClient = useQueryClient()
   const { toast } = useToast()
-  // Filter client-side to find the specific application by ID
-  const found = applications.find((d: any) => `req-${d.applicationId}` === params.id || String(d.applicationId) === params.id)
+  
   // STATE
   const [rejectionReason, setRejectionReason] = useState<string>("")
   const [isFinalizing, setIsFinalizing] = useState<boolean>(false) // NEW: For Finalize action
@@ -70,20 +74,20 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
     defaultPassword: "",
   })
 
-  const request: UiDetail | null = found ? {
-    applicationId: found.applicationId,
-    id: `req-${found.applicationId}`,
-    clubName: found.clubName,
-    description: found.description,
-    majorName: (found as any).majorName ?? "Unknown", // SỬ DỤNG majorName
-    vision: (found as any).vision ?? "N/A", // SỬ DỤNG vision
-    proposerReason: (found as any).proposerReason ?? "N/A", // SỬ DỤNG proposerReason
+  const request: UiDetail | null = application ? {
+    applicationId: application.applicationId,
+    id: `req-${application.applicationId}`,
+    clubName: application.clubName,
+    description: application.description,
+    majorName: application.majorName ?? "Unknown",
+    vision: application.vision ?? "N/A",
+    proposerReason: application.proposerReason ?? "N/A",
     // Swagger dùng 'proposer', code cũ dùng 'submittedBy'. Ưu tiên 'proposer'
-    requestedBy: (found as any).proposer?.fullName ?? found.submittedBy?.fullName ?? "Unknown",
-    requestedByEmail: (found as any).proposer?.email ?? found.submittedBy?.email ?? "",
-    requestDate: found.submittedAt ?? "",
-    status: found.status,
-    rejectReason: (found as any).rejectReason ?? null, // SỬ DỤNG rejectReason
+    requestedBy: application.proposer?.fullName ?? application.submittedBy?.fullName ?? "Unknown",
+    requestedByEmail: application.proposer?.email ?? application.submittedBy?.email ?? "",
+    requestDate: application.submittedAt ?? "",
+    status: application.status,
+    rejectReason: application.rejectReason ?? null,
   } : null
 
   // Function to handle input change for the account creation form
@@ -314,9 +318,12 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
             Approved
           </Badge>
         )
-      case "COMPLETE":
+      case "COMPLETED":
         return (
-          <Badge variant="default" className="bg-blue-100 text-blue-800 border-blue-300">
+          <Badge
+            variant="default"
+            className="bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900 dark:text-blue-300 dark:border-blue-700"
+          >
             <ShieldCheck className="h-3 w-3 mr-1" />
             Complete
           </Badge>
@@ -383,7 +390,7 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Vision</label>
                     <div className="flex items-start gap-2 mt-1">
-                      <Eye className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1" />
+                      <Eye className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />
                       <p className="mt-0">{request.vision}</p>
                     </div>
                   </div>

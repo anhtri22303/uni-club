@@ -693,7 +693,6 @@ export default function EditProductPage() {
                         </div>
 
                         <div className="flex items-center gap-3">
-                            {/* --- Logic MỚI: Chỉ hiển thị MỘT trong hai --- */}
 
                             {isArchived ? (
                                 // 1. NẾU ĐÃ ARCHIVED: Hiển thị Badge

@@ -24,25 +24,46 @@ import { Skeleton } from "@/components/ui/skeleton"
 // Danh sách các màu phổ biến để chọn
 const COLOR_OPTIONS = [
     { value: "#FF6B6B", label: "Red" },
+    { value: "#C0392B", label: "Dark Red" },
+    { value: "#E74C3C", label: "Light Red" },
+    { value: "#FFB3B3", label: "Pink Red" },
+    { value: "#FF69B4", label: "Hot Pink" },
+    { value: "#F06292", label: "Pink" },
+    { value: "#BA68C8", label: "Light Purple" },
+    { value: "#8E44AD", label: "Deep Purple" },
+    { value: "#BB8FCE", label: "Purple" },
+    { value: "#8338EC", label: "Violet" },
     { value: "#4ECDC4", label: "Turquoise" },
     { value: "#45B7D1", label: "Sky Blue" },
-    { value: "#FFA07A", label: "Light Salmon" },
+    { value: "#85C1E2", label: "Light Blue" },
+    { value: "#3A86FF", label: "Blue" },
+    { value: "#1565C0", label: "Dark Blue" },
+    { value: "#00BFFF", label: "Deep Sky Blue" },
+    { value: "#06FFA5", label: "Aquamarine" },
+    { value: "#2A9D8F", label: "Teal" },
+    { value: "#52B788", label: "Green" },
+    { value: "#388E3C", label: "Dark Green" },
     { value: "#98D8C8", label: "Mint" },
     { value: "#F7DC6F", label: "Yellow" },
-    { value: "#BB8FCE", label: "Purple" },
-    { value: "#85C1E2", label: "Light Blue" },
-    { value: "#F8B739", label: "Orange" },
-    { value: "#52B788", label: "Green" },
-    { value: "#E76F51", label: "Coral" },
-    { value: "#2A9D8F", label: "Teal" },
+    { value: "#FFEB3B", label: "Bright Yellow" },
     { value: "#E9C46A", label: "Gold" },
-    { value: "#F4A261", label: "Sandy Brown" },
-    { value: "#264653", label: "Dark Slate" },
-    { value: "#8338EC", label: "Violet" },
+    { value: "#FFD700", label: "Golden" },
+    { value: "#F8B739", label: "Orange" },
+    { value: "#FFA500", label: "Bright Orange" },
     { value: "#FB5607", label: "Orange Red" },
+    { value: "#F4A261", label: "Sandy Brown" },
+    { value: "#FFA07A", label: "Light Salmon" },
+    { value: "#E76F51", label: "Coral" },
+    { value: "#A0522D", label: "Sienna" },
+    { value: "#795548", label: "Brown" },
+    { value: "#264653", label: "Dark Slate" },
+    { value: "#34495E", label: "Slate Blue" },
+    { value: "#607D8B", label: "Blue Grey" },
     { value: "#FFBE0B", label: "Amber" },
-    { value: "#3A86FF", label: "Blue" },
-    { value: "#06FFA5", label: "Aquamarine" },
+    { value: "#B0BEC5", label: "Light Grey" },
+    { value: "#616161", label: "Grey" },
+    { value: "#000000", label: "Black" },
+    { value: "#FFFFFF", label: "White" },
 ]
 
 
@@ -455,7 +476,12 @@ export default function UniStaffMajorsPage() {
                                             </SelectValue>
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {COLOR_OPTIONS.map((color) => (
+                                            {COLOR_OPTIONS.filter(color => {
+                                                // Chỉ cho phép chọn màu chưa bị major khác sử dụng hoặc là màu hiện tại của major đang edit
+                                                const normalized = (color.value || "").trim().toUpperCase();
+                                                const isUsed = majors.some(m => m.id !== selected?.id && (m.colorHex || "").trim().toUpperCase() === normalized);
+                                                return !isUsed || normalized === (editColorHex || "").trim().toUpperCase();
+                                            }).map((color) => (
                                                 <SelectItem key={color.value} value={color.value}>
                                                     <div className="flex items-center gap-2">
                                                         <div

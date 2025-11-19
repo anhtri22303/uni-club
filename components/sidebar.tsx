@@ -1000,11 +1000,25 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                         {pendingClubOrdersCount}
                       </span>
                     )}
-                    {/* Uni Staff role: Show badge for Requests item (Pending Event Requests + Point Requests) when dropdown is closed */}
-                    {showBadges && isRequestsDropdown && !isDropdownOpen && (pendingUniStaffEventRequestsCount > 0 || pendingUniStaffPointRequestsCount > 0) && (
-                      <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-orange-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center" title="Pending Requests (Event Requests + Point Requests)">
-                        {pendingUniStaffEventRequestsCount + pendingUniStaffPointRequestsCount}
-                      </span>
+                    {/* Uni Staff role: Show 3 separate badges for Requests item when dropdown is closed */}
+                    {showBadges && isRequestsDropdown && !isDropdownOpen && (
+                      <div className="ml-auto flex gap-1">
+                        {pendingUniStaffClubApplicationsCount > 0 && (
+                          <span className="text-xs px-1.5 py-0.5 rounded-full bg-yellow-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center" title="Pending Club Requests">
+                            {pendingUniStaffClubApplicationsCount}
+                          </span>
+                        )}
+                        {pendingUniStaffPointRequestsCount > 0 && (
+                          <span className="text-xs px-1.5 py-0.5 rounded-full bg-orange-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center" title="Pending Point Requests">
+                            {pendingUniStaffPointRequestsCount}
+                          </span>
+                        )}
+                        {pendingUniStaffEventRequestsCount > 0 && (
+                          <span className="text-xs px-1.5 py-0.5 rounded-full bg-orange-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center" title="Pending Event Requests">
+                            {pendingUniStaffEventRequestsCount}
+                          </span>
+                        )}
+                      </div>
                     )}
                     {/* Student role: Show 3 separate badges for History item (Member Apps, Club Apps, Orders) */}
                     {showBadges && isHistoryItem && auth.role === "student" && (

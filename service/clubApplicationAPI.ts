@@ -51,6 +51,28 @@ export async function getClubApplications(): Promise<ClubApplication[]> {
   return result.data
 }
 
+/**
+ * Fetches a single club application by ID from the backend.
+ * @param id - Application ID
+ * @returns Single ClubApplication object
+ */
+export async function getClubApplyById(id: number): Promise<ClubApplication> {
+  try {
+    const resp = await axiosInstance.get(`/api/club-applications/${id}`)
+    const result = resp.data as { success: boolean; message: string; data: ClubApplication }
+    console.log(`Fetched club application ${id}:`, result)
+    
+    if (!result.success || !result.data) {
+      throw new Error(result.message || "Failed to fetch club application")
+    }
+    
+    return result.data
+  } catch (error: any) {
+    console.error(`Error fetching club application ${id}:`, error)
+    throw error
+  }
+}
+
 export async function postClubApplication(
   body: {
     clubName: string
@@ -194,6 +216,7 @@ export async function sendOtp(studentEmail: string): Promise<string> {
 
 export default {
   getClubApplications,
+  getClubApplyById,
   postClubApplication,
   putClubApplicationStatus,
   getMyClubApply,
