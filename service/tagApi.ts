@@ -11,23 +11,32 @@ interface ApiResponse<T> {
 export interface Tag {
   tagId: number;
   name: string;
-  description: string; // Đã thêm
-  core: boolean;       // Đã thêm
+  description: string;
+  core: boolean;
+}
+
+// --- Interface for Tag Creation Payload ---
+// DTO (Data Transfer Object) cho body của request POST /api/tags
+// Swagger (ảnh POST) chỉ yêu cầu 'name'
+export interface CreateTagDto {
+  name: string;
+  description: string;
+  core: boolean;
 }
 
 // --- Interface for Tag Update Payload ---
 // DTO (Data Transfer Object) cho body của request PUT /api/tags/{id}
-// Dựa trên mô tả: "Cho phép chỉnh sửa tên và mô tả của tag"
 export interface UpdateTagDto {
   name: string;
   description: string;
-  core: boolean; // <-- ĐÃ THÊM
+  core: boolean;
 }
 
 // --- API Functions ---
 
 /**
  * Lấy danh sách TẤT CẢ các tag (GET /api/tags)
+ * Public API — bất kỳ ai cũng xem được.
  */
 export async function getTags(): Promise<Tag[]> {
   const res = await axiosInstance.get<ApiResponse<Tag[]>>(
@@ -38,23 +47,26 @@ export async function getTags(): Promise<Tag[]> {
 
 /**
  * Thêm một tag mới (POST /api/tags)
+ * ADMIN hoặc UNIVERSITY_STAFF có thể tạo tag mới.
+ * Dựa trên Swagger (ảnh POST), tham số là 'name'
  */
-export async function addTag(name: string): Promise<Tag> {
+export async function addTag(data: CreateTagDto): Promise<Tag> {
+  // Gửi data đầy đủ (name, description, core) trong body request
   const res = await axiosInstance.post<ApiResponse<Tag>>(
     "/api/tags",
-    null,
-    { params: { name } }
+    data
   );
   return res.data.data;
 }
 
 /**
  * Cập nhật một tag (PUT /api/tags/{id})
- * (CẬP NHẬT) Hàm này giờ đã chấp nhận data với 'core'
+ * ADMIN và UNIVERSITY_STAFF có quyền sửa tag.
+ * Core tags không được chỉnh sửa.
  */
 export async function updateTag(
   tagId: number | string,
-  data: UpdateTagDto // DTO này đã được cập nhật
+  data: UpdateTagDto
 ): Promise<Tag> {
   const res = await axiosInstance.put<ApiResponse<Tag>>(
     `/api/tags/${tagId}`,
@@ -64,6 +76,7 @@ export async function updateTag(
 }
 /**
  * Xóa một tag (DELETE /api/tags/{id})
+ * Chỉ ADMIN và UNIVERSITY_STAFF. Core tags không bị xóa.
  */
 export async function deleteTag(tagId: number | string): Promise<string> {
   const res = await axiosInstance.delete<ApiResponse<string>>(

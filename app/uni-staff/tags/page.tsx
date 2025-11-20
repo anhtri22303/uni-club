@@ -18,9 +18,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 
-// -----------------------------------------------------------------
-// (THAY ĐỔI) Types: Cập nhật cho Tag
-// -----------------------------------------------------------------
+//  Types: Cập nhật cho Tag
 type SortField = "name" | "description" | "tagId"
 type SortOrder = "asc" | "desc"
 type ViewMode = "grid" | "list"
@@ -29,39 +27,36 @@ type TagFilter = "all" | "core" | "custom"
 type TagFormData = {
     name: string
     description: string
-    core: boolean // <-- ĐÃ THÊM
+    core: boolean
 }
 
 export default function UniStaffTagsPage() {
     const { toast } = useToast()
-
     // State management
     const [tags, setTags] = useState<Tag[]>([])
     const [loading, setLoading] = useState(true)
     const [searchQuery, setSearchQuery] = useState("")
-    const [sortField, setSortField] = useState<SortField>("name") // Sửa: default sort
-    const [sortOrder, setSortOrder] = useState<SortOrder>("asc") // Sửa: default sort
+    const [sortField, setSortField] = useState<SortField>("name") // default sort
+    const [sortOrder, setSortOrder] = useState<SortOrder>("asc") // default sort
     const [viewMode, setViewMode] = useState<ViewMode>("grid")
-    const [tagFilter, setTagFilter] = useState<TagFilter>("all") // Sửa: capacityFilter -> tagFilter
+    const [tagFilter, setTagFilter] = useState<TagFilter>("all") // capacityFilter -> tagFilter
 
     // Modal and form state
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
-    const [editingTag, setEditingTag] = useState<Tag | null>(null) // Sửa: editingLocation -> editingTag
+    const [editingTag, setEditingTag] = useState<Tag | null>(null) // editingLocation -> editingTag
     const [formData, setFormData] = useState<TagFormData>({
         name: "",
         description: "",
-        core: false, // <-- ĐÃ THÊM
+        core: false,
     })
 
     // Delete confirmation state
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-    const [tagToDelete, setTagToDelete] = useState<Tag | null>(null) // Sửa: locationToDelete -> tagToDelete
+    const [tagToDelete, setTagToDelete] = useState<Tag | null>(null) // locationToDelete -> tagToDelete
     const [isDeleting, setIsDeleting] = useState(false)
 
-    // -----------------------------------------------------------------
-    // (THAY ĐỔI) Fetch tags: Chỉ chạy 1 lần khi mount
-    // -----------------------------------------------------------------
+    // Fetch tags: Chỉ chạy 1 lần khi mount
     useEffect(() => {
         loadTags()
     }, [])
@@ -69,12 +64,11 @@ export default function UniStaffTagsPage() {
     const loadTags = async () => {
         try {
             setLoading(true)
-            // (THAY ĐỔI) Gọi getTags() - không có tham số
+            //Gọi getTags() - không có tham số
             const response = await getTags()
 
             if (response) {
                 setTags(response)
-                // (XÓA BỎ) Set state phân trang
             }
         } catch (error) {
             console.error("Error loading tags:", error)
@@ -88,9 +82,7 @@ export default function UniStaffTagsPage() {
         }
     }
 
-    // -----------------------------------------------------------------
-    // (THAY ĐỔI) Helper: Chuyển từ Capacity -> Tag (Core/Custom)
-    // -----------------------------------------------------------------
+    // Helper: Chuyển từ Capacity -> Tag (Core/Custom)
     const getTagBadge = (isCore: boolean) => {
         if (isCore) {
             return {
@@ -104,9 +96,7 @@ export default function UniStaffTagsPage() {
         }
     }
 
-    // -----------------------------------------------------------------
-    // (THAY ĐỔI) Filter, Sort (Client-side), và Stats
-    // -----------------------------------------------------------------
+    // Filter, Sort (Client-side), và Stats
     const filteredTags = useMemo(() => {
         let processedTags = [...tags]
 
@@ -162,17 +152,12 @@ export default function UniStaffTagsPage() {
             setSortField(field)
             setSortOrder("asc") // Default to asc for names
         }
-        // (XÓA BỎ) Reset page
     }
 
-    // (XÓA BỎ) handlePageChange
-
-    /**
-     * Xử lý khi nhấn nút "Create Tag"
-     */
+    //Xử lý khi nhấn nút "Create Tag"
     const handleOpenCreateModal = () => {
         setEditingTag(null)
-        // (CẬP NHẬT) Reset cả 'core'
+        // Reset cả 'core'
         setFormData({
             name: "",
             description: "",
@@ -181,14 +166,12 @@ export default function UniStaffTagsPage() {
         setIsModalOpen(true)
     }
 
-    /**
-     * Xử lý khi nhấn vào Card (mở modal ở chế độ sửa)
-     */
+    //Xử lý khi nhấn vào Card (mở modal ở chế độ sửa)
     const handleEditClick = (tag: Tag) => {
-        // (CẬP NHẬT) 4. XÓA BỎ logic chặn edit 'core' tag
+        // 4. XÓA BỎ logic chặn edit 'core' tag
         // if (tag.core) { ... } // <-- ĐÃ XÓA
         setEditingTag(tag)
-        // (CẬP NHẬT) 5. Thêm 'core' khi set form
+        // 5. Thêm 'core' khi set form
         setFormData({
             name: tag.name,
             description: tag.description || "",
@@ -197,14 +180,13 @@ export default function UniStaffTagsPage() {
         setIsModalOpen(true)
     }
 
-    /**
-     * Xử lý khi đóng/mở modal
-     */
+
+    //Xử lý khi đóng/mở modal
     const handleModalOpenChange = (isOpen: boolean) => {
         setIsModalOpen(isOpen)
         if (!isOpen) {
             setEditingTag(null)
-            // (CẬP NHẬT) Reset cả 'core'
+            // Reset cả 'core'
             setFormData({ name: "", description: "", core: false })
         }
     }
@@ -216,16 +198,14 @@ export default function UniStaffTagsPage() {
         }))
     }
 
-    /**
-     * Hàm Submit chính, kiểm tra validation và gọi create hoặc update
-     */
+    //Hàm Submit chính, kiểm tra validation và gọi create hoặc update
+
     const handleFormSubmit = async () => {
         // Validation
         if (!formData.name.trim()) {
             toast({ title: "Validation Error", description: "Tag name is required", variant: "destructive" })
             return
         }
-        // (XÓA BỎ) Validation cho address và capacity
 
         // Quyết định gọi hàm create hay update
         if (editingTag) {
@@ -235,14 +215,12 @@ export default function UniStaffTagsPage() {
         }
     }
 
-    /**
-       * Logic Create
-       */
+    //Logic Create
     const handleCreateTag = async () => {
         try {
             setIsSaving(true)
             // Gọi addTag chỉ với 'name'
-            await addTag(formData.name)
+            await addTag(formData);
 
             toast({
                 title: "Success",
@@ -252,19 +230,35 @@ export default function UniStaffTagsPage() {
             loadTags() // Tải lại danh sách
         } catch (error) {
             console.error("Error creating tag:", error)
+
+            // --- ĐỂ HIỂN THỊ LỖI CỤ THỂ ---
+            let errorMessage = "Failed to create tag. Please try again.";
+
+            // Kiểm tra nếu lỗi là lỗi HTTP/Axios và có phản hồi (response)
+            if (error && typeof error === 'object' && 'response' in error) {
+                const serverError = (error as any).response.data;
+
+                // Dựa trên ảnh chụp, lỗi nằm trong trường 'error'
+                if (serverError && serverError.error) {
+                    errorMessage = serverError.error;
+                } else if (serverError && serverError.message) {
+                    // Fallback nếu server sử dụng trường 'message'
+                    errorMessage = serverError.message;
+                }
+            }
+
             toast({
-                title: "Error",
-                description: "Failed to create tag. Please try again.",
+                title: "Creation Error", // Thay đổi tiêu đề rõ ràng hơn
+                description: errorMessage,
                 variant: "destructive",
             })
+
         } finally {
             setIsSaving(false)
         }
     }
 
-    /**
-     * Logic Update
-     */
+    //Logic Update
     const handleUpdateTag = async () => {
         if (!editingTag) return
 
@@ -298,7 +292,7 @@ export default function UniStaffTagsPage() {
 
     const handleDeleteClick = (tag: Tag, e: React.MouseEvent) => {
         e.stopPropagation() // Prevent card click event
-        if (tag.core) { // (LOGIC MỚI) Không cho xóa Core Tag
+        if (tag.core) { // Không cho xóa Core Tag
             toast({
                 title: "Action Prohibited",
                 description: "Core tags cannot be deleted.",
@@ -315,7 +309,7 @@ export default function UniStaffTagsPage() {
 
         try {
             setIsDeleting(true)
-            await deleteTag(tagToDelete.tagId) // Sửa: Dùng tagId
+            await deleteTag(tagToDelete.tagId) // Dùng tagId
 
             toast({
                 title: "Success",
@@ -350,12 +344,12 @@ export default function UniStaffTagsPage() {
                     <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
                             <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2 sm:gap-3">
-                                {/* (SỬA) Icon và Title */}
+                                {/* Icon và Title */}
                                 <Tags className="h-6 w-6 sm:h-8 sm:w-8 flex-shrink-0" />
                                 <span className="truncate">Tag Management</span>
                             </h1>
                             <p className="text-sm sm:text-base text-muted-foreground mt-1 line-clamp-2">
-                                {/* (SỬA) Description */}
+                                {/* Description */}
                                 Create, edit, and manage system-wide tags for categorization.
                             </p>
                         </div>
@@ -371,11 +365,11 @@ export default function UniStaffTagsPage() {
                             <DialogContent className="sm:max-w-[500px]">
                                 <DialogHeader>
                                     <DialogTitle>
-                                        {/* (SỬA) Title động */}
+                                        {/* Title động */}
                                         {editingTag ? "Edit Tag" : "Create New Tag"}
                                     </DialogTitle>
                                     <DialogDescription>
-                                        {/* (SỬA) Description động */}
+                                        {/* Description động */}
                                         {editingTag
                                             ? `Update the details for "${editingTag.name}"`
                                             : "Add a new tag to the system"}
@@ -398,41 +392,40 @@ export default function UniStaffTagsPage() {
                                     </div>
 
                                     {/* Description Input - CHỈ HIỂN THỊ KHI EDIT */}
-                                    {editingTag && (
-                                        <>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="description">
-                                                    Description
-                                                </Label>
-                                                <Input
-                                                    id="description"
-                                                    placeholder="e.g., For official academic workshops"
-                                                    value={formData.description}
-                                                    onChange={(e) => handleFormChange("description", e.target.value)}
-                                                    className="border-slate-300"
-                                                />
-                                            </div>
+                                    {/* {editingTag && (
+                                        <> */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="description">
+                                            Description
+                                        </Label>
+                                        <Input
+                                            id="description"
+                                            placeholder="e.g., For official academic workshops"
+                                            value={formData.description}
+                                            onChange={(e) => handleFormChange("description", e.target.value)}
+                                            className="border-slate-300"
+                                        />
+                                    </div>
 
-                                            {/* Checkbox "Set as Core Tag" */}
-                                            <div className="flex items-center space-x-2 pt-2">
-                                                <Checkbox
-                                                    id="core"
-                                                    checked={formData.core}
-                                                    onCheckedChange={(checked) => handleFormChange("core", !!checked)}
-                                                />
-                                                <Label
-                                                    htmlFor="core"
-                                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                                >
-                                                    Set as Core Tag
-                                                </Label>
-                                            </div>
-                                            <p className="text-xs text-muted-foreground -mt-2">
-                                                Core tags are system-defined and cannot be deleted by users.
-                                            </p>
-                                        </>
-                                    )}
-
+                                    {/* Checkbox "Set as Core Tag" */}
+                                    <div className="flex items-center space-x-2 pt-2">
+                                        <Checkbox
+                                            id="core"
+                                            checked={formData.core}
+                                            onCheckedChange={(checked) => handleFormChange("core", !!checked)}
+                                        />
+                                        <Label
+                                            htmlFor="core"
+                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                        >
+                                            Set as Core Tag
+                                        </Label>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground -mt-2">
+                                        Core tags are system-defined and cannot be deleted by users.
+                                    </p>
+                                    {/* </>
+                                    )} */}
                                 </div>
 
                                 <DialogFooter>
@@ -456,7 +449,7 @@ export default function UniStaffTagsPage() {
                         </Dialog>
                     </div>
 
-                    {/* (SỬA) Statistics Cards */}
+                    {/* Statistics Cards */}
                     <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
                         <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900 border-purple-200 dark:border-purple-800">
                             <CardHeader className="pb-3">
@@ -511,7 +504,7 @@ export default function UniStaffTagsPage() {
                                 </div>
 
                                 <div className="flex gap-2 w-full sm:w-auto">
-                                    {/* (SỬA) Tag Filter */}
+                                    {/* Tag Filter */}
                                     <Select value={tagFilter} onValueChange={(v) => setTagFilter(v as TagFilter)}>
                                         <SelectTrigger className="w-full sm:w-[140px]">
                                             <SelectValue placeholder="All Tags" />
@@ -523,7 +516,7 @@ export default function UniStaffTagsPage() {
                                         </SelectContent>
                                     </Select>
 
-                                    {/* (SỬA) Sort Dropdown */}
+                                    {/* Sort Dropdown */}
                                     <Select value={`${sortField}-${sortOrder}`} onValueChange={(value) => {
                                         const [field, order] = value.split('-') as [SortField, SortOrder]
                                         setSortField(field)
@@ -646,7 +639,7 @@ export default function UniStaffTagsPage() {
                                             <div className="flex items-start gap-2 text-sm min-w-0 h-10">
                                                 <Info className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                                                 <p className="text-muted-foreground line-clamp-2 min-w-0 italic">
-                                                    {tag.description || "No description provided."}
+                                                    {tag.description || "No description."}
                                                 </p>
                                             </div>
                                             {/* Capacity */}
@@ -702,7 +695,6 @@ export default function UniStaffTagsPage() {
                                                         </p>
                                                     </div>
                                                 </div>
-                                                {/* (XÓA BỎ) Capacity Box */}
                                             </div>
                                         </CardContent>
                                     </Card>
@@ -711,7 +703,6 @@ export default function UniStaffTagsPage() {
                         </div>
                     )}
 
-                    {/* (XÓA BỎ) Pagination */}
 
                     {/* Delete Confirmation Dialog */}
                     <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
