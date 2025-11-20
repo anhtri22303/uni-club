@@ -23,28 +23,28 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export type PolicyActivityTypeEnum =
+  | "CLUB_EVENT_ACTIVITY"
   | "SESSION_ATTENDANCE"
-  | "STAFF_EVALUATION"
-  | "CLUB_EVENT_ACTIVITY";
+  | "STAFF_EVALUATION";
 
 const ACTIVITY_TYPE_LABELS: Record<PolicyActivityTypeEnum, string> = {
-  SESSION_ATTENDANCE: "Session Attendance (Điểm danh)",
-  STAFF_EVALUATION: "Staff Evaluation (Đánh giá)",
-  CLUB_EVENT_ACTIVITY: "Club Event Activity (Hoạt động CLB)",
+  CLUB_EVENT_ACTIVITY: "Club Event Activity",
+  SESSION_ATTENDANCE: "Session Attendance ",
+  STAFF_EVALUATION: "Staff Evaluation",
 }
 
 // Mapping logic: Activity Type -> Condition Type
 const ACTIVITY_TO_CONDITION_MAP: Record<PolicyActivityTypeEnum, ConditionType> = {
+  CLUB_EVENT_ACTIVITY: "ABSOLUTE", // Hoạt động thường là điểm tuyệt đối
   SESSION_ATTENDANCE: "PERCENTAGE", // Thường là % thời gian tham gia
   STAFF_EVALUATION: "ABSOLUTE", // Đánh giá là thang điểm tuyệt đối/mức độ
-  CLUB_EVENT_ACTIVITY: "ABSOLUTE", // Hoạt động thường là điểm tuyệt đối
 }
 
 // Mapping logic: Activity Type -> Target Type (Dùng để tự động set Target Type)
 const ACTIVITY_TO_TARGET_MAP: Record<PolicyActivityTypeEnum, PolicyTargetType> = {
+  CLUB_EVENT_ACTIVITY: "CLUB",
   SESSION_ATTENDANCE: "MEMBER",
   STAFF_EVALUATION: "MEMBER",
-  CLUB_EVENT_ACTIVITY: "CLUB",
 }
 
 const ALLOWED_ACTIVITY_TYPES = Object.keys(ACTIVITY_TYPE_LABELS) as PolicyActivityTypeEnum[];
@@ -194,9 +194,9 @@ export default function AdminMultiplierPolicyPage() {
     multiplier: 1,
     active: true,
     // giá trị mặc định cho chuỗi
-    minThresholdString: "0",
-    maxThresholdString: "0",
-    multiplierString: "1",
+    minThresholdString: "",
+    maxThresholdString: "",
+    multiplierString: "",
   }
 
   const [formData, setFormData] = useState(initialFormData)
@@ -288,13 +288,18 @@ export default function AdminMultiplierPolicyPage() {
 
     // --- Xử lý Thresholds dựa trên Activity Type ---
     // Nếu là Staff Evaluation, Min=0, Max=1 (giá trị dummy cho API)
-    const minThreshold = isStaffEvaluation ? 0 : rawMinThreshold;
-    const maxThreshold = isStaffEvaluation ? 1 : rawMaxThreshold;
+    const minThreshold = isStaffEvaluation ? null : rawMinThreshold;
+    const maxThreshold = isStaffEvaluation ? null : rawMaxThreshold;
 
     // 3. Validation Thresholds (chỉ áp dụng nếu KHÔNG phải Staff Evaluation)
     if (!isStaffEvaluation) {
       if (rawMinThreshold < 0 || rawMaxThreshold < 0) {
         toast({ title: "Validation Error", description: "Thresholds must be 0 or greater", variant: "destructive", });
+        return
+      }
+      // CHECK GIỚI HẠN TỐI ĐA CHO MIN THRESHOLD (khi là PERCENTAGE)
+      if (formData.conditionType === 'PERCENTAGE' && rawMinThreshold > 100) {
+        toast({ title: "Validation Error", description: "Min Threshold cannot be greater than 100 when the type is PERCENTAGE.", variant: "destructive", });
         return
       }
       if (formData.conditionType === 'PERCENTAGE' && rawMaxThreshold > 101) {
@@ -329,15 +334,16 @@ export default function AdminMultiplierPolicyPage() {
       setIsCreating(true)
 
       // Nếu là Staff Evaluation, RuleName là mức độ đánh giá, LevelEvaluation là giá trị nhập
-      const finalRuleName = isStaffEvaluation ? formData.levelEvaluation.trim() : formData.ruleName.trim();
+      // const finalRuleName = isStaffEvaluation ? formData.levelEvaluation.trim() : formData.ruleName.trim();
+      const finalRuleName = formData.ruleName.trim();
       const finalLevelEvaluation = formData.levelEvaluation.trim() || null;
 
       const payload = {
         ...formData,
         ruleName: finalRuleName,
         levelEvaluation: finalLevelEvaluation, // Gửi null nếu rỗng
-        minThreshold, // Gửi giá trị đã xử lý (0 hoặc giá trị nhập)
-        maxThreshold, // Gửi giá trị đã xử lý (1 hoặc giá trị nhập)
+        minThreshold, // Gửi NULL hoặc số
+        maxThreshold, // Gửi NULL hoặc số
         multiplier,
         updatedBy: userId,
       }
@@ -385,6 +391,11 @@ export default function AdminMultiplierPolicyPage() {
       }
     }
 
+    // Chuyển 0, null thành chuỗi rỗng để placeholder hiển thị
+    const minStr = policy.minThreshold > 0 ? formatNumberWithCommas(policy.minThreshold) : "";
+    const maxStr = policy.maxThreshold > 0 ? formatNumberWithCommas(policy.maxThreshold) : "";
+    const multiStr = policy.multiplier > 0 ? formatNumberWithCommas(policy.multiplier) : "";
+
     // Bao gồm levelEvaluation khi mở modal edit
     setEditFormData({
       ...policy,
@@ -418,8 +429,8 @@ export default function AdminMultiplierPolicyPage() {
     const rawMaxThreshold = parseIntWithCommas(editFormData.maxThresholdString || "");
     const multiplier = parseNumber(editFormData.multiplierString || "");
     // --- Xử lý Thresholds dựa trên Activity Type ---
-    const minThreshold = isStaffEvaluation ? 0 : rawMinThreshold;
-    const maxThreshold = isStaffEvaluation ? 1 : rawMaxThreshold;
+    const minThreshold = isStaffEvaluation ? null : rawMinThreshold;
+    const maxThreshold = isStaffEvaluation ? null : rawMaxThreshold;
     // Level Evaluation và Rule Name gửi đi:
     const finalLevelEvaluation = (isStaffEvaluation && levelEvaluation) ? levelEvaluation : null; // Gửi null nếu không phải staff eval
     const finalRuleName = isStaffEvaluation ? finalLevelEvaluation : ruleName; // Rule Name = Level Eval khi Staff Eval, nếu không thì dùng Rule Name đã nhập    // 3. Validation Thresholds (chỉ áp dụng nếu KHÔNG phải Staff Evaluation)
@@ -449,8 +460,8 @@ export default function AdminMultiplierPolicyPage() {
         activityType,
         levelEvaluation: finalLevelEvaluation, // Gửi Level Evaluation đã xử lý
         targetType: editFormData.targetType,
-        minThreshold, // Gửi giá trị đã xử lý (0 hoặc giá trị nhập)
-        maxThreshold, // Gửi giá trị đã xử lý (1 hoặc giá trị nhập)
+        minThreshold, // Gửi NULL hoặc số
+        maxThreshold, // Gửi NULL hoặc số
         multiplier,
         minThresholdString: undefined,
         maxThresholdString: undefined,
@@ -663,6 +674,7 @@ export default function AdminMultiplierPolicyPage() {
                 {policy.maxThreshold}
               </span>
             </div>
+
             {/* Condition Type */}
             <div className="flex items-center justify-between text-xs sm:text-sm gap-2">
               <span className="text-muted-foreground flex items-center gap-1 truncate">
@@ -694,7 +706,7 @@ export default function AdminMultiplierPolicyPage() {
                 <Users className="h-3 w-3 flex-shrink-0" />
                 <span className="truncate">Updated By</span>
               </span>
-              <span className="font-mono text-xs bg-muted px-2 py-1 rounded flex-shrink-0 truncate max-w-[150px]">
+              <span className="font-mono text-black text-xs bg-muted px-2 py-1 rounded flex-shrink-0 truncate max-w-[150px] border-slate-300">
                 {policy.updatedBy || "Unknown"}
               </span>
             </div>
@@ -759,6 +771,8 @@ export default function AdminMultiplierPolicyPage() {
                       onValueChange={(value: PolicyActivityTypeEnum) => {
                         const newTargetType = ACTIVITY_TO_TARGET_MAP[value];
                         const newConditionType = ACTIVITY_TO_CONDITION_MAP[value];
+                        // Xác định liệu đây có phải là Staff Evaluation hay không
+                        const isStaffEval = value === "STAFF_EVALUATION"; 
 
                         setFormData({
                           ...formData,
@@ -766,8 +780,8 @@ export default function AdminMultiplierPolicyPage() {
                           targetType: newTargetType, // TỰ ĐỘNG CẬP NHẬT
                           conditionType: newConditionType, // TỰ ĐỘNG CẬP NHẬT
                           // Đảm bảo reset Min/Max theo Condition mới
-                          minThresholdString: "0",
-                          maxThresholdString: newConditionType === 'PERCENTAGE' ? "101" : "0",
+                          minThresholdString: "", //  Bắt đầu bằng chuỗi rỗng
+                          maxThresholdString: "", //  Bắt đầu bằng chuỗi rỗng
                         });
                       }}
                     >
@@ -782,7 +796,7 @@ export default function AdminMultiplierPolicyPage() {
                         ))}
                       </SelectContent>
                     </Select>
-                    <p className="text-xs text-muted-foreground">Chọn loại hoạt động. Target Type và Condition Type sẽ được tự động thiết lập.</p>
+                    <p className="text-xs text-muted-foreground">Select the activity type. Target Type and Condition Type will be automatically set.</p>
                   </div>
 
                   {/* 2. Target Type (KHÓA VÀ HIỂN THỊ) */}
@@ -822,21 +836,6 @@ export default function AdminMultiplierPolicyPage() {
                     />
                   </div>
 
-                  {/* Level Evaluation - CONDITIONAL (Chỉ hiển thị cho Staff Evaluation) */}
-                  {formData.activityType === "STAFF_EVALUATION" && (
-                    <div className="space-y-2">
-                      <Label htmlFor="levelEvaluationInput">Mức độ đánh giá (Level Evaluation) <span className="text-red-500">*</span></Label>
-                      <Input
-                        id="levelEvaluationInput"
-                        placeholder="e.g., Good, Average, Poor"
-                        value={formData.levelEvaluation}
-                        onChange={e => setFormData({ ...formData, levelEvaluation: e.target.value })}
-                        className="border-slate-300"
-                      />
-                      <p className="text-xs text-muted-foreground">Giá trị này sẽ dùng làm Level Evaluation chính thức. (Rule Name sẽ được đồng bộ khi lưu)</p>
-                    </div>
-                  )}
-
                   {/* Condition Type (KHÓA VÀ HIỂN THỊ) */}
                   <div className="space-y-2">
                     <Label htmlFor="conditionType">Condition Type <span className="text-red-500">*</span></Label>
@@ -855,6 +854,21 @@ export default function AdminMultiplierPolicyPage() {
                     </Select>
                   </div>
 
+                  {/* Level Evaluation - CONDITIONAL (Chỉ hiển thị cho Staff Evaluation) */}
+                  {formData.activityType === "STAFF_EVALUATION" && (
+                    <div className="space-y-2">
+                      <Label htmlFor="levelEvaluationInput">Level Evaluation<span className="text-red-500">*</span></Label>
+                      <Input
+                        id="levelEvaluationInput"
+                        placeholder="e.g., Good, Average, Poor"
+                        value={formData.levelEvaluation}
+                        onChange={e => setFormData({ ...formData, levelEvaluation: e.target.value })}
+                        className="border-slate-300"
+                      />
+                      {/* <p className="text-xs text-muted-foreground">Giá trị này sẽ dùng làm Level Evaluation chính thức. (Rule Name sẽ được đồng bộ khi lưu)</p> */}
+                    </div>
+                  )}
+
                   {/* Min/Max Threshold - Conditional Rendering */}
                   {formData.activityType !== "STAFF_EVALUATION" ? (
                     <div className="grid grid-cols-2 gap-4">
@@ -867,12 +881,23 @@ export default function AdminMultiplierPolicyPage() {
                             inputMode="numeric"
                             placeholder="0"
                             value={formData.minThresholdString}
-                            onChange={e =>
+                            onChange={e => {
+                              const cleanedValue = e.target.value.replace(/[^0-9]/g, '');
+                              let finalValue = cleanedValue;
+
+                              // Bổ sung logic giới hạn giá trị MIN THRESHOLD ở đây
+                              if (formData.conditionType === 'PERCENTAGE') {
+                                const numValue = parseInt(cleanedValue);
+                                if (!isNaN(numValue) && numValue > 100) {
+                                  finalValue = "100"; // Giới hạn
+                                }
+                              }
+
                               setFormData({
                                 ...formData,
-                                minThresholdString: e.target.value.replace(/[^0-9]/g, ''),
-                              })
-                            }
+                                minThresholdString: finalValue,
+                              });
+                            }}
                             className="border-slate-300 pr-8"
                           />
                           {formData.conditionType === 'PERCENTAGE' && (
@@ -892,14 +917,12 @@ export default function AdminMultiplierPolicyPage() {
                             onChange={e => {
                               const cleanedValue = e.target.value.replace(/[^0-9]/g, '');
                               let finalValue = cleanedValue;
-
                               if (formData.conditionType === 'PERCENTAGE') {
                                 const numValue = parseInt(cleanedValue);
                                 if (!isNaN(numValue) && numValue > 101) {
                                   finalValue = "101"; // Giới hạn
                                 }
                               }
-
                               setFormData({
                                 ...formData,
                                 maxThresholdString: finalValue,
@@ -913,11 +936,12 @@ export default function AdminMultiplierPolicyPage() {
                         </div>
                       </div>
                       <p className="text-xs text-muted-foreground col-span-2 pt-1">
-                        Thresholds chỉ áp dụng cho các hoạt động đo lường bằng số (Attendance, Club Event).
+                        * Thresholds only apply to numerically measured activities (Attendance, Club Event).
                       </p>
                     </div>
                   ) : (
-                    <div className="space-y-2 col-span-2 pt-1">
+                    <div>
+                      {/* <div className="space-y-2 col-span-2 pt-1"> */}
                       {/* <p className="text-sm text-muted-foreground">Thresholds are disabled when selecting Staff Evaluation (using Evaluation Level).</p> */}
                     </div>
                   )}
@@ -1032,8 +1056,8 @@ export default function AdminMultiplierPolicyPage() {
                           targetType: newTargetType, // TỰ ĐỘNG CẬP NHẬT
                           conditionType: newConditionType, // TỰ ĐỘNG CẬP NHẬT
                           // Đảm bảo reset Min/Max theo Condition mới
-                          minThresholdString: "0",
-                          maxThresholdString: newConditionType === 'PERCENTAGE' ? "101" : "0",
+                          minThresholdString: "", // <-- ĐÃ SỬA: Bắt đầu bằng chuỗi rỗng
+                          maxThresholdString: "", // <-- ĐÃ SỬA: Bắt đầu bằng chuỗi rỗng
                         });
                       }}
                     >
@@ -1094,21 +1118,6 @@ export default function AdminMultiplierPolicyPage() {
                     />
                   </div>
 
-                  {/* Level Evaluation (editable) - ĐÃ SỬA LOGIC HIỂN THỊ */}
-                  {editFormData.activityType === "STAFF_EVALUATION" && (
-                    <div className="space-y-2">
-                      <Label htmlFor="editLevelEvaluation">Level Evaluation <span className="text-red-500">*</span></Label>
-                      <Input
-                        id="editLevelEvaluation"
-                        placeholder="e.g., Good, Average, Poor"
-                        value={editFormData.levelEvaluation}
-                        onChange={e => setEditFormData({ ...editFormData, levelEvaluation: e.target.value })}
-                        className="border-slate-300"
-                      />
-                      <p className="text-xs text-muted-foreground">Giá trị này dùng để phân loại mức độ đánh giá trong hệ thống.</p>
-                    </div>
-                  )}
-
                   {/* Condition Type (KHÓA VÀ HIỂN THỊ) */}
                   <div className="space-y-2">
                     <Label htmlFor="editConditionType">
@@ -1128,6 +1137,21 @@ export default function AdminMultiplierPolicyPage() {
                       </SelectContent>
                     </Select>
                   </div>
+
+                  {/* Level Evaluation (editable) - ĐÃ SỬA LOGIC HIỂN THỊ */}
+                  {editFormData.activityType === "STAFF_EVALUATION" && (
+                    <div className="space-y-2">
+                      <Label htmlFor="editLevelEvaluation">Level Evaluation <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="editLevelEvaluation"
+                        placeholder="e.g., Good, Average, Poor"
+                        value={editFormData.levelEvaluation}
+                        onChange={e => setEditFormData({ ...editFormData, levelEvaluation: e.target.value })}
+                        className="border-slate-300"
+                      />
+                      <p className="text-xs text-muted-foreground">This value is used to classify the rating level in the system.</p>
+                    </div>
+                  )}
 
                   {/* Min/Max Threshold - Conditional Rendering */}
                   {editFormData.activityType !== "STAFF_EVALUATION" ? (
@@ -1193,8 +1217,8 @@ export default function AdminMultiplierPolicyPage() {
                         </div>
 
                       </div>
-                      <p className="text-xs text-muted-foreground col-span-2 pt-1">
-                        Thresholds chỉ áp dụng cho các hoạt động đo lường bằng số (Attendance, Club Event).
+                      <p className="text-xs text-muted-foreground col-span-2 pt-0">
+                        * Thresholds only apply to numerically measured activities (Attendance, Club Event).
                       </p>
                     </div>
                   ) : (
@@ -1286,9 +1310,10 @@ export default function AdminMultiplierPolicyPage() {
                     <Input
                       id="editUpdatedBy"
                       type="text"
+                      // value={currentUserInfo.name}
                       value={currentUserInfo.name}
                       disabled
-                      className="bg-muted cursor-not-allowed"
+                      className="bg-muted text-black cursor-not-allowed border-slate-300"
                     />
                   </div>
                 </div>
@@ -1337,7 +1362,6 @@ export default function AdminMultiplierPolicyPage() {
                   </Button>
                 </div>
               </DialogFooter>
-
             </DialogContent>
           </Dialog>
 
@@ -1615,7 +1639,6 @@ export default function AdminMultiplierPolicyPage() {
                     .sort((a, b) => b.multiplier - a.multiplier) // Sort by multiplier descending
                     .map(policy => renderPolicyCard(policy))}
                 </div>
-
               )}
             </TabsContent>
           </Tabs>
