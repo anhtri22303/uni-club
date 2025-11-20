@@ -22,7 +22,40 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
-// We base colors/icons on TargetType only, per user request.
+export type PolicyActivityTypeEnum =
+  | "SESSION_ATTENDANCE"
+  | "STAFF_EVALUATION"
+  | "CLUB_EVENT_ACTIVITY";
+
+const ACTIVITY_TYPE_LABELS: Record<PolicyActivityTypeEnum, string> = {
+  SESSION_ATTENDANCE: "Session Attendance (Điểm danh)",
+  STAFF_EVALUATION: "Staff Evaluation (Đánh giá)",
+  CLUB_EVENT_ACTIVITY: "Club Event Activity (Hoạt động CLB)",
+}
+
+// Mapping logic: Activity Type -> Condition Type
+const ACTIVITY_TO_CONDITION_MAP: Record<PolicyActivityTypeEnum, ConditionType> = {
+  SESSION_ATTENDANCE: "PERCENTAGE", // Thường là % thời gian tham gia
+  STAFF_EVALUATION: "ABSOLUTE", // Đánh giá là thang điểm tuyệt đối/mức độ
+  CLUB_EVENT_ACTIVITY: "ABSOLUTE", // Hoạt động thường là điểm tuyệt đối
+}
+
+// Mapping logic: Activity Type -> Target Type (Dùng để tự động set Target Type)
+const ACTIVITY_TO_TARGET_MAP: Record<PolicyActivityTypeEnum, PolicyTargetType> = {
+  SESSION_ATTENDANCE: "MEMBER",
+  STAFF_EVALUATION: "MEMBER",
+  CLUB_EVENT_ACTIVITY: "CLUB",
+}
+
+const ALLOWED_ACTIVITY_TYPES = Object.keys(ACTIVITY_TYPE_LABELS) as PolicyActivityTypeEnum[];
+
+// Lấy Activity Type mặc định ban đầu là CLUB_EVENT_ACTIVITY
+const DEFAULT_ACTIVITY_TYPE: PolicyActivityTypeEnum = "CLUB_EVENT_ACTIVITY";
+// Lấy Target Type mặc định ban đầu
+const DEFAULT_TARGET_TYPE: PolicyTargetType = ACTIVITY_TO_TARGET_MAP[DEFAULT_ACTIVITY_TYPE];
+// Lấy Condition Type mặc định ban đầu
+const DEFAULT_CONDITION_TYPE: ConditionType = ACTIVITY_TO_CONDITION_MAP[DEFAULT_ACTIVITY_TYPE];
+
 const getStatusConfig = (targetType: PolicyTargetType) => {
   if (targetType === "CLUB") {
     return {
@@ -35,7 +68,6 @@ const getStatusConfig = (targetType: PolicyTargetType) => {
     }
   }
   return {
-    // MEMBER
     label: "Member Policy",
     icon: Users,
     color: "bg-gradient-to-br from-purple-500 to-indigo-500",
@@ -92,12 +124,8 @@ const formatNumberWithCommas = (value: number | string | undefined): string => {
 
 // Hàm này sẽ xóa dấu phẩy và ký tự không phải số (trừ dấu chấm)
 const parseNumber = (value: string): number => {
-  // 1. Thay thế tất cả dấu phẩy (,) bằng dấu chấm (.)
   const dotValue = value.replace(/,/g, ".")
-  // 2. Xóa tất cả các ký tự không phải là số hoặc dấu chấm
   const cleanedValue = dotValue.replace(/[^0-9.]/g, "")
-  // 3. Xử lý trường hợp nhập nhiều dấu chấm (ví dụ: "1.500.5" do nhập "1,500.5" hoặc "1.500,5")
-  // Bằng cách giữ lại dấu chấm cuối cùng làm dấu thập phân
   const parts = cleanedValue.split('.')
   if (parts.length > 1) {
     const lastPart = parts.pop() // Lấy phần thập phân (ví dụ: "5")
@@ -155,10 +183,11 @@ export default function AdminMultiplierPolicyPage() {
     maxThresholdString: string
     multiplierString: string
   } = {
-    targetType: "CLUB",
-    activityType: "",
+    targetType: DEFAULT_TARGET_TYPE, // Default: CLUB
+    activityType: DEFAULT_ACTIVITY_TYPE, // Default: CLUB_EVENT_ACTIVITY
     ruleName: "",
-    conditionType: "PERCENTAGE",
+    levelEvaluation: "", // Trường mới theo API
+    conditionType: DEFAULT_CONDITION_TYPE, // Default: ABSOLUTE
     minThreshold: 0,
     maxThreshold: 0,
     policyDescription: "",
@@ -170,7 +199,6 @@ export default function AdminMultiplierPolicyPage() {
     multiplierString: "1",
   }
 
-  // const [formData, setFormData] =
   const [formData, setFormData] = useState(initialFormData)
   // Edit modal state
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
@@ -206,7 +234,6 @@ export default function AdminMultiplierPolicyPage() {
     }
   }, [])
 
-  // REBUILT: loadAllPolicies to use ONE API call and filter
   const loadAllPolicies = async () => {
     try {
       setLoadingClub(true)
@@ -239,66 +266,54 @@ export default function AdminMultiplierPolicyPage() {
   }
 
   const handleCreatePolicy = async () => {
-    // Validation
-    if (!formData.ruleName.trim()) {
-      toast({
-        title: "Validation Error",
-        description: "Rule Name is required",
-        variant: "destructive",
-      })
-      return
+    // Xác định Activity Type hiện tại
+    const currentActivityType = formData.activityType as PolicyActivityTypeEnum;
+    const isStaffEvaluation = currentActivityType === "STAFF_EVALUATION";
+
+    // --- Validation ---
+    if (!currentActivityType.trim()) {
+      toast({ title: "Validation Error", description: "Activity Type is required", variant: "destructive", }); return;
     }
-    if (!formData.activityType.trim()) {
-      toast({
-        title: "Validation Error",
-        description: "Activity Type is required",
-        variant: "destructive",
-      })
+
+    // 1. Kiểm tra Rule Name/Level Evaluation
+    if (!formData.ruleName.trim()) {
+      toast({ title: "Validation Error", description: "Rule Name is required", variant: "destructive", });
       return
     }
 
     // Parse các giá trị string về number
-    const minThreshold = parseIntWithCommas(formData.minThresholdString)
-    const maxThreshold = parseIntWithCommas(formData.maxThresholdString)
+    const rawMinThreshold = parseIntWithCommas(formData.minThresholdString)
+    const rawMaxThreshold = parseIntWithCommas(formData.maxThresholdString)
     const multiplier = parseNumber(formData.multiplierString)
 
-    if (minThreshold < 0 || maxThreshold < 0) {
-      toast({
-        title: "Validation Error",
-        description: "Thresholds must be 0 or greater",
-        variant: "destructive",
-      })
-      return
+    // --- Xử lý Thresholds dựa trên Activity Type ---
+    // Nếu là Staff Evaluation, Min=0, Max=1 (giá trị dummy cho API)
+    const minThreshold = isStaffEvaluation ? 0 : rawMinThreshold;
+    const maxThreshold = isStaffEvaluation ? 1 : rawMaxThreshold;
+
+    // 3. Validation Thresholds (chỉ áp dụng nếu KHÔNG phải Staff Evaluation)
+    if (!isStaffEvaluation) {
+      if (rawMinThreshold < 0 || rawMaxThreshold < 0) {
+        toast({ title: "Validation Error", description: "Thresholds must be 0 or greater", variant: "destructive", });
+        return
+      }
+      if (formData.conditionType === 'PERCENTAGE' && rawMaxThreshold > 101) {
+        toast({ title: "Validation Error", description: "Max Threshold cannot be greater than 101 when the type is PERCENTAGE.", variant: "destructive", });
+        return
+      }
+      if (rawMinThreshold >= rawMaxThreshold) {
+        toast({ title: "Validation Error", description: "Min Threshold must be less than Max Threshold.", variant: "destructive", });
+        return
+      }
     }
 
-    if (formData.conditionType === 'PERCENTAGE' && maxThreshold > 101) {
-      toast({
-        title: "Validation Error",
-        description: "Max Threshold cannot be greater than 101 when the type is PERCENTAGE.",
-        variant: "destructive",
-      })
-      return
-    }
-
-    if (minThreshold >= maxThreshold) {
-      toast({
-        title: "Validation Error",
-        description: "Min Threshold must be less than Max Threshold.",
-        variant: "destructive",
-      })
-      return
-    }
-
+    // 4. Validation Multiplier
     if (multiplier < 0) {
-      toast({
-        title: "Validation Error",
-        description: "Multiplier must be 0 or greater",
-        variant: "destructive",
-      })
+      toast({ title: "Validation Error", description: "Multiplier must be 0 or greater", variant: "destructive", });
       return
     }
 
-    // Get user from session... (Phần còn lại của hàm giữ nguyên)
+    // --- Submission Logic ---
     const authData = sessionStorage.getItem("uniclub-auth")
     let userId = "system"
     if (authData) {
@@ -313,10 +328,16 @@ export default function AdminMultiplierPolicyPage() {
     try {
       setIsCreating(true)
 
+      // Nếu là Staff Evaluation, RuleName là mức độ đánh giá, LevelEvaluation là giá trị nhập
+      const finalRuleName = isStaffEvaluation ? formData.levelEvaluation.trim() : formData.ruleName.trim();
+      const finalLevelEvaluation = formData.levelEvaluation.trim() || null;
+
       const payload = {
         ...formData,
-        minThreshold,
-        maxThreshold,
+        ruleName: finalRuleName,
+        levelEvaluation: finalLevelEvaluation, // Gửi null nếu rỗng
+        minThreshold, // Gửi giá trị đã xử lý (0 hoặc giá trị nhập)
+        maxThreshold, // Gửi giá trị đã xử lý (1 hoặc giá trị nhập)
         multiplier,
         updatedBy: userId,
       }
@@ -324,8 +345,7 @@ export default function AdminMultiplierPolicyPage() {
       delete (payload as any).maxThresholdString
       delete (payload as any).multiplierString
 
-
-      const newPolicy = await createMultiplierPolicy(payload)
+      const newPolicy = await createMultiplierPolicy(payload as any)
 
       await loadAllPolicies()
       setFormData(initialFormData)
@@ -349,7 +369,6 @@ export default function AdminMultiplierPolicyPage() {
     }
   }
 
-
   const handleOpenEditModal = (policy: MultiplierPolicy) => {
     setSelectedPolicy(policy);
 
@@ -366,8 +385,7 @@ export default function AdminMultiplierPolicyPage() {
       }
     }
 
-    // Tải TẤT CẢ dữ liệu từ policy vào form
-    // ĐẶC BIỆT: Khởi tạo các trường `...String` từ giá trị số đã có của policy
+    // Bao gồm levelEvaluation khi mở modal edit
     setEditFormData({
       ...policy,
       minThresholdString: formatNumberWithCommas(policy.minThreshold),
@@ -382,66 +400,57 @@ export default function AdminMultiplierPolicyPage() {
     // Kiểm tra và parse các giá trị từ string sang number
     const ruleName = editFormData.ruleName?.trim()
     const activityType = editFormData.activityType?.trim()
+    const levelEvaluation = editFormData.levelEvaluation?.trim(); // <-- Đây là optional string (string | undefined)
+    const isStaffEvaluation = activityType === "STAFF_EVALUATION";
 
-    if (!ruleName) {
-      toast({ title: "Validation Error", description: "Rule Name is required", variant: "destructive" }); return;
+    // --- Validation ---
+    // 1. Kiểm tra Rule Name
+    if (!ruleName) { toast({ title: "Validation Error", description: "Rule Name is required", variant: "destructive" }); return; }
+    // 2. Kiểm tra Level Evaluation (CHỈ KHI LÀ STAFF EVALUATION)
+    if (isStaffEvaluation && !levelEvaluation) {
+      toast({ title: "Validation Error", description: "Level Evaluation is required for Staff Evaluation.", variant: "destructive" });
+      return;
     }
-    if (!activityType) {
-      toast({ title: "Validation Error", description: "Activity Type is required", variant: "destructive" }); return;
-    }
+    // 3. Kiểm tra Activity Type
+    if (!activityType) { toast({ title: "Validation Error", description: "Activity Type is required", variant: "destructive" }); return; }    // Parse từ string sang number
 
-    // Parse từ string sang number
-    const minThreshold = parseIntWithCommas(editFormData.minThresholdString || "");
-    const maxThreshold = parseIntWithCommas(editFormData.maxThresholdString || "");
+    const rawMinThreshold = parseIntWithCommas(editFormData.minThresholdString || "");
+    const rawMaxThreshold = parseIntWithCommas(editFormData.maxThresholdString || "");
     const multiplier = parseNumber(editFormData.multiplierString || "");
+    // --- Xử lý Thresholds dựa trên Activity Type ---
+    const minThreshold = isStaffEvaluation ? 0 : rawMinThreshold;
+    const maxThreshold = isStaffEvaluation ? 1 : rawMaxThreshold;
+    // Level Evaluation và Rule Name gửi đi:
+    const finalLevelEvaluation = (isStaffEvaluation && levelEvaluation) ? levelEvaluation : null; // Gửi null nếu không phải staff eval
+    const finalRuleName = isStaffEvaluation ? finalLevelEvaluation : ruleName; // Rule Name = Level Eval khi Staff Eval, nếu không thì dùng Rule Name đã nhập    // 3. Validation Thresholds (chỉ áp dụng nếu KHÔNG phải Staff Evaluation)
 
-    // Validation cho các giá trị đã parse
-    if (minThreshold < 0 || maxThreshold < 0) {
-      toast({ title: "Validation Error", description: "Thresholds must be 0 or greater", variant: "destructive" }); return;
+    if (!isStaffEvaluation) {
+      if (rawMinThreshold < 0 || rawMaxThreshold < 0) {
+        toast({ title: "Validation Error", description: "Thresholds must be 0 or greater", variant: "destructive" }); return;
+      }
+      if (editFormData.conditionType === 'PERCENTAGE' && rawMaxThreshold > 101) {
+        toast({ title: "Validation Error", description: "Max Threshold cannot be greater than 101 when the type is PERCENTAGE.", variant: "destructive", });
+        return
+      }
+      if (rawMinThreshold >= rawMaxThreshold) {
+        toast({ title: "Validation Error", description: "Min Threshold must be less than Max Threshold.", variant: "destructive", }); return;
+      }
     }
+    // 4. Validation Multiplier
+    if (multiplier < 0) { toast({ title: "Validation Error", description: "Multiplier must be 0 or greater", variant: "destructive" }); return; }
 
-    {/* --- START EDIT: Thêm validation cho PERCENTAGE --- */ }
-    if (editFormData.conditionType === 'PERCENTAGE' && maxThreshold > 101) {
-      toast({
-        title: "Validation Error",
-        description: "Max Threshold cannot be greater than 101 when the type is PERCENTAGE.",
-        variant: "destructive",
-      })
-      return
-    }
-    {/* --- END EDIT --- */ }
-
-    if (minThreshold >= maxThreshold) {
-      toast({
-        title: "Validation Error",
-        description: "Min Threshold must be less than Max Threshold.",
-        variant: "destructive",
-      })
-      return
-    }
-
-    if (multiplier < 0) {
-      toast({ title: "Validation Error", description: "Multiplier must be 0 or greater", variant: "destructive" }); return;
-    }
-
-    if (!selectedPolicy) {
-      toast({
-        title: "Error",
-        description: "No policy selected",
-        variant: "destructive",
-      })
-      return
-    }
+    if (!selectedPolicy) { toast({ title: "Error", description: "No policy selected", variant: "destructive", }); return; }
 
     try {
       setIsEditing(true)
-
       const payload = {
         ...editFormData,
-        ruleName,
+        ruleName: finalRuleName,
         activityType,
-        minThreshold,
-        maxThreshold,
+        levelEvaluation: finalLevelEvaluation, // Gửi Level Evaluation đã xử lý
+        targetType: editFormData.targetType,
+        minThreshold, // Gửi giá trị đã xử lý (0 hoặc giá trị nhập)
+        maxThreshold, // Gửi giá trị đã xử lý (1 hoặc giá trị nhập)
         multiplier,
         minThresholdString: undefined,
         maxThresholdString: undefined,
@@ -469,7 +478,6 @@ export default function AdminMultiplierPolicyPage() {
       setIsEditing(false)
     }
   }
-
 
   // Handle delete policy
   const handleDeletePolicy = async (policy: MultiplierPolicy) => {
@@ -574,15 +582,12 @@ export default function AdminMultiplierPolicyPage() {
                 <StatusIcon className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
               </div>
               <div className="min-w-0">
-                {/* <CardTitle className="text-base sm:text-xl truncate"> */}
                 <CardTitle className="text-base sm:text-xl">
                   {policy.ruleName}
                 </CardTitle>{" "}
-                {/* policy.ruleName */}
                 <CardDescription className="flex items-center gap-1 sm:gap-2 mt-1 text-xs sm:text-sm">
                   <Activity className="h-3 w-3 flex-shrink-0" />{" "}
                   {/* Icon */}
-                  {/* <span className="truncate">{policy.activityType}</span>{" "} */}
                   <span>{policy.activityType}</span>{" "}
                   {/* policy.activityType */}
                 </CardDescription>
@@ -723,7 +728,6 @@ export default function AdminMultiplierPolicyPage() {
             </div>
 
             {/* Create Button with Modal */}
-            {/* Create Button with Modal (New Form) */}
             <Dialog
               open={isCreateModalOpen}
               onOpenChange={setIsCreateModalOpen}
@@ -746,30 +750,59 @@ export default function AdminMultiplierPolicyPage() {
                 </DialogHeader>
 
                 <div className="space-y-4 py-4">
-                  {/* Target Type */}
+
+                  {/* 1. Activity Type (LÊN ĐẦU VÀ CHỌN ENUM) */}
+                  <div className="space-y-2">
+                    <Label htmlFor="activityType">Activity Type <span className="text-red-500">*</span></Label>
+                    <Select
+                      value={formData.activityType}
+                      onValueChange={(value: PolicyActivityTypeEnum) => {
+                        const newTargetType = ACTIVITY_TO_TARGET_MAP[value];
+                        const newConditionType = ACTIVITY_TO_CONDITION_MAP[value];
+
+                        setFormData({
+                          ...formData,
+                          activityType: value,
+                          targetType: newTargetType, // TỰ ĐỘNG CẬP NHẬT
+                          conditionType: newConditionType, // TỰ ĐỘNG CẬP NHẬT
+                          // Đảm bảo reset Min/Max theo Condition mới
+                          minThresholdString: "0",
+                          maxThresholdString: newConditionType === 'PERCENTAGE' ? "101" : "0",
+                        });
+                      }}
+                    >
+                      <SelectTrigger id="activityType" className="border-slate-300">
+                        <SelectValue placeholder="Select activity type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ALLOWED_ACTIVITY_TYPES.map((type) => (
+                          <SelectItem key={type} value={type}>
+                            {ACTIVITY_TYPE_LABELS[type]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">Chọn loại hoạt động. Target Type và Condition Type sẽ được tự động thiết lập.</p>
+                  </div>
+
+                  {/* 2. Target Type (KHÓA VÀ HIỂN THỊ) */}
                   <div className="space-y-2">
                     <Label htmlFor="targetType">Target Type <span className="text-red-500">*</span></Label>
                     <Select
                       value={formData.targetType}
-                      onValueChange={(value: PolicyTargetType) =>
-                        setFormData({ ...formData, targetType: value })
-                      }
+                      // BỊ KHÓA: Chỉ thay đổi khi Activity Type thay đổi
+                      disabled
                     >
-                      <SelectTrigger id="targetType" className="border-slate-300">
+                      <SelectTrigger id="targetType" className="border-slate-300 bg-muted cursor-not-allowed">
                         <SelectValue placeholder="Select target type" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="CLUB">
-                          <div className="flex items-center gap-2">
-                            <Shield className="h-4 w-4" />
-                            Club
-                          </div>
+                        {/* Cần item cho Select, nhưng nó bị disabled nên chỉ hiển thị giá trị */}
+                        <SelectItem value="CLUB" disabled>
+                          <div className="flex items-center gap-2"> <Shield className="h-4 w-4" /> Club </div>
                         </SelectItem>
-                        <SelectItem value="MEMBER">
-                          <div className="flex items-center gap-2">
-                            <Users className="h-4 w-4" />
-                            Member
-                          </div>
+                        <SelectItem value="MEMBER" disabled>
+                          <div className="flex items-center gap-2"> <Users className="h-4 w-4" /> Member </div>
                         </SelectItem>
                       </SelectContent>
                     </Select>
@@ -789,162 +822,105 @@ export default function AdminMultiplierPolicyPage() {
                     />
                   </div>
 
-                  {/* Activity Type */}
-                  <div className="space-y-2">
-                    <Label htmlFor="activityType">Activity Type <span className="text-red-500">*</span></Label>
-                    <Input
-                      id="activityType"
-                      placeholder="e.g., EVENT_PARTICIPATION"
-                      value={formData.activityType}
-                      onChange={e =>
-                        setFormData({
-                          ...formData,
-                          activityType: e.target.value,
-                        })
-                      }
-                      className="border-slate-300"
-                    />
-                  </div>
+                  {/* Level Evaluation - CONDITIONAL (Chỉ hiển thị cho Staff Evaluation) */}
+                  {formData.activityType === "STAFF_EVALUATION" && (
+                    <div className="space-y-2">
+                      <Label htmlFor="levelEvaluationInput">Mức độ đánh giá (Level Evaluation) <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="levelEvaluationInput"
+                        placeholder="e.g., Good, Average, Poor"
+                        value={formData.levelEvaluation}
+                        onChange={e => setFormData({ ...formData, levelEvaluation: e.target.value })}
+                        className="border-slate-300"
+                      />
+                      <p className="text-xs text-muted-foreground">Giá trị này sẽ dùng làm Level Evaluation chính thức. (Rule Name sẽ được đồng bộ khi lưu)</p>
+                    </div>
+                  )}
 
-                  {/* Policy Description */}
-                  <div className="space-y-2">
-                    <Label htmlFor="policyDescription">Policy Description</Label>
-                    <Textarea
-                      id="policyDescription"
-                      placeholder="e.g., Applies to clubs with high event participation..."
-                      value={formData.policyDescription || ""}
-                      onChange={e =>
-                        setFormData({ ...formData, policyDescription: e.target.value })
-                      }
-                      className="border-slate-300"
-                    />
-                  </div>
-
-                  {/* Condition Type */}
+                  {/* Condition Type (KHÓA VÀ HIỂN THỊ) */}
                   <div className="space-y-2">
                     <Label htmlFor="conditionType">Condition Type <span className="text-red-500">*</span></Label>
                     <Select
                       value={formData.conditionType}
-                      onValueChange={(value: ConditionType) => {
-                        let currentMax = formData.maxThresholdString;
-                        if (value === 'PERCENTAGE') {
-                          const numValue = parseIntWithCommas(currentMax);
-                          if (numValue > 101) {
-                            currentMax = "101"; // Giới hạn lại
-                          }
-                        }
-                        setFormData({
-                          ...formData,
-                          conditionType: value,
-                          maxThresholdString: currentMax, // Cập nhật lại max
-                        });
-                      }}
+                      // BỊ KHÓA: Chỉ thay đổi khi Activity Type thay đổi
+                      disabled
                     >
-                      <SelectTrigger id="conditionType" className="border-slate-300">
+                      <SelectTrigger id="conditionType" className="border-slate-300 bg-muted cursor-not-allowed">
                         <SelectValue placeholder="Select condition type" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="PERCENTAGE">PERCENTAGE</SelectItem>
-                        <SelectItem value="ABSOLUTE">ABSOLUTE</SelectItem>
+                        <SelectItem value="PERCENTAGE" disabled>PERCENTAGE</SelectItem>
+                        <SelectItem value="ABSOLUTE" disabled>ABSOLUTE</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
-                  {/* Min/Max Threshold */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="minThreshold">Min Threshold <span className="text-red-500">*</span></Label>
-                      {/* <Input
-                        id="minThreshold"
-                        type="text"
-                        inputMode="numeric"
-                        placeholder="0"
-                        value={formData.minThresholdString}
-                        onChange={e =>
-                          setFormData({
-                            ...formData,
-                            minThresholdString: e.target.value.replace(/[^0-9]/g, ''),
-                          })
-                        }
-                        className="border-slate-300"
-                      /> */}
-                      <div className="relative">
-                        <Input
-                          id="minThreshold"
-                          type="text"
-                          inputMode="numeric"
-                          placeholder="0"
-                          value={formData.minThresholdString}
-                          onChange={e =>
-                            setFormData({
-                              ...formData,
-                              minThresholdString: e.target.value.replace(/[^0-9]/g, ''),
-                            })
-                          }
-                          className="border-slate-300 pr-8" // Thêm padding
-                        />
-                        {formData.conditionType === 'PERCENTAGE' && (
-                          <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        )}
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="maxThreshold">Max Threshold <span className="text-red-500">*</span></Label>
-                      {/* <Input
-                        id="maxThreshold"
-                        type="text"
-                        inputMode="numeric"
-                        placeholder="0"
-                        value={formData.maxThresholdString}
-                        onChange={e => {
-                          const cleanedValue = e.target.value.replace(/[^0-9]/g, '');
-                          let finalValue = cleanedValue;
-
-                          if (formData.conditionType === 'PERCENTAGE') {
-                            const numValue = parseInt(cleanedValue);
-                            if (!isNaN(numValue) && numValue > 101) {
-                              finalValue = "101"; // Giới hạn
+                  {/* Min/Max Threshold - Conditional Rendering */}
+                  {formData.activityType !== "STAFF_EVALUATION" ? (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="minThreshold">Min Threshold <span className="text-red-500">*</span></Label>
+                        <div className="relative">
+                          <Input
+                            id="minThreshold"
+                            type="text"
+                            inputMode="numeric"
+                            placeholder="0"
+                            value={formData.minThresholdString}
+                            onChange={e =>
+                              setFormData({
+                                ...formData,
+                                minThresholdString: e.target.value.replace(/[^0-9]/g, ''),
+                              })
                             }
-                          }
+                            className="border-slate-300 pr-8"
+                          />
+                          {formData.conditionType === 'PERCENTAGE' && (
+                            <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          )}
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="maxThreshold">Max Threshold <span className="text-red-500">*</span></Label>
+                        <div className="relative">
+                          <Input
+                            id="maxThreshold"
+                            type="text"
+                            inputMode="numeric"
+                            placeholder="0"
+                            value={formData.maxThresholdString}
+                            onChange={e => {
+                              const cleanedValue = e.target.value.replace(/[^0-9]/g, '');
+                              let finalValue = cleanedValue;
 
-                          setFormData({
-                            ...formData,
-                            maxThresholdString: finalValue,
-                          });
-                        }}
-                        className="border-slate-300"
-                      /> */}
-                      <div className="relative">
-                        <Input
-                          id="maxThreshold"
-                          type="text"
-                          inputMode="numeric"
-                          placeholder="0"
-                          value={formData.maxThresholdString}
-                          onChange={e => {
-                            const cleanedValue = e.target.value.replace(/[^0-9]/g, '');
-                            let finalValue = cleanedValue;
-
-                            if (formData.conditionType === 'PERCENTAGE') {
-                              const numValue = parseInt(cleanedValue);
-                              if (!isNaN(numValue) && numValue > 101) {
-                                finalValue = "101"; // Giới hạn
+                              if (formData.conditionType === 'PERCENTAGE') {
+                                const numValue = parseInt(cleanedValue);
+                                if (!isNaN(numValue) && numValue > 101) {
+                                  finalValue = "101"; // Giới hạn
+                                }
                               }
-                            }
 
-                            setFormData({
-                              ...formData,
-                              maxThresholdString: finalValue,
-                            });
-                          }}
-                          className="border-slate-300 pr-8" // Thêm padding
-                        />
-                        {formData.conditionType === 'PERCENTAGE' && (
-                          <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        )}
+                              setFormData({
+                                ...formData,
+                                maxThresholdString: finalValue,
+                              });
+                            }}
+                            className="border-slate-300 pr-8" // Thêm padding
+                          />
+                          {formData.conditionType === 'PERCENTAGE' && (
+                            <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          )}
+                        </div>
                       </div>
+                      <p className="text-xs text-muted-foreground col-span-2 pt-1">
+                        Thresholds chỉ áp dụng cho các hoạt động đo lường bằng số (Attendance, Club Event).
+                      </p>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="space-y-2 col-span-2 pt-1">
+                      {/* <p className="text-sm text-muted-foreground">Thresholds are disabled when selecting Staff Evaluation (using Evaluation Level).</p> */}
+                    </div>
+                  )}
 
                   {/* Multiplier */}
                   <div className="space-y-2">
@@ -968,6 +944,20 @@ export default function AdminMultiplierPolicyPage() {
                       e.g., 1.5 = +50%, 0.8 = -20%, 1.0 = no change
                     </p>
                   </div>
+                </div>
+
+                {/* Policy Description */}
+                <div className="space-y-2">
+                  <Label htmlFor="policyDescription">Policy Description</Label>
+                  <Textarea
+                    id="policyDescription"
+                    placeholder="e.g., Applies to clubs with high event participation..."
+                    value={formData.policyDescription || ""}
+                    onChange={e =>
+                      setFormData({ ...formData, policyDescription: e.target.value })
+                    }
+                    className="border-slate-300"
+                  />
                 </div>
 
                 <DialogFooter>
@@ -1025,32 +1015,61 @@ export default function AdminMultiplierPolicyPage() {
                     />
                   </div>
 
-                  {/* Target Type (editable) */}
+                  {/* 1. Activity Type (Dropdown) */}
+                  <div className="space-y-2">
+                    <Label htmlFor="editActivityType">
+                      Activity Type <span className="text-red-500">*</span>
+                    </Label>
+                    <Select
+                      value={editFormData.activityType}
+                      onValueChange={(value: PolicyActivityTypeEnum) => {
+                        const newTargetType = ACTIVITY_TO_TARGET_MAP[value];
+                        const newConditionType = ACTIVITY_TO_CONDITION_MAP[value];
+
+                        setEditFormData({
+                          ...editFormData,
+                          activityType: value,
+                          targetType: newTargetType, // TỰ ĐỘNG CẬP NHẬT
+                          conditionType: newConditionType, // TỰ ĐỘNG CẬP NHẬT
+                          // Đảm bảo reset Min/Max theo Condition mới
+                          minThresholdString: "0",
+                          maxThresholdString: newConditionType === 'PERCENTAGE' ? "101" : "0",
+                        });
+                      }}
+                    >
+                      <SelectTrigger id="editActivityType" className="border-slate-300">
+                        <SelectValue placeholder="Select activity type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ALLOWED_ACTIVITY_TYPES.map((type) => (
+                          <SelectItem key={type} value={type}>
+                            {ACTIVITY_TYPE_LABELS[type]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* 2. Target Type (KHÓA VÀ HIỂN THỊ) */}
                   <div className="space-y-2">
                     <Label htmlFor="editTargetType">
                       Target Type <span className="text-red-500">*</span>
                     </Label>
                     <Select
                       value={editFormData.targetType}
-                      onValueChange={(value: PolicyTargetType) =>
-                        setEditFormData({ ...editFormData, targetType: value })
-                      }
+                      // BỊ KHÓA: Chỉ thay đổi khi Activity Type thay đổi
+                      disabled
                     >
-                      <SelectTrigger id="editTargetType" className="border-slate-300">
+                      <SelectTrigger id="editTargetType" className="border-slate-300 bg-muted cursor-not-allowed">
                         <SelectValue placeholder="Select target type" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="CLUB">
-                          <div className="flex items-center gap-2">
-                            <Shield className="h-4 w-4" />
-                            Club
-                          </div>
+                        {/* Cần item cho Select, nhưng nó bị disabled nên chỉ hiển thị giá trị */}
+                        <SelectItem value="CLUB" disabled>
+                          <div className="flex items-center gap-2"> <Shield className="h-4 w-4" /> Club </div>
                         </SelectItem>
-                        <SelectItem value="MEMBER">
-                          <div className="flex items-center gap-2">
-                            <Users className="h-4 w-4" />
-                            Member
-                          </div>
+                        <SelectItem value="MEMBER" disabled>
+                          <div className="flex items-center gap-2"> <Users className="h-4 w-4" /> Member </div>
                         </SelectItem>
                       </SelectContent>
                     </Select>
@@ -1075,183 +1094,116 @@ export default function AdminMultiplierPolicyPage() {
                     />
                   </div>
 
-                  {/* Activity Type (editable) */}
-                  <div className="space-y-2">
-                    <Label htmlFor="editActivityType">
-                      Activity Type <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      id="editActivityType"
-                      placeholder="e.g., EVENT_PARTICIPATION"
-                      value={editFormData.activityType}
-                      onChange={e =>
-                        setEditFormData({
-                          ...editFormData,
-                          activityType: e.target.value,
-                        })
-                      }
-                      className="border-slate-300"
-                    />
-                  </div>
+                  {/* Level Evaluation (editable) - ĐÃ SỬA LOGIC HIỂN THỊ */}
+                  {editFormData.activityType === "STAFF_EVALUATION" && (
+                    <div className="space-y-2">
+                      <Label htmlFor="editLevelEvaluation">Level Evaluation <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="editLevelEvaluation"
+                        placeholder="e.g., Good, Average, Poor"
+                        value={editFormData.levelEvaluation}
+                        onChange={e => setEditFormData({ ...editFormData, levelEvaluation: e.target.value })}
+                        className="border-slate-300"
+                      />
+                      <p className="text-xs text-muted-foreground">Giá trị này dùng để phân loại mức độ đánh giá trong hệ thống.</p>
+                    </div>
+                  )}
 
-                  {/* Policy Description (editable) */}
-                  <div className="space-y-2">
-                    <Label htmlFor="editPolicyDescription">
-                      Policy Description
-                    </Label>
-                    <Textarea
-                      id="editPolicyDescription"
-                      placeholder="e.g., Applies to clubs with high event participation..."
-                      value={editFormData.policyDescription || ""}
-                      onChange={e =>
-                        setEditFormData({
-                          ...editFormData,
-                          policyDescription: e.target.value,
-                        })
-                      }
-                      className="border-slate-300"
-                    />
-                  </div>
-
-                  {/* Condition Type (editable) */}
+                  {/* Condition Type (KHÓA VÀ HIỂN THỊ) */}
                   <div className="space-y-2">
                     <Label htmlFor="editConditionType">
                       Condition Type <span className="text-red-500">*</span>
                     </Label>
                     <Select
                       value={editFormData.conditionType}
-                      // onValueChange={(value: ConditionType) =>
-                      //   setEditFormData({
-                      //     ...editFormData,
-                      //     conditionType: value,
-                      //   })
-                      // }
-                      onValueChange={(value: ConditionType) => {
-                        let currentMax = editFormData.maxThresholdString || "";
-                        if (value === 'PERCENTAGE') {
-                          const numValue = parseIntWithCommas(currentMax);
-                          if (numValue > 101) {
-                            currentMax = "101"; // Giới hạn
-                          }
-                        }
-                        setEditFormData({
-                          ...editFormData,
-                          conditionType: value,
-                          maxThresholdString: currentMax,
-                        });
-                      }}
+                      // BỊ KHÓA: Chỉ thay đổi khi Activity Type thay đổi
+                      disabled
                     >
-                      <SelectTrigger id="editConditionType" className="border-slate-300">
+                      <SelectTrigger id="editConditionType" className="border-slate-300 bg-muted cursor-not-allowed">
                         <SelectValue placeholder="Select condition type" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="PERCENTAGE">PERCENTAGE</SelectItem>
-                        <SelectItem value="ABSOLUTE">ABSOLUTE</SelectItem>
+                        <SelectItem value="PERCENTAGE" disabled>PERCENTAGE</SelectItem>
+                        <SelectItem value="ABSOLUTE" disabled>ABSOLUTE</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
-                  {/* Min/Max Threshold (editable) */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="editMinThreshold">
-                        Min Threshold <span className="text-red-500">*</span>
-                      </Label>
-                      {/* <Input
-                        id="editMinThreshold"
-                        type="text"
-                        inputMode="numeric"
-                        placeholder="0"
-                        value={editFormData.minThresholdString || ""} // Lấy từ trường string mới
-                        onChange={e =>
-                          setEditFormData({
-                            ...editFormData,
-                            minThresholdString: e.target.value.replace(/[^0-9]/g, ''), // Chỉ cho phép số
-                          })
-                        }
-                        className="border-slate-300"
-                      /> */}
-                      <div className="relative">
-                        <Input
-                          id="editMinThreshold"
-                          type="text"
-                          inputMode="numeric"
-                          placeholder="0"
-                          value={editFormData.minThresholdString || ""} // Lấy từ trường string mới
-                          onChange={e =>
-                            setEditFormData({
-                              ...editFormData,
-                              minThresholdString: e.target.value.replace(/[^0-9]/g, ''), // Chỉ cho phép số
-                            })
-                          }
-                          className="border-slate-300 pr-8" // Thêm padding
-                        />
-                        {editFormData.conditionType === 'PERCENTAGE' && (
-                          <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        )}
+                  {/* Min/Max Threshold - Conditional Rendering */}
+                  {editFormData.activityType !== "STAFF_EVALUATION" ? (
+                    // HIỂN THỊ THRESHOLDS
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="editMinThreshold">
+                          Min Threshold <span className="text-red-500">*</span>
+                        </Label>
+                        <div className="relative">
+                          <Input
+                            id="editMinThreshold"
+                            type="text"
+                            inputMode="numeric"
+                            placeholder="0"
+                            value={editFormData.minThresholdString || ""} // Lấy từ trường string mới
+                            onChange={e =>
+                              setEditFormData({
+                                ...editFormData,
+                                minThresholdString: e.target.value.replace(/[^0-9]/g, ''), // Chỉ cho phép số
+                              })
+                            }
+                            className="border-slate-300 pr-8" // Thêm padding
+                          />
+                          {editFormData.conditionType === 'PERCENTAGE' && (
+                            <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          )}
+                        </div>
                       </div>
 
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="editMaxThreshold">
-                        Max Threshold <span className="text-red-500">*</span>
-                      </Label>
-                      {/* <Input
-                        id="editMaxThreshold"
-                        type="text"
-                        inputMode="numeric"
-                        placeholder="0"
-                        value={editFormData.maxThresholdString || ""} // Lấy từ trường string mới
-                        onChange={e => {
-                          const cleanedValue = e.target.value.replace(/[^0-9]/g, '');
-                          let finalValue = cleanedValue;
+                      <div className="space-y-2">
+                        <Label htmlFor="editMaxThreshold">
+                          Max Threshold <span className="text-red-500">*</span>
+                        </Label>
+                        <div className="relative">
+                          <Input
+                            id="editMaxThreshold"
+                            type="text"
+                            inputMode="numeric"
+                            placeholder="0"
+                            value={editFormData.maxThresholdString || ""} // Lấy từ trường string mới
+                            onChange={e => {
+                              const cleanedValue = e.target.value.replace(/[^0-9]/g, '');
+                              let finalValue = cleanedValue;
 
-                          if (editFormData.conditionType === 'PERCENTAGE') {
-                            const numValue = parseInt(cleanedValue);
-                            if (!isNaN(numValue) && numValue > 101) {
-                              finalValue = "101"; // Giới hạn
-                            }
-                          }
-
-                          setEditFormData({
-                            ...editFormData,
-                            maxThresholdString: finalValue,
-                          });
-                        }}
-                        className="border-slate-300"
-                      /> */}
-                      <div className="relative">
-                        <Input
-                          id="editMaxThreshold"
-                          type="text"
-                          inputMode="numeric"
-                          placeholder="0"
-                          value={editFormData.maxThresholdString || ""} // Lấy từ trường string mới
-                          onChange={e => {
-                            const cleanedValue = e.target.value.replace(/[^0-9]/g, '');
-                            let finalValue = cleanedValue;
-
-                            if (editFormData.conditionType === 'PERCENTAGE') {
-                              const numValue = parseInt(cleanedValue);
-                              if (!isNaN(numValue) && numValue > 101) {
-                                finalValue = "101"; // Giới hạn
+                              if (editFormData.conditionType === 'PERCENTAGE') {
+                                const numValue = parseInt(cleanedValue);
+                                if (!isNaN(numValue) && numValue > 101) {
+                                  finalValue = "101"; // Giới hạn
+                                }
                               }
-                            }
 
-                            setEditFormData({
-                              ...editFormData,
-                              maxThresholdString: finalValue,
-                            });
-                          }}
-                          className="border-slate-300 pr-8" // Thêm padding
-                        />
-                        {editFormData.conditionType === 'PERCENTAGE' && (
-                          <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        )}
+                              setEditFormData({
+                                ...editFormData,
+                                maxThresholdString: finalValue,
+                              });
+                            }}
+                            className="border-slate-300 pr-8" // Thêm padding
+                          />
+                          {editFormData.conditionType === 'PERCENTAGE' && (
+                            <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          )}
+                        </div>
+
                       </div>
-
+                      <p className="text-xs text-muted-foreground col-span-2 pt-1">
+                        Thresholds chỉ áp dụng cho các hoạt động đo lường bằng số (Attendance, Club Event).
+                      </p>
                     </div>
-                  </div>
+                  ) : (
+                    // ẨN THRESHOLDS
+                    <div>
+                      {/* <div className="space-y-2 col-span-2 pt-1"> */}
+                      {/* <p className="text-sm text-muted-foreground">Thresholds are disabled when selecting Staff Evaluation (using Evaluation Level).</p> */}
+                    </div>
+                  )}
 
                   {/* Multiplier (editable) */}
                   <div className="space-y-2">
@@ -1272,6 +1224,25 @@ export default function AdminMultiplierPolicyPage() {
                         })
                       }
                       className="font-mono text-lg border-slate-300 w-full sm:w-1/3"
+                    />
+                  </div>
+
+                  {/* Policy Description (editable) */}
+                  <div className="space-y-2">
+                    <Label htmlFor="editPolicyDescription">
+                      Policy Description
+                    </Label>
+                    <Textarea
+                      id="editPolicyDescription"
+                      placeholder="e.g., Applies to clubs with high event participation..."
+                      value={editFormData.policyDescription || ""}
+                      onChange={e =>
+                        setEditFormData({
+                          ...editFormData,
+                          policyDescription: e.target.value,
+                        })
+                      }
+                      className="border-slate-300"
                     />
                   </div>
 
@@ -1371,7 +1342,6 @@ export default function AdminMultiplierPolicyPage() {
           </Dialog>
 
           {/* Delete Confirmation Dialog */}
-          {/* Delete Confirmation Dialog (Updated fields) */}
           <Dialog
             open={!!policyToDelete}
             onOpenChange={() => setPolicyToDelete(null)}
@@ -1551,8 +1521,7 @@ export default function AdminMultiplierPolicyPage() {
                 </TabsTrigger>
               </TabsList>
 
-              {/* Thanh Tìm Kiếm Mới */}
-              {/* <div className="relative w-full sm:w-auto sm:max-w-xs"> */}
+              {/* Thanh Tìm Kiếm */}
               <div className="relative w-full sm:w-1/3">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -1652,7 +1621,6 @@ export default function AdminMultiplierPolicyPage() {
           </Tabs>
 
           {/* Info Card */}
-          {/* Info Card (Updated text) */}
           <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
