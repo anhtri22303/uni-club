@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { AppShell } from "@/components/app-shell"
 import { ProtectedRoute } from "@/contexts/protected-route"
 import { Card, CardContent } from "@/components/ui/card"
@@ -94,6 +94,8 @@ export default function ClubAttendancePage() {
   const [notes, setNotes] = useState<Record<number, string>>({})
   const [editingNoteMember, setEditingNoteMember] = useState<Member | null>(null)
   const [currentNote, setCurrentNote] = useState("")
+  // Track last member whose note was edited
+  const [lastEditedNoteMemberId, setLastEditedNoteMemberId] = useState<number | null>(null)
   // State search và filter
   const [searchTerm, setSearchTerm] = useState("")
   const [activeFilters, setActiveFilters] = useState<Record<string, any>>({})
@@ -442,6 +444,9 @@ export default function ClubAttendancePage() {
     // Cập nhật state local
     setNotes((prev) => ({ ...prev, [memberId]: currentNote }));
 
+    // Đánh dấu member vừa chỉnh note
+    setLastEditedNoteMemberId(memberId);
+
     // Đóng dialog
     setEditingNoteMember(null);
     setCurrentNote("");
@@ -783,74 +788,100 @@ export default function ClubAttendancePage() {
                             ({member.studentCode})
                           </span>
                         </p>
-                        <Badge variant="secondary" className="text-xs dark:bg-slate-700/50 dark:text-slate-300 dark:border-slate-600">
-                          {member.role}
-                        </Badge>
+                        {/* Colored badge by role */}
+                        {(() => {
+                          let badgeClass = "text-xs px-2 py-0.5 font-semibold border ";
+                          if (member.role === "LEADER") {
+                            badgeClass += "bg-red-100 text-red-700 border-red-300 dark:bg-red-900/40 dark:text-red-300 dark:border-red-700";
+                          } else if (member.role === "VICE_LEADER" || member.role === "VICE LEADER") {
+                            badgeClass += "bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700";
+                          } else {
+                            badgeClass += "bg-green-100 text-green-700 border-green-300 dark:bg-green-900/40 dark:text-green-300 dark:border-green-700";
+                          }
+                          return (
+                            <Badge className={badgeClass}>
+                              {member.role.replace(/_/g, ' ')}
+                            </Badge>
+                          );
+                        })()}
                       </div>
                     </div>
 
                     {/* Select Trạng thái và Nút Ghi chú */}
-                    <div className="flex items-center gap-2">
-                      {/* Nút Ghi chú */}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          setEditingNoteMember(member)
-                          setCurrentNote(notes[member.id] || "")
-                        }}
-                        disabled={isReadOnly || !sessionId} //: Disable nếu không có session
-                        className={cn(
-                          "relative text-muted-foreground dark:text-slate-400 hover:text-primary dark:hover:text-blue-400",
-                          notes[member.id] && "text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300",
-                        )}
-                      >
-                        <MessageSquare className="h-5 w-5" />
-                        {notes[member.id] && (
-                          <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-blue-500 dark:bg-blue-400" />
-                        )}
-                      </Button>
-
-                      {/* Select Trạng thái */}
-                      <Select
-                        value={attendance[member.id] || "absent"}
-                        onValueChange={(value: PageAttendanceStatus) => handleStatusChange(member.id, value)}
-                        disabled={isReadOnly || !sessionId} // Disable nếu không có session
-                      >
-                        <SelectTrigger
+                    <div className="flex flex-col items-end gap-1 min-w-[180px]">
+                      <div className="flex items-center gap-2">
+                        {/* Nút Ghi chú */}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setEditingNoteMember(member)
+                            setCurrentNote(notes[member.id] || "")
+                          }}
+                          disabled={isReadOnly || !sessionId}
                           className={cn(
-                            "w-[130px] dark:bg-slate-700 dark:text-white dark:border-slate-600",
-                            attendance[member.id] === "present" && "bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300 border-green-200 dark:border-green-700",
-                            attendance[member.id] === "absent" && "bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300 border-red-200 dark:border-red-700",
-                            attendance[member.id] === "late" && "bg-orange-100 dark:bg-orange-900/40 text-orange-800 dark:text-orange-300 border-orange-200 dark:border-orange-700",
-                            attendance[member.id] === "excused" && "bg-gray-100 dark:bg-gray-800/50 text-gray-800 dark:text-gray-300 border-gray-200 dark:border-gray-700",
+                            "relative text-muted-foreground dark:text-slate-400 hover:text-primary dark:hover:text-blue-400",
+                            notes[member.id] && "text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300",
                           )}
                         >
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="present">
-                            <span className="flex items-center gap-2">
-                              <CheckCircle className="h-4 w-4 text-green-500" /> Present
-                            </span>
-                          </SelectItem>
-                          <SelectItem value="late">
-                            <span className="flex items-center gap-2">
-                              <Clock className="h-4 w-4 text-orange-500" /> Late
-                            </span>
-                          </SelectItem>
-                          <SelectItem value="excused">
-                            <span className="flex items-center gap-2">
-                              <AlertCircle className="h-4 w-4 text-gray-500" /> Excused
-                            </span>
-                          </SelectItem>
-                          <SelectItem value="absent">
-                            <span className="flex items-center gap-2">
-                              <XCircle className="h-4 w-4 text-red-500" /> Absent
-                            </span>
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
+                          <MessageSquare className="h-5 w-5" />
+                          {notes[member.id] && (
+                            <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-blue-500 dark:bg-blue-400" />
+                          )}
+                        </Button>
+
+                        {/* Select Trạng thái */}
+                        <Select
+                          value={attendance[member.id] || "absent"}
+                          onValueChange={(value: PageAttendanceStatus) => handleStatusChange(member.id, value)}
+                          disabled={isReadOnly || !sessionId}
+                        >
+                          <SelectTrigger
+                            className={cn(
+                              "w-[130px] dark:bg-slate-700 dark:text-white dark:border-slate-600",
+                              attendance[member.id] === "present" && "bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300 border-green-200 dark:border-green-700",
+                              attendance[member.id] === "absent" && "bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300 border-red-200 dark:border-red-700",
+                              attendance[member.id] === "late" && "bg-orange-100 dark:bg-orange-900/40 text-orange-800 dark:text-orange-300 border-orange-200 dark:border-orange-700",
+                              attendance[member.id] === "excused" && "bg-gray-100 dark:bg-gray-800/50 text-gray-800 dark:text-gray-300 border-gray-200 dark:border-gray-700",
+                            )}
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="present">
+                              <span className="flex items-center gap-2">
+                                <CheckCircle className="h-4 w-4 text-green-500" /> Present
+                              </span>
+                            </SelectItem>
+                            <SelectItem value="late">
+                              <span className="flex items-center gap-2">
+                                <Clock className="h-4 w-4 text-orange-500" /> Late
+                              </span>
+                            </SelectItem>
+                            <SelectItem value="excused">
+                              <span className="flex items-center gap-2">
+                                <AlertCircle className="h-4 w-4 text-gray-500" /> Excused
+                              </span>
+                            </SelectItem>
+                            <SelectItem value="absent">
+                              <span className="flex items-center gap-2">
+                                <XCircle className="h-4 w-4 text-red-500" /> Absent
+                              </span>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {/* Inline note prompt */}
+                      {!isReadOnly && sessionId && (
+                        <div className="min-h-[18px]">
+                          {(!notes[member.id] || notes[member.id].trim() === "") && lastEditedNoteMemberId !== member.id && (
+                            <span className="text-xs text-blue-600 dark:text-blue-300">No note yet. Would you like to add a note for this member?</span>
+                          )}
+                          {lastEditedNoteMemberId === member.id && notes[member.id] && notes[member.id].trim() !== "" && (
+                            <span className="text-xs text-green-600 dark:text-green-300">Note added. Don't forget to click "Save Attendance" to save!</span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>

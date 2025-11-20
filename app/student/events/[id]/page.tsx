@@ -9,7 +9,7 @@ import { Separator } from "@/components/ui/separator"
 import { ArrowLeft, Calendar, Clock, MapPin, Users, Eye, XCircle, Loader2, Star, Filter, ChevronLeft, ChevronRight, MessageSquare } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { getEventById, timeObjectToString } from "@/service/eventApi"
-import { getFeedbackByEventId, Feedback, postFeedback } from "@/service/feedbackApi"
+import { getFeedbackByEventId, Feedback, postFeedback, getMyFeedbacks, putFeedback } from "@/service/feedbackApi"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { FeedbackModal } from "@/components/feedback-modal"
 import { AppShell } from "@/components/app-shell"
@@ -63,6 +63,10 @@ export default function EventDetailPage() {
   // Feedback modal states
   const [showFeedbackModal, setShowFeedbackModal] = useState(false)
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false)
+  const [myFeedbacks, setMyFeedbacks] = useState<Feedback[]>([])
+  const [myFeedbacksLoading, setMyFeedbacksLoading] = useState(false)
+  const [showEditFeedbackModal, setShowEditFeedbackModal] = useState(false)
+  const [existingFeedback, setExistingFeedback] = useState<Feedback | null>(null)
 
   useEffect(() => {
     const loadEventDetail = async () => {
@@ -106,6 +110,24 @@ export default function EventDetailPage() {
 
     loadEventDetail()
   }, [params.id, toast])
+
+  // Load current user's feedbacks to check if already submitted for this event
+  useEffect(() => {
+    const loadMyFeedbacks = async () => {
+      try {
+        setMyFeedbacksLoading(true)
+        const data = await getMyFeedbacks()
+        setMyFeedbacks(data)
+      } catch (error) {
+        console.error("Failed to load my feedbacks:", error)
+        // Don't show error toast, not critical
+      } finally {
+        setMyFeedbacksLoading(false)
+      }
+    }
+
+    loadMyFeedbacks()
+  }, [])
 
   const getTypeBadge = (type: string) => {
     return (
@@ -176,6 +198,17 @@ export default function EventDetailPage() {
     setCurrentPage(1)
   }, [ratingFilter])
 
+  // Check if current user has already submitted feedback for this event
+  const hasSubmittedFeedback = event ? myFeedbacks.some(fb => fb.eventId === event.id) : false
+  
+  // Get existing feedback for this event
+  useEffect(() => {
+    if (event && myFeedbacks.length > 0) {
+      const feedback = myFeedbacks.find(fb => fb.eventId === event.id)
+      setExistingFeedback(feedback || null)
+    }
+  }, [event, myFeedbacks])
+
   // Handle feedback submission
   const handleFeedbackSubmit = async (rating: number, comment: string) => {
     if (!event) return
@@ -199,6 +232,42 @@ export default function EventDetailPage() {
       toast({
         title: "Error",
         description: error?.response?.data?.message || "Failed to submit feedback. Please try again.",
+        variant: "destructive"
+      })
+      throw error // Re-throw to prevent modal from closing
+    } finally {
+      setIsSubmittingFeedback(false)
+    }
+  }
+
+  // Handle edit feedback
+  const handleEditFeedback = () => {
+    setShowEditFeedbackModal(true)
+  }
+
+  // Handle edit feedback submission
+  const handleEditFeedbackSubmit = async (rating: number, comment: string) => {
+    if (!existingFeedback) return
+
+    try {
+      setIsSubmittingFeedback(true)
+      await putFeedback(existingFeedback.feedbackId, { rating, comment })
+      
+      toast({
+        title: "Success",
+        description: "Your feedback has been updated successfully!",
+      })
+
+      // Close modal
+      setShowEditFeedbackModal(false)
+
+      // Reload the page to show updated feedback
+      window.location.reload()
+    } catch (error: any) {
+      console.error("Failed to update feedback:", error)
+      toast({
+        title: "Error",
+        description: error?.response?.data?.message || "Failed to update feedback. Please try again.",
         variant: "destructive"
       })
       throw error // Re-throw to prevent modal from closing
@@ -264,13 +333,39 @@ export default function EventDetailPage() {
             <div className="flex items-center gap-3">
               {/* Show Feedback button for APPROVED, ONGOING, or COMPLETED events */}
               {event && (event.status === "APPROVED" || event.status === "ONGOING" || event.status === "COMPLETED") && (
-                <Button
-                  onClick={() => setShowFeedbackModal(true)}
-                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200"
-                >
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  Give Feedback
-                </Button>
+                <>
+                  {hasSubmittedFeedback ? (
+                    <>
+                      <Button
+                        onClick={() => setShowFeedbackModal(true)}
+                        disabled={true}
+                        className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="You have already submitted feedback for this event"
+                      >
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        Feedback Submitted
+                      </Button>
+                      <Button
+                        onClick={handleEditFeedback}
+                        variant="outline"
+                        className="border-blue-600 text-blue-600 hover:bg-blue-50 dark:border-blue-400 dark:text-blue-400 dark:hover:bg-blue-950 font-medium shadow-sm hover:shadow-md transition-all duration-200"
+                      >
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        Edit Feedback
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      onClick={() => setShowFeedbackModal(true)}
+                      disabled={myFeedbacksLoading}
+                      className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Give feedback for this event"
+                    >
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      Give Feedback
+                    </Button>
+                  )}
+                </>
               )}
               <div className="flex items-center gap-2">
                 <Eye className="h-5 w-5 text-muted-foreground" />
@@ -362,10 +457,7 @@ export default function EventDetailPage() {
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Check-in Information</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="p-4 bg-muted/50 rounded-lg">
-                    <div className="text-sm text-muted-foreground">Check-in Code</div>
-                    <div className="font-mono font-semibold text-lg">{event.checkInCode}</div>
-                  </div>
+                  
                   <div className="p-4 bg-muted/50 rounded-lg">
                     <div className="text-sm text-muted-foreground">Max Capacity</div>
                     <div className="font-semibold text-lg">{event.maxCheckInCount} people</div>
@@ -488,7 +580,9 @@ export default function EventDetailPage() {
                                     <Users className="h-5 w-5 text-primary" />
                                   </div>
                                   <div>
-                                    <div className="font-medium">Member #{feedback.membershipId}</div>
+                                    <div className="font-medium">
+                                      {feedback.memberName || `Member #${feedback.membershipId}`}
+                                    </div>
                                     <div className="text-sm text-muted-foreground">
                                       {new Date(feedback.createdAt).toLocaleDateString("en-US", {
                                         year: "numeric",
@@ -576,6 +670,20 @@ export default function EventDetailPage() {
             onSubmit={handleFeedbackSubmit}
             eventName={event.name}
             isSubmitting={isSubmittingFeedback}
+          />
+        )}
+
+        {/* Edit Feedback Modal */}
+        {event && existingFeedback && (
+          <FeedbackModal
+            open={showEditFeedbackModal}
+            onOpenChange={setShowEditFeedbackModal}
+            onSubmit={handleEditFeedbackSubmit}
+            eventName={event.name}
+            isSubmitting={isSubmittingFeedback}
+            initialRating={existingFeedback.rating}
+            initialComment={existingFeedback.comment}
+            isEditMode={true}
           />
         )}
       </AppShell>

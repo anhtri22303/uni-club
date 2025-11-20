@@ -237,7 +237,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
       const studentHasClubs = clubs && Array.isArray(clubs) && clubs.length > 0
       setHasClubs(studentHasClubs)
 
-      console.log("Sidebar - Profile fetched:", { clubs, hasClubs: studentHasClubs })
+      // console.log("Sidebar - Profile fetched:", { clubs, hasClubs: studentHasClubs })
       return profile
     } catch (error) {
       console.error("Failed to fetch profile:", error)
@@ -318,7 +318,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
           setApprovedEventsCount(approvedCount)
           setOngoingEventsCount(ongoingCount)
 
-          console.log("Student sidebar - Approved events:", approvedCount, "Ongoing events:", ongoingCount)
+          // console.log("Student sidebar - Approved events:", approvedCount, "Ongoing events:", ongoingCount)
         } catch (error) {
           console.error("Failed to fetch events for student sidebar:", error)
           setApprovedEventsCount(0)
@@ -358,11 +358,11 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
       const pendingOrders = orders.filter((order: any) => order.status === "PENDING")
       setPendingOrdersCount(pendingOrders.length)
 
-      console.log("History sidebar - Pending counts:", {
-        memberApps: pendingMemberApps.length,
-        clubApps: pendingClubApps.length,
-        orders: pendingOrders.length
-      })
+      // console.log("History sidebar - Pending counts:", {
+      //   memberApps: pendingMemberApps.length,
+      //   clubApps: pendingClubApps.length,
+      //   orders: pendingOrders.length
+      // })
     } else {
       // Reset counts when not student role
       setPendingMemberAppsCount(0)
@@ -408,7 +408,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
           const pendingCount = requests.filter((req: LeaveRequest) => req.status === "PENDING").length
           setPendingLeaveRequestsCount(pendingCount)
 
-          console.log("Club Leader sidebar - Pending leave requests:", pendingCount)
+          // console.log("Club Leader sidebar - Pending leave requests:", pendingCount)
         } catch (error) {
           console.error("Failed to fetch leave requests for sidebar:", error)
           setPendingLeaveRequestsCount(0)
@@ -461,11 +461,11 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
           setClubLeaderApprovedEventsCount(approvedCount)
           setClubLeaderOngoingEventsCount(ongoingCount)
 
-          console.log("Club Leader sidebar - Event counts:", {
-            pending: pendingCount,
-            approved: approvedCount,
-            ongoing: ongoingCount
-          })
+          // console.log("Club Leader sidebar - Event counts:", {
+          //   pending: pendingCount,
+          //   approved: approvedCount,
+          //   ongoing: ongoingCount
+          // })
         } catch (error) {
           console.error("Failed to fetch events for club leader sidebar:", error)
           setClubLeaderPendingEventsCount(0)
@@ -505,7 +505,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
 
           setPendingClubOrdersCount(pendingCount)
 
-          console.log("Club Leader sidebar - Pending club orders:", pendingCount)
+          // console.log("Club Leader sidebar - Pending club orders:", pendingCount)
         } catch (error) {
           console.error("Failed to fetch club orders for sidebar:", error)
           setPendingClubOrdersCount(0)
@@ -531,7 +531,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
       const pendingCount = applications.filter((app: any) => app.status === "PENDING").length
       setPendingUniStaffClubApplicationsCount(pendingCount)
 
-      console.log("Uni Staff sidebar - Pending club applications:", pendingCount)
+      // console.log("Uni Staff sidebar - Pending club applications:", pendingCount)
     } else {
       setPendingUniStaffClubApplicationsCount(0)
     }
@@ -582,7 +582,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
 
       setPendingUniStaffEventRequestsCount(pendingEvents.length)
 
-      console.log("Uni Staff sidebar - Pending event requests (not expired):", pendingEvents.length)
+      // console.log("Uni Staff sidebar - Pending event requests (not expired):", pendingEvents.length)
     } else {
       setPendingUniStaffEventRequestsCount(0)
     }
@@ -601,7 +601,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
 
       setPendingUniStaffPointRequestsCount(pendingPointRequests.length)
 
-      console.log("Uni Staff sidebar - Pending point requests:", pendingPointRequests.length)
+      // console.log("Uni Staff sidebar - Pending point requests:", pendingPointRequests.length)
     } else {
       setPendingUniStaffPointRequestsCount(0)
     }
@@ -616,7 +616,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
   if (auth.role === "student") {
     if (!hasClubs) {
       // Student has no clubs - show limited navigation with Events Public
-      console.log("Student has no clubs, showing limited navigation with Events Public")
+      // console.log("Student has no clubs, showing limited navigation with Events Public")
       navigation = [
         { href: "/student/clubs", label: "Clubs", icon: Users },
         { href: "/student/events-public", label: "Events Public", icon: Calendar },
@@ -624,7 +624,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
       ]
     } else {
       // Student has clubs - show full navigation but filter out Events Public
-      console.log("Student has clubs, showing full navigation without Events Public")
+      // console.log("Student has clubs, showing full navigation without Events Public")
       navigation = navigation.filter(item => item.href !== "/student/events-public")
     }
   }

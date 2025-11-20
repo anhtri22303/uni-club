@@ -833,7 +833,8 @@ export default function EventDetailPage() {
               {(event.status === "PENDING_COCLUB" || event.status === "PENDING_UNISTAFF" || event.status === "APPROVED" || event.status === "ONGOING" || event.status === "COMPLETED") && (
                 <Button
                   onClick={() => setShowAddStaffModal(true)}
-                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                  className="bg-gradient-to-r from-blue-600 via-purple-500 to-pink-500 text-white font-semibold border-0 shadow-md hover:from-blue-700 hover:to-pink-600 focus:ring-2 focus:ring-blue-300 focus:outline-none"
+                  style={{ minWidth: 120 }}
                 >
                   <Users className="h-4 w-4 mr-2" />
                   List Staff
@@ -1261,7 +1262,9 @@ export default function EventDetailPage() {
                                     <Users className="h-5 w-5 text-primary" />
                                   </div>
                                   <div>
-                                    <div className="font-medium">Member #{feedback.membershipId}</div>
+                                    <div className="font-medium">
+                                      {feedback.memberName || `Member #${feedback.membershipId}`}
+                                    </div>
                                     <div className="text-sm text-muted-foreground">
                                       {new Date(feedback.createdAt).toLocaleDateString("en-US", {
                                         year: "numeric",
