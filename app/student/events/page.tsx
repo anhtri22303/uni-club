@@ -28,7 +28,7 @@ export default function MemberEventsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [userClubIds, setUserClubIds] = useState<number[]>([])
   const router = useRouter()
-  // ✅ MỚI: State để quản lý việc chọn club
+  //    MỚI: State để quản lý việc chọn club
   // const [selectedClubId, setSelectedClubId] = useState<string>("all") // 'all' là giá trị mặc định
   const [selectedClubId, setSelectedClubId] = useState<string | null>(null) // Bắt đầu là null
   const [userClubsDetails, setUserClubsDetails] = useState<any[]>([]) // Để lưu {id, name}
@@ -74,7 +74,7 @@ export default function MemberEventsPage() {
   const confirmedCount = (myRegistrations || []).filter((r: any) => r.status === "CONFIRMED").length
   const checkedInCount = (myRegistrations || []).filter((r: any) => r.status === "CHECKED_IN").length
 
-  // ✅ CẬP NHẬT: useEffect để lấy chi tiết club VÀ set default
+  //    CẬP NHẬT: useEffect để lấy chi tiết club VÀ set default
   useEffect(() => {
     if (userClubIds.length > 0 && clubsData.length > 0) {
       // Lọc danh sách 'all clubs' để chỉ lấy những club mà user tham gia
@@ -90,7 +90,7 @@ export default function MemberEventsPage() {
     }
   }, [userClubIds, clubsData, selectedClubId]) // Chạy lại khi 3 danh sách này sẵn sàng
 
-  // ✅ USE REACT QUERY to fetch events for the SELECTED club only
+  //    USE REACT QUERY to fetch events for the SELECTED club only
   const selectedClubIdNumber = selectedClubId ? Number(selectedClubId) : null
   const { data: selectedClubEvents = [], isLoading: selectedClubLoading } = useEventsByClubId(
     selectedClubIdNumber || 0, 
@@ -292,7 +292,7 @@ export default function MemberEventsPage() {
             </div>
           </div>
 
-          {/* ✅ CẬP NHẬT: Thêm dropdown chọn club */}
+          {/*    CẬP NHẬT: Thêm dropdown chọn club */}
           <div className="flex flex-wrap gap-4">
             <Input
               placeholder="Search events..."
@@ -420,7 +420,7 @@ export default function MemberEventsPage() {
                       <div className="space-y-3">
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
-                            <CardTitle className="text-lg truncate" title={event.name}>{event.name}</CardTitle>
+                            <CardTitle className="text-lg line-clamp-2" title={event.name}>{event.name}</CardTitle>
                             <CardDescription className="flex items-center gap-1 mt-1">
                               <Users className="h-3 w-3 flex-shrink-0" />
                               <span className="truncate">{event.hostClub?.name || "Unknown Club"}</span>
@@ -428,18 +428,18 @@ export default function MemberEventsPage() {
                           </div>
                         </div>
                         
-                        <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex flex-wrap items-start gap-2">
                           <Badge
                             variant="outline"
                             className={
                               event.type === "PRIVATE"
-                                ? "bg-purple-100 text-purple-700 border-purple-300"
-                                : "bg-blue-100 text-blue-700 border-blue-300"
+                                ? "bg-purple-100 text-purple-700 border-purple-300 shrink-0"
+                                : "bg-blue-100 text-blue-700 border-blue-300 shrink-0"
                             }
                           >
                             {event.type || "UNKNOWN"}
                           </Badge>
-                          <Badge variant="secondary" className="flex items-center gap-1">
+                          <Badge variant="secondary" className="flex items-center gap-1 shrink-0">
                             <Trophy className="h-3 w-3" />
                             {(event.commitPointCost ?? 0)} pts
                           </Badge>

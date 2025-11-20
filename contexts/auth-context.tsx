@@ -288,10 +288,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               safeSessionStorage.removeItem(key);
               sessionStorage.removeItem(key);
             });
-            console.log("✅ [Logout] Đã xóa tất cả Google OAuth data từ sessionStorage.");
+            console.log("   [Logout] Đã xóa tất cả Google OAuth data từ sessionStorage.");
           }
         } catch (err) {
-          console.error("❌ [Logout] Lỗi khi xóa Google OAuth data:", err);
+          console.error("  [Logout] Lỗi khi xóa Google OAuth data:", err);
         }
       }
 
@@ -314,7 +314,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Bạn có thể gửi một thông báo lỗi tới hệ thống giám sát ở đây
       } else {
         console.log(
-          "✅ Logout: Kiểm tra thành công! Storage đã được dọn dẹp sạch sẽ."
+          "   Logout: Kiểm tra thành công! Storage đã được dọn dẹp sạch sẽ."
         );
       }
     } catch (err) {

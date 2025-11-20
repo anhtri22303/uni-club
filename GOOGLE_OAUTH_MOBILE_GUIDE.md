@@ -190,17 +190,17 @@ const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
       throw new Error("No credential received from Google")
     }
     
-    console.log("✅ Received Google ID Token:", idToken.substring(0, 30) + "...")
+    console.log("   Received Google ID Token:", idToken.substring(0, 30) + "...")
     
     // 2. Gửi ID Token đến backend
     const success = await loginWithGoogle(idToken)
     
     if (success) {
-      console.log("✅ Login successful")
+      console.log("   Login successful")
       // Navigate to dashboard
     }
   } catch (error) {
-    console.error("❌ Google login error:", error)
+    console.error("  Google login error:", error)
   }
 }
 
@@ -261,7 +261,7 @@ export const loginWithGoogleToken = async (
       clubIds: userData.clubIds || [],
     }
   } catch (error: any) {
-    console.error("❌ Google Login API Error:", error.response?.data)
+    console.error("  Google Login API Error:", error.response?.data)
     throw error
   }
 }
@@ -389,11 +389,11 @@ class GoogleAuthService {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       
       if (googleUser == null) {
-        print('❌ User cancelled Google Sign-In');
+        print('  User cancelled Google Sign-In');
         return null;
       }
       
-      print('✅ Google Sign-In successful: ${googleUser.email}');
+      print('   Google Sign-In successful: ${googleUser.email}');
       
       // 2. Lấy authentication details
       final GoogleSignInAuthentication googleAuth = 
@@ -403,17 +403,17 @@ class GoogleAuthService {
       final String? idToken = googleAuth.idToken;
       
       if (idToken == null) {
-        print('❌ Failed to get ID token');
+        print('  Failed to get ID token');
         return null;
       }
       
-      print('✅ Got ID Token: ${idToken.substring(0, 30)}...');
+      print('   Got ID Token: ${idToken.substring(0, 30)}...');
       
       // 4. Gửi ID Token đến backend
       return await _loginWithBackend(idToken);
       
     } catch (error) {
-      print('❌ Google Sign-In error: $error');
+      print('  Google Sign-In error: $error');
       return null;
     }
   }
@@ -443,7 +443,7 @@ class GoogleAuthService {
           jsonDecode(response.body);
         
         if (responseData['success'] == true) {
-          print('✅ Backend authentication successful');
+          print('   Backend authentication successful');
           
           // Lưu JWT token
           final String jwtToken = responseData['data']['token'];
@@ -451,15 +451,15 @@ class GoogleAuthService {
           
           return responseData['data'];
         } else {
-          print('❌ Backend error: ${responseData['message']}');
+          print('  Backend error: ${responseData['message']}');
           return null;
         }
       } else {
-        print('❌ HTTP error: ${response.statusCode}');
+        print('  HTTP error: ${response.statusCode}');
         return null;
       }
     } catch (error) {
-      print('❌ Backend API error: $error');
+      print('  Backend API error: $error');
       return null;
     }
   }
@@ -566,13 +566,13 @@ export const signInWithGoogle = async () => {
     // 2. Sign in with Google
     const userInfo = await GoogleSignin.signIn();
     
-    console.log('✅ Google Sign-In successful:', userInfo.user.email);
+    console.log('   Google Sign-In successful:', userInfo.user.email);
     
     // 3. Get ID Token
     const tokens = await GoogleSignin.getTokens();
     const idToken = tokens.idToken;
     
-    console.log('✅ Got ID Token:', idToken.substring(0, 30) + '...');
+    console.log('   Got ID Token:', idToken.substring(0, 30) + '...');
     
     // 4. Send ID Token to backend
     const response = await axios.post(`${API_BASE_URL}/auth/google`, {
@@ -594,7 +594,7 @@ export const signInWithGoogle = async () => {
     }
     
   } catch (error: any) {
-    console.error('❌ Sign in error:', error);
+    console.error('  Sign in error:', error);
     
     if (error.code === statusCodes.SIGN_IN_CANCELLED) {
       console.log('User cancelled sign in');
@@ -660,13 +660,13 @@ export default LoginScreen;
 
 ### **6.1. Token Security**
 
-- ✅ **Google ID Token (JWT)**:
+-    **Google ID Token (JWT)**:
   - Token nhận từ Google sau khi user login
   - **Không lưu** token này lâu dài
   - Chỉ dùng để gửi đến backend **1 lần**
   - Hết hạn sau 1 giờ
 
-- ✅ **JWT Token (từ backend)**:
+-    **JWT Token (từ backend)**:
   - Token nhận từ backend sau khi verify Google token
   - **Lưu vào secure storage** (AsyncStorage, SharedPreferences)
   - Gửi kèm trong header `Authorization: Bearer <token>` cho các API calls
@@ -753,9 +753,9 @@ const response = await axios.get('/api/profile', {
 
 1. **Kiểm tra Google Sign-In UI**
    ```
-   ✅ Button hiển thị đúng
-   ✅ Click button mở Google Sign-In dialog
-   ✅ Chọn tài khoản Google
+      Button hiển thị đúng
+      Click button mở Google Sign-In dialog
+      Chọn tài khoản Google
    ```
 
 2. **Kiểm tra ID Token**
@@ -998,15 +998,15 @@ const logout = async () => {
 
 ---
 
-## ✅ KẾT LUẬN
+##    KẾT LUẬN
 
 Tài liệu này cung cấp **toàn bộ thông tin** cần thiết để triển khai Google OAuth Login cho mobile app tương tự như web app hiện tại:
 
-1. ✅ **Client ID**: Cần tạo mới cho Android/iOS, dùng chung Web Client ID với backend
-2. ✅ **API Endpoint**: `POST /auth/google` với body `{ "token": "<google_id_token>" }`
-3. ✅ **Code Implementation**: Full code cho Flutter và React Native
-4. ✅ **Security**: Best practices về token storage và authorization
-5. ✅ **Testing**: Debug checklist và common errors
+1.    **Client ID**: Cần tạo mới cho Android/iOS, dùng chung Web Client ID với backend
+2.    **API Endpoint**: `POST /auth/google` với body `{ "token": "<google_id_token>" }`
+3.    **Code Implementation**: Full code cho Flutter và React Native
+4.    **Security**: Best practices về token storage và authorization
+5.    **Testing**: Debug checklist và common errors
 
 **Bước tiếp theo:**
 1. Tạo Client IDs cho Android/iOS trong Google Cloud Console

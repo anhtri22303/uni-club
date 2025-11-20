@@ -65,7 +65,7 @@ export default function MyClubPage() {
   const [isSubmittingLeave, setIsSubmittingLeave] = useState(false)
   const { toast } = useToast()
 
-  // ✅ USE REACT QUERY for club data and members
+  //    USE REACT QUERY for club data and members
   const { data: selectedClub, isLoading: loading } = useClub(selectedClubId || 0, !!selectedClubId)
   const { data: apiMembers = [], isLoading: membersLoading, error: membersQueryError } = useClubMembers(
     selectedClubId || 0,

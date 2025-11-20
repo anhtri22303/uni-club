@@ -186,7 +186,7 @@ export const getClubMemberCount = async (id: string | number) => {
   try {
     const response = await axiosInstance.get<MemberCountApiResponse>(`/api/clubs/${id}/member-count`);
     // Trả về cả activeMemberCount và approvedEvents
-    console.log(`Fetched member count for club ${id}:`, response.data);
+    // console.log(`Fetched member count for club ${id}:`, response.data);
     return {
       activeMemberCount: response.data?.data?.activeMemberCount ?? 0,
       approvedEvents: response.data?.data?.approvedEvents ?? 0

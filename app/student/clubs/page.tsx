@@ -197,7 +197,7 @@ export default function MemberClubsPage() {
   // Map API items to table rows and filter out user's current clubs
   // Use useMemo to ensure proper dependency tracking and avoid race conditions
   const enhancedClubs = useMemo(() => {
-    console.log(" Computing enhancedClubs - clubsWithData:", clubsWithData.length, "userClubIds:", userClubIds)
+    // console.log(" Computing enhancedClubs - clubsWithData:", clubsWithData.length, "userClubIds:", userClubIds)
 
     if (clubsWithData.length === 0) {
       console.log(" No clubs data available yet")
@@ -216,7 +216,7 @@ export default function MemberClubsPage() {
       return true
     })
 
-    console.log(`Filtered clubs: ${filtered.length} out of ${clubsWithData.length} (hidden: ${clubsWithData.length - filtered.length})`)
+    // console.log(`Filtered clubs: ${filtered.length} out of ${clubsWithData.length} (hidden: ${clubsWithData.length - filtered.length})`)
 
     return filtered.map((club: ClubApiItem) => {
       // 1. Thử lấy tên major trực tiếp (logic cũ)
@@ -252,7 +252,7 @@ export default function MemberClubsPage() {
     })
   }, [clubsWithData, userClubIds, majors, getClubStatus, myApplications, userMemberships, userApplications, pendingClubIds])
 
-  console.log(" Final enhancedClubs count:", enhancedClubs.length)
+  // console.log(" Final enhancedClubs count:", enhancedClubs.length)
 
   const getMajorVariant = (major?: string) => {
     if (!major) return "outline"

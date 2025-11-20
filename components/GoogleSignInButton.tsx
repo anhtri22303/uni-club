@@ -31,7 +31,7 @@ export function GoogleSignInButton({ mode = "sign-in", onClick }: GoogleSignInBu
         select_by: (credentialResponse as any).select_by || "unknown"
       }
       
-      console.log("✅ [Google OAuth] Credential Received:", credentialDetails)
+      console.log("   [Google OAuth] Credential Received:", credentialDetails)
       
       // Validate credential exists
       if (!credentialResponse.credential) {
@@ -51,13 +51,13 @@ export function GoogleSignInButton({ mode = "sign-in", onClick }: GoogleSignInBu
           title: "🎉 Google Sign-In Successful",
           description: "Redirecting to your account...",
         })
-        console.log("✅ Google Sign-In successful, redirecting...")
+        console.log("   Google Sign-In successful, redirecting...")
       } else {
         throw new Error("Failed to authenticate with server")
       }
 
     } catch (error: any) {
-      console.error("❌ Google login error:", error)
+      console.error("  Google login error:", error)
       
       // Handle different types of errors with specific messages
       let errorMessage = "Authentication failed"
@@ -81,7 +81,7 @@ export function GoogleSignInButton({ mode = "sign-in", onClick }: GoogleSignInBu
       }
       
       toast({
-        title: `❌ Google Sign-In Failed: ${errorMessage}`, 
+        title: `  Google Sign-In Failed: ${errorMessage}`, 
         description: errorDetails,
         variant: "destructive",
       })
@@ -91,7 +91,7 @@ export function GoogleSignInButton({ mode = "sign-in", onClick }: GoogleSignInBu
   }
 
   const handleGoogleError = () => {
-    console.error("❌ Google OAuth popup cancelled or failed")
+    console.error("  Google OAuth popup cancelled or failed")
     toast({
       title: "Google Sign-In Cancelled",
       description: "You can retry or use email/password login instead",

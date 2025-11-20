@@ -17,19 +17,19 @@ export async function testGoogleLogin() {
       token: MOCK_GOOGLE_TOKEN
     })
     
-    console.log('✅ API call successful:', response)
+    console.log('   API call successful:', response)
     return response
     
   } catch (error) {
-    console.error('❌ API call failed:', error)
+    console.error('  API call failed:', error)
     
     // Kiểm tra lỗi cụ thể
     if (error.response?.status === 401) {
-      console.log('🔍 Token invalid hoặc expired - đây là lỗi bình thường khi test với mock token')
+      console.log('    Token invalid hoặc expired - đây là lỗi bình thường khi test với mock token')
     } else if (error.response?.status === 400) {
-      console.log('🔍 Bad request - kiểm tra format request')
+      console.log('    Bad request - kiểm tra format request')
     } else if (error.code === 'ECONNREFUSED') {
-      console.log('🔍 Backend không chạy - khởi động backend trước')
+      console.log('    Backend không chạy - khởi động backend trước')
     }
     
     throw error
@@ -43,14 +43,14 @@ export function testGoogleButtonRender() {
   try {
     // Trong browser environment
     if (typeof window !== 'undefined') {
-      console.log('✅ Running in browser environment')
+      console.log('   Running in browser environment')
       console.log('📍 Current origin:', window.location.origin)
       
       // Check if Google script can be loaded
       const script = document.createElement('script')
       script.src = 'https://accounts.google.com/gsi/client'
-      script.onload = () => console.log('✅ Google Identity Services script loaded')
-      script.onerror = () => console.error('❌ Failed to load Google script')
+      script.onload = () => console.log('   Google Identity Services script loaded')
+      script.onerror = () => console.error('  Failed to load Google script')
       
       // Don't actually append to avoid side effects in test
       console.log('🔗 Google script URL:', script.src)
@@ -60,7 +60,7 @@ export function testGoogleButtonRender() {
     
     return true
   } catch (error) {
-    console.error('❌ Component test failed:', error)
+    console.error('  Component test failed:', error)
     return false
   }
 }
@@ -75,17 +75,17 @@ export function checkEnvironmentSetup() {
   
   const missing = requiredVars.filter(varName => {
     const exists = process.env[varName]
-    console.log(`${exists ? '✅' : '❌'} ${varName}: ${exists ? 'Set' : 'Missing'}`)
+    console.log(`${exists ? '  ' : ' '} ${varName}: ${exists ? 'Set' : 'Missing'}`)
     return !exists
   })
   
   if (missing.length > 0) {
-    console.error(`❌ Missing environment variables: ${missing.join(', ')}`)
+    console.error(`  Missing environment variables: ${missing.join(', ')}`)
     console.log('💡 Create .env.local file with required variables')
     return false
   }
   
-  console.log('✅ All environment variables are set')
+  console.log('   All environment variables are set')
   return true
 }
 

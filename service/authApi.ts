@@ -129,7 +129,7 @@ export const loginWithGoogleToken = async (credentials: { token: string }): Prom
     }
 
     // Log response details
-    console.log("✅ [Google Login API] Response Details:", responseDetails)
+    console.log("   [Google Login API] Response Details:", responseDetails)
 
     // Check if response is successful
     if (!response.data.success || !response.data.data) {
@@ -179,7 +179,7 @@ export const loginWithGoogleToken = async (credentials: { token: string }): Prom
     }
 
     // Log error details
-    console.error("❌ [Google Login API] Error Details:", errorDetails)
+    console.error("  [Google Login API] Error Details:", errorDetails)
 
     // Re-throw with more specific error message
     if (error.response?.status === 401) {

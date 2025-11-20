@@ -62,7 +62,7 @@ export function EventStatsCard({
               </Badge>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">🟢 Active:</span>
+              <span className="text-muted-foreground">  Active:</span>
               <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
                 {activeEvents}
               </Badge>
@@ -74,7 +74,7 @@ export function EventStatsCard({
               </Badge>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">❌ Rejected:</span>
+              <span className="text-muted-foreground">  Rejected:</span>
               <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
                 {rejectedEvents}
               </Badge>
@@ -107,13 +107,13 @@ export function EventStatsCard({
               </Badge>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground text-xs">✅ Approved:</span>
+              <span className="text-muted-foreground text-xs">   Approved:</span>
               <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
                 {approvedEvents}
               </Badge>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground text-xs">🟢 Ongoing:</span>
+              <span className="text-muted-foreground text-xs">  Ongoing:</span>
               <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
                 {ongoingEvents}
               </Badge>
@@ -125,7 +125,7 @@ export function EventStatsCard({
               </Badge>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground text-xs">❌ Rejected:</span>
+              <span className="text-muted-foreground text-xs">  Rejected:</span>
               <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 text-xs">
                 {rejectedEvents}
               </Badge>

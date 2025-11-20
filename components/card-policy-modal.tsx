@@ -125,7 +125,7 @@ export function CardPolicyModal({ isOpen, onClose }: CardPolicyModalProps) {
             {/* Best Practices */}
             <section>
               <h3 className="text-lg font-semibold mb-3 text-red-600 dark:text-red-400">
-                ✅ Best Practices
+                   Best Practices
               </h3>
               <div className="space-y-2 text-sm">
                 <p className="flex items-start gap-2">

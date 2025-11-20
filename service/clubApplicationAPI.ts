@@ -99,7 +99,7 @@ export async function postClubApplication(
     data: ClubApplication
   }
 
-  return result.data // ✅ Chỉ trả ra phần data thật
+  return result.data //    Chỉ trả ra phần data thật
 }
 
 export async function putClubApplicationStatus(applicationId: number, approve: boolean, rejectReason: string) {
@@ -157,7 +157,7 @@ export async function processClubApplication(
 }
 
 /**
- * ✅ NEW: Tạo tài khoản cho CLB từ một đơn đã được duyệt (POST /api/club-applications/create-club-accounts)
+ *    NEW: Tạo tài khoản cho CLB từ một đơn đã được duyệt (POST /api/club-applications/create-club-accounts)
  * @param body Dữ liệu tài khoản Leader, Vice-Leader và mật khẩu
  * @returns Trả về một chuỗi string thông báo từ backend
  */
@@ -184,7 +184,7 @@ export async function createClubAccount(
 }
 
 /**
- * ✅ NEW: Gửi mã OTP cho sinh viên xin lập CLB (POST /api/club-applications/send-otp)
+ *    NEW: Gửi mã OTP cho sinh viên xin lập CLB (POST /api/club-applications/send-otp)
  * @param studentEmail Email của sinh viên
  * @returns Trả về một chuỗi string thông báo từ backend
  */

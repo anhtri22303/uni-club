@@ -39,7 +39,7 @@ export default function NotFound() {
   const funnyMessages = [
     "Even our GPS can't find this page! 🗺️",
     "This club meeting was cancelled... permanently! 😅",
-    "404: Club not found in the directory! 🔍",
+    "404: Club not found in the directory!    ",
     "Looks like this page joined the 'Hide & Seek' club! 🙈"
   ]
 

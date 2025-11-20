@@ -253,7 +253,7 @@ export default function EventDetailPage() {
     return () => clearTimeout(t)
   }, [visibleIndex, showQrModal])
 
-  // ✅New function to handle submission to university
+  //   New function to handle submission to university
   const handleSubmitToUniversity = async () => {
     if (!event) return
 
@@ -431,7 +431,7 @@ export default function EventDetailPage() {
   // Helper function to reload event data
   const reloadEventData = async () => {
     try {
-      console.log('🔄 Reloading event data...')
+      console.log(' Reloading event data...')
       const updatedEvent = await getEventById(params.id as string)
       setEvent(updatedEvent)
       
@@ -440,15 +440,15 @@ export default function EventDetailPage() {
         const myCoHost = updatedEvent.coHostedClubs.find((club: any) => club.id === userClubId)
         if (myCoHost) {
           setMyCoHostStatus(myCoHost.coHostStatus)
-          console.log('✅ Co-host status updated:', myCoHost.coHostStatus)
+          console.log('   Co-host status updated:', myCoHost.coHostStatus)
         } else {
           setMyCoHostStatus(null)
         }
       }
       
-      console.log('✅ Event data reloaded successfully')
+      console.log('   Event data reloaded successfully')
     } catch (error) {
-      console.error('❌ Failed to reload event data:', error)
+      console.error('  Failed to reload event data:', error)
       toast({
         title: 'Warning',
         description: 'Could not refresh event data. Please reload the page.',
@@ -729,7 +729,7 @@ export default function EventDetailPage() {
       </ProtectedRoute>
     )
   }
-  // // ✅ TÍNH TOÁN TRẠNG THÁI CO-HOST
+  // //    TÍNH TOÁN TRẠNG THÁI CO-HOST
   // const coHosts = event.coHostedClubs || []
   // const pendingCoHosts = coHosts.filter(
   //   club => club.coHostStatus === "PENDING" // Giả sử status chờ là "PENDING"
@@ -765,7 +765,7 @@ export default function EventDetailPage() {
     )
   }
 
-  // ✅ TÍNH TOÁN TRẠNG THÁI CO-HOST
+  //    TÍNH TOÁN TRẠNG THÁI CO-HOST
   const coHosts = event.coHostedClubs || []
   const pendingCoHosts = coHosts.filter(
     club => club.coHostStatus === "PENDING" // Giả sử status chờ là "PENDING"
@@ -898,10 +898,10 @@ export default function EventDetailPage() {
                     {getTypeBadge(event.type)}
                   </div>
                 </div>
-                <div className="text-right">
+                {/* <div className="text-right">
                   <div className="text-sm text-muted-foreground">Event ID</div>
                   <div className="font-mono text-lg font-semibold">#{event.id}</div>
-                </div>
+                </div> */}
               </div>
             </CardHeader>
 
@@ -1119,7 +1119,7 @@ export default function EventDetailPage() {
                 )}
               </div>
 
-              {/* ✅ THÊM KHU VỰC UNIVERSITY APPROVAL MỚI */}
+              {/*    THÊM KHU VỰC UNIVERSITY APPROVAL MỚI */}
               {event.status === "WAITING" && ( // Chỉ hiển thị khi event đang chờ co-host
                 <>
                   <Separator />
@@ -1176,7 +1176,7 @@ export default function EventDetailPage() {
                   </div>
                 </>
               )}
-              {/* ✅ KẾT THÚC KHU VỰC MỚI */}
+              {/*    KẾT THÚC KHU VỰC MỚI */}
             </CardContent>
           </Card>
 

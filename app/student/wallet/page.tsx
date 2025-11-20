@@ -21,7 +21,7 @@ export default function MemberWalletPage() {
   const [isTopupModalOpen, setIsTopupModalOpen] = useState(false)
   const [selectedAmountVND, setSelectedAmountVND] = useState<number | null>(null)
 
-  // ✅ USE REACT QUERY for wallet
+  //    USE REACT QUERY for wallet
   const { data: walletData, isLoading: walletLoading } = useWallet()
   const userBalance = Number(walletData?.points ?? walletData?.balance ?? 0)
 

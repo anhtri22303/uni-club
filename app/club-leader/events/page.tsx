@@ -594,7 +594,7 @@ export default function ClubLeaderEventsPage() {
 
       const res: any = await createEvent(payload)
       // toast({ title: "Event Created", description: "Event created successfully" })
-      // ✅ THAY ĐỔI LOGIC TOAST
+      //    THAY ĐỔI LOGIC TOAST
       if (selectedCoHostClubIds.length > 0) {
         toast({
           title: "Event Created",
