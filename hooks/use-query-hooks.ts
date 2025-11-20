@@ -153,19 +153,19 @@ export const queryKeys = {
 /**
  * Hook to fetch list of clubs with pagination
  * @param params - Pagination parameters (page, size, sort)
- * ✅ OPTIMIZED: Increased default size to reduce pagination requests
+ *    OPTIMIZED: Increased default size to reduce pagination requests
  */
 export function useClubs(params = { page: 0, size: 70, sort: ["name"] }) {
     return useQuery({
         queryKey: queryKeys.clubsList(params),
         queryFn: async () => {
-            console.log("🔍 useClubs queryFn - calling fetchClub with params:", params)
+            // console.log("    useClubs queryFn - calling fetchClub with params:", params)
             const res: any = await fetchClub(params)
-            console.log("🔍 useClubs queryFn - raw response:", res)
-            console.log("🔍 useClubs queryFn - res.data:", res?.data)
-            console.log("🔍 useClubs queryFn - res.data.content:", res?.data?.content)
+            // console.log("    useClubs queryFn - raw response:", res)
+            // console.log("    useClubs queryFn - res.data:", res?.data)
+            // console.log("    useClubs queryFn - res.data.content:", res?.data?.content)
             const clubs = res?.data?.content ?? []
-            console.log("🔍 useClubs queryFn - returning clubs:", clubs.length, "items")
+            // console.log("    useClubs queryFn - returning clubs:", clubs.length, "items")
             return clubs
         },
         staleTime: 5 * 60 * 1000, // 5 minutes
@@ -224,7 +224,7 @@ export function useClubMemberCount(clubId: number, enabled = true) {
 /**
  * Hook to prefetch multiple club member counts
  * Useful for lists where we need counts for many clubs
- * ✅ OPTIMIZED: Returns both activeMemberCount and approvedEvents
+ *    OPTIMIZED: Returns both activeMemberCount and approvedEvents
  * @param clubIds - Array of club IDs to fetch counts for
  * @param enabled - Whether to enable the query (default: true). Should be false if parent data is still loading
  */
@@ -232,7 +232,7 @@ export function useClubMemberCounts(clubIds: number[], enabled = true) {
     return useQuery({
         queryKey: ["clubs", "member-counts", clubIds],
         queryFn: async () => {
-            console.log("🔵 useClubMemberCounts: Fetching counts for", clubIds.length, "clubs")
+            console.log(" useClubMemberCounts: Fetching counts for", clubIds.length, "clubs")
             // Fetch all counts in parallel for better performance
             const counts = await Promise.all(
                 clubIds.map(async (id) => {
@@ -253,7 +253,7 @@ export function useClubMemberCounts(clubIds: number[], enabled = true) {
                     }
                 })
             )
-            console.log("🟢 useClubMemberCounts: Fetched counts successfully")
+            console.log("  useClubMemberCounts: Fetched counts successfully")
             // Convert array to object for easy lookup
             return counts.reduce((acc, data) => {
                 acc[data.clubId] = {
@@ -411,9 +411,9 @@ export function useUsers() {
     return useQuery({
         queryKey: queryKeys.usersList(),
         queryFn: async () => {
-            console.log("🔵 useUsers: Starting to fetch users...")
+            console.log(" useUsers: Starting to fetch users...")
             const users = await fetchUser()
-            console.log("🟢 useUsers: Received users:", users)
+            console.log("  useUsers: Received users:", users)
             return users
         },
         staleTime: 5 * 60 * 1000,

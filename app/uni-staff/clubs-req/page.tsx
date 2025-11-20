@@ -69,7 +69,7 @@ export default function UniStaffClubRequestsPage() {
 	// Map API shape to UI shape and sort by latest submittedAt
 	const requests: UiClubRequest[] = applications
 		.map((d: any) => {
-			console.log("🔍 Mapping application:", d)
+			console.log("    Mapping application:", d)
 			return {
 				id: `req-${d.applicationId}`,
 				applicationId: d.applicationId,
@@ -90,7 +90,7 @@ export default function UniStaffClubRequestsPage() {
 		})
 		.sort((a, b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime())
 	
-	console.log("✅ Mapped requests:", requests)
+	console.log("   Mapped requests:", requests)
 
 	// async function handleSendNewApplication() {
 	// 	if (!newClubName.trim() || !newDescription.trim() || !newMajor.trim() || !newProposerReason.trim() || !newVision.trim()) {

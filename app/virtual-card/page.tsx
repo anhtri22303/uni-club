@@ -205,7 +205,7 @@ export default function VirtualCardPage() {
         setCardDesign(design)
         
         toast({
-          title: "✅ Card Loaded",
+          title: "   Card Loaded",
           description: `Card design for ${design.clubName} loaded successfully!`,
         })
       } catch (cardError) {
@@ -232,7 +232,7 @@ export default function VirtualCardPage() {
       profileData.studentCode,
       () => {
         toast({
-          title: "✅ Downloaded!",
+          title: "   Downloaded!",
           description: "Your card has been downloaded successfully!",
         })
       },
@@ -256,7 +256,7 @@ export default function VirtualCardPage() {
       profileData.studentCode,
       () => {
         toast({
-          title: "✅ Shared!",
+          title: "   Shared!",
           description: "Card shared successfully!",
         })
       },

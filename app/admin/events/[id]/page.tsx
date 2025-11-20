@@ -481,10 +481,10 @@ export default function AdminEventDetailPage() {
                     </Badge>
                   </div>
                 </div>
-                <div className="text-right">
+                {/* <div className="text-right">
                   <div className="text-sm text-muted-foreground">Event ID</div>
                   <div className="font-mono text-lg font-semibold">#{event.id}</div>
-                </div>
+                </div> */}
               </div>
             </CardHeader>
 

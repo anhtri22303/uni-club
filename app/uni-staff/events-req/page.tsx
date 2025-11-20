@@ -169,7 +169,7 @@ export default function UniStaffEventRequestsPage() {
 		const load = async () => {
 			setLoading(true)
 			try {
-				console.log("🔄 Starting to fetch data for events-req page...")
+				console.log(" Starting to fetch data for events-req page...")
 				// fetch events, locations, clubs, and settled events in parallel
 				const [eventsRes, locationsRes, clubsRes, settledEventsRes] = await Promise.all([
 					fetchEvent(),
@@ -181,7 +181,7 @@ export default function UniStaffEventRequestsPage() {
 					})
 				])
 
-				console.log("✅ Received API responses:", { eventsRes, locationsRes, clubsRes, settledEventsRes })
+				console.log("   Received API responses:", { eventsRes, locationsRes, clubsRes, settledEventsRes })
 
 				const eventsContent = (eventsRes as any) && Array.isArray((eventsRes as any).content)
 					? (eventsRes as any).content
@@ -201,14 +201,14 @@ export default function UniStaffEventRequestsPage() {
 				)
 
 				if (mounted) {
-					console.log("📝 Setting state with data:", { eventsContent, locationsContent, clubsContent, settledIds })
+					console.log(" Setting state with data:", { eventsContent, locationsContent, clubsContent, settledIds })
 					setEvents(eventsContent)
 					setLocations(locationsContent)
 					setClubs(clubsContent)
 					setSettledEventIds(settledIds)
 				}
 			} catch (err: any) {
-				console.error("❌ Error in events-req page:", err)
+				console.error("  Error in events-req page:", err)
 				if (mounted) setError(err?.message || "Failed to fetch events or locations")
 			} finally {
 				if (mounted) setLoading(false)

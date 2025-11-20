@@ -214,7 +214,7 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
         clubId: correctClubId,
         ...accountForm
       };
-      // ✅ LOG TOÀN BỘ DỮ LIỆU SẮP GỬI ĐI
+      //    LOG TOÀN BỘ DỮ LIỆU SẮP GỬI ĐI
       console.log("--- Sending Request to create-club-accounts ---");
       console.log("Payload:", body);
       console.log("-------------------------------------------------");
@@ -386,7 +386,7 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
                     <p className="mt-1">{request.description}</p>
                   </div>
 
-                  {/* ✅ CẬP NHẬT: Thêm 'Vision' */}
+                  {/*    CẬP NHẬT: Thêm 'Vision' */}
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Vision</label>
                     <div className="flex items-start gap-2 mt-1">
@@ -450,7 +450,7 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
                     <label className="text-sm font-medium text-muted-foreground">Current Status</label>
                     <div className="mt-2">{getStatusBadge(request.status)}</div>
                   </div>
-                  {/* ✅ CẬP NHẬT: Hiển thị lý do từ chối nếu có */}
+                  {/*    CẬP NHẬT: Hiển thị lý do từ chối nếu có */}
                   {request.status === "REJECTED" && request.rejectReason && (
                     <>
                       <Separator />
@@ -564,7 +564,7 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
                             <Label htmlFor="viceEmail" className="text-right">Vice Email</Label>
                             <Input id="viceEmail" type="email" value={accountForm.viceEmail} onChange={handleAccountFormChange} className="col-span-3 bg-white border border-slate-300" />
                           </div>
-                          {/* ✅ CẬP NHẬT: Ô nhập mật khẩu với nút xem/ẩn */}
+                          {/*    CẬP NHẬT: Ô nhập mật khẩu với nút xem/ẩn */}
                           <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="defaultPassword" className="text-right">Password</Label>
                             <div className="relative col-span-3">

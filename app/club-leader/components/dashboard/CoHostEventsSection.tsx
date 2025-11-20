@@ -120,9 +120,9 @@ export function CoHostEventsSection({ activeCoHostEvents, clubId, coHostEventsLo
                         {myCoHostStatus === "PENDING"
                           ? "⏳ Pending Co-host"
                           : myCoHostStatus === "APPROVED"
-                          ? "✅ Accepted"
+                          ? "   Accepted"
                           : myCoHostStatus === "REJECTED"
-                          ? "❌ Declined"
+                          ? "  Declined"
                           : myCoHostStatus || "Unknown"}
                       </Badge>
                     </div>

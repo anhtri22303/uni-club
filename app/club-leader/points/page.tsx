@@ -174,7 +174,7 @@ export default function ClubLeaderRewardDistributionPage() {
       if (member.role !== roleFilter) return false
     }
 
-    // ✅ THÊM MỚI: Lọc theo Staff
+    //    THÊM MỚI: Lọc theo Staff
     const staffFilter = activeFilters["staff"]
     if (staffFilter && staffFilter !== "all") {
       const isStaff = staffFilter === "true"
@@ -756,7 +756,7 @@ export default function ClubLeaderRewardDistributionPage() {
                 />
               </div>
 
-              {/* ✅ THÊM MỚI: Nút Filter */}
+              {/*    THÊM MỚI: Nút Filter */}
               <Button
                 variant="outline"
                 size="sm"
@@ -773,7 +773,7 @@ export default function ClubLeaderRewardDistributionPage() {
               </Button>
             </div>
 
-            {/* ✅ THÊM MỚI: Bảng điều khiển Filter */}
+            {/*    THÊM MỚI: Bảng điều khiển Filter */}
             {showFilters && (
               <div className="space-y-4 p-6 border border-slate-200 dark:border-slate-600 rounded-xl bg-gradient-to-br from-slate-50 to-white dark:from-slate-800 dark:to-slate-700">
                 <div className="flex items-center justify-between">
@@ -841,7 +841,7 @@ export default function ClubLeaderRewardDistributionPage() {
               List of Members ({filteredMembers.length})
             </h2>
 
-            {/* ✅ THÊM MỚI: Nút "Select All" */}
+            {/*    THÊM MỚI: Nút "Select All" */}
             {filteredMembers.length > 0 && (
               <Button
                 variant="outline"

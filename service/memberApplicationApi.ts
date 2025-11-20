@@ -55,7 +55,7 @@ export const getMyMemApply = async () => {
     // Fallback to direct data if no wrapper
     return response.data
   } catch (error: any) {
-    console.error("❌ Error fetching my member applications:", error.response?.data || error.message)
+    console.error("  Error fetching my member applications:", error.response?.data || error.message)
     throw error
   }
 }
@@ -65,7 +65,7 @@ export const fetchAllMemberApplications = async () => {
     const response = await axiosInstance.get("/api/member-applications")
     return response.data
   } catch (error: any) {
-    console.error("❌ Error fetching member applications:", error.response?.data || error.message)
+    console.error("  Error fetching member applications:", error.response?.data || error.message)
     throw error
   }
 }
@@ -78,7 +78,7 @@ export const approveMemberApplication = async (applicationId: number | string) =
     })
     return response.data
   } catch (error: any) {
-    console.error("❌ Error approving application:", error.response?.data || error.message)
+    console.error("  Error approving application:", error.response?.data || error.message)
     throw error
   }
 }
@@ -94,7 +94,7 @@ export const rejectMemberApplication = async (
     })
     return response.data
   } catch (error: any) {
-    console.error("❌ Error rejecting application:", error.response?.data || error.message)
+    console.error("  Error rejecting application:", error.response?.data || error.message)
     throw error
   }
 }
@@ -104,7 +104,7 @@ export const deleteMemberApplication = async (applicationId: number | string) =>
     const response = await axiosInstance.delete(`/api/member-applications/${applicationId}`)
     return response.data
   } catch (error: any) {
-    console.error("❌ Error deleting application:", error.response?.data || error.message)
+    console.error("  Error deleting application:", error.response?.data || error.message)
     throw error
   }
 }
@@ -122,7 +122,7 @@ export const getMemberApplyByClubId = async (clubId: string | number) => {
     // Fallback to empty array if no applications found
     return []
   } catch (error: any) {
-    console.error(`❌ Error fetching member applications for club ${clubId}:`, error.response?.data || error.message)
+    console.error(`  Error fetching member applications for club ${clubId}:`, error.response?.data || error.message)
     throw error
   }
 }

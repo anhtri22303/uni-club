@@ -54,7 +54,7 @@ export default function ClubLeaderMembersPage() {
   const [loadingLeaveRequests, setLoadingLeaveRequests] = useState(false)
   const [processingRequestId, setProcessingRequestId] = useState<number | null>(null)
 
-  // ✅ USE REACT QUERY for club and members
+  //    USE REACT QUERY for club and members
   const { data: managedClub, isLoading: loading } = useClub(clubId || 0, !!clubId)
   const { data: apiMembers = [], isLoading: membersLoading, error: membersQueryError } = useClubMembers(
     clubId || 0,

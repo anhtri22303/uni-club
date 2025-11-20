@@ -127,13 +127,13 @@
         currentIndex = history.length - 1
       }
       
-      log(`✅ Saved to history (${history.length} states, current: ${currentIndex})`)
+      log(`   Saved to history (${history.length} states, current: ${currentIndex})`)
       updateStatus()
     }
     
     function undo() {
       if (currentIndex <= 0) {
-        log('❌ Cannot undo - already at oldest state')
+        log('  Cannot undo - already at oldest state')
         return
       }
       
@@ -145,7 +145,7 @@
     
     function redo() {
       if (currentIndex >= history.length - 1) {
-        log('❌ Cannot redo - already at newest state')
+        log('  Cannot redo - already at newest state')
         return
       }
       
@@ -172,8 +172,8 @@
       statusDiv.innerHTML = `
         <div>States: ${history.length}/${MAX_HISTORY}</div>
         <div>Current: ${currentIndex === -1 ? 'none' : currentIndex}</div>
-        <div>Can Undo: ${canUndo ? '✅' : '❌'}</div>
-        <div>Can Redo: ${canRedo ? '✅' : '❌'}</div>
+        <div>Can Undo: ${canUndo ? '  ' : ' '}</div>
+        <div>Can Redo: ${canRedo ? '  ' : ' '}</div>
       `
     }
     

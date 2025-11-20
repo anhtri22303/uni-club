@@ -150,7 +150,7 @@ export default function CardEditorPage() {
           setIsDownloading(false)
           setIsDownloadModalOpen(false)
           toast({
-            title: "✅ Downloaded!",
+            title: "   Downloaded!",
             description: `Your card has been downloaded in ${quality} quality!`,
           })
         },
@@ -175,7 +175,7 @@ export default function CardEditorPage() {
           setIsDownloading(false)
           setIsDownloadModalOpen(false)
           toast({
-            title: "✅ Downloaded!",
+            title: "   Downloaded!",
             description: `Your card has been downloaded as ${format.toUpperCase()}!`,
           })
         },
@@ -199,7 +199,7 @@ export default function CardEditorPage() {
       cardData.studentCode,
       () => {
         toast({
-          title: "✅ Shared!",
+          title: "   Shared!",
           description: "Card shared successfully!",
         })
       },
@@ -252,7 +252,7 @@ export default function CardEditorPage() {
     // Check if clubId exists
     if (!clubId) {
       toast({
-        title: "❌ Error",
+        title: "  Error",
         description: "Club ID not found. Please make sure you're logged in.",
         variant: "destructive"
       })
@@ -287,7 +287,7 @@ export default function CardEditorPage() {
       console.log('Card saved successfully:', savedCard)
       
       toast({
-        title: "✅ Design Saved!",
+        title: "   Design Saved!",
         description: `Your card design has been saved successfully! (Card ID: ${savedCard.cardId})`,
       })
     } catch (error: any) {
@@ -296,7 +296,7 @@ export default function CardEditorPage() {
       const errorMessage = error.response?.data?.message || error.message || "Failed to save card design"
       
       toast({
-        title: "❌ Save Failed",
+        title: "  Save Failed",
         description: errorMessage,
         variant: "destructive"
       })

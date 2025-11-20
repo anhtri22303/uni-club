@@ -53,35 +53,35 @@ export interface UserProfile {
 
 export const fetchUser = async () => {
   try {
-    console.log("🚀 fetchUser: Starting API call to api/users")
+    // console.log(" fetchUser: Starting API call to api/users")
     const response = await axiosInstance.get("api/users")
     const body = response.data as ApiResponse<PaginatedResponse<any>> | PaginatedResponse<any> | any[]
-    console.log("✅ fetchUser: Received response:", body)
-    console.log("✅ fetchUser: Response status:", response.status)
+    // console.log("   fetchUser: Received response:", body)
+    // console.log("   fetchUser: Response status:", response.status)
 
-    // ✅ NEW API STRUCTURE: { success, message, data: { content: [...] } }
+    //    NEW API STRUCTURE: { success, message, data: { content: [...] } }
     if (body && typeof body === "object" && "success" in body && body.success && "data" in body && body.data && Array.isArray(body.data.content)) {
-      console.log("✅ fetchUser: Returning body.data.content (array of", body.data.content.length, "users)")
+      console.log("   fetchUser: Returning body.data.content (array of", body.data.content.length, "users)")
       return body.data.content
     }
 
     // LEGACY: If backend returns a paginated wrapper directly, return the `content` array.
     if (body && typeof body === "object" && "content" in body && Array.isArray(body.content)) {
-      console.log("⚠️ fetchUser: Using legacy format - returning body.content")
+      console.log(" fetchUser: Using legacy format - returning body.content")
       return body.content
     }
 
     // If the API already returns an array of users, return it directly.
     if (Array.isArray(body)) {
-      console.log("⚠️ fetchUser: Returning direct array")
+      console.log(" fetchUser: Returning direct array")
       return body
     }
 
-    console.warn("⚠️ fetchUser: Unknown response format, returning empty array")
+    console.warn(" fetchUser: Unknown response format, returning empty array")
     // Fallback: return empty array to simplify caller logic
     return []
   } catch (error) {
-    console.error("❌ fetchUser: Error fetching users:", error)
+    console.error("  fetchUser: Error fetching users:", error)
     throw error
   }
 }
@@ -91,7 +91,7 @@ export const fetchProfile = async (): Promise<UserProfile | null> => {
   try {
     const response = await axiosInstance.get("api/users/profile")
     const body = response.data
-    console.log("Fetched profile response:", body)
+    // console.log("Fetched profile response:", body)
 
     // If backend uses { success, message, data }
     if (body && typeof body === "object" && "data" in body && "success" in body && (body as any).success) {

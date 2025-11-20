@@ -47,7 +47,7 @@ export default function UniStaffReportsPage() {
   const router = useRouter()
   const isMountedRef = useRef(true)
 
-  // ✅ USE REACT QUERY for all data fetching
+  //    USE REACT QUERY for all data fetching
   const { data: events = [], isLoading: eventsLoading } = useEvents()
   const { data: clubs = [], isLoading: clubsLoading } = useClubs()
   const { data: clubApplications = [], isLoading: clubAppsLoading } = useClubApplications()
@@ -122,19 +122,19 @@ export default function UniStaffReportsPage() {
     }
   }, [clubs, clubsLoading])
 
-  // ✅ USE REACT QUERY for university analytics
+  //    USE REACT QUERY for university analytics
   const { data: universityPointsData, isLoading: pointsLoading } = useUniversityPoints()
   const { data: attendanceSummary, isLoading: summaryLoading } = useAttendanceSummary(new Date().getFullYear())
   const { data: attendanceRanking, isLoading: rankingLoading } = useAttendanceRanking()
 
-  // ✅ OPTIMIZED: Use React Query hook to fetch all member counts in parallel
+  //    OPTIMIZED: Use React Query hook to fetch all member counts in parallel
   const clubIds = useMemo(() => clubs.map((club: any) => club.id), [clubs])
   const { data: memberCountsData, isLoading: memberCountsLoading } = useClubMemberCounts(clubIds)
 
-  // ✅ Merge clubs with member counts and ranking data using useMemo
+  //    Merge clubs with member counts and ranking data using useMemo
   const clubsWithMemberCountUnsorted = useMemo(() => {
     if (!clubs.length || !memberCountsData || !universityPointsData) {
-      console.log('⏳ Waiting for data:', { 
+      console.log(' Waiting for data:', { 
         clubsLength: clubs.length, 
         hasMemberCounts: !!memberCountsData, 
         hasUniversityData: !!universityPointsData 
@@ -142,7 +142,7 @@ export default function UniStaffReportsPage() {
       return []
     }
 
-    console.log('🔄 Merging club data...')
+    console.log(' Merging club data...')
     console.log('  - Clubs:', clubs.length)
     console.log('  - Member counts:', Object.keys(memberCountsData).length)
     console.log('  - University points data:', universityPointsData)
@@ -163,7 +163,7 @@ export default function UniStaffReportsPage() {
       }
     })
 
-    console.log('✅ Merged club data:', merged)
+    console.log('   Merged club data:', merged)
     return merged
   }, [clubs, memberCountsData, universityPointsData])
 

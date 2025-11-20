@@ -235,7 +235,7 @@ export function AnalyticsTab({
                   <div className="flex items-center justify-between p-1.5 sm:p-2 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800/50">
                     <div className="flex items-center gap-1.5 sm:gap-2">
                       <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-green-500 flex-shrink-0" />
-                      <span className="font-semibold text-xs sm:text-sm text-green-700 dark:text-green-400">✅ Approved</span>
+                      <span className="font-semibold text-xs sm:text-sm text-green-700 dark:text-green-400">   Approved</span>
                     </div>
                     <div className="flex items-center gap-1 sm:gap-2">
                       <span className="text-lg sm:text-xl md:text-2xl font-bold text-green-600 dark:text-green-500">{approvedEventsCount}</span>
@@ -266,7 +266,7 @@ export function AnalyticsTab({
                   <div className="flex items-center justify-between p-1.5 sm:p-2 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/50">
                     <div className="flex items-center gap-1.5 sm:gap-2">
                       <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-blue-500 flex-shrink-0" />
-                      <span className="font-semibold text-xs sm:text-sm text-blue-700 dark:text-blue-400">🟢 Ongoing</span>
+                      <span className="font-semibold text-xs sm:text-sm text-blue-700 dark:text-blue-400">  Ongoing</span>
                     </div>
                     <div className="flex items-center gap-1 sm:gap-2">
                       <span className="text-lg sm:text-xl md:text-2xl font-bold text-blue-600 dark:text-blue-500">{ongoingEventsCount}</span>
@@ -328,7 +328,7 @@ export function AnalyticsTab({
                   <div className="flex items-center justify-between p-1.5 sm:p-2 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50">
                     <div className="flex items-center gap-1.5 sm:gap-2">
                       <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-red-500 flex-shrink-0" />
-                      <span className="font-semibold text-xs sm:text-sm text-red-700 dark:text-red-400">❌ Rejected</span>
+                      <span className="font-semibold text-xs sm:text-sm text-red-700 dark:text-red-400">  Rejected</span>
                     </div>
                     <div className="flex items-center gap-1 sm:gap-2">
                       <span className="text-lg sm:text-xl md:text-2xl font-bold text-red-600 dark:text-red-500">{rejectedEventsCount}</span>

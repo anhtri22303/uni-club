@@ -649,7 +649,7 @@ For each application:
 • Proposer: [Name]
 • Vision: [Brief vision]
 • Current clubs in this major: [X]
-• ✅ RECOMMENDATION: [APPROVE/REVIEW] - [Reason based on major diversity]
+•    RECOMMENDATION: [APPROVE/REVIEW] - [Reason based on major diversity]
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 

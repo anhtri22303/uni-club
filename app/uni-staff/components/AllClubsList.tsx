@@ -19,11 +19,11 @@ export function AllClubsList({ clubsWithMemberCountUnsorted, clubsLoading, unive
 
   // Sort clubs using useMemo to avoid infinite loops
   const clubsWithMemberCount = useMemo(() => {
-    console.log('🔄 clubsWithMemberCount useMemo - unsorted length:', clubsWithMemberCountUnsorted.length)
-    console.log('🔄 Sort field:', clubSortField, 'Sort order:', clubSortOrder)
+    console.log(' clubsWithMemberCount useMemo - unsorted length:', clubsWithMemberCountUnsorted.length)
+    console.log(' Sort field:', clubSortField, 'Sort order:', clubSortOrder)
     
     if (clubsWithMemberCountUnsorted.length === 0) {
-      console.log('⚠️ clubsWithMemberCountUnsorted is empty, returning empty array')
+      console.log(' clubsWithMemberCountUnsorted is empty, returning empty array')
       return []
     }
     
@@ -51,7 +51,7 @@ export function AllClubsList({ clubsWithMemberCountUnsorted, clubsLoading, unive
       return clubSortOrder === "desc" ? -comparison : comparison
     })
     
-    console.log('✅ Sorted clubs:', sorted.length, 'clubs')
+    console.log('   Sorted clubs:', sorted.length, 'clubs')
     return sorted
   }, [clubsWithMemberCountUnsorted, clubSortField, clubSortOrder])
 
@@ -68,7 +68,7 @@ export function AllClubsList({ clubsWithMemberCountUnsorted, clubsLoading, unive
   
   // Debug pagination
   useEffect(() => {
-    console.log('📄 Pagination Debug:')
+    console.log(' Pagination Debug:')
     console.log('  - clubsWithMemberCount.length:', clubsWithMemberCount.length)
     console.log('  - paginatedClubsList.length:', paginatedClubsList.length)
     console.log('  - clubsCurrentPage:', clubsCurrentPage)

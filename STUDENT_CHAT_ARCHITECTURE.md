@@ -26,7 +26,7 @@
     │                     │
     ▼                     ▼
 ┌───────────────┐   ┌──────────────────┐
-│ Chat menu     │   │ ✅ Chat menu     │
+│ Chat menu     │   │    Chat menu     │
 │ HIDDEN        │   │    VISIBLE       │
 └───────────────┘   └────────┬─────────┘
                              │
@@ -231,7 +231,7 @@ app/student/chat/page.tsx
                    │
            ┌───────┴────────┐
            │                │
-       ❌ NO           ✅ YES
+         NO              YES
     ┌───────────┐   ┌──────────────┐
     │ Redirect  │   │ Check clubIds │
     │ to login  │   │ in localStorage│
@@ -239,7 +239,7 @@ app/student/chat/page.tsx
                             │
                   ┌─────────┴─────────┐
                   │                   │
-              ❌ EMPTY           ✅ HAS IDs
+                EMPTY              HAS IDs
           ┌──────────────┐   ┌─────────────────┐
           │ Show message:│   │ Load chat page  │
           │ "Join a club"│   │ Allow access    │
@@ -254,7 +254,7 @@ app/student/chat/page.tsx
                                    │
                          ┌─────────┴─────────┐
                          │                   │
-                     ❌ Invalid         ✅ Valid
+                       Invalid            Valid
                   ┌──────────┐      ┌────────────┐
                   │ 401/403  │      │ Return data│
                   │ Error    │      │ for clubId │
@@ -267,11 +267,11 @@ app/student/chat/page.tsx
 
 ```
 1. Student registers → no clubs
-2. Sidebar: Chat menu is HIDDEN ❌
+2. Sidebar: Chat menu is HIDDEN  
 3. Student applies to join a club
 4. Application approved → clubIds: [1]
 5. Student logs out and logs back in
-6. Sidebar: Chat menu APPEARS ✅
+6. Sidebar: Chat menu APPEARS   
 7. Click Chat → Auto-connects to Club 1
 8. No selector shown (only one club)
 ```
@@ -390,5 +390,5 @@ INITIAL STATE
 
 **Architecture Version**: 1.0  
 **Last Updated**: October 30, 2025  
-**Status**: ✅ Production Ready
+**Status**:    Production Ready
 

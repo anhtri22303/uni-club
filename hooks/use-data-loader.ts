@@ -35,7 +35,7 @@ export function useDataLoader() {
     let mounted = true
     const loadData = async () => {
       try {
-        console.log("🔄 useDataLoader: Loading data for role:", auth.role)
+        
 
         // Fetch data based on role
         const promises: Promise<any>[] = []
@@ -47,10 +47,10 @@ export function useDataLoader() {
               .then((data: any) => {
                 if (!mounted) return
                 const events = Array.isArray(data) ? data : (data?.content ?? data?.events ?? [])
-                console.log("✅ useDataLoader: Loaded events for student:", events.length)
+                
                 updateEvents(events)
               })
-              .catch((err) => console.error("❌ Failed to load events:", err))
+              .catch((err) => console.error("  Failed to load events:", err))
           )
 
           // Không fetch clubs nếu đang ở trang /profile
@@ -60,13 +60,13 @@ export function useDataLoader() {
                 .then((res: any) => {
                   if (!mounted) return
                   const clubs = res?.data?.content ?? []
-                  console.log("✅ useDataLoader: Loaded clubs for student:", clubs.length)
+                  
                   updateClubs(clubs)
                 })
-                .catch((err) => console.error("❌ Failed to load clubs:", err))
+                .catch((err) => console.error("  Failed to load clubs:", err))
             )
           } else {
-            console.log("⏭️ useDataLoader: Skipping clubs fetch on /profile page")
+            
           }
         }
 
@@ -77,10 +77,10 @@ export function useDataLoader() {
               .then((data: any) => {
                 if (!mounted) return
                 const events = Array.isArray(data) ? data : (data?.content ?? data?.events ?? [])
-                console.log("✅ useDataLoader: Loaded events for club_leader:", events.length)
+                
                 updateEvents(events)
               })
-              .catch((err) => console.error("❌ Failed to load events:", err))
+              .catch((err) => console.error("  Failed to load events:", err))
           )
 
           promises.push(
@@ -88,10 +88,10 @@ export function useDataLoader() {
               .then((res: any) => {
                 if (!mounted) return
                 const clubs = res?.data?.content ?? []
-                console.log("✅ useDataLoader: Loaded clubs for club_leader:", clubs.length)
+                
                 updateClubs(clubs)
               })
-              .catch((err) => console.error("❌ Failed to load clubs:", err))
+              .catch((err) => console.error("  Failed to load clubs:", err))
           )
         }
 
@@ -102,10 +102,10 @@ export function useDataLoader() {
               .then((data: any) => {
                 if (!mounted) return
                 const events = Array.isArray(data) ? data : (data?.content ?? data?.events ?? [])
-                console.log("✅ useDataLoader: Loaded events for uni_staff:", events.length)
+                
                 updateEvents(events)
               })
-              .catch((err) => console.error("❌ Failed to load events:", err))
+              .catch((err) => console.error("  Failed to load events:", err))
           )
 
           promises.push(
@@ -113,30 +113,30 @@ export function useDataLoader() {
               .then((res: any) => {
                 if (!mounted) return
                 const clubs = res?.data?.content ?? []
-                console.log("✅ useDataLoader: Loaded clubs for uni_staff:", clubs.length)
+                
                 updateClubs(clubs)
               })
-              .catch((err) => console.error("❌ Failed to load clubs:", err))
+              .catch((err) => console.error("  Failed to load clubs:", err))
           )
 
           promises.push(
             fetchPolicies()
               .then((policies: any) => {
                 if (!mounted) return
-                console.log("✅ useDataLoader: Loaded policies for uni_staff:", policies.length)
+                
                 updatePolicies(policies)
               })
-              .catch((err) => console.error("❌ Failed to load policies:", err))
+              .catch((err) => console.error("  Failed to load policies:", err))
           )
 
           promises.push(
             getClubApplications()
               .then((applications: any) => {
                 if (!mounted) return
-                console.log("✅ useDataLoader: Loaded club applications for uni_staff:", applications.length)
+                
                 updateClubApplications(applications)
               })
-              .catch((err) => console.error("❌ Failed to load club applications:", err))
+              .catch((err) => console.error("  Failed to load club applications:", err))
           )
 
           // Note: Event requests API is not yet implemented
@@ -150,10 +150,10 @@ export function useDataLoader() {
               .then((data: any) => {
                 if (!mounted) return
                 const events = Array.isArray(data) ? data : (data?.content ?? data?.events ?? [])
-                console.log("✅ useDataLoader: Loaded events for admin:", events.length)
+               
                 updateEvents(events)
               })
-              .catch((err) => console.error("❌ Failed to load events:", err))
+              .catch((err) => console.error("  Failed to load events:", err))
           )
 
           promises.push(
@@ -161,38 +161,38 @@ export function useDataLoader() {
               .then((res: any) => {
                 if (!mounted) return
                 const clubs = res?.data?.content ?? []
-                console.log("✅ useDataLoader: Loaded clubs for admin:", clubs.length)
+                
                 updateClubs(clubs)
               })
-              .catch((err) => console.error("❌ Failed to load clubs:", err))
+              .catch((err) => console.error("  Failed to load clubs:", err))
           )
 
           promises.push(
             fetchUser()
               .then((users: any) => {
                 if (!mounted) return
-                console.log("✅ useDataLoader: Loaded users for admin:", users.length)
+                
                 updateUsers(users)
               })
-              .catch((err) => console.error("❌ Failed to load users:", err))
+              .catch((err) => console.error(" Failed to load users:", err))
           )
 
           promises.push(
             fetchPolicies()
               .then((policies: any) => {
                 if (!mounted) return
-                console.log("✅ useDataLoader: Loaded policies for admin:", policies.length)
+                
                 updatePolicies(policies)
               })
-              .catch((err) => console.error("❌ Failed to load policies:", err))
+              .catch((err) => console.error(" Failed to load policies:", err))
           )
         }
 
         // Wait for all promises to complete
         await Promise.allSettled(promises)
-        console.log("✅ useDataLoader: Completed loading all data")
+        
       } catch (err) {
-        console.error("❌ useDataLoader: Error loading data:", err)
+        console.error(" useDataLoader: Error loading data:", err)
       }
     }
 

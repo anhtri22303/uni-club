@@ -374,7 +374,7 @@ export function UserProfileWidget() {
             backgroundUrl: profile?.backgroundUrl || undefined
           }}
           onComplete={async () => {
-            console.log("✅ Profile completed, refreshing data...")
+            console.log("   Profile completed, refreshing data...")
             // Invalidate and refetch profile data
             await queryClient.invalidateQueries({ queryKey: ['fullProfile'] })
             setShowCompleteProfileModal(false)
