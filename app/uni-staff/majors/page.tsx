@@ -76,6 +76,12 @@ export default function UniStaffMajorsPage() {
     const queryClient = useQueryClient()
     // USE REACT QUERY for majors
     const { data: majors = [], isLoading: loading } = useMajors()
+    // Thêm bước sắp xếp majors theo ID
+    const sortedMajors = useMemo(() => {
+        // Sao chép mảng trước khi sắp xếp để tránh thay đổi trực tiếp state của react-query (nếu có)
+        // và đảm bảo logic filter/pagination luôn nhận được mảng đã sort.
+        return [...majors].sort((a, b) => a.id - b.id)
+    }, [majors]) // Sắp xếp lại khi majors thay đổi
     // edit form state for major detail modal
     const [editMajorName, setEditMajorName] = useState("")
     const [editDescription, setEditDescription] = useState("")
@@ -136,16 +142,26 @@ export default function UniStaffMajorsPage() {
         )
     }
 
+    // const filtered = useMemo(() => {
+    //     if (!query) return majors
+    //     const q = query.toLowerCase()
+    //     // Lọc theo tên hoặc mô tả major
+    //     return majors.filter((m) =>
+    //         (m.name || "").toLowerCase().includes(q) ||
+    //         (m.description || "").toLowerCase().includes(q) ||
+    //         (m.majorCode || "").toLowerCase().includes(q)
+    //     )
+    // }, [majors, query])
     const filtered = useMemo(() => {
-        if (!query) return majors
+        if (!query) return sortedMajors // <- SỬA: dùng sortedMajors
         const q = query.toLowerCase()
         // Lọc theo tên hoặc mô tả major
-        return majors.filter((m) =>
+        return sortedMajors.filter((m) => // <- SỬA: dùng sortedMajors
             (m.name || "").toLowerCase().includes(q) ||
             (m.description || "").toLowerCase().includes(q) ||
             (m.majorCode || "").toLowerCase().includes(q)
         )
-    }, [majors, query])
+    }, [sortedMajors, query]) // <- Cập nhật dependencies
 
     // Minimal pagination state
     const [page, setPage] = useState(0)
