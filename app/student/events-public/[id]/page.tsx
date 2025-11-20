@@ -12,11 +12,11 @@ import { LoadingSkeleton } from "@/components/loading-skeleton"
 import { FeedbackModal } from "@/components/feedback-modal"
 import {
   ArrowLeft, Calendar, Clock, MapPin, Users, Eye, XCircle, Star, Filter,
-  Loader2, MessageSquare
+  Loader2, MessageSquare, ChevronLeft, ChevronRight
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { getEventById, timeObjectToString } from "@/service/eventApi"
-import { getFeedbackByEventId, postFeedback, type Feedback } from "@/service/feedbackApi"
+import { getFeedbackByEventId, postFeedback, getMyFeedbacks, putFeedback, type Feedback } from "@/service/feedbackApi"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface EventDetail {
@@ -65,6 +65,10 @@ export default function PublicEventDetailPage() {
   // Feedback modal states
   const [showFeedbackModal, setShowFeedbackModal] = useState(false)
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false)
+  const [myFeedbacks, setMyFeedbacks] = useState<Feedback[]>([])
+  const [myFeedbacksLoading, setMyFeedbacksLoading] = useState(false)
+  const [showEditFeedbackModal, setShowEditFeedbackModal] = useState(false)
+  const [existingFeedback, setExistingFeedback] = useState<Feedback | null>(null)
 
   useEffect(() => {
     const loadEventDetail = async () => {
@@ -108,6 +112,24 @@ export default function PublicEventDetailPage() {
 
     loadEventDetail()
   }, [params.id, toast])
+
+  // Load current user's feedbacks to check if already submitted for this event
+  useEffect(() => {
+    const loadMyFeedbacks = async () => {
+      try {
+        setMyFeedbacksLoading(true)
+        const data = await getMyFeedbacks()
+        setMyFeedbacks(data)
+      } catch (error) {
+        console.error("Failed to load my feedbacks:", error)
+        // Don't show error toast, not critical
+      } finally {
+        setMyFeedbacksLoading(false)
+      }
+    }
+
+    loadMyFeedbacks()
+  }, [])
 
   const renderTypeBadge = (type: string) => {
     return (
@@ -154,6 +176,15 @@ export default function PublicEventDetailPage() {
     ? (feedbacks.reduce((sum, fb) => sum + fb.rating, 0) / feedbacks.length).toFixed(1)
     : "0.0"
 
+  // Count feedbacks by rating
+  const ratingCounts = {
+    5: feedbacks.filter(fb => fb.rating === 5).length,
+    4: feedbacks.filter(fb => fb.rating === 4).length,
+    3: feedbacks.filter(fb => fb.rating === 3).length,
+    2: feedbacks.filter(fb => fb.rating === 2).length,
+    1: feedbacks.filter(fb => fb.rating === 1).length,
+  }
+
   // Pagination logic
   const totalPages = Math.ceil(filteredFeedbacks.length / FEEDBACKS_PER_PAGE)
   const startIndex = (currentPage - 1) * FEEDBACKS_PER_PAGE
@@ -164,6 +195,17 @@ export default function PublicEventDetailPage() {
   useEffect(() => {
     setCurrentPage(1)
   }, [ratingFilter])
+
+  // Check if current user has already submitted feedback for this event
+  const hasSubmittedFeedback = event ? myFeedbacks.some(fb => fb.eventId === event.id) : false
+  
+  // Get existing feedback for this event
+  useEffect(() => {
+    if (event && myFeedbacks.length > 0) {
+      const feedback = myFeedbacks.find(fb => fb.eventId === event.id)
+      setExistingFeedback(feedback || null)
+    }
+  }, [event, myFeedbacks])
 
   // Handle feedback submission
   const handleFeedbackSubmit = async (rating: number, comment: string) => {
@@ -188,6 +230,42 @@ export default function PublicEventDetailPage() {
       toast({
         title: "Error",
         description: error?.response?.data?.message || "Failed to submit feedback. Please try again.",
+        variant: "destructive"
+      })
+      throw error // Re-throw to prevent modal from closing
+    } finally {
+      setIsSubmittingFeedback(false)
+    }
+  }
+
+  // Handle edit feedback
+  const handleEditFeedback = () => {
+    setShowEditFeedbackModal(true)
+  }
+
+  // Handle edit feedback submission
+  const handleEditFeedbackSubmit = async (rating: number, comment: string) => {
+    if (!existingFeedback) return
+
+    try {
+      setIsSubmittingFeedback(true)
+      await putFeedback(existingFeedback.feedbackId, { rating, comment })
+      
+      toast({
+        title: "Success",
+        description: "Your feedback has been updated successfully!",
+      })
+
+      // Close modal
+      setShowEditFeedbackModal(false)
+
+      // Reload the page to show updated feedback
+      window.location.reload()
+    } catch (error: any) {
+      console.error("Failed to update feedback:", error)
+      toast({
+        title: "Error",
+        description: error?.response?.data?.message || "Failed to update feedback. Please try again.",
         variant: "destructive"
       })
       throw error // Re-throw to prevent modal from closing
@@ -253,13 +331,39 @@ export default function PublicEventDetailPage() {
             <div className="flex items-center gap-3">
               {/* Show Feedback button for APPROVED, ONGOING, or COMPLETED events */}
               {event && (event.status === "APPROVED" || event.status === "ONGOING" || event.status === "COMPLETED") && (
-                <Button
-                  onClick={() => setShowFeedbackModal(true)}
-                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200"
-                >
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  Give Feedback
-                </Button>
+                <>
+                  {hasSubmittedFeedback ? (
+                    <>
+                      <Button
+                        onClick={() => setShowFeedbackModal(true)}
+                        disabled={true}
+                        className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="You have already submitted feedback for this event"
+                      >
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        Feedback Submitted
+                      </Button>
+                      <Button
+                        onClick={handleEditFeedback}
+                        variant="outline"
+                        className="border-blue-600 text-blue-600 hover:bg-blue-50 dark:border-blue-400 dark:text-blue-400 dark:hover:bg-blue-950 font-medium shadow-sm hover:shadow-md transition-all duration-200"
+                      >
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        Edit Feedback
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      onClick={() => setShowFeedbackModal(true)}
+                      disabled={myFeedbacksLoading}
+                      className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Give feedback for this event"
+                    >
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      Give Feedback
+                    </Button>
+                  )}
+                </>
               )}
               <div className="flex items-center gap-2">
                 <Eye className="h-5 w-5 text-muted-foreground" />
@@ -437,12 +541,12 @@ export default function PublicEventDetailPage() {
                             <SelectValue placeholder="All ratings" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="all">All ratings</SelectItem>
-                            <SelectItem value="5">5 stars</SelectItem>
-                            <SelectItem value="4">4 stars</SelectItem>
-                            <SelectItem value="3">3 stars</SelectItem>
-                            <SelectItem value="2">2 stars</SelectItem>
-                            <SelectItem value="1">1 star</SelectItem>
+                            <SelectItem value="all">All ratings ({feedbacks.length})</SelectItem>
+                            <SelectItem value="5">5 stars ({ratingCounts[5]})</SelectItem>
+                            <SelectItem value="4">4 stars ({ratingCounts[4]})</SelectItem>
+                            <SelectItem value="3">3 stars ({ratingCounts[3]})</SelectItem>
+                            <SelectItem value="2">2 stars ({ratingCounts[2]})</SelectItem>
+                            <SelectItem value="1">1 star ({ratingCounts[1]})</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -466,22 +570,39 @@ export default function PublicEventDetailPage() {
                               key={feedback.feedbackId}
                               className="p-4 bg-muted/30 rounded-lg border border-muted hover:bg-muted/50 transition-colors"
                             >
-                              <div className="flex items-start justify-between mb-2">
-                                <div className="flex items-center gap-2">
-                                  {renderStars(feedback.rating)}
-                                  <span className="text-sm font-medium text-muted-foreground">
-                                    {feedback.rating}/5
-                                  </span>
+                              <div className="flex items-start justify-between mb-3">
+                                <div className="flex items-center gap-3">
+                                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                                    <Users className="h-5 w-5 text-primary" />
+                                  </div>
+                                  <div>
+                                    <div className="font-medium">
+                                      {feedback.memberName || `Member #${feedback.membershipId}`}
+                                    </div>
+                                    <div className="text-sm text-muted-foreground">
+                                      {new Date(feedback.createdAt).toLocaleDateString("en-US", {
+                                        year: "numeric",
+                                        month: "long",
+                                        day: "numeric",
+                                        hour: "2-digit",
+                                        minute: "2-digit"
+                                      })}
+                                    </div>
+                                  </div>
                                 </div>
-                                <span className="text-xs text-muted-foreground">
-                                  {new Date(feedback.createdAt).toLocaleDateString("vi-VN")}
-                                </span>
+                                {renderStars(feedback.rating)}
                               </div>
-                              <p className="text-sm text-foreground whitespace-pre-wrap">{feedback.comment}</p>
+                              <p className="text-sm leading-relaxed pl-13">
+                                {feedback.comment}
+                              </p>
                               {feedback.updatedAt && (
-                                <p className="text-xs text-muted-foreground mt-2">
-                                  Edited: {new Date(feedback.updatedAt).toLocaleDateString("vi-VN")}
-                                </p>
+                                <div className="text-xs text-muted-foreground mt-2 pl-13">
+                                  Updated: {new Date(feedback.updatedAt).toLocaleDateString("en-US", {
+                                    year: "numeric",
+                                    month: "short",
+                                    day: "numeric"
+                                  })}
+                                </div>
                               )}
                             </div>
                           ))}
@@ -500,11 +621,22 @@ export default function PublicEventDetailPage() {
                                 onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                                 disabled={currentPage === 1}
                               >
+                                <ChevronLeft className="h-4 w-4 mr-1" />
                                 Previous
                               </Button>
-                              <span className="text-sm text-muted-foreground">
-                                Page {currentPage} of {totalPages}
-                              </span>
+                              <div className="flex items-center gap-1">
+                                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                                  <Button
+                                    key={page}
+                                    variant={currentPage === page ? "default" : "outline"}
+                                    size="sm"
+                                    onClick={() => setCurrentPage(page)}
+                                    className="min-w-10"
+                                  >
+                                    {page}
+                                  </Button>
+                                ))}
+                              </div>
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -512,6 +644,7 @@ export default function PublicEventDetailPage() {
                                 disabled={currentPage === totalPages}
                               >
                                 Next
+                                <ChevronRight className="h-4 w-4 ml-1" />
                               </Button>
                             </div>
                           </div>
@@ -533,6 +666,20 @@ export default function PublicEventDetailPage() {
             onSubmit={handleFeedbackSubmit}
             eventName={event.name}
             isSubmitting={isSubmittingFeedback}
+          />
+        )}
+
+        {/* Edit Feedback Modal */}
+        {event && existingFeedback && (
+          <FeedbackModal
+            open={showEditFeedbackModal}
+            onOpenChange={setShowEditFeedbackModal}
+            onSubmit={handleEditFeedbackSubmit}
+            eventName={event.name}
+            isSubmitting={isSubmittingFeedback}
+            initialRating={existingFeedback.rating}
+            initialComment={existingFeedback.comment}
+            isEditMode={true}
           />
         )}
       </AppShell>
