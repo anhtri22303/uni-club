@@ -997,7 +997,9 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                                       <Users className="h-5 w-5 text-primary" />
                                     </div>
                                     <div>
-                                      <div className="font-medium">Member #{feedback.membershipId}</div>
+                                      <div className="font-medium">
+                                        {feedback.memberName || `Member #${feedback.membershipId}`}
+                                      </div>
                                       <div className="text-sm text-muted-foreground">
                                         {new Date(feedback.createdAt).toLocaleDateString("en-US", {
                                           year: "numeric",

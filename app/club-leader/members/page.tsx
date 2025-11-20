@@ -539,15 +539,22 @@ export default function ClubLeaderMembersPage() {
                             {/* Name and Role */}
                             <div className="flex items-center gap-2 flex-wrap">
                               <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">{member.fullName}</h3>
-                              <Badge
-                                className={`font-semibold text-xs rounded-full ${
-                                  member.role === "LEADER"
-                                    ? "bg-purple-100 text-purple-700 border border-purple-200 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-700/50"
-                                    : "bg-green-100 text-green-700 border border-green-200 dark:bg-green-900/40 dark:text-green-300 dark:border-green-700/50"
-                                }`}
-                              >
-                                {member.role}
-                              </Badge>
+                              {/* Colored badge by role */}
+                              {(() => {
+                                let badgeClass = "font-semibold text-xs rounded-full ";
+                                if (member.role === "LEADER") {
+                                  badgeClass += "bg-purple-100 text-purple-700 border border-purple-200 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-700/50";
+                                } else if (member.role === "VICE_LEADER" || member.role === "VICE LEADER") {
+                                  badgeClass += "bg-blue-100 text-blue-700 border border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700/50";
+                                } else {
+                                  badgeClass += "bg-green-100 text-green-700 border border-green-200 dark:bg-green-900/40 dark:text-green-300 dark:border-green-700/50";
+                                }
+                                return (
+                                  <Badge className={badgeClass}>
+                                    {member.role.replace(/_/g, ' ')}
+                                  </Badge>
+                                );
+                              })()}
                               {member.isStaff && (
                                 <Badge className="font-semibold text-xs rounded-full bg-blue-100 text-blue-700 border border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700/50">
                                   Staff

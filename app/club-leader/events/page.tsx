@@ -1034,13 +1034,13 @@ export default function ClubLeaderEventsPage() {
                                 </Badge>
                               )}
                               {event.status === "PENDING_COCLUB" && (
-                                <Badge variant="outline" className="bg-orange-100 text-orange-700 border-orange-500 font-semibold">
+                                <Badge variant="outline" className="bg-orange-100 text-orange-700 border-orange-500 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-700 font-semibold">
                                   <span className="inline-block w-2 h-2 rounded-full bg-orange-500 mr-1.5"></span>
                                   Pending Co-Club Approval
                                 </Badge>
                               )}
                               {event.status === "PENDING_UNISTAFF" && (
-                                <Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-500 font-semibold">
+                                <Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-500 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-700 font-semibold">
                                   <span className="inline-block w-2 h-2 rounded-full bg-yellow-500 mr-1.5"></span>
                                   Pending Uni-Staff Approval
                                 </Badge>

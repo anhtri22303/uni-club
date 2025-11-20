@@ -171,17 +171,15 @@ export default function MemberEventsPage() {
       if (isExpired) return false
       // Hide rejected events
       if (event.status === "REJECTED") return false
-      // Only show APPROVED or PENDING_UNISTAFF events
-      if (event.status !== "APPROVED" && event.status !== "PENDING_UNISTAFF" && event.status !== "ONGOING") return false
+      // Only show APPROVED, PENDING_UNISTAFF, PENDING_COCLUB, or ONGOING events
+      if (event.status !== "APPROVED" && event.status !== "PENDING_UNISTAFF" && event.status !== "PENDING_COCLUB" && event.status !== "ONGOING") return false
       // Only show future or today's events
       if (!isFutureEvent) return false
     } else if (expiredFilter === "only") {
       if (!isExpired) return false
     } else if (expiredFilter === "show") {
-      // Show all events regardless of expiration
-      if (event.status !== "APPROVED" && event.status !== "PENDING_UNISTAFF" && event.status !== "COMPLETED" && event.status !== "ONGOING") {
-        return false
-      }
+      // Show all events regardless of expiration (except REJECTED)
+      if (event.status === "REJECTED") return false
     }
     
     return true
@@ -419,60 +417,71 @@ export default function MemberEventsPage() {
                 return (
                   <Card key={event.id} className={`hover:shadow-md transition-shadow ${borderColor}`}>
                     <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <CardTitle className="text-lg">{event.name}</CardTitle>
-                          <CardDescription className="flex items-center gap-1 mt-1">
-                            <Users className="h-3 w-3" />
-                            {event.hostClub?.name || "Unknown Club"}
-                          </CardDescription>
-                          <div className="mt-2 flex items-center gap-2">
-                            <Badge
-                              variant="outline"
-                              className={
-                                event.type === "PRIVATE"
-                                  ? "bg-purple-100 text-purple-700 border-purple-300"
-                                  : "bg-blue-100 text-blue-700 border-blue-300"
-                              }
-                            >
-                              {event.type || "UNKNOWN"}
-                            </Badge>
-                            <Badge variant="secondary" className="flex items-center gap-1">
-                              <Trophy className="h-3 w-3" />
-                              {(event.commitPointCost ?? 0)} pts
-                            </Badge>
+                      <div className="space-y-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <CardTitle className="text-lg truncate" title={event.name}>{event.name}</CardTitle>
+                            <CardDescription className="flex items-center gap-1 mt-1">
+                              <Users className="h-3 w-3 flex-shrink-0" />
+                              <span className="truncate">{event.hostClub?.name || "Unknown Club"}</span>
+                            </CardDescription>
                           </div>
                         </div>
-                        {event.status === "COMPLETED" ? (
-                          <Badge variant="outline" className="bg-blue-900 text-white border-blue-900 font-semibold">
-                            <span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
-                            COMPLETED
+                        
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge
+                            variant="outline"
+                            className={
+                              event.type === "PRIVATE"
+                                ? "bg-purple-100 text-purple-700 border-purple-300"
+                                : "bg-blue-100 text-blue-700 border-blue-300"
+                            }
+                          >
+                            {event.type || "UNKNOWN"}
                           </Badge>
-                        ) : event.status === "ONGOING" ? (
-                          <Badge variant="default" className="bg-purple-600 text-white border-purple-600 font-semibold">
-                            <span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
-                            ONGOING
+                          <Badge variant="secondary" className="flex items-center gap-1">
+                            <Trophy className="h-3 w-3" />
+                            {(event.commitPointCost ?? 0)} pts
                           </Badge>
-                        ) : event.status === "APPROVED" ? (
-                          <Badge variant="outline" className="bg-green-100 text-green-700 border-green-500 font-semibold">
-                            <span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-1.5"></span>
-                            {status === "Finished" ? "Past" : status === "Soon" ? "Upcoming" : "Approved"}
-                          </Badge>
-                        ) : event.status === "PENDING_UNISTAFF" ? (
-                          <Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-500 font-semibold">
-                            <span className="inline-block w-2 h-2 rounded-full bg-yellow-500 mr-1.5"></span>
-                            PENDING APPROVAL
-                          </Badge>
-                        ) : event.status === "REJECTED" ? (
-                          <Badge variant="outline" className="bg-red-100 text-red-700 border-red-500 font-semibold">
-                            <span className="inline-block w-2 h-2 rounded-full bg-red-500 mr-1.5"></span>
-                            REJECTED
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-400 dark:border-gray-600">
-                            {event.status}
-                          </Badge>
-                        )}
+                          
+                          {event.status === "COMPLETED" ? (
+                            <Badge variant="outline" className="bg-blue-900 text-white border-blue-900 font-semibold text-xs">
+                              <span className="inline-block w-2 h-2 rounded-full bg-white mr-1"></span>
+                              COMPLETED
+                            </Badge>
+                          ) : event.status === "ONGOING" ? (
+                            <Badge variant="default" className="bg-purple-600 text-white border-purple-600 font-semibold text-xs">
+                              <span className="inline-block w-2 h-2 rounded-full bg-white mr-1"></span>
+                              ONGOING
+                            </Badge>
+                          ) : event.status === "APPROVED" ? (
+                            <Badge variant="outline" className="bg-green-100 text-green-700 border-green-500 font-semibold text-xs">
+                              <span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-1"></span>
+                              {status === "Finished" ? "Past" : status === "Soon" ? "Upcoming" : "Approved"}
+                            </Badge>
+                          ) : event.status === "PENDING_COCLUB" ? (
+                            <Badge variant="outline" className="bg-orange-100 text-orange-700 border-orange-500 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-700 font-semibold text-[10px] sm:text-xs">
+                              <span className="inline-block w-2 h-2 rounded-full bg-orange-500 mr-1"></span>
+                              <span className="hidden sm:inline">PENDING CO-CLUB</span>
+                              <span className="sm:hidden">CO-CLUB</span>
+                            </Badge>
+                          ) : event.status === "PENDING_UNISTAFF" ? (
+                            <Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-500 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-700 font-semibold text-[10px] sm:text-xs">
+                              <span className="inline-block w-2 h-2 rounded-full bg-yellow-500 mr-1"></span>
+                              <span className="hidden sm:inline">PENDING UNI-STAFF</span>
+                              <span className="sm:hidden">UNI-STAFF</span>
+                            </Badge>
+                          ) : event.status === "REJECTED" ? (
+                            <Badge variant="outline" className="bg-red-100 text-red-700 border-red-500 font-semibold text-xs">
+                              <span className="inline-block w-2 h-2 rounded-full bg-red-500 mr-1"></span>
+                              REJECTED
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-400 dark:border-gray-600 text-xs">
+                              {event.status}
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                     </CardHeader>
                     <CardContent>
@@ -496,9 +505,9 @@ export default function MemberEventsPage() {
                           </div>
                         )}
 
-                        <div className="flex gap-2">
+                        <div className="flex flex-col sm:flex-row gap-2">
                           <Button
-                            className="flex-1"
+                            className="flex-1 w-full"
                             variant="outline"
                             onClick={() => handleEventDetail(String(event.id))}
                           >
@@ -506,16 +515,16 @@ export default function MemberEventsPage() {
                           </Button>
                           {event.type !== "PUBLIC" && (
                             <Button
-                              className="flex-1"
+                              className="flex-1 w-full text-xs sm:text-sm"
                               variant="default"
-                              disabled={registeringEventId === event.id || event.status === "COMPLETED" || isEventRegistered(event.id)}
+                              disabled={registeringEventId === event.id || event.status === "COMPLETED" || isExpired || isEventRegistered(event.id)}
                               onClick={() => handleRegisterClick(event)}
                             >
                               {registeringEventId === event.id 
                                 ? "Registering..." 
                                 : isEventRegistered(event.id) 
-                                  ? "Already Registered" 
-                                  : event.status === "COMPLETED" 
+                                  ? "Registered" 
+                                  : event.status === "COMPLETED" || isExpired
                                     ? "Ended" 
                                     : "Register"}
                             </Button>

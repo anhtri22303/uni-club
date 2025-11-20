@@ -49,6 +49,7 @@ export const getFeedbackByEventId = async (eventId: string | number): Promise<Fe
     const response = await axiosInstance.get<FeedbackApiResponse>(
       `/api/events/${eventId}/feedback`
     )
+    console.log("Feedback Event:", response.data);
     return response.data.data
   } catch (error) {
     console.error(`Failed to fetch feedback for event ${eventId}:`, error)
@@ -119,6 +120,29 @@ export const getMyFeedbacks = async (): Promise<Feedback[]> => {
     return response.data.data
   } catch (error) {
     console.error("Failed to fetch my feedbacks:", error)
+    throw error
+  }
+}
+
+/**
+ * Update/edit feedback for a specific feedback
+ * Endpoint: PUT /api/events/feedback/{feedbackId}
+ * @param feedbackId - The ID of the feedback to update
+ * @param feedbackData - The updated feedback data (rating and comment)
+ * @returns Promise with the updated feedback
+ */
+export const putFeedback = async (
+  feedbackId: string | number,
+  feedbackData: PostFeedbackRequest
+): Promise<Feedback> => {
+  try {
+    const response = await axiosInstance.put<PostFeedbackApiResponse>(
+      `/api/events/feedback/${feedbackId}`,
+      feedbackData
+    )
+    return response.data.data
+  } catch (error) {
+    console.error(`Failed to update feedback ${feedbackId}:`, error)
     throw error
   }
 }

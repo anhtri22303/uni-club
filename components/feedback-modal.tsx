@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -13,6 +13,9 @@ interface FeedbackModalProps {
   onSubmit: (rating: number, comment: string) => Promise<void>
   eventName: string
   isSubmitting?: boolean
+  initialRating?: number
+  initialComment?: string
+  isEditMode?: boolean
 }
 
 export function FeedbackModal({
@@ -20,12 +23,24 @@ export function FeedbackModal({
   onOpenChange,
   onSubmit,
   eventName,
-  isSubmitting = false
+  isSubmitting = false,
+  initialRating = 0,
+  initialComment = "",
+  isEditMode = false
 }: FeedbackModalProps) {
-  const [rating, setRating] = useState<number>(0)
+  const [rating, setRating] = useState<number>(initialRating)
   const [hoveredRating, setHoveredRating] = useState<number>(0)
-  const [comment, setComment] = useState<string>("")
+  const [comment, setComment] = useState<string>(initialComment)
   const [errors, setErrors] = useState<{ rating?: string; comment?: string }>({})
+
+  // Update state when initial values change (for edit mode)
+  useEffect(() => {
+    if (open) {
+      setRating(initialRating)
+      setComment(initialComment)
+      setErrors({})
+    }
+  }, [open, initialRating, initialComment])
 
   const handleSubmit = async () => {
     // Validation
@@ -68,9 +83,12 @@ export function FeedbackModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold">Submit Event Feedback</DialogTitle>
+          <DialogTitle className="text-xl font-bold">
+            {isEditMode ? "Edit Event Feedback" : "Submit Event Feedback"}
+          </DialogTitle>
           <DialogDescription className="text-sm text-muted-foreground">
-            Share your experience about <span className="font-medium text-foreground">{eventName}</span>
+            {isEditMode ? "Update your experience about" : "Share your experience about"}{" "}
+            <span className="font-medium text-foreground">{eventName}</span>
           </DialogDescription>
         </DialogHeader>
 
@@ -92,6 +110,8 @@ export function FeedbackModal({
                   onMouseEnter={() => setHoveredRating(star)}
                   onMouseLeave={() => setHoveredRating(0)}
                   className="transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded"
+                  title={`Rate ${star} ${star === 1 ? 'star' : 'stars'}`}
+                  aria-label={`Rate ${star} ${star === 1 ? 'star' : 'stars'}`}
                 >
                   <Star
                     className={`h-8 w-8 transition-colors ${
@@ -162,10 +182,10 @@ export function FeedbackModal({
             {isSubmitting ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Submitting...
+                {isEditMode ? "Updating..." : "Submitting..."}
               </>
             ) : (
-              "Submit Feedback"
+              isEditMode ? "Save Changes" : "Submit Feedback"
             )}
           </Button>
         </DialogFooter>
