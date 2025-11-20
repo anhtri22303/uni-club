@@ -18,7 +18,7 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { getClubIdFromToken } from "@/service/clubApi"
 import { getEventByClubId, type Event } from "@/service/eventApi"
-import { getEventStaff, type EventStaff, getEvaluateEventStaff, type StaffEvaluation } from "@/service/eventStaffApi"
+import { getEventStaff, getEventStaffCompleted, type EventStaff, getEvaluateEventStaff, type StaffEvaluation } from "@/service/eventStaffApi"
 import { Calendar, Clock, MapPin, Users, ChevronLeft, Star, Eye, CheckCircle, AlertCircle, XCircle } from "lucide-react"
 import { useRouter } from "next/navigation"
 import EvaluateStaffModal from "@/components/evaluate-staff-modal"
@@ -74,8 +74,13 @@ export default function EventStaffPage() {
     setEvaluations([])
 
     try {
-      // Load staff list
-      const staff = await getEventStaff(event.id)
+      // Load staff list - use different API for completed events
+      let staff: EventStaff[]
+      if (event.status === "COMPLETED") {
+        staff = await getEventStaffCompleted(event.id)
+      } else {
+        staff = await getEventStaff(event.id)
+      }
       setStaffList(staff)
       
       // Load evaluations

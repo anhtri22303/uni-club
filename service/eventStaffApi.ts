@@ -61,6 +61,21 @@ export async function getEventStaff(
 }
 
 /**
+ * Lấy danh sách staff sau khi sự kiện kết thúc
+ * Chỉ dùng khi event đã COMPLETED.
+ * Tự động chuyển staff ACTIVE → EXPIRED, sau đó trả về danh sách EXPIRED.
+ * GET /api/events/{eventId}/staffs/completed
+ */
+export async function getEventStaffCompleted(
+  eventId: number | string
+): Promise<EventStaff[]> {
+  const res = await axiosInstance.get<ApiResponse<EventStaff[]>>(
+    `/api/events/${eventId}/staffs/completed`
+  );
+  return res.data.data;
+}
+
+/**
  * Gán nhân sự (staff) cho sự kiện
  * POST /api/events/{id}/staffs?membershipId={membershipId}&duty={duty}
  */
@@ -125,6 +140,7 @@ export async function getTopEvaluatedStaff(
 
 export default {
   getEventStaff,
+  getEventStaffCompleted,
   postEventStaff,
   evaluateEventStaff,
   getEvaluateEventStaff,
