@@ -954,9 +954,9 @@ export default function ClubLeaderEventsPage() {
                       className={`hover:shadow-md transition-shadow ${borderColor} ${expired || isCompleted ? 'opacity-60' : ''} h-full flex flex-col`}
                     >
                       <CardHeader>
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <CardTitle className="text-lg">{event.title}</CardTitle>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <CardTitle className="text-lg line-clamp-2" title={event.title}>{event.title}</CardTitle>
                             {event.description && (
                               <CardDescription
                                 className="mt-1 text-sm leading-5 max-h-[3.75rem] overflow-hidden"
@@ -971,19 +971,22 @@ export default function ClubLeaderEventsPage() {
                               </CardDescription>
                             )}
                           </div>
-                          <Badge
-                            variant={
-                              status === "Finished"
-                                ? "secondary"
-                                : status === "Soon"
-                                  ? "default"
-                                  : status === "Now"
-                                    ? "destructive"
-                                    : "outline"
-                            }
-                          >
-                            {status}
-                          </Badge>
+                          <div className="flex flex-col items-end gap-1 shrink-0 min-w-20">
+                            {/* Type badge styled like student/events */}
+                            <Badge
+                              variant="outline"
+                              className={
+                                event.type === "PRIVATE"
+                                  ? "bg-purple-100 text-purple-700 border-purple-300 shrink-0 text-xs font-semibold"
+                                  : event.type === "SPECIAL"
+                                  ? "bg-pink-100 text-pink-700 border-pink-300 shrink-0 text-xs font-semibold"
+                                  : "bg-blue-100 text-blue-700 border-blue-300 shrink-0 text-xs font-semibold"
+                              }
+                            >
+                              {event.type || "UNKNOWN"}
+                            </Badge>
+                            
+                          </div>
                         </div>
                         {/* Approval status badge - show COMPLETED in dark blue, gray for expired events */}
                         <div className="mt-2 flex gap-2 flex-wrap">

@@ -16,8 +16,9 @@ import { useToast } from "@/hooks/use-toast"
 import { usePagination } from "@/hooks/use-pagination"
 import { useClub, useClubMembers } from "@/hooks/use-query-hooks"
 import { useQueryClient } from "@tanstack/react-query"
-import { Users, Trash2, ChevronLeft, ChevronRight, Mail, GraduationCap, Calendar, UserCircle, Filter, X, LogOut, Check, XCircle } from "lucide-react"
+import { Users, Trash2, ChevronLeft, ChevronRight, Mail, GraduationCap, Calendar, UserCircle, Filter, X, LogOut, Check, XCircle, ClipboardList } from "lucide-react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { useRouter } from "next/navigation"
 import {
   Dialog,
   DialogContent,
@@ -46,6 +47,7 @@ export default function ClubLeaderMembersPage() {
   const { clubMemberships } = useData()
   const { toast } = useToast()
   const queryClient = useQueryClient()
+  const router = useRouter()
   const [clubId] = useState(() => getClubIdFromToken())
   
   // Leave requests state
@@ -308,7 +310,14 @@ export default function ClubLeaderMembersPage() {
               
               {/* Request Out Button */}
               {managedClub && (
-                <div className="flex justify-end">
+                <div className="flex justify-end gap-3">
+                  <Button
+                    onClick={() => router.push('/club-leader/event-staff')}
+                    className="relative bg-blue-500 hover:bg-blue-600 text-white flex items-center gap-2"
+                  >
+                    <ClipboardList className="h-4 w-4" />
+                    List Staff
+                  </Button>
                   <Button
                     onClick={handleOpenLeaveRequestModal}
                     className="relative bg-orange-500 hover:bg-orange-600 text-white flex items-center gap-2"
