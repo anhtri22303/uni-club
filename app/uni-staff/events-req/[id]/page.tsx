@@ -1,26 +1,64 @@
-"use client"
+"use client";
 
-import { AppShell } from "@/components/app-shell"
-import { ProtectedRoute } from "@/contexts/protected-route"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
-import { Calendar, Users, MapPin, Mail, Building, FileText, CheckCircle, XCircle, ArrowLeft, Clock, DollarSign, Loader2, Star, Filter, ChevronLeft, ChevronRight, } from "lucide-react"
-import Link from "next/link"
-import { useState, useEffect } from "react"
-import { getEventById, putEventStatus, getEventSummary, EventSummary, eventSettle, getEventSettle, rejectEvent } from "@/service/eventApi"
-import { useToast } from "@/hooks/use-toast"
-import { renderTypeBadge } from "@/lib/eventUtils"
-import { getLocationById } from "@/service/locationApi"
-import { getClubById } from "@/service/clubApi"
-import { EventWalletHistoryModal } from "@/components/event-wallet-history-modal"
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
-import { getFeedbackByEventId, Feedback } from "@/service/feedbackApi"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ApproveBudgetModal } from "@/components/approve-budget-modal"
+import { AppShell } from "@/components/app-shell";
+import { ProtectedRoute } from "@/contexts/protected-route";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import {
+  Calendar,
+  Users,
+  MapPin,
+  Mail,
+  Building,
+  FileText,
+  CheckCircle,
+  XCircle,
+  ArrowLeft,
+  Clock,
+  DollarSign,
+  Loader2,
+  Star,
+  Filter,
+  ChevronLeft,
+  ChevronRight,
+  Trophy,
+} from "lucide-react";
+import Link from "next/link";
+import { useState, useEffect } from "react";
+import {
+  getEventById,
+  putEventStatus,
+  getEventSummary,
+  EventSummary,
+  eventSettle,
+  getEventSettle,
+  rejectEvent,
+} from "@/service/eventApi";
+import { useToast } from "@/hooks/use-toast";
+import { renderTypeBadge } from "@/lib/eventUtils";
+import { getLocationById } from "@/service/locationApi";
+import { getClubById } from "@/service/clubApi";
+import { EventWalletHistoryModal } from "@/components/event-wallet-history-modal";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { getFeedbackByEventId, Feedback } from "@/service/feedbackApi";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ApproveBudgetModal } from "@/components/approve-budget-modal";
 
 // Bảng màu theo ngành học (giống như trong clubs page)
 const majorColors: Record<string, string> = {
@@ -37,160 +75,167 @@ const majorColors: Record<string, string> = {
   "Finance and Banking": "#006B3C",
   "Japanese Language": "#D80032",
   "Korean Language": "#5DADEC",
-}
+};
 
 const getMajorColor = (majorName?: string | null): string => {
-  if (!majorName) return "#E2E8F0"
-  return majorColors[majorName] || "#E2E8F0"
-}
+  if (!majorName) return "#E2E8F0";
+  return majorColors[majorName] || "#E2E8F0";
+};
 
 const getContrastTextColor = (hexColor: string): string => {
-  const hex = hexColor.replace('#', '')
-  const r = parseInt(hex.substring(0, 2), 16)
-  const g = parseInt(hex.substring(2, 4), 16)
-  const b = parseInt(hex.substring(4, 6), 16)
-  const yiq = (r * 299 + g * 587 + b * 114) / 1000
-  return yiq >= 140 ? "#111827" : "#FFFFFF"
-}
+  const hex = hexColor.replace("#", "");
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+  return yiq >= 140 ? "#111827" : "#FFFFFF";
+};
 
 interface EventRequestDetailPageProps {
   params: {
-    id: string
-  }
+    id: string;
+  };
 }
 
-export default function EventRequestDetailPage({ params }: EventRequestDetailPageProps) {
-  const [request, setRequest] = useState<any | null>(null)
-  const [loading, setLoading] = useState<boolean>(true)
-  const [error, setError] = useState<string | null>(null)
-  const [location, setLocation] = useState<any | null>(null)
-  const [locationLoading, setLocationLoading] = useState<boolean>(false)
-  const [locationError, setLocationError] = useState<string | null>(null)
-  const [club, setClub] = useState<any | null>(null)
-  const [clubLoading, setClubLoading] = useState<boolean>(false)
-  const [clubError, setClubError] = useState<string | null>(null)
-  const { toast } = useToast()
-  const [processing, setProcessing] = useState(false)
-  const [showWalletHistoryModal, setShowWalletHistoryModal] = useState(false)
-  const [eventSummary, setEventSummary] = useState<EventSummary | null>(null)
-  const [summaryLoading, setSummaryLoading] = useState(false)
-  const [settling, setSettling] = useState(false)
-  const [isEventSettled, setIsEventSettled] = useState(false)
-  const [checkingSettled, setCheckingSettled] = useState(false)
-  const [showRejectModal, setShowRejectModal] = useState(false)
-  const [rejectReason, setRejectReason] = useState("")
-  const [showApproveModal, setShowApproveModal] = useState(false)
+export default function EventRequestDetailPage({
+  params,
+}: EventRequestDetailPageProps) {
+  const [request, setRequest] = useState<any | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [location, setLocation] = useState<any | null>(null);
+  const [locationLoading, setLocationLoading] = useState<boolean>(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [club, setClub] = useState<any | null>(null);
+  const [clubLoading, setClubLoading] = useState<boolean>(false);
+  const [clubError, setClubError] = useState<string | null>(null);
+  const { toast } = useToast();
+  const [processing, setProcessing] = useState(false);
+  const [showWalletHistoryModal, setShowWalletHistoryModal] = useState(false);
+  const [eventSummary, setEventSummary] = useState<EventSummary | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [settling, setSettling] = useState(false);
+  const [isEventSettled, setIsEventSettled] = useState(false);
+  const [checkingSettled, setCheckingSettled] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  const [showApproveModal, setShowApproveModal] = useState(false);
   // Feedback states
-  const [feedbacks, setFeedbacks] = useState<Feedback[]>([])
-  const [feedbackLoading, setFeedbackLoading] = useState(false)
-  const [ratingFilter, setRatingFilter] = useState<string>("all")
-  const [currentPage, setCurrentPage] = useState(1)
-  const FEEDBACKS_PER_PAGE = 5
+  const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [ratingFilter, setRatingFilter] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const FEEDBACKS_PER_PAGE = 5;
 
   useEffect(() => {
-    let mounted = true
+    let mounted = true;
 
     const load = async () => {
-      setLoading(true)
+      setLoading(true);
       try {
-        const data: any = await getEventById(params.id)
-        if (!mounted) return
-        setRequest(data)
+        const data: any = await getEventById(params.id);
+        if (!mounted) return;
+        setRequest(data);
 
         // Fetch event summary if APPROVED, ONGOING or COMPLETED
-        if (data.status === "APPROVED" || data.status === "ONGOING" || data.status === "COMPLETED") {
+        if (
+          data.status === "APPROVED" ||
+          data.status === "ONGOING" ||
+          data.status === "COMPLETED"
+        ) {
           try {
-            setSummaryLoading(true)
-            const summaryData = await getEventSummary(params.id)
-            if (mounted) setEventSummary(summaryData)
+            setSummaryLoading(true);
+            const summaryData = await getEventSummary(params.id);
+            if (mounted) setEventSummary(summaryData);
           } catch (summaryError) {
-            console.error("Failed to load event summary:", summaryError)
+            console.error("Failed to load event summary:", summaryError);
             // Don't show error toast for summary, it's not critical
           } finally {
-            if (mounted) setSummaryLoading(false)
+            if (mounted) setSummaryLoading(false);
           }
         }
 
         // Check if event is settled (if COMPLETED status)
         if (data.status === "COMPLETED") {
           try {
-            setCheckingSettled(true)
-            const settledEvents = await getEventSettle()
-            const isSettled = settledEvents.some((e: any) => e.id === data.id)
-            if (mounted) setIsEventSettled(isSettled)
+            setCheckingSettled(true);
+            const settledEvents = await getEventSettle();
+            const isSettled = settledEvents.some((e: any) => e.id === data.id);
+            if (mounted) setIsEventSettled(isSettled);
           } catch (settledError) {
-            console.error("Failed to check settled events:", settledError)
+            console.error("Failed to check settled events:", settledError);
             // Don't show error toast, it's not critical
           } finally {
-            if (mounted) setCheckingSettled(false)
+            if (mounted) setCheckingSettled(false);
           }
         }
 
         // if the event has a locationId, fetch that location
         if (data && (data.locationId || data.venueId || data.location)) {
-          const locId = data.locationId ?? data.venueId ?? data.location
-          setLocationLoading(true)
+          const locId = data.locationId ?? data.venueId ?? data.location;
+          setLocationLoading(true);
           try {
-            const loc = await getLocationById(locId)
-            if (!mounted) return
+            const loc = await getLocationById(locId);
+            if (!mounted) return;
             // API may wrap in { data: {...} } or return object directly
-            const normalized = loc && (loc as any).data ? (loc as any).data : loc
-            setLocation(normalized)
+            const normalized =
+              loc && (loc as any).data ? (loc as any).data : loc;
+            setLocation(normalized);
           } catch (err: any) {
-            console.error(err)
-            if (!mounted) return
-            setLocationError(err?.message || "Failed to load location")
+            console.error(err);
+            if (!mounted) return;
+            setLocationError(err?.message || "Failed to load location");
           } finally {
-            if (mounted) setLocationLoading(false)
+            if (mounted) setLocationLoading(false);
           }
         }
         // if the event has a clubId, fetch that club
         if (data && (data.clubId || data.requestedByClubId || data.club)) {
-          const clubId = data.clubId ?? data.requestedByClubId ?? data.club
-          setClubLoading(true)
+          const clubId = data.clubId ?? data.requestedByClubId ?? data.club;
+          setClubLoading(true);
           try {
-            const c = await getClubById(clubId)
-            if (!mounted) return
-            const normalizedClub = c && (c as any).data ? (c as any).data : c
-            setClub(normalizedClub)
+            const c = await getClubById(clubId);
+            if (!mounted) return;
+            const normalizedClub = c && (c as any).data ? (c as any).data : c;
+            setClub(normalizedClub);
           } catch (err: any) {
-            console.error(err)
-            if (!mounted) return
-            setClubError(err?.message || "Failed to load club")
+            console.error(err);
+            if (!mounted) return;
+            setClubError(err?.message || "Failed to load club");
           } finally {
-            if (mounted) setClubLoading(false)
+            if (mounted) setClubLoading(false);
           }
         }
 
         // Fetch feedback for ALL statuses (requested)
         try {
-          setFeedbackLoading(true)
-          const feedbackData = await getFeedbackByEventId(params.id)
-          if (mounted) setFeedbacks(feedbackData)
+          setFeedbackLoading(true);
+          const feedbackData = await getFeedbackByEventId(params.id);
+          if (mounted) setFeedbacks(feedbackData);
         } catch (feedbackError) {
-          console.error("Failed to load feedback:", feedbackError)
+          console.error("Failed to load feedback:", feedbackError);
         } finally {
-          if (mounted) setFeedbackLoading(false)
+          if (mounted) setFeedbackLoading(false);
         }
       } catch (err: any) {
-        console.error(err)
-        if (!mounted) return
-        setError(err?.message || "Failed to load event")
+        console.error(err);
+        if (!mounted) return;
+        setError(err?.message || "Failed to load event");
       } finally {
-        if (mounted) setLoading(false)
+        if (mounted) setLoading(false);
       }
-    }
+    };
 
-    load()
+    load();
     return () => {
-      mounted = false
-    }
-  }, [params.id])
+      mounted = false;
+    };
+  }, [params.id]);
 
   // Reset to page 1 when filter changes (must be before any conditional returns)
   useEffect(() => {
-    setCurrentPage(1)
-  }, [ratingFilter])
+    setCurrentPage(1);
+  }, [ratingFilter]);
 
   if (loading) {
     return (
@@ -203,7 +248,7 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
           </div>
         </AppShell>
       </ProtectedRoute>
-    )
+    );
   }
 
   if (error || !request) {
@@ -212,7 +257,9 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
         <AppShell>
           <div className="text-center py-8">
             <h1 className="text-2xl font-bold mb-2">Event Request Not Found</h1>
-            <p className="text-muted-foreground mb-4">The requested event request could not be found.</p>
+            <p className="text-muted-foreground mb-4">
+              The requested event request could not be found.
+            </p>
             <Link href="/uni-staff/events-req">
               <Button>
                 <ArrowLeft className="h-4 w-4 mr-2" />
@@ -222,60 +269,80 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
           </div>
         </AppShell>
       </ProtectedRoute>
-    )
+    );
   }
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "COMPLETED":
         return (
-          <Badge variant="secondary" className="bg-blue-900 text-white border-blue-900">
+          <Badge
+            variant="secondary"
+            className="bg-blue-900 text-white border-blue-900"
+          >
             <CheckCircle className="h-3 w-3 mr-1" />
             Completed
           </Badge>
-        )
+        );
       case "ONGOING":
         return (
-          <Badge variant="default" className="bg-purple-600 text-white border-purple-600">
+          <Badge
+            variant="default"
+            className="bg-purple-600 text-white border-purple-600"
+          >
             <Clock className="h-3 w-3 mr-1" />
             Ongoing
           </Badge>
-        )
+        );
       case "APPROVED":
         return (
-          <Badge variant="default" className="bg-green-100 text-green-700 border-green-500">
+          <Badge
+            variant="default"
+            className="bg-green-100 text-green-700 border-green-500"
+          >
             <CheckCircle className="h-3 w-3 mr-1" />
             Approved
           </Badge>
-        )
+        );
       case "PENDING_COCLUB":
         return (
-          <Badge variant="outline" className="bg-orange-100 text-orange-700 border-orange-500">
+          <Badge
+            variant="outline"
+            className="bg-orange-100 text-orange-700 border-orange-500"
+          >
             <Clock className="h-3 w-3 mr-1" />
             Pending Co-Club Approval
           </Badge>
-        )
+        );
       case "PENDING_UNISTAFF":
         return (
-          <Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-500">
+          <Badge
+            variant="outline"
+            className="bg-yellow-100 text-yellow-700 border-yellow-500"
+          >
             <Clock className="h-3 w-3 mr-1" />
             Pending Uni-Staff Approval
           </Badge>
-        )
+        );
       case "REJECTED":
         return (
-          <Badge variant="destructive" className="bg-red-100 text-red-700 border-red-500">
+          <Badge
+            variant="destructive"
+            className="bg-red-100 text-red-700 border-red-500"
+          >
             <XCircle className="h-3 w-3 mr-1" />
             Rejected
           </Badge>
-        )
+        );
       default:
-        return <Badge variant="outline">{status}</Badge>
+        return <Badge variant="outline">{status}</Badge>;
     }
-  }
+  };
 
   // effective status (prefer status over type) for checks and display
-  const effectiveStatus = (request.status ?? request.type ?? "").toString().toUpperCase()
+  const effectiveStatus = (request.status ?? request.type ?? "")
+    .toString()
+    .toUpperCase();
 
   // const updateStatus = async (status: string) => {
   //   if (!request) return
@@ -296,31 +363,36 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
   // vì 'putEventStatus' API mới (approve-budget) chỉ xử lý việc duyệt.
 
   const handleApprove = async () => {
-    if (!request) return
-    setProcessing(true)
+    if (!request) return;
+    setProcessing(true);
     try {
       // Gọi API theo signature mới: (id, approvedBudgetPoints)
-      const approvedBudgetPoints = request.budgetPoints || 0
-      const updatedEvent = await putEventStatus(request.id, approvedBudgetPoints)
+      const approvedBudgetPoints = request.budgetPoints || 0;
+      const updatedEvent = await putEventStatus(
+        request.id,
+        approvedBudgetPoints
+      );
 
       // Cập nhật state với event (đã được duyệt) trả về từ API
-      setRequest(updatedEvent)
+      setRequest(updatedEvent);
 
       toast({
         title: "Approved",
-        description: `Event ${request.name || request.id} approved with ${approvedBudgetPoints} points.`
-      })
+        description: `Event ${
+          request.name || request.id
+        } approved with ${approvedBudgetPoints} points.`,
+      });
     } catch (err: any) {
-      console.error('Approve status failed', err)
+      console.error("Approve status failed", err);
       toast({
-        title: 'Error',
-        description: err?.message || 'Failed to approve event',
-        variant: "destructive"
-      })
+        title: "Error",
+        description: err?.message || "Failed to approve event",
+        variant: "destructive",
+      });
     } finally {
-      setProcessing(false)
+      setProcessing(false);
     }
-  }
+  };
 
   // const handleReject = async () => {
   //   if (!request) return
@@ -363,12 +435,12 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
   //   }
   // }
   const handleReject = async () => {
-    if (!request) return
+    if (!request) return;
 
     // Mở modal để nhập lý do
-    setRejectReason("") // Xóa lý do cũ (nếu có)
-    setShowRejectModal(true)
-  }
+    setRejectReason(""); // Xóa lý do cũ (nếu có)
+    setShowRejectModal(true);
+  };
 
   const handleConfirmReject = async () => {
     if (!request || !rejectReason.trim()) {
@@ -376,70 +448,77 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
         title: "Error",
         description: "Please provide a reason for rejection.",
         variant: "destructive",
-      })
-      return
+      });
+      return;
     }
 
-    setProcessing(true)
+    setProcessing(true);
     try {
       // Gọi API 'rejectEvent' mới với lý do từ state
-      await rejectEvent(request.id, rejectReason)
+      await rejectEvent(request.id, rejectReason);
 
       // Cập nhật state local để UI thay đổi ngay lập tức
-      setRequest({ ...request, status: "REJECTED" })
+      setRequest({ ...request, status: "REJECTED" });
 
       toast({
         title: "Event Rejected",
         description: `Event ${request.name || request.id} has been rejected.`,
-      })
+      });
 
-      setShowRejectModal(false) // Đóng modal
-
+      setShowRejectModal(false); // Đóng modal
     } catch (err: any) {
-      console.error('Reject status failed', err)
+      console.error("Reject status failed", err);
       // Hiển thị lỗi API trực tiếp
-      const apiError = err?.response?.data?.message || err?.message || 'Failed to reject event'
+      const apiError =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Failed to reject event";
       toast({
-        title: 'Error',
+        title: "Error",
         description: apiError,
         variant: "destructive",
-      })
+      });
     } finally {
-      setProcessing(false)
+      setProcessing(false);
     }
-  }
+  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("vi-VN", {
       style: "currency",
       currency: "VND",
-    }).format(amount)
-  }
+    }).format(amount);
+  };
 
   const handleSettle = async () => {
-    if (!request) return
-    setSettling(true)
+    if (!request) return;
+    setSettling(true);
     try {
-      const response = await eventSettle(request.id)
+      const response = await eventSettle(request.id);
       toast({
-        title: 'Event Settled',
-        description: response.message || `Event ${request.name || request.id} has been settled successfully.`
-      })
+        title: "Event Settled",
+        description:
+          response.message ||
+          `Event ${request.name || request.id} has been settled successfully.`,
+      });
       // Mark as settled and refetch the event data
-      setIsEventSettled(true)
-      const updatedData = await getEventById(params.id)
-      setRequest(updatedData)
+      setIsEventSettled(true);
+      const updatedData = await getEventById(params.id);
+      setRequest(updatedData);
     } catch (err: any) {
-      console.error('Settle failed', err)
+      console.error("Settle failed", err);
       toast({
-        title: 'Error',
-        description: err?.response?.data?.message || err?.message || 'Failed to settle event',
-        variant: 'destructive'
-      })
+        title: "Error",
+        description:
+          err?.response?.data?.message ||
+          err?.message ||
+          "Failed to settle event",
+        variant: "destructive",
+      });
     } finally {
-      setSettling(false)
+      setSettling(false);
     }
-  }
+  };
 
   // Helper function to render star rating
   const renderStars = (rating: number) => {
@@ -448,37 +527,45 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
         {[1, 2, 3, 4, 5].map((star) => (
           <Star
             key={star}
-            className={`h-4 w-4 ${star <= rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`}
+            className={`h-4 w-4 ${
+              star <= rating
+                ? "fill-yellow-400 text-yellow-400"
+                : "text-gray-300"
+            }`}
           />
         ))}
       </div>
-    )
-  }
+    );
+  };
 
   // Filtered feedbacks by rating
-  const filteredFeedbacks = ratingFilter === "all"
-    ? feedbacks
-    : feedbacks.filter(fb => fb.rating === parseInt(ratingFilter))
+  const filteredFeedbacks =
+    ratingFilter === "all"
+      ? feedbacks
+      : feedbacks.filter((fb) => fb.rating === parseInt(ratingFilter));
 
   // Average rating
-  const averageRating = feedbacks.length > 0
-    ? (feedbacks.reduce((sum, fb) => sum + fb.rating, 0) / feedbacks.length).toFixed(1)
-    : "0.0"
+  const averageRating =
+    feedbacks.length > 0
+      ? (
+          feedbacks.reduce((sum, fb) => sum + fb.rating, 0) / feedbacks.length
+        ).toFixed(1)
+      : "0.0";
 
   // Rating counts
   const ratingCounts = {
-    5: feedbacks.filter(fb => fb.rating === 5).length,
-    4: feedbacks.filter(fb => fb.rating === 4).length,
-    3: feedbacks.filter(fb => fb.rating === 3).length,
-    2: feedbacks.filter(fb => fb.rating === 2).length,
-    1: feedbacks.filter(fb => fb.rating === 1).length,
-  }
+    5: feedbacks.filter((fb) => fb.rating === 5).length,
+    4: feedbacks.filter((fb) => fb.rating === 4).length,
+    3: feedbacks.filter((fb) => fb.rating === 3).length,
+    2: feedbacks.filter((fb) => fb.rating === 2).length,
+    1: feedbacks.filter((fb) => fb.rating === 1).length,
+  };
 
   // Pagination
-  const totalPages = Math.ceil(filteredFeedbacks.length / FEEDBACKS_PER_PAGE)
-  const startIndex = (currentPage - 1) * FEEDBACKS_PER_PAGE
-  const endIndex = startIndex + FEEDBACKS_PER_PAGE
-  const paginatedFeedbacks = filteredFeedbacks.slice(startIndex, endIndex)
+  const totalPages = Math.ceil(filteredFeedbacks.length / FEEDBACKS_PER_PAGE);
+  const startIndex = (currentPage - 1) * FEEDBACKS_PER_PAGE;
+  const endIndex = startIndex + FEEDBACKS_PER_PAGE;
+  const paginatedFeedbacks = filteredFeedbacks.slice(startIndex, endIndex);
 
   return (
     <ProtectedRoute allowedRoles={["uni_staff"]}>
@@ -493,8 +580,12 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                   Back to Event Requests
                 </Button>
               </Link>
-              <h1 className="text-3xl font-bold">{request.name || request.eventName}</h1>
-              <p className="text-muted-foreground">Event Organization Request Details</p>
+              <h1 className="text-3xl font-bold">
+                {request.name || request.eventName}
+              </h1>
+              <p className="text-muted-foreground">
+                Event Organization Request Details
+              </p>
             </div>
             <div className="flex items-center gap-2">
               {/* prefer status, fallback to type */}
@@ -503,24 +594,48 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                 <Button
                   variant="default"
                   size="sm"
-                  className={isEventSettled ? "bg-gray-400" : "bg-blue-600 hover:bg-blue-700"}
+                  className={
+                    isEventSettled
+                      ? "bg-gray-400"
+                      : "bg-blue-600 hover:bg-blue-700"
+                  }
                   onClick={handleSettle}
                   disabled={settling || isEventSettled || checkingSettled}
                 >
                   <DollarSign className="h-4 w-4 mr-2" />
-                  {checkingSettled ? 'Checking...' : settling ? 'Settling...' : isEventSettled ? 'Already Settled' : 'Settle Event'}
+                  {checkingSettled
+                    ? "Checking..."
+                    : settling
+                    ? "Settling..."
+                    : isEventSettled
+                    ? "Already Settled"
+                    : "Settle Event"}
                 </Button>
               )}
-              {effectiveStatus !== "APPROVED" && effectiveStatus !== "REJECTED" && effectiveStatus !== "COMPLETED" && (
-                <div className="flex gap-2">
-                  <Button variant="default" size="sm" className="h-8 w-8 p-0" onClick={() => setShowApproveModal(true)} disabled={processing}>
-                    <CheckCircle className="h-4 w-4" />
-                  </Button>
-                  <Button variant="destructive" size="sm" className="h-8 w-8 p-0" onClick={handleReject} disabled={processing}>
-                    <XCircle className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
+              {effectiveStatus !== "APPROVED" &&
+                effectiveStatus !== "REJECTED" &&
+                effectiveStatus !== "COMPLETED" && (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={() => setShowApproveModal(true)}
+                      disabled={processing}
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={handleReject}
+                      disabled={processing}
+                    >
+                      <XCircle className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
             </div>
           </div>
 
@@ -536,32 +651,54 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
-                    <label className="text-sm font-medium text-muted-foreground">Event Name</label>
-                    <p className="text-lg font-semibold">{request.name || request.eventName}</p>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Event Name
+                    </label>
+                    <p className="text-lg font-semibold">
+                      {request.name || request.eventName}
+                    </p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     {request.type && (
                       <div>
-                        <label className="text-sm font-medium text-muted-foreground">Event Type</label>
+                        <label className="text-sm font-medium text-muted-foreground">
+                          Event Type
+                        </label>
                         <div className="mt-1">
                           {renderTypeBadge(request.type)}
                         </div>
                       </div>
                     )}
-                    {(request.category || request.majorName || request.hostClub?.majorName) && (
+                    {(request.category ||
+                      request.majorName ||
+                      request.hostClub?.majorName) && (
                       <div>
-                        <label className="text-sm font-medium text-muted-foreground">Major Name</label>
+                        <label className="text-sm font-medium text-muted-foreground">
+                          Major Name
+                        </label>
                         <div className="mt-1">
                           <Badge
                             variant="secondary"
                             className="max-w-[160px] truncate"
                             style={{
-                              backgroundColor: getMajorColor(request.majorName || request.category || request.hostClub?.majorName),
-                              color: getContrastTextColor(getMajorColor(request.majorName || request.category || request.hostClub?.majorName)),
+                              backgroundColor: getMajorColor(
+                                request.majorName ||
+                                  request.category ||
+                                  request.hostClub?.majorName
+                              ),
+                              color: getContrastTextColor(
+                                getMajorColor(
+                                  request.majorName ||
+                                    request.category ||
+                                    request.hostClub?.majorName
+                                )
+                              ),
                             }}
                           >
-                            {request.majorName || request.category || request.hostClub?.majorName}
+                            {request.majorName ||
+                              request.category ||
+                              request.hostClub?.majorName}
                           </Badge>
                         </div>
                       </div>
@@ -569,37 +706,69 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                   </div>
 
                   <div>
-                    <label className="text-sm font-medium text-muted-foreground">Description</label>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Description
+                    </label>
                     <p className="mt-1">{request.description}</p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     {(request.date || request.eventDate) && (
                       <div>
-                        <label className="text-sm font-medium text-muted-foreground">Event Date</label>
+                        <label className="text-sm font-medium text-muted-foreground">
+                          Event Date
+                        </label>
                         <div className="flex items-center gap-2 mt-1">
                           <Calendar className="h-4 w-4 text-muted-foreground" />
-                          <span>{new Date(request.date || request.eventDate).toLocaleDateString()}</span>
+                          <span>
+                            {new Date(
+                              request.date || request.eventDate
+                            ).toLocaleDateString()}
+                          </span>
                         </div>
                       </div>
                     )}
-                    {(request.startTime || request.endTime || request.time || request.eventTime) && (
+                    {(request.startTime ||
+                      request.endTime ||
+                      request.time ||
+                      request.eventTime) && (
                       <div>
-                        <label className="text-sm font-medium text-muted-foreground">Event Time</label>
+                        <label className="text-sm font-medium text-muted-foreground">
+                          Event Time
+                        </label>
                         <div className="flex items-center gap-2 mt-1">
                           <Clock className="h-4 w-4 text-muted-foreground" />
                           <span>
                             {request.startTime && request.endTime
                               ? `${request.startTime} - ${request.endTime}`
-                              : request.time || request.eventTime || "Time not set"}
+                              : request.time ||
+                                request.eventTime ||
+                                "Time not set"}
                           </span>
                         </div>
                       </div>
                     )}
                   </div>
 
+                  {/* Commit Point Cost */}
+                  {request.commitPointCost !== undefined && (
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">
+                        Commit Point
+                      </label>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Trophy className="h-4 w-4 text-emerald-500" />
+                        <span className="font-semibold text-emerald-600">
+                          {request.commitPointCost} points
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
                   <div>
-                    <label className="text-sm font-medium text-muted-foreground">Venue</label>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Venue
+                    </label>
                     <div className="flex items-center gap-2 mt-1">
                       <MapPin className="h-4 w-4 text-muted-foreground" />
                       <span>
@@ -608,11 +777,23 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                         ) : (
                           <>
                             {locationLoading && "Loading location..."}
-                            {locationError && `Location #${request.locationId} (failed to load)`}
-                            {!locationLoading && !locationError && location && (location.name || location.locationName) && (
-                              <>{location.name || location.locationName} (#{location.id ?? request.locationId})</>
-                            )}
-                            {!locationLoading && !locationError && !location && (request.locationId ? `Location #${request.locationId}` : request.venue)}
+                            {locationError &&
+                              `Location #${request.locationId} (failed to load)`}
+                            {!locationLoading &&
+                              !locationError &&
+                              location &&
+                              (location.name || location.locationName) && (
+                                <>
+                                  {location.name || location.locationName} (#
+                                  {location.id ?? request.locationId})
+                                </>
+                              )}
+                            {!locationLoading &&
+                              !locationError &&
+                              !location &&
+                              (request.locationId
+                                ? `Location #${request.locationId}`
+                                : request.venue)}
                           </>
                         )}
                       </span>
@@ -622,154 +803,203 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                   <div className="grid grid-cols-2 gap-4">
                     {request.expectedAttendees !== undefined && (
                       <div>
-                        <label className="text-sm font-medium text-muted-foreground">Expected Attendees</label>
+                        <label className="text-sm font-medium text-muted-foreground">
+                          Expected Attendees
+                        </label>
                         <div className="flex items-center gap-2 mt-1">
                           <Users className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-semibold">{request.expectedAttendees} people</span>
+                          <span className="font-semibold">
+                            {request.expectedAttendees} people
+                          </span>
                         </div>
                       </div>
                     )}
                     {request.budget !== undefined && (
                       <div>
-                        <label className="text-sm font-medium text-muted-foreground">Budget</label>
+                        <label className="text-sm font-medium text-muted-foreground">
+                          Budget
+                        </label>
                         <div className="flex items-center gap-2 mt-1">
                           <DollarSign className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-semibold">{request.budget ? formatCurrency(request.budget) : "-"}</span>
+                          <span className="font-semibold">
+                            {request.budget
+                              ? formatCurrency(request.budget)
+                              : "-"}
+                          </span>
                         </div>
                       </div>
                     )}
                   </div>
 
                   {/* Check-in Capacity - only show if available */}
-                  {request.maxCheckInCount !== undefined && request.currentCheckInCount !== undefined && (
-                    <>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Max Capacity</label>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Users className="h-4 w-4 text-muted-foreground" />
-                            <span className="font-semibold">{request.maxCheckInCount} people</span>
-                          </div>
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Current Check-ins</label>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Users className="h-4 w-4 text-muted-foreground" />
-                            <span className="font-semibold">
-                              {(request.status === "APPROVED" || request.status === "ONGOING" || request.status === "COMPLETED") ? (
-                                summaryLoading ? (
-                                  "Loading..."
-                                ) : eventSummary ? (
-                                  `${eventSummary.registrationsCount} / ${request.maxCheckInCount}`
-                                ) : (
-                                  `${request.currentCheckInCount} / ${request.maxCheckInCount}`
-                                )
-                              ) : (
-                                `${request.currentCheckInCount} / ${request.maxCheckInCount}`
-                              )}
-                            </span>
-                          </div>
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Available Spots</label>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Users className="h-4 w-4 text-muted-foreground" />
-                            <span className="font-semibold">
-                              {(request.status === "APPROVED" || request.status === "ONGOING" || request.status === "COMPLETED") && eventSummary
-                                ? `${request.maxCheckInCount - eventSummary.registrationsCount} remaining`
-                                : `${request.maxCheckInCount - request.currentCheckInCount} remaining`}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="p-3 bg-linear-to-br from-green-50 to-emerald-50 rounded-lg border border-green-200">
-                          <div className="flex items-center justify-between mb-1">
-                            <label className="text-sm text-green-700 font-medium">
-                              Budget Points
+                  {request.maxCheckInCount !== undefined &&
+                    request.currentCheckInCount !== undefined && (
+                      <>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                          <div>
+                            <label className="text-sm font-medium text-muted-foreground">
+                              Max Capacity
                             </label>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-6 px-2 text-xs text-green-700 hover:text-green-900 hover:bg-green-100"
-                              onClick={() => setShowWalletHistoryModal(true)}
-                            >
-                              History
-                            </Button>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Users className="h-4 w-4 text-muted-foreground" />
+                              <span className="font-semibold">
+                                {request.maxCheckInCount} people
+                              </span>
+                            </div>
                           </div>
-                          <div className="font-semibold text-green-800 mt-1">
-                            {request.budgetPoints || 0} points
+                          <div>
+                            <label className="text-sm font-medium text-muted-foreground">
+                              Current Check-ins
+                            </label>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Users className="h-4 w-4 text-muted-foreground" />
+                              <span className="font-semibold">
+                                {request.status === "APPROVED" ||
+                                request.status === "ONGOING" ||
+                                request.status === "COMPLETED"
+                                  ? summaryLoading
+                                    ? "Loading..."
+                                    : eventSummary
+                                    ? `${eventSummary.registrationsCount} / ${request.maxCheckInCount}`
+                                    : `${request.currentCheckInCount} / ${request.maxCheckInCount}`
+                                  : `${request.currentCheckInCount} / ${request.maxCheckInCount}`}
+                              </span>
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-muted-foreground">
+                              Available Spots
+                            </label>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Users className="h-4 w-4 text-muted-foreground" />
+                              <span className="font-semibold">
+                                {(request.status === "APPROVED" ||
+                                  request.status === "ONGOING" ||
+                                  request.status === "COMPLETED") &&
+                                eventSummary
+                                  ? `${
+                                      request.maxCheckInCount -
+                                      eventSummary.registrationsCount
+                                    } remaining`
+                                  : `${
+                                      request.maxCheckInCount -
+                                      request.currentCheckInCount
+                                    } remaining`}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="p-3 bg-linear-to-br from-green-50 to-emerald-50 rounded-lg border border-green-200">
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="text-sm text-green-700 font-medium">
+                                Budget Points
+                              </label>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 px-2 text-xs text-green-700 hover:text-green-900 hover:bg-green-100"
+                                onClick={() => setShowWalletHistoryModal(true)}
+                              >
+                                History
+                              </Button>
+                            </div>
+                            <div className="font-semibold text-green-800 mt-1">
+                              {request.budgetPoints || 0} points
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      {/* Event Summary - Only shown when APPROVED, ONGOING or COMPLETED */}
-                      {(request.status === "APPROVED" || request.status === "ONGOING" || request.status === "COMPLETED") && eventSummary && (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                          <div className="p-3 bg-linear-to-br from-blue-50 to-sky-50 rounded-lg border border-blue-200">
-                            <label className="text-sm text-blue-700 font-medium">Total Registrations</label>
-                            <div className="font-semibold text-blue-800 mt-1">
-                              {summaryLoading ? (
-                                <span className="text-muted-foreground">Loading...</span>
-                              ) : (
-                                `${eventSummary.registrationsCount} registered`
-                              )}
+                        {/* Event Summary - Only shown when APPROVED, ONGOING or COMPLETED */}
+                        {(request.status === "APPROVED" ||
+                          request.status === "ONGOING" ||
+                          request.status === "COMPLETED") &&
+                          eventSummary && (
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                              <div className="p-3 bg-linear-to-br from-blue-50 to-sky-50 rounded-lg border border-blue-200">
+                                <label className="text-sm text-blue-700 font-medium">
+                                  Total Registrations
+                                </label>
+                                <div className="font-semibold text-blue-800 mt-1">
+                                  {summaryLoading ? (
+                                    <span className="text-muted-foreground">
+                                      Loading...
+                                    </span>
+                                  ) : (
+                                    `${eventSummary.registrationsCount} registered`
+                                  )}
+                                </div>
+                              </div>
+                              <div className="p-3 bg-linear-to-br from-amber-50 to-orange-50 rounded-lg border border-amber-200">
+                                <label className="text-sm text-amber-700 font-medium">
+                                  Refunded
+                                </label>
+                                <div className="font-semibold text-amber-800 mt-1">
+                                  {summaryLoading ? (
+                                    <span className="text-muted-foreground">
+                                      Loading...
+                                    </span>
+                                  ) : (
+                                    `${eventSummary.refundedCount} refunds`
+                                  )}
+                                </div>
+                              </div>
+                              <div className="p-3 bg-linear-to-br from-purple-50 to-violet-50 rounded-lg border border-purple-200">
+                                <label className="text-sm text-purple-700 font-medium">
+                                  Total Commit Points
+                                </label>
+                                <div className="font-semibold text-purple-800 mt-1">
+                                  {summaryLoading ? (
+                                    <span className="text-muted-foreground">
+                                      Loading...
+                                    </span>
+                                  ) : (
+                                    `${eventSummary.totalCommitPoints} points`
+                                  )}
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                          <div className="p-3 bg-linear-to-br from-amber-50 to-orange-50 rounded-lg border border-amber-200">
-                            <label className="text-sm text-amber-700 font-medium">Refunded</label>
-                            <div className="font-semibold text-amber-800 mt-1">
-                              {summaryLoading ? (
-                                <span className="text-muted-foreground">Loading...</span>
-                              ) : (
-                                `${eventSummary.refundedCount} refunds`
-                              )}
-                            </div>
-                          </div>
-                          <div className="p-3 bg-linear-to-br from-purple-50 to-violet-50 rounded-lg border border-purple-200">
-                            <label className="text-sm text-purple-700 font-medium">Total Commit Points</label>
-                            <div className="font-semibold text-purple-800 mt-1">
-                              {summaryLoading ? (
-                                <span className="text-muted-foreground">Loading...</span>
-                              ) : (
-                                `${eventSummary.totalCommitPoints} points`
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  )}
+                          )}
+                      </>
+                    )}
 
                   {/* Co-hosted Clubs */}
-                  {request.coHostedClubs && request.coHostedClubs.length > 0 && (
-                    <div className="mt-4">
-                      <label className="text-sm font-medium text-muted-foreground">Co-hosting Clubs</label>
-                      <div className="grid grid-cols-1 gap-2 mt-2">
-                        {request.coHostedClubs.map((club: any) => (
-                          <div key={club.id} className="flex items-center justify-between p-2 bg-muted/50 rounded-lg">
-                            <div className="flex items-center gap-2">
-                              <Users className="h-4 w-4 text-muted-foreground" />
-                              <span className="font-medium">{club.name}</span>
-                              <span className="text-sm text-muted-foreground">(#{club.id})</span>
-                            </div>
-                            <Badge
-                              variant="outline"
-                              className={
-                                club.coHostStatus === "APPROVED"
-                                  ? "bg-green-100 text-green-700 border-green-500"
-                                  : club.coHostStatus === "REJECTED"
+                  {request.coHostedClubs &&
+                    request.coHostedClubs.length > 0 && (
+                      <div className="mt-4">
+                        <label className="text-sm font-medium text-muted-foreground">
+                          Co-hosting Clubs
+                        </label>
+                        <div className="grid grid-cols-1 gap-2 mt-2">
+                          {request.coHostedClubs.map((club: any) => (
+                            <div
+                              key={club.id}
+                              className="flex items-center justify-between p-2 bg-muted/50 rounded-lg"
+                            >
+                              <div className="flex items-center gap-2">
+                                <Users className="h-4 w-4 text-muted-foreground" />
+                                <span className="font-medium">{club.name}</span>
+                                <span className="text-sm text-muted-foreground">
+                                  (#{club.id})
+                                </span>
+                              </div>
+                              <Badge
+                                variant="outline"
+                                className={
+                                  club.coHostStatus === "APPROVED"
+                                    ? "bg-green-100 text-green-700 border-green-500"
+                                    : club.coHostStatus === "REJECTED"
                                     ? "bg-red-100 text-red-700 border-red-500"
                                     : club.coHostStatus === "PENDING"
-                                      ? "bg-yellow-100 text-yellow-700 border-yellow-500"
-                                      : "bg-gray-100 text-gray-700 border-gray-300"
-                              }
-                            >
-                              {club.coHostStatus}
-                            </Badge>
-                          </div>
-                        ))}
+                                    ? "bg-yellow-100 text-yellow-700 border-yellow-500"
+                                    : "bg-gray-100 text-gray-700 border-gray-300"
+                                }
+                              >
+                                {club.coHostStatus}
+                              </Badge>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
                 </CardContent>
               </Card>
 
@@ -782,7 +1012,9 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="leading-relaxed">{request.purpose || request.description}</p>
+                    <p className="leading-relaxed">
+                      {request.purpose || request.description}
+                    </p>
                   </CardContent>
                 </Card>
               )}
@@ -797,10 +1029,16 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                 <CardContent className="space-y-4">
                   {(request.requestDate || request.date) && (
                     <div>
-                      <label className="text-sm font-medium text-muted-foreground">Request Date</label>
+                      <label className="text-sm font-medium text-muted-foreground">
+                        Request Date
+                      </label>
                       <div className="flex items-center gap-2 mt-1">
                         <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span>{new Date(request.requestDate || request.date).toLocaleDateString()}</span>
+                        <span>
+                          {new Date(
+                            request.requestDate || request.date
+                          ).toLocaleDateString()}
+                        </span>
                       </div>
                     </div>
                   )}
@@ -808,20 +1046,39 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                   <Separator />
 
                   <div>
-                    <label className="text-sm font-medium text-muted-foreground">Organizing Club</label>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Organizing Club
+                    </label>
                     <div className="flex items-center gap-2 mt-1">
                       <Building className="h-4 w-4 text-muted-foreground" />
                       <span className="font-semibold">
                         {request.hostClub ? (
-                          <>{request.hostClub.name} (#{request.hostClub.id})</>
+                          <>
+                            {request.hostClub.name} (#{request.hostClub.id})
+                          </>
                         ) : (
                           <>
                             {clubLoading && "Loading club..."}
-                            {clubError && `Club #${request.clubId ?? request.requestedByClubId} (failed to load)`}
-                            {!clubLoading && !clubError && club && (club.name || club.clubName) && (
-                              <>{club.name || club.clubName} (#{club.id ?? request.clubId})</>
-                            )}
-                            {!clubLoading && !clubError && !club && (request.requestedBy ?? (request.clubId ? `Club #${request.clubId}` : "-"))}
+                            {clubError &&
+                              `Club #${
+                                request.clubId ?? request.requestedByClubId
+                              } (failed to load)`}
+                            {!clubLoading &&
+                              !clubError &&
+                              club &&
+                              (club.name || club.clubName) && (
+                                <>
+                                  {club.name || club.clubName} (#
+                                  {club.id ?? request.clubId})
+                                </>
+                              )}
+                            {!clubLoading &&
+                              !clubError &&
+                              !club &&
+                              (request.requestedBy ??
+                                (request.clubId
+                                  ? `Club #${request.clubId}`
+                                  : "-"))}
                           </>
                         )}
                       </span>
@@ -830,17 +1087,28 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
 
                   {request.requestedByContact && (
                     <div>
-                      <label className="text-sm font-medium text-muted-foreground">Contact Person</label>
-                      <p className="font-semibold mt-1">{request.requestedByContact}</p>
+                      <label className="text-sm font-medium text-muted-foreground">
+                        Contact Person
+                      </label>
+                      <p className="font-semibold mt-1">
+                        {request.requestedByContact}
+                      </p>
                     </div>
                   )}
 
                   {(request.requestedByEmail || request.email) && (
                     <div>
-                      <label className="text-sm font-medium text-muted-foreground">Contact Email</label>
+                      <label className="text-sm font-medium text-muted-foreground">
+                        Contact Email
+                      </label>
                       <div className="flex items-center gap-2 mt-1">
                         <Mail className="h-4 w-4 text-muted-foreground" />
-                        <a href={`mailto:${request.requestedByEmail || request.email}`} className="text-blue-600 hover:underline">
+                        <a
+                          href={`mailto:${
+                            request.requestedByEmail || request.email
+                          }`}
+                          className="text-blue-600 hover:underline"
+                        >
                           {request.requestedByEmail || request.email}
                         </a>
                       </div>
@@ -850,8 +1118,12 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                   <Separator />
 
                   <div>
-                    <label className="text-sm font-medium text-muted-foreground">Current Status</label>
-                    <div className="mt-2">{getStatusBadge(request.status || request.type)}</div>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Current Status
+                    </label>
+                    <div className="mt-2">
+                      {getStatusBadge(request.status || request.type)}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -871,17 +1143,28 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                       </div>
                     ) : (
                       <p className="text-sm text-muted-foreground mb-3">
-                        This event has been completed. Click the button below to process the final settlement.
+                        This event has been completed. Click the button below to
+                        process the final settlement.
                       </p>
                     )}
                     <Button
-                      className={`w-full ${isEventSettled ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'}`}
+                      className={`w-full ${
+                        isEventSettled
+                          ? "bg-gray-400"
+                          : "bg-blue-600 hover:bg-blue-700"
+                      }`}
                       variant="default"
                       onClick={handleSettle}
                       disabled={settling || isEventSettled || checkingSettled}
                     >
                       <DollarSign className="h-4 w-4 mr-2" />
-                      {checkingSettled ? 'Checking Status...' : settling ? 'Processing Settlement...' : isEventSettled ? 'Already Settled' : 'Settle Event'}
+                      {checkingSettled
+                        ? "Checking Status..."
+                        : settling
+                        ? "Processing Settlement..."
+                        : isEventSettled
+                        ? "Already Settled"
+                        : "Settle Event"}
                     </Button>
                     <Button className="w-full bg-transparent" variant="outline">
                       <Mail className="h-4 w-4 mr-2" />
@@ -890,27 +1173,42 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                   </CardContent>
                 </Card>
               )}
-              {effectiveStatus !== "APPROVED" && effectiveStatus !== "REJECTED" && effectiveStatus !== "COMPLETED" && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Actions</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <Button className="w-full" variant="default" onClick={() => setShowApproveModal(true)} disabled={processing}>
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                      Approve Request
-                    </Button>
-                    <Button className="w-full" variant="destructive" onClick={handleReject} disabled={processing}>
-                      <XCircle className="h-4 w-4 mr-2" />
-                      {processing ? 'Processing...' : 'Reject Request'}
-                    </Button>
-                    <Button className="w-full bg-transparent" variant="outline">
-                      <Mail className="h-4 w-4 mr-2" />
-                      Contact Organizer
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
+              {effectiveStatus !== "APPROVED" &&
+                effectiveStatus !== "REJECTED" &&
+                effectiveStatus !== "COMPLETED" && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Actions</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <Button
+                        className="w-full"
+                        variant="default"
+                        onClick={() => setShowApproveModal(true)}
+                        disabled={processing}
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Approve Request
+                      </Button>
+                      <Button
+                        className="w-full"
+                        variant="destructive"
+                        onClick={handleReject}
+                        disabled={processing}
+                      >
+                        <XCircle className="h-4 w-4 mr-2" />
+                        {processing ? "Processing..." : "Reject Request"}
+                      </Button>
+                      <Button
+                        className="w-full bg-transparent"
+                        variant="outline"
+                      >
+                        <Mail className="h-4 w-4 mr-2" />
+                        Contact Organizer
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
             </div>
           </div>
 
@@ -921,7 +1219,9 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                 <CardHeader className="pb-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <CardTitle className="text-2xl font-bold">Event Feedback</CardTitle>
+                      <CardTitle className="text-2xl font-bold">
+                        Event Feedback
+                      </CardTitle>
                       <p className="text-sm text-muted-foreground mt-1">
                         See what participants thought about this event
                       </p>
@@ -930,10 +1230,13 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                       <div className="text-center">
                         <div className="flex items-center gap-2">
                           <Star className="h-6 w-6 fill-yellow-400 text-yellow-400" />
-                          <span className="text-3xl font-bold">{averageRating}</span>
+                          <span className="text-3xl font-bold">
+                            {averageRating}
+                          </span>
                         </div>
                         <p className="text-sm text-muted-foreground">
-                          {feedbacks.length} {feedbacks.length === 1 ? 'review' : 'reviews'}
+                          {feedbacks.length}{" "}
+                          {feedbacks.length === 1 ? "review" : "reviews"}
                         </p>
                       </div>
                     )}
@@ -944,11 +1247,15 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                   {feedbackLoading ? (
                     <div className="flex items-center justify-center py-8">
                       <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                      <span className="ml-2 text-muted-foreground">Loading feedback...</span>
+                      <span className="ml-2 text-muted-foreground">
+                        Loading feedback...
+                      </span>
                     </div>
                   ) : feedbacks.length === 0 ? (
                     <div className="text-center py-8">
-                      <div className="text-muted-foreground">No feedback available for this event yet.</div>
+                      <div className="text-muted-foreground">
+                        No feedback available for this event yet.
+                      </div>
                     </div>
                   ) : (
                     <>
@@ -956,23 +1263,42 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
                           <Filter className="h-5 w-5 text-muted-foreground" />
-                          <span className="text-sm font-medium">Filter by rating:</span>
-                          <Select value={ratingFilter} onValueChange={setRatingFilter}>
+                          <span className="text-sm font-medium">
+                            Filter by rating:
+                          </span>
+                          <Select
+                            value={ratingFilter}
+                            onValueChange={setRatingFilter}
+                          >
                             <SelectTrigger className="w-[180px]">
                               <SelectValue placeholder="All ratings" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="all">All ratings ({feedbacks.length})</SelectItem>
-                              <SelectItem value="5">5 stars ({ratingCounts[5]})</SelectItem>
-                              <SelectItem value="4">4 stars ({ratingCounts[4]})</SelectItem>
-                              <SelectItem value="3">3 stars ({ratingCounts[3]})</SelectItem>
-                              <SelectItem value="2">2 stars ({ratingCounts[2]})</SelectItem>
-                              <SelectItem value="1">1 star ({ratingCounts[1]})</SelectItem>
+                              <SelectItem value="all">
+                                All ratings ({feedbacks.length})
+                              </SelectItem>
+                              <SelectItem value="5">
+                                5 stars ({ratingCounts[5]})
+                              </SelectItem>
+                              <SelectItem value="4">
+                                4 stars ({ratingCounts[4]})
+                              </SelectItem>
+                              <SelectItem value="3">
+                                3 stars ({ratingCounts[3]})
+                              </SelectItem>
+                              <SelectItem value="2">
+                                2 stars ({ratingCounts[2]})
+                              </SelectItem>
+                              <SelectItem value="1">
+                                1 star ({ratingCounts[1]})
+                              </SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          Showing {filteredFeedbacks.length} of {feedbacks.length} {feedbacks.length === 1 ? 'feedback' : 'feedbacks'}
+                          Showing {filteredFeedbacks.length} of{" "}
+                          {feedbacks.length}{" "}
+                          {feedbacks.length === 1 ? "feedback" : "feedbacks"}
                         </div>
                       </div>
 
@@ -981,7 +1307,9 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                       {/* Feedback List */}
                       {filteredFeedbacks.length === 0 ? (
                         <div className="text-center py-8">
-                          <div className="text-muted-foreground">No feedback found for the selected rating.</div>
+                          <div className="text-muted-foreground">
+                            No feedback found for the selected rating.
+                          </div>
                         </div>
                       ) : (
                         <>
@@ -998,15 +1326,18 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                                     </div>
                                     <div>
                                       <div className="font-medium">
-                                        {feedback.memberName || `Member #${feedback.membershipId}`}
+                                        {feedback.memberName ||
+                                          `Member #${feedback.membershipId}`}
                                       </div>
                                       <div className="text-sm text-muted-foreground">
-                                        {new Date(feedback.createdAt).toLocaleDateString("en-US", {
+                                        {new Date(
+                                          feedback.createdAt
+                                        ).toLocaleDateString("en-US", {
                                           year: "numeric",
                                           month: "long",
                                           day: "numeric",
                                           hour: "2-digit",
-                                          minute: "2-digit"
+                                          minute: "2-digit",
                                         })}
                                       </div>
                                     </div>
@@ -1018,10 +1349,13 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                                 </p>
                                 {feedback.updatedAt && (
                                   <div className="text-xs text-muted-foreground mt-2 pl-13">
-                                    Updated: {new Date(feedback.updatedAt).toLocaleDateString("en-US", {
+                                    Updated:{" "}
+                                    {new Date(
+                                      feedback.updatedAt
+                                    ).toLocaleDateString("en-US", {
                                       year: "numeric",
                                       month: "short",
-                                      day: "numeric"
+                                      day: "numeric",
                                     })}
                                   </div>
                                 )}
@@ -1033,23 +1367,36 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                           {totalPages > 1 && (
                             <div className="flex items-center justify-between pt-4 border-t">
                               <div className="text-sm text-muted-foreground">
-                                Showing {startIndex + 1}-{Math.min(endIndex, filteredFeedbacks.length)} of {filteredFeedbacks.length}
+                                Showing {startIndex + 1}-
+                                {Math.min(endIndex, filteredFeedbacks.length)}{" "}
+                                of {filteredFeedbacks.length}
                               </div>
                               <div className="flex items-center gap-2">
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                  onClick={() =>
+                                    setCurrentPage((prev) =>
+                                      Math.max(1, prev - 1)
+                                    )
+                                  }
                                   disabled={currentPage === 1}
                                 >
                                   <ChevronLeft className="h-4 w-4 mr-1" />
                                   Previous
                                 </Button>
                                 <div className="flex items-center gap-1">
-                                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                                  {Array.from(
+                                    { length: totalPages },
+                                    (_, i) => i + 1
+                                  ).map((page) => (
                                     <Button
                                       key={page}
-                                      variant={currentPage === page ? "default" : "outline"}
+                                      variant={
+                                        currentPage === page
+                                          ? "default"
+                                          : "outline"
+                                      }
                                       size="sm"
                                       onClick={() => setCurrentPage(page)}
                                       className="min-w-[40px]"
@@ -1061,7 +1408,11 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                  onClick={() =>
+                                    setCurrentPage((prev) =>
+                                      Math.min(totalPages, prev + 1)
+                                    )
+                                  }
                                   disabled={currentPage === totalPages}
                                 >
                                   Next
@@ -1137,16 +1488,25 @@ export default function EventRequestDetailPage({ params }: EventRequestDetailPag
               onOpenChange={setShowApproveModal}
               eventId={request.id}
               hostClubId={request.hostClub?.id || request.clubId}
-              hostClubName={request.hostClub?.name || (club?.name || club?.clubName)}
+              hostClubName={
+                request.hostClub?.name || club?.name || club?.clubName
+              }
               defaultRequestPoints={request.budgetPoints || 0}
               onApproved={(approvedBudgetPoints) => {
-                setRequest((prev: any) => prev ? { ...prev, status: "APPROVED", budgetPoints: approvedBudgetPoints } : prev)
+                setRequest((prev: any) =>
+                  prev
+                    ? {
+                        ...prev,
+                        status: "APPROVED",
+                        budgetPoints: approvedBudgetPoints,
+                      }
+                    : prev
+                );
               }}
             />
           )}
-
         </div>
       </AppShell>
     </ProtectedRoute>
-  )
+  );
 }

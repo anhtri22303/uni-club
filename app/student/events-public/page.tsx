@@ -121,7 +121,7 @@ export default function PublicEventsPage() {
     const isExpired = isEventExpired(event)
     const isFutureEvent = event.date && new Date(event.date) >= new Date(new Date().toDateString())
     
-    // By default, only show future events that are APPROVED
+    // By default, only show future events that are APPROVED, ONGOING, or COMPLETED
     const expiredFilter = activeFilters["expired"]
     if (expiredFilter === "hide") {
       // Hide expired events (including COMPLETED status)
@@ -134,11 +134,12 @@ export default function PublicEventsPage() {
       if (!isFutureEvent) return false
     } else if (expiredFilter === "only") {
       if (!isExpired) return false
+      // Only show APPROVED, ONGOING, or COMPLETED events
+      if (event.status !== "APPROVED" && event.status !== "ONGOING" && event.status !== "COMPLETED") return false
     } else if (expiredFilter === "show") {
       // Show all events regardless of expiration
-      if (event.status !== "APPROVED" && event.status !== "COMPLETED" && event.status !== "ONGOING") {
-        return false
-      }
+      // Only show APPROVED, ONGOING, or COMPLETED events (exclude REJECTED, PENDING, etc.)
+      if (event.status !== "APPROVED" && event.status !== "ONGOING" && event.status !== "COMPLETED") return false
     }
     
     return true

@@ -88,7 +88,7 @@ export default function EvaluateStaffModal({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/50">
+    <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/50">
       <div className="relative w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-xl">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b dark:border-gray-700">

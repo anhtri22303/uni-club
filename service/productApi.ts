@@ -66,6 +66,18 @@ export interface StockHistory {
 }
 
 /**
+ * Interface cho validation của Event Product
+ */
+export interface EventProductValidation {
+  productId: number;
+  eventId: number;
+  eventStatus: string;
+  expired: boolean;
+  expiredAt: string;
+  message: string;
+}
+
+/**
  * Interface cho payload filter của API _all
  */
 export interface ProductFilterPayload {
@@ -147,6 +159,36 @@ export async function getProducts(
     }
   );
   const data = res.data.data;
+  return Array.isArray(data) ? data : [];
+}
+
+/**
+ * Lấy danh sách sản phẩm EVENT_ITEM đang diễn ra (ONGOING)
+ * (GET /api/events/clubs/{clubId}/event-items/active)
+ */
+export async function getEventProductsOnTime(
+  clubId: number | string
+): Promise<Product[]> {
+  const res = await axiosInstance.get<ApiResponse<Product[]>>(
+    `/api/events/clubs/${clubId}/event-items/active`
+  );
+  const data = res.data.data;
+  console.log("Event Product On Time: " + data);
+  return Array.isArray(data) ? data : [];
+}
+
+/**
+ * Lấy danh sách sản phẩm EVENT_ITEM đã hoàn thành (COMPLETED)
+ * (GET /api/events/clubs/{clubId}/event-items/completed)
+ */
+export async function getEventProductsCompleted(
+  clubId: number | string
+): Promise<Product[]> {
+  const res = await axiosInstance.get<ApiResponse<Product[]>>(
+    `/api/events/clubs/${clubId}/event-items/completed`
+  );
+  const data = res.data.data;
+  console.log("Event Product Completed: " + data);
   return Array.isArray(data) ? data : [];
 }
 
@@ -253,6 +295,20 @@ export async function deleteProduct(
 ): Promise<string> {
   const res = await axiosInstance.delete<ApiResponse<string>>(
     `/api/clubs/${clubId}/products/${productId}`
+  );
+  return res.data.data;
+}
+
+/**
+ * Kiểm tra sản phẩm EVENT_ITEM còn hạn hay không
+ * (GET /api/clubs/{clubId}/products/{productId}/is-event-valid)
+ */
+export async function checkEventProductValid(
+  clubId: number | string,
+  productId: number | string
+): Promise<EventProductValidation> {
+  const res = await axiosInstance.get<ApiResponse<EventProductValidation>>(
+    `/api/clubs/${clubId}/products/${productId}/is-event-valid`
   );
   return res.data.data;
 }

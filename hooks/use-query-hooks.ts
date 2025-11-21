@@ -6,7 +6,7 @@ import { fetchEvent, getEventById, getEventByClubId, getEventCoHost, getMyEventR
 import { fetchUser, fetchUserById, fetchProfile } from "@/service/userApi"
 import { getMembersByClubId, ApiMembership, getMyClubs, } from "@/service/membershipApi"
 import { fetchMajors } from "@/service/majorApi"
-import { getProducts, Product, } from "@/service/productApi"
+import { getProducts, Product, getEventProductsOnTime, getEventProductsCompleted } from "@/service/productApi"
 import { getTags, Tag as ProductTag } from "@/service/tagApi"
 import { fetchPolicies, fetchPolicyById } from "@/service/policyApi"
 import { fetchAttendanceByDate, fetchMemberAttendanceHistory } from "@/service/attendanceApi"
@@ -106,6 +106,8 @@ export const queryKeys = {
     products: ["products"] as const,
     // productsList đã bị xóa vì getProducts giờ cần clubId
     productsByClubId: (clubId: number) => [...queryKeys.products, "club", clubId] as const,
+    eventProductsOnTime: (clubId: number) => [...queryKeys.products, "event-ontime", clubId] as const,
+    eventProductsCompleted: (clubId: number) => [...queryKeys.products, "event-completed", clubId] as const,
     tags: () => ["tags"] as const, // 👈 THÊM key mới này
 
     // Wallet
@@ -550,6 +552,36 @@ export function useProductsByClubId(clubId: number, enabled: boolean = true) {
         staleTime: 3 * 60 * 1000, // 3 phút
     });
 }
+
+/**
+ * Hook để lấy danh sách EVENT_ITEM đang diễn ra (ONGOING)
+ * Tự động refresh mỗi 10 giây
+ */
+export function useEventProductsOnTime(clubId: number, enabled: boolean = true) {
+    return useQuery<Product[], Error>({
+        queryKey: queryKeys.eventProductsOnTime(clubId),
+        queryFn: () => getEventProductsOnTime(clubId),
+        enabled: enabled && !!clubId,
+        staleTime: 10 * 1000, // 10 giây
+        refetchInterval: 10 * 1000, // Auto refresh mỗi 10 giây
+    });
+}
+
+/**
+ * Hook để lấy danh sách EVENT_ITEM đã hoàn thành (COMPLETED)
+ * Chỉ fetch 1 lần khi mount
+ */
+export function useEventProductsCompleted(clubId: number, enabled: boolean = true) {
+    return useQuery<Product[], Error>({
+        queryKey: queryKeys.eventProductsCompleted(clubId),
+        queryFn: () => getEventProductsCompleted(clubId),
+        enabled: enabled && !!clubId,
+        staleTime: Infinity, // Cache forever
+        refetchOnMount: false, // Không refetch khi mount lại
+        refetchOnWindowFocus: false, // Không refetch khi focus window
+    });
+}
+
 /**
  * THAY BẰNG HOOK MỚI NÀY:
  * Hook để lấy danh sách TẤT CẢ tags sản phẩm (thay thế cho getProductTags)

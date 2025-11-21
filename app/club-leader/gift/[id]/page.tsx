@@ -6,7 +6,7 @@ import ReactCrop, { Crop, PixelCrop } from 'react-image-crop'
 import 'react-image-crop/dist/ReactCrop.css'
 import {
     getProductById, Product, AddProductPayload, updateProduct, UpdateProductPayload, addMediaToProduct, deleteMediaFromProduct,
-    setMediaThumbnail, getStockHistory, StockHistory, updateStock,
+    setMediaThumbnail, getStockHistory, StockHistory, updateStock, checkEventProductValid, EventProductValidation
 } from "@/service/productApi"
 import { getTags, Tag as ProductTag } from "@/service/tagApi"
 import { useToast } from "@/hooks/use-toast"
@@ -18,7 +18,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import {
     ArrowLeft, Save, Loader2, Package, DollarSign, Archive, Tag, Image as ImageIcon, CheckCircle, Upload, Trash, Star, History, Plus, XCircle,
-    Video as VideoIcon, Play, Eye, HandCoins, Search
+    Video as VideoIcon, Play, Eye, HandCoins, Search, AlertCircle
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -60,6 +60,8 @@ export default function EditProductPage() {
     const productId = params.id as string
     const [tagSearchTerm, setTagSearchTerm] = useState("")
     const [isDeleting, setIsDeleting] = useState(false) // State cho việc xóa
+    const [eventValidation, setEventValidation] = useState<EventProductValidation | null>(null)
+    const [isEventExpired, setIsEventExpired] = useState(false)
     // STATE MEDIA DIALOG
     const [isMediaDialogOpen, setIsMediaDialogOpen] = useState(false)
     const [isMediaLoading, setIsMediaLoading] = useState(false)
@@ -235,6 +237,22 @@ export default function EditProductPage() {
 
             setProduct(productData)
             setAllTags(tagsData)
+
+            // Kiểm tra nếu là EVENT_ITEM thì gọi API kiểm tra event còn hạn không
+            if (productData.type === "EVENT_ITEM") {
+                try {
+                    const validation = await checkEventProductValid(cId, pId)
+                    setEventValidation(validation)
+                    // Kiểm tra nếu event đã COMPLETED và expired
+                    setIsEventExpired(validation.eventStatus === "COMPLETED" && validation.expired)
+                } catch (error) {
+                    console.error("Failed to validate event product:", error)
+                    // Nếu API lỗi, giả định sản phẩm vẫn hợp lệ
+                    setIsEventExpired(false)
+                }
+            } else {
+                setIsEventExpired(false)
+            }
 
             // Tìm và lưu các tag cố định
             const clubTag = tagsData.find(tag => tag.name.toLowerCase() === "club");
@@ -700,8 +718,14 @@ export default function EditProductPage() {
                                     <Archive className="h-5 w-5 mr-2" />
                                     Archived Product
                                 </Badge>
+                            ) : isEventExpired ? (
+                                // 2. NẾU LÀ EVENT EXPIRED: Hiển thị Badge cảnh báo với gradient và text trắng cho dark mode
+                                <div className="flex items-center w-full max-w-xs mx-auto bg-gradient-to-r from-indigo-600 to-fuchsia-700 text-white px-4 py-3 rounded-lg shadow-lg font-semibold justify-center gap-2">
+                                    <AlertCircle className="h-5 w-5 mr-2" />
+                                    Event Has Ended
+                                </div>
                             ) : (
-                                // 2. NẾU CHƯA ARCHIVED: Hiển thị nút Archive
+                                // 3. NẾU CHƯA ARCHIVED VÀ CHƯA EXPIRED: Hiển thị nút Archive
                                 <AlertDialog>
                                     <AlertDialogTrigger asChild>
                                         <Button

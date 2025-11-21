@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Gift, Package, ChevronLeft, ChevronRight, Layers, Loader2, Eye, WalletCards, Search } from "lucide-react"
 import { usePagination } from "@/hooks/use-pagination"
-import { useClubs, useProductsByClubId, useProfile, queryKeys } from "@/hooks/use-query-hooks"
+import { useClubs, useProductsByClubId, useProfile, queryKeys, useEventProductsOnTime } from "@/hooks/use-query-hooks"
 import { Product } from "@/service/productApi"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -77,15 +77,30 @@ export default function MemberGiftPage() {
 
 
 
-	// Dùng useProductsByClubId thay vì useProducts
+	// Dùng useProductsByClubId cho CLUB_ITEM
 	const {
-		data: products = [],
-		isLoading: productsLoading,
-		isFetching, // Dùng để hiển thị loading khi đổi club
+		data: clubProducts = [],
+		isLoading: clubProductsLoading,
+		isFetching: clubProductsFetching,
 	} = useProductsByClubId(
-		Number(selectedClubId), // Chỉ fetch khi selectedClubId có giá trị
-		!!selectedClubId // `enabled` flag
+		Number(selectedClubId),
+		!!selectedClubId && selectedTab === "CLUB_ITEM"
 	)
+
+	// Dùng useEventProductsOnTime cho EVENT_ITEM (auto refresh 10s)
+	const {
+		data: eventProducts = [],
+		isLoading: eventProductsLoading,
+		isFetching: eventProductsFetching,
+	} = useEventProductsOnTime(
+		Number(selectedClubId),
+		!!selectedClubId && selectedTab === "EVENT_ITEM"
+	)
+
+	// Combine products based on selected tab
+	const products = selectedTab === "CLUB_ITEM" ? clubProducts : eventProducts
+	const productsLoading = selectedTab === "CLUB_ITEM" ? clubProductsLoading : eventProductsLoading
+	const isFetching = selectedTab === "CLUB_ITEM" ? clubProductsFetching : eventProductsFetching
 	// Kết hợp trạng thái loading
 	const isLoading = clubsLoading || profileLoading || (productsLoading && !selectedClubId); // Chỉ loading chính khi đang tải club hoặc chưa chọn club
 
@@ -94,13 +109,17 @@ export default function MemberGiftPage() {
 		// Làm mới cache các query liên quan và yêu cầu refresh UI
 		queryClient.invalidateQueries({ queryKey: queryKeys.profile })
 		if (selectedClubId) {
-			queryClient.invalidateQueries({ queryKey: queryKeys.productsByClubId(Number(selectedClubId)) })
+			if (selectedTab === "CLUB_ITEM") {
+				queryClient.invalidateQueries({ queryKey: queryKeys.productsByClubId(Number(selectedClubId)) })
+			} else {
+				queryClient.invalidateQueries({ queryKey: queryKeys.eventProductsOnTime(Number(selectedClubId)) })
+			}
 		}
 		// Soft refresh để cập nhật dữ liệu server/client (không full reload)
 		router.refresh()
 		// Chỉ chạy khi vào trang này và khi club đang chọn thay đổi
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [selectedClubId])
+	}, [selectedClubId, selectedTab])
 
 	useEffect(() => {
 		try {
@@ -266,39 +285,50 @@ export default function MemberGiftPage() {
 						<p className="text-blue-100">Redeem your points for amazing rewards</p>
 					</div>
 
-					{/* Tab Buttons - Moved to top */}
-					<div className="flex gap-3 -mt-4">
+				{/* Tab Buttons - Moved to top */}
+				<div className="flex gap-3 -mt-4">
+					<button
+						onClick={() => {
+							setSelectedTab("CLUB_ITEM")
+							setCurrentPage(1)
+						}}
+						className={`flex-1 py-4 px-6 rounded-lg font-semibold text-base transition-all duration-200 flex items-center justify-center gap-2 ${
+							selectedTab === "CLUB_ITEM"
+								? "bg-blue-600 text-white shadow-lg shadow-blue-200"
+								: "bg-white text-gray-700 hover:bg-gray-50 border-2 border-gray-200"
+						}`}
+					>
+						<Gift className="h-5 w-5" />
+						Club Gift
+					</button>
+					<button
+						onClick={() => {
+							setSelectedTab("EVENT_ITEM")
+							setCurrentPage(1)
+						}}
+						className={`flex-1 py-4 px-6 rounded-lg font-semibold text-base transition-all duration-200 flex items-center justify-center gap-2 ${
+							selectedTab === "EVENT_ITEM"
+								? "bg-purple-600 text-white shadow-lg shadow-purple-200"
+								: "bg-white text-gray-700 hover:bg-gray-50 border-2 border-gray-200"
+						}`}
+					>
+						<Package className="h-5 w-5" />
+						Event Gift
+					</button>
+				</div>
+
+				{/* Gift Completed Button - Only show when EVENT_ITEM tab is selected */}
+				{selectedTab === "EVENT_ITEM" && (
+					<div className="flex justify-end -mt-4">
 						<button
-							onClick={() => {
-								setSelectedTab("CLUB_ITEM")
-								setCurrentPage(1)
-							}}
-							className={`flex-1 py-4 px-6 rounded-lg font-semibold text-base transition-all duration-200 flex items-center justify-center gap-2 ${
-								selectedTab === "CLUB_ITEM"
-									? "bg-blue-600 text-white shadow-lg shadow-blue-200"
-									: "bg-white text-gray-700 hover:bg-gray-50 border-2 border-gray-200"
-							}`}
-						>
-							<Gift className="h-5 w-5" />
-							Club Gift
-						</button>
-						<button
-							onClick={() => {
-								setSelectedTab("EVENT_ITEM")
-								setCurrentPage(1)
-							}}
-							className={`flex-1 py-4 px-6 rounded-lg font-semibold text-base transition-all duration-200 flex items-center justify-center gap-2 ${
-								selectedTab === "EVENT_ITEM"
-									? "bg-purple-600 text-white shadow-lg shadow-purple-200"
-									: "bg-white text-gray-700 hover:bg-gray-50 border-2 border-gray-200"
-							}`}
+							onClick={() => router.push(`/student/gift/completed?clubId=${selectedClubId}`)}
+							className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors inline-flex items-center gap-2 shadow-md"
 						>
 							<Package className="h-5 w-5" />
-							Event Gift
+							Gift Completed
 						</button>
 					</div>
-
-					{/* Search and Filter Section */}
+				)}					{/* Search and Filter Section */}
 					<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 dark:bg-slate-900 dark:border-slate-800">
 						<div className="flex flex-col md:flex-row gap-3">
 							<div className="relative flex-1">
@@ -450,7 +480,7 @@ export default function MemberGiftPage() {
 											{/* Tags */}
 											{p.tags && p.tags.length > 0 && (
 												<div className="flex flex-wrap gap-1">
-													{p.tags.slice(0, 2).map((tag) => (
+													{p.tags.slice(0, 4).map((tag) => (
 														<span
 															key={tag}
 															className="text-xs font-medium px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800"
@@ -458,9 +488,9 @@ export default function MemberGiftPage() {
 															{tag}
 														</span>
 													))}
-													{p.tags.length > 2 && (
+													{p.tags.length > 4 && (
 														<span className="text-xs font-medium px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded dark:bg-slate-800 dark:text-slate-200">
-															+{p.tags.length - 2}
+															+{p.tags.length - 4}
 														</span>
 													)}
 												</div>

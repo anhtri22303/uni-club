@@ -834,7 +834,7 @@ export default function ClubLeaderGiftPage() {
                         {/* Tags */}
                         {p.tags && p.tags.length > 0 && (
                           <div className="flex flex-wrap gap-1">
-                            {p.tags.slice(0, 2).map((tag) => (
+                            {p.tags.slice(0, 4).map((tag) => (
                               <Badge
                                 key={tag}
                                 variant="secondary"
@@ -843,12 +843,12 @@ export default function ClubLeaderGiftPage() {
                                 {tag}
                               </Badge>
                             ))}
-                            {p.tags.length > 2 && (
+                            {p.tags.length > 4 && (
                               <Badge
                                 variant="secondary"
                                 className="text-[10px] px-1.5 py-0 bg-gray-100 dark:bg-slate-700/50 text-gray-600 dark:text-slate-300 border border-gray-200 dark:border-slate-600"
                               >
-                                +{p.tags.length - 2}
+                                +{p.tags.length - 4}
                               </Badge>
                             )}
                           </div>
