@@ -44,7 +44,7 @@ export function PhaseSelectionModal({ open, onOpenChange, onConfirm, isLoading =
             >
               <SelectTrigger 
                 id="phase-select" 
-                className="w-full h-12 text-base font-medium"
+                className="w-full h-12 text-base font-medium border-slate-300 py-7"
               >
                 <SelectValue placeholder="Select phase" />
               </SelectTrigger>

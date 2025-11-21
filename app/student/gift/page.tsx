@@ -480,7 +480,7 @@ export default function MemberGiftPage() {
 											{/* Tags */}
 											{p.tags && p.tags.length > 0 && (
 												<div className="flex flex-wrap gap-1">
-													{p.tags.slice(0, 2).map((tag) => (
+													{p.tags.slice(0, 4).map((tag) => (
 														<span
 															key={tag}
 															className="text-xs font-medium px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800"
@@ -488,9 +488,9 @@ export default function MemberGiftPage() {
 															{tag}
 														</span>
 													))}
-													{p.tags.length > 2 && (
+													{p.tags.length > 4 && (
 														<span className="text-xs font-medium px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded dark:bg-slate-800 dark:text-slate-200">
-															+{p.tags.length - 2}
+															+{p.tags.length - 4}
 														</span>
 													)}
 												</div>
