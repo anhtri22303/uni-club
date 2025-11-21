@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Pagination } from "@/components/pagination"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { usePagination } from "@/hooks/use-pagination"
-import { useState, useEffect, useMemo } from "react" // <-- Thêm useMemo
+import { useState, useEffect, useMemo } from "react"
 import { Layers, History } from "lucide-react"
 import { safeSessionStorage } from "@/lib/browser-utils"
 import { useToast } from "@/hooks/use-toast"
@@ -42,7 +42,6 @@ interface AttendanceRecord {
   note: string | null;
   clubName: string;
   status: string;
-  // (Thêm các thuộc tính khác nếu có)
 }
 
 interface MemberHistoryResponse {
@@ -101,7 +100,7 @@ export default function MemberAttendancePage() {
       // Lọc danh sách 'all clubs' để chỉ lấy những club mà user tham gia
       const details = userClubIds
         .map((id) => allClubsData.find((club: any) => club.id === id))
-        .filter(Boolean) as SimpleClub[] // Loại bỏ (filter out) bất kỳ club nào không tìm thấy
+        .filter(Boolean) as SimpleClub[]
 
       setUserClubsDetails(details)
 
@@ -126,7 +125,7 @@ export default function MemberAttendancePage() {
     return [...history].sort((a, b) => {
       const dateA = a.date ? new Date(a.date).getTime() : 0
       const dateB = b.date ? new Date(b.date).getTime() : 0
-      return dateB - dateA // Giảm dần: dateB - dateA
+      return dateB - dateA
     })
   }, [rawHistoryResponse])
 
@@ -145,8 +144,8 @@ export default function MemberAttendancePage() {
   })
 
   // TÍNH TOÁN TRẠNG THÁI LOADING TỔNG
-  // Loading khi: Đang tải clubs HOẶC đang tải history
-  const isLoading = isLoadingClubs || isLoadingHistory;
+  // Loading CHỈ KHI: Đang tải clubs HOẶC (đang tải history LẦN ĐẦU và chưa có response)
+  const isLoading = isLoadingClubs || (isLoadingHistory && !rawHistoryResponse);
 
   // RENDER JSX
   return (
@@ -221,7 +220,7 @@ export default function MemberAttendancePage() {
                 <History className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-lg font-semibold mb-2">No attendance records found</h3>
                 <p className="text-muted-foreground">
-                  "There are no attendance records for this club yet."
+                  There are no attendance records for this club yet.
                 </p>
               </div>
             ) : (
@@ -231,7 +230,6 @@ export default function MemberAttendancePage() {
                   <CardHeader>
                     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
                       <div>
-
                         <CardTitle className="text-lg">
                           {record.date ? new Date(record.date).toLocaleDateString("en-US", {
                             weekday: "long",
@@ -240,7 +238,6 @@ export default function MemberAttendancePage() {
                             day: "numeric",
                           }) : "Unknown Date"}
                         </CardTitle>
-                        {/* Hiển thị 'record.clubName' thay vì thời gian N/A */}
                         <CardDescription className="flex items-center gap-2 mt-1">
                           <Layers className="h-4 w-4" />
                           {record.clubName || "Unknown Club"}
@@ -252,38 +249,16 @@ export default function MemberAttendancePage() {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-2">
-                    {/* {record.session?.note && (
-                      <p className="text-sm text-muted-foreground">
-                        <span className="font-semibold text-foreground">Session Note: </span>
-                        {record.session.note}
-                      </p>
-                    )} */}
-                    {/* Đọc từ 'record.note' */}
-                    {/* {record.note && (
-                      <p className="text-sm">
-                        <span className="font-semibold">Note: </span>
-                        {record.note}
-                      </p>
-                    )} */}
-                    {/* Thêm dòng này nếu không có ghi chú */}
-                    {/* {!record.note && (
-                      <p className="text-sm text-muted-foreground italic">
-                        No note for this session.
-                      </p>
-                    )} */}
-                    {/* Đọc từ 'record.note' */}
-                    {record.note ? ( // Kiểm tra nếu 'record.note' có giá trị (không null hoặc rỗng)
+                    {record.note ? (
                       <p className="text-sm">
                         <span className="font-semibold">Note: </span>
                         {record.note}
                       </p>
                     ) : (
-                      // Thêm dòng này nếu không có ghi chú (note là null hoặc rỗng)
                       <p className="text-sm text-muted-foreground italic">
                         No note for this attendance.
                       </p>
                     )}
-
                   </CardContent>
                 </Card>
               ))

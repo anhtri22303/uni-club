@@ -120,7 +120,7 @@ export async function getEvaluateEventStaff(
   eventId: number | string
 ): Promise<StaffEvaluation[]> {
   const res = await axiosInstance.get<ApiResponse<StaffEvaluation[]>>(
-    `/api/events/${eventId}/staff/evaluates`
+    `/api/events/${eventId}/staff/evaluations`
   );
   return res.data.data;
 }
