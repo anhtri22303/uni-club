@@ -107,6 +107,7 @@ export default function ClubLeaderChatPage() {
   const [clubId, setClubId] = useState<number | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [newMessage, setNewMessage] = useState("")
+  const MESSAGE_MAX_LENGTH = 100
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [latestTimestamp, setLatestTimestamp] = useState(0)
@@ -320,12 +321,11 @@ export default function ClubLeaderChatPage() {
     const profileObj = getProfileObject(profile)
     const userName = profileObj?.fullName || auth.user?.fullName || "Unknown User"
     const baseUrl = axiosInstance.defaults.baseURL || ""
-    const rawAvatarUrl = profileObj?.avatarUrl || auth.user?.avatarUrl
+    const rawAvatarUrl = profileObj?.avatarUrl
     console.log("Profile data when sending message:", { 
       profile: profile, 
       profileObj: profileObj,
-      profileAvatarUrl: profileObj?.avatarUrl, 
-      authAvatarUrl: auth.user?.avatarUrl,
+      profileAvatarUrl: profileObj?.avatarUrl,
       rawAvatarUrl,
       baseUrl 
     })
@@ -385,6 +385,16 @@ export default function ClubLeaderChatPage() {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
       handleSendMessage()
+    }
+  }
+
+  // Handle input change with max length
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    if (value.length <= MESSAGE_MAX_LENGTH) {
+      setNewMessage(value)
+    } else {
+      setNewMessage(value.slice(0, MESSAGE_MAX_LENGTH))
     }
   }
 
@@ -632,9 +642,8 @@ export default function ClubLeaderChatPage() {
                         const profileObj = getProfileObject(profile)
                         const displayName = msg.userName || (isOwnMessage ? (profileObj?.fullName || auth.user?.fullName || "You") : "Unknown User")
                         const baseUrl = axiosInstance.defaults.baseURL || ""
-                        const rawAvatarUrl = msg.userAvatar || (isOwnMessage ? (profileObj?.avatarUrl || auth.user?.avatarUrl) : null)
+                        const rawAvatarUrl = msg.userAvatar || (isOwnMessage ? profileObj?.avatarUrl : null)
                         const displayAvatar = getAvatarUrl(rawAvatarUrl, baseUrl)
-                        
                         return (
                           <div
                             key={msg.id}
@@ -822,11 +831,15 @@ export default function ClubLeaderChatPage() {
                   <Input
                     placeholder={replyingTo ? "Type your reply..." : "Type your message..."}
                     value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
+                    onChange={handleInputChange}
                     onKeyDown={handleKeyPress}
                     disabled={sending}
                     className="flex-1 text-sm md:text-base"
+                    maxLength={MESSAGE_MAX_LENGTH}
                   />
+                  <span className="text-xs text-muted-foreground ml-2">
+                    {newMessage.length}/{MESSAGE_MAX_LENGTH}
+                  </span>
                   <Button
                     onClick={handleSendMessage}
                     disabled={!newMessage.trim() || sending}

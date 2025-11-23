@@ -203,7 +203,7 @@ export default function UniStaffDisciplinePage() {
                   onChange={(e) => setQuery((e.target as HTMLInputElement).value)}
                   className="max-w-sm bg-white dark:bg-slate-800 rounded-md px-3 py-2 shadow-sm border border-gray-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/40"
                 />
-                <Button onClick={() => { setQuery("") }} variant="ghost">Clear</Button>
+                <Button onClick={() => { setQuery("") }} variant="ghost">Clear Search</Button>
                 <Button size="sm" className="ml-2" onClick={() => setCreateOpen(true)} title="Create penalty rule">
                   Create Rule
                   <Plus className="h-4 w-4 ml-1" />

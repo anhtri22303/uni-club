@@ -135,6 +135,9 @@ export default function EventRequestDetailPage({
       try {
         const data: any = await getEventById(params.id);
         if (!mounted) return;
+        console.log("📊 Event Data:", data);
+        console.log("📊 commitPointCost:", data.commitPointCost);
+        console.log("📊 maxCheckInCount:", data.maxCheckInCount);
         setRequest(data);
 
         // Fetch event summary if APPROVED, ONGOING or COMPLETED
@@ -1492,6 +1495,9 @@ export default function EventRequestDetailPage({
                 request.hostClub?.name || club?.name || club?.clubName
               }
               defaultRequestPoints={request.budgetPoints || 0}
+              commitPointCost={request.commitPointCost || 0}
+              maxCheckInCount={request.maxCheckInCount || 0}
+              eventType={request.type || request.eventType}
               onApproved={(approvedBudgetPoints) => {
                 setRequest((prev: any) =>
                   prev

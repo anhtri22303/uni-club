@@ -566,11 +566,6 @@ export default function MemberClubsPage() {
             <h1 className="text-3xl font-bold">Club Directory</h1>
             <p className="text-muted-foreground">
               Discover and join clubs that match your interests.
-              {userClubIds.length > 0 && (
-                <span className="text-xs text-muted-foreground/70 ml-2">
-                  (Your club{userClubIds.length > 1 ? 's' : ''} {userClubIds.join(', ')} {userClubIds.length > 1 ? 'are' : 'is'} hidden)
-                </span>
-              )}
             </p>
           </div>
 
