@@ -13,18 +13,18 @@ import { useData } from "@/contexts/data-context"
 import membershipApi, { ApiMembership } from "@/service/membershipApi"
 import { useToast } from "@/hooks/use-toast"
 import { usePagination } from "@/hooks/use-pagination"
-import { Users, Award, ChevronLeft, ChevronRight, Send, Filter, X, Wallet, History } from "lucide-react"
+import { Users, Award, ChevronLeft, ChevronRight, Send, Filter, X, Wallet, History, TriangleAlert, PlusCircle } from "lucide-react"
 import { getClubById, getClubIdFromToken } from "@/service/clubApi"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { getClubWallet, ApiClubWallet, rewardPointsToMembers, getClubToMemberTransactions, ApiClubToMemberTransaction } from "@/service/walletApi"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription, } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Textarea } from "@/components/ui/textarea" // <-- THÊM MỚI
-import { createPointRequest } from "@/service/pointRequestsApi" // <-- THÊM MỚI
-import { PlusCircle } from "lucide-react" // <-- THÊM MỚI (hoặc icon bạn muốn)
+import { Textarea } from "@/components/ui/textarea"
+import { createPointRequest } from "@/service/pointRequestsApi"
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip"
-   
+import { getClubPenaltyRules, PenaltyRule, createClubPenalty } from "@/service/disciplineApi"
+
 interface ClubMember {
   id: string;
   userId: string;
@@ -55,16 +55,28 @@ export default function ClubLeaderRewardDistributionPage() {
   const [showHistoryModal, setShowHistoryModal] = useState(false)
   const [transactions, setTransactions] = useState<ApiClubToMemberTransaction[]>([])
   const [transactionsLoading, setTransactionsLoading] = useState(false)
-  // === MỚI: State cho modal xin điểm ===
+  // === State cho modal xin điểm ===
   const [showRequestModal, setShowRequestModal] = useState(false)
   const [requestPoints, setRequestPoints] = useState<number | ''>('')
   const [requestReason, setRequestReason] = useState("")
   const [isSubmittingRequest, setIsSubmittingRequest] = useState(false)
 
+  // === State cho chức năng PHẠT ===
+  const [showPenaltyModal, setShowPenaltyModal] = useState(false)
+  const [penaltyRules, setPenaltyRules] = useState<PenaltyRule[]>([])
+  const [penaltyRulesLoading, setPenaltyRulesLoading] = useState(false)
+  const [selectedRuleId, setSelectedRuleId] = useState<number | ''>('')
+  const [penaltyReason, setPenaltyReason] = useState("")
+  const [isSubmittingPenalty, setIsSubmittingPenalty] = useState(false)
+  // Lưu member được chọn để phạt
+  const [memberToPenalize, setMemberToPenalize] = useState<any>(null)
+
   useEffect(() => {
     const loadData = async () => {
       setLoading(true)
       setMembersLoading(true)
+      setPenaltyRulesLoading(true) // Bắt đầu tải luật phạt
+
       try {
         const clubId = getClubIdFromToken()
         if (!clubId) throw new Error("No club information found")
@@ -81,6 +93,16 @@ export default function ClubLeaderRewardDistributionPage() {
           console.error("Failed to load club wallet:", walletErr)
         } finally {
           setWalletLoading(false)
+        }
+
+        // Load penalty rules 
+        try {
+          const rules = await getClubPenaltyRules({ clubId })
+          setPenaltyRules(rules)
+        } catch (ruleErr) {
+          console.error("Failed to load penalty rules:", ruleErr)
+        } finally {
+          setPenaltyRulesLoading(false)
         }
 
         // Load members - no need to fetch user data separately as it's included in membership data
@@ -124,8 +146,8 @@ export default function ClubLeaderRewardDistributionPage() {
   const handleToggleSelect = (memberId: string) => {
     setSelectedMembers((prev) => {
       const newState = !prev[memberId]
-      
-      // ✨ Cập nhật targetUserIds ngay lập tức
+
+      // Cập nhật targetUserIds ngay lập tức
       // Tìm member để lấy userId
       const member = clubMembers.find(m => m.id === memberId)
       if (member) {
@@ -140,7 +162,7 @@ export default function ClubLeaderRewardDistributionPage() {
           }
         })
       }
-      
+
       return { ...prev, [memberId]: newState }
     })
   }
@@ -228,8 +250,8 @@ export default function ClubLeaderRewardDistributionPage() {
       })
       return newSelected
     })
-    
-    // ✨ Cập nhật targetUserIds
+
+    // Cập nhật targetUserIds
     if (newSelectionState) {
       // Select all: thêm tất cả filteredMembers vào targetUserIds
       setTargetUserIds((prevIds) => {
@@ -336,7 +358,7 @@ export default function ClubLeaderRewardDistributionPage() {
     }
 
     try {
-      // ✨ Sử dụng targetUserIds đã được chuẩn bị sẵn
+      // Sử dụng targetUserIds đã được chuẩn bị sẵn
       const response = await rewardPointsToMembers(
         targetUserIds,
         rewardAmount as number,
@@ -368,10 +390,10 @@ export default function ClubLeaderRewardDistributionPage() {
     } catch (err: any) {
       const errorMessage = err?.response?.data?.message || err?.message || "An error occurred while distributing points."
       const isTimeout = err?.code === 'ECONNABORTED' || errorMessage.toLowerCase().includes('timeout')
-      
+
       toast({
         title: isTimeout ? "Request Timeout" : "Delivery error",
-        description: isTimeout 
+        description: isTimeout
           ? `The request took too long (processing ${targetUserIds.length} members). The points may still be distributed successfully. Please check the transaction history.`
           : errorMessage,
         variant: "destructive"
@@ -418,8 +440,72 @@ export default function ClubLeaderRewardDistributionPage() {
       minute: '2-digit'
     })
   }
+  const handleOpenPenaltyModal = (member: any) => {
+    setMemberToPenalize(member)
+    setSelectedRuleId('')
+    setPenaltyReason("")
+    setShowPenaltyModal(true)
+  }
+  const handleCreatePenalty = async () => {
+    // if (!managedClub?.id || !memberToPenalize) {
+    //   toast({ title: "Error", description: "Club or member information is missing.", variant: "destructive" })
+    //   return
+    // }
+    if (selectedRuleId === '') {
+      toast({ title: "Rule required", description: "Please select a penalty rule.", variant: "destructive" })
+      return
+    }
+    if (!penaltyReason.trim()) {
+      toast({ title: "Reason required", description: "Please provide a reason or note for this penalty.", variant: "destructive" })
+      return
+    }
+    const rule = penaltyRules.find(r => r.id === selectedRuleId)
+    if (!rule) {
+      toast({ title: "Rule not found", description: "Selected penalty rule is invalid.", variant: "destructive" })
+      return
+    }
 
-  // Component Pager đơn giản (Tái sử dụng)
+    setIsSubmittingPenalty(true)
+    try {
+      const payload = {
+        // Lấy membershipId từ memberToPenalize.id (đã được map thành membershipId)
+        // Cần đảm bảo member.id là membershipId thật sự (hoặc chuyển đổi từ `m-${userId}` sang membershipId nếu cần)
+        // Dựa trên mapping: m.membershipId ?? `m-${m.userId}`. Ta dùng membershipId.
+        // Giả sử member.id là Membership ID
+        membershipId: Number(memberToPenalize.id),
+        ruleId: selectedRuleId as number,
+        // reason: penaltyReason.trim() || rule.description, // Dùng mô tả Rule nếu Leader không nhập gì
+        reason: penaltyReason.trim(), // Đảm bảo sử dụng reason đã nhập
+        // eventId: 0, // Dựa trên Swagger đã remove EventId. Giữ lại nếu API backend yêu cầu, hoặc xóa. Tôi sẽ giữ theo API gốc để tránh lỗi.
+      }
+
+      // TẠO PHIẾU PHẠT
+      await createClubPenalty({ clubId: managedClub.id, body: payload })
+
+      toast({
+        title: "Penalty Issued",
+        description: `Issued a penalty of -${rule.penaltyPoints} pts to ${memberToPenalize.fullName}.`
+      })
+
+      // Reset form và đóng modal
+      setShowPenaltyModal(false)
+      setMemberToPenalize(null)
+      setSelectedRuleId('')
+      setPenaltyReason("")
+
+    } catch (err: any) {
+      toast({
+        title: "Issuing Error",
+        description: err?.response?.data?.message || "Failed to create penalty ticket.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSubmittingPenalty(false)
+    }
+  }
+
+
+  // Component Pager đơn giản
   const MinimalPager = ({ current, total, onPrev, onNext }: { current: number; total: number; onPrev: () => void; onNext: () => void }) =>
     total > 1 ? (
       <div className="flex items-center justify-center gap-3 mt-4">
@@ -500,7 +586,6 @@ export default function ClubLeaderRewardDistributionPage() {
                 overflow-y-auto p-8 rounded-xl shadow-2xl
                 "
             >
-
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-3 text-3xl font-bold dark:text-white">
                   <History className="h-9 w-9" />
@@ -576,7 +661,7 @@ export default function ClubLeaderRewardDistributionPage() {
             </DialogContent>
           </Dialog>
 
-          {/* === MỚI: Modal Xin Thêm Điểm === */}
+          {/* === Modal Xin Thêm Điểm === */}
           <Dialog open={showRequestModal} onOpenChange={setShowRequestModal}>
             <DialogContent className="sm:max-w-[480px]">
               <DialogHeader>
@@ -594,20 +679,17 @@ export default function ClubLeaderRewardDistributionPage() {
                     Points
                   </Label>
 
-                  {/* === CẬP NHẬT CHÍNH Ở ĐÂY === */}
                   <Input
                     id="req-points"
                     type="text" // <-- 1. Chuyển từ "number" sang "text"
                     inputMode="numeric" // <-- 2. Thêm để hiển thị bàn phím số trên di động
                     placeholder="e.g., 1,000,000"
-
                     // 3. Hiển thị giá trị đã được định dạng
                     value={
                       requestPoints === ''
                         ? ''
                         : new Intl.NumberFormat('en-US').format(requestPoints)
                     }
-
                     // 4. Khi thay đổi, lọc bỏ dấu phẩy để cập nhật state
                     onChange={(e) => {
                       const value = e.target.value
@@ -651,6 +733,87 @@ export default function ClubLeaderRewardDistributionPage() {
             </DialogContent>
           </Dialog>
 
+          {/* === Modal Tạo Phiếu Phạt === */}
+          <Dialog open={showPenaltyModal} onOpenChange={setShowPenaltyModal}>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-2xl font-bold text-red-600 dark:text-red-500">
+                  <TriangleAlert className="h-6 w-6" />
+                  Issue Penalty Ticket
+                </DialogTitle>
+                <DialogDescription className="dark:text-slate-400">
+                  Create a penalty ticket for: <span className="font-semibold text-primary dark:text-blue-400">{memberToPenalize?.fullName}</span>
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                {/* Rule Selection */}
+                <div className="space-y-2">
+                  <Label htmlFor="penalty-rule" className="text-sm font-medium">Select Violation Rule</Label>
+                  <Select
+                    value={selectedRuleId === '' ? '' : String(selectedRuleId)}
+                    onValueChange={(v) => setSelectedRuleId(Number(v))}
+                    disabled={penaltyRulesLoading || isSubmittingPenalty}
+                  >
+                    <SelectTrigger id="penalty-rule" className="w-full">
+                      <SelectValue placeholder={penaltyRulesLoading ? "Loading rules..." : "Choose a violation rule"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {penaltyRules.length === 0 ? (
+                        <div className="py-2 text-center text-sm text-muted-foreground">No penalty rules configured.</div>
+                      ) : (
+                        penaltyRules.map((rule) => (
+                          <SelectItem key={rule.id} value={String(rule.id)}>
+                            <div className="flex justify-between items-center w-full">
+                              <span>
+                                {rule.name}
+                                <Badge variant="destructive" className="ml-2 text-xs h-auto py-0.5">
+                                  -{rule.penaltyPoints} pts
+                                </Badge>
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {selectedRuleId !== '' && (
+                    <p className="text-xs text-muted-foreground dark:text-slate-500 mt-1">
+                      Penalty Points: -{penaltyRules.find(r => r.id === selectedRuleId)?.penaltyPoints || 0} pts
+                      | Severity: {penaltyRules.find(r => r.id === selectedRuleId)?.level}
+                    </p>
+                  )}
+                </div>
+
+                {/* Custom Reason */}
+                <div className="space-y-2">
+                  <Label htmlFor="penalty-reason" className="text-sm font-medium">Reason/Notes<span className="text-red-500">*</span></Label>
+                  <Textarea
+                    id="penalty-reason"
+                    placeholder="Add a specific note for this violation (e.g., absent from event A on date B)..."
+                    value={penaltyReason}
+                    onChange={(e) => setPenaltyReason(e.target.value)}
+                    className="min-h-[80px]"
+                    disabled={isSubmittingPenalty}
+                  />
+                </div>
+
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowPenaltyModal(false)} disabled={isSubmittingPenalty}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleCreatePenalty}
+                  variant="destructive"
+                  // disabled={isSubmittingPenalty || selectedRuleId === ''}
+                  disabled={isSubmittingPenalty || selectedRuleId === '' || !penaltyReason.trim()}
+                >
+                  {isSubmittingPenalty ? "Issuing..." : "Confirm Penalty"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
           <Card className="dark:bg-slate-800 dark:border-slate-700">
             <CardHeader>
               <CardTitle className="dark:text-white">Set up the Point Distribution Index</CardTitle>
@@ -659,10 +822,10 @@ export default function ClubLeaderRewardDistributionPage() {
               <div className="space-y-2">
                 <Label htmlFor="reward-amount">Number of Bonus Points (per member)</Label>
 
-                {/* Container MỚI: dùng flex (responsive) */}
+                {/* dùng flex (responsive) */}
                 <div className="flex flex-col sm:flex-row sm:items-end sm:gap-3">
 
-                  {/* 1. Input (Cập nhật logic format) */}
+                  {/* 1. Input ) */}
                   <div className="flex-1 min-w-[200px] mb-2 sm:mb-0">
                     <Input
                       id="reward-amount"
@@ -707,7 +870,7 @@ export default function ClubLeaderRewardDistributionPage() {
                     )}
                   </Button>
 
-                  {/* 3. Nút MỚI: Xin điểm */}
+                  {/* 3. Nút Xin điểm */}
                   <Button
                     variant="outline"
                     className="sm:w-auto mt-2 sm:mt-0" // Tự co giãn, thêm margin top trên mobile
@@ -733,13 +896,8 @@ export default function ClubLeaderRewardDistributionPage() {
               </div>
               <p className="text-sm text-muted-foreground dark:text-slate-400">Total number of members who will receive the bonus points: {clubMembers.length}</p>
             </CardContent>
-            {/* CardFooter đã được xóa vì nút đã chuyển lên trên */}
           </Card>
-
-
-
           <Separator className="dark:bg-slate-700" />
-
           {/* === Tìm kiếm Thành viên === */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
@@ -756,7 +914,7 @@ export default function ClubLeaderRewardDistributionPage() {
                 />
               </div>
 
-              {/*    THÊM MỚI: Nút Filter */}
+              {/* Nút Filter */}
               <Button
                 variant="outline"
                 size="sm"
@@ -773,7 +931,7 @@ export default function ClubLeaderRewardDistributionPage() {
               </Button>
             </div>
 
-            {/*    THÊM MỚI: Bảng điều khiển Filter */}
+            {/* Bảng điều khiển Filter */}
             {showFilters && (
               <div className="space-y-4 p-6 border border-slate-200 dark:border-slate-600 rounded-xl bg-gradient-to-br from-slate-50 to-white dark:from-slate-800 dark:to-slate-700">
                 <div className="flex items-center justify-between">
@@ -841,7 +999,7 @@ export default function ClubLeaderRewardDistributionPage() {
               List of Members ({filteredMembers.length})
             </h2>
 
-            {/*    THÊM MỚI: Nút "Select All" */}
+            {/* Nút "Select All" */}
             {filteredMembers.length > 0 && (
               <Button
                 variant="outline"
@@ -929,6 +1087,23 @@ export default function ClubLeaderRewardDistributionPage() {
                         </div>
 
                         <div className="flex items-center gap-3">
+                          {/* Nút tạo Phiếu Phạt */}
+                          <TooltipProvider>
+                            <Tooltip delayDuration={300}>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="destructive"
+                                  size="icon"
+                                  className="h-8 w-8 text-white hover:bg-red-700 transition-colors"
+                                  onClick={() => handleOpenPenaltyModal(member)}
+                                >
+                                  <TriangleAlert className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">Issue Penalty Ticket</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+
                           <input
                             type="checkbox"
                             checked={isSelected}
