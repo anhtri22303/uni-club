@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useAuth } from "@/contexts/auth-context"
+import { useNotifications } from "@/contexts/notification-context"
 import { useProfile, useClub, useClubs } from "@/hooks/use-query-hooks"
 import { safeSessionStorage } from "@/lib/browser-utils"
 import { useEffect, useState, useRef, useCallback } from "react"
@@ -116,6 +117,7 @@ const getAvatarUrl = (avatarUrl: string | null | undefined, baseUrl?: string): s
 
 export default function StudentChatPage() {
   const { auth } = useAuth()
+  const { markClubAsSeen } = useNotifications()
   const [availableClubIds, setAvailableClubIds] = useState<number[]>([])
   const [availableClubs, setAvailableClubs] = useState<ClubDetails[]>([])
   const [selectedClubId, setSelectedClubId] = useState<number | null>(null)
@@ -346,8 +348,10 @@ export default function StudentChatPage() {
       setOldestTimestamp(null)
       setHasMoreMessages(true)
       fetchMessages()
+      // Mark club as seen to clear unread badge
+      markClubAsSeen(selectedClubId)
     }
-  }, [selectedClubId, fetchMessages])
+  }, [selectedClubId, fetchMessages, markClubAsSeen])
 
   // Set up polling interval for realtime updates
   useEffect(() => {

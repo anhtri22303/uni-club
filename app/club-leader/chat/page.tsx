@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/contexts/auth-context"
+import { useNotifications } from "@/contexts/notification-context"
 import { useProfile, useClub } from "@/hooks/use-query-hooks"
 import { getClubIdFromToken } from "@/service/clubApi"
 import { useEffect, useState, useRef, useCallback } from "react"
@@ -104,6 +105,7 @@ const getAvatarUrl = (avatarUrl: string | null | undefined, baseUrl?: string): s
 
 export default function ClubLeaderChatPage() {
   const { auth } = useAuth()
+  const { markClubAsSeen } = useNotifications()
   const [clubId, setClubId] = useState<number | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [newMessage, setNewMessage] = useState("")
@@ -285,8 +287,10 @@ export default function ClubLeaderChatPage() {
   useEffect(() => {
     if (clubId) {
       fetchMessages()
+      // Mark club as seen to clear unread badge
+      markClubAsSeen(clubId)
     }
-  }, [clubId, fetchMessages])
+  }, [clubId, fetchMessages, markClubAsSeen])
 
   // Set up polling interval for realtime updates
   useEffect(() => {

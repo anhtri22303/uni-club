@@ -1,137 +1,152 @@
-tôi muốn viết 1 api mới là productEventOnTime"/api/events/event-items/active" như hình api vào file productApi.ts, có data response như hình api2.
-trong trang student/gift phần tab list Event Gift tôi muốn sẽ đổi là call api mới trên đây và hiển thị ra theo các logic hiện tại, tôi muốn cứ 10 giây trang sẽ call api lại 1 lần, và có 1 nút nhấn Gift Completed sẽ chuyển qua 1 trang mới và trang đó giống y chang trang student/gift và chỉ call api mới dưới đây 1 lần duy nhất khi mở trang thôi, api mới là productEventCompleted"/api/events/event-items/completed" như hình api3 vào file productApi.ts, có data response như hình api4.
+# UniClub Frontend
 
-🎓 SEP490 – UniClub (SCLMS)
-**Student Club Loyalty & Membership System**
-Hệ thống quản lý thẻ thành viên CLB sinh viên với ưu đãi và tích điểm
-👉 Website (demo deploy): https://uniclub-fpt.vercel.app/
-📑 Table of Contents
+**Student Club Loyalty & Membership System (SCLMS)**  
+Digital platform for managing university student club memberships, events, points, and rewards.
 
-- Description
-- Features & Actors
-- Technology Stack
-- System Architecture
-- Documentation & Deliverables
-- Getting Started
-- Team Members
-- Supervisors
-- License & Copyright
-  📝 Description
-  University student clubs currently manage members manually (Excel, paper lists, chat groups).
-  This leads to fragmented data, errors, fraud risk, and difficulty in distributing vouchers or partner gifts.
+Demo: [https://uniclub.id.vn](https://uniclub.id.vn/)
 
-UniClub (SCLMS) solves this by providing:
+---
 
-- 🎟️ Digital membership management (roles, levels, tiering).
-- 📅 Event & Section management with dynamic QR (5s) + OTP check-in.
-- 💰 Wallet & point system with point caps, MoMo top-up (10,000 VND = 100 points).
-- 🎁 Voucher & product redemption (on-site pickup at Delivery Sessions).
-- 🔄 Return/refund support based on club policy.
-- 📊 Dashboards for University Admin & Club Leaders.
-- 🤖 AI Chatbot for FAQ, guidance, tier/points inquiry.
+## Table of Contents
 
-🎯 Non-profit project: All funds go back to clubs for student activities.
-👥 Features & Actors
-University Admin:
+- [Overview](#overview)
+- [Features](#features)
+- [Technology Stack](#technology-stack)
+- [Getting Started](#getting-started)
+- [Available Scripts](#available-scripts)
+- [Project Structure](#project-structure)
+- [Contributing](#contributing)
+- [Team](#team)
+- [License](#license)
+- [Contact](#contact)
 
-- Approve clubs, events, system configurations.
-- Cross-club reports, fraud monitoring.
+---
 
-Club Leader:
+## Overview
 
-- Approve/reject member applications.
-- Manage membership levels, events, products, refunds.
-- Configure points, caps, and wallets.
-- View club-level dashboards.
+UniClub is a non-profit web application designed to streamline student club membership management at universities. The frontend is built with React and TypeScript, providing a modern, responsive user experience for club members, staff, and administrators.
 
-Club Staff:
+---
 
-- Manage inventory (stock movements).
-- Handle returns & refunds.
+## Features
 
-Student (Club Member):
+- Digital membership cards with tiering and roles
+- Event & session management with QR/OTP check-in
+- Wallet and points system (MoMo integration)
+- Product/voucher redemption and delivery session scheduling
+- Refund/return support per club policy
+- Dashboards for club leaders and university admins
+- AI Chatbot for FAQs and tier/points inquiries
+- Email/web notifications for key actions
 
-- Join clubs & events, check-in via QR+OTP.
-- Earn points, redeem products.
-- Request refunds within policy.
-- Track history: attendance, wallet, products, tier progress.
+---
 
-External Systems:
+## Technology Stack
 
-- MoMo Gateway: Top-up & payments.
-- Email/Web Notifications: Accounts, redeems, top-ups, tiers.
-- AI Chatbot: FAQ, tier/points guide.
-  🛠 Technology Stack
-- Frontend: React (TypeScript, Tailwind, Shadcn UI)
-- Backend: Java Spring Boot
-- Database: PostgreSQL / MySQL
-- Mobile (optional): Android (Java/Kotlin)
-- Deployment: Vercel (FE), Cloud (Heroku/Azure/AWS)
-- Security: JWT Authentication, OTP, Audit Logs
-  🏗 System Architecture
-- Membership API: accounts, membership levels, tiering.
-- Event API: event/section, QR + OTP check-in, attendance.
-- Wallet/Points API: ledger, top-up, cap enforcement.
-- Product API: catalog, redeem, delivery sessions, refund.
-- Reporting API: dashboards for Admin & Managers.
+- **Framework:** React (TypeScript)
+- **UI:** Tailwind CSS, Shadcn UI
+- **State Management:** Context API / Redux (if used)
+- **HTTP Client:** Axios
+- **Deployment:** Vercel
+- **Authentication:** JWT, OTP
 
-(See full diagrams in `/docs` folder.)
-📚 Documentation & Deliverables
+---
 
-- URD, SRS, Use Case & UML diagrams
-- Architecture Design
-- Test Plan & Report
-- Installation & Deployment Guide
-- Source Code (Frontend + Backend)
-- Deployable Packages
-  🚀 Getting Started
+## Getting Started
 
-### Clone source
+### Prerequisites
 
-git clone https://github.com/your-org/uniclub.git
+- Node.js (v16+ recommended)
+- npm or pnpm
 
-### Backend (Spring Boot)
+### Installation
 
-1. Configure `application.properties` with your DB & MoMo credentials.
-2. Run:
-   ./mvnw spring-boot:run
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/your-org/uniclub.git
+   cd uniclub/frontend
+   ```
 
-### Frontend (React)
-
-1. Navigate to `/frontend` folder.
 2. Install dependencies:
+   ```bash
    npm install
-   npm install axios (Optional)
-3. Start app:
-   npm run build
-
-# Nếu muốn xóa build cũ trước khi build lại:
-
-# (Tùy dự án, thường là 'build' hoặc 'dist')
-
-rm -rf build
-npm run build
-npm start
-
-# pnpm chưa được cài đặt
-
-1. Cài đặt pnpm toàn cục: Mở terminal/cmd và chạy:
-   npm install -g pnpm
-2. Kiểm tra lại
-   pnpm --version
-3. Chạy lại lệnh cài đặt:
+   # or
    pnpm install
+   ```
 
-👨‍👩‍👦 Team Members
+3. Start the development server:
+   ```bash
+   npm start
+   # or
+   pnpm start
+   ```
+
+4. Build for production:
+   ```bash
+   npm run build
+   # or
+   pnpm build
+   ```
+
+---
+
+## Available Scripts
+
+- `npm start` / `pnpm start` – Run development server
+- `npm run build` / `pnpm build` – Build production assets
+- `npm run lint` – Lint codebase
+- `npm run test` – Run tests (if configured)
+
+---
+
+## Project Structure
+
+```
+frontend/
+├── public/           # Static assets
+├── src/
+│   ├── components/   # Reusable UI components
+│   ├── pages/        # Route-based pages
+│   ├── hooks/        # Custom React hooks
+│   ├── utils/        # Utility functions
+│   ├── assets/       # Images, icons, etc.
+│   ├── App.tsx       # Main app component
+│   └── index.tsx     # Entry point
+├── package.json
+├── tailwind.config.js
+└── README.md
+```
+
+---
+
+## Contributing
+
+Contributions are welcome!  
+Please fork the repository and submit a pull request.  
+Follow the code style and naming conventions used in the project.
+
+---
+
+## Team
 
 - Phạm Trung Nguyên – Leader (SE170458)
 - Tạ Minh Đức – Member (SE171695)
 - Châu Ngọc Anh Trí – Member (SE173284)
 - Phan Quang Anh – Member (SE185118)
-  🎓 Supervisors
-- Ms. Bùi Thị Thu Thủy – thuybtt21@fe.edu.vn
-- Ms. Trương Thị Mỹ Ngọc – ngocttm4@fe.edu.vn
-  📄 License & Copyright
-  © 2025 FPT University – Non-profit academic project.
-  All rights reserved for educational & research purposes.
-  👉 Hope to pass SEP490 successfully 🤟
+
+---
+
+## License
+
+© 2025 FPT University – Non-profit academic project.  
+For educational and research purposes only.
+
+---
+
+## Contact
+
+- Supervisors:
+  - Ms. Bùi Thị Thu Thủy – thuybtt21@fe.edu.vn
+  - Ms. Trương Thị Mỹ Ngọc – ngocttm4@fe.edu.vn
+
+For issues or questions, please open an issue on GitHub.

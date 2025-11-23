@@ -7,6 +7,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider } from "@/contexts/auth-context";
 import { DataProvider } from "@/contexts/data-context";
+import { NotificationProvider } from "@/contexts/notification-context";
 import { GoogleAuthProvider } from "@/components/GoogleAuthProvider";
 import { ReactQueryProvider } from "@/contexts/react-query-provider";
 import { Toaster } from "@/components/ui/toaster";
@@ -65,8 +66,10 @@ export default function RootLayout({
             <GoogleAuthProvider>
               <AuthProvider>
                 <DataProvider>
-                  <Suspense fallback={null}>{children}</Suspense>
-                  <Toaster />
+                  <NotificationProvider>
+                    <Suspense fallback={null}>{children}</Suspense>
+                    <Toaster />
+                  </NotificationProvider>
                 </DataProvider>
               </AuthProvider>
             </GoogleAuthProvider>

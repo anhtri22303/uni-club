@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/contexts/auth-context";
 import { useData } from "@/contexts/data-context";
+import { useNotifications } from "@/contexts/notification-context";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { usePathname, useRouter } from "next/navigation";
@@ -64,6 +65,8 @@ import {
   Package,
   Truck,
   Scale,
+  Bell,
+  BellOff,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -265,6 +268,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
     eventRequests,
     clubLeaderApplications,
   } = useData();
+  const { unreadCounts, totalUnread } = useNotifications();
   const pathname = usePathname();
   const router = useRouter();
   const [loadingPath, setLoadingPath] = useState<string | null>(null);
@@ -974,8 +978,13 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
               className="h-16 w-16 object-cover drop-shadow border-1 border-primary rounded"
             />
           </div>
-          {/* Nút đổi theme sát mép phải */}
-          <div className="ml-auto z-10">
+          {/* Notification and Theme toggles on the right */}
+          <div className="ml-auto z-10 flex items-center gap-1">
+            {/* Show notification toggle only for STUDENT and CLUB_LEADER */}
+            {(auth.role === "student" || auth.role === "club_leader") && 
+              /* @ts-ignore-next-line */
+              require("@/components/notification-toggle").NotificationToggle()
+            }
             {/* @ts-ignore-next-line */}
             {require("@/components/theme-toggle").ThemeToggle()}
           </div>
@@ -1004,8 +1013,10 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
               const isHistoryItem = item.label === "History";
               const isGiftItem = item.label === "Gift";
               const isGiftsItem = item.label === "Gifts"; // Parent dropdown item for club_leader
+              const isChatItem = item.label === "Chat";
               const isMembersItem = item.label === "Members";
               const isRequestsItem = item.label === "Requests"; // Parent dropdown item for uni_staff
+              const isOthersItem = item.label === "Others"; // Parent dropdown item for club_leader
               const eventsCount = events.length;
               const clubsCount =
                 auth.role === "admin" ? clubStatsTotal : clubs.length;
@@ -1034,6 +1045,10 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                       dropdownBadgeCount += clubApplicationsCount;
                     }
                   }
+                  if (child.label === "Chat") {
+                    // Add unread chat messages count for Chat in dropdown
+                    dropdownBadgeCount += totalUnread;
+                  }
                   if (child.label === "Points Requests") {
                     // For uni_staff, use pendingUniStaffPointRequestsCount
                     if (auth.role === "uni_staff") {
@@ -1054,6 +1069,9 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
               // Check if this is the "Gifts" dropdown for club_leader
               const isGiftsDropdown =
                 auth.role === "club_leader" && isGiftsItem;
+              // Check if this is the "Others" dropdown for club_leader
+              const isOthersDropdown =
+                auth.role === "club_leader" && isOthersItem;
               // Check if this is the "Requests" dropdown for uni_staff
               const isRequestsDropdown =
                 auth.role === "uni_staff" && isRequestsItem;
@@ -1205,6 +1223,12 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                           {clubLeaderApplicationsCount}
                         </span>
                       )}
+                    {/* Chat item - show total unread messages badge */}
+                    {isChatItem && totalUnread > 0 && (
+                      <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-blue-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
+                        {totalUnread}
+                      </span>
+                    )}
                     {/* Club Leader role: Show badge for Members item (Pending Leave Requests) */}
                     {showBadges &&
                       isMembersItem &&
@@ -1217,11 +1241,12 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                           {pendingLeaveRequestsCount}
                         </span>
                       )}
-                    {/* Show red badge for dropdown groups (exclude Gifts and Requests which have their own yellow badges) */}
+                    {/* Show red badge for dropdown groups (exclude Gifts, Others, and Requests which have their own badges) */}
                     {showBadges &&
                       hasChildren &&
                       dropdownBadgeCount > 0 &&
                       !isGiftsDropdown &&
+                      !isOthersDropdown &&
                       !isRequestsDropdown && (
                         <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
                           {dropdownBadgeCount}
@@ -1237,6 +1262,18 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                           title="Pending Club Orders"
                         >
                           {pendingClubOrdersCount}
+                        </span>
+                      )}
+                    {/* Club Leader role: Show badge for Others item (Unread Chat Messages) when dropdown is closed */}
+                    {showBadges &&
+                      isOthersDropdown &&
+                      !isDropdownOpen &&
+                      totalUnread > 0 && (
+                        <span
+                          className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-blue-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center"
+                          title="Unread Chat Messages"
+                        >
+                          {totalUnread}
                         </span>
                       )}
                     {/* Uni Staff role: Show 3 separate badges for Requests item when dropdown is closed */}
@@ -1318,6 +1355,11 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                           child.label === "Points Requests";
                         const isChildClubOrdersList =
                           child.label === "Club orders list";
+                        const isChildChat = child.label === "Chat";
+
+                        // Get unread count for Chat in dropdown
+                        // For club_leader in Others dropdown, show total unread
+                        const childClubUnread = isChildChat ? totalUnread : 0;
 
                         return (
                           <Button
@@ -1415,6 +1457,12 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                                   {pendingClubOrdersCount}
                                 </span>
                               )}
+                            {/* Chat in dropdown - show unread badge for club_leader */}
+                            {isChildChat && childClubUnread > 0 && (
+                              <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-blue-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
+                                {childClubUnread}
+                              </span>
+                            )}
                           </Button>
                         );
                       })}
