@@ -16,9 +16,10 @@ interface ModalProps {
   showCloseButton?: boolean
   noOverlay?: boolean
   style?: React.CSSProperties
+  zIndex?: number
 }
 
-export function Modal({ open, onOpenChange, title, description, children, showCloseButton = true, className, noOverlay = false, style }: ModalProps) {
+export function Modal({ open, onOpenChange, title, description, children, showCloseButton = true, className, noOverlay = false, style, zIndex }: ModalProps) {
   if (noOverlay) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange} modal={false}>
@@ -48,7 +49,7 @@ export function Modal({ open, onOpenChange, title, description, children, showCl
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={className || "sm:max-w-md"} showCloseButton={showCloseButton}>
+      <DialogContent className={className || "sm:max-w-md"} showCloseButton={showCloseButton} zIndex={zIndex}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           {description && <DialogDescription>{description}</DialogDescription>}

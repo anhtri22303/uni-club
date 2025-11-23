@@ -31,6 +31,7 @@ import {
   Plus,
   MapPin,
   Trophy,
+  AlertCircle,
   ChevronLeft,
   ChevronRight,
   Filter,
@@ -63,9 +64,8 @@ import { fetchClub, getClubIdFromToken } from "@/service/clubApi";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/hooks/use-query-hooks";
+import { EventPolicyModal } from "@/components/event-policy-modal";
 import eventPolicies from "@/src/data/event-policies.json";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { AlertCircle } from "lucide-react";
 
 export default function ClubLeaderEventsPage() {
   const router = useRouter();
@@ -293,7 +293,9 @@ export default function ClubLeaderEventsPage() {
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showPolicyModal, setShowPolicyModal] = useState(false);
+  const [showFullPolicyModal, setShowFullPolicyModal] = useState(false);
   const [showCalendarModal, setShowCalendarModal] = useState(false);
+  const [policyAccepted, setPolicyAccepted] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [showPhaseModal, setShowPhaseModal] = useState(false);
   const [isGeneratingQR, setIsGeneratingQR] = useState(false);
@@ -621,6 +623,7 @@ export default function ClubLeaderEventsPage() {
     setSelectedLocationId("");
     setSelectedLocationCapacity(null);
     setSelectedCoHostClubIds([]);
+    setPolicyAccepted(false);
   };
 
   const handleCreate = async () => {
@@ -1773,12 +1776,7 @@ export default function ClubLeaderEventsPage() {
                         cleanValue === "" ? 0 : Number.parseInt(cleanValue, 10);
                       setFormData({ ...formData, commitPointCost: numValue });
                     }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowPolicyModal(true);
-                    }}
-                    onFocus={() => setShowPolicyModal(true)}
-                    className="h-9 transition-all duration-200 focus:ring-2 focus:ring-blue-500 cursor-pointer border-slate-300"
+                    className="h-9 transition-all duration-200 focus:ring-2 focus:ring-blue-500 border-slate-300"
                     placeholder="0"
                     required
                   />
@@ -1990,37 +1988,98 @@ export default function ClubLeaderEventsPage() {
                   <span className="text-red-500">*</span> Required fields - All
                   fields except Co-Host Clubs must be filled
                 </p>
-                <div className="flex gap-2 justify-end">
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowCreateModal(false)}
-                    disabled={isCreating}
-                    className="h-9"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handleCreate}
-                    disabled={
-                      isCreating ||
-                      (selectedLocationCapacity !== null &&
-                        formData.maxCheckInCount > selectedLocationCapacity)
-                    }
-                    className="h-9"
-                  >
-                    {isCreating ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Creating...
-                      </>
-                    ) : (
-                      "Send"
-                    )}
-                  </Button>
+                <div className="flex items-center justify-between gap-3">
+                  {/* Checkbox và link policy */}
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="policy-accept"
+                      checked={policyAccepted}
+                      onCheckedChange={(checked: boolean) =>
+                        setPolicyAccepted(checked)
+                      }
+                      className="h-4 w-4"
+                    />
+                    <label
+                      htmlFor="policy-accept"
+                      className="text-xs text-muted-foreground cursor-pointer"
+                    >
+                      I have read and accept the{" "}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setShowFullPolicyModal(true);
+                        }}
+                        className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 underline font-medium"
+                      >
+                        Commit Point Policy
+                      </button>
+                    </label>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowCreateModal(false)}
+                      disabled={isCreating}
+                      className="h-9"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleCreate}
+                      disabled={
+                        isCreating ||
+                        !policyAccepted ||
+                        (selectedLocationCapacity !== null &&
+                          formData.maxCheckInCount > selectedLocationCapacity)
+                      }
+                      className="h-9"
+                    >
+                      {isCreating ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Creating...
+                        </>
+                      ) : (
+                        "Send"
+                      )}
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
           </Modal>
+
+          {/* QR Modal */}
+          {selectedEvent && (
+            <QRModal
+              open={showQrModal}
+              onOpenChange={setShowQrModal}
+              eventName={selectedEvent.name ?? ""}
+              checkInCode={selectedEvent.checkInCode ?? ""}
+              qrRotations={qrRotations}
+              qrLinks={qrLinks}
+              countdown={countdown}
+              isFullscreen={isFullscreen}
+              setIsFullscreen={setIsFullscreen}
+              activeEnvironment={activeEnvironment}
+              setActiveEnvironment={setActiveEnvironment}
+              displayedIndex={displayedIndex}
+              isFading={isFading}
+              handleCopyLink={handleCopyLink}
+              handleDownloadQR={handleDownloadQR}
+            />
+          )}
+
+          {/* Phase Selection Modal */}
+          <PhaseSelectionModal
+            open={showPhaseModal}
+            onOpenChange={setShowPhaseModal}
+            onConfirm={handlePhaseConfirm}
+            isLoading={isGeneratingQR}
+          />
+
+          {/* Calendar Modal */}
 
           {/* QR Modal */}
           {selectedEvent && (
@@ -2060,6 +2119,13 @@ export default function ClubLeaderEventsPage() {
               setShowCalendarModal(false);
               router.push(`/club-leader/events/${event.id}`);
             }}
+          />
+
+          {/* Full Policy Modal - Extracted Component */}
+          <EventPolicyModal
+            open={showFullPolicyModal}
+            onOpenChange={setShowFullPolicyModal}
+            onAccept={() => setPolicyAccepted(true)}
           />
         </div>
       </AppShell>
