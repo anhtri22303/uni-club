@@ -2,21 +2,15 @@
   "title": "Event Policy",
   "sections": [
     {
-      "heading": "Points & Rewards",
+      "heading": "Commit Points (Ticket)",
       "items": [
         {
-          "text": "Point Cost: Registration fee students pay to join the event",
+          "text": "Commit Point is the ticket point students pay to commit to joining the event.",
           "important": true
         },
         {
-          "text": "Students get REFUNDED after checking in at Pre-Event and Mid-Event"
-        },
-        {
-          "text": "BONUS points awarded for completing all check-ins (Pre, Mid, and Post-Event)",
+          "text": "Participants who fully attend the event will receive a reward of 2x to 5x the commit points paid.",
           "important": true
-        },
-        {
-          "text": "Higher point costs = more exclusive events"
         }
       ]
     },
@@ -24,20 +18,17 @@
       "heading": "Budget Points",
       "items": [
         {
-          "text": "Budget Points: Total event fund allocated by university",
+          "text": "Budget Point is the total points in the event wallet.",
           "important": true
         },
         {
-          "text": "Used to pay bonus rewards for full attendance"
-        },
-        {
-          "text": "Unused budget returns to club after event"
+          "text": "This amount will be reviewed and distributed by University Staff as appropriate."
         }
       ]
     }
   ],
   "footer": {
-    "text": "Contact University Staff for questions.",
+    "text": "Please ensure you understand these policies before creating an event.",
     "important": false
   }
 }
