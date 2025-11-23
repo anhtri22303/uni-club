@@ -15,6 +15,7 @@ import { getClubApplications, getClubApplyById, getMyClubApply } from "@/service
 import { fetchUniversityPoints, fetchAttendanceSummary, fetchAttendanceRanking } from "@/service/universityApi"
 import { getWallet, ApiMembershipWallet } from "@/service/walletApi"
 import { getMemberRedeemOrders } from "@/service/redeemApi"
+import { getAllPenaltyRules, PenaltyRule } from "@/service/disciplineApi";
 
 // ============================================
 // INTERFACES
@@ -108,7 +109,7 @@ export const queryKeys = {
     productsByClubId: (clubId: number) => [...queryKeys.products, "club", clubId] as const,
     eventProductsOnTime: (clubId: number) => [...queryKeys.products, "event-ontime", clubId] as const,
     eventProductsCompleted: (clubId: number) => [...queryKeys.products, "event-completed", clubId] as const,
-    tags: () => ["tags"] as const, // 👈 THÊM key mới này
+    tags: () => ["tags"] as const, 
 
     // Wallet
     wallet: ["wallet"] as const,
@@ -146,6 +147,10 @@ export const queryKeys = {
     universityPoints: () => [...queryKeys.university, "points"] as const,
     attendanceSummary: (year: number) => [...queryKeys.university, "attendance-summary", year] as const,
     attendanceRanking: () => [...queryKeys.university, "attendance-ranking"] as const,
+    
+    // Discipline
+    discipline: ["discipline"] as const,
+    penaltyRulesList: () => [...queryKeys.discipline, "penalty-rules"] as const,
 }
 
 // ============================================
@@ -916,7 +921,6 @@ export function useMyClubApplications(enabled = true) {
     })
 }
 
-// ❗️ THÊM KHỐI HOOK MỚI NÀY
 // ============================================
 // REDEEM ORDERS QUERIES
 // ============================================
@@ -990,5 +994,25 @@ export function useAttendanceRanking(enabled = true) {
         enabled,
         staleTime: 5 * 60 * 1000, // 5 minutes
         retry: 2,
+    })
+}
+
+// ============================================
+// DISCIPLINE QUERIES 
+// ============================================
+
+/**
+ * Hook to fetch all penalty rules (UniStaff Only)
+ */
+export function usePenaltyRules(enabled = true) {
+    return useQuery<PenaltyRule[], Error>({
+        queryKey: queryKeys.penaltyRulesList(),
+        queryFn: async () => {
+            const rules = await getAllPenaltyRules();
+            // Hàm getAllPenaltyRules trả về PenaltyRule[]
+            return rules;
+        },
+        enabled,
+        staleTime: 10 * 60 * 1000, // 10 minutes (rules rarely change)
     })
 }

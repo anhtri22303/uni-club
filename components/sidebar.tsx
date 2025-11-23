@@ -18,7 +18,8 @@ import { usePrefetchClubs, usePrefetchEvents, usePrefetchUsers, useMyMemberAppli
 import {
   LayoutDashboard, Users, Calendar, Gift, Wallet, History, BarChart3, Building, Home, CheckCircle, FileText, FileUser, HandCoins, CalendarDays, CreditCard,
   LibraryBig, MessageCircle, MapPin, Percent, ChevronDown, ChevronRight, ListOrdered, FileBarChart, TicketCheck, Tags, MessagesSquare, Calculator, ClipboardPenLine,
-  Package, Truck
+  Package, Truck,
+  Scale
 } from "lucide-react"
 
 interface SidebarProps {
@@ -93,6 +94,7 @@ const navigationConfig = {
       ]
     },
     { href: "/uni-staff/majors", label: "Majors", icon: LibraryBig },
+    { href: "/uni-staff/disciplines", label: "Disciplines", icon: Scale },
     {
       label: "Requests",
       icon: CheckCircle,
