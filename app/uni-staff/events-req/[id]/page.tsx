@@ -35,6 +35,7 @@ import {
   eventSettle,
   getEventSettle,
   rejectEvent,
+  cancelEvent,
 } from "@/service/eventApi";
 import { useToast } from "@/hooks/use-toast";
 import { renderTypeBadge } from "@/lib/eventUtils";
@@ -59,6 +60,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ApproveBudgetModal } from "@/components/approve-budget-modal";
+import { CancelEventModal } from "@/components/cancel-event-modal";
 
 // Bảng màu theo ngành học (giống như trong clubs page)
 const majorColors: Record<string, string> = {
@@ -120,6 +122,8 @@ export default function EventRequestDetailPage({
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [showApproveModal, setShowApproveModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   // Feedback states
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [feedbackLoading, setFeedbackLoading] = useState(false);
@@ -493,6 +497,35 @@ export default function EventRequestDetailPage({
     }).format(amount);
   };
 
+  const handleCancelEvent = async () => {
+    if (!request) return;
+    setCancelling(true);
+    try {
+      await cancelEvent(request.id);
+      
+      // Refresh event data
+      const updatedData = await getEventById(params.id);
+      setRequest(updatedData);
+      
+      toast({
+        title: "Event Cancelled",
+        description: `Event ${request.name || request.id} has been cancelled successfully.`,
+      });
+    } catch (err: any) {
+      console.error("Cancel event failed", err);
+      toast({
+        title: "Error",
+        description:
+          err?.response?.data?.message ||
+          err?.message ||
+          "Failed to cancel event",
+        variant: "destructive",
+      });
+    } finally {
+      setCancelling(false);
+    }
+  };
+
   const handleSettle = async () => {
     if (!request) return;
     setSettling(true);
@@ -593,52 +626,28 @@ export default function EventRequestDetailPage({
             <div className="flex items-center gap-2">
               {/* prefer status, fallback to type */}
               {getStatusBadge(effectiveStatus)}
-              {effectiveStatus === "COMPLETED" && (
-                <Button
-                  variant="default"
-                  size="sm"
-                  className={
-                    isEventSettled
-                      ? "bg-gray-400"
-                      : "bg-blue-600 hover:bg-blue-700"
-                  }
-                  onClick={handleSettle}
-                  disabled={settling || isEventSettled || checkingSettled}
-                >
-                  <DollarSign className="h-4 w-4 mr-2" />
-                  {checkingSettled
-                    ? "Checking..."
-                    : settling
-                    ? "Settling..."
-                    : isEventSettled
-                    ? "Already Settled"
-                    : "Settle Event"}
-                </Button>
+              {effectiveStatus === "PENDING_UNISTAFF" && (
+                <div className="flex gap-2">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    onClick={() => setShowApproveModal(true)}
+                    disabled={processing}
+                  >
+                    <CheckCircle className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    onClick={handleReject}
+                    disabled={processing}
+                  >
+                    <XCircle className="h-4 w-4" />
+                  </Button>
+                </div>
               )}
-              {effectiveStatus !== "APPROVED" &&
-                effectiveStatus !== "REJECTED" &&
-                effectiveStatus !== "COMPLETED" && (
-                  <div className="flex gap-2">
-                    <Button
-                      variant="default"
-                      size="sm"
-                      className="h-8 w-8 p-0"
-                      onClick={() => setShowApproveModal(true)}
-                      disabled={processing}
-                    >
-                      <CheckCircle className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      className="h-8 w-8 p-0"
-                      onClick={handleReject}
-                      disabled={processing}
-                    >
-                      <XCircle className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
             </div>
           </div>
 
@@ -863,7 +872,7 @@ export default function EventRequestDetailPage({
                                   ? summaryLoading
                                     ? "Loading..."
                                     : eventSummary
-                                    ? `${eventSummary.registrationsCount} / ${request.maxCheckInCount}`
+                                    ? `${eventSummary.totalRegistered} / ${request.maxCheckInCount}`
                                     : `${request.currentCheckInCount} / ${request.maxCheckInCount}`
                                   : `${request.currentCheckInCount} / ${request.maxCheckInCount}`}
                               </span>
@@ -882,7 +891,7 @@ export default function EventRequestDetailPage({
                                 eventSummary
                                   ? `${
                                       request.maxCheckInCount -
-                                      eventSummary.registrationsCount
+                                      eventSummary.totalRegistered
                                     } remaining`
                                   : `${
                                       request.maxCheckInCount -
@@ -919,7 +928,7 @@ export default function EventRequestDetailPage({
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                               <div className="p-3 bg-linear-to-br from-blue-50 to-sky-50 rounded-lg border border-blue-200">
                                 <label className="text-sm text-blue-700 font-medium">
-                                  Total Registrations
+                                  {request.type === "PUBLIC" ? "Total Check-ins" : "Total Registrations"}
                                 </label>
                                 <div className="font-semibold text-blue-800 mt-1">
                                   {summaryLoading ? (
@@ -927,7 +936,7 @@ export default function EventRequestDetailPage({
                                       Loading...
                                     </span>
                                   ) : (
-                                    `${eventSummary.registrationsCount} registered`
+                                    `${eventSummary.totalRegistered} ${request.type === "PUBLIC" ? "checked in" : "registered"}`
                                   )}
                                 </div>
                               </div>
@@ -1176,42 +1185,85 @@ export default function EventRequestDetailPage({
                   </CardContent>
                 </Card>
               )}
-              {effectiveStatus !== "APPROVED" &&
-                effectiveStatus !== "REJECTED" &&
-                effectiveStatus !== "COMPLETED" && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Actions</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <Button
-                        className="w-full"
-                        variant="default"
-                        onClick={() => setShowApproveModal(true)}
-                        disabled={processing}
-                      >
-                        <CheckCircle className="h-4 w-4 mr-2" />
-                        Approve Request
-                      </Button>
-                      <Button
-                        className="w-full"
-                        variant="destructive"
-                        onClick={handleReject}
-                        disabled={processing}
-                      >
-                        <XCircle className="h-4 w-4 mr-2" />
-                        {processing ? "Processing..." : "Reject Request"}
-                      </Button>
-                      <Button
-                        className="w-full bg-transparent"
-                        variant="outline"
-                      >
-                        <Mail className="h-4 w-4 mr-2" />
-                        Contact Organizer
-                      </Button>
-                    </CardContent>
-                  </Card>
-                )}
+              {effectiveStatus === "APPROVED" && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Actions</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <Button
+                      className="w-full"
+                      variant="destructive"
+                      onClick={() => setShowCancelModal(true)}
+                      disabled={cancelling}
+                    >
+                      <XCircle className="h-4 w-4 mr-2" />
+                      Cancel Event
+                    </Button>
+                    <Button className="w-full bg-transparent" variant="outline">
+                      <Mail className="h-4 w-4 mr-2" />
+                      Contact Organizer
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+              {effectiveStatus === "ONGOING" && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Actions</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <Button
+                      className="w-full bg-blue-600 hover:bg-blue-700"
+                      variant="default"
+                      onClick={handleSettle}
+                      disabled={settling || isEventSettled}
+                    >
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      {settling
+                        ? "Processing Settlement..."
+                        : isEventSettled
+                        ? "Already Settled"
+                        : "Settle Event"}
+                    </Button>
+                    <Button className="w-full bg-transparent" variant="outline">
+                      <Mail className="h-4 w-4 mr-2" />
+                      Contact Organizer
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+              {effectiveStatus === "PENDING_UNISTAFF" && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Actions</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <Button
+                      className="w-full"
+                      variant="default"
+                      onClick={() => setShowApproveModal(true)}
+                      disabled={processing}
+                    >
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Approve Request
+                    </Button>
+                    <Button
+                      className="w-full"
+                      variant="destructive"
+                      onClick={handleReject}
+                      disabled={processing}
+                    >
+                      <XCircle className="h-4 w-4 mr-2" />
+                      {processing ? "Processing..." : "Reject Request"}
+                    </Button>
+                    <Button className="w-full bg-transparent" variant="outline">
+                      <Mail className="h-4 w-4 mr-2" />
+                      Contact Organizer
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </div>
 
@@ -1509,6 +1561,17 @@ export default function EventRequestDetailPage({
                     : prev
                 );
               }}
+            />
+          )}
+
+          {/* Cancel Event Modal */}
+          {request && (
+            <CancelEventModal
+              open={showCancelModal}
+              onOpenChange={setShowCancelModal}
+              onConfirm={handleCancelEvent}
+              eventName={request.name || request.eventName || ""}
+              isLoading={cancelling}
             />
           )}
         </div>
