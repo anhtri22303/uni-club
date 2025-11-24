@@ -60,12 +60,15 @@ export default function MemberHistoryPage() {
     try {
       setWalletLoading(true)
       setWalletError(null)
-      const [walletResponse, transactionsResponse] = await Promise.all([
-        getWallet(),
-        getWalletTransactions()
-      ])
+      // First get wallet to obtain walletId
+      const walletResponse = await getWallet()
       setMyWallet(walletResponse.data)
-      setWalletTransactions(transactionsResponse.data || [])
+      
+      // Then fetch transactions using the walletId
+      if (walletResponse.data?.walletId) {
+        const transactions = await getWalletTransactions(walletResponse.data.walletId)
+        setWalletTransactions(transactions || [])
+      }
     } catch (err: any) {
       setWalletError(err?.response?.data?.error || err?.response?.data?.message || err?.message || "Failed to load wallet")
     } finally {
