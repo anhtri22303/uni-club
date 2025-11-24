@@ -120,11 +120,14 @@ export default function UniStaffPoliciesPage() {
       // Nếu 'await' thành công (không ném lỗi), thì đã cập nhật
       toast({ title: "Update successful", description: `Policy updated: ${res.policyName}` })
 
-      // update local selected so modal reflects saved values
-      setSelected(res) // Cập nhật state với dữ liệu mới từ server
+      // Close modal
+      setDialogOpen(false)
 
       // refresh list with React Query
-      reloadPolicies()
+      await reloadPolicies()
+      
+      // Reload page
+      router.refresh()
     } catch (err) {
       console.error('Update policy failed:', err)
       toast({ title: 'Error', description: 'Error updating policy.', variant: 'destructive' })
@@ -450,15 +453,22 @@ export default function UniStaffPoliciesPage() {
 
                       // Nếu 'await' thành công, 'res' là policy mới
                       toast({ title: "Create success", description: `Policy created: ${res.policyName}` })
+                      
+                      // Close modal
                       setCreateOpen(false)
+                      
                       // reset fields
                       setCreatePolicyName("")
                       setCreateDescription("")
                       setCreateMajorId(undefined)
                       setCreateMajorName(undefined)
                       setCreateMaxClubJoin(undefined)
+                      
                       // reload list
                       await reloadPolicies()
+                      
+                      // Reload page
+                      router.refresh()
                     } catch (err: any) { // Thêm ': any'
                       console.error('Create policy failed:', err)
                       // Lấy thông báo lỗi chi tiết từ response của server

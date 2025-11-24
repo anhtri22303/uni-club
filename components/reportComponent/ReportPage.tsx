@@ -67,6 +67,7 @@ import {
   insertStaffMajorsTable,
   insertStaffPoliciesTable,
   insertStaffUniToClubTransactionsTable,
+  insertStaffUniToEventTransactionsTable,
   insertStaffClubsByMajorChart,
   insertStaffEventStatusChart,
   insertStaffClubApplicationChart,
@@ -74,6 +75,7 @@ import {
   insertStaffUniversityPointsChart,
   insertStaffAttendanceSummaryChart,
   insertStaffAttendanceRankingChart,
+  insertStaffUniToEventTransactionsChart,
 } from "@/components/reportComponent/services/insertStaffData"
 import { 
   saveReportToSession, 
@@ -241,6 +243,8 @@ export function ReportPage({ allowedRoles }: ReportPageProps) {
   useEffect(() => {
     const handleKeyboardShortcuts = (e: KeyboardEvent) => {
       if (!e.ctrlKey && !e.metaKey) return
+      
+      // Undo (Ctrl+Z)
       if (e.key === 'z' || e.key === 'Z') {
         e.preventDefault()
         e.stopPropagation()
@@ -255,6 +259,8 @@ export function ReportPage({ allowedRoles }: ReportPageProps) {
         }
         window.dispatchEvent(new CustomEvent('history-change'))
       }
+      
+      // Redo (Ctrl+Y)
       if (e.key === 'y' || e.key === 'Y') {
         e.preventDefault()
         e.stopPropagation()
@@ -268,6 +274,42 @@ export function ReportPage({ allowedRoles }: ReportPageProps) {
           toast.info(result.message)
         }
         window.dispatchEvent(new CustomEvent('history-change'))
+      }
+      
+      // Copy (Ctrl+C) - handled by browser, but we'll track it
+      if (e.key === 'c' || e.key === 'C') {
+        // Let browser handle, our copy function will be called
+        setTimeout(() => {
+          const selection = window.getSelection()
+          if (selection && !selection.isCollapsed) {
+            const { copy } = require('@/components/report/utils/editorUtils')
+            copy()
+          }
+        }, 10)
+      }
+      
+      // Cut (Ctrl+X)
+      if (e.key === 'x' || e.key === 'X') {
+        e.preventDefault()
+        e.stopPropagation()
+        const { cut } = require('@/components/report/utils/editorUtils')
+        const success = cut()
+        if (success) {
+          toast.success('Content cut to clipboard')
+          setTimeout(() => paginateContent(), 100)
+        }
+      }
+      
+      // Paste (Ctrl+V)
+      if (e.key === 'v' || e.key === 'V') {
+        e.preventDefault()
+        e.stopPropagation()
+        const { paste } = require('@/components/report/utils/editorUtils')
+        const success = paste()
+        if (success) {
+          toast.success('Content pasted')
+          setTimeout(() => paginateContent(), 100)
+        }
       }
     }
     document.addEventListener('keydown', handleKeyboardShortcuts)
@@ -719,7 +761,8 @@ export function ReportPage({ allowedRoles }: ReportPageProps) {
           items: [
             { label: "Club Applications", icon: FileText, onClick: () => insertStaffClubApplicationsTable(editorRef, afterChange) },
             { label: "Point Requests", icon: ClipboardList, onClick: () => insertStaffPointRequestsTable(editorRef, afterChange) },
-            { label: "Uni -> Club Transactions", icon: Wallet, onClick: () => insertStaffUniToClubTransactionsTable(editorRef, afterChange) },
+            { label: "Uni → Club Transactions", icon: Wallet, onClick: () => insertStaffUniToClubTransactionsTable(editorRef, afterChange) },
+            { label: "Uni → Event Transactions", icon: Calendar, onClick: () => insertStaffUniToEventTransactionsTable(editorRef, afterChange) },
           ],
         },
       ],
@@ -737,6 +780,7 @@ export function ReportPage({ allowedRoles }: ReportPageProps) {
           items: [
             { label: "Clubs By Major Chart", icon: PieChartIcon, onClick: () => insertStaffClubsByMajorChart(editorRef, afterChange) },
             { label: "Event Status Chart", icon: Activity, onClick: () => insertStaffEventStatusChart(editorRef, afterChange) },
+            { label: "Event Budget Chart", icon: BarChart3, onClick: () => insertStaffUniToEventTransactionsChart(editorRef, afterChange) },
           ],
         },
         {

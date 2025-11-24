@@ -616,6 +616,25 @@ export const cancelEvent = async (eventId: string | number) => {
     console.error(`Error cancelling event ${eventId}:`, error);
     throw error;
   }
+}
+
+/**
+ * PUT /api/events/{eventId}/registration/cancel
+ * Sinh viên hủy đăng ký sự kiện
+ * @param eventId - ID của sự kiện
+ * @returns { success: boolean, message: string, data: string }
+ */
+export const cancelEventRegistration = async (eventId: string | number) => {
+  try {
+    const response = await axiosInstance.put(`/api/events/${eventId}/registration/cancel`);
+    const data: any = response.data;
+    console.log(`Cancelled event registration ${eventId}:`, data);
+    // Response: { success: true, message: "string", data: "string" }
+    return data;
+  } catch (error) {
+    console.error(`Error cancelling event registration ${eventId}:`, error);
+    throw error;
+  }
 }/**
  * PUT /api/events/{eventId}/refund-product/{productId}
  * Hoàn điểm sản phẩm thuộc sự kiện

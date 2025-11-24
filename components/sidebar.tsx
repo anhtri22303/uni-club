@@ -68,6 +68,7 @@ import {
   Bell,
   BellOff,
 } from "lucide-react";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 interface SidebarProps {
   onNavigate?: () => void;
@@ -981,10 +982,17 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
           {/* Notification and Theme toggles on the right */}
           <div className="ml-auto z-10 flex items-center gap-1">
             {/* Show notification toggle only for STUDENT and CLUB_LEADER */}
-            {(auth.role === "student" || auth.role === "club_leader") && 
-              /* @ts-ignore-next-line */
-              require("@/components/notification-toggle").NotificationToggle()
-            }
+            {(auth.role === "student" || auth.role === "club_leader") && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  {/* @ts-ignore-next-line */}
+                  {require("@/components/notification-toggle").NotificationToggle()}
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <p>Chat Notification</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
             {/* @ts-ignore-next-line */}
             {require("@/components/theme-toggle").ThemeToggle()}
           </div>

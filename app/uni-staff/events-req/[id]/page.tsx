@@ -23,7 +23,7 @@ import {
   Filter,
   ChevronLeft,
   ChevronRight,
-  Trophy,
+  Ticket,
 } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
@@ -769,7 +769,7 @@ export default function EventRequestDetailPage({
                         Commit Point
                       </label>
                       <div className="flex items-center gap-2 mt-1">
-                        <Trophy className="h-4 w-4 text-emerald-500" />
+                        <Ticket className="h-4 w-4 text-emerald-500" />
                         <span className="font-semibold text-emerald-600">
                           {request.commitPointCost} points
                         </span>

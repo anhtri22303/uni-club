@@ -11,12 +11,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CalendarModal } from "@/components/calendar-modal"
 import { usePagination } from "@/hooks/use-pagination"
 import { useState } from "react"
-import { Calendar, Users, Trophy, Layers, History } from "lucide-react"
+import { Calendar, Users, Ticket, Layers, History, X } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import { safeSessionStorage } from "@/lib/browser-utils"
 import { useClubEvents, useClubs, useMyEventRegistrations, useEventsByClubId } from "@/hooks/use-query-hooks"
-import { timeObjectToString, registerForEvent } from "@/service/eventApi"
+import { timeObjectToString, registerForEvent, cancelEventRegistration } from "@/service/eventApi"
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useQueryClient } from "@tanstack/react-query"
@@ -38,6 +38,9 @@ export default function MemberEventsPage() {
   const [showRegisteredOnly, setShowRegisteredOnly] = useState(false)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
   const [selectedEventForRegistration, setSelectedEventForRegistration] = useState<any>(null)
+  const [showCancelModal, setShowCancelModal] = useState(false)
+  const [selectedEventForCancellation, setSelectedEventForCancellation] = useState<any>(null)
+  const [cancellingEventId, setCancellingEventId] = useState<number | null>(null)
   const { toast } = useToast()
   const queryClient = useQueryClient()
 
@@ -269,6 +272,40 @@ export default function MemberEventsPage() {
     }
   }
 
+  const handleCancelClick = (event: any) => {
+    console.log("Selected event for cancellation:", event)
+    setSelectedEventForCancellation(event)
+    setShowCancelModal(true)
+  }
+
+  const handleConfirmCancel = async () => {
+    if (!selectedEventForCancellation) return
+    
+    const eventId = selectedEventForCancellation.id
+    setCancellingEventId(eventId)
+    setShowCancelModal(false)
+    
+    try {
+      const result = await cancelEventRegistration(eventId)
+      toast({
+        title: "Success",
+        description: result.message || "Successfully cancelled event registration!",
+      })
+      // Refetch registrations after successful cancellation
+      queryClient.invalidateQueries({ queryKey: ["events", "my-registrations"] })
+    } catch (error: any) {
+      console.error("Error cancelling registration:", error)
+      toast({
+        title: "Error",
+        description: error?.response?.data?.error || error?.response?.data?.message || "Failed to cancel registration",
+        variant: "destructive"
+      })
+    } finally {
+      setCancellingEventId(null)
+      setSelectedEventForCancellation(null)
+    }
+  }
+
   return (
     <ProtectedRoute allowedRoles={["student"]}>
       <AppShell>
@@ -368,7 +405,7 @@ export default function MemberEventsPage() {
               }}
               className="whitespace-nowrap"
             >
-              <Trophy className="h-4 w-4 mr-2" />
+              <Ticket className="h-4 w-4 mr-2" />
               {showRegisteredOnly ? "All Events" : "My Registrations"}
               {showRegisteredOnly && myRegistrations.length > 0 && (
                 <Badge variant="secondary" className="ml-2">
@@ -443,7 +480,7 @@ export default function MemberEventsPage() {
                             {event.type || "UNKNOWN"}
                           </Badge>
                           <Badge variant="secondary" className="flex items-center gap-1 shrink-0">
-                            <Trophy className="h-3 w-3" />
+                            <Ticket className="h-3 w-3" />
                             {(event.commitPointCost ?? 0)} pts
                           </Badge>
                           
@@ -503,7 +540,7 @@ export default function MemberEventsPage() {
 
                         {(event.startTime && event.endTime) && (
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Trophy className="h-4 w-4" />
+                            <Ticket className="h-4 w-4" />
                             {timeObjectToString(event.startTime)} - {timeObjectToString(event.endTime)}
                           </div>
                         )}
@@ -517,20 +554,34 @@ export default function MemberEventsPage() {
                             View Detail
                           </Button>
                           {event.type !== "PUBLIC" && (
-                            <Button
-                              className="flex-1 w-full text-xs sm:text-sm"
-                              variant="default"
-                              disabled={registeringEventId === event.id || event.status === "COMPLETED" || isExpired || isEventRegistered(event.id)}
-                              onClick={() => handleRegisterClick(event)}
-                            >
-                              {registeringEventId === event.id 
-                                ? "Registering..." 
-                                : isEventRegistered(event.id) 
-                                  ? "Registered" 
-                                  : event.status === "COMPLETED" || isExpired
-                                    ? "Ended" 
-                                    : "Register"}
-                            </Button>
+                            <div className="flex gap-2 flex-1">
+                              <Button
+                                className="flex-1 w-full text-xs sm:text-sm"
+                                variant="default"
+                                disabled={registeringEventId === event.id || event.status === "COMPLETED" || isExpired || isEventRegistered(event.id)}
+                                onClick={() => handleRegisterClick(event)}
+                              >
+                                {registeringEventId === event.id 
+                                  ? "Registering..." 
+                                  : isEventRegistered(event.id) 
+                                    ? "Registered" 
+                                    : event.status === "COMPLETED" || isExpired
+                                      ? "Ended" 
+                                      : "Register"}
+                              </Button>
+                              {isEventRegistered(event.id) && (
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  className="shrink-0"
+                                  disabled={cancellingEventId === event.id || event.status === "COMPLETED" || isExpired}
+                                  onClick={() => handleCancelClick(event)}
+                                  title="Cancel Registration"
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
                           )}
                         </div>
                       </div>
@@ -658,7 +709,7 @@ export default function MemberEventsPage() {
                               })}
                             </div>
                             <div className="flex items-center gap-2 text-muted-foreground">
-                              <Trophy className="h-4 w-4" />
+                              <Ticket className="h-4 w-4" />
                               {registration.committedPoints} points committed
                             </div>
                             {/* Extra note for key statuses */}
@@ -708,7 +759,7 @@ export default function MemberEventsPage() {
                     
                     <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 space-y-3">
                       <div className="flex items-start gap-3">
-                            <Trophy className="h-5 w-5 text-yellow-600 mt-0.5 shrink-0" />
+                            <Ticket className="h-5 w-5 text-yellow-600 mt-0.5 shrink-0" />
                         <div className="space-y-2 text-sm">
                           <p className="font-semibold text-yellow-900">
                             Point Cost: {selectedEventForRegistration.commitPointCost || 0} points
@@ -741,6 +792,58 @@ export default function MemberEventsPage() {
                     onClick={handleConfirmRegister}
                   >
                     Confirm Registration
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Cancellation Confirmation Modal */}
+          <Dialog open={showCancelModal} onOpenChange={setShowCancelModal}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Cancel Event Registration</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                {selectedEventForCancellation && (
+                  <>
+                    <div className="text-center">
+                      <h3 className="font-semibold text-lg mb-2">
+                        {selectedEventForCancellation.name}
+                      </h3>
+                      <div className="text-muted-foreground text-sm mb-4">
+                        {selectedEventForCancellation.hostClub?.name}
+                      </div>
+                    </div>
+                    
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4 space-y-2">
+                      <p className="text-sm text-red-800">
+                        Are you sure you want to cancel your registration for this event?
+                      </p>
+                      <p className="text-sm text-red-800 font-semibold">
+                        Your committed points will be refunded.
+                      </p>
+                    </div>
+                  </>
+                )}
+                
+                <div className="flex gap-3 pt-2">
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => {
+                      setShowCancelModal(false)
+                      setSelectedEventForCancellation(null)
+                    }}
+                  >
+                    Keep Registration
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    className="flex-1"
+                    onClick={handleConfirmCancel}
+                  >
+                    Cancel Registration
                   </Button>
                 </div>
               </div>

@@ -21,14 +21,7 @@ import {
   Scissors,
   Clipboard,
   Search,
-  RemoveFormatting,
-  Subscript,
-  Superscript,
-  Heading1,
-  Heading2,
-  Heading3,
-  Quote,
-  Code
+  RemoveFormatting
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -190,7 +183,12 @@ export function TextEditingTab({ onSync, compact = false, editorRef }: TextEditi
 
   const handleFind = () => {
     if (searchText) {
-      EditorUtils.findText(searchText)
+      const count = EditorUtils.findText(searchText)
+      if (count > 0) {
+        showNotification({ message: `Found ${count} match${count > 1 ? 'es' : ''}`, type: 'success' })
+      } else {
+        showNotification({ message: 'No matches found', type: 'error' })
+      }
     }
   }
 
@@ -263,7 +261,17 @@ export function TextEditingTab({ onSync, compact = false, editorRef }: TextEditi
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => handleAction(EditorUtils.copy)}
+                onClick={() => {
+                  const success = EditorUtils.copy()
+                  if (success) {
+                    showNotification({
+                      message: 'Content copied to clipboard',
+                      type: 'info',
+                      duration: 1500
+                    })
+                  }
+                  onSync?.()
+                }}
                 className="h-7 w-7 sm:h-8 sm:w-8 p-0"
               >
                 <Copy className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -278,7 +286,17 @@ export function TextEditingTab({ onSync, compact = false, editorRef }: TextEditi
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => handleAction(EditorUtils.cut)}
+                onClick={() => {
+                  const success = EditorUtils.cut()
+                  if (success) {
+                    showNotification({
+                      message: 'Content cut to clipboard',
+                      type: 'info',
+                      duration: 1500
+                    })
+                  }
+                  onSync?.()
+                }}
                 className="h-7 w-7 sm:h-8 sm:w-8 p-0"
               >
                 <Scissors className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -293,7 +311,17 @@ export function TextEditingTab({ onSync, compact = false, editorRef }: TextEditi
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => handleAction(EditorUtils.paste)}
+                onClick={() => {
+                  const success = EditorUtils.paste()
+                  if (success) {
+                    showNotification({
+                      message: 'Content pasted',
+                      type: 'info',
+                      duration: 1500
+                    })
+                  }
+                  onSync?.()
+                }}
                 className="h-7 w-7 sm:h-8 sm:w-8 p-0"
               >
                 <Clipboard className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -392,36 +420,6 @@ export function TextEditingTab({ onSync, compact = false, editorRef }: TextEditi
               </Button>
             </TooltipTrigger>
             <TooltipContent>Strikethrough</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => handleAction(EditorUtils.formatSubscript)}
-                className="h-7 w-7 sm:h-8 sm:w-8 p-0"
-              >
-                <Subscript className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Subscript</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => handleAction(EditorUtils.formatSuperscript)}
-                className="h-7 w-7 sm:h-8 sm:w-8 p-0"
-              >
-                <Superscript className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Superscript</TooltipContent>
           </Tooltip>
         </div>
 
@@ -638,84 +636,6 @@ export function TextEditingTab({ onSync, compact = false, editorRef }: TextEditi
           </Tooltip>
         </div>
 
-        {/* Styles */}
-        <div className="flex items-center gap-0.5 pr-1.5 sm:pr-2 border-r">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => handleAction(() => EditorUtils.applyStyle('heading1'))}
-                className="h-7 w-7 sm:h-8 sm:w-8 p-0"
-              >
-                <Heading1 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Heading 1</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => handleAction(() => EditorUtils.applyStyle('heading2'))}
-                className="h-7 w-7 sm:h-8 sm:w-8 p-0"
-              >
-                <Heading2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Heading 2</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => handleAction(() => EditorUtils.applyStyle('heading3'))}
-                className="h-7 w-7 sm:h-8 sm:w-8 p-0"
-              >
-                <Heading3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Heading 3</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => handleAction(() => EditorUtils.applyStyle('quote'))}
-                className="h-7 w-7 sm:h-8 sm:w-8 p-0"
-              >
-                <Quote className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Quote</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => handleAction(() => EditorUtils.applyStyle('code'))}
-                className="h-7 w-7 sm:h-8 sm:w-8 p-0"
-              >
-                <Code className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Code</TooltipContent>
-          </Tooltip>
-        </div>
-
         {/* Find & Replace */}
         <div className="flex items-center gap-0.5 pr-1.5 sm:pr-2 border-r">
           <Popover open={showFindReplacePopover} onOpenChange={setShowFindReplacePopover}>
@@ -732,11 +652,38 @@ export function TextEditingTab({ onSync, compact = false, editorRef }: TextEditi
                     <Input
                       placeholder="Search text..."
                       value={searchText}
-                      onChange={(e) => setSearchText(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value
+                        setSearchText(value)
+                        // Auto-search as user types
+                        if (value.trim()) {
+                          setTimeout(() => {
+                            const count = EditorUtils.findText(value)
+                            if (count > 0) {
+                              showNotification({ message: `Found ${count} match${count > 1 ? 'es' : ''}`, type: 'success' })
+                            } else {
+                              showNotification({ message: 'No matches found', type: 'info' })
+                            }
+                          }, 100)
+                        } else {
+                          // Clear highlights when search text is empty
+                          EditorUtils.clearSearchHighlights()
+                        }
+                      }}
                       className="h-8 text-xs"
                     />
-                    <Button type="button" size="sm" onClick={handleFind} className="h-8">
-                      Find
+                    <Button 
+                      type="button" 
+                      size="sm" 
+                      onClick={() => {
+                        setSearchText('')
+                        EditorUtils.clearSearchHighlights()
+                        showNotification({ message: 'Search cleared', type: 'info' })
+                      }} 
+                      className="h-8"
+                      disabled={!searchText}
+                    >
+                      Clear
                     </Button>
                   </div>
                 </div>
