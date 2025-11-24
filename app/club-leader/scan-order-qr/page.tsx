@@ -20,6 +20,7 @@ export default function ScanOrderQRPage() {
   const [loading, setLoading] = useState(false)
   const [orderData, setOrderData] = useState<RedeemOrder | null>(null)
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null)
+  const isProcessingRef = useRef(false) // Prevent multiple scans
   const router = useRouter()
   const { toast } = useToast()
 
@@ -28,6 +29,8 @@ export default function ScanOrderQRPage() {
       setError(null)
       setScannedCode(null)
       setIsValidOrder(null)
+      setOrderData(null)
+      isProcessingRef.current = false // Reset processing flag when starting new scan
       
       // Khởi tạo Html5Qrcode
       const html5QrCode = new Html5Qrcode("qr-reader")
@@ -70,6 +73,12 @@ export default function ScanOrderQRPage() {
   }
 
   const handleQRCodeScanned = async (decodedText: string) => {
+    // Prevent multiple scans
+    if (isProcessingRef.current) {
+      console.log("⏸️ Already processing, skipping scan")
+      return
+    }
+    
     console.log("🔍 Scanned QR data:", decodedText)
     
     // Loại bỏ khoảng trắng và chuyển về uppercase để check
@@ -88,10 +97,13 @@ export default function ScanOrderQRPage() {
         const orderId = orderCode.split("-")[1] // Lấy số "5"
         console.log("📦 Order ID extracted:", orderId)
         
+        // Set processing flag immediately
+        isProcessingRef.current = true
+        
         setScannedCode(orderCode)
         setIsValidOrder(true)
         
-        // Dừng quét
+        // Dừng quét ngay lập tức
         await stopScanning()
         
         // Gọi API để lấy thông tin đơn hàng
@@ -119,6 +131,8 @@ export default function ScanOrderQRPage() {
             description: err.response?.data?.message || "Cannot find order",
             variant: "destructive",
           })
+          // Reset processing flag on error to allow retry
+          isProcessingRef.current = false
         } finally {
           setLoading(false)
         }
