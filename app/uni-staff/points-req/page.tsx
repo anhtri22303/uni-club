@@ -72,7 +72,7 @@ export default function UniStaffPointRequestsPage() {
             toast({
                 title: "Error",
                 description:
-                    err?.response?.data?.message || "Failed to review request.",
+                    err?.response?.data?.error || err?.response?.data?.message || "Failed to review request.",
                 variant: "destructive",
             })
         },

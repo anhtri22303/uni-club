@@ -384,7 +384,7 @@ export default function UniStaffEventRequestsPage() {
 		} catch (err: any) {
 			toast({
 				title: "Error",
-				description: err?.response?.data?.message || "Failed to load event transaction history",
+				description: err?.response?.data?.error || err?.response?.data?.message || "Failed to load event transaction history",
 				variant: "destructive"
 			})
 		} finally {
@@ -399,12 +399,12 @@ export default function UniStaffEventRequestsPage() {
 
 	// Compute counts by status (prefer `status` field). Fallback to type-based heuristics when missing
 	const totalCount = events.length
-	const waitingUniStaffCount = events.filter((e) => (e.status ?? "").toUpperCase() === "PENDING_UNISTAFF").length
-	const approvedCount = events.filter((e) => (e.status ?? "").toUpperCase() === "APPROVED").length
-	const ongoingCount = events.filter((e) => (e.status ?? "").toUpperCase() === "ONGOING").length
+	const waitingUniStaffCount = events.filter((e) => (e.status ?? "").toUpperCase() === "PENDING_UNISTAFF" && !isEventExpired(e)).length
+	const approvedCount = events.filter((e) => (e.status ?? "").toUpperCase() === "APPROVED" && !isEventExpired(e)).length
+	const ongoingCount = events.filter((e) => (e.status ?? "").toUpperCase() === "ONGOING" && !isEventExpired(e)).length
 	const rejectedCount = events.filter((e) => (e.status ?? "").toUpperCase() === "REJECTED").length
 	const completedCount = events.filter((e) => (e.status ?? "").toUpperCase() === "COMPLETED").length
-	const waitingCoClubCount = events.filter((e) => (e.status ?? "").toUpperCase() === "PENDING_COCLUB").length
+	const waitingCoClubCount = events.filter((e) => (e.status ?? "").toUpperCase() === "PENDING_COCLUB" && !isEventExpired(e)).length
 
 	return (
 		<ProtectedRoute allowedRoles={["uni_staff"]}>
@@ -416,10 +416,18 @@ export default function UniStaffEventRequestsPage() {
 							<p className="text-muted-foreground">Review and manage event organization requests</p>
 						</div>
 						<div className="flex gap-2">
-							<Button variant="outline" onClick={handleOpenEventPointsModal}>
+							<Button
+								variant="outline"
+								onClick={handleOpenEventPointsModal}
+								className="bg-blue-50 border-blue-400 text-blue-700 hover:bg-blue-100 hover:border-blue-600 font-semibold shadow-sm dark:bg-blue-900/30 dark:border-blue-300 dark:text-blue-200 dark:hover:bg-blue-800/60 dark:hover:border-blue-100"
+							>
 								<History className="h-4 w-4 mr-2" /> Event Points
 							</Button>
-							<Button variant="outline" onClick={() => setShowCalendarModal(true)}>
+							<Button
+								variant="outline"
+								onClick={() => setShowCalendarModal(true)}
+								className="bg-purple-50 border-purple-400 text-purple-700 hover:bg-purple-100 hover:border-purple-600 font-semibold shadow-sm dark:bg-purple-900/30 dark:border-purple-300 dark:text-purple-200 dark:hover:bg-purple-800/60 dark:hover:border-purple-100"
+							>
 								<Calendar className="h-4 w-4 mr-2" /> Calendar View
 							</Button>
 						</div>

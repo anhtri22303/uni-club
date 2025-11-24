@@ -123,7 +123,7 @@ export const getWallet = async (): Promise<ApiResponse<ApiWallet>> => {
   }
 }
 
-export type ApiWalletTransaction = {
+export interface ApiWalletTransaction {
   id: number;
   type: string;
   amount: number;
@@ -134,22 +134,15 @@ export type ApiWalletTransaction = {
   receiverName: string;
 }
 
-export type ApiWalletTransactionsResponse = {
-  success: boolean;
-  message: string;
-  data: ApiWalletTransaction[];
-}
-
-export const getWalletTransactions = async (): Promise<ApiWalletTransactionsResponse> => {
+export const getWalletTransactions = async (walletId: number): Promise<ApiWalletTransaction[]> => {
   try {
-    const res = await axiosInstance.get<ApiWalletTransactionsResponse>("/api/wallets/me/transactions")
-    console.log("getWalletTransactions:", res.data)
-    return res.data
-  } catch (err) {
-    console.error("walletApi.getWalletTransactions failed", err)
-    throw err
+    const response = await axiosInstance.get<ApiResponse<ApiWalletTransaction[]>>(`/api/wallets/${walletId}/transactions`);
+    return response.data.data;
+  } catch (error) {
+    console.error("Error fetching wallet transactions:", error);
+    throw error;
   }
-}
+};
 
 export type ApiRewardResponse = {
   walletId: number;

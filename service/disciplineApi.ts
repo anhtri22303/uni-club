@@ -73,7 +73,6 @@ export type StaffPerformanceLevel = "POOR" | "AVERAGE" | "GOOD" | "EXCELLENT";
  */
 export interface CreatePenaltyBody {
   membershipId: number;
-  eventId: number;
   ruleId: number;
   reason: string;
 }

@@ -1,27 +1,47 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { X, Loader2, Star } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
-import { evaluateEventStaff, EventStaff } from "@/service/eventStaffApi"
-import { useToast } from "@/hooks/use-toast"
+import { useState } from "react";
+import { X, Loader2, Star } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { evaluateEventStaff, EventStaff } from "@/service/eventStaffApi";
+import { useToast } from "@/hooks/use-toast";
 
 interface EvaluateStaffModalProps {
-  isOpen: boolean
-  onClose: () => void
-  staff: EventStaff
-  onSuccess: () => void
+  isOpen: boolean;
+  onClose: () => void;
+  staff: EventStaff;
+  onSuccess: () => void;
 }
 
-type Performance = "POOR" | "AVERAGE" | "GOOD" | "EXCELLENT"
+type Performance = "POOR" | "AVERAGE" | "GOOD" | "EXCELLENT";
 
-const performanceOptions: { value: Performance; label: string; color: string }[] = [
-  { value: "POOR", label: "Poor", color: "bg-red-100 text-red-700 border-red-500" },
-  { value: "AVERAGE", label: "Average", color: "bg-yellow-100 text-yellow-700 border-yellow-500" },
-  { value: "GOOD", label: "Good", color: "bg-blue-100 text-blue-700 border-blue-500" },
-  { value: "EXCELLENT", label: "Excellent", color: "bg-green-100 text-green-700 border-green-500" },
-]
+const performanceOptions: {
+  value: Performance;
+  label: string;
+  color: string;
+}[] = [
+  {
+    value: "POOR",
+    label: "Poor",
+    color: "bg-red-100 text-red-700 border-red-500",
+  },
+  {
+    value: "AVERAGE",
+    label: "Average",
+    color: "bg-yellow-100 text-yellow-700 border-yellow-500",
+  },
+  {
+    value: "GOOD",
+    label: "Good",
+    color: "bg-blue-100 text-blue-700 border-blue-500",
+  },
+  {
+    value: "EXCELLENT",
+    label: "Excellent",
+    color: "bg-green-100 text-green-700 border-green-500",
+  },
+];
 
 export default function EvaluateStaffModal({
   isOpen,
@@ -29,10 +49,11 @@ export default function EvaluateStaffModal({
   staff,
   onSuccess,
 }: EvaluateStaffModalProps) {
-  const { toast } = useToast()
-  const [selectedPerformance, setSelectedPerformance] = useState<Performance | null>(null)
-  const [note, setNote] = useState("")
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const { toast } = useToast();
+  const [selectedPerformance, setSelectedPerformance] =
+    useState<Performance | null>(null);
+  const [note, setNote] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async () => {
     if (!selectedPerformance) {
@@ -40,8 +61,8 @@ export default function EvaluateStaffModal({
         title: "Error",
         description: "Please select a performance rating",
         variant: "destructive",
-      })
-      return
+      });
+      return;
     }
 
     if (!note.trim()) {
@@ -49,43 +70,46 @@ export default function EvaluateStaffModal({
         title: "Error",
         description: "Please enter a note",
         variant: "destructive",
-      })
-      return
+      });
+      return;
     }
 
-    setIsSubmitting(true)
+    setIsSubmitting(true);
     try {
       await evaluateEventStaff(staff.eventId, {
         membershipId: staff.membershipId,
         eventId: staff.eventId,
         performance: selectedPerformance,
         note: note.trim(),
-      })
-      
+      });
+
       toast({
         title: "Success",
         description: "Staff evaluation saved successfully",
-      })
-      
-      onSuccess()
-      onClose()
-      
+      });
+
+      onSuccess();
+      onClose();
+
       // Reset form
-      setSelectedPerformance(null)
-      setNote("")
+      setSelectedPerformance(null);
+      setNote("");
     } catch (error: any) {
-      console.error("Failed to evaluate staff:", error)
+      console.error("Failed to evaluate staff:", error);
       toast({
         title: "Error",
-        description: error?.response?.data?.message || "Failed to save evaluation",
+        description:
+          error?.response?.data?.error ||
+          error?.response?.data?.message ||
+          "Failed to save evaluation",
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
-  if (!isOpen) return null
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/50">
@@ -161,7 +185,7 @@ export default function EvaluateStaffModal({
               value={note}
               onChange={(e) => {
                 if (e.target.value.length <= 150) {
-                  setNote(e.target.value)
+                  setNote(e.target.value);
                 }
               }}
               disabled={isSubmitting}
@@ -176,11 +200,7 @@ export default function EvaluateStaffModal({
 
         {/* Footer */}
         <div className="flex justify-end gap-3 p-6 border-t dark:border-gray-700">
-          <Button
-            variant="outline"
-            onClick={onClose}
-            disabled={isSubmitting}
-          >
+          <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
             Cancel
           </Button>
           <Button
@@ -203,5 +223,5 @@ export default function EvaluateStaffModal({
         </div>
       </div>
     </div>
-  )
+  );
 }

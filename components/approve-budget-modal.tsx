@@ -1,95 +1,172 @@
-"use client"
+"use client";
 
-import React, { useEffect, useMemo, useState } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Info, Users, MapPin, Calendar, Award } from "lucide-react"
-import { putEventStatus } from "@/service/eventApi"
-import { useToast } from "@/hooks/use-toast"
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Info, Users, MapPin, Calendar, Award } from "lucide-react";
+import { putEventStatus } from "@/service/eventApi";
+import { useToast } from "@/hooks/use-toast";
 
-// Chính sách cho điểm cứng
-const POINT_POLICIES = [
+// Công thức tính điểm ngân sách
+const getBudgetCalculationPolicies = (
+  commitPointCost: number,
+  maxCheckInCount: number,
+  minBudget: number,
+  maxBudget: number,
+  isPublicOrDefault: boolean
+) => [
   {
-    icon: Users,
-    title: "Event Scale",
+    icon: Info,
+    title: "Budget Calculation Formula",
     items: [
-      { label: "Small (< 50 attendees)", points: "500 - 1,000 pts" },
-      { label: "Medium (50-150 attendees)", points: "1,000 - 3,000 pts" },
-      { label: "Large (> 150 attendees)", points: "3,000 - 5,000 pts" },
-    ]
+      {
+        label: "Commit Point Cost",
+        points: isPublicOrDefault
+          ? `${commitPointCost} pts (default for PUBLIC events)`
+          : `${commitPointCost} pts`,
+      },
+      {
+        label: "Max Check-in Count",
+        points: `${maxCheckInCount} attendees`,
+      },
+      {
+        label: "Min Budget Formula",
+        points: "Commit Point Cost × Max Check-in Count × 2",
+      },
+      {
+        label: "Max Budget Formula",
+        points: "Commit Point Cost × Max Check-in Count × 5",
+      },
+    ],
   },
-  {
-    icon: MapPin,
-    title: "Venue Type",
-    items: [
-      { label: "Campus Indoor", points: "+0 pts" },
-      { label: "Campus Outdoor", points: "+200 pts" },
-      { label: "Off-campus Venue", points: "+500 - 1,000 pts" },
-    ]
-  },
-  {
-    icon: Award,
-    title: "Event Type",
-    items: [
-      { label: "Workshop/Seminar", points: "Standard rate" },
-      { label: "Competition/Contest", points: "+500 pts" },
-      { label: "Festival/Fair", points: "+1,000 pts" },
-    ]
-  }
-]
+];
 
 type ApproveBudgetModalProps = {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  eventId: number
-  hostClubId: number
-  hostClubName?: string
-  defaultRequestPoints?: number
-  onApproved?: (approvedBudgetPoints: number) => void
-}
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  eventId: number;
+  hostClubId: number;
+  hostClubName?: string;
+  defaultRequestPoints?: number;
+  commitPointCost?: number;
+  maxCheckInCount?: number;
+  eventType?: string; // Thêm eventType để kiểm tra PUBLIC
+  onApproved?: (approvedBudgetPoints: number) => void;
+};
 
 export function ApproveBudgetModal(props: ApproveBudgetModalProps) {
-  const { open, onOpenChange, eventId, hostClubId, hostClubName, defaultRequestPoints = 0, onApproved } = props
-  const { toast } = useToast()
+  const {
+    open,
+    onOpenChange,
+    eventId,
+    hostClubId,
+    hostClubName,
+    defaultRequestPoints = 0,
+    commitPointCost = 0,
+    maxCheckInCount = 0,
+    eventType,
+    onApproved,
+  } = props;
+  const { toast } = useToast();
 
-  const [submitting, setSubmitting] = useState(false)
-  const [approvedPointsInput, setApprovedPointsInput] = useState<string>(() => String(defaultRequestPoints || 0))
-  const [policyChecked, setPolicyChecked] = useState(false)
+  const [submitting, setSubmitting] = useState(false);
+  const [approvedPointsInput, setApprovedPointsInput] = useState<string>(() =>
+    String(defaultRequestPoints || 0)
+  );
+  const [policyChecked, setPolicyChecked] = useState(false);
+
+  // Logic: Nếu event là PUBLIC hoặc commitPointCost = 0 thì mặc định = 100
+  const effectiveCommitPointCost = useMemo(() => {
+    if (eventType?.toUpperCase() === "PUBLIC" || commitPointCost === 0) {
+      return 50;
+    }
+    return commitPointCost;
+  }, [eventType, commitPointCost]);
+
+  // Tính min và max budget với effectiveCommitPointCost
+  const minBudget = useMemo(
+    () => effectiveCommitPointCost * maxCheckInCount * 2,
+    [effectiveCommitPointCost, maxCheckInCount]
+  );
+  const maxBudget = useMemo(
+    () => effectiveCommitPointCost * maxCheckInCount * 5,
+    [effectiveCommitPointCost, maxCheckInCount]
+  );
+
+  // Tạo policies động dựa trên dữ liệu thực tế
+  const budgetPolicies = useMemo(
+    () =>
+      getBudgetCalculationPolicies(
+        effectiveCommitPointCost,
+        maxCheckInCount,
+        minBudget,
+        maxBudget,
+        eventType?.toUpperCase() === "PUBLIC" || commitPointCost === 0
+      ),
+    [effectiveCommitPointCost, maxCheckInCount, minBudget, maxBudget, eventType, commitPointCost]
+  );
 
   useEffect(() => {
-    if (!open) return
-    setApprovedPointsInput(String(defaultRequestPoints || 0))
-  }, [open, defaultRequestPoints])
+    if (!open) return;
+    setApprovedPointsInput(defaultRequestPoints ? String(defaultRequestPoints) : "");
+    // Debug: Kiểm tra dữ liệu nhận được
+    console.log("🔍 Modal Debug:", {
+      eventType,
+      originalCommitPointCost: commitPointCost,
+      effectiveCommitPointCost: eventType?.toUpperCase() === "PUBLIC" || commitPointCost === 0 ? 100 : commitPointCost,
+      maxCheckInCount,
+      minBudget: (eventType?.toUpperCase() === "PUBLIC" || commitPointCost === 0 ? 100 : commitPointCost) * maxCheckInCount * 2,
+      maxBudget: (eventType?.toUpperCase() === "PUBLIC" || commitPointCost === 0 ? 100 : commitPointCost) * maxCheckInCount * 5,
+    });
+  }, [open, defaultRequestPoints, commitPointCost, maxCheckInCount, eventType]);
 
   const approvedPoints = useMemo(() => {
-    const n = Number(approvedPointsInput)
-    return Number.isFinite(n) && n >= 0 ? n : 0
-  }, [approvedPointsInput])
+    const n = Number(approvedPointsInput);
+    return Number.isFinite(n) && n >= 0 ? n : 0;
+  }, [approvedPointsInput]);
+
+  // Kiểm tra validation
+  const isValidBudget = useMemo(() => {
+    if (approvedPointsInput === "") return false; // Không được để trống
+    if (minBudget === 0 || maxBudget === 0) return true; // Không validate nếu không có dữ liệu
+    return approvedPoints >= minBudget && approvedPoints <= maxBudget;
+  }, [approvedPoints, approvedPointsInput, minBudget, maxBudget]);
 
   const handleApprove = async () => {
-    setSubmitting(true)
+    setSubmitting(true);
     try {
-      await putEventStatus(eventId, approvedPoints)
+      await putEventStatus(eventId, approvedPoints);
       toast({
         title: "Approved",
-        description: `Approved ${approvedPoints.toLocaleString()} pts for ${hostClubName || "club"}`
-      })
-      onApproved?.(approvedPoints)
-      onOpenChange(false)
+        description: `Approved ${approvedPoints.toLocaleString()} pts for ${
+          hostClubName || "club"
+        }`,
+      });
+      onApproved?.(approvedPoints);
+      onOpenChange(false);
     } catch (err: any) {
       toast({
         title: "Approval failed",
-        description: err?.response?.data?.message || err?.message || "Could not approve budget",
-        variant: "destructive"
-      })
+        description:
+          err?.response?.data?.message ||
+          err?.message ||
+          "Could not approve budget",
+        variant: "destructive",
+      });
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -97,40 +174,97 @@ export function ApproveBudgetModal(props: ApproveBudgetModalProps) {
         <DialogHeader>
           <DialogTitle>Approve Event Budget</DialogTitle>
           <DialogDescription>
-            Set approved points for the event. Club: {hostClubName || `#${hostClubId}`}
+            Set approved points for the event. Club:{" "}
+            {hostClubName || `#${hostClubId}`}
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left side: Approval form */}
-          <div className="space-y-4">
+          <div className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="approvedPoints" className="text-base font-semibold">
+              <Label
+                htmlFor="approvedPoints"
+                className="text-base font-semibold"
+              >
                 Approved Budget Points
               </Label>
+              {/* Hiển thị Min và Max */}
+              <div className="flex gap-4 mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-muted-foreground">
+                    Min:
+                  </span>
+                  <span className="text-sm font-semibold text-blue-600">
+                    {minBudget > 0 ? `${minBudget.toLocaleString()} pts` : "N/A"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-muted-foreground">
+                    Max:
+                  </span>
+                  <span className="text-sm font-semibold text-blue-600">
+                    {maxBudget > 0 ? `${maxBudget.toLocaleString()} pts` : "N/A"}
+                  </span>
+                </div>
+              </div>
               <Input
                 id="approvedPoints"
                 value={approvedPointsInput}
                 onChange={(e) => {
-                  const v = e.target.value
+                  let v = e.target.value;
+                  // Xóa số 0 đầu nếu có
+                  if (/^0+\d+/.test(v)) {
+                    v = v.replace(/^0+/, "");
+                  }
                   if (v === "" || /^\d+$/.test(v)) {
-                    setApprovedPointsInput(v)
+                    setApprovedPointsInput(v);
                   }
                 }}
                 inputMode="numeric"
-                placeholder="0"
-                className="text-lg h-12"
+                placeholder={
+                  minBudget > 0 && maxBudget > 0
+                    ? `${minBudget} - ${maxBudget}`
+                    : "0"
+                }
+                className={`text-lg h-12 ${
+                  !isValidBudget && approvedPointsInput
+                    ? "border-red-500 focus-visible:ring-red-500"
+                    : ""
+                }`}
+                style={{
+                  color: approvedPointsInput ? undefined : "#cbd5e1",
+                }}
               />
+              {!isValidBudget && approvedPointsInput && (
+                <p className="text-sm text-red-600">
+                  {minBudget === 0 || maxBudget === 0
+                    ? "Please check event data (commitPointCost and maxCheckInCount are required)"
+                    : `Budget must be between ${minBudget.toLocaleString()} and ${maxBudget.toLocaleString()} points`}
+                </p>
+              )}
               <p className="text-sm text-muted-foreground">
                 Enter the approved budget points for this event
               </p>
             </div>
 
             <div className="flex justify-end gap-2 pt-4">
-              <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
+              <Button
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={submitting}
+              >
                 Cancel
               </Button>
-              <Button onClick={handleApprove} disabled={submitting || approvedPointsInput === "" || !policyChecked}>
+              <Button
+                onClick={handleApprove}
+                disabled={
+                  submitting ||
+                  approvedPointsInput === "" ||
+                  !policyChecked ||
+                  !isValidBudget
+                }
+              >
                 {submitting ? "Approving..." : "Approve Budget"}
               </Button>
             </div>
@@ -140,11 +274,13 @@ export function ApproveBudgetModal(props: ApproveBudgetModalProps) {
           <div className="space-y-4">
             <div className="flex items-center gap-2 mb-2">
               <Info className="h-5 w-5 text-blue-600" />
-              <h3 className="font-semibold text-base">Point Allocation Guidelines</h3>
+              <h3 className="font-semibold text-base">
+                Point Allocation Guidelines
+              </h3>
             </div>
             <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
-              {POINT_POLICIES.map((policy, idx) => {
-                const IconComponent = policy.icon
+              {budgetPolicies.map((policy, idx) => {
+                const IconComponent = policy.icon;
                 return (
                   <Card key={idx} className="shadow-sm">
                     <CardHeader className="pb-2 pt-3 px-4">
@@ -156,25 +292,36 @@ export function ApproveBudgetModal(props: ApproveBudgetModalProps) {
                     <CardContent className="px-4 pb-3">
                       <ul className="space-y-1.5">
                         {policy.items.map((item, itemIdx) => (
-                          <li key={itemIdx} className="text-xs flex justify-between items-center">
-                            <span className="text-muted-foreground">{item.label}</span>
-                            <span className="font-semibold text-primary">{item.points}</span>
+                          <li
+                            key={itemIdx}
+                            className="text-xs flex justify-between items-center"
+                          >
+                            <span className="text-muted-foreground">
+                              {item.label}
+                            </span>
+                            <span className="font-semibold text-primary">
+                              {item.points}
+                            </span>
                           </li>
                         ))}
                       </ul>
                     </CardContent>
                   </Card>
-                )
+                );
               })}
               {/* Checkbox xác nhận đã đọc */}
               <div className="flex items-center gap-2 mt-4 p-2 border rounded bg-muted">
                 <Checkbox
                   id="policyChecked"
                   checked={policyChecked}
-                  onCheckedChange={val => setPolicyChecked(val === true)}
+                  onCheckedChange={(val) => setPolicyChecked(val === true)}
                 />
-                <label htmlFor="policyChecked" className="text-xs select-none cursor-pointer">
-                  I confirm that I have read and understood the entire scoring policy above.
+                <label
+                  htmlFor="policyChecked"
+                  className="text-xs select-none cursor-pointer"
+                >
+                  I confirm that I have read and understood the entire scoring
+                  policy above.
                 </label>
               </div>
             </div>
@@ -182,7 +329,5 @@ export function ApproveBudgetModal(props: ApproveBudgetModalProps) {
         </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
-
-

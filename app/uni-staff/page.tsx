@@ -247,7 +247,7 @@ export default function UniStaffReportsPage() {
                 onClick={() => router.push('/uni-staff/reports')}
               >
                 <Download className="h-4 w-4" />
-                <span className="hidden xs:inline">Export Report</span>
+                <span className="hidden xs:inline">To Report Page</span>
                 <span className="xs:hidden">Export</span>
               </Button>
             </div>

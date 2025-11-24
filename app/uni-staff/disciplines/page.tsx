@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 // Cập nhật imports từ disciplineApi.ts
 import { PenaltyRule, deletePenaltyRule, updatePenaltyRule, createPenaltyRule, PenaltyLevel } from "@/service/disciplineApi"
 // Import custom hook cho Penalty Rules
-import { usePenaltyRules } from "@/hooks/use-query-hooks" 
+import { usePenaltyRules } from "@/hooks/use-query-hooks"
 import { useMemo, useState } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
@@ -28,17 +28,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from "
 
 
 // Mapping màu sắc cho Penalty Level
-const LevelColorMap: Record<PenaltyLevel | string, "default" | "secondary" | "destructive" | "outline"> = {
-  "MINOR": "secondary",
-  "MEDIUM": "default",
-  "MAJOR": "destructive",
-  "CRITICAL": "destructive",
+const LevelColorMap: Record<PenaltyLevel | string, "default" | "secondary" | "destructive" | "outline" | "minor" | "normal" | "major" | "severe" | ""> = {
+  "MINOR": "minor",
+  "NORMAL": "normal",
+  "MAJOR": "major",
+  "SEVERE": "severe",
 }
 
 export default function UniStaffDisciplinePage() {
   const [query, setQuery] = useState("")
   // Thay thế Policy bằng PenaltyRule
-  const [selected, setSelected] = useState<PenaltyRule | null>(null) 
+  const [selected, setSelected] = useState<PenaltyRule | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const { toast } = useToast()
   const router = useRouter()
@@ -101,7 +101,21 @@ export default function UniStaffDisciplinePage() {
   }
 
   const handleSave = async () => {
-    if (!selected) return
+    if (!selected) return;
+    if (!editName.trim()) {
+      toast({ title: 'Validation Error', description: 'Rule Name cannot be empty.', variant: 'destructive' });
+      return;
+    }
+    if (!editLevel.trim()) {
+      toast({ title: 'Validation Error', description: 'Violation Level cannot be empty.', variant: 'destructive' });
+      return;
+    }
+    // Chấp nhận 0 nhưng không chấp nhận giá trị null/undefined hoặc số âm
+    if (editPenaltyPoints === null || editPenaltyPoints < 0) {
+      toast({ title: 'Validation Error', description: 'Penalty Points must be a non-negative number.', variant: 'destructive' });
+      return;
+    }
+
     setSaving(true)
     try {
       const payload = {
@@ -110,23 +124,23 @@ export default function UniStaffDisciplinePage() {
         level: editLevel,
         penaltyPoints: editPenaltyPoints,
       }
-      
+
       await updatePenaltyRule(selected.id, payload)
 
       toast({ title: "Update successful", description: `Rule updated: ${editName}` })
 
       // refresh list with React Query
       await reloadRules()
-      
+
       // Tìm và cập nhật lại selected object để modal phản ánh giá trị mới
       const updatedRule = rules.find(r => r.id === selected.id)
       if (updatedRule) {
-         setSelected({...updatedRule, ...payload})
+        setSelected({ ...updatedRule, ...payload })
       } else {
-         // Nếu không tìm thấy, đóng dialog để người dùng thấy list đã reload
-         setDialogOpen(false)
+        // Nếu không tìm thấy, đóng dialog để người dùng thấy list đã reload
+        setDialogOpen(false)
       }
-      
+
     } catch (err) {
       console.error('Update penalty rule failed:', err)
       toast({ title: 'Error', description: 'Error updating penalty rule.', variant: 'destructive' })
@@ -136,6 +150,20 @@ export default function UniStaffDisciplinePage() {
   }
 
   const handleCreate = async () => {
+    if (!createName.trim()) {
+      toast({ title: 'Validation Error', description: 'Rule Name cannot be empty.', variant: 'destructive' });
+      return;
+    }
+    if (!createLevel.trim()) {
+      toast({ title: 'Validation Error', description: 'Violation Level cannot be empty.', variant: 'destructive' });
+      return;
+    }
+    // Chấp nhận 0 nhưng không chấp nhận giá trị null/undefined hoặc số âm
+    if (createPenaltyPoints === null || createPenaltyPoints < 0) {
+      toast({ title: 'Validation Error', description: 'Penalty Points must be a non-negative number.', variant: 'destructive' });
+      return;
+    }
+
     setCreating(true)
     try {
       const payload = {
@@ -144,25 +172,25 @@ export default function UniStaffDisciplinePage() {
         level: createLevel,
         penaltyPoints: createPenaltyPoints,
       }
-      
+
       console.log("Data to be sent:", payload)
-      
+
       await createPenaltyRule(payload)
 
       toast({ title: "Create success", description: `Rule created: ${createName}` })
       setCreateOpen(false)
-      
+
       // reset fields
       setCreateName("")
       setCreateDescription("")
       setCreateLevel("")
       setCreatePenaltyPoints(0)
-      
+
       // reload list
       await reloadRules()
-    } catch (err: any) { 
+    } catch (err: any) {
       console.error('Create penalty rule failed:', err)
-      const errorMsg = err.response?.data?.message || 'Error creating penalty rule.'
+      const errorMsg = err.response?.data?.error || err.response?.data?.message || 'Error creating penalty rule.'
       toast({ title: 'Error', description: errorMsg, variant: 'destructive' })
     } finally {
       setCreating(false)
@@ -203,7 +231,7 @@ export default function UniStaffDisciplinePage() {
                   onChange={(e) => setQuery((e.target as HTMLInputElement).value)}
                   className="max-w-sm bg-white dark:bg-slate-800 rounded-md px-3 py-2 shadow-sm border border-gray-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/40"
                 />
-                <Button onClick={() => { setQuery("") }} variant="ghost">Clear</Button>
+                <Button onClick={() => { setQuery("") }} variant="ghost">Clear Search</Button>
                 <Button size="sm" className="ml-2" onClick={() => setCreateOpen(true)} title="Create penalty rule">
                   Create Rule
                   <Plus className="h-4 w-4 ml-1" />
@@ -338,35 +366,33 @@ export default function UniStaffDisciplinePage() {
             </CardContent>
           </Card>
 
-          {/* Edit/Detail Rule Dialog */}
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Penalty Rule Detail / Edit</DialogTitle>
-                <DialogDescription>Modify rule fields and press Save to persist changes.</DialogDescription>
+                {/* <DialogDescription>Modify rule fields and press Save to persist changes.</DialogDescription> */}
               </DialogHeader>
 
               <div className="mt-2 space-y-3">
                 <div>
-                  <Label htmlFor="rule-name">Rule Name</Label>
+                  <Label htmlFor="rule-name">Rule Name<span className="text-red-500">*</span></Label>
                   <Input id="rule-name" className="mt-2 border-slate-300" value={editName} onChange={(e) => setEditName((e.target as HTMLInputElement).value)} />
                 </div>
 
                 <div>
-                  <Label htmlFor="edit-level">Violation Level</Label>
+                  <Label htmlFor="edit-level">Violation Level<span className="text-red-500">*</span></Label>
                   <Select
                     value={editLevel}
                     onValueChange={(value) => setEditLevel(value)}
                   >
-                    <SelectTrigger className="mt-2 border-slate-300">
+                    <SelectTrigger className="mt-2 border-slate-300 ">
                       <SelectValue placeholder="Choose violation level..." />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="MINOR">MINOR</SelectItem>
-                      <SelectItem value="MEDIUM">MEDIUM</SelectItem>
+                      <SelectItem value="NORMAL">NORMAL</SelectItem>
                       <SelectItem value="MAJOR">MAJOR</SelectItem>
-                      <SelectItem value="CRITICAL">CRITICAL</SelectItem>
-                      {/* Thêm các level khác nếu có */}
+                      <SelectItem value="SEVERE">SEVERE</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -378,36 +404,55 @@ export default function UniStaffDisciplinePage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="rule-points">Penalty Points</Label>
-                    <Input id="rule-points" className="mt-2 border-slate-300" type="number" value={editPenaltyPoints} onChange={(e) => setEditPenaltyPoints(Number(e.target.value))} />
+                    <Label htmlFor="rule-points">Penalty Points<span className="text-red-500">*</span></Label>
+                    <Input
+                      id="rule-points"
+                      className="mt-2 border-slate-300"
+                      type="text" // Đã đổi sang text
+                      inputMode="numeric" // Gợi ý bàn phím số
+                      placeholder="0"
+                      // Hiển thị giá trị có dấu phẩy
+                      value={new Intl.NumberFormat('en-US').format(editPenaltyPoints)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        const unformattedValue = value.replace(/[^0-9]/g, ''); // Xóa dấu phẩy và ký tự không phải số
+                        setEditPenaltyPoints(parseInt(unformattedValue, 10) || 0); // Đảm bảo giá trị là 0 nếu rỗng
+                      }}
+                    />
                   </div>
                 </div>
 
                 <div className="mt-4 flex gap-2 justify-end">
                   <Button variant="outline" onClick={() => setDialogOpen(false)}>Close</Button>
-                  <Button onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : 'Save'}</Button>
+
+                  <Button
+                    onClick={handleSave}
+                    disabled={saving} 
+                  >
+                    {saving ? 'Saving...' : 'Save'}
+                  </Button>
                 </div>
               </div>
             </DialogContent>
           </Dialog>
-          
+
           {/* Create Rule Dialog */}
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Create Penalty Rule</DialogTitle>
-                <DialogDescription>Enter rule details and press Create.</DialogDescription>
+                {/* <DialogDescription>Enter rule details and press Create.</DialogDescription> */}
               </DialogHeader>
 
               <div className="mt-2 space-y-3">
                 <div>
-                  <Label htmlFor="create-rule-name">Rule Name</Label>
+                  <Label htmlFor="create-rule-name">Rule Name<span className="text-red-500">*</span></Label>
                   <Input id="create-rule-name" className="mt-2 border-slate-300" value={createName}
                     onChange={(e) => setCreateName((e.target as HTMLInputElement).value)} />
                 </div>
-                
+
                 <div>
-                  <Label htmlFor="create-level">Violation Level</Label>
+                  <Label htmlFor="create-level">Violation Level<span className="text-red-500">*</span></Label>
                   <Select
                     value={createLevel}
                     onValueChange={(value) => setCreateLevel(value)}
@@ -417,9 +462,9 @@ export default function UniStaffDisciplinePage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="MINOR">MINOR</SelectItem>
-                      <SelectItem value="MEDIUM">MEDIUM</SelectItem>
+                      <SelectItem value="NORMAL">NORMAL</SelectItem>
                       <SelectItem value="MAJOR">MAJOR</SelectItem>
-                      <SelectItem value="CRITICAL">CRITICAL</SelectItem>
+                      <SelectItem value="SEVERE">SEVERE</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -429,18 +474,34 @@ export default function UniStaffDisciplinePage() {
                   <Textarea id="create-desc" className="mt-2 border-slate-300" value={createDescription}
                     onChange={(e) => setCreateDescription((e.target as HTMLTextAreaElement).value)} />
                 </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="create-points">Penalty Points</Label>
-                    <Input id="create-points" className="mt-2 border-slate-300" type="number" value={createPenaltyPoints}
-                      onChange={(e) => setCreatePenaltyPoints(Number(e.target.value))} />
-                  </div>
+
+                <div>
+                  <Label htmlFor="create-points">Penalty Points<span className="text-red-500">*</span></Label>
+                  <Input
+                    id="create-points"
+                    className="mt-2 border-slate-300"
+                    type="text" // Đã đổi sang text
+                    inputMode="numeric" // Gợi ý bàn phím số
+                    placeholder="0"
+                    // Hiển thị giá trị có dấu phẩy
+                    value={new Intl.NumberFormat('en-US').format(createPenaltyPoints)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      const unformattedValue = value.replace(/[^0-9]/g, ''); // Xóa dấu phẩy và ký tự không phải số
+                      setCreatePenaltyPoints(parseInt(unformattedValue, 10) || 0); // Đảm bảo giá trị là 0 nếu rỗng
+                    }}
+                  />
                 </div>
 
                 <div className="mt-4 flex gap-2 justify-end">
                   <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
-                  <Button onClick={handleCreate} disabled={creating}>{creating ? 'Creating...' : 'Create'}</Button>
+
+                  <Button
+                    onClick={handleCreate}
+                    disabled={creating} 
+                  >
+                    {creating ? 'Creating...' : 'Create'}
+                  </Button>
                 </div>
               </div>
             </DialogContent>

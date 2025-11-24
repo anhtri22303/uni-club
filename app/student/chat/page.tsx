@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useAuth } from "@/contexts/auth-context"
+import { useNotifications } from "@/contexts/notification-context"
 import { useProfile, useClub, useClubs } from "@/hooks/use-query-hooks"
 import { safeSessionStorage } from "@/lib/browser-utils"
 import { useEffect, useState, useRef, useCallback } from "react"
@@ -57,6 +58,20 @@ interface ChatMessage {
       userIds: number[]
     }
   }
+}
+
+interface ChatMessagesResponse {
+  messages: ChatMessage[]
+  latestTimestamp?: number
+}
+
+interface ChatMessageResponse {
+  message: ChatMessage
+}
+
+interface ChatSuccessResponse {
+  success: boolean
+  message?: ChatMessage
 }
 
 interface ClubDetails {
@@ -102,11 +117,13 @@ const getAvatarUrl = (avatarUrl: string | null | undefined, baseUrl?: string): s
 
 export default function StudentChatPage() {
   const { auth } = useAuth()
+  const { markClubAsSeen } = useNotifications()
   const [availableClubIds, setAvailableClubIds] = useState<number[]>([])
   const [availableClubs, setAvailableClubs] = useState<ClubDetails[]>([])
   const [selectedClubId, setSelectedClubId] = useState<number | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [newMessage, setNewMessage] = useState("")
+  const MESSAGE_MAX_LENGTH = 100
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [latestTimestamp, setLatestTimestamp] = useState(0)
@@ -197,7 +214,7 @@ export default function StudentChatPage() {
       const previousScrollHeight = viewport?.scrollHeight || 0
       const previousScrollTop = viewport?.scrollTop || 0
       
-      const response = await axios.get(
+      const response = await axios.get<{ messages: ChatMessage[] }>(
         `/api/chat/messages?clubId=${selectedClubId}&limit=30&before=${oldestTimestamp}`
       )
       const olderMessages = response.data.messages || []
@@ -257,7 +274,7 @@ export default function StudentChatPage() {
     if (!selectedClubId) return
 
     try {
-      const response = await axios.get(`/api/chat/messages?clubId=${selectedClubId}&limit=50`)
+      const response = await axios.get<ChatMessagesResponse>(`/api/chat/messages?clubId=${selectedClubId}&limit=50`)
       const fetchedMessages = response.data.messages || []
       const reversedMessages = fetchedMessages.reverse() // Reverse to show oldest first
       setMessages(reversedMessages)
@@ -293,7 +310,7 @@ export default function StudentChatPage() {
     if (!selectedClubId || latestTimestamp === 0) return
 
     try {
-      const response = await axios.get(
+      const response = await axios.get<ChatMessagesResponse>(
         `/api/chat/poll?clubId=${selectedClubId}&after=${latestTimestamp}`
       )
       const newMessages = response.data.messages || []
@@ -309,7 +326,9 @@ export default function StudentChatPage() {
           if (uniqueNewMessages.length === 0) return prev
           return [...prev, ...uniqueNewMessages]
         })
-        setLatestTimestamp(response.data.latestTimestamp)
+        if (response.data.latestTimestamp) {
+          setLatestTimestamp(response.data.latestTimestamp)
+        }
         // Only auto-scroll if user is near bottom
         if (isNearBottom) {
           setTimeout(() => scrollToBottom(false), 100)
@@ -329,8 +348,10 @@ export default function StudentChatPage() {
       setOldestTimestamp(null)
       setHasMoreMessages(true)
       fetchMessages()
+      // Mark club as seen to clear unread badge
+      markClubAsSeen(selectedClubId)
     }
-  }, [selectedClubId, fetchMessages])
+  }, [selectedClubId, fetchMessages, markClubAsSeen])
 
   // Set up polling interval for realtime updates
   useEffect(() => {
@@ -365,12 +386,11 @@ export default function StudentChatPage() {
     const profileObj = getProfileObject(profile)
     const userName = profileObj?.fullName || auth.user?.fullName || "Unknown User"
     const baseUrl = axiosInstance.defaults.baseURL || ""
-    const rawAvatarUrl = profileObj?.avatarUrl || auth.user?.avatarUrl
+    const rawAvatarUrl = profileObj?.avatarUrl
     console.log("Profile data when sending message:", { 
       profile: profile, 
       profileObj: profileObj,
-      profileAvatarUrl: profileObj?.avatarUrl, 
-      authAvatarUrl: auth.user?.avatarUrl,
+      profileAvatarUrl: profileObj?.avatarUrl,
       rawAvatarUrl,
       baseUrl 
     })
@@ -388,7 +408,7 @@ export default function StudentChatPage() {
     setReplyingTo(null) // Clear reply state
     
     try {
-      const response = await axios.post("/api/chat/messages", {
+      const response = await axios.post<ChatMessageResponse>("/api/chat/messages", {
         clubId: selectedClubId,
         message: messageToSend,
         userId: auth.userId,
@@ -433,13 +453,25 @@ export default function StudentChatPage() {
     }
   }
 
+  // Handle input change with max length
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    if (value.length <= MESSAGE_MAX_LENGTH) {
+      setNewMessage(value)
+    } else {
+      setNewMessage(value.slice(0, MESSAGE_MAX_LENGTH))
+    }
+  }
+
   // Handle delete message
   const handleDeleteMessage = async (messageId: string) => {
     if (!selectedClubId || deleting) return
 
     setDeleting(true)
     try {
-      await axios.delete("/api/chat/messages", {
+      await axios({
+        method: 'delete',
+        url: "/api/chat/messages",
         data: {
           clubId: selectedClubId,
           messageId: messageId,
@@ -468,7 +500,7 @@ export default function StudentChatPage() {
     if (!selectedClubId) return
 
     try {
-      const response = await axios.post("/api/chat/reactions", {
+      const response = await axios.post<ChatSuccessResponse>("/api/chat/reactions", {
         clubId: selectedClubId,
         messageId,
         userId: auth.userId,
@@ -479,7 +511,7 @@ export default function StudentChatPage() {
       if (response.data.success && response.data.message) {
         setMessages((prev) =>
           prev.map((msg) =>
-            msg.id === messageId ? response.data.message : msg
+            msg.id === messageId ? response.data.message! : msg
           )
         )
       }
@@ -494,7 +526,7 @@ export default function StudentChatPage() {
     if (!selectedClubId) return
 
     try {
-      const response = await axios.post("/api/chat/pin", {
+      const response = await axios.post<ChatSuccessResponse>("/api/chat/pin", {
         clubId: selectedClubId,
         messageId,
         userId: auth.userId,
@@ -503,7 +535,7 @@ export default function StudentChatPage() {
       // Update the messages with the new pin status
       if (response.data.success) {
         // Fetch fresh messages to get the updated pin states
-        const messagesResponse = await axios.get(
+        const messagesResponse = await axios.get<ChatMessagesResponse>(
           `/api/chat/messages?clubId=${selectedClubId}&limit=50`
         )
         const fetchedMessages = messagesResponse.data.messages || []
@@ -744,7 +776,7 @@ export default function StudentChatPage() {
                             const profileObj = getProfileObject(profile)
                             const displayName = msg.userName || (isOwnMessage ? (profileObj?.fullName || auth.user?.fullName || "You") : "Unknown User")
                             const baseUrl = axiosInstance.defaults.baseURL || ""
-                            const rawAvatarUrl = msg.userAvatar || (isOwnMessage ? (profileObj?.avatarUrl || auth.user?.avatarUrl) : null)
+                            const rawAvatarUrl = msg.userAvatar || (isOwnMessage ? profileObj?.avatarUrl : null)
                             const displayAvatar = getAvatarUrl(rawAvatarUrl, baseUrl)
                             
                             return (
@@ -807,7 +839,7 @@ export default function StudentChatPage() {
                                     {msg.reactions && Object.keys(msg.reactions).length > 0 && (
                                       <div className="flex flex-wrap gap-1 mt-1.5">
                                         {Object.entries(msg.reactions).map(([emoji, data]) => {
-                                          const hasReacted = data.userIds.includes(auth.userId)
+                                          const hasReacted = auth.userId ? data.userIds.includes(Number(auth.userId)) : false
                                           return (
                                             <button
                                               key={emoji}
@@ -934,11 +966,15 @@ export default function StudentChatPage() {
                       <Input
                         placeholder={replyingTo ? "Type your reply..." : "Type your message..."}
                         value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
+                        onChange={handleInputChange}
                         onKeyDown={handleKeyPress}
                         disabled={sending}
                         className="flex-1 text-sm md:text-base"
+                        maxLength={MESSAGE_MAX_LENGTH}
                       />
+                      <span className="text-xs text-muted-foreground ml-2">
+                        {newMessage.length}/{MESSAGE_MAX_LENGTH}
+                      </span>
                       <Button
                         onClick={handleSendMessage}
                         disabled={!newMessage.trim() || sending}

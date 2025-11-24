@@ -1,25 +1,40 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { X, Loader2, UserPlus, Users, UserCheck, Star, CheckCircle2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { getMembersByClubId, ApiMembership } from "@/service/membershipApi"
-import { postEventStaff, getEventStaff, EventStaff, getEvaluateEventStaff, StaffEvaluation, getTopEvaluatedStaff } from "@/service/eventStaffApi"
-import { useToast } from "@/hooks/use-toast"
-import { Badge } from "@/components/ui/badge"
-import EvaluateStaffModal from "./evaluate-staff-modal"
-import EvaluationDetailModal from "./evaluation-detail-modal"
+import { useState, useEffect } from "react";
+import {
+  X,
+  Loader2,
+  UserPlus,
+  Users,
+  UserCheck,
+  Star,
+  CheckCircle2,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { getMembersByClubId, ApiMembership } from "@/service/membershipApi";
+import {
+  postEventStaff,
+  getEventStaff,
+  EventStaff,
+  getEvaluateEventStaff,
+  StaffEvaluation,
+  getTopEvaluatedStaff,
+} from "@/service/eventStaffApi";
+import { useToast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
+import EvaluateStaffModal from "./evaluate-staff-modal";
+import EvaluationDetailModal from "./evaluation-detail-modal";
 
 interface AddStaffModalProps {
-  isOpen: boolean
-  onClose: () => void
-  eventId: number
-  clubId: number
-  eventStatus: string
+  isOpen: boolean;
+  onClose: () => void;
+  eventId: number;
+  clubId: number;
+  eventStatus: string;
 }
 
-type TabType = "staff-list" | "add-staff"
+type TabType = "staff-list" | "add-staff";
 
 export default function AddStaffModal({
   isOpen,
@@ -28,238 +43,267 @@ export default function AddStaffModal({
   clubId,
   eventStatus,
 }: AddStaffModalProps) {
-  const { toast } = useToast()
-  const [activeTab, setActiveTab] = useState<TabType>("staff-list")
-  
+  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState<TabType>("staff-list");
+
   // Event Staff states
-  const [eventStaff, setEventStaff] = useState<EventStaff[]>([])
-  const [staffLoading, setStaffLoading] = useState(false)
-  
+  const [eventStaff, setEventStaff] = useState<EventStaff[]>([]);
+  const [staffLoading, setStaffLoading] = useState(false);
+
   // Members states
-  const [members, setMembers] = useState<ApiMembership[]>([])
-  const [membersLoading, setMembersLoading] = useState(false)
-  const [addingStaff, setAddingStaff] = useState<number | null>(null)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [dutyInput, setDutyInput] = useState<{ [key: number]: string }>({})
+  const [members, setMembers] = useState<ApiMembership[]>([]);
+  const [membersLoading, setMembersLoading] = useState(false);
+  const [addingStaff, setAddingStaff] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [dutyInput, setDutyInput] = useState<{ [key: number]: string }>({});
 
   // Evaluation modal state
-  const [showEvaluateModal, setShowEvaluateModal] = useState(false)
-  const [selectedStaffForEvaluation, setSelectedStaffForEvaluation] = useState<EventStaff | null>(null)
-  
+  const [showEvaluateModal, setShowEvaluateModal] = useState(false);
+  const [selectedStaffForEvaluation, setSelectedStaffForEvaluation] =
+    useState<EventStaff | null>(null);
+
   // Evaluation detail modal state
-  const [showEvaluationDetailModal, setShowEvaluationDetailModal] = useState(false)
-  const [selectedEvaluation, setSelectedEvaluation] = useState<StaffEvaluation | null>(null)
-  
+  const [showEvaluationDetailModal, setShowEvaluationDetailModal] =
+    useState(false);
+  const [selectedEvaluation, setSelectedEvaluation] =
+    useState<StaffEvaluation | null>(null);
+
   // Staff evaluations state
-  const [staffEvaluations, setStaffEvaluations] = useState<StaffEvaluation[]>([])
-  const [evaluationsLoading, setEvaluationsLoading] = useState(false)
-  const [topEvaluations, setTopEvaluations] = useState<StaffEvaluation[]>([])
+  const [staffEvaluations, setStaffEvaluations] = useState<StaffEvaluation[]>(
+    []
+  );
+  const [evaluationsLoading, setEvaluationsLoading] = useState(false);
+  const [topEvaluations, setTopEvaluations] = useState<StaffEvaluation[]>([]);
 
   // Check if event is completed
-  const isEventCompleted = eventStatus === "COMPLETED"
+  const isEventCompleted = eventStatus === "COMPLETED";
 
   useEffect(() => {
     if (isOpen && activeTab === "staff-list") {
-      loadEventStaff()
+      loadEventStaff();
     }
-  }, [isOpen, activeTab, eventId])
+  }, [isOpen, activeTab, eventId]);
 
   useEffect(() => {
     if (isOpen && activeTab === "add-staff") {
-      loadMembers()
+      loadMembers();
     }
-  }, [isOpen, activeTab, clubId])
+  }, [isOpen, activeTab, clubId]);
 
   const loadEventStaff = async () => {
-    setStaffLoading(true)
+    setStaffLoading(true);
     try {
-      const data = await getEventStaff(eventId)
-      setEventStaff(data)
-      
+      const data = await getEventStaff(eventId);
+      setEventStaff(data);
+
       // If event is completed, also load evaluations and top evaluations
       if (isEventCompleted) {
-        await Promise.all([loadEvaluations(), loadTopEvaluations()])
+        await Promise.all([loadEvaluations(), loadTopEvaluations()]);
       }
     } catch (error: any) {
-      console.error("Failed to load event staff:", error)
+      console.error("Failed to load event staff:", error);
       toast({
         title: "Error",
-        description: error?.response?.data?.message || "Failed to load event staff",
+        description:
+          error?.response?.data?.error ||
+          error?.response?.data?.message ||
+          "Failed to load event staff",
         variant: "destructive",
-      })
+      });
     } finally {
-      setStaffLoading(false)
+      setStaffLoading(false);
     }
-  }
-  
+  };
+
   const loadEvaluations = async () => {
-    setEvaluationsLoading(true)
+    setEvaluationsLoading(true);
     try {
-      const data = await getEvaluateEventStaff(eventId)
-      setStaffEvaluations(data)
+      const data = await getEvaluateEventStaff(eventId);
+      setStaffEvaluations(data);
     } catch (error: any) {
-      console.error("Failed to load evaluations:", error)
+      console.error("Failed to load evaluations:", error);
       // Don't show error toast, it's not critical
     } finally {
-      setEvaluationsLoading(false)
+      setEvaluationsLoading(false);
     }
-  }
-  
+  };
+
   const loadTopEvaluations = async () => {
     try {
-      const data = await getTopEvaluatedStaff(eventId)
-      setTopEvaluations(data)
+      const data = await getTopEvaluatedStaff(eventId);
+      setTopEvaluations(data);
     } catch (error: any) {
-      console.error("Failed to load top evaluations:", error)
+      console.error("Failed to load top evaluations:", error);
       // Don't show error toast, it's not critical
     }
-  }
+  };
 
   const loadMembers = async () => {
-    setMembersLoading(true)
+    setMembersLoading(true);
     try {
-      const data = await getMembersByClubId(clubId)
+      const data = await getMembersByClubId(clubId);
       // Filter only members with "MEMBER" role and ACTIVE state
       const filteredMembers = data.filter(
         (member) => member.clubRole === "MEMBER" && member.state === "ACTIVE"
-      )
-      setMembers(filteredMembers)
+      );
+      setMembers(filteredMembers);
     } catch (error: any) {
-      console.error("Failed to load members:", error)
+      console.error("Failed to load members:", error);
       toast({
         title: "Error",
-        description: error?.response?.data?.message || "Failed to load members",
+        description:
+          error?.response?.data?.error ||
+          error?.response?.data?.message ||
+          "Failed to load members",
         variant: "destructive",
-      })
+      });
     } finally {
-      setMembersLoading(false)
+      setMembersLoading(false);
     }
-  }
+  };
 
   const handleAddStaff = async (membershipId: number) => {
-    const duty = dutyInput[membershipId]?.trim()
-    
+    const duty = dutyInput[membershipId]?.trim();
+
     if (!duty) {
       toast({
         title: "Error",
         description: "Please enter a duty for this member",
         variant: "destructive",
-      })
-      return
+      });
+      return;
     }
 
-    setAddingStaff(membershipId)
+    setAddingStaff(membershipId);
     try {
-      await postEventStaff(eventId, membershipId, duty)
+      await postEventStaff(eventId, membershipId, duty);
       toast({
         title: "Success",
         description: "Staff member added successfully",
-      })
+      });
       // Reload members list after successful addition
-      await loadMembers()
+      await loadMembers();
       // Clear duty input for this member
       setDutyInput((prev) => {
-        const newInputs = { ...prev }
-        delete newInputs[membershipId]
-        return newInputs
-      })
+        const newInputs = { ...prev };
+        delete newInputs[membershipId];
+        return newInputs;
+      });
       // Also reload event staff if on staff-list tab
       if (activeTab === "staff-list") {
-        await loadEventStaff()
+        await loadEventStaff();
       }
     } catch (error: any) {
-      console.error("Failed to add staff:", error)
+      console.error("Failed to add staff:", error);
       toast({
         title: "Error",
-        description: error?.response?.data?.message || "Failed to add staff member",
+        description:
+          error?.response?.data?.error ||
+          error?.response?.data?.message ||
+          "Failed to add staff member",
         variant: "destructive",
-      })
+      });
     } finally {
-      setAddingStaff(null)
+      setAddingStaff(null);
     }
-  }
+  };
 
   const handleDutyChange = (membershipId: number, value: string) => {
     setDutyInput((prev) => ({
       ...prev,
       [membershipId]: value,
-    }))
-  }
+    }));
+  };
 
   const handleTabChange = (tab: TabType) => {
-    setActiveTab(tab)
-    setSearchQuery("")
-  }
+    setActiveTab(tab);
+    setSearchQuery("");
+  };
 
   const handleOpenEvaluateModal = (staff: EventStaff) => {
-    setSelectedStaffForEvaluation(staff)
-    setShowEvaluateModal(true)
-  }
+    setSelectedStaffForEvaluation(staff);
+    setShowEvaluateModal(true);
+  };
 
   const handleCloseEvaluateModal = () => {
-    setShowEvaluateModal(false)
-    setSelectedStaffForEvaluation(null)
-  }
+    setShowEvaluateModal(false);
+    setSelectedStaffForEvaluation(null);
+  };
 
   const handleEvaluationSuccess = async () => {
     // Reload staff list and evaluations after successful evaluation
-    await loadEventStaff()
-  }
-  
-  const getStaffEvaluation = (membershipId: number): StaffEvaluation | undefined => {
-    return staffEvaluations.find((evaluation) => evaluation.membershipId === membershipId)
-  }
-  
+    await loadEventStaff();
+  };
+
+  const getStaffEvaluation = (
+    membershipId: number
+  ): StaffEvaluation | undefined => {
+    return staffEvaluations.find(
+      (evaluation) => evaluation.membershipId === membershipId
+    );
+  };
+
   const handleOpenEvaluationDetail = (staff: EventStaff) => {
-    const evaluation = getStaffEvaluation(staff.membershipId)
+    const evaluation = getStaffEvaluation(staff.membershipId);
     if (evaluation) {
-      setSelectedEvaluation(evaluation)
-      setShowEvaluationDetailModal(true)
+      setSelectedEvaluation(evaluation);
+      setShowEvaluationDetailModal(true);
     }
-  }
-  
+  };
+
   const handleCloseEvaluationDetail = () => {
-    setShowEvaluationDetailModal(false)
-    setSelectedEvaluation(null)
-  }
+    setShowEvaluationDetailModal(false);
+    setSelectedEvaluation(null);
+  };
 
   const filteredMembers = members.filter((member) => {
     // Exclude members who are already assigned as event staff
     const isAlreadyStaff = eventStaff.some(
       (staff) => staff.membershipId === member.membershipId
-    )
-    
-    if (isAlreadyStaff) return false
-    
+    );
+
+    if (isAlreadyStaff) return false;
+
     // Filter by search query
     return (
       member.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       member.studentCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
       member.email?.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-  })
+    );
+  });
 
-  const filteredStaff = eventStaff.filter((staff) =>
-    staff.memberName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    staff.duty.toLowerCase().includes(searchQuery.toLowerCase())
-  )
-  
+  const filteredStaff = eventStaff.filter(
+    (staff) =>
+      staff.memberName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      staff.duty.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   // Sort staff by performance if event is completed and top evaluations are available
-  const sortedFilteredStaff = isEventCompleted && topEvaluations.length > 0
-    ? [...filteredStaff].sort((a, b) => {
-        const evalA = topEvaluations.find(e => e.membershipId === a.membershipId)
-        const evalB = topEvaluations.find(e => e.membershipId === b.membershipId)
-        
-        // Performance order: EXCELLENT > GOOD > AVERAGE > POOR
-        const performanceOrder = { EXCELLENT: 4, GOOD: 3, AVERAGE: 2, POOR: 1 }
-        const scoreA = evalA ? performanceOrder[evalA.performance] || 0 : 0
-        const scoreB = evalB ? performanceOrder[evalB.performance] || 0 : 0
-        
-        return scoreB - scoreA // Descending order
-      })
-    : filteredStaff
+  const sortedFilteredStaff =
+    isEventCompleted && topEvaluations.length > 0
+      ? [...filteredStaff].sort((a, b) => {
+          const evalA = topEvaluations.find(
+            (e) => e.membershipId === a.membershipId
+          );
+          const evalB = topEvaluations.find(
+            (e) => e.membershipId === b.membershipId
+          );
 
-  if (!isOpen) return null
+          // Performance order: EXCELLENT > GOOD > AVERAGE > POOR
+          const performanceOrder = {
+            EXCELLENT: 4,
+            GOOD: 3,
+            AVERAGE: 2,
+            POOR: 1,
+          };
+          const scoreA = evalA ? performanceOrder[evalA.performance] || 0 : 0;
+          const scoreB = evalB ? performanceOrder[evalB.performance] || 0 : 0;
+
+          return scoreB - scoreA; // Descending order
+        })
+      : filteredStaff;
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -356,187 +400,195 @@ export default function AddStaffModal({
             ) : (
               <div className="space-y-4">
                 {sortedFilteredStaff.map((staff) => {
-                  const staffEvaluation = getStaffEvaluation(staff.membershipId)
-                  
+                  const staffEvaluation = getStaffEvaluation(
+                    staff.membershipId
+                  );
+
                   return (
-                  <div
-                    key={staff.id}
-                    className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg"
-                  >
-                    {/* Avatar Placeholder */}
-                    <div className="shrink-0">
-                      <div className="h-12 w-12 rounded-full bg-purple-600 flex items-center justify-center">
-                        <span className="text-white font-semibold text-lg">
-                          {staff.memberName.charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Staff Info */}
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-gray-900 dark:text-white">
-                          {staff.memberName}
-                        </h3>
-                        {/* Show performance badge for completed events */}
-                        {isEventCompleted && staffEvaluation && (
-                          <Badge
-                            variant="outline"
-                            className={
-                              staffEvaluation.performance === "EXCELLENT"
-                                ? "bg-green-100 text-green-700 border-green-500"
-                                : staffEvaluation.performance === "GOOD"
-                                ? "bg-blue-100 text-blue-700 border-blue-500"
-                                : staffEvaluation.performance === "AVERAGE"
-                                ? "bg-yellow-100 text-yellow-700 border-yellow-500"
-                                : "bg-red-100 text-red-700 border-red-500"
-                            }
-                          >
-                            <Star className="h-3 w-3 mr-1" />
-                            {staffEvaluation.performance}
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Duty: {staff.duty}
-                      </p>
-                      <p className="text-xs text-gray-400 dark:text-gray-500">
-                        Assigned: {new Date(staff.assignedAt).toLocaleDateString("vi-VN")}
-                      </p>
-                    </div>
-
-                    {/* Status Badge */}
-                    <Badge
-                      variant="outline"
-                      className={
-                        staff.state === "ACTIVE"
-                          ? "bg-green-100 text-green-700 border-green-500"
-                          : "bg-gray-100 text-gray-700 border-gray-300"
-                      }
+                    <div
+                      key={staff.id}
+                      className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg"
                     >
-                      {staff.state}
-                    </Badge>
+                      {/* Avatar Placeholder */}
+                      <div className="shrink-0">
+                        <div className="h-12 w-12 rounded-full bg-purple-600 flex items-center justify-center">
+                          <span className="text-white font-semibold text-lg">
+                            {staff.memberName.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                      </div>
 
-                    {/* Evaluate Button - Only show for completed events */}
-                    {isEventCompleted && (() => {
-                      const evaluation = getStaffEvaluation(staff.membershipId)
-                      if (evaluation) {
-                        return (
-                          <Button
-                            size="sm"
-                            onClick={() => handleOpenEvaluationDetail(staff)}
-                            className="shrink-0 bg-green-600 hover:bg-green-700"
-                          >
-                            <CheckCircle2 className="h-4 w-4 mr-2" />
-                            Has Been Evaluated
-                          </Button>
-                        )
-                      }
-                      return (
-                        <Button
-                          size="sm"
-                          onClick={() => handleOpenEvaluateModal(staff)}
-                          className="shrink-0 bg-amber-600 hover:bg-amber-700"
-                        >
-                          <Star className="h-4 w-4 mr-2" />
-                          Evaluate
-                        </Button>
-                      )
-                    })()}
-                  </div>
-                  )
+                      {/* Staff Info */}
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold text-gray-900 dark:text-white">
+                            {staff.memberName}
+                          </h3>
+                          {/* Show performance badge for completed events */}
+                          {isEventCompleted && staffEvaluation && (
+                            <Badge
+                              variant="outline"
+                              className={
+                                staffEvaluation.performance === "EXCELLENT"
+                                  ? "bg-green-100 text-green-700 border-green-500"
+                                  : staffEvaluation.performance === "GOOD"
+                                  ? "bg-blue-100 text-blue-700 border-blue-500"
+                                  : staffEvaluation.performance === "AVERAGE"
+                                  ? "bg-yellow-100 text-yellow-700 border-yellow-500"
+                                  : "bg-red-100 text-red-700 border-red-500"
+                              }
+                            >
+                              <Star className="h-3 w-3 mr-1" />
+                              {staffEvaluation.performance}
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          Duty: {staff.duty}
+                        </p>
+                        <p className="text-xs text-gray-400 dark:text-gray-500">
+                          Assigned:{" "}
+                          {new Date(staff.assignedAt).toLocaleDateString(
+                            "vi-VN"
+                          )}
+                        </p>
+                      </div>
+
+                      {/* Status Badge */}
+                      <Badge
+                        variant="outline"
+                        className={
+                          staff.state === "ACTIVE"
+                            ? "bg-green-100 text-green-700 border-green-500"
+                            : "bg-gray-100 text-gray-700 border-gray-300"
+                        }
+                      >
+                        {staff.state}
+                      </Badge>
+
+                      {/* Evaluate Button - Only show for completed events */}
+                      {isEventCompleted &&
+                        (() => {
+                          const evaluation = getStaffEvaluation(
+                            staff.membershipId
+                          );
+                          if (evaluation) {
+                            return (
+                              <Button
+                                size="sm"
+                                onClick={() =>
+                                  handleOpenEvaluationDetail(staff)
+                                }
+                                className="shrink-0 bg-green-600 hover:bg-green-700"
+                              >
+                                <CheckCircle2 className="h-4 w-4 mr-2" />
+                                Has Been Evaluated
+                              </Button>
+                            );
+                          }
+                          return (
+                            <Button
+                              size="sm"
+                              onClick={() => handleOpenEvaluateModal(staff)}
+                              className="shrink-0 bg-amber-600 hover:bg-amber-700"
+                            >
+                              <Star className="h-4 w-4 mr-2" />
+                              Evaluate
+                            </Button>
+                          );
+                        })()}
+                    </div>
+                  );
                 })}
               </div>
             )
+          ) : // Add Staff Tab
+          membersLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            </div>
+          ) : filteredMembers.length === 0 ? (
+            <div className="text-center py-12">
+              <Users className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500 dark:text-gray-400">
+                {searchQuery
+                  ? "No members found matching your search"
+                  : "No members available to add as staff"}
+              </p>
+            </div>
           ) : (
-            // Add Staff Tab
-            membersLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-              </div>
-            ) : filteredMembers.length === 0 ? (
-              <div className="text-center py-12">
-                <Users className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500 dark:text-gray-400">
-                  {searchQuery
-                    ? "No members found matching your search"
-                    : "No members available to add as staff"}
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {filteredMembers.map((member) => (
-                  <div
-                    key={member.membershipId}
-                    className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg"
-                  >
-                    {/* Avatar */}
-                    <div className="shrink-0">
-                      {member.avatarUrl ? (
-                        <img
-                          src={member.avatarUrl}
-                          alt={member.fullName}
-                          className="h-12 w-12 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="h-12 w-12 rounded-full bg-blue-600 flex items-center justify-center">
-                          <span className="text-white font-semibold text-lg">
-                            {member.fullName.charAt(0).toUpperCase()}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Member Info */}
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900 dark:text-white">
-                        {member.fullName}
-                      </h3>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        {member.studentCode} • {member.email}
-                      </p>
-                      {member.major && (
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          {member.major}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Duty Input */}
-                    <div className="w-48">
-                      <Input
-                        type="text"
-                        placeholder="Enter duty..."
-                        value={dutyInput[member.membershipId] || ""}
-                        onChange={(e) =>
-                          handleDutyChange(member.membershipId, e.target.value)
-                        }
-                        className="w-full"
+            <div className="space-y-4">
+              {filteredMembers.map((member) => (
+                <div
+                  key={member.membershipId}
+                  className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                >
+                  {/* Avatar */}
+                  <div className="shrink-0">
+                    {member.avatarUrl ? (
+                      <img
+                        src={member.avatarUrl}
+                        alt={member.fullName}
+                        className="h-12 w-12 rounded-full object-cover"
                       />
-                    </div>
-
-                    {/* Add Button */}
-                    <Button
-                      onClick={() => handleAddStaff(member.membershipId)}
-                      disabled={
-                        addingStaff === member.membershipId ||
-                        !dutyInput[member.membershipId]?.trim()
-                      }
-                      className="shrink-0"
-                    >
-                      {addingStaff === member.membershipId ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <>
-                          <UserPlus className="h-4 w-4 mr-2" />
-                          Add
-                        </>
-                      )}
-                    </Button>
+                    ) : (
+                      <div className="h-12 w-12 rounded-full bg-blue-600 flex items-center justify-center">
+                        <span className="text-white font-semibold text-lg">
+                          {member.fullName.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                    )}
                   </div>
-                ))}
-              </div>
-            )
+
+                  {/* Member Info */}
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-gray-900 dark:text-white">
+                      {member.fullName}
+                    </h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {member.studentCode} • {member.email}
+                    </p>
+                    {member.major && (
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        {member.major}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Duty Input */}
+                  <div className="w-48">
+                    <Input
+                      type="text"
+                      placeholder="Enter duty..."
+                      value={dutyInput[member.membershipId] || ""}
+                      onChange={(e) =>
+                        handleDutyChange(member.membershipId, e.target.value)
+                      }
+                      className="w-full"
+                    />
+                  </div>
+
+                  {/* Add Button */}
+                  <Button
+                    onClick={() => handleAddStaff(member.membershipId)}
+                    disabled={
+                      addingStaff === member.membershipId ||
+                      !dutyInput[member.membershipId]?.trim()
+                    }
+                    className="shrink-0"
+                  >
+                    {addingStaff === member.membershipId ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <>
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        Add
+                      </>
+                    )}
+                  </Button>
+                </div>
+              ))}
+            </div>
           )}
         </div>
 
@@ -557,7 +609,7 @@ export default function AddStaffModal({
           onSuccess={handleEvaluationSuccess}
         />
       )}
-      
+
       {/* Evaluation Detail Modal */}
       <EvaluationDetailModal
         open={showEvaluationDetailModal}
@@ -565,5 +617,5 @@ export default function AddStaffModal({
         evaluation={selectedEvaluation}
       />
     </div>
-  )
+  );
 }

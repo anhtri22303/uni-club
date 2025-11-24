@@ -66,6 +66,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/hooks/use-query-hooks";
 import { EventPolicyModal } from "@/components/event-policy-modal";
 import eventPolicies from "@/src/data/event-policies.json";
+import { PublicEventQRButton } from "@/components/public-event-qr-button";
 
 export default function ClubLeaderEventsPage() {
   const router = useRouter();
@@ -344,7 +345,7 @@ export default function ClubLeaderEventsPage() {
         console.log("New token generated:", token);
 
         // Create URLs with new token and phase
-        const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${selectedPhase}/${token}`;
+        const prodUrl = `https://uniclub.id.vn/student/checkin/${selectedPhase}/${token}`;
         const localUrl = `http://localhost:3000/student/checkin/${selectedPhase}/${token}`;
         const mobileLink = `exp://192.168.1.50:8081/--/student/checkin/${selectedPhase}/${token}`;
 
@@ -768,7 +769,10 @@ export default function ClubLeaderEventsPage() {
       console.error(error);
       toast({
         title: "Error",
-        description: error?.response?.data?.message || "Failed to create event",
+        description:
+          error?.response?.data?.error ||
+          error?.response?.data?.error || error?.response?.data?.message ||
+          "Failed to create event",
         variant: "destructive",
       });
     } finally {
@@ -846,7 +850,7 @@ export default function ClubLeaderEventsPage() {
       console.log("Generated token:", token, "expires in:", expiresIn);
 
       // Create URLs with token and phase (path parameter format)
-      const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${phase}/${token}`;
+      const prodUrl = `https://uniclub.id.vn/student/checkin/${phase}/${token}`;
       const localUrl = `http://localhost:3000/student/checkin/${phase}/${token}`;
       const mobileLink = `exp://192.168.1.50:8081/--/student/checkin/${phase}/${token}`;
 
@@ -1414,18 +1418,32 @@ export default function ClubLeaderEventsPage() {
                           {/* QR Code Section - Only show if ONGOING and event is still active */}
                           {isEventActive(event) && (
                             <div className="mt-3 pt-3 border-t border-muted">
-                              <Button
-                                variant="default"
-                                size="sm"
-                                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium"
-                                onClick={() => {
-                                  setSelectedEvent(event);
-                                  setShowPhaseModal(true);
-                                }}
-                              >
-                                <QrCode className="h-4 w-4 mr-2" />
-                                Generate QR Code
-                              </Button>
+                              {/* Show Public Event QR button for PUBLIC events */}
+                              {event.type === "PUBLIC" ? (
+                                <PublicEventQRButton
+                                  event={{
+                                    id: event.id,
+                                    name: event.name,
+                                    checkInCode: event.checkInCode,
+                                  }}
+                                  size="sm"
+                                  className="w-full"
+                                />
+                              ) : (
+                                /* Show Generate QR Code button for SPECIAL and PRIVATE events */
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium"
+                                  onClick={() => {
+                                    setSelectedEvent(event);
+                                    setShowPhaseModal(true);
+                                  }}
+                                >
+                                  <QrCode className="h-4 w-4 mr-2" />
+                                  Generate QR Code
+                                </Button>
+                              )}
                             </div>
                           )}
                         </div>

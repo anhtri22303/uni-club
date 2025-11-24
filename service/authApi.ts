@@ -185,9 +185,9 @@ export const loginWithGoogleToken = async (credentials: { token: string }): Prom
     if (error.response?.status === 401) {
       throw new Error("Invalid Google token or authentication failed")
     } else if (error.response?.status === 400) {
-      throw new Error(error.response?.data?.message || "Missing or invalid Google token")
+      throw new Error(error.response?.data?.error || error.response?.data?.message || "Missing or invalid Google token")
     } else if (error.response?.data?.message) {
-      throw new Error(error.response.data.message)
+      throw new Error(error.response.data.error || error.response.data.message)
     }
 
     throw error

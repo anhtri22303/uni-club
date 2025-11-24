@@ -237,7 +237,7 @@ export default function UniStaffMajorsPage() {
             }
         } catch (err: any) {
             console.error("Update major failed:", err)
-            const errorMessage = err.response?.data?.message || err.message || "Error while updating major."
+            const errorMessage = err.response?.data?.error || err.response?.data?.message || err.message || "Error while updating major."
             toast({
                 title: "Error",
                 description: errorMessage,
@@ -270,7 +270,7 @@ export default function UniStaffMajorsPage() {
             }
         } catch (err: any) {
             console.error("Delete major failed:", err)
-            const errorMessage = err.response?.data?.message || err.message || "Error deleting major."
+            const errorMessage = err.response?.data?.error || err.response?.data?.message || err.message || "Error deleting major."
             toast({
                 title: "Error",
                 description: errorMessage,
@@ -696,7 +696,7 @@ export default function UniStaffMajorsPage() {
                                             } catch (err: any) {
                                                 console.error("Create major failed:", err)
                                                 const errorMessage =
-                                                    err.response?.data?.message || err.message || "Error creating major."
+                                                    err.response?.data?.error || err.response?.data?.message || err.message || "Error creating major."
                                                 toast({
                                                     title: "Error",
                                                     description: errorMessage,

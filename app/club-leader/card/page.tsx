@@ -299,7 +299,7 @@ export default function CardEditorPage() {
       console.error("Error saving design:", error);
 
       const errorMessage =
-        error.response?.data?.message ||
+        error.response?.data?.error || error.response?.data?.message ||
         error.message ||
         "Failed to save card design";
 

@@ -15,7 +15,7 @@ import { timeObjectToString } from "@/service/eventApi"
 import { getProducts } from "@/service/productApi"
 import { getClubRedeemOrders } from "@/service/redeemApi"
 import { getClubWallet, getClubToMemberTransactions } from "@/service/walletApi"
-import { fetchClubAttendanceHistory } from "@/service/attendanceApi"
+// ...existing code...
 import { fetchMajorById } from "@/service/majorApi"
 
 // Import dashboard components
@@ -84,20 +84,18 @@ export default function ClubLeaderDashboardPage() {
       setAdditionalDataLoading(true)
       try {
         const today = new Date().toISOString().split('T')[0]
-        const [productsData, ordersData, walletDataResponse, transactionsData, attendanceData] = await Promise.all([
+        const [productsData, ordersData, walletDataResponse, transactionsData] = await Promise.all([
           getProducts(clubId, { includeInactive: true }).catch(() => []),
           getClubRedeemOrders(clubId).catch(() => []),
           getClubWallet(clubId).catch(() => null),
-          getClubToMemberTransactions().catch(() => []),
-          fetchClubAttendanceHistory({ clubId, date: today }).catch(() => [])
+          getClubToMemberTransactions().catch(() => [])
         ])
 
         setProducts(productsData)
         setOrders(ordersData)
         setWalletData(walletDataResponse)
         setTransactions(transactionsData)
-        const attendance = (attendanceData as any)?.data || attendanceData || []
-        setAttendanceHistory(Array.isArray(attendance) ? attendance : [])
+        setAttendanceHistory([])
       } catch (error) {
         console.error('Error fetching additional data:', error)
       } finally {
