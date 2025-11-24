@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Html5Qrcode } from "html5-qrcode"
 import { Modal } from "@/components/modal"
 import { Button } from "@/components/ui/button"
@@ -46,6 +46,12 @@ export function EventRedeemScanner({
   const [isProcessing, setIsProcessing] = useState(false)
   const [scannerReady, setScannerReady] = useState(false)
   const { toast } = useToast()
+  
+  // Track scanner state to prevent multiple stop calls
+  const scannerStateRef = useRef<{
+    instance: Html5Qrcode | null
+    isRunning: boolean
+  }>({ instance: null, isRunning: false })
 
   useEffect(() => {
     if (!open) {
@@ -54,14 +60,20 @@ export function EventRedeemScanner({
       return
     }
 
+    let isMounted = true
     let html5QrCode: Html5Qrcode | null = null
 
     const initScanner = async () => {
       try {
+        if (!isMounted) return
+
         html5QrCode = new Html5Qrcode("qr-reader")
+        scannerStateRef.current.instance = html5QrCode
 
         // Get available cameras
         const devices = await Html5Qrcode.getCameras()
+        
+        if (!isMounted) return
         
         if (devices && devices.length > 0) {
           // Use the back camera if available, otherwise use the first camera
@@ -75,6 +87,8 @@ export function EventRedeemScanner({
               aspectRatio: 1.0,
             },
             (decodedText) => {
+              if (!isMounted) return
+
               try {
                 // Parse JSON từ QR code
                 const data = JSON.parse(decodedText)
@@ -89,10 +103,14 @@ export function EventRedeemScanner({
                   setScannedData(data)
                   setScannerReady(false)
                   
-                  // Stop scanning safely
-                  if (html5QrCode) {
-                    html5QrCode.stop().catch((err) => {
-                      console.warn("Scanner stop warning:", err)
+                  // Stop scanning safely using ref
+                  if (scannerStateRef.current.isRunning && scannerStateRef.current.instance) {
+                    const currentInstance = scannerStateRef.current.instance
+                    scannerStateRef.current.isRunning = false
+                    currentInstance.stop().catch(() => {
+                      // Ignore stop errors silently
+                    }).finally(() => {
+                      scannerStateRef.current.instance = null
                     })
                   }
                   
@@ -118,12 +136,15 @@ export function EventRedeemScanner({
             },
             (errorMessage) => {
               // Bỏ qua lỗi scanning thông thường (khi chưa tìm thấy QR)
-              // console.log(errorMessage)
             }
           )
 
+          if (!isMounted) return
+
+          scannerStateRef.current.isRunning = true
           setScannerReady(true)
         } else {
+          if (!isMounted) return
           toast({
             title: "No Camera Found",
             description: "No camera devices found on this device.",
@@ -131,7 +152,9 @@ export function EventRedeemScanner({
           })
         }
       } catch (error: any) {
+        if (!isMounted) return
         console.error("Scanner initialization error:", error)
+        scannerStateRef.current.isRunning = false
         toast({
           title: "Camera Error",
           description: error.message || "Could not access camera. Please check permissions.",
@@ -144,11 +167,20 @@ export function EventRedeemScanner({
     const timer = setTimeout(initScanner, 300)
 
     return () => {
+      isMounted = false
       clearTimeout(timer)
-      if (html5QrCode) {
-        html5QrCode.stop().catch((err) => {
-          // Ignore errors when stopping scanner during cleanup
-          console.warn("Scanner cleanup warning:", err)
+      
+      // Safely stop scanner - Synchronous cleanup
+      const instance = scannerStateRef.current.instance
+      const isRunning = scannerStateRef.current.isRunning
+      
+      if (isRunning && instance) {
+        scannerStateRef.current.isRunning = false
+        // Don't await in cleanup - just call stop and let it finish
+        instance.stop().catch(() => {
+          // Silently ignore any errors during cleanup
+        }).finally(() => {
+          scannerStateRef.current.instance = null
         })
       }
     }
@@ -200,6 +232,9 @@ export function EventRedeemScanner({
 
   const handleRescan = () => {
     setScannedData(null)
+    // Reset scanner state before re-opening
+    scannerStateRef.current.isRunning = false
+    scannerStateRef.current.instance = null
     // Trigger re-init của scanner qua effect
     onOpenChange(false)
     setTimeout(() => onOpenChange(true), 100)
