@@ -13,8 +13,7 @@ import {
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { getClubIdFromToken } from "@/service/clubApi"
-import { getClubRedeemOrders, RedeemOrder, completeRedeemOrder, refundRedeemOrder, refundPartialRedeemOrder, RefundPayload } from "@/service/redeemApi"
+import { getRedeemOrderById, RedeemOrder, completeRedeemOrder, refundRedeemOrder, refundPartialRedeemOrder, RefundPayload } from "@/service/redeemApi"
 import {
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger,
 } from "@/components/ui/dialog"
@@ -33,7 +32,7 @@ interface OrderDetailPageProps {
 
 // Đặt key cho react-query
 export const queryKeys = {
-    clubOrders: (clubId: number) => ["clubOrders", clubId] as const,
+    orderDetail: (orderId: string) => ["orderDetail", orderId] as const,
 }
 
 type UiOrder = RedeemOrder
@@ -43,7 +42,6 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
     const { toast } = useToast()
     const queryClient = useQueryClient()
 
-    const [clubId, setClubId] = useState<number | null>(null)
     const [isProcessing, setIsProcessing] = useState<boolean>(false)
 
     // CHO LOGIC REFUND
@@ -54,42 +52,21 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
     const [partialQuantityError, setPartialQuantityError] = useState<string | null>(null)
 
 
-    // 1. Lấy clubId của leader (Giữ nguyên)
-    useEffect(() => {
-        const id = getClubIdFromToken()
-        if (id) {
-            setClubId(id)
-        } else {
-            toast({
-                title: "Lỗi",
-                description: "Không tìm thấy Club ID của bạn.",
-                variant: "destructive",
-            })
-        }
-    }, [toast])
-
-    // Lấy TẤT CẢ đơn hàng (giống logic trang chi tiết CLB)
+    // Lấy thông tin order trực tiếp theo ID
     const {
-        data: orders = [],
+        data: order,
         isLoading: loading,
         error,
-    } = useQuery<UiOrder[], Error>({
-        queryKey: queryKeys.clubOrders(clubId!),
-        queryFn: () => getClubRedeemOrders(clubId!),
-        enabled: !!clubId,
+    } = useQuery<UiOrder, Error>({
+        queryKey: queryKeys.orderDetail(params.id),
+        queryFn: () => getRedeemOrderById(params.id),
+        enabled: !!params.id,
     })
-
-    // Tìm đơn hàng cụ thể
-    const order: UiOrder | undefined = useMemo(() => {
-        if (loading || !params.id) return undefined
-        // params.id là string, orderId là number
-        return orders.find(o => String(o.orderId) === params.id)
-    }, [orders, loading, params.id])
 
 
     //: Xử lý "Delivered"
     const handleDeliver = async () => {
-        if (!order || !clubId) return;
+        if (!order) return;
 
         setIsProcessing(true);
         try {
@@ -101,8 +78,8 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
                 variant: "success",
             })
 
-            // Tải lại danh sách orders và refresh page
-            await queryClient.invalidateQueries({ queryKey: queryKeys.clubOrders(clubId) });
+            // Tải lại thông tin order và refresh page
+            await queryClient.invalidateQueries({ queryKey: queryKeys.orderDetail(params.id) });
             router.refresh();
         } catch (error) {
             console.error("Failed to complete order:", error);
@@ -118,7 +95,7 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
 
     // Xử lý "Cancel/Refund"
     const handleRefund = async () => {
-        if (!order || !clubId) return
+        if (!order) return
 
         // Kiểm tra Reason
         if (!refundReason.trim()) {
@@ -178,8 +155,8 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
             setPartialQuantity("1")
             setRefundReason("") // Reset reason
 
-            // Tải lại danh sách orders và refresh page
-            await queryClient.invalidateQueries({ queryKey: queryKeys.clubOrders(clubId) })
+            // Tải lại thông tin order và refresh page
+            await queryClient.invalidateQueries({ queryKey: queryKeys.orderDetail(params.id) })
             router.refresh();
 
         } catch (error: any) {
