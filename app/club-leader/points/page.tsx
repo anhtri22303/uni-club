@@ -469,7 +469,7 @@ export default function ClubLeaderRewardDistributionPage() {
 
         setRewardAmount(""); // Reset số điểm sau khi thành công
         setRewardReason(""); // Reset reason sau khi thành công
-        // ✨ Reset selections
+        // Reset selections
         setSelectedMembers({});
         setTargetUserIds([]);
       } else {

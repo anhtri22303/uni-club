@@ -88,7 +88,8 @@ const ActivityScoreDetail = ({ score }: { score: MemberActivityScore }) => {
                     </CardHeader>
                     <CardContent>
                         <div className="text-xs text-muted-foreground">
-                            {score.baseScorePercent.toFixed(0)}% of maximum score
+                            {/* {score.baseScorePercent.toFixed(0)}% of maximum score */}
+                            {(score.baseScorePercent ?? 0).toFixed(0)}% of maximum score
                         </div>
                     </CardContent>
                 </Card>
