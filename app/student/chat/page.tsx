@@ -117,7 +117,7 @@ const getAvatarUrl = (avatarUrl: string | null | undefined, baseUrl?: string): s
 
 export default function StudentChatPage() {
   const { auth } = useAuth()
-  const { markClubAsSeen } = useNotifications()
+  const { markClubAsSeen, setCurrentViewingClub } = useNotifications()
   const [availableClubIds, setAvailableClubIds] = useState<number[]>([])
   const [availableClubs, setAvailableClubs] = useState<ClubDetails[]>([])
   const [selectedClubId, setSelectedClubId] = useState<number | null>(null)
@@ -350,8 +350,20 @@ export default function StudentChatPage() {
       fetchMessages()
       // Mark club as seen to clear unread badge
       markClubAsSeen(selectedClubId)
+      // Set currently viewing club to prevent toast for this club
+      setCurrentViewingClub(selectedClubId)
+    } else {
+      // Clear viewing club when no club selected
+      setCurrentViewingClub(null)
     }
-  }, [selectedClubId, fetchMessages, markClubAsSeen])
+  }, [selectedClubId, fetchMessages, markClubAsSeen, setCurrentViewingClub])
+
+  // Cleanup: clear viewing club when component unmounts
+  useEffect(() => {
+    return () => {
+      setCurrentViewingClub(null)
+    }
+  }, [setCurrentViewingClub])
 
   // Set up polling interval for realtime updates
   useEffect(() => {
