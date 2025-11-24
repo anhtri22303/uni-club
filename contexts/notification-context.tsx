@@ -43,11 +43,11 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const [lastNotifiedMessages, setLastNotifiedMessages] = useState<Set<string>>(new Set());
   const [currentViewingClubId, setCurrentViewingClubId] = useState<number | null>(null);
 
-  // Initialize from localStorage
+  // Initialize from sessionStorage
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    const stored = safeLocalStorage.getItem(STORAGE_KEY);
+    const stored = safeSessionStorage.getItem(STORAGE_KEY);
     if (stored) {
       try {
         const settings: NotificationSettings = JSON.parse(stored);
@@ -98,7 +98,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     });
   }, [isAuthenticated, auth.role]);
 
-  // Save settings to localStorage whenever they change
+  // Save settings to sessionStorage whenever they change
   useEffect(() => {
     if (!isAuthenticated) return;
 
@@ -106,7 +106,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       enabled,
       lastSeen,
     };
-    safeLocalStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+    safeSessionStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
   }, [enabled, lastSeen, isAuthenticated]);
 
   // Fetch unread messages for a club
