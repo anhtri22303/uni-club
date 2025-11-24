@@ -89,7 +89,7 @@ export default function MemberCheckinPage() {
     setCheckedInEvents((prev) => [...prev, event.id])
 
     toast({
-      title: "Đã checkin thành công!",
+      title: "Checked in successfully!",
       description: `+ ${event.points} points`,
       duration: 3000,
     })
@@ -98,8 +98,8 @@ export default function MemberCheckinPage() {
   const handleCheckInSubmit = () => {
     if (!checkInCode.trim()) {
       toast({
-        title: "Lỗi",
-        description: "Vui lòng nhập mã check-in",
+        title: "Error",
+        description: "Please enter check-in code",
         variant: "destructive"
       })
       return
@@ -186,14 +186,14 @@ export default function MemberCheckinPage() {
             <Card className="text-center py-12">
               <CardContent>
                 <QrCode className="h-16 w-16 text-primary mx-auto mb-4" />
-                <h3 className="text-xl font-semibold mb-2">Nhập mã Check-in</h3>
+                <h3 className="text-xl font-semibold mb-2">Enter check-in code</h3>
                 <p className="text-muted-foreground mb-6">
-                  Nhập mã check-in từ sự kiện để tham gia
+                  Enter the check-in code from the event to join
                 </p>
                 <div className="max-w-md mx-auto space-y-4">
                   <Input
                     type="text"
-                    placeholder="Nhập mã check-in..."
+                    placeholder="Enter check-in code..."
                     value={checkInCode}
                     onChange={(e) => setCheckInCode(e.target.value)}
                     onKeyPress={(e) => {
@@ -209,7 +209,7 @@ export default function MemberCheckinPage() {
                     disabled={!checkInCode.trim()}
                   >
                     <CheckCircle className="h-5 w-5 mr-2" />
-                    Tham gia sự kiện
+                    Join the event
                   </Button>
                 </div>
               </CardContent>

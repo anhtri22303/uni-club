@@ -8,6 +8,7 @@ import {
   checkEventProductValid,
   EventProductValidation,
 } from "@/service/productApi";
+import { getEventById, Event } from "@/service/eventApi";
 import {
   redeemClubProduct,
   redeemEventProduct,
@@ -35,7 +36,9 @@ import {
   ChevronRight,
   WalletCards,
   Play,
+  QrCode,
 } from "lucide-react";
+import { EventItemOrderQRModal } from "@/components/event-item-order-qr-modal";
 import { LoadingSkeleton } from "@/components/loading-skeleton";
 import {
   Dialog,
@@ -63,6 +66,8 @@ export default function StudentProductViewPage() {
   const [eventValidation, setEventValidation] =
     useState<EventProductValidation | null>(null);
   const [isEventExpired, setIsEventExpired] = useState(false);
+  const [isQRModalOpen, setIsQRModalOpen] = useState(false);
+  const [eventData, setEventData] = useState<Event | null>(null);
 
   const [quantity, setQuantity] = useState(1);
   const queryClient = useQueryClient();
@@ -105,6 +110,16 @@ export default function StudentProductViewPage() {
           setIsEventExpired(
             validation.eventStatus === "COMPLETED" && validation.expired
           );
+
+          // Fetch event details for QR code
+          if (productData.eventId) {
+            try {
+              const event = await getEventById(productData.eventId);
+              setEventData(event);
+            } catch (eventError) {
+              console.error("Failed to fetch event details:", eventError);
+            }
+          }
         } catch (error) {
           console.error("Failed to validate event product:", error);
           // Nếu API lỗi, giả định sản phẩm vẫn hợp lệ
@@ -760,39 +775,73 @@ export default function StudentProductViewPage() {
                         </div>
                       </div>
                     )}
-                  <Button
-                    size="lg"
-                    className="w-full h-14 text-lg font-bold 
-             text-white hover:text-white disabled:text-white
-             bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 
-             hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 
-             shadow-xl hover:shadow-2xl transition-all duration-300 
-             hover:scale-[1.02] disabled:hover:scale-100"
-                    onClick={handleRedeem}
-                    disabled={!canRedeem || isRedeeming}
-                  >
-                    {profileLoading || fullProfileLoading ? (
-                      <>
-                        <Loader2 className="h-6 w-6 mr-3 animate-spin text-white" />
-                        Loading data...
-                      </>
-                    ) : isRedeeming ? (
-                      <>
-                        <Loader2 className="h-6 w-6 mr-3 animate-spin text-white" />
-                        Processing...
-                      </>
-                    ) : isEventExpired ? (
-                      <>
-                        <AlertCircle className="h-6 w-6 mr-3 text-white" />
-                        Event Has Ended
-                      </>
-                    ) : (
-                      <>
-                        <ShoppingCart className="h-6 w-6 mr-3 text-white" />
-                        Redeem Now
-                      </>
-                    )}
-                  </Button>
+                  {/* Conditional Button: EVENT_ITEM vs CLUB_ITEM */}
+                  {product.type === "EVENT_ITEM" ? (
+                    // EVENT_ITEM: Show "Your Order QR" button
+                    <Button
+                      size="lg"
+                      className="w-full h-14 text-lg font-bold 
+               text-white hover:text-white disabled:text-white
+               bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 
+               hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 
+               shadow-xl hover:shadow-2xl transition-all duration-300 
+               hover:scale-[1.02] disabled:hover:scale-100"
+                      onClick={() => setIsQRModalOpen(true)}
+                      disabled={!canRedeem}
+                    >
+                      {profileLoading || fullProfileLoading ? (
+                        <>
+                          <Loader2 className="h-6 w-6 mr-3 animate-spin text-white" />
+                          Loading data...
+                        </>
+                      ) : isEventExpired ? (
+                        <>
+                          <AlertCircle className="h-6 w-6 mr-3 text-white" />
+                          Event Has Ended
+                        </>
+                      ) : (
+                        <>
+                          <QrCode className="h-6 w-6 mr-3 text-white" />
+                          Your Order QR
+                        </>
+                      )}
+                    </Button>
+                  ) : (
+                    // CLUB_ITEM: Show "Redeem Now" button
+                    <Button
+                      size="lg"
+                      className="w-full h-14 text-lg font-bold 
+               text-white hover:text-white disabled:text-white
+               bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 
+               hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 
+               shadow-xl hover:shadow-2xl transition-all duration-300 
+               hover:scale-[1.02] disabled:hover:scale-100"
+                      onClick={handleRedeem}
+                      disabled={!canRedeem || isRedeeming}
+                    >
+                      {profileLoading || fullProfileLoading ? (
+                        <>
+                          <Loader2 className="h-6 w-6 mr-3 animate-spin text-white" />
+                          Loading data...
+                        </>
+                      ) : isRedeeming ? (
+                        <>
+                          <Loader2 className="h-6 w-6 mr-3 animate-spin text-white" />
+                          Processing...
+                        </>
+                      ) : isEventExpired ? (
+                        <>
+                          <AlertCircle className="h-6 w-6 mr-3 text-white" />
+                          Event Has Ended
+                        </>
+                      ) : (
+                        <>
+                          <ShoppingCart className="h-6 w-6 mr-3 text-white" />
+                          Redeem Now
+                        </>
+                      )}
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
 
@@ -969,6 +1018,21 @@ export default function StudentProductViewPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Event Item Order QR Modal */}
+        {product.type === "EVENT_ITEM" && currentMembership && product.eventId && (
+          <EventItemOrderQRModal
+            open={isQRModalOpen}
+            onOpenChange={setIsQRModalOpen}
+            productId={product.id}
+            quantity={quantity}
+            membershipId={currentMembership.membershipId}
+            eventId={product.eventId}
+            productName={product.name}
+            eventName={eventData?.name}
+            memberName={fullProfile?.fullName}
+          />
+        )}
       </AppShell>
     </ProtectedRoute>
   );

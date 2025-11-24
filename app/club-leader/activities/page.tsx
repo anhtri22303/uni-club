@@ -3,25 +3,27 @@
 import { useState, useEffect, useCallback } from "react"
 import { AppShell } from "@/components/app-shell"
 import { ProtectedRoute } from "@/contexts/protected-route"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
-    getClubMemberActivity, MemberActivityScore, ActivityLevel, calculateFinalScore, updateMemberBaseScore,
+    getClubMemberActivity,
+    getClubMemberActivityLive,
+    MemberActivityScore,
+    ActivityLevel,
 } from "@/service/activityApi"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
-import { LineChart, Users, Calendar, BarChart2, TrendingUp, TrendingDown, Minus, Check, X, ShieldAlert, Star, RotateCw } from "lucide-react"
-import { useAuth } from "@/contexts/auth-context" // Giả sử bạn có hook này để lấy clubId
+import { LineChart, Users, BarChart2, TrendingUp, TrendingDown, Minus, Check, ShieldAlert, Star, RotateCw, Calculator } from "lucide-react"
 import { Label } from "@/components/ui/label"
 import { getClubIdFromToken } from "@/service/clubApi"
-import { Input } from "@/components/ui/input" // Component Input
+import { Input } from "@/components/ui/input"
+
 // --- Tiện ích (Helpers) ---
 
-// Tạo danh sách tháng/năm
 const generateYearOptions = () => {
     const currentYear = new Date().getFullYear()
     const years = []
@@ -33,116 +35,129 @@ const generateYearOptions = () => {
 
 const generateMonthOptions = () => {
     return [
-        { value: 1, label: "January" },
-        { value: 2, label: "February" },
-        { value: 3, label: "March" },
-        { value: 4, label: "April" },
-        { value: 5, label: "May" },
-        { value: 6, label: "June" },
-        { value: 7, label: "July" },
-        { value: 8, label: "August" },
-        { value: 9, label: "September" },
-        { value: 10, label: "October" },
-        { value: 11, label: "November" },
-        { value: 12, label: "December" },
+        { value: 1, label: "January" }, { value: 2, label: "February" }, { value: 3, label: "March" },
+        { value: 4, label: "April" }, { value: 5, label: "May" }, { value: 6, label: "June" },
+        { value: 7, label: "July" }, { value: 8, label: "August" }, { value: 9, label: "September" },
+        { value: 10, label: "October" }, { value: 11, label: "November" }, { value: 12, label: "December" },
     ]
 }
 
 // Định dạng màu cho Activity Level
 const getLevelBadgeColor = (level: ActivityLevel | string) => {
     switch (level) {
-        case "HIGH":
-            return "bg-green-100 text-green-700 border-green-300 dark:bg-green-950 dark:text-green-300 dark:border-green-700"
-        case "MEDIUM":
-            return "bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-700"
-        case "LOW":
-            return "bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-950 dark:text-orange-300 dark:border-orange-700"
-        default: // UNKNOWN
-            return "bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-950 dark:text-gray-300 dark:border-gray-700"
+        case "HIGH": return "bg-green-100 text-green-700 border-green-300 dark:bg-green-950 dark:text-green-300 dark:border-green-700"
+        case "MEDIUM": return "bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-700"
+        case "LOW": return "bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-950 dark:text-orange-300 dark:border-orange-700"
+        default: return "bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-950 dark:text-gray-300 dark:border-gray-700"
     }
 }
 
-// Định dạng màu cho Multiplier
-const getMultiplierBadgeColor = (multiplier: number) => {
-    if (multiplier > 1) return "bg-green-100 text-green-700 border-green-300 dark:bg-green-950 dark:text-green-300 dark:border-green-700"
-    if (multiplier < 1) return "bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-950 dark:text-orange-300 dark:border-orange-700"
-    return "bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-700"
-}
-
-// Icon cho Multiplier
-const getMultiplierIcon = (multiplier: number) => {
-    if (multiplier > 1) return <TrendingUp className="h-4 w-4 mr-1" />
-    if (multiplier < 1) return <TrendingDown className="h-4 w-4 mr-1" />
-    return <Minus className="h-4 w-4 mr-1" />
-}
-
-// Component hiển thị chi tiết điểm
+// Component hiển thị chi tiết điểm trong Modal
 const ActivityScoreDetail = ({ score }: { score: MemberActivityScore }) => {
+    // Sử dụng ?? 0 để an toàn với dữ liệu null/undefined
+    const attendanceScore = score.attendanceTotalScore ?? 0;
+    const staffTotalScore = score.staffTotalScore ?? 0;
+    const finalScore = score.finalScore ?? 0;
+
     return (
-        <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-6">
+            {/* Tổng điểm */}
+            <Card className="bg-primary/5 border-primary/50">
+                <CardHeader className="pb-2">
+                    <CardDescription className="flex items-center gap-2 text-primary font-semibold">
+                        <BarChart2 className="h-5 w-5" /> FINAL SCORE
+                    </CardDescription>
+                    <CardTitle className="text-5xl text-primary">
+                        {finalScore.toFixed(0)}
+                    </CardTitle>
+                    <CardDescription>
+                        = Attendance ({attendanceScore.toFixed(0)}) + Staff ({staffTotalScore.toFixed(0)})
+                    </CardDescription>
+                </CardHeader>
+            </Card>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Phần Attendance */}
                 <Card>
-                    <CardHeader className="pb-2">
-                        <CardDescription className="flex items-center gap-2 text-sm"><LineChart className="h-4 w-4" /> Base Score</CardDescription>
-                        <CardTitle className="text-3xl">{score.baseScore.toFixed(0)}</CardTitle>
+                    <CardHeader className="pb-3 bg-muted/30">
+                        <CardTitle className="text-lg flex items-center gap-2">
+                            <Users className="h-5 w-5 text-blue-600" /> Attendance
+                        </CardTitle>
                     </CardHeader>
-                    <CardContent>
-                        <div className="text-xs text-muted-foreground">
-                            {/* {score.baseScorePercent.toFixed(0)}% of maximum score */}
-                            {(score.baseScorePercent ?? 0).toFixed(0)}% of maximum score
+                    <CardContent className="pt-4 space-y-3">
+                        <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Base Score:</span>
+                            <span className="font-mono font-medium">{score.attendanceBaseScore ?? 0}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Multiplier:</span>
+                            <Badge variant="outline" className="font-mono">
+                                {(score.attendanceMultiplier ?? 0).toFixed(1)}x
+                            </Badge>
+                        </div>
+                        <div className="border-t pt-2 flex justify-between items-center">
+                            <span className="font-semibold text-sm">Total Attendance:</span>
+                            <span className="text-xl font-bold text-blue-600">{attendanceScore.toFixed(0)}</span>
+                        </div>
+                        
+                        <div className="bg-muted p-2 rounded text-xs space-y-1 mt-2">
+                            <div className="flex justify-between">
+                                <span>Rate:</span>
+                                <span>{((score.sessionAttendanceRate ?? 0) * 100).toFixed(0)}%</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span>Sessions:</span>
+                                <span>{score.totalClubPresent}/{score.totalClubSessions}</span>
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
+
+                {/* Phần Staff */}
                 <Card>
-                    <CardHeader className="pb-2">
-                        <CardDescription className="flex items-center gap-2 text-sm"><BarChart2 className="h-4 w-4" /> Multiplier</CardDescription>
-                        <CardTitle className="text-3xl flex items-center">
-                            {getMultiplierIcon(score.appliedMultiplier)}
-                            {score.appliedMultiplier.toFixed(1)}x
+                    <CardHeader className="pb-3 bg-muted/30">
+                        <CardTitle className="text-lg flex items-center gap-2">
+                            <Star className="h-5 w-5 text-yellow-600" /> Staff
                         </CardTitle>
                     </CardHeader>
-                    <CardContent>
-                        <Badge variant="outline" className={getMultiplierBadgeColor(score.appliedMultiplier)}>
-                            {score.appliedMultiplier > 1 ? `+${((score.appliedMultiplier - 1) * 100).toFixed(0)}% bonus` :
-                                score.appliedMultiplier < 1 ? `${((1 - score.appliedMultiplier) * 100).toFixed(0)}% penalty` :
-                                    "No change"}
-                        </Badge>
+                    <CardContent className="pt-4 space-y-3">
+                        <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Base Score:</span>
+                            <span className="font-mono font-medium">{score.staffBaseScore ?? 0}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Evaluation:</span>
+                            <Badge variant={(score.staffEvaluation === 'GOOD' || score.staffEvaluation === 'EXCELLENT') ? 'default' : 'secondary'} className="text-[10px]">
+                                {score.staffEvaluation ?? 'NONE'}
+                            </Badge>
+                        </div>
+                        <div className="border-t pt-2 flex justify-between items-center">
+                            <span className="font-semibold text-sm">Total Staff:</span>
+                            <span className="text-xl font-bold text-yellow-600">{staffTotalScore.toFixed(0)}</span>
+                        </div>
+
+                        <div className="bg-muted p-2 rounded text-xs space-y-1 mt-2">
+                            <div className="flex justify-between">
+                                <span>Times Participated:</span>
+                                <span>{score.totalStaffCount ?? 0}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span>Last Multiplier:</span>
+                                <span>{(score.staffMultiplier ?? 0).toFixed(1)}x</span>
+                            </div>
+                        </div>
                     </CardContent>
                 </Card>
             </div>
 
+            {/* Các chỉ số phụ */}
             <Card>
-                <CardHeader>
-                    <CardTitle>Raw Data Details</CardTitle>
-                    <CardDescription>Data used to calculate monthly score.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                    <div className="flex justify-between items-center">
-                        <span className="text-muted-foreground">Session Attendance Rate:</span>
-                        <span className="font-bold text-lg">{(score.sessionAttendanceRate * 100).toFixed(0)}%</span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm">
-                        <span className="text-muted-foreground ml-4"> (Sessions attended / Total sessions)</span>
-                        <span>{score.totalClubPresent} / {score.totalClubSessions}</span>
-                    </div>
-                    <hr className="my-2 dark:border-gray-700" />
-                    <div className="flex justify-between items-center">
-                        <span className="text-muted-foreground">Event Participation Rate:</span>
-                        <span className="font-bold text-lg">{(score.eventAttendanceRate * 100).toFixed(0)}%</span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm">
-                        <span className="text-muted-foreground ml-4"> (Events attended / Total events registered)</span>
-                        <span>{score.totalEventAttended} / {score.totalEventRegistered}</span>
-                    </div>
-                    <hr className="my-2 dark:border-gray-700" />
-                    <div className="flex justify-between items-center">
-                        <span className="text-muted-foreground">Staff Performance Score:</span>
-                        <span className="font-bold text-lg">{score.avgStaffPerformance.toFixed(1)} / 5 <Star className="h-4 w-4 inline text-yellow-500" /></span>
-                    </div>
-                    <hr className="my-2 dark:border-gray-700" />
-                    <div className="flex justify-between items-center">
-                        <span className="text-muted-foreground text-red-600 dark:text-red-400">Penalty Points:</span>
-                        <span className="font-bold text-lg text-red-600 dark:text-red-400">-{score.totalPenaltyPoints}</span>
+                <CardContent className="pt-4">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <ShieldAlert className="h-4 w-4" /> Penalty Points
+                        </div>
+                        <span className="text-red-600 font-bold">-{score.totalPenaltyPoints ?? 0}</span>
                     </div>
                 </CardContent>
             </Card>
@@ -152,28 +167,33 @@ const ActivityScoreDetail = ({ score }: { score: MemberActivityScore }) => {
 
 export default function ActivityReportPage() {
     const { toast } = useToast()
-    //   const { user } = useAuth() // Lấy thông tin user (giả sử có clubId trong đó)
-
+    
+    // State quản lý thời gian
     const [yearOptions] = useState(generateYearOptions())
     const [monthOptions] = useState(generateMonthOptions())
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
-    const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1) // Tháng (1-12)
+    const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
+
+    // State dữ liệu
     const [activities, setActivities] = useState<MemberActivityScore[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [selectedMember, setSelectedMember] = useState<MemberActivityScore | null>(null)
-    const [clubId] = useState(() => getClubIdFromToken())
-    const [newBaseScore, setNewBaseScore] = useState<string>("") // State cho Base Score mới
+    
+    // State Base Score
+    const [attendanceBaseInput, setAttendanceBaseInput] = useState<string>("")
+    const [staffBaseInput, setStaffBaseInput] = useState<string>("")
+    
     const [isCalculating, setIsCalculating] = useState(false)
-    const [isUpdatingBaseScore, setIsUpdatingBaseScore] = useState(false)
+    const [clubId] = useState(() => getClubIdFromToken())
 
-    // Hàm tải dữ liệu
+    // Hàm tải dữ liệu lịch sử (ban đầu)
     const loadActivities = useCallback(async () => {
         if (!clubId) {
             toast({ title: "Error", description: "Club information not found.", variant: "destructive" })
             return
         }
 
-        console.log(`Loading data for Club ID: ${clubId}, Year: ${selectedYear}, Month: ${selectedMonth}`)
+        console.log(`Loading historical data for Club ID: ${clubId}, ${selectedMonth}/${selectedYear}`)
         setIsLoading(true)
         try {
             const data = await getClubMemberActivity({
@@ -182,46 +202,65 @@ export default function ActivityReportPage() {
                 month: selectedMonth,
             })
             setActivities(data)
-            // Cập nhật Base Score hiện tại của member đầu tiên làm giá trị mặc định cho ô input
+            
+            // Lấy giá trị Base Score từ dữ liệu cũ để điền vào input (nếu có)
             if (data.length > 0) {
-                setNewBaseScore(String(data[0].baseScore.toFixed(0)));
+                setAttendanceBaseInput(String(data[0].attendanceBaseScore ?? 30)); // Mặc định 30 nếu chưa có
+                setStaffBaseInput(String(data[0].staffBaseScore ?? 20)); // Mặc định 20 nếu chưa có
+            } else {
+                setAttendanceBaseInput("30");
+                setStaffBaseInput("20");
             }
         } catch (error: any) {
             console.error("Error loading activity report:", error)
             toast({
                 title: "Error",
-                description: error.message || "Unable to load report. Please try again.",
+                description: error.message || "Unable to load report.",
                 variant: "destructive",
             })
-            setActivities([]) // Xóa dữ liệu cũ nếu có lỗi
+            setActivities([])
         } finally {
             setIsLoading(false)
         }
     }, [clubId, selectedYear, selectedMonth, toast])
 
-    // Hàm gửi yêu cầu tính toán Final Score
-    const handleCalculateScores = async () => {
+    // Hàm tính toán LIVE (Sử dụng API activity-live mới)
+    const handleLiveCalculation = async () => {
         if (!clubId) return
+
+        const attBase = Number(attendanceBaseInput)
+        const stfBase = Number(staffBaseInput)
+
+        if (isNaN(attBase) || attBase < 0 || isNaN(stfBase) || stfBase < 0) {
+            toast({ 
+                title: "Invalid Input", 
+                description: "Base scores must be valid positive numbers.", 
+                variant: "destructive" 
+            })
+            return
+        }
+
         setIsCalculating(true)
         try {
-            await calculateFinalScore({
+            // Gọi API Live để lấy dữ liệu tính toán real-time
+            const liveData = await getClubMemberActivityLive({
                 clubId: clubId,
-                year: selectedYear,
-                month: selectedMonth,
+                attendanceBase: attBase,
+                staffBase: stfBase
             })
+            
+            setActivities(liveData)
+            
             toast({
-                title: "Success",
-                description: "Final scores calculation requested. Data will refresh shortly.",
+                title: "Live Calculation Applied",
+                description: `Scores recalculated with Attendance Base: ${attBase} and Staff Base: ${stfBase}.`,
                 variant: "default",
             })
-            // Tải lại dữ liệu sau khi tính toán
-            // Dùng setTimeout để đảm bảo BE có thời gian xử lý
-            setTimeout(loadActivities, 2000);
         } catch (error: any) {
-            console.error("Error calculating scores:", error)
+            console.error("Error calculating live scores:", error)
             toast({
                 title: "Calculation Failed",
-                description: error.message || "An error occurred while calculating final scores.",
+                description: error.message || "Failed to fetch live data.",
                 variant: "destructive",
             })
         } finally {
@@ -229,58 +268,10 @@ export default function ActivityReportPage() {
         }
     }
 
-    // Hàm cập nhật Base Score đồng loạt (gọi API update cho từng member)
-    const handleUpdateAllBaseScores = async () => {
-        if (!clubId || activities.length === 0) return
-
-        const score = Number(newBaseScore);
-        if (isNaN(score) || score < 0) {
-            toast({ title: "Error", description: "Base Score must be a non-negative number.", variant: "destructive" });
-            return;
-        }
-
-        setIsUpdatingBaseScore(true);
-
-        try {
-            // Lặp và gọi API cho từng member
-            // Lưu ý: Cần tối ưu bằng cách gọi API bulk nếu BE hỗ trợ
-            const updatePromises = activities.map(member =>
-                updateMemberBaseScore({
-                    clubId: clubId,
-                    year: selectedYear,
-                    month: selectedMonth,
-                    body: {
-                        membershipId: member.membershipId,
-                        baseScore: score,
-                    }
-                })
-            );
-
-            // Chờ tất cả các lời gọi API hoàn thành
-            await Promise.allSettled(updatePromises);
-
-            toast({
-                title: "Success",
-                description: `Updated Base Score to ${score.toFixed(0)} for all ${activities.length} members. Now calculate Final Scores.`,
-                variant: "default",
-            });
-
-        } catch (error: any) {
-            console.error("Error updating base scores:", error);
-            toast({
-                title: "Update Failed",
-                description: "Some or all base scores failed to update. Check console for details.",
-                variant: "destructive",
-            });
-        } finally {
-            setIsUpdatingBaseScore(false);
-        }
-    }
-
-    // Tải dữ liệu khi component mount hoặc khi đổi tháng/năm
+    // Tải dữ liệu khi component mount hoặc filter thay đổi
     useEffect(() => {
         loadActivities()
-    }, [selectedYear, selectedMonth, clubId])
+    }, [selectedYear, selectedMonth, clubId, loadActivities])
 
     return (
         <ProtectedRoute allowedRoles={["club_leader", "club_vice_leader"]}>
@@ -288,220 +279,173 @@ export default function ActivityReportPage() {
                 <div className="space-y-6">
                     {/* Header */}
                     <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
-                        <div className="flex-1 min-w-0">
+                        <div className="flex-1">
                             <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
-                                <BarChart2 className="h-6 w-6 sm:h-8 sm:w-8 flex-shrink-0" />
-                                <span className="truncate">Member Activity Report</span>
+                                <Calculator className="h-7 w-7 text-primary" />
+                                <span>Activity Scoring Manager</span>
                             </h1>
-                            <p className="text-sm sm:text-base text-muted-foreground mt-1 line-clamp-2">
-                                Review member activity scores by month.
+                            <p className="text-muted-foreground mt-1">
+                                Manage attendance and staff points for <strong>{selectedMonth}/{selectedYear}</strong>.
                             </p>
                         </div>
-                        {/* Approve Button (Suggestion) */}
-                        <Button className="gap-2 w-full sm:w-auto flex-shrink-0" disabled={isLoading || activities.length === 0}>
+                        {/* Nút Save/Approve (Có thể implement sau) */}
+                        <Button className="gap-2" variant="outline" disabled={isLoading || activities.length === 0}>
                             <Check className="h-4 w-4" />
-                            <span className="truncate">Approve Report for Month {selectedMonth}</span>
+                            Confirm & Save Report
                         </Button>
                     </div>
 
-                    {/* Controls Card: Filter, Base Score Input, and Calculate Button */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Score Management</CardTitle>
-                            <CardDescription>Adjust Base Score and calculate final scores for the selected month.</CardDescription>
+                    {/* Panel Điều khiển: Filter & Inputs */}
+                    <Card className="border-primary/20 shadow-sm">
+                        <CardHeader className="pb-3">
+                            <CardTitle className="text-lg">Configuration & Calculation</CardTitle>
+                            <CardDescription>Set parameters to calculate real-time scores for all members.</CardDescription>
                         </CardHeader>
-                        <CardContent className="pt-2 grid grid-cols-1 md:grid-cols-3 gap-4">
-                            {/* Filter Block */}
-                            <div className="space-y-2">
-                                <Label htmlFor="year-select">Select Year</Label>
-                                <Select
-                                    value={String(selectedYear)}
-                                    onValueChange={(value) => setSelectedYear(Number(value))}
-                                    disabled={isLoading || isCalculating || isUpdatingBaseScore}
-                                >
-                                    <SelectTrigger id="year-select"><SelectValue placeholder="Select year" /></SelectTrigger>
-                                    <SelectContent>
-                                        {yearOptions.map(year => (
-                                            <SelectItem key={year} value={String(year)}>{year}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="month-select">Select Month</Label>
-                                <Select
-                                    value={String(selectedMonth)}
-                                    onValueChange={(value) => setSelectedMonth(Number(value))}
-                                    disabled={isLoading || isCalculating || isUpdatingBaseScore}
-                                >
-                                    <SelectTrigger id="month-select"><SelectValue placeholder="Select month" /></SelectTrigger>
-                                    <SelectContent>
-                                        {monthOptions.map(month => (
-                                            <SelectItem key={month.value} value={String(month.value)}>{month.label}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            {/* Base Score Input */}
-                            <div className="space-y-2">
-                                <Label htmlFor="base-score-input">Bulk Base Score</Label>
-                                <div className="flex gap-2">
-                                    <Input
-                                        id="base-score-input"
-                                        type="number"
-                                        placeholder="E.g., 100"
-                                        value={newBaseScore}
-                                        onChange={(e) => setNewBaseScore(e.target.value)}
-                                        disabled={isLoading || activities.length === 0 || isUpdatingBaseScore}
-                                        min="0"
-                                    />
-                                    <Button
-                                        onClick={handleUpdateAllBaseScores}
-                                        disabled={isLoading || isUpdatingBaseScore || activities.length === 0 || !newBaseScore}
+                        <CardContent>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                                {/* Cột 1: Chọn Năm */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="year-select">Year</Label>
+                                    <Select
+                                        value={String(selectedYear)}
+                                        onValueChange={(value) => setSelectedYear(Number(value))}
+                                        disabled={isLoading || isCalculating}
                                     >
-                                        {isUpdatingBaseScore ? <RotateCw className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                                    </Button>
+                                        <SelectTrigger id="year-select"><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            {yearOptions.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
                                 </div>
-                                <p className="text-xs text-muted-foreground">Applies to all members. Must update before calculating final score.</p>
+
+                                {/* Cột 2: Chọn Tháng */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="month-select">Month</Label>
+                                    <Select
+                                        value={String(selectedMonth)}
+                                        onValueChange={(value) => setSelectedMonth(Number(value))}
+                                        disabled={isLoading || isCalculating}
+                                    >
+                                        <SelectTrigger id="month-select"><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            {monthOptions.map(m => <SelectItem key={m.value} value={String(m.value)}>{m.label}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {/* Cột 3: Attendance Base Score */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="att-base" className="text-blue-600 font-semibold">Attendance Base Score</Label>
+                                    <div className="relative">
+                                        <Input
+                                            id="att-base"
+                                            type="number"
+                                            min="0"
+                                            placeholder="e.g. 30"
+                                            value={attendanceBaseInput}
+                                            onChange={(e) => setAttendanceBaseInput(e.target.value)}
+                                            disabled={isLoading || isCalculating}
+                                            className="pl-9"
+                                        />
+                                        <Users className="h-4 w-4 absolute left-3 top-3 text-muted-foreground" />
+                                    </div>
+                                </div>
+
+                                {/* Cột 4: Staff Base Score */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="staff-base" className="text-yellow-600 font-semibold">Staff Base Score</Label>
+                                    <div className="relative">
+                                        <Input
+                                            id="staff-base"
+                                            type="number"
+                                            min="0"
+                                            placeholder="e.g. 20"
+                                            value={staffBaseInput}
+                                            onChange={(e) => setStaffBaseInput(e.target.value)}
+                                            disabled={isLoading || isCalculating}
+                                            className="pl-9"
+                                        />
+                                        <Star className="h-4 w-4 absolute left-3 top-3 text-muted-foreground" />
+                                    </div>
+                                </div>
                             </div>
                         </CardContent>
-                        <CardContent className="border-t pt-4">
-                            {/* Calculate Button */}
-                            <Button
-                                onClick={handleCalculateScores}
-                                disabled={isLoading || isCalculating || activities.length === 0}
-                                className="w-full gap-2"
+                        <CardFooter className="border-t pt-4 bg-muted/20 flex justify-end">
+                            <Button 
+                                onClick={handleLiveCalculation}
+                                disabled={isLoading || isCalculating || !attendanceBaseInput || !staffBaseInput}
+                                className="w-full sm:w-auto min-w-[200px] gap-2"
                             >
-                                {isCalculating ? (
-                                    <RotateCw className="h-4 w-4 animate-spin" />
-                                ) : (
-                                    <BarChart2 className="h-4 w-4" />
-                                )}
-                                Calculate Final Scores for {selectedMonth}/{selectedYear}
+                                {isCalculating ? <RotateCw className="h-4 w-4 animate-spin" /> : <Calculator className="h-4 w-4" />}
+                                Calculate Live Preview
                             </Button>
-                        </CardContent>
+                        </CardFooter>
                     </Card>
 
-
-                    {/* Data Table */}
-                    {/* <Card>
-                        <CardHeader>
-                            <CardTitle>Score Report for {selectedMonth}/{selectedYear}</CardTitle>
-                            <CardDescription>
-                                Total of {activities.length} members recorded. Click on a row to view details.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Full Name</TableHead>
-                                        <TableHead>Student ID</TableHead>
-                                        <TableHead>Level</TableHead>
-                                        <TableHead>Multiplier</TableHead>
-                                        <TableHead className="text-right">Final Score</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {isLoading ? (
-                                        // Skeleton loading
-                                        [...Array(5)].map((_, i) => (
-                                            <TableRow key={i}>
-                                                <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-                                                <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                                                <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                                                <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                                                <TableCell className="text-right"><Skeleton className="h-5 w-12 ml-auto" /></TableCell>
-                                            </TableRow>
-                                        ))
-                                    ) : activities.length === 0 ? (
-                                        // No data
-                                        <TableRow>
-                                            <TableCell colSpan={5} className="text-center h-24">
-                                                No data found for {selectedMonth}/{selectedYear}.
-                                            </TableCell>
-                                        </TableRow>
-                                    ) : (
-                                        // Hiển thị dữ liệu
-                                        activities.map(member => (
-                                            <TableRow key={member.membershipId} onClick={() => setSelectedMember(member)} className="cursor-pointer">
-                                                <TableCell className="font-medium">{member.fullName}</TableCell>
-                                                <TableCell>{member.studentCode}</TableCell>
-                                                <TableCell>
-                                                    <Badge variant="outline" className={getLevelBadgeColor(member.activityLevel)}>
-                                                        {member.activityLevel}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Badge variant="outline" className={getMultiplierBadgeColor(member.appliedMultiplier)}>
-                                                        {getMultiplierIcon(member.appliedMultiplier)}
-                                                        {member.appliedMultiplier.toFixed(1)}x
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell className="text-right font-bold text-lg">{member.finalScore.toFixed(0)}</TableCell>
-                                            </TableRow>
-                                        ))
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </CardContent>
-                    </Card> */}
+                    {/* Bảng Dữ liệu */}
                     <Card>
                         <CardHeader>
-                            <CardTitle>Score Report for {selectedMonth}/{selectedYear}</CardTitle>
+                            <div className="flex justify-between items-center">
+                                <CardTitle>Member Score Report</CardTitle>
+                                <Badge variant="secondary">{activities.length} Members</Badge>
+                            </div>
                             <CardDescription>
-                                Total of **{activities.length}** members recorded. Click on a row to view details.
+                                Click on any row to see detailed score breakdown.
                             </CardDescription>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="p-0">
                             <Table>
                                 <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Full Name</TableHead>
+                                    <TableRow className="bg-muted/50">
+                                        <TableHead className="w-[250px]">Full Name</TableHead>
                                         <TableHead>Student ID</TableHead>
-                                        <TableHead>Level</TableHead>
-                                        <TableHead>Multiplier</TableHead>
-                                        <TableHead className="text-right">Final Score</TableHead>
+                                        <TableHead>Activity Level</TableHead>
+                                        <TableHead className="text-center text-blue-600">Att. Score</TableHead>
+                                        <TableHead className="text-center text-yellow-600">Staff Score</TableHead>
+                                        <TableHead className="text-right font-bold">Final Score</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {isLoading ? (
-                                        // Skeleton loading
                                         [...Array(5)].map((_, i) => (
                                             <TableRow key={i}>
-                                                <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-                                                <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                                                <TableCell><Skeleton className="h-5 w-40" /></TableCell>
                                                 <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                                                <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                                                <TableCell className="text-right"><Skeleton className="h-5 w-12 ml-auto" /></TableCell>
+                                                <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                                                <TableCell><Skeleton className="h-5 w-10 mx-auto" /></TableCell>
+                                                <TableCell><Skeleton className="h-5 w-10 mx-auto" /></TableCell>
+                                                <TableCell><Skeleton className="h-5 w-12 ml-auto" /></TableCell>
                                             </TableRow>
                                         ))
                                     ) : activities.length === 0 ? (
-                                        // No data
                                         <TableRow>
-                                            <TableCell colSpan={5} className="text-center h-24">
-                                                No data found for {selectedMonth}/{selectedYear}.
+                                            <TableCell colSpan={6} className="text-center h-32 text-muted-foreground">
+                                                No data found for this period.
                                             </TableCell>
                                         </TableRow>
                                     ) : (
-                                        // Hiển thị dữ liệu
-                                        activities.map(member => (
-                                            <TableRow key={member.membershipId} onClick={() => setSelectedMember(member)} className="cursor-pointer hover:bg-muted/50">
+                                        activities.map((member) => (
+                                            <TableRow 
+                                                key={member.membershipId} 
+                                                onClick={() => setSelectedMember(member)}
+                                                className="cursor-pointer hover:bg-muted/60 transition-colors"
+                                            >
                                                 <TableCell className="font-medium">{member.fullName}</TableCell>
-                                                <TableCell>{member.studentCode}</TableCell>
+                                                <TableCell className="text-muted-foreground">{member.studentCode}</TableCell>
                                                 <TableCell>
                                                     <Badge variant="outline" className={getLevelBadgeColor(member.activityLevel)}>
                                                         {member.activityLevel}
                                                     </Badge>
                                                 </TableCell>
-                                                <TableCell>
-                                                    <Badge variant="outline" className={getMultiplierBadgeColor(member.appliedMultiplier)}>
-                                                        {getMultiplierIcon(member.appliedMultiplier)}
-                                                        {member.appliedMultiplier.toFixed(1)}x
-                                                    </Badge>
+                                                <TableCell className="text-center font-mono text-blue-600">
+                                                    {(member.attendanceTotalScore ?? 0).toFixed(0)}
                                                 </TableCell>
-                                                <TableCell className="text-right font-bold text-lg text-primary">{member.finalScore.toFixed(0)}</TableCell>
+                                                <TableCell className="text-center font-mono text-yellow-600">
+                                                    {(member.staffTotalScore ?? 0).toFixed(0)}
+                                                </TableCell>
+                                                <TableCell className="text-right font-bold text-lg">
+                                                    {(member.finalScore ?? 0).toFixed(0)}
+                                                </TableCell>
                                             </TableRow>
                                         ))
                                     )}
@@ -509,38 +453,20 @@ export default function ActivityReportPage() {
                             </Table>
                         </CardContent>
                     </Card>
-
-
-
-
-                    {/* Suggestion: Error reporting card */}
-                    <Card className="border-orange-500 bg-orange-50/50 dark:bg-orange-950/20 dark:border-orange-600">
-                        <CardHeader className="flex-row items-center gap-4 space-y-0">
-                            <ShieldAlert className="h-8 w-8 text-orange-600 dark:text-orange-400" />
-                            <div>
-                                <CardTitle className="text-orange-700 dark:text-orange-400">Found an Error?</CardTitle>
-                                <CardDescription className="text-orange-600 dark:text-orange-300">
-                                    If you find errors in raw data (attendance, event participation), please contact UniStaff for corrections.
-                                </CardDescription>
-                            </div>
-                        </CardHeader>
-                    </Card>
-
                 </div>
 
-                {/* Member Details Modal */}
-                <Dialog open={!!selectedMember} onOpenChange={(isOpen) => !isOpen && setSelectedMember(null)}>
+                {/* Modal Chi tiết */}
+                <Dialog open={!!selectedMember} onOpenChange={(open) => !open && setSelectedMember(null)}>
                     <DialogContent className="sm:max-w-[600px]">
                         <DialogHeader>
-                            <DialogTitle>Score Details: {selectedMember?.fullName}</DialogTitle>
+                            <DialogTitle>Detailed Score Breakdown</DialogTitle>
                             <DialogDescription>
-                                Score analysis for {selectedMember?.month}/{selectedMember?.year}
+                                Score analysis for <span className="font-semibold text-foreground">{selectedMember?.fullName}</span> ({selectedMember?.studentCode})
                             </DialogDescription>
                         </DialogHeader>
                         {selectedMember && <ActivityScoreDetail score={selectedMember} />}
                     </DialogContent>
                 </Dialog>
-
             </AppShell>
         </ProtectedRoute>
     )

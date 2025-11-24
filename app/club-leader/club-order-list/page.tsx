@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   ShoppingCart, Search, CheckCircle, XCircle, Clock, Eye, Filter, DollarSign, Package, User, Hash, Calendar, Undo2, 
-  WalletCards, ChevronLeft, ChevronRight,
+  WalletCards, ChevronLeft, ChevronRight, ScanLine,
 } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
@@ -233,12 +233,20 @@ export default function ClubLeaderOrdersPage() {
         {/* Xóa nút + (floating button) */}
         <div className="space-y-6">
           <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-bold dark:text-white">Redeem Orders in Club</h1>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h1 className="text-3xl font-bold dark:text-white">Redeem Orders in Club</h1>
+                <p className="text-muted-foreground dark:text-slate-400">
+                  Manage product redemption orders from members
+                </p>
+              </div>
+              <Link href="/club-leader/scan-order-qr">
+                <Button className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600">
+                  <ScanLine className="h-5 w-5 mr-2" />
+                  Scan QR Code
+                </Button>
+              </Link>
             </div>
-            <p className="text-muted-foreground dark:text-slate-400">
-              Manage product redemption orders from members
-            </p>
           </div>
 
           {/* Xóa Modal (vì đã xóa nút +) */}

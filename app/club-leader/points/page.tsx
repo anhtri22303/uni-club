@@ -1372,12 +1372,28 @@ export default function ClubLeaderRewardDistributionPage() {
                                 ({member.studentCode})
                               </span>
                             </p>
-                            <Badge
-                              variant="secondary"
-                              className="text-xs dark:bg-slate-700 dark:text-slate-300"
-                            >
-                              {member.role}
-                            </Badge>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Badge
+                                variant="secondary"
+                                className={`text-xs ${
+                                  member.role === "LEADER"
+                                    ? "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/40 dark:text-red-300 dark:border-red-700/50"
+                                    : member.role === "VICE_LEADER"
+                                    ? "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/40 dark:text-orange-300 dark:border-orange-700/50"
+                                    : "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/40 dark:text-green-300 dark:border-green-700/50"
+                                }`}
+                              >
+                                {member.role}
+                              </Badge>
+                              {member.isStaff && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-xs bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700/50"
+                                >
+                                  Staff
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                         </div>
 

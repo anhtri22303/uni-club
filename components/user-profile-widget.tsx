@@ -83,12 +83,13 @@ export function UserProfileWidget() {
   const router = useRouter()
   const { sidebarCollapsed, sidebarOpen } = useSidebarContext()
   const queryClient = useQueryClient()
-  
+
   // GỌI HOOK `useFullProfile`
   const { data: profile, isLoading: profileLoading } = useFullProfile(true);
   const [selectedWalletId, setSelectedWalletId] = useState<string>("")
-  const [widgetCollapsed, setWidgetCollapsed] = useState<boolean>(true)
-  
+  const widgetCollapsed = false; // Luôn hiển thị
+  // const [widgetCollapsed, setWidgetCollapsed] = useState<boolean>(true)
+
   // State for Complete Profile Modal
   const [showCompleteProfileModal, setShowCompleteProfileModal] = useState(false)
 
@@ -97,10 +98,10 @@ export function UserProfileWidget() {
     if (!profileLoading && profile) {
       // Check API response: needCompleteProfile = true AND roleName = "CLUB_LEADER"
       const shouldShowModal = profile.needCompleteProfile === true && profile.roleName === "CLUB_LEADER"
-      
+
       if (shouldShowModal) {
-        console.log("🔔 Club Leader profile incomplete (needCompleteProfile=true), showing modal")
-        console.log("📋 Profile data:", { needCompleteProfile: profile.needCompleteProfile, roleName: profile.roleName })
+        console.log("Club Leader profile incomplete (needCompleteProfile=true), showing modal")
+        console.log("Profile data:", { needCompleteProfile: profile.needCompleteProfile, roleName: profile.roleName })
         setShowCompleteProfileModal(true)
       }
     }
@@ -196,10 +197,11 @@ export function UserProfileWidget() {
       className={`fixed bottom-4 left-4 z-50 bg-white dark:bg-gray-900 border border-border rounded-2xl shadow-lg transition-all duration-300
 
       ${isHidden ? "opacity-0 -translate-x-full pointer-events-none" : "opacity-100 translate-x-0"}
-      pt-0 pb-4 px-4 space-y-3 ${widgetCollapsed ? "w-auto" : "w-[240px] max-w-[240px]"} block`}
+      pt-0 pb-4 px-4 space-y-3 ${widgetCollapsed ? "w-auto" : "w-[255px] max-w-[255px]"} block`
+      }
     >
       {/* Toggle Button */}
-      <div className="flex justify-end pt-2 pb-0 mb-2">
+      {/* <div className="flex justify-end pt-2 pb-0 mb-2">
         <Button
           variant="ghost"
           size="sm"
@@ -213,7 +215,7 @@ export function UserProfileWidget() {
             <ChevronDown className="h-4 w-4" />
           )}
         </Button>
-      </div>
+      </div> */}
 
       {!widgetCollapsed && (
         <>
@@ -304,7 +306,7 @@ export function UserProfileWidget() {
           )}
           {/* hiển thị thông tin user lấy từ API */}
           {/* <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors overflow-hidden"> */}
-          <div className="flex items-center gap-3 p-2 border border-primary/50 rounded-lg hover:bg-primary/30 transition-colors overflow-hidden">
+          <div className="flex items-center mt-4 gap-3 p-2 border border-primary/50 rounded-lg hover:bg-primary/30 transition-colors overflow-hidden">
             <Avatar className="h-10 w-10 flex-shrink-0">
               <AvatarImage src={avatarUrl || "/placeholder-user.jpg"} alt={userName || "User"} />
               <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
@@ -360,7 +362,7 @@ export function UserProfileWidget() {
           </Button>
         </div>
       )}
-      
+
       {/* Complete Profile Modal */}
       {(auth.role === "club_leader" || profile?.roleName === "CLUB_LEADER") && (
         <CompleteProfileModal

@@ -53,6 +53,7 @@
     "geist": "latest",
     "html-to-image": "^1.11.13",
     "html2canvas": "^1.4.1",
+    "html5-qrcode": "^2.3.8",
     "input-otp": "1.4.1",
     "jspdf": "^3.0.3",
     "jwt-decode": "^4.0.0",

@@ -227,16 +227,16 @@ export default function ClubLeaderMembersPage() {
     try {
       const message = await putLeaveReq(requestId, action)
       toast({
-        title: "Thành công",
-        description: message || `Yêu cầu đã được ${action === "APPROVED" ? "chấp nhận" : "từ chối"}`,
+        title: "Success",
+        description: message || `The request has been ${action === "APPROVED" ? "APPROVED" : "REJECTED"}`,
       })
       // Reload leave requests
       await loadLeaveRequests()
     } catch (error: any) {
       console.error("Failed to process leave request:", error)
       toast({
-        title: "Lỗi",
-        description: error?.response?.data?.error || error?.response?.data?.message || "Không thể xử lý yêu cầu",
+        title: "Error",
+        description: error?.response?.data?.error || error?.response?.data?.message || "Unable to process request",
         variant: "destructive",
       })
     } finally {
