@@ -24,6 +24,7 @@ interface NotificationContextType {
   totalUnread: number;
   markClubAsSeen: (clubId: number) => void;
   refreshUnreadCounts: () => Promise<void>;
+  setCurrentViewingClub: (clubId: number | null) => void;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -40,6 +41,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const [unreadCounts, setUnreadCounts] = useState<UnreadCount[]>([]);
   const [clubIds, setClubIds] = useState<number[]>([]);
   const [lastNotifiedMessages, setLastNotifiedMessages] = useState<Set<string>>(new Set());
+  const [currentViewingClubId, setCurrentViewingClubId] = useState<number | null>(null);
 
   // Initialize from localStorage
   useEffect(() => {
@@ -124,10 +126,14 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       const currentUserId = auth.userId;
       const unreadMessages = newMessages.filter((msg: any) => msg.userId !== currentUserId);
       
-      // Show toast for new messages if not on chat page
+      // Show toast for new messages if:
+      // 1. Not on chat page at all, OR
+      // 2. On chat page but viewing a different club
       const isOnChatPage = pathname?.includes('/chat');
+      const isViewingThisClub = currentViewingClubId === clubId;
+      const shouldShowToast = !isOnChatPage || (isOnChatPage && !isViewingThisClub);
       
-      if (!isOnChatPage && unreadMessages.length > 0) {
+      if (shouldShowToast && unreadMessages.length > 0) {
         // Show toast for the latest message only
         const latestMessage = unreadMessages[unreadMessages.length - 1];
         const messageId = latestMessage.id;
@@ -154,7 +160,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       console.error(`Failed to fetch messages for club ${clubId}:`, err);
       return 0;
     }
-  }, [lastSeen, auth.userId, pathname, lastNotifiedMessages, toast]);
+  }, [lastSeen, auth.userId, pathname, lastNotifiedMessages, toast, currentViewingClubId]);
 
   // Refresh unread counts for all clubs
   const refreshUnreadCounts = useCallback(async () => {
@@ -218,6 +224,11 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   // Calculate total unread
   const totalUnread = unreadCounts.reduce((sum, c) => sum + c.count, 0);
 
+  // Function to set which club is currently being viewed
+  const setCurrentViewingClub = useCallback((clubId: number | null) => {
+    setCurrentViewingClubId(clubId);
+  }, []);
+
   const value: NotificationContextType = {
     enabled,
     toggleNotifications,
@@ -225,6 +236,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     totalUnread,
     markClubAsSeen,
     refreshUnreadCounts,
+    setCurrentViewingClub,
   };
 
   return (

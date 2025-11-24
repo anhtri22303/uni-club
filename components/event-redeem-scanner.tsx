@@ -87,10 +87,14 @@ export function EventRedeemScanner({
                   typeof data.eventId === "number"
                 ) {
                   setScannedData(data)
-                  // Stop scanning
-                  html5QrCode?.stop().then(() => {
-                    setScannerReady(false)
-                  }).catch(console.error)
+                  setScannerReady(false)
+                  
+                  // Stop scanning safely
+                  if (html5QrCode) {
+                    html5QrCode.stop().catch((err) => {
+                      console.warn("Scanner stop warning:", err)
+                    })
+                  }
                   
                   toast({
                     title: "QR Code Scanned",
@@ -142,7 +146,10 @@ export function EventRedeemScanner({
     return () => {
       clearTimeout(timer)
       if (html5QrCode) {
-        html5QrCode.stop().catch(console.error)
+        html5QrCode.stop().catch((err) => {
+          // Ignore errors when stopping scanner during cleanup
+          console.warn("Scanner cleanup warning:", err)
+        })
       }
     }
   }, [open, toast])
