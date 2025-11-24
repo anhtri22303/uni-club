@@ -196,6 +196,19 @@ export async function getEventRedeemOrders(
 }
 
 /**
+ * (MỚI) Lấy tất cả đơn hàng Event của một Club
+ * (GET /api/redeem/event/club/{clubId})
+ */
+export async function getAllEventOrdersByClub(
+  clubId: number | string
+): Promise<RedeemOrder[]> {
+  const res = await axiosInstance.get<ApiResponse<RedeemOrder[]>>(
+    `/api/redeem/event/club/${clubId}`
+  );
+  return res.data.data;
+}
+
+/**
  * (MỚI) Lấy lịch sử các đơn hàng đổi quà của chính member đang đăng nhập
  * (GET /api/redeem/orders/member)
  */
@@ -208,6 +221,19 @@ export async function getMemberRedeemOrders(): Promise<RedeemOrder[]> {
 }
 
 // === PUT (Cập nhật trạng thái đơn) ===
+
+/**
+ * (MỚI) Lấy thông tin chi tiết đơn hàng theo orderId
+ * (GET /api/redeem/orders/{orderId})
+ */
+export async function getRedeemOrderById(
+  orderId: number | string
+): Promise<RedeemOrder> {
+  const res = await axiosInstance.get<ApiResponse<RedeemOrder>>(
+    `/api/redeem/order/id/${orderId}`
+  );
+  return res.data.data;
+}
 
 /**
  * (MỚI) Hoàn thành một đơn hàng (chuyển status sang COMPLETED)
