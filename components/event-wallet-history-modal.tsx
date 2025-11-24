@@ -1,85 +1,131 @@
-"use client"
+"use client";
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
-import { EventWallet, EventWalletTransaction, getEventWallet } from "@/service/eventApi"
-import { useState, useEffect } from "react"
-import { ArrowDownCircle, ArrowUpCircle, Calendar, DollarSign, FileText } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import {
+  EventWallet,
+  EventWalletTransaction,
+  getEventWallet,
+} from "@/service/eventApi";
+import { useState, useEffect } from "react";
+import {
+  ArrowDownCircle,
+  ArrowUpCircle,
+  Calendar,
+  DollarSign,
+  FileText,
+} from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface EventWalletHistoryModalProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  eventId: string | number
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  eventId: string | number;
 }
 
-export function EventWalletHistoryModal({ open, onOpenChange, eventId }: EventWalletHistoryModalProps) {
-  const [wallet, setWallet] = useState<EventWallet | null>(null)
-  const [loading, setLoading] = useState(false)
-  const { toast } = useToast()
+export function EventWalletHistoryModal({
+  open,
+  onOpenChange,
+  eventId,
+}: EventWalletHistoryModalProps) {
+  const [wallet, setWallet] = useState<EventWallet | null>(null);
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
-    if (!open) return
+    if (!open) return;
 
     const fetchWalletData = async () => {
-      setLoading(true)
+      setLoading(true);
       try {
-        const data = await getEventWallet(eventId)
-        setWallet(data)
+        const data = await getEventWallet(eventId);
+        setWallet(data);
       } catch (error: any) {
-        console.error("Failed to fetch wallet history:", error)
+        console.error("Failed to fetch wallet history:", error);
         toast({
           title: "Error",
-          description: error?.response?.data?.message || error?.message || "Failed to load wallet history",
-          variant: "destructive"
-        })
+          description:
+            error?.response?.data?.error ||
+            error?.response?.data?.message ||
+            error?.message ||
+            "Failed to load wallet history",
+          variant: "destructive",
+        });
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    fetchWalletData()
-  }, [open, eventId, toast])
+    fetchWalletData();
+  }, [open, eventId, toast]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("vi-VN", {
       style: "currency",
       currency: "VND",
-    }).format(amount)
-  }
+    }).format(amount);
+  };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
+    const date = new Date(dateString);
     return date.toLocaleString("en-US", {
       year: "numeric",
       month: "short",
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
-    })
-  }
+    });
+  };
 
   const getTransactionIcon = (amount: number) => {
     if (amount > 0) {
-      return <ArrowDownCircle className="h-5 w-5 text-green-600 dark:text-green-500" />
+      return (
+        <ArrowDownCircle className="h-5 w-5 text-green-600 dark:text-green-500" />
+      );
     }
-    return <ArrowUpCircle className="h-5 w-5 text-red-600 dark:text-red-500" />
-  }
+    return <ArrowUpCircle className="h-5 w-5 text-red-600 dark:text-red-500" />;
+  };
 
   const getTransactionBadge = (type: string) => {
     switch (type.toUpperCase()) {
       case "TRANSFER":
-        return <Badge variant="outline" className="bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border-blue-300 dark:border-blue-700">Transfer</Badge>
+        return (
+          <Badge
+            variant="outline"
+            className="bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border-blue-300 dark:border-blue-700"
+          >
+            Transfer
+          </Badge>
+        );
       case "DEPOSIT":
-        return <Badge variant="outline" className="bg-green-50 dark:bg-green-950/50 text-green-700 dark:text-green-400 border-green-300 dark:border-green-700">Deposit</Badge>
+        return (
+          <Badge
+            variant="outline"
+            className="bg-green-50 dark:bg-green-950/50 text-green-700 dark:text-green-400 border-green-300 dark:border-green-700"
+          >
+            Deposit
+          </Badge>
+        );
       case "WITHDRAWAL":
-        return <Badge variant="outline" className="bg-red-50 dark:bg-red-950/50 text-red-700 dark:text-red-400 border-red-300 dark:border-red-700">Withdrawal</Badge>
+        return (
+          <Badge
+            variant="outline"
+            className="bg-red-50 dark:bg-red-950/50 text-red-700 dark:text-red-400 border-red-300 dark:border-red-700"
+          >
+            Withdrawal
+          </Badge>
+        );
       default:
-        return <Badge variant="outline">{type}</Badge>
+        return <Badge variant="outline">{type}</Badge>;
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -102,12 +148,20 @@ export function EventWalletHistoryModal({ open, onOpenChange, eventId }: EventWa
               <CardContent className="pt-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium text-muted-foreground">Event Name</label>
-                    <p className="text-lg font-semibold text-blue-900 dark:text-blue-300">{wallet.eventName}</p>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Event Name
+                    </label>
+                    <p className="text-lg font-semibold text-blue-900 dark:text-blue-300">
+                      {wallet.eventName}
+                    </p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-muted-foreground">Host Club</label>
-                    <p className="text-lg font-semibold text-blue-900 dark:text-blue-300">{wallet.hostClubName}</p>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Host Club
+                    </label>
+                    <p className="text-lg font-semibold text-blue-900 dark:text-blue-300">
+                      {wallet.hostClubName}
+                    </p>
                   </div>
                 </div>
 
@@ -115,16 +169,28 @@ export function EventWalletHistoryModal({ open, onOpenChange, eventId }: EventWa
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="p-3 bg-white dark:bg-gray-800 rounded-lg border border-blue-200 dark:border-blue-700">
-                    <label className="text-sm font-medium text-muted-foreground">Budget Points</label>
-                    <p className="text-2xl font-bold text-blue-900 dark:text-blue-300 mt-1">{wallet.budgetPoints}</p>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Budget Points
+                    </label>
+                    <p className="text-2xl font-bold text-blue-900 dark:text-blue-300 mt-1">
+                      {wallet.budgetPoints}
+                    </p>
                   </div>
                   <div className="p-3 bg-white dark:bg-gray-800 rounded-lg border border-blue-200 dark:border-blue-700">
-                    <label className="text-sm font-medium text-muted-foreground">Balance Points</label>
-                    <p className="text-2xl font-bold text-green-700 dark:text-green-400 mt-1">{wallet.balancePoints}</p>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Balance Points
+                    </label>
+                    <p className="text-2xl font-bold text-green-700 dark:text-green-400 mt-1">
+                      {wallet.balancePoints}
+                    </p>
                   </div>
                   <div className="p-3 bg-white dark:bg-gray-800 rounded-lg border border-blue-200 dark:border-blue-700">
-                    <label className="text-sm font-medium text-muted-foreground">Owner Type</label>
-                    <p className="text-lg font-semibold text-blue-900 dark:text-blue-300 mt-1">{wallet.ownerType}</p>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Owner Type
+                    </label>
+                    <p className="text-lg font-semibold text-blue-900 dark:text-blue-300 mt-1">
+                      {wallet.ownerType}
+                    </p>
                   </div>
                 </div>
 
@@ -143,7 +209,10 @@ export function EventWalletHistoryModal({ open, onOpenChange, eventId }: EventWa
                   Transaction History
                 </h3>
                 <Badge variant="secondary" className="text-sm">
-                  {wallet.transactions.length} {wallet.transactions.length === 1 ? "transaction" : "transactions"}
+                  {wallet.transactions.length}{" "}
+                  {wallet.transactions.length === 1
+                    ? "transaction"
+                    : "transactions"}
                 </Badge>
               </div>
 
@@ -156,14 +225,18 @@ export function EventWalletHistoryModal({ open, onOpenChange, eventId }: EventWa
               ) : (
                 <div className="space-y-3">
                   {wallet.transactions
-                    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                    .sort(
+                      (a, b) =>
+                        new Date(b.createdAt).getTime() -
+                        new Date(a.createdAt).getTime()
+                    )
                     .map((transaction) => (
-                      <Card 
-                        key={transaction.id} 
+                      <Card
+                        key={transaction.id}
                         className={`transition-all hover:shadow-md ${
-                          transaction.amount > 0 
-                            ? 'border-l-4 border-l-green-500 bg-green-50/30 dark:bg-green-950/20' 
-                            : 'border-l-4 border-l-red-500 bg-red-50/30 dark:bg-red-950/20'
+                          transaction.amount > 0
+                            ? "border-l-4 border-l-green-500 bg-green-50/30 dark:bg-green-950/20"
+                            : "border-l-4 border-l-red-500 bg-red-50/30 dark:bg-red-950/20"
                         }`}
                       >
                         <CardContent className="p-4">
@@ -189,12 +262,19 @@ export function EventWalletHistoryModal({ open, onOpenChange, eventId }: EventWa
                               </div>
                             </div>
                             <div className="text-right flex-shrink-0">
-                              <p className={`text-xl font-bold ${
-                                transaction.amount > 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'
-                              }`}>
-                                {transaction.amount > 0 ? '+' : ''}{transaction.amount}
+                              <p
+                                className={`text-xl font-bold ${
+                                  transaction.amount > 0
+                                    ? "text-green-700 dark:text-green-400"
+                                    : "text-red-700 dark:text-red-400"
+                                }`}
+                              >
+                                {transaction.amount > 0 ? "+" : ""}
+                                {transaction.amount}
                               </p>
-                              <p className="text-xs text-muted-foreground">points</p>
+                              <p className="text-xs text-muted-foreground">
+                                points
+                              </p>
                             </div>
                           </div>
                         </CardContent>
@@ -211,6 +291,5 @@ export function EventWalletHistoryModal({ open, onOpenChange, eventId }: EventWa
         )}
       </DialogContent>
     </Dialog>
-  )
+  );
 }
-

@@ -80,7 +80,7 @@ export const checkin = async (token: string): Promise<string> => {
     console.error("Error during checkin:", error)
     
     // Extract error message properly
-    const errorMsg = error?.response?.data?.message || error?.response?.data || error?.message || 'Check-in failed'
+    const errorMsg = error?.response?.data?.error || error?.response?.data?.message || error?.response?.data || error?.message || 'Check-in failed'
     throw new Error(typeof errorMsg === 'string' ? errorMsg : 'Check-in failed')
   }
 }

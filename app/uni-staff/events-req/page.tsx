@@ -384,7 +384,7 @@ export default function UniStaffEventRequestsPage() {
 		} catch (err: any) {
 			toast({
 				title: "Error",
-				description: err?.response?.data?.message || "Failed to load event transaction history",
+				description: err?.response?.data?.error || err?.response?.data?.message || "Failed to load event transaction history",
 				variant: "destructive"
 			})
 		} finally {

@@ -232,7 +232,7 @@ export default function LoginPage() {
       } catch (error: any) {
         toast({
           title: "Sign Up Failed",
-          description: error.response?.data?.message || "Something went wrong",
+          description: error.response?.data?.error || error.response?.data?.message || "Something went wrong",
           variant: "destructive",
         })
       }
@@ -343,7 +343,7 @@ export default function LoginPage() {
     } catch (error: any) {
       toast({
         title: "Failed to Send Reset Email",
-        description: error.response?.data?.message || "Something went wrong",
+        description: error.response?.data?.error || error.response?.data?.message || "Something went wrong",
         variant: "destructive",
       })
     } finally {

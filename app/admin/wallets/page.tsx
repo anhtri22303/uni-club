@@ -102,7 +102,7 @@ export default function AdminWalletsPage() {
         onError: (err: any) => {
             toast({
                 title: "Error",
-                description: err.response?.data?.message || err.message,
+                description: err.response?.data?.error || err.response?.data?.message || err.message,
                 variant: "destructive",
             })
         },

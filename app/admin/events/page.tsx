@@ -165,7 +165,7 @@ export default function AdminEventsPage() {
         const { token } = await eventQR(selectedEvent.id, selectedPhase)
         console.log('New token generated:', token)
 
-        const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${selectedPhase}/${token}`
+        const prodUrl = `https://uniclub.id.vn/student/checkin/${selectedPhase}/${token}`
         const localUrl = `http://localhost:3000/student/checkin/${selectedPhase}/${token}`
         const mobileLink = `exp://192.168.1.50:8081/--/student/checkin/${selectedPhase}/${token}`
 
@@ -305,7 +305,7 @@ export default function AdminEventsPage() {
       console.error(error)
       toast({
         title: "Error",
-        description: error?.response?.data?.message || "Failed to create event",
+        description: error?.response?.data?.error || error?.response?.data?.message || "Failed to create event",
         variant: "destructive"
       })
     }
@@ -334,7 +334,7 @@ export default function AdminEventsPage() {
       const { token, expiresIn } = await eventQR(selectedEvent.id, phase)
       console.log('Generated token:', token, 'expires in:', expiresIn)
 
-      const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${phase}/${token}`
+      const prodUrl = `https://uniclub.id.vn/student/checkin/${phase}/${token}`
       const localUrl = `http://localhost:3000/student/checkin/${phase}/${token}`
       const mobileLink = `exp://192.168.1.50:8081/--/student/checkin/${phase}/${token}`
 

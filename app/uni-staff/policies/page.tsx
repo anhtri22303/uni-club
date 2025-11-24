@@ -462,7 +462,7 @@ export default function UniStaffPoliciesPage() {
                     } catch (err: any) { // Thêm ': any'
                       console.error('Create policy failed:', err)
                       // Lấy thông báo lỗi chi tiết từ response của server
-                      const errorMsg = err.response?.data?.message || 'Error creating policy.'
+                      const errorMsg = err.response?.data?.error || err.response?.data?.message || 'Error creating policy.'
                       toast({ title: 'Error', description: errorMsg, variant: 'destructive' }) // Hiển thị lỗi thật
                     } finally {
                       setCreating(false)

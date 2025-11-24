@@ -170,6 +170,7 @@ export const getEventByCode = async (code: string): Promise<Event> => {
   try {
     const response = await axiosInstance.get(`/api/events/code/${encodeURIComponent(code)}`)
     const resData: any = response.data
+    console.log(`Fetched event by code ${code}:`, resData)
     // console.debug(`Fetched event by code ${code}:`, resData)
     // Expected response shape: { success: true, message: null, data: {...event} }
     if (resData?.success && resData?.data) return resData.data
@@ -186,7 +187,7 @@ export const getEventByClubId = async (clubId: string | number): Promise<Event[]
   try {
     const response = await axiosInstance.get(`/api/events/club/${clubId}`)
     const resData: any = response.data
-    // console.log(`Fetched events for club ${clubId}:`, resData)
+    console.log(`Fetched events for club ${clubId}:`, resData)
 
     // If response is direct array of events
     if (Array.isArray(resData)) return resData
@@ -395,6 +396,23 @@ export const eventCheckin = async (eventJwtToken: string, level: string = "NONE"
     return data
   } catch (error) {
     console.error(`Error checking in to event:`, error)
+    throw error
+  }
+}
+
+export const eventCheckinPublic = async (code: string) => {
+  try {
+    const response = await axiosInstance.post(
+      `/api/events/public/checkin`,
+      null,
+      { params: { code } }
+    )
+    const data: any = response.data
+    console.log(`Public event check-in response:`, data)
+    // Response structure: { success: true, message: "string", data: "string" }
+    return data
+  } catch (error) {
+    console.error(`Error checking in to public event:`, error)
     throw error
   }
 }

@@ -313,7 +313,7 @@ export default function AdminLocationsPage() {
         } catch (error) {
             console.error("Error deleting location:", error)
             // Hiển thị lỗi từ server nếu có
-            const errorMsg = (error as any).response?.data?.message || "Failed to delete location. It might be in use by an event."
+            const errorMsg = (error as any).response?.data?.error || (error as any).response?.data?.message || "Failed to delete location. It might be in use by an event."
             toast({
                 title: "Error",
                 description: errorMsg,

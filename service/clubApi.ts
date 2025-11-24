@@ -112,7 +112,7 @@ export const getClubById = async (clubId: string | number): Promise<ClubApiRespo
     // Trả về một object lỗi có cấu trúc tương tự để component xử lý
     return {
       success: false,
-      message: error.response?.data?.message || "Không thể tải dữ liệu câu lạc bộ",
+      message: error.response?.data?.error || error.response?.data?.message || "Không thể tải dữ liệu câu lạc bộ",
       data: null
     };
   }

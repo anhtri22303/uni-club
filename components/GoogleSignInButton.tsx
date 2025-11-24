@@ -68,16 +68,16 @@ export function GoogleSignInButton({ mode = "sign-in", onClick }: GoogleSignInBu
         errorDetails = "Google token verification failed. Please try logging in again"
       } else if (error.response?.status === 400) {
         errorMessage = "Missing Required Parameters"
-        errorDetails = error.response?.data?.message || "Invalid request format"
+        errorDetails = error.response?.data?.error || error.response?.data?.message || "Invalid request format"
       } else if (error.message?.includes("fetch") || error.message?.includes("Network")) {
         errorMessage = "Cannot Connect to Server"
         errorDetails = "Please check your network connection or try again later"
       } else if (error.message) {
         errorMessage = "Login Failed"
         errorDetails = error.message
-      } else if (error.response?.data?.message) {
+      } else if (error.response?.data?.error || error.response?.data?.message) {
         errorMessage = "Server Error"
-        errorDetails = error.response.data.message
+        errorDetails = error.response.data.error || error.response.data.message
       }
       
       toast({

@@ -62,6 +62,7 @@ import {
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { TimeExtensionModal } from "@/components/time-extension-modal";
 import AddStaffModal from "@/components/add-staff-modal";
+import { PublicEventQRButton } from "@/components/public-event-qr-button";
 interface EventDetail {
   id: number;
   name: string;
@@ -257,7 +258,7 @@ export default function EventDetailPage() {
         console.log("New token generated:", token);
 
         // Create URLs with new token and phase
-        const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${selectedPhase}/${token}`;
+        const prodUrl = `https://uniclub.id.vn/student/checkin/${selectedPhase}/${token}`;
         const localUrl = `http://localhost:3000/student/checkin/${selectedPhase}/${token}`;
         const mobileLink = `exp://192.168.1.50:8081/--/student/checkin/${selectedPhase}/${token}`;
 
@@ -706,7 +707,7 @@ export default function EventDetailPage() {
       console.log("Generated token:", token, "expires in:", expiresIn);
 
       // Create URLs with token and phase (path parameter format)
-      const prodUrl = `https://uniclub-fpt.vercel.app/student/checkin/${phase}/${token}`;
+      const prodUrl = `https://uniclub.id.vn/student/checkin/${phase}/${token}`;
       const localUrl = `http://localhost:3000/student/checkin/${phase}/${token}`;
       const mobileLink = `exp://192.168.1.50:8081/--/student/checkin/${phase}/${token}`;
 
@@ -1298,13 +1299,28 @@ export default function EventDetailPage() {
                           Generate scannable QR codes for easy check-in
                         </div>
                       </div>
-                      <Button
-                        onClick={handleGenerateQR}
-                        className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200"
-                      >
-                        <QrCode className="h-4 w-4 mr-2" />
-                        Generate QR Code
-                      </Button>
+                      <div className="flex gap-2">
+                        {/* Show Public Event QR button for PUBLIC events */}
+                        {event.type === "PUBLIC" && (
+                          <PublicEventQRButton
+                            event={{
+                              id: event.id,
+                              name: event.name,
+                              checkInCode: event.checkInCode,
+                            }}
+                          />
+                        )}
+                        {/* Show Generate QR Code button for SPECIAL and PRIVATE events */}
+                        {(event.type === "SPECIAL" || event.type === "PRIVATE") && (
+                          <Button
+                            onClick={handleGenerateQR}
+                            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200"
+                          >
+                            <QrCode className="h-4 w-4 mr-2" />
+                            Generate QR Code
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}

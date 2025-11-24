@@ -178,7 +178,7 @@ export function AppShell({ children }: AppShellProps) {
     } catch (error: any) {
       toast({
         title: "Failed to Reset Password",
-        description: error.response?.data?.message || "Something went wrong",
+        description: error.response?.data?.error || error.response?.data?.message || "Something went wrong",
         variant: "destructive",
       })
     } finally {

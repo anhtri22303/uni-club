@@ -396,7 +396,7 @@ export default function ClubLeaderRewardDistributionPage() {
       toast({
         title: "Submission Error",
         description:
-          err?.response?.data?.message || "Failed to submit point request.",
+          err?.response?.data?.error || err?.response?.data?.message || "Failed to submit point request.",
         variant: "destructive",
       });
     } finally {
@@ -477,7 +477,7 @@ export default function ClubLeaderRewardDistributionPage() {
       }
     } catch (err: any) {
       const errorMessage =
-        err?.response?.data?.message ||
+        err?.response?.data?.error || err?.response?.data?.message ||
         err?.message ||
         "An error occurred while distributing points.";
       const isTimeout =
@@ -520,7 +520,7 @@ export default function ClubLeaderRewardDistributionPage() {
       toast({
         title: "Error",
         description:
-          err?.response?.data?.message || "Failed to load transaction history",
+          err?.response?.data?.error || err?.response?.data?.message || "Failed to load transaction history",
         variant: "destructive",
       });
     } finally {
@@ -611,7 +611,7 @@ export default function ClubLeaderRewardDistributionPage() {
       toast({
         title: "Issuing Error",
         description:
-          err?.response?.data?.message || "Failed to create penalty ticket.",
+          err?.response?.data?.error || err?.response?.data?.message || "Failed to create penalty ticket.",
         variant: "destructive",
       });
     } finally {

@@ -218,7 +218,7 @@ export default function AdminUsersPage() {
       setShowConfirmPassword(false);
       await reloadUsers();
     } catch (error: any) {
-      toast({ title: "Create Failed", description: error.response?.data?.message || "Something went wrong", variant: "destructive" });
+      toast({ title: "Create Failed", description: error.response?.data?.error || error.response?.data?.message || "Something went wrong", variant: "destructive" });
     } finally {
       setCreateLoading(false);
     }
