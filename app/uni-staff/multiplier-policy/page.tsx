@@ -366,7 +366,7 @@ export default function AdminMultiplierPolicyPage() {
       toast({
         title: "Error",
         description:
-          error.response?.data?.message ||
+          error.response?.data?.error || error.response?.data?.message ||
           "Failed to create policy. Please try again.",
         variant: "destructive",
       })
@@ -481,7 +481,7 @@ export default function AdminMultiplierPolicyPage() {
       toast({
         title: "Error",
         description:
-          error.response?.data?.message ||
+          error.response?.data?.error || error.response?.data?.message ||
           "Failed to update policy. Please try again.",
         variant: "destructive",
       })
@@ -518,7 +518,7 @@ export default function AdminMultiplierPolicyPage() {
       console.error("Error deleting policy:", error)
       toast({
         title: "Error",
-        description: error.response?.data?.message || "Failed to delete policy. Please try again.",
+        description: error.response?.data?.error || error.response?.data?.message || "Failed to delete policy. Please try again.",
         variant: "destructive",
       })
     } finally {

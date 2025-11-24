@@ -236,7 +236,7 @@ export default function ClubLeaderMembersPage() {
       console.error("Failed to process leave request:", error)
       toast({
         title: "Lỗi",
-        description: error?.response?.data?.message || "Không thể xử lý yêu cầu",
+        description: error?.response?.data?.error || error?.response?.data?.message || "Không thể xử lý yêu cầu",
         variant: "destructive",
       })
     } finally {

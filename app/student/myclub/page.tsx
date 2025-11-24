@@ -267,7 +267,7 @@ export default function MyClubPage() {
       console.error("Failed to submit leave request:", error)
       toast({
         title: "Error",
-        description: error?.response?.data?.message || "Unable to submit a request to leave the club",
+        description: error?.response?.data?.error || error?.response?.data?.message || "Unable to submit a request to leave the club",
         variant: "destructive",
       })
     } finally {

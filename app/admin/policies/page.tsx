@@ -67,7 +67,7 @@ export default function AdminPoliciesPage() {
             const err = error as any // Type assertion để truy cập response
             toast({
                 title: "Error fetching policies",
-                description: err.response?.data?.message || err.message,
+                description: err.response?.data?.error || err.response?.data?.message || err.message,
                 variant: "destructive",
             })
         }
@@ -209,7 +209,7 @@ export default function AdminPoliciesPage() {
             }
         } catch (err: any) {
             console.error("Create policy failed:", err)
-            const errorMsg = err.response?.data?.message || err.message || "Error creating policy."
+            const errorMsg = err.response?.data?.error || err.response?.data?.message || err.message || "Error creating policy."
             toast({ title: "Error", description: errorMsg, variant: "destructive" })
         } finally {
             setCreating(false)

@@ -107,7 +107,7 @@ function ResetPasswordForm() {
       toast({
         title: "Reset Failed",
         description:
-          error.response?.data?.message ||
+          error.response?.data?.error || error.response?.data?.message ||
           "Failed to reset password. The link may be expired or invalid.",
         variant: "destructive",
       })

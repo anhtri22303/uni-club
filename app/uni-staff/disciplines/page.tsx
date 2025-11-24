@@ -162,7 +162,7 @@ export default function UniStaffDisciplinePage() {
       await reloadRules()
     } catch (err: any) { 
       console.error('Create penalty rule failed:', err)
-      const errorMsg = err.response?.data?.message || 'Error creating penalty rule.'
+      const errorMsg = err.response?.data?.error || err.response?.data?.message || 'Error creating penalty rule.'
       toast({ title: 'Error', description: errorMsg, variant: 'destructive' })
     } finally {
       setCreating(false)

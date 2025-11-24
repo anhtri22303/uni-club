@@ -267,7 +267,7 @@ export default function MemberGiftPage() {
 			// Hiển thị bất kỳ lỗi nào (từ API hoặc từ các bước kiểm tra ở trên)
 			toast({
 				title: "Redeem Failed",
-				description: error.response?.data?.message || error.message || "An error occurred.",
+				description: error.response?.data?.error || error.response?.data?.error || error.response?.data?.message || error.message || "An error occurred.",
 				variant: "destructive",
 			});
 		} finally {

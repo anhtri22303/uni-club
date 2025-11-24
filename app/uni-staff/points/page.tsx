@@ -307,7 +307,7 @@ export default function UniversityStaffRewardPage() {
                 throw new Error(response.message || "Failed to distribute points")
             }
         } catch (err: any) {
-            const errorMessage = err?.response?.data?.message || err.message || "An error occurred."
+            const errorMessage = err?.response?.data?.error || err?.response?.data?.message || err.message || "An error occurred."
             const isTimeout = err?.code === 'ECONNABORTED' || errorMessage.toLowerCase().includes('timeout')
             
             toast({
@@ -330,7 +330,7 @@ export default function UniversityStaffRewardPage() {
         } catch (err: any) {
             toast({
                 title: "Error",
-                description: err?.response?.data?.message || "Failed to load transaction history",
+                description: err?.response?.data?.error || err?.response?.data?.message || "Failed to load transaction history",
                 variant: "destructive"
             })
         } finally {
@@ -351,7 +351,7 @@ export default function UniversityStaffRewardPage() {
         } catch (err: any) {
             toast({
                 title: "Error",
-                description: err?.response?.data?.message || "Failed to load event transaction history",
+                description: err?.response?.data?.error || err?.response?.data?.message || "Failed to load event transaction history",
                 variant: "destructive"
             })
         } finally {

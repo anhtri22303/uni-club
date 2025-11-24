@@ -260,7 +260,7 @@ export default function MemberEventsPage() {
       console.error("Error registering for event:", error)
       toast({
         title: "Error",
-        description: error?.response?.data?.message || "Failed to register for the event",
+        description: error?.response?.data?.error || error?.response?.data?.message || "Failed to register for the event",
         variant: "destructive"
       })
     } finally {

@@ -67,7 +67,7 @@ export default function MemberHistoryPage() {
       setMyWallet(walletResponse.data)
       setWalletTransactions(transactionsResponse.data || [])
     } catch (err: any) {
-      setWalletError(err?.response?.data?.message || err?.message || "Failed to load wallet")
+      setWalletError(err?.response?.data?.error || err?.response?.data?.message || err?.message || "Failed to load wallet")
     } finally {
       setWalletLoading(false)
     }
@@ -107,7 +107,7 @@ export default function MemberHistoryPage() {
         const data = await getMyFeedbackByMembershipId(selectedMembershipId)
         setMyFeedbacks(Array.isArray(data) ? data : [])
       } catch (err: any) {
-        setMyFeedbackError(err?.response?.data?.message || err?.message || "Failed to load feedbacks")
+        setMyFeedbackError(err?.response?.data?.error || err?.response?.data?.message || err?.message || "Failed to load feedbacks")
       } finally {
         setMyFeedbackLoading(false)
       }

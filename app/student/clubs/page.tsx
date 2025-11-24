@@ -405,7 +405,7 @@ export default function MemberClubsPage() {
         setPendingClubIds((p) => p.filter((id) => id !== String(selectedClub.id)))
 
         // Extract validation errors if present
-        const apiMessage = err?.response?.data?.message || err?.message || "Failed to submit application"
+        const apiMessage = err?.response?.data?.error || err?.response?.data?.message || err?.message || "Failed to submit application"
         const validationErrors = err?.response?.data?.errors
 
         if (validationErrors) {
@@ -813,7 +813,7 @@ export default function MemberClubsPage() {
                       toast({
                         title: "Error",
                         description:
-                          err?.response?.data?.message ||
+                          err?.response?.data?.error || err?.response?.data?.message ||
                           "Failed to send application",
                         variant: "destructive",
                       })
