@@ -2,7 +2,9 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useAuth } from "./auth-context";
+import { usePathname } from "next/navigation";
 import { safeLocalStorage, safeSessionStorage } from "@/lib/browser-utils";
+import { useToast } from "@/hooks/use-toast";
 import axios from "axios";
 
 interface NotificationSettings {
@@ -31,10 +33,13 @@ const POLL_INTERVAL = 2000; // 2 seconds, same as chat pages
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
   const { auth, isAuthenticated } = useAuth();
+  const pathname = usePathname();
+  const { toast } = useToast();
   const [enabled, setEnabled] = useState(false);
   const [lastSeen, setLastSeen] = useState<{ [clubId: number]: number }>({});
   const [unreadCounts, setUnreadCounts] = useState<UnreadCount[]>([]);
   const [clubIds, setClubIds] = useState<number[]>([]);
+  const [lastNotifiedMessages, setLastNotifiedMessages] = useState<Set<string>>(new Set());
 
   // Initialize from localStorage
   useEffect(() => {
@@ -119,12 +124,37 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       const currentUserId = auth.userId;
       const unreadMessages = newMessages.filter((msg: any) => msg.userId !== currentUserId);
       
+      // Show toast for new messages if not on chat page
+      const isOnChatPage = pathname?.includes('/chat');
+      
+      if (!isOnChatPage && unreadMessages.length > 0) {
+        // Show toast for the latest message only
+        const latestMessage = unreadMessages[unreadMessages.length - 1];
+        const messageId = latestMessage.id;
+        
+        // Only show toast if we haven't notified about this message yet
+        if (!lastNotifiedMessages.has(messageId)) {
+          setLastNotifiedMessages(prev => new Set(prev).add(messageId));
+          
+          // Truncate long messages
+          const messageText = latestMessage.message?.length > 100 
+            ? latestMessage.message.substring(0, 100) + '...'
+            : latestMessage.message;
+          
+          toast({
+            title: `💬 New message from ${latestMessage.userName}`,
+            description: messageText,
+            duration: 3000,
+          });
+        }
+      }
+      
       return unreadMessages.length;
     } catch (err) {
       console.error(`Failed to fetch messages for club ${clubId}:`, err);
       return 0;
     }
-  }, [lastSeen, auth.userId]);
+  }, [lastSeen, auth.userId, pathname, lastNotifiedMessages, toast]);
 
   // Refresh unread counts for all clubs
   const refreshUnreadCounts = useCallback(async () => {
@@ -180,6 +210,9 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
     // Immediately update unread counts
     setUnreadCounts(prev => prev.filter(c => c.clubId !== clubId));
+    
+    // Clear notified messages for this club (optional, helps reduce memory)
+    // We keep the set to prevent re-showing toasts for old messages
   }, []);
 
   // Calculate total unread
