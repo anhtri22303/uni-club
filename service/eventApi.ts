@@ -419,7 +419,7 @@ export const eventCheckinPublic = async (code: string) => {
 
 export interface EventSummary {
   refundedCount: number
-  registrationsCount: number
+  totalRegistered: number
   checkedInCount: number
   eventName: string
   totalCommitPoints: number
@@ -601,25 +601,22 @@ export const rejectEvent = async (eventId: string | number, reason: string) => {
 
 /**
  * PUT /api/events/{eventId}/cancel
- * Sinh viên hủy đăng ký sự kiện
- * (Khớp ảnh: image_df0c02.png)
+ * Admin/Staff hủy sự kiện đã được duyệt
  * @param eventId - ID của sự kiện
  * @returns { success: boolean, message: string, data: string }
  */
-export const cancelEventRegistration = async (eventId: string | number) => {
-  try {
-    const response = await axiosInstance.put(`/api/events/${eventId}/cancel`);
-    const data: any = response.data;
-    console.log(`Cancelled registration for event ${eventId}:`, data);
-    // Response: { success: true, message: "string", data: "string" }
-    return data;
-  } catch (error) {
-    console.error(`Error cancelling registration for event ${eventId}:`, error);
-    throw error;
-  }
-}
-
-/**
+export const cancelEvent = async (eventId: string | number) => {
+  try {
+    const response = await axiosInstance.put(`/api/events/${eventId}/cancel`);
+    const data: any = response.data;
+    console.log(`Cancelled event ${eventId}:`, data);
+    // Response: { success: true, message: "string", data: "string" }
+    return data;
+  } catch (error) {
+    console.error(`Error cancelling event ${eventId}:`, error);
+    throw error;
+  }
+}/**
  * PUT /api/events/{eventId}/refund-product/{productId}
  * Hoàn điểm sản phẩm thuộc sự kiện
  * (Khớp ảnh: image_df0bbd.png)

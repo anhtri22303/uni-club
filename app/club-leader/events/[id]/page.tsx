@@ -1203,7 +1203,11 @@ export default function EventDetailPage() {
                             Loading...
                           </span>
                         ) : eventSummary ? (
-                          `${eventSummary.checkedInCount} / ${eventSummary.registrationsCount}`
+                          event.type === "PUBLIC" ? (
+                            `${eventSummary.checkedInCount} / ${event.maxCheckInCount}`
+                          ) : (
+                            `${eventSummary.checkedInCount} / ${eventSummary.totalRegistered}`
+                          )
                         ) : (
                           `${event.currentCheckInCount} / ${event.maxCheckInCount}`
                         )
@@ -1221,10 +1225,15 @@ export default function EventDetailPage() {
                         event.status === "ONGOING" ||
                         event.status === "COMPLETED") &&
                       eventSummary
-                        ? `${
-                            event.maxCheckInCount -
-                            eventSummary.registrationsCount
-                          } remaining`
+                        ? event.type === "PUBLIC"
+                          ? `${
+                              event.maxCheckInCount -
+                              eventSummary.checkedInCount
+                            } remaining`
+                          : `${
+                              event.maxCheckInCount -
+                              eventSummary.totalRegistered
+                            } remaining`
                         : `${
                             event.maxCheckInCount - event.currentCheckInCount
                           } remaining`}
@@ -1258,15 +1267,17 @@ export default function EventDetailPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                       <div className="p-4 bg-gradient-to-br from-blue-50 to-sky-50 rounded-lg border border-blue-200">
                         <div className="text-sm text-blue-700 font-medium">
-                          Total Registrations
+                          {event.type === "PUBLIC" ? "Total Check-ins" : "Total Registrations"}
                         </div>
                         <div className="font-semibold text-lg text-blue-800">
                           {summaryLoading ? (
                             <span className="text-muted-foreground">
                               Loading...
                             </span>
+                          ) : event.type === "PUBLIC" ? (
+                            `${event.maxCheckInCount} ${event.type === "PUBLIC" ? "checked in" : "registered"}`
                           ) : (
-                            `${eventSummary.registrationsCount} registered`
+                            `${eventSummary.totalRegistered} registered`
                           )}
                         </div>
                       </div>
@@ -1311,7 +1322,8 @@ export default function EventDetailPage() {
                           />
                         )}
                         {/* Show Generate QR Code button for SPECIAL and PRIVATE events */}
-                        {(event.type === "SPECIAL" || event.type === "PRIVATE") && (
+                        {(event.type === "SPECIAL" ||
+                          event.type === "PRIVATE") && (
                           <Button
                             onClick={handleGenerateQR}
                             className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200"
