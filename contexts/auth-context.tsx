@@ -257,6 +257,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // History slots (0-24)
       ...Array.from({ length: 25 }, (_, i) => `editor_history_${i}`),
       
+      // Clipboard Session Storage keys
+      "report_clipboard",
+      "report_clipboard_type",
+      
       // Session Storage keys
       "intendedPath",
       "requirePasswordReset",

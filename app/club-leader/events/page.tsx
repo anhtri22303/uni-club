@@ -30,7 +30,7 @@ import {
   Calendar,
   Plus,
   MapPin,
-  Trophy,
+  Ticket,
   AlertCircle,
   ChevronLeft,
   ChevronRight,
@@ -1377,7 +1377,7 @@ export default function ClubLeaderEventsPage() {
 
                           {event.startTime && event.endTime && (
                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <Trophy className="h-4 w-4" />
+                              <Ticket className="h-4 w-4" />
                               {event.startTime} - {event.endTime}
                             </div>
                           )}
@@ -1516,7 +1516,7 @@ export default function ClubLeaderEventsPage() {
                   {/* Section Header with Icon */}
                   <div className="flex items-center gap-3 mb-4 pb-3 border-b border-blue-100 dark:border-blue-900/50">
                     <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 via-indigo-500 to-violet-500 shadow-lg">
-                      <Trophy className="h-5 w-5 text-white" />
+                      <Ticket className="h-5 w-5 text-white" />
                     </div>
                     <h4 className="font-bold text-base bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 dark:from-blue-400 dark:via-indigo-400 dark:to-violet-400 bg-clip-text text-transparent">
                       {section.heading}

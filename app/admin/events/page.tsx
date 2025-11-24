@@ -15,7 +15,7 @@ import { Modal } from "@/components/modal"
 import { QRModal } from "@/components/qr-modal"
 import { CalendarModal } from "@/components/calendar-modal"
 import { useToast } from "@/hooks/use-toast"
-import { Calendar, Plus, Trophy, ChevronLeft, ChevronRight, Eye, Filter, X } from "lucide-react"
+import { Calendar, Plus, Ticket, ChevronLeft, ChevronRight, Eye, Filter, X } from "lucide-react"
 import { QrCode } from "lucide-react"
 import QRCode from "qrcode"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -747,7 +747,7 @@ export default function AdminEventsPage() {
                           {/* Thay locationName bằng clubName từ API mới */}
                           {event.clubName && (
                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <Trophy className="h-4 w-4" />
+                              <Ticket className="h-4 w-4" />
                               {event.clubName}
                             </div>
                           )}
@@ -755,7 +755,7 @@ export default function AdminEventsPage() {
                           {(event.startTime && event.endTime) && (
                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
                               {/* Có thể đổi icon nếu muốn */}
-                              <Trophy className="h-4 w-4" />
+                              <Ticket className="h-4 w-4" />
                               {formatIsoTime(event.startTime)} - {formatIsoTime(event.endTime)}
                             </div>
                           )}

@@ -13,7 +13,6 @@ import {
 } from 'lucide-react'
 import { TextEditingTab } from './tabs/TextEditingTab'
 import { PageLayoutTab } from './tabs/PageLayoutTab'
-import { InsertTab } from './tabs/InsertTab'
 import { TableToolsTab } from './tabs/TableToolsTab'
 import { PageSettings } from './types'
 
@@ -137,16 +136,8 @@ export function RichTextEditorToolbar({
               className={`gap-1.5 sm:gap-2 ${compact ? 'data-[state=active]:bg-gray-200/70 dark:data-[state=active]:bg-gray-700 data-[state=active]:text-gray-900 dark:data-[state=active]:text-white' : 'data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-gray-900 dark:data-[state=active]:text-white data-[state=active]:shadow-sm'} h-9 sm:h-10 px-3 sm:px-4 text-xs sm:text-sm whitespace-nowrap shrink-0`}
             >
               <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              <span className="hidden md:inline">Page Layout</span>
+              <span className="hidden md:inline">Page Layout & Insert</span>
               <span className="md:hidden">Layout</span>
-            </TabsTrigger>
-            
-            <TabsTrigger 
-              value="insert" 
-              className={`gap-1.5 sm:gap-2 ${compact ? 'data-[state=active]:bg-gray-200/70 dark:data-[state=active]:bg-gray-700 data-[state=active]:text-gray-900 dark:data-[state=active]:text-white' : 'data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-gray-900 dark:data-[state=active]:text-white data-[state=active]:shadow-sm'} h-9 sm:h-10 px-3 sm:px-4 text-xs sm:text-sm whitespace-nowrap shrink-0`}
-            >
-              <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              <span>Insert</span>
             </TabsTrigger>
             
             {/* Table Tools Tab - Only visible when cursor is in a table */}
@@ -200,10 +191,6 @@ export function RichTextEditorToolbar({
                 onSync={onSync}
                 compact={compact}
               />
-            </TabsContent>
-
-            <TabsContent value="insert" className="m-0 p-0">
-              <InsertTab onSync={onSync} compact={compact} />
             </TabsContent>
 
             {/* Table Tools Content - Only render when cursor is in a table */}

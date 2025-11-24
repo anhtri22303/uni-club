@@ -12,7 +12,7 @@ import {
   fetchAttendanceSummary,
   fetchAttendanceRanking,
 } from "@/service/universityApi"
-import { getUniToClubTransactions } from "@/service/walletApi"
+import { getUniToClubTransactions, getUniToEventTransactions } from "@/service/walletApi"
 import { generatePieChartSVG, generateBarChartSVG } from "@/components/reportComponent/utils/charts"
 
 type AfterChange = () => void
@@ -1170,6 +1170,114 @@ export async function insertStaffAttendanceRankingChart(editorRef: EditorRef, af
     console.error("Failed to insert attendance ranking chart", error)
     toast.dismiss()
     toast.error("Failed to generate attendance ranking chart")
+  }
+}
+
+// New function: Insert Uni to Event Transactions Table
+export async function insertStaffUniToEventTransactionsTable(editorRef: EditorRef, afterChange: AfterChange) {
+  toast.loading("Loading university-to-event transactions...")
+  try {
+    const transactions = await getUniToEventTransactions()
+    toast.dismiss()
+    if (!transactions || transactions.length === 0) {
+      toast.info("No event transactions recorded")
+      return
+    }
+
+    const rows = transactions
+      .map(
+        (txn, index) => `
+          <tr style="background-color: ${index % 2 === 0 ? "#ffffff" : "#f9fafb"};">
+            <td style="border: 1px solid #e5e7eb; padding: 8px;">${txn.id}</td>
+            <td style="border: 1px solid #e5e7eb; padding: 8px;">${txn.receiverName || "-"}</td>
+            <td style="border: 1px solid #e5e7eb; padding: 8px;">${txn.signedAmount || txn.amount.toLocaleString()}</td>
+            <td style="border: 1px solid #e5e7eb; padding: 8px;">${txn.description || "-"}</td>
+            <td style="border: 1px solid #e5e7eb; padding: 8px;">${formatDateTime(txn.createdAt)}</td>
+          </tr>
+        `,
+      )
+      .join("")
+
+    const totalAmount = transactions.reduce((acc, txn) => acc + Math.abs(Number(txn.amount || 0)), 0)
+
+    const html = `
+      <div style="margin: 24px 0; page-break-inside: avoid;">
+        <h2 style="font-size: 21px; font-weight: bold; margin-bottom: 12px; color: #111827;">
+          University-to-Event Budget Allocations
+        </h2>
+        <p style="margin-bottom: 16px; color: #4b5563; font-size: 14px;">
+          ${pluralLabel(transactions.length, "transaction", "transactions")} tracked totaling
+          <strong>${totalAmount.toLocaleString()}</strong> budget points.
+        </p>
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+          <thead>
+            <tr style="background-color: #f3f4f6;">
+              <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left;">Transaction ID</th>
+              <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left;">Event</th>
+              <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left;">Points</th>
+              <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left;">Description</th>
+              <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left;">Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows}
+          </tbody>
+        </table>
+      </div>
+    `
+
+    append(editorRef, html, afterChange)
+    toast.success("Inserted event transactions table")
+  } catch (error) {
+    console.error("Failed to insert uni-to-event transactions table", error)
+    toast.dismiss()
+    toast.error("Failed to insert event transaction data")
+  }
+}
+
+// New function: Insert Uni to Event Transactions Chart
+export async function insertStaffUniToEventTransactionsChart(editorRef: EditorRef, afterChange: AfterChange) {
+  toast.loading("Preparing event transactions chart...")
+  try {
+    const transactions = await getUniToEventTransactions()
+    toast.dismiss()
+    if (!transactions || transactions.length === 0) {
+      toast.info("No event transactions to chart")
+      return
+    }
+
+    // Group transactions by event name
+    const eventMap = new Map<string, number>()
+    transactions.forEach((txn) => {
+      const eventName = txn.receiverName || "Unknown Event"
+      const amount = Math.abs(Number(txn.amount || 0))
+      eventMap.set(eventName, (eventMap.get(eventName) || 0) + amount)
+    })
+
+    const chartData = Array.from(eventMap.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([name, value], index) => ({
+        name,
+        value,
+        color: ["#3b82f6", "#8b5cf6", "#ec4899", "#f97316", "#10b981", "#0ea5e9", "#14b8a6", "#f59e0b"][index % 8],
+      }))
+
+    const html = `
+      <div style="margin: 32px 0; page-break-inside: avoid;">
+        <h2 style="font-size: 19px; font-weight: 600; margin-bottom: 12px; color: #111827;">
+          Top Events by Budget Allocation
+        </h2>
+        ${generateBarChartSVG(chartData)}
+      </div>
+    `
+
+    append(editorRef, html, afterChange)
+    toast.success("Inserted event transactions chart")
+  } catch (error) {
+    console.error("Failed to insert event transactions chart", error)
+    toast.dismiss()
+    toast.error("Failed to generate event transactions chart")
   }
 }
 
