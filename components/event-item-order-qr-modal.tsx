@@ -134,16 +134,16 @@ export function EventItemOrderQRModal({
           {/* Order Details */}
           <div className="grid grid-cols-3 gap-3 mt-4">
             <div className="bg-white/50 dark:bg-slate-800/50 p-2 rounded-md">
-              <div className="text-xs text-muted-foreground">Product ID</div>
-              <div className="font-mono font-semibold text-sm">{productId}</div>
+              <div className="text-xs text-muted-foreground">Product Name</div>
+              <div className="font-mono font-semibold text-sm">{productName}</div>
             </div>
             <div className="bg-white/50 dark:bg-slate-800/50 p-2 rounded-md">
               <div className="text-xs text-muted-foreground">Quantity</div>
               <div className="font-mono font-semibold text-sm">{quantity}</div>
             </div>
             <div className="bg-white/50 dark:bg-slate-800/50 p-2 rounded-md">
-              <div className="text-xs text-muted-foreground">Membership ID</div>
-              <div className="font-mono font-semibold text-sm">{membershipId}</div>
+              <div className="text-xs text-muted-foreground">Membership Name</div>
+              <div className="font-mono font-semibold text-sm">{memberName}</div>
             </div>
           </div>
         </div>
