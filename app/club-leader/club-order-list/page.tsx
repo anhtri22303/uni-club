@@ -121,15 +121,19 @@ export default function ClubLeaderOrdersPage() {
     [orders, searchTerm, dateFromFilter, dateToFilter]
   )
   const completedOrders = useMemo(
-    () => getFilteredOrders("completed").sort((a, b) => 
-      new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime()
-    ),
+    () => getFilteredOrders("completed").sort((a, b) => {
+      const dateA = a.completedAt ? new Date(a.completedAt).getTime() : new Date(a.createdAt).getTime()
+      const dateB = b.completedAt ? new Date(b.completedAt).getTime() : new Date(b.createdAt).getTime()
+      return dateB - dateA
+    }),
     [orders, searchTerm, dateFromFilter, dateToFilter]
   )
   const cancelledOrders = useMemo(
-    () => getFilteredOrders("cancelled").sort((a, b) => 
-      new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime()
-    ),
+    () => getFilteredOrders("cancelled").sort((a, b) => {
+      const dateA = a.completedAt ? new Date(a.completedAt).getTime() : new Date(a.createdAt).getTime()
+      const dateB = b.completedAt ? new Date(b.completedAt).getTime() : new Date(b.createdAt).getTime()
+      return dateB - dateA
+    }),
     [orders, searchTerm, dateFromFilter, dateToFilter]
   )
 

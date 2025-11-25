@@ -104,7 +104,9 @@ export default function ClubLeaderEventOrdersPage() {
       }
 
       return matchSearch && matchStatus && matchDateRange
-    })
+    }).sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )
   }, [orders, searchTerm, statusFilter, dateFromFilter, dateToFilter])
 
   // 4. Tính toán số liệu thống kê
@@ -172,9 +174,9 @@ export default function ClubLeaderEventOrdersPage() {
                       <Package className="h-3.5 w-3.5" />
                       Total Orders
                     </p>
-                    <p className="text-2xl font-bold text-purple-900 dark:text-purple-100">
+                    <div className="text-2xl font-bold text-purple-900 dark:text-purple-100">
                       {isLoading ? <Skeleton className="h-7 w-12" /> : totalOrders}
-                    </p>
+                    </div>
                   </div>
                   <div className="p-2.5 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg">
                     <ShoppingCart className="h-5 w-5 text-white" />
@@ -191,9 +193,9 @@ export default function ClubLeaderEventOrdersPage() {
                       <WalletCards className="h-3.5 w-3.5" />
                       Total Points Used
                     </p>
-                    <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">
+                    <div className="text-2xl font-bold text-blue-900 dark:text-blue-100">
                       {isLoading ? <Skeleton className="h-7 w-16" /> : totalPointsUsed}
-                    </p>
+                    </div>
                   </div>
                   <div className="p-2.5 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg">
                     <DollarSign className="h-5 w-5 text-white" />
