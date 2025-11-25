@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { login as loginApi, LoginResponse, loginWithGoogleToken } from "@/service/authApi";
 import { safeSessionStorage, safeLocalStorage } from "@/lib/browser-utils";
@@ -46,7 +46,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   });
   const [initialized, setInitialized] = useState(false);
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const queryClient = useQueryClient();
+
+  // Eager prefetch dashboard routes for instant login redirect
+  useEffect(() => {
+    const prefetchDashboards = () => {
+      const dashboards = ['/profile', '/club-leader', '/uni-staff', '/admin', '/staff'];
+      dashboards.forEach(path => router.prefetch(path));
+    };
+    
+    // Prefetch after a short delay to not block initial render
+    const timer = setTimeout(prefetchDashboards, 300);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     // Phần useEffect này giữ nguyên nhưng dùng safe storage
@@ -165,14 +178,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const intendedPath = safeSessionStorage.getItem("intendedPath");
 
+      // Determine redirect path
+      let redirectPath: string;
       if (intendedPath) {
         console.log(
           `AuthContext: Tìm thấy intendedPath (từ checkin page): ${intendedPath}`
         );
         // Xóa ngay sau khi đọc để lần đăng nhập sau không bị ảnh hưởng
         safeSessionStorage.removeItem("intendedPath");
-
-        router.push(intendedPath);
+        redirectPath = intendedPath;
       } else {
         // 2. Không có intendedPath (người dùng đăng nhập từ trang chủ hoặc trang khác)
         const redirectMap: Record<string, string> = {
@@ -182,12 +196,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           admin: "/admin",
           staff: "/staff",
         };
-        const fallbackPath = redirectMap[normalizedRole || ""] || "/student";
+        redirectPath = redirectMap[normalizedRole || ""] || "/student";
         console.log(
-          `AuthContext: Không có intendedPath, điều hướng mặc định tới: ${fallbackPath}`
+          `AuthContext: Không có intendedPath, điều hướng mặc định tới: ${redirectPath}`
         );
-        router.push(fallbackPath);
       }
+
+      // Prefetch and navigate with transition for instant redirect
+      router.prefetch(redirectPath);
+      startTransition(() => {
+        router.replace(redirectPath); // Use replace instead of push for faster login redirect
+      });
 
       return true;
     } catch (err) {
@@ -204,12 +223,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // ⭐ LOGIC ĐIỀU HƯỚNG THÔNG MINH (giống như login thường)
       const intendedPath = safeSessionStorage.getItem("intendedPath");
 
+      // Determine redirect path
+      let redirectPath: string;
       if (intendedPath) {
         console.log(
           `AuthContext: Tìm thấy intendedPath (từ checkin page): ${intendedPath}`
         );
         safeSessionStorage.removeItem("intendedPath");
-        router.push(intendedPath);
+        redirectPath = intendedPath;
       } else {
         const redirectMap: Record<string, string> = {
           student: "/profile",
@@ -218,12 +239,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           admin: "/admin",
           staff: "/staff",
         };
-        const fallbackPath = redirectMap[normalizedRole || ""] || "/student";
+        redirectPath = redirectMap[normalizedRole || ""] || "/student";
         console.log(
-          `AuthContext: Google login - điều hướng mặc định tới: ${fallbackPath}`
+          `AuthContext: Google login - điều hướng mặc định tới: ${redirectPath}`
         );
-        router.push(fallbackPath);
       }
+
+      // Prefetch and navigate with transition for instant redirect
+      router.prefetch(redirectPath);
+      startTransition(() => {
+        router.replace(redirectPath); // Use replace instead of push for faster Google login redirect
+      });
 
       return true;
     } catch (err) {

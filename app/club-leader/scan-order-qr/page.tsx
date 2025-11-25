@@ -9,7 +9,7 @@ import { CheckCircle, XCircle, Camera, ArrowLeft, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Html5Qrcode } from "html5-qrcode"
-import { getRedeemOrderById, RedeemOrder } from "@/service/redeemApi"
+import { getRedeemOrderByOrderCode, RedeemOrder } from "@/service/redeemApi"
 import { useToast } from "@/hooks/use-toast"
 
 export default function ScanOrderQRPage() {
@@ -109,7 +109,7 @@ export default function ScanOrderQRPage() {
         // Gọi API để lấy thông tin đơn hàng
         setLoading(true)
         try {
-          const order = await getRedeemOrderById(orderId)
+          const order = await getRedeemOrderByOrderCode(orderCode)
           setOrderData(order)
           
           toast({
@@ -118,9 +118,9 @@ export default function ScanOrderQRPage() {
             variant: "default",
           })
           
-          // Tự động chuyển sang trang chi tiết sau 2 giây
+          // Tự động chuyển sang trang chi tiết với orderCode
           setTimeout(() => {
-            router.push(`/club-leader/club-order-list/${orderId}`)
+            router.push(`/club-leader/club-order-list/${orderCode}`)
           }, 2000)
         } catch (err: any) {
           console.error("❌ API Error:", err)

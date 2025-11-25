@@ -13,7 +13,7 @@ import {
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { getRedeemOrderById, RedeemOrder, completeRedeemOrder, refundRedeemOrder, refundPartialRedeemOrder, RefundPayload } from "@/service/redeemApi"
+import { getRedeemOrderByOrderCode, RedeemOrder, completeRedeemOrder, refundRedeemOrder, refundPartialRedeemOrder, RefundPayload } from "@/service/redeemApi"
 import {
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger,
 } from "@/components/ui/dialog"
@@ -26,18 +26,18 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 // Props cho trang chi tiết
 interface OrderDetailPageProps {
     params: {
-        id: string // Đây sẽ là orderId
+        orderCode: string // Đây sẽ là orderCode (VD: UC-15)
     }
 }
 
 // Đặt key cho react-query
 export const queryKeys = {
-    orderDetail: (orderId: string) => ["orderDetail", orderId] as const,
+    orderDetailByCode: (orderCode: string) => ["orderDetail", "code", orderCode] as const,
 }
 
 type UiOrder = RedeemOrder
 
-export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
+export default function ClubOrderDetailByCodePage({ params }: OrderDetailPageProps) {
     const router = useRouter()
     const { toast } = useToast()
     const queryClient = useQueryClient()
@@ -51,18 +51,19 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
     const [partialQuantity, setPartialQuantity] = useState<string>("1");
     const [partialQuantityError, setPartialQuantityError] = useState<string | null>(null)
 
-
-    // Lấy thông tin order trực tiếp theo ID
+    // Lấy thông tin order theo orderCode
     const {
         data: order,
         isLoading: loading,
         error,
     } = useQuery<UiOrder, Error>({
-        queryKey: queryKeys.orderDetail(params.id),
-        queryFn: () => getRedeemOrderById(params.id),
-        enabled: !!params.id,
+        queryKey: queryKeys.orderDetailByCode(params.orderCode),
+        queryFn: () => {
+            console.log("🔍 Fetching order by OrderCode:", params.orderCode)
+            return getRedeemOrderByOrderCode(params.orderCode)
+        },
+        enabled: !!params.orderCode,
     })
-
 
     //: Xử lý "Delivered"
     const handleDeliver = async () => {
@@ -79,7 +80,7 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
             })
 
             // Tải lại thông tin order và refresh page
-            await queryClient.invalidateQueries({ queryKey: queryKeys.orderDetail(params.id) });
+            await queryClient.invalidateQueries({ queryKey: queryKeys.orderDetailByCode(params.orderCode) });
             router.refresh();
         } catch (error) {
             console.error("Failed to complete order:", error);
@@ -156,7 +157,7 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
             setRefundReason("") // Reset reason
 
             // Tải lại thông tin order và refresh page
-            await queryClient.invalidateQueries({ queryKey: queryKeys.orderDetail(params.id) })
+            await queryClient.invalidateQueries({ queryKey: queryKeys.orderDetailByCode(params.orderCode) })
             router.refresh();
 
         } catch (error: any) {
@@ -662,7 +663,6 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
                                                     </div>
                                                 </DialogHeader>
 
-                                                {/* <div className="space-y-6 py-4"> */}
                                                 <div className="space-y-6 py-4 max-h-[65vh] overflow-y-auto pr-4">
                                                     {/* Order Summary */}
                                                     <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
@@ -735,18 +735,15 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
                                                                     id="partialQuantity"
                                                                     type="number"
                                                                     value={partialQuantity}
-                                                                    // onChange={(e) => setPartialQuantity(e.target.value)}
                                                                     onChange={handlePartialQuantityChange}
                                                                     min={1}
                                                                     max={order!.quantity - 1}
-                                                                    // className="text-lg font-semibold h-12"
                                                                     className={`text-lg font-semibold h-12 dark:bg-slate-700 dark:text-white dark:border-slate-600 ${partialQuantityError ? 'border-red-500 focus-visible:ring-red-500 dark:border-red-500' : ''}`}
                                                                 />
                                                                 <div className="flex items-center justify-between p-3 bg-white dark:bg-slate-700 rounded-lg border border-orange-200 dark:border-orange-800">
                                                                     <span className="text-sm text-gray-600 dark:text-slate-300">Points to be refunded:</span>
                                                                     <span className="font-bold text-lg text-orange-600 dark:text-orange-400">{partialPoints} pts</span>
                                                                 </div>
-                                                                {/* hiển thị lỗi */}
                                                                 {partialQuantityError && (
                                                                     <p className="text-sm text-red-600 dark:text-red-400 font-medium px-1">{partialQuantityError}</p>
                                                                 )}
@@ -795,11 +792,10 @@ export default function ClubOrderDetailPage({ params }: OrderDetailPageProps) {
                                                     <Button
                                                         type="submit"
                                                         onClick={handleRefund}
-                                                        // disabled={isProcessing || !refundReason.trim()}
                                                         disabled={
                                                             isProcessing ||
                                                             !refundReason.trim() ||
-                                                            (refundType === 'partial' && !!partialQuantityError) // Logic này ngăn submit khi có lỗi
+                                                            (refundType === 'partial' && !!partialQuantityError)
                                                         }
                                                         className="flex-1 h-11 bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 dark:from-red-600 dark:to-rose-700 dark:hover:from-red-700 dark:hover:to-rose-800 text-white font-semibold shadow-lg"
                                                     >

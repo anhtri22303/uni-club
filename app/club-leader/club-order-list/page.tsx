@@ -121,15 +121,19 @@ export default function ClubLeaderOrdersPage() {
     [orders, searchTerm, dateFromFilter, dateToFilter]
   )
   const completedOrders = useMemo(
-    () => getFilteredOrders("completed").sort((a, b) => 
-      new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime()
-    ),
+    () => getFilteredOrders("completed").sort((a, b) => {
+      const dateA = a.completedAt ? new Date(a.completedAt).getTime() : new Date(a.createdAt).getTime()
+      const dateB = b.completedAt ? new Date(b.completedAt).getTime() : new Date(b.createdAt).getTime()
+      return dateB - dateA
+    }),
     [orders, searchTerm, dateFromFilter, dateToFilter]
   )
   const cancelledOrders = useMemo(
-    () => getFilteredOrders("cancelled").sort((a, b) => 
-      new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime()
-    ),
+    () => getFilteredOrders("cancelled").sort((a, b) => {
+      const dateA = a.completedAt ? new Date(a.completedAt).getTime() : new Date(a.createdAt).getTime()
+      const dateB = b.completedAt ? new Date(b.completedAt).getTime() : new Date(b.createdAt).getTime()
+      return dateB - dateA
+    }),
     [orders, searchTerm, dateFromFilter, dateToFilter]
   )
 
@@ -563,7 +567,7 @@ function RenderOrderList({
         return (
           <Link 
             key={order.orderId} 
-            href={`/club-leader/club-order-list/${order.orderId}`}
+            href={`/club-leader/club-order-list/${order.orderCode}`}
             className="group"
           >
             <Card className={`border-0 shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] bg-gradient-to-br ${gradientClasses} dark:border-slate-700 overflow-hidden relative`}>

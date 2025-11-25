@@ -6,7 +6,7 @@ import { useNotifications } from "@/contexts/notification-context";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { safeSessionStorage } from "@/lib/browser-utils";
 import {
@@ -272,6 +272,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
   const { unreadCounts, totalUnread } = useNotifications();
   const pathname = usePathname();
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const [loadingPath, setLoadingPath] = useState<string | null>(null);
   const [userStatsTotal, setUserStatsTotal] = useState<number>(0);
   const [clubStatsTotal, setClubStatsTotal] = useState<number>(0);
@@ -410,6 +411,32 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
       fetchAndCacheProfile();
     }
   }, [pathname]);
+
+  // Eager prefetch frequently accessed routes on mount
+  useEffect(() => {
+    const prefetchCommonRoutes = () => {
+      if (!auth.role) return;
+      
+      // Prefetch common routes based on role
+      const commonRoutes: Record<string, string[]> = {
+        student: ['/student/clubs', '/student/events', '/student/myclub', '/student/gift'],
+        club_leader: ['/club-leader', '/club-leader/members', '/club-leader/events'],
+        uni_staff: ['/uni-staff', '/uni-staff/clubs'],
+        admin: ['/admin', '/admin/users', '/admin/clubs'],
+      };
+
+      const routes = commonRoutes[auth.role as keyof typeof commonRoutes] || [];
+      routes.forEach(route => {
+        if (route !== pathname) {
+          router.prefetch(route);
+        }
+      });
+    };
+
+    // Prefetch after a short delay to not block initial render
+    const timer = setTimeout(prefetchCommonRoutes, 500);
+    return () => clearTimeout(timer);
+  }, [auth.role, pathname]);
 
   // Fetch events using cached profile for STUDENT role
   useEffect(() => {
@@ -828,31 +855,27 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
     });
   }
 
-  const handleNavigation = async (href: string) => {
+  const handleNavigation = (href: string) => {
     // 1. Nếu bấm vào link của trang hiện tại, không làm gì cả
     if (pathname === href) {
       return;
     }
 
-    // 2. For STUDENT role, check club access before navigation
-    if (auth.role === "student") {
+    // 2. Đặt trạng thái loading ngay lập tức
+    setLoadingPath(href);
+
+    // 3. For STUDENT role, check club access (using cached data only)
+    let redirectTo = href;
+    if (auth.role === "student" && cachedProfile) {
+      const clubs = cachedProfile.clubs || [];
+      const hasClubAccess = clubs && Array.isArray(clubs) && clubs.length > 0;
+
       // Events Public page is only for students WITHOUT clubs
       if (href.startsWith("/student/events-public")) {
-        const profile = cachedProfile || (await fetchAndCacheProfile());
-        const clubs = profile?.clubs || [];
-        const hasAccess = clubs && Array.isArray(clubs) && clubs.length > 0;
-
-        if (hasAccess) {
-          // User has club access - redirect to regular events page
-          console.warn(
-            "Access denied to Events Public - User has club membership. Redirecting to regular events."
-          );
-          router.push("/student/events");
-          onNavigate?.();
-          return;
+        if (hasClubAccess) {
+          redirectTo = "/student/events";
+          console.warn("Access denied to Events Public - Redirecting to events.");
         }
-        // Allow access to Events Public for students without clubs
-        // Continue to navigation below
       } else {
         // Club-restricted pages (excluding Events Public)
         const clubPages = [
@@ -864,47 +887,27 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
         ];
         const isClubPage = clubPages.some((page) => href.startsWith(page));
 
-        if (isClubPage) {
-          // Use cached profile for instant check
-          let profile = cachedProfile;
-
-          // If no cache, fetch immediately (this should be rare due to polling)
-          if (!profile) {
-            setLoadingPath(href); // Show loading only when fetching
-            profile = await fetchAndCacheProfile();
-            setLoadingPath(null);
-          }
-
-          const clubs = profile?.clubs || [];
-          const hasAccess = clubs && Array.isArray(clubs) && clubs.length > 0;
-
-          if (!hasAccess) {
-            // User doesn't have club access - redirect to clubs page
-            console.warn(
-              "Access denied - No club membership. Redirecting to clubs page."
-            );
-            router.push("/student/clubs");
-            onNavigate?.();
-            return;
-          }
+        if (isClubPage && !hasClubAccess) {
+          redirectTo = "/student/clubs";
+          console.warn("Access denied - Redirecting to clubs page.");
         }
       }
     }
 
-    // 3. Đặt trạng thái loading
-    setLoadingPath(href);
-
-    // 4. Sử dụng router.push cho TẤT CẢ các link
-    router.push(href);
-    onNavigate?.();
-
-    // 5. Xóa trạng thái loading sau một chút
-    setTimeout(() => setLoadingPath(null), 150);
+    // 4. Navigate with startTransition for non-blocking UI
+    startTransition(() => {
+      router.push(redirectTo);
+      onNavigate?.();
+      setLoadingPath(null);
+    });
   };
 
-  // Prefetch data on hover for instant navigation
+  // Prefetch route and data on hover for instant navigation
   const handleMouseEnter = (href: string) => {
-    // Determine which data to prefetch based on route
+    // Prefetch the Next.js route immediately
+    router.prefetch(href);
+    
+    // Also prefetch data based on route
     if (href.includes("/clubs")) {
       prefetchClubs();
     } else if (href.includes("/events")) {

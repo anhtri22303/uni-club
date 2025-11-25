@@ -30,6 +30,8 @@ const nextConfig = {
   // Tối ưu cho SSR/hydration
   experimental: {
     optimizePackageImports: ["@radix-ui/react-icons"],
+    // Enable faster navigation
+    optimisticClientCache: true,
   },
   // Đảm bảo client/server consistency
   compiler: {
