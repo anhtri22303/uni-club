@@ -563,7 +563,7 @@ function RenderOrderList({
         return (
           <Link 
             key={order.orderId} 
-            href={`/club-leader/club-order-list/${order.orderId}`}
+            href={`/club-leader/club-order-list/${order.orderCode}`}
             className="group"
           >
             <Card className={`border-0 shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] bg-gradient-to-br ${gradientClasses} dark:border-slate-700 overflow-hidden relative`}>
