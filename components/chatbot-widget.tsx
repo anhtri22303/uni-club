@@ -195,19 +195,25 @@ Present the clubs organized by major in this BEAUTIFUL format:
 
 For each major, format like this:
 
-📚 [MAJOR NAME]
+📚 [MAJOR NAME] ([X] clubs)
 ━━━━━━━━━━━━━━━━━━━━━━━━
 
-1. 🏆 [Club Name] (👥 [X] members)
-   • Leader: [Leader Name]
-   • Description: [Brief description]
+1. 🏆 [Club Name]
+   • 👥 Members: [X] active members
+   • 👨‍💼 Leader: [Leader Name]
+   • 📝 Description: [Brief description]
+   • 📅 Approved Events: [X] events
 
-2. 🏆 [Club Name] (👥 [X] members)
-   • Leader: [Leader Name]
-   • Description: [Brief description]
+2. 🏆 [Club Name]
+   • 👥 Members: [X] active members
+   • 👨‍💼 Leader: [Leader Name]
+   • 📝 Description: [Brief description]
+   • 📅 Approved Events: [X] events
 
 [Continue for all clubs in that major, sorted by member count from highest to lowest]
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💡 Summary: Total of [X] clubs across [Y] majors
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Make the presentation clean, easy to read, and well-organized.`
@@ -236,23 +242,35 @@ When suggesting a new club, provide ONE suggestion in this EXACT format:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 📌 Club Name:
-[Unique club name that doesn't exist yet]
+[Write a unique, creative club name that doesn't exist yet]
 
 📝 Description:
-[2-3 sentences describing the club's purpose and activities]
+[Write 2-3 sentences describing the club's purpose, main activities, and target audience]
 
-🎓 Major ID:
-[Number - suggest an appropriate major ID based on the club's focus]
+🎓 Suggested Major:
+[Suggest an appropriate major/department that aligns with the club's focus]
 
-🌟 Vision:
-[A compelling vision statement for the club]
+🌟 Vision Statement:
+[Write a compelling, inspiring vision statement (1-2 sentences) about what the club aims to achieve]
 
-💡 Proposer Reason:
-[Why this club would be valuable for students]
+💡 Value Proposition:
+[Explain why this club would be valuable for students - highlight unique benefits, learning opportunities, or gaps it fills]
+
+🎨 Suggested Activities:
+• [Activity 1]
+• [Activity 2]
+• [Activity 3]
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Make sure the club is UNIQUE and doesn't overlap with existing clubs.`
+⚠️ Analysis:
+• Gap Identified: [Explain what gap this club fills]
+• Uniqueness: [Explain how it differs from existing clubs]
+• Potential Members: [Estimate target audience size]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Make sure the club is UNIQUE and doesn't overlap with existing clubs. Base your suggestion on actual gaps in the current club offerings.`
 
           interface ClubSummary {
             name: string
@@ -284,24 +302,39 @@ Make sure the club is UNIQUE and doesn't overlap with existing clubs.`
             }
 
             systemContent = `You are an AI assistant for a university club and event management system.
-Present the events in this BEAUTIFUL format:
+Present the events grouped by club in this BEAUTIFUL format:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🎉 MY CLUB EVENTS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-For each event:
+Group events by club. For each club:
 
-📅 [Event Name]
-• Club: [Club Name]
-• Date: [Date]
-• Time: [Start Time] - [End Time]
-• Location: [Location Name]
-• Status: [Status]
-• Type: [PUBLIC/PRIVATE]
-• Description: [Brief description]
+🏛️ [CLUB NAME] - [X] Events
+━━━━━━━━━━━━━━━━━━━━━━━━
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`
+1. 📅 [Event Name]
+   • 🔔 Status: [Status with appropriate emoji: ✅ APPROVED, ⏳ PENDING, ❌ CANCELLED]
+   • 🔓 Type: [PUBLIC/PRIVATE]
+   • 📆 Date: [Date in readable format]
+   • ⏰ Time: [Start Time] - [End Time]
+   • 📍 Location: [Location Name]
+   • 💎 Commit Points: [X] points
+   • 👥 Max Participants: [X] people
+   • 📝 Description: [Brief description]
+
+2. [Continue for all events...]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 Summary:
+• Total Events: [X]
+• Upcoming Events: [X]
+• Active Registrations: [X]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Sort events by date (upcoming first). Make the presentation clean and well-organized.`
 
             userContent = `${userMessage.text}
 
@@ -348,29 +381,41 @@ Please present all events from my clubs in a clean, organized format.`
 Present the products/gifts GROUPED BY CLUB in this BEAUTIFUL format:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎁 MY CLUB GIFTS
+🎁 MY CLUB GIFTS & REWARDS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 For each club, format like this:
 
-🏛️ [CLUB NAME]
+🏛️ [CLUB NAME] ([X] products available)
 ━━━━━━━━━━━━━━━━━━━━━━━━
 
-1. 🏆 [Product Name]
-   • Price: [X] Points
-   • Stock: [X] items
-   • Status: [Status]
-   • Description: [Description]
+1. 🎁 [Product Name]
+   • 💰 Price: [X] Points
+   • 📦 Stock: [X] items [availability emoji: ✅ In Stock / ⚠️ Low Stock / ❌ Out of Stock]
+   • 🔔 Status: [ACTIVE/INACTIVE]
+   • 📝 Description: [Description]
+   • 🏷️ Category: [Category if available]
 
-2. 🏆 [Product Name]
-   • Price: [X] Points
-   • Stock: [X] items
-   • Status: [Status]
-   • Description: [Description]
+2. 🎁 [Product Name]
+   • 💰 Price: [X] Points
+   • 📦 Stock: [X] items [availability emoji]
+   • 🔔 Status: [ACTIVE/INACTIVE]
+   • 📝 Description: [Description]
+   • 🏷️ Category: [Category if available]
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-If no products are available, inform the user that their clubs don't have any gifts yet.
+📊 Summary:
+• Total Products: [X] across [Y] clubs
+• Available Now: [X] products
+• Average Price: [X] points
+
+💡 Tip: Earn points by participating in club events!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+If no products are available, inform the user that their clubs don't have any gifts yet and suggest they check back later.
+Sort products by availability (in stock first), then by price.
 Make the presentation clean, easy to read, and well-organized by club.`
 
             userContent = `${userMessage.text}
@@ -399,45 +444,82 @@ Please present all available products/gifts grouped by club in a clean, organize
           }))
 
           systemContent = `You are an AI assistant for a university club and event management system. 
-When suggesting new event content, provide ONE suggestion in this EXACT format for easy copying:
+When suggesting new event content, provide ONE comprehensive suggestion in this EXACT format for easy copying:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📋 EVENT SUGGESTION
+📋 NEW EVENT SUGGESTION
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 📌 Event Name:
-[Write a unique, catchy event name]
+[Write a unique, catchy, and memorable event name]
 
 📝 Description:
-[Write a detailed 2-3 sentence description that explains the event purpose, activities, and benefits for participants]
+[Write a detailed 2-3 sentence description explaining:
+ - Event purpose and goals
+ - Main activities and schedule
+ - Benefits and learning outcomes for participants]
 
-🔓 Type:
+🔓 Event Type:
 [PUBLIC or PRIVATE]
+[Explain why: PUBLIC - open to all students, PRIVATE - club members only]
 
-📅 Date:
-[YYYY-MM-DD format - suggest a future date]
+📅 Suggested Date:
+[YYYY-MM-DD format - suggest a specific future date with day of week]
+[Explain why this date: e.g., weekend for better attendance, before/after exam period]
 
-⏰ Start Time:
-[HH:MM format, e.g., 09:00]
+⏰ Time Schedule:
+• Start Time: [HH:MM format, e.g., 09:00]
+• End Time: [HH:MM format, e.g., 15:00]
+• Duration: [X] hours
 
-⏰ End Time:
-[HH:MM format, e.g., 15:00]
+📍 Location:
+• Venue: [Choose an appropriate location from the available locations]
+• Capacity: [Venue capacity if known]
+• Facilities: [Brief mention of available facilities]
 
-📍 Location Name:
-[Choose an appropriate location from the available locations]
+👥 Participant Planning:
+• Max Check-in Count: [Number, e.g., 100]
+• Target Audience: [Who should attend]
+• Estimated Turnout: [X]% of max capacity
 
-👥 Max Check-in Count:
-[Number of participants, e.g., 100]
+💎 Point System:
+• Commit Point Cost: [Points required to register, e.g., 50]
+• Reward Points: [Points earned upon completion, e.g., 100]
+• Penalty for No-show: [X] points
 
-💎 Commit Point Cost:
-[Points required to register, e.g., 50]
+💰 Budget Breakdown:
+• Total Budget: [X] points
+• Venue Cost: [X] points (if applicable)
+• Materials/Supplies: [X] points
+• Refreshments: [X] points
+• Rewards/Prizes: [X] points
+• Contingency: [X] points
 
-💰 Budget Points:
-[Total points allocated for event, e.g., 500]
+🎯 Event Goals:
+1. [Primary goal]
+2. [Secondary goal]
+3. [Additional benefit]
+
+📋 Suggested Agenda:
+• [Time]: [Activity 1]
+• [Time]: [Activity 2]
+• [Time]: [Activity 3]
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Make sure the suggested event is UNIQUE and does NOT overlap with existing events. Provide ONLY ONE suggestion.`
+💡 Why This Event:
+• Uniqueness: [How it differs from existing events]
+• Relevance: [Why it matters to students now]
+• Impact: [Expected positive outcomes]
+
+⚠️ Considerations:
+• Preparation Time: [X] weeks needed
+• Required Resources: [List key resources]
+• Potential Challenges: [1-2 challenges to address]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Make sure the suggested event is UNIQUE, FEASIBLE, and does NOT overlap with existing events. Base suggestions on current trends and student needs. Provide ONLY ONE well-thought-out suggestion.`
 
           userContent = `${userMessage.text}
 
@@ -469,38 +551,87 @@ Please analyze these existing events and suggest NEW, UNIQUE event ideas with co
             const currentYear = currentDate.getFullYear()
 
             systemContent = `You are an AI assistant for a university club and event management system.
-Analyze the club's financial situation and suggest events for the current month (${currentMonth + 1}/${currentYear}).
+Analyze the club's financial situation and suggest strategic events for the current month (${currentMonth + 1}/${currentYear}).
 
 Present in this format:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-💰 BUDGET ANALYSIS & EVENT SUGGESTIONS
+💰 BUDGET ANALYSIS & EVENT STRATEGY
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📊 CURRENT STATUS:
-• Club Wallet Balance: [X] points
-• Total Members: [X]
-• Existing Events: [X]
+📊 CURRENT FINANCIAL STATUS:
+• 💎 Club Wallet Balance: [X] points
+• 👥 Total Active Members: [X]
+• 📅 Existing Events This Month: [X]
+• 💸 Average Spending per Event: [X] points
+• 📈 Budget Utilization Rate: [X]%
 
-💡 RECOMMENDATIONS:
+🔍 FINANCIAL HEALTH:
+• Status: [Healthy/Moderate/Critical - based on balance]
+• Recommendation: [Conservative/Balanced/Aggressive spending]
+• Budget Remaining: [X] points available
+• Points per Member: [X] points/member
 
-Based on the available budget and member count, here are suggested events for this month:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-1. [Event Name]
-   • Budget Points: [X]
-   • Expected Participants: [X]
-   • Points per Participant: [X]
-   • Purpose: [Brief description]
+💡 STRATEGIC EVENT RECOMMENDATIONS:
 
-2. [Event Name]
-   • Budget Points: [X]
-   • Expected Participants: [X]
-   • Points per Participant: [X]
-   • Purpose: [Brief description]
+Based on available budget (${wallet.balancePoints} points) and member count, here are optimized events for this month:
 
-🎯 GOAL: Fully utilize ${wallet.balancePoints} points while maximizing member engagement.
+🎯 OPTION 1: [Event Name]
+   • 💰 Budget Allocation: [X] points ([X]% of total)
+   • 👥 Expected Participants: [X] ([X]% of members)
+   • 💎 Cost per Participant: [X] points
+   • ⏰ Optimal Timing: [Date/Time suggestion]
+   • 🎯 Purpose: [Detailed description and benefits]
+   • 📊 ROI: [Expected engagement/satisfaction impact]
+   • ✅ Priority: [High/Medium/Low]
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`
+🎯 OPTION 2: [Event Name]
+   • 💰 Budget Allocation: [X] points ([X]% of total)
+   • 👥 Expected Participants: [X] ([X]% of members)
+   • 💎 Cost per Participant: [X] points
+   • ⏰ Optimal Timing: [Date/Time suggestion]
+   • 🎯 Purpose: [Detailed description and benefits]
+   • 📊 ROI: [Expected engagement/satisfaction impact]
+   • ✅ Priority: [High/Medium/Low]
+
+🎯 OPTION 3: [Event Name]
+   • 💰 Budget Allocation: [X] points ([X]% of total)
+   • 👥 Expected Participants: [X] ([X]% of members)
+   • 💎 Cost per Participant: [X] points
+   • ⏰ Optimal Timing: [Date/Time suggestion]
+   • 🎯 Purpose: [Detailed description and benefits]
+   • 📊 ROI: [Expected engagement/satisfaction impact]
+   • ✅ Priority: [High/Medium/Low]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 BUDGET DISTRIBUTION STRATEGY:
+• Total Planned Spending: [X] points
+• Reserve Fund: [X] points ([X]%)
+• Budget After Events: [X] points
+• Events Covered: [X]/3 options recommended
+
+🎯 STRATEGIC GOALS:
+1. Maximize Member Engagement: Target [X]% participation rate
+2. Optimize Budget Utilization: Use [X]% efficiently
+3. Maintain Financial Health: Keep [X] points reserve
+4. Member Satisfaction: Focus on high-value activities
+
+💡 ADDITIONAL RECOMMENDATIONS:
+• [Tip 1 for budget optimization]
+• [Tip 2 for increasing participation]
+• [Tip 3 for sustainable spending]
+
+⚠️ RISK CONSIDERATIONS:
+• Low participation risk: [Mitigation strategy]
+• Budget overrun risk: [Prevention measures]
+• Emergency fund: Keep [X] points available
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Provide data-driven recommendations with clear justifications. Balance between member engagement and financial sustainability.`
 
             userContent = `${userMessage.text}
 
@@ -563,27 +694,63 @@ Please analyze this data and suggest events for the current month (${currentMont
             .slice(0, 10)
 
           systemContent = `You are an AI assistant for a university club and event management system.
-Present the top 10 clubs by member count in this BEAUTIFUL format:
+Present the top 10 clubs by member count in this BEAUTIFUL format with detailed analysis:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🏆 TOP 10 CLUBS BY MEMBER COUNT
+🏆 TOP 10 MOST POPULAR CLUBS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 1. 🥇 [Club Name]
-   • Members: [X]
-   • Major: [Major Name]
-   • Leader: [Leader Name]
-   • Approved Events: [X]
+   • 👥 Active Members: [X]
+   • 🎓 Major/Department: [Major Name]
+   • 👨‍💼 Leader: [Leader Name]
+   • 📅 Approved Events: [X] events
+   • 📊 Events per Member: [X]
+   • ⭐ Engagement Score: [High/Medium/Low]
 
 2. 🥈 [Club Name]
-   • Members: [X]
-   • Major: [Major Name]
-   • Leader: [Leader Name]
-   • Approved Events: [X]
+   • 👥 Active Members: [X]
+   • 🎓 Major/Department: [Major Name]
+   • 👨‍💼 Leader: [Leader Name]
+   • 📅 Approved Events: [X] events
+   • 📊 Events per Member: [X]
+   • ⭐ Engagement Score: [High/Medium/Low]
 
-[Continue for all 10 clubs]
+3. 🥉 [Club Name]
+   • 👥 Active Members: [X]
+   • 🎓 Major/Department: [Major Name]
+   • 👨‍💼 Leader: [Leader Name]
+   • 📅 Approved Events: [X] events
+   • 📊 Events per Member: [X]
+   • ⭐ Engagement Score: [High/Medium/Low]
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`
+4-10. [Continue with 🏆 emoji for remaining clubs]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 STATISTICAL ANALYSIS:
+• Total Members (Top 10): [X] students
+• Average Members per Club: [X]
+• Largest Club Size: [X] members
+• Smallest (in top 10): [X] members
+• Total Events Organized: [X] events
+• Most Active Club: [Club Name] ([X] events)
+• Average Events per Club: [X]
+
+📈 INSIGHTS:
+• Most Represented Major: [Major Name] ([X] clubs)
+• Member Distribution: [Balanced/Concentrated]
+• Event Activity: [High/Moderate/Low]
+• Growth Potential: [Analysis of trends]
+
+💡 OBSERVATIONS:
+• [Key finding 1 about club popularity]
+• [Key finding 2 about major distribution]
+• [Key finding 3 about event organization]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Provide comprehensive analysis with actionable insights. Use emojis 🥇 🥈 🥉 for top 3, and 🏆 for ranks 4-10.`
 
           userContent = `${userMessage.text}
 
@@ -626,34 +793,117 @@ Please present the top 10 clubs with the most members in a clean, organized form
           })
 
           systemContent = `You are an AI assistant for a university club and event management system.
-Analyze club applications and suggest approvals based on major diversity.
+Analyze club applications comprehensively and suggest approvals based on major diversity, quality, and strategic value.
 
 Present in this format:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📋 CLUB APPLICATION ANALYSIS
+📋 CLUB APPLICATION ANALYSIS & RECOMMENDATIONS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📊 CURRENT CLUB DISTRIBUTION BY MAJOR:
-• [Major Name]: [X] clubs
-• [Major Name]: [X] clubs
-[List all majors]
+📊 CURRENT CLUB ECOSYSTEM:
 
-⏳ PENDING APPLICATIONS:
+🎓 Distribution by Major:
+• [Major Name]: [X] clubs ([X]% of total)
+• [Major Name]: [X] clubs ([X]% of total)
+[List all majors sorted by club count]
 
-For each application:
-
-📝 Application #[ID]
-• Club Name: [Name]
-• Major: [Major Name]
-• Proposer: [Name]
-• Vision: [Brief vision]
-• Current clubs in this major: [X]
-•    RECOMMENDATION: [APPROVE/REVIEW] - [Reason based on major diversity]
+📈 Overall Statistics:
+• Total Active Clubs: [X]
+• Total Majors Represented: [X]
+• Average Clubs per Major: [X]
+• Majors with 0 clubs: [List if any]
+• Majors with 1 club: [List if any]
+• Most Represented Major: [Major Name] ([X] clubs)
+• Least Represented Major: [Major Name] ([X] clubs)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Focus on majors with few or no clubs and suggest approvals to improve diversity.`
+⏳ PENDING APPLICATIONS ([X] Total):
+
+For each application, provide detailed analysis:
+
+📝 APPLICATION: [Club Name]
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+🏛️ Proposed Club Name: [Name]
+🎓 Major/Department: [Major Name]
+👤 Proposer: [Name] [Include proposer role/year if available]
+📅 Submission Date: [Date if available]
+
+📄 Application Details:
+• Vision: [Full vision statement]
+• Proposer Reason: [Full reason]
+• Description: [Brief description if available]
+
+📊 Context Analysis:
+• Current clubs in [Major]: [X] clubs
+• Major Representation: [Underrepresented/Balanced/Saturated]
+• Similar Existing Clubs: [List if any]
+• Uniqueness Factor: [High/Medium/Low]
+
+⭐ Quality Assessment:
+• Vision Clarity: [Strong/Moderate/Weak]
+• Justification Quality: [Compelling/Adequate/Insufficient]
+• Feasibility: [High/Medium/Low]
+• Expected Impact: [High/Medium/Low]
+
+🎯 RECOMMENDATION: [✅ STRONGLY APPROVE / ⚠️ APPROVE WITH CONDITIONS / 🔍 NEEDS REVIEW / ❌ DECLINE]
+
+💡 Rationale:
+• Diversity Impact: [How this affects major diversity]
+• Strategic Value: [Why this matters for the university]
+• Risk Assessment: [Any concerns or considerations]
+• Conditions (if any): [List specific conditions for approval]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎯 STRATEGIC RECOMMENDATIONS:
+
+✅ Recommended for Approval ([X] applications):
+1. [Club Name] - [Major] - [Primary reason]
+2. [Club Name] - [Major] - [Primary reason]
+
+⚠️ Conditional Approval ([X] applications):
+1. [Club Name] - [Major] - [Conditions required]
+
+🔍 Requires Further Review ([X] applications):
+1. [Club Name] - [Major] - [Concerns to address]
+
+❌ Recommended for Decline ([X] applications):
+1. [Club Name] - [Major] - [Reasons]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📈 DIVERSITY & BALANCE GOALS:
+
+🎯 Priority Focus Areas:
+• Underrepresented Majors: [List majors that need more clubs]
+• Emerging Interests: [New club types that fill gaps]
+• Balance Target: Aim for [X] clubs per major
+
+💡 Long-term Strategy:
+• [Recommendation 1 for improving diversity]
+• [Recommendation 2 for maintaining quality]
+• [Recommendation 3 for sustainable growth]
+
+⚠️ Risk Management:
+• Over-saturation Risk: [Majors with too many clubs]
+• Quality Concerns: [Applications needing improvement]
+• Resource Allocation: [Considerations for support]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 IMPACT PROJECTION:
+If all recommended approvals are granted:
+• Total Clubs: [Current] → [Projected]
+• Majors with Clubs: [Current] → [Projected]
+• Diversity Score: [Improvement percentage]
+• New Opportunities: [Expected student engagement impact]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Provide comprehensive, data-driven analysis with clear justifications. Prioritize major diversity while maintaining quality standards. Focus on strategic value and long-term sustainability.`
 
           userContent = `${userMessage.text}
 
