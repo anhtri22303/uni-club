@@ -46,7 +46,7 @@ export interface Event {
     name: string
     coHostStatus: string
   }>
-  // Legacy fields for backward compatibility
+  // Legacy fields
   clubId?: number
   clubName?: string
   time?: string
@@ -325,22 +325,68 @@ export const getEventByCode = async (code: string): Promise<Event> => {
   }
 }
 
+// export const getEventByClubId = async (clubId: string | number): Promise<Event[]> => {
+//   try {
+//     const response = await axiosInstance.get(`/api/events/club/${clubId}`)
+//     const resData: any = response.data
+//     console.log(`Fetched events for club ${clubId}:`, resData)
+
+//     // If response is direct array of events
+//     if (Array.isArray(resData)) return resData
+
+//     // If response has wrapper structure like { success, data, message }
+//     if (resData?.data && Array.isArray(resData.data)) return resData.data
+
+//     // If response has content property (pagination)
+//     if (resData?.content && Array.isArray(resData.content)) return resData.content
+
+//     // Fallback to empty array if no events found
+//     return []
+//   } catch (error) {
+//     console.error(`Error fetching events for club ${clubId}:`, error)
+//     throw error
+//   }
+// }
+
+// export const getEventCoHost = async (clubId: string | number): Promise<Event[]> => {
+//   try {
+//     const response = await axiosInstance.get(`/api/events/club/${clubId}/cohost`)
+//     const resData: any = response.data
+//     console.log(`Fetched co-host events for club ${clubId}:`, resData)
+
+//     // If response is direct array of events
+//     if (Array.isArray(resData)) return resData
+
+//     // If response has wrapper structure like { success, data, message }
+//     if (resData?.data && Array.isArray(resData.data)) return resData.data
+
+//     // If response has content property (pagination)
+//     if (resData?.content && Array.isArray(resData.content)) return resData.content
+
+//     // Fallback to empty array if no events found
+//     return []
+//   } catch (error) {
+//     console.error(`Error fetching co-host events for club ${clubId}:`, error)
+//     throw error
+//   }
+// }
+
 export const getEventByClubId = async (clubId: string | number): Promise<Event[]> => {
   try {
+    // API: /api/events/club/{clubId}
     const response = await axiosInstance.get(`/api/events/club/${clubId}`)
     const resData: any = response.data
     console.log(`Fetched events for club ${clubId}:`, resData)
 
-    // If response is direct array of events
-    if (Array.isArray(resData)) return resData
+    // Theo Swagger, response trả về trực tiếp mảng: [...]
+    if (Array.isArray(resData)) {
+      return resData
+    }
 
-    // If response has wrapper structure like { success, data, message }
+    // Fallback logic cũ (phòng hờ môi trường khác nhau)
     if (resData?.data && Array.isArray(resData.data)) return resData.data
-
-    // If response has content property (pagination)
     if (resData?.content && Array.isArray(resData.content)) return resData.content
 
-    // Fallback to empty array if no events found
     return []
   } catch (error) {
     console.error(`Error fetching events for club ${clubId}:`, error)
@@ -350,20 +396,20 @@ export const getEventByClubId = async (clubId: string | number): Promise<Event[]
 
 export const getEventCoHost = async (clubId: string | number): Promise<Event[]> => {
   try {
+    // API: /api/events/club/{clubId}/cohost
     const response = await axiosInstance.get(`/api/events/club/${clubId}/cohost`)
     const resData: any = response.data
     console.log(`Fetched co-host events for club ${clubId}:`, resData)
 
-    // If response is direct array of events
-    if (Array.isArray(resData)) return resData
+    // Theo Swagger, response trả về trực tiếp mảng: [...]
+    if (Array.isArray(resData)) {
+      return resData
+    }
 
-    // If response has wrapper structure like { success, data, message }
+    // Fallback logic cũ
     if (resData?.data && Array.isArray(resData.data)) return resData.data
-
-    // If response has content property (pagination)
     if (resData?.content && Array.isArray(resData.content)) return resData.content
 
-    // Fallback to empty array if no events found
     return []
   } catch (error) {
     console.error(`Error fetching co-host events for club ${clubId}:`, error)
@@ -508,11 +554,11 @@ export const getMyEvents = async (): Promise<Event[]> => {
     const response = await axiosInstance.get("api/events/my")
     const data: any = response.data
     console.log("Fetched my events:", data)
-    
+
     // Response structure: { success: true, message: "success", data: [...events] }
     if (data?.data && Array.isArray(data.data)) return data.data
     if (Array.isArray(data)) return data
-    
+
     return []
   } catch (error) {
     console.error("Error fetching my events:", error)
@@ -727,18 +773,18 @@ export const eventTimeExtend = async (eventId: string | number, payload: EventTi
  * @returns { success: boolean, message: string, data: string }
  */
 export const rejectEvent = async (eventId: string | number, reason: string) => {
-  try {
-    const response = await axiosInstance.put(`/api/events/${eventId}/reject`, null, {
-      params: { reason }
-    });
-    const data: any = response.data;
-    console.log(`Rejected event ${eventId} with reason: ${reason}`, data);
-    // Response: { success: true, message: "string", data: "string" }
-    return data;
-  } catch (error) {
-    console.error(`Error rejecting event ${eventId}:`, error);
-    throw error;
-  }
+  try {
+    const response = await axiosInstance.put(`/api/events/${eventId}/reject`, null, {
+      params: { reason }
+    });
+    const data: any = response.data;
+    console.log(`Rejected event ${eventId} with reason: ${reason}`, data);
+    // Response: { success: true, message: "string", data: "string" }
+    return data;
+  } catch (error) {
+    console.error(`Error rejecting event ${eventId}:`, error);
+    throw error;
+  }
 }
 
 /**
@@ -787,26 +833,26 @@ export const cancelEventRegistration = async (eventId: string | number) => {
  * @returns { } (200 OK với body rỗng)
  */
 export const refundEventProduct = async (
-  eventId: string | number, 
-  productId: string | number, 
+  eventId: string | number,
+  productId: string | number,
   userId: string | number
 ) => {
-  try {
-    const response = await axiosInstance.put(
-      `/api/events/${eventId}/refund-product/${productId}`, 
-      null, 
+  try {
+    const response = await axiosInstance.put(
+      `/api/events/${eventId}/refund-product/${productId}`,
+      null,
       {
-        params: { userId }
-      }
+        params: { userId }
+      }
     );
-    const data: any = response.data;
-    console.log(`Refunded product ${productId} for user ${userId} from event ${eventId}:`, data);
-    // Response: 200 OK with empty body {}
-    return data; // Thường trả về data rỗng
-  } catch (error) {
-    console.error(`Error refunding product for event ${eventId}:`, error);
-    throw error;
-  }
+    const data: any = response.data;
+    console.log(`Refunded product ${productId} for user ${userId} from event ${eventId}:`, data);
+    // Response: 200 OK with empty body {}
+    return data; // Thường trả về data rỗng
+  } catch (error) {
+    console.error(`Error refunding product for event ${eventId}:`, error);
+    throw error;
+  }
 }
 
 
@@ -826,10 +872,10 @@ export const getEventFeedbackSummary = async (eventId: string | number): Promise
     const response = await axiosInstance.get(`/api/events/${eventId}/feedback/summary`);
     const data: any = response.data;
     console.log(`Fetched feedback summary for event ${eventId}:`, data);
-    
+
     // Response: { success: true, message: "string", data: {...} }
     if (data?.data) return data.data;
-    
+
     return data; // Fallback nếu API trả về object data trực tiếp
   } catch (error) {
     console.error(`Error fetching feedback summary for event ${eventId}:`, error);
