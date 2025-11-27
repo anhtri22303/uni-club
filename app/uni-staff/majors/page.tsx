@@ -317,7 +317,8 @@ export default function UniStaffMajorsPage() {
                                     placeholder="Search majors"
                                     value={query}
                                     onChange={(e) => setQuery((e.target as HTMLInputElement).value)}
-                                    className="max-w-sm bg-white dark:bg-slate-800 rounded-md px-3 py-2 shadow-sm border border-gray-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                                    className="max-w-sm bg-white dark:bg-slate-800 rounded-md px-3 py-2 shadow-sm border border-gray-200 
+                                    dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/40"
                                 />
                                 <Button onClick={() => { setQuery("") }} variant="ghost">Clear</Button>
                                 <Button size="sm" className="ml-2" onClick={() => setCreateOpen(true)} title="Create major">
@@ -366,7 +367,8 @@ export default function UniStaffMajorsPage() {
                                                 paginated.map((m, idx) => (
                                                     <TableRow
                                                         key={m.id}
-                                                        className={`${idx % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-slate-50 dark:bg-slate-800'} hover:bg-slate-100 dark:hover:bg-slate-700`}
+                                                        className={`${idx % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-slate-50 dark:bg-slate-800'} 
+                                                        hover:bg-slate-100 dark:hover:bg-slate-700`}
                                                     >
                                                         <TableCell className="text-sm text-muted-foreground text-center">{m.id}</TableCell>
                                                         <TableCell className="font-medium text-primary/90">{m.name}</TableCell>
@@ -430,11 +432,23 @@ export default function UniStaffMajorsPage() {
 
                                     <div className="flex items-center gap-2">
                                         <Button size="sm" variant="outline" onClick={() => setPage(0)} disabled={page === 0}>First</Button>
-                                        <Button size="sm" variant="outline" onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}>Prev</Button>
-                                        <div className="px-2 text-sm">Page {filtered.length === 0 ? 0 : page + 1} / {Math.max(1, Math.ceil(filtered.length / pageSize))}</div>
-                                        <Button size="sm" variant="outline" onClick={() => setPage(p => Math.min(p + 1, Math.max(0, Math.ceil(filtered.length / pageSize) - 1)))} disabled={(page + 1) * pageSize >= filtered.length}>Next</Button>
-                                        <Button size="sm" variant="outline" onClick={() => setPage(Math.max(0, Math.ceil(filtered.length / pageSize) - 1))} disabled={(page + 1) * pageSize >= filtered.length}>Last</Button>
-                                        <select aria-label="Items per page" className="ml-2 rounded border px-2 py-1 text-sm" value={pageSize} onChange={(e) => { setPageSize(Number((e.target as HTMLSelectElement).value)); setPage(0) }}>
+                                        <Button size="sm" variant="outline" onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}>
+                                            Prev
+                                            </Button>
+                                        <div className="px-2 text-sm">
+                                            Page {filtered.length === 0 ? 0 : page + 1} / {Math.max(1, Math.ceil(filtered.length / pageSize))}
+                                            </div>
+                                        <Button size="sm" variant="outline" 
+                                        onClick={() => setPage(p => Math.min(p + 1, Math.max(0, Math.ceil(filtered.length / pageSize) - 1)))} 
+                                        disabled={(page + 1) * pageSize >= filtered.length}>
+                                            Next
+                                            </Button>
+                                        <Button size="sm" variant="outline" onClick={() => setPage(Math.max(0, Math.ceil(filtered.length / pageSize) - 1))} 
+                                        disabled={(page + 1) * pageSize >= filtered.length}>
+                                            Last
+                                            </Button>
+                                        <select aria-label="Items per page" className="ml-2 rounded border px-2 py-1 text-sm" value={pageSize} 
+                                        onChange={(e) => { setPageSize(Number((e.target as HTMLSelectElement).value)); setPage(0) }}>
                                             <option value={5}>5</option>
                                             <option value={10}>10</option>
                                             <option value={20}>20</option>
@@ -456,12 +470,14 @@ export default function UniStaffMajorsPage() {
                             <div className="mt-2 space-y-3">
                                 <div>
                                     <Label htmlFor="major-name">Major Name</Label>
-                                    <Input id="major-name" className="mt-2 border-slate-300" value={editMajorName} onChange={(e) => setEditMajorName((e.target as HTMLInputElement).value)} />
+                                    <Input id="major-name" className="mt-2 border-slate-300" value={editMajorName} 
+                                    onChange={(e) => setEditMajorName((e.target as HTMLInputElement).value)} />
                                 </div>
 
                                 <div>
                                     <Label htmlFor="major-code">Major Code</Label>
-                                    <Input id="major-code" className="mt-2 border-slate-300" value={editMajorCode} onChange={(e) => setEditMajorCode((e.target as HTMLInputElement).value)} />
+                                    <Input id="major-code" className="mt-2 border-slate-300" value={editMajorCode} 
+                                    onChange={(e) => setEditMajorCode((e.target as HTMLInputElement).value)} />
                                 </div>
 
                                 {/* Dropdown cho Color Hex (Edit) */}
@@ -521,12 +537,14 @@ export default function UniStaffMajorsPage() {
 
                                 <div>
                                     <Label htmlFor="major-desc">Description</Label>
-                                    <Textarea id="major-desc" className="mt-2 border-slate-300" value={editDescription} onChange={(e) => setEditDescription((e.target as HTMLTextAreaElement).value)} />
+                                    <Textarea id="major-desc" className="mt-2 border-slate-300" value={editDescription} 
+                                    onChange={(e) => setEditDescription((e.target as HTMLTextAreaElement).value)} />
                                 </div>
 
                                 <div className="flex items-center gap-2">
                                     <Label htmlFor="major-active">Change status: </Label>
-                                    <input id="major-active" title="Active" type="checkbox" checked={editActive} onChange={(e) => setEditActive(e.target.checked)} className="h-4 w-4" />
+                                    <input id="major-active" title="Active" type="checkbox" checked={editActive} 
+                                    onChange={(e) => setEditActive(e.target.checked)} className="h-4 w-4" />
                                     <Label htmlFor="major-active">Active</Label>
                                 </div>
 
