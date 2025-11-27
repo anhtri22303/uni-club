@@ -69,12 +69,29 @@ export function CalendarModal({
     })
   }
 
-  // Group events by date
+  // Group events by date (supports both single-day and multi-day events)
   const eventsByDate = useMemo(() => {
     const grouped: Record<string, any[]> = {}
     events.forEach((event) => {
-      if (event.date) {
-        const dateKey = new Date(event.date).toLocaleDateString("en-CA") // YYYY-MM-DD
+      // Multi-day event: add to each day in the days[] array
+      if (event.days && Array.isArray(event.days) && event.days.length > 0) {
+        event.days.forEach((day: any) => {
+          if (day.date) {
+            const dateKey = new Date(day.date).toLocaleDateString("en-CA") // YYYY-MM-DD
+            if (!grouped[dateKey]) grouped[dateKey] = []
+            // Create a copy with the specific day's time
+            grouped[dateKey].push({
+              ...event,
+              currentDayDate: day.date,
+              currentDayStartTime: day.startTime,
+              currentDayEndTime: day.endTime,
+            })
+          }
+        })
+      }
+      // Legacy single-day event: use event.date or startDate
+      else if (event.date || event.startDate) {
+        const dateKey = new Date(event.date || event.startDate).toLocaleDateString("en-CA") // YYYY-MM-DD
         if (!grouped[dateKey]) grouped[dateKey] = []
         grouped[dateKey].push(event)
       }
@@ -82,8 +99,8 @@ export function CalendarModal({
     // Sort inside each day by time
     Object.keys(grouped).forEach((dateKey) => {
       grouped[dateKey].sort((a, b) => {
-        const ta = a.startTime || a.time || "00:00"
-        const tb = b.startTime || b.time || "00:00"
+        const ta = a.currentDayStartTime || a.startTime || a.time || "00:00"
+        const tb = b.currentDayStartTime || b.startTime || b.time || "00:00"
         return ta.localeCompare(tb)
       })
     })
@@ -137,7 +154,9 @@ export function CalendarModal({
     // Check if event is in the past (before today)
     const today = new Date()
     today.setHours(0, 0, 0, 0) // Reset to start of day for comparison
-    const eventDate = event.date ? new Date(event.date) : null
+    // For multi-day events in calendar, use currentDayDate if available, otherwise use endDate/date/startDate
+    const eventDateStr = event.currentDayDate || event.endDate || event.date || event.startDate
+    const eventDate = eventDateStr ? new Date(eventDateStr) : null
     const isPast = eventDate && eventDate < today
     
     // COMPLETED status always gets dark blue
@@ -148,6 +167,10 @@ export function CalendarModal({
     if (isPast) {
       if (status === "REJECTED")
         return "bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 text-red-600 dark:text-red-400 border-red-200 dark:border-red-700 shadow-sm opacity-60"
+      if (status === "PENDING_COCLUB")
+        return "bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-700 shadow-sm opacity-60"
+      if (status === "PENDING_UNISTAFF" || status === "WAITING")
+        return "bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 text-yellow-600 dark:text-yellow-400 border-yellow-200 dark:border-yellow-700 shadow-sm opacity-60"
       if (status === "PENDING")
         return "bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-700 shadow-sm opacity-60"
       if (status === "APPROVED")
@@ -158,6 +181,10 @@ export function CalendarModal({
     // Future/today events get normal vibrant colors
     if (status === "REJECTED")
       return "bg-gradient-to-br from-red-100 to-red-200 dark:from-red-900/40 dark:to-red-800/40 text-red-800 dark:text-red-300 border-red-400 dark:border-red-600 shadow-sm"
+    if (status === "PENDING_COCLUB")
+      return "bg-gradient-to-br from-orange-100 to-orange-200 dark:from-orange-900/40 dark:to-orange-800/40 text-orange-800 dark:text-orange-300 border-orange-400 dark:border-orange-600 shadow-sm"
+    if (status === "PENDING_UNISTAFF" || status === "WAITING")
+      return "bg-gradient-to-br from-yellow-100 to-yellow-200 dark:from-yellow-900/40 dark:to-yellow-800/40 text-yellow-800 dark:text-yellow-300 border-yellow-400 dark:border-yellow-600 shadow-sm"
     if (status === "PENDING")
       return "bg-gradient-to-br from-amber-100 to-amber-200 dark:from-amber-900/40 dark:to-amber-800/40 text-amber-800 dark:text-amber-300 border-amber-400 dark:border-amber-600 shadow-sm"
     if (status === "APPROVED")
@@ -368,8 +395,14 @@ export function CalendarModal({
                         <div className="space-y-0.5 sm:space-y-1 min-w-0">
                           {visibleEvents.map((event, eventIdx) => {
                             const title = event.name || event.title
-                            const start = (event.startTime || event.time || "").substring(0, 5)
-                            const end = event.endTime ? event.endTime.substring(0, 5) : ""
+                            // For multi-day events in calendar, use currentDay times
+                            const startTimeStr = event.currentDayStartTime || event.startTime || event.time || ""
+                            const endTimeStr = event.currentDayEndTime || event.endTime || ""
+                            const start = typeof startTimeStr === 'string' ? startTimeStr.substring(0, 5) : ""
+                            const end = typeof endTimeStr === 'string' ? endTimeStr.substring(0, 5) : ""
+                            // Check if this is a multi-day event
+                            const isMultiDay = event.days && Array.isArray(event.days) && event.days.length > 1
+                            const totalDays = isMultiDay ? event.days.length : 1
                             return (
                               <button
                                 key={eventIdx}
@@ -398,6 +431,16 @@ export function CalendarModal({
                                   </div>
 
                                   <div className="space-y-0.5 w-full min-w-0">
+                                    {/* Multi-day indicator */}
+                                    {isMultiDay && (
+                                      <div className="flex items-center gap-0.5 sm:gap-1 text-[9px] sm:text-[10px] font-bold opacity-95 w-full min-w-0 overflow-hidden">
+                                        <CalendarIcon className="h-2 w-2 sm:h-2.5 sm:w-2.5 flex-shrink-0" />
+                                        <span className="truncate flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
+                                          {totalDays} days event
+                                        </span>
+                                      </div>
+                                    )}
+                                    
                                     {/* Time: single-line, ellipsis if needed */}
                                     <div className="hidden xs:flex items-center gap-0.5 sm:gap-1 text-[9px] sm:text-[10px] opacity-90 w-full min-w-0 overflow-hidden">
                                       <Clock className="h-2 w-2 sm:h-2.5 sm:w-2.5 flex-shrink-0" />

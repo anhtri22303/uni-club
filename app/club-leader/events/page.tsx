@@ -56,7 +56,9 @@ import {
   timeObjectToString,
   timeStringToObject,
   eventQR,
+  isEventExpired,
 } from "@/service/eventApi";
+import { EventDateTimeDisplay } from "@/components/event-date-time-display";
 import { safeLocalStorage } from "@/lib/browser-utils";
 import { PhaseSelectionModal } from "@/components/phase-selection-modal";
 import { fetchLocation } from "@/service/locationApi";
@@ -162,45 +164,7 @@ export default function ClubLeaderEventsPage() {
       !!userClubId && viewMode === "cohost"
     );
 
-  // Helper function to check if event has expired (past endTime) or is COMPLETED
-  const isEventExpired = (event: any) => {
-    // COMPLETED status is always considered expired
-    if (event.status === "COMPLETED") return true;
-
-    // Check if date and endTime are present
-    if (!event.date || !event.endTime) return false;
-
-    try {
-      // Get current date/time
-      const now = new Date();
-
-      // Parse event date (format: YYYY-MM-DD)
-      const [year, month, day] = event.date.split("-").map(Number);
-
-      // Convert endTime to string if it's an object
-      const endTimeStr = timeObjectToString(event.endTime);
-
-      // Parse endTime (format: HH:MM:SS or HH:MM)
-      const [hours, minutes] = endTimeStr.split(":").map(Number);
-
-      // Create event end datetime (using local timezone consistently)
-      const eventEndDateTime = new Date(
-        year,
-        month - 1,
-        day,
-        hours,
-        minutes,
-        0,
-        0
-      );
-
-      // Event is expired if current time is past the end time
-      return now > eventEndDateTime;
-    } catch (error) {
-      console.error("Error checking event expiration:", error);
-      return false;
-    }
-  };
+  // Use isEventExpired from eventApi.ts which supports both single-day and multi-day events
 
   // Helper function to check if event is active (ONGOING and within date/time range)
   const isEventActive = (event: any) => {
@@ -213,8 +177,10 @@ export default function ClubLeaderEventsPage() {
     // Must not be expired
     if (isEventExpired(event)) return false;
 
-    // Check if date and endTime are present
-    if (!event.date || !event.endTime) return false;
+    // For multi-day events, check if any day exists
+    // For single-day events, check date/endTime
+    const hasValidDate = (event.days && event.days.length > 0) || (event.date && event.endTime);
+    if (!hasValidDate) return false;
 
     return true;
   };
@@ -222,9 +188,9 @@ export default function ClubLeaderEventsPage() {
   // Helper function to sort events by date and time (newest to oldest)
   const sortEventsByDateTime = (eventList: any[]) => {
     return eventList.sort((a: any, b: any) => {
-      // Parse dates for comparison
-      const dateA = new Date(a.date || "1970-01-01");
-      const dateB = new Date(b.date || "1970-01-01");
+      // Parse dates for comparison - support both multi-day and single-day events
+      const dateA = new Date(a.startDate || a.date || "1970-01-01");
+      const dateB = new Date(b.startDate || b.date || "1970-01-01");
 
       // Compare dates first (newest first)
       if (dateA.getTime() !== dateB.getTime()) {
@@ -452,7 +418,9 @@ export default function ClubLeaderEventsPage() {
     // Nếu event.status là ONGOING thì bắt buộc phải là "Now"
     if (event?.status === "ONGOING") return "Now";
 
-    if (!event.date) return "Finished";
+    // Support both multi-day (startDate) and single-day (date) events
+    const eventDate = event.startDate || event.date;
+    if (!eventDate) return "Finished";
     // Get current time
     const now = new Date();
 
@@ -464,7 +432,7 @@ export default function ClubLeaderEventsPage() {
     const [startHour = "00", startMinute = "00"] = (
       startTimeStr || "00:00"
     ).split(":");
-    const [year, month, day] = event.date.split("-").map(Number);
+    const [year, month, day] = eventDate.split("-").map(Number);
     const eventStart = new Date(
       year,
       month - 1,
@@ -508,8 +476,10 @@ export default function ClubLeaderEventsPage() {
   const filteredEvents = effectiveEvents.filter((item) => {
     // Calculate status values
     const isExpired = isEventExpired(item);
+    // Support both multi-day (startDate) and single-day (date) events
+    const itemDate = item.startDate || item.date;
     const isFutureEvent =
-      item.date && new Date(item.date) >= new Date(new Date().toDateString());
+      itemDate && new Date(itemDate) >= new Date(new Date().toDateString());
 
     const approvalFilter = activeFilters["approval"];
     const expiredFilter = activeFilters["expired"] || "hide";
@@ -544,7 +514,9 @@ export default function ClubLeaderEventsPage() {
     // date exact match (can be extended to ranges)
     const dateFilter = activeFilters["date"];
     if (dateFilter) {
-      const it = new Date(item.date).toDateString();
+      const itemDate = item.startDate || item.date;
+      if (!itemDate) return false;
+      const it = new Date(itemDate).toDateString();
       const df = new Date(dateFilter).toDateString();
       if (it !== df) return false;
     }
@@ -1358,27 +1330,12 @@ export default function ClubLeaderEventsPage() {
                       </CardHeader>
                       <CardContent className="flex-1 flex flex-col">
                         <div className="space-y-3 flex-1">
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Calendar className="h-4 w-4" />
-                            {new Date(event.date).toLocaleDateString("en-US", {
-                              weekday: "long",
-                              year: "numeric",
-                              month: "long",
-                              day: "numeric",
-                            })}
-                          </div>
+                          <EventDateTimeDisplay event={event} variant="compact" />
 
                           {event.locationName && (
                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
                               <MapPin className="h-4 w-4" />
                               {event.locationName}
-                            </div>
-                          )}
-
-                          {event.startTime && event.endTime && (
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <Ticket className="h-4 w-4" />
-                              {event.startTime} - {event.endTime}
                             </div>
                           )}
                         </div>
