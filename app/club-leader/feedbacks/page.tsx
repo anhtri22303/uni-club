@@ -17,18 +17,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Star, Search, Calendar, MessageSquare, User } from "lucide-react"
+import { Star, Search, Calendar, MessageSquare, ChevronDown, ChevronRight } from "lucide-react"
 import { format } from "date-fns"
 import { toast } from "@/hooks/use-toast"
+
+interface EventFeedbackGroup {
+  eventId: number
+  eventName: string
+  feedbacks: Feedback[]
+  averageRating: number
+  totalFeedbacks: number
+}
 
 export default function ClubLeaderFeedbacksPage() {
   const { auth } = useAuth()
@@ -37,6 +37,7 @@ export default function ClubLeaderFeedbacksPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedEvent, setSelectedEvent] = useState<string>("all")
   const [selectedRating, setSelectedRating] = useState<string>("all")
+  const [expandedEvents, setExpandedEvents] = useState<Set<number>>(new Set())
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
 
@@ -74,42 +75,84 @@ export default function ClubLeaderFeedbacksPage() {
     fetchFeedbacks()
   }, [])
 
-  // Get unique events for filter
-  const uniqueEvents = useMemo(() => {
-    const events = feedbacks.map((f) => ({
-      id: f.eventId,
-      name: f.eventName,
-    }))
-    const unique = Array.from(
-      new Map(events.map((e) => [e.id, e])).values()
-    )
-    return unique
+  // Group feedbacks by event
+  const groupedFeedbacks = useMemo(() => {
+    const groups = new Map<number, EventFeedbackGroup>()
+
+    feedbacks.forEach((feedback) => {
+      if (!groups.has(feedback.eventId)) {
+        groups.set(feedback.eventId, {
+          eventId: feedback.eventId,
+          eventName: feedback.eventName,
+          feedbacks: [],
+          averageRating: 0,
+          totalFeedbacks: 0,
+        })
+      }
+
+      const group = groups.get(feedback.eventId)!
+      group.feedbacks.push(feedback)
+    })
+
+    // Calculate averages
+    groups.forEach((group) => {
+      group.totalFeedbacks = group.feedbacks.length
+      const sum = group.feedbacks.reduce((acc, f) => acc + f.rating, 0)
+      group.averageRating = sum / group.totalFeedbacks
+    })
+
+    return Array.from(groups.values())
   }, [feedbacks])
 
-  // Filter feedbacks
-  const filteredFeedbacks = useMemo(() => {
-    return feedbacks.filter((feedback) => {
-      const matchesSearch =
-        feedback.memberName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        feedback.eventName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        feedback.comment.toLowerCase().includes(searchTerm.toLowerCase())
+  // Get unique events for filter
+  const uniqueEvents = useMemo(() => {
+    return groupedFeedbacks.map((group) => ({
+      id: group.eventId,
+      name: group.eventName,
+    }))
+  }, [groupedFeedbacks])
 
+  // Filter grouped feedbacks
+  const filteredGroups = useMemo(() => {
+    return groupedFeedbacks.filter((group) => {
       const matchesEvent =
-        selectedEvent === "all" || feedback.eventId.toString() === selectedEvent
+        selectedEvent === "all" || group.eventId.toString() === selectedEvent
 
       const matchesRating =
-        selectedRating === "all" || feedback.rating.toString() === selectedRating
+        selectedRating === "all" ||
+        group.feedbacks.some((f) => f.rating.toString() === selectedRating)
 
-      return matchesSearch && matchesEvent && matchesRating
+      const matchesSearch =
+        group.eventName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        group.feedbacks.some(
+          (f) =>
+            f.memberName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            f.comment.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+
+      return matchesEvent && matchesRating && matchesSearch
     })
-  }, [feedbacks, searchTerm, selectedEvent, selectedRating])
+  }, [groupedFeedbacks, searchTerm, selectedEvent, selectedRating])
 
   // Pagination
-  const totalPages = Math.ceil(filteredFeedbacks.length / itemsPerPage)
-  const paginatedFeedbacks = useMemo(() => {
+  const totalPages = Math.ceil(filteredGroups.length / itemsPerPage)
+  const paginatedGroups = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage
-    return filteredFeedbacks.slice(startIndex, startIndex + itemsPerPage)
-  }, [filteredFeedbacks, currentPage])
+    return filteredGroups.slice(startIndex, startIndex + itemsPerPage)
+  }, [filteredGroups, currentPage])
+
+  // Toggle event expansion
+  const toggleEventExpansion = (eventId: number) => {
+    setExpandedEvents((prev) => {
+      const newSet = new Set(prev)
+      if (newSet.has(eventId)) {
+        newSet.delete(eventId)
+      } else {
+        newSet.add(eventId)
+      }
+      return newSet
+    })
+  }
 
   // Reset to page 1 when filters change
   useEffect(() => {
@@ -136,10 +179,15 @@ export default function ClubLeaderFeedbacksPage() {
 
   // Calculate average rating
   const averageRating = useMemo(() => {
-    if (filteredFeedbacks.length === 0) return 0
-    const sum = filteredFeedbacks.reduce((acc, f) => acc + f.rating, 0)
-    return (sum / filteredFeedbacks.length).toFixed(1)
-  }, [filteredFeedbacks])
+    if (feedbacks.length === 0) return 0
+    const sum = feedbacks.reduce((acc, f) => acc + f.rating, 0)
+    return (sum / feedbacks.length).toFixed(1)
+  }, [feedbacks])
+
+  // Total feedbacks count
+  const totalFeedbacksCount = useMemo(() => {
+    return filteredGroups.reduce((acc, group) => acc + group.totalFeedbacks, 0)
+  }, [filteredGroups])
 
   if (loading) {
     return (
@@ -179,7 +227,7 @@ export default function ClubLeaderFeedbacksPage() {
               <MessageSquare className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{filteredFeedbacks.length}</div>
+              <div className="text-2xl font-bold">{totalFeedbacksCount}</div>
             </CardContent>
           </Card>
 
@@ -271,13 +319,13 @@ export default function ClubLeaderFeedbacksPage() {
         </CardContent>
       </Card>
 
-      {/* Feedbacks Table */}
+      {/* Events with Feedbacks */}
       <Card>
         <CardHeader>
-          <CardTitle>Feedback List</CardTitle>
+          <CardTitle>Events & Feedbacks</CardTitle>
         </CardHeader>
         <CardContent>
-          {paginatedFeedbacks.length === 0 ? (
+          {paginatedGroups.length === 0 ? (
             <div className="text-center py-12">
               <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <p className="text-lg font-medium">No feedbacks found</p>
@@ -287,84 +335,80 @@ export default function ClubLeaderFeedbacksPage() {
             </div>
           ) : (
             <>
-              {/* Desktop Table View */}
-              <div className="hidden md:block overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Event</TableHead>
-                      <TableHead>Member</TableHead>
-                      <TableHead>Rating</TableHead>
-                      <TableHead>Comment</TableHead>
-                      <TableHead>Date</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {paginatedFeedbacks.map((feedback) => (
-                      <TableRow key={feedback.feedbackId}>
-                        <TableCell className="font-medium">
-                          {feedback.eventName}
-                        </TableCell>
-                        <TableCell>
-                          {feedback.memberName || "Unknown"}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            {renderStars(feedback.rating)}
-                            <span className="text-sm font-medium">
-                              {feedback.rating}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="max-w-md">
-                          <p className="line-clamp-2 text-sm">
-                            {feedback.comment}
-                          </p>
-                        </TableCell>
-                        <TableCell>
-                          {format(new Date(feedback.createdAt), "MMM dd, yyyy")}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+              <div className="space-y-4">
+                {paginatedGroups.map((group) => {
+                  const isExpanded = expandedEvents.has(group.eventId)
 
-              {/* Mobile Card View */}
-              <div className="md:hidden space-y-4">
-                {paginatedFeedbacks.map((feedback) => (
-                  <Card key={feedback.feedbackId}>
-                    <CardContent className="pt-6 space-y-3">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <p className="font-semibold text-sm">
-                            {feedback.eventName}
-                          </p>
-                          <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
-                            <User className="h-3 w-3" />
-                            <span>{feedback.memberName || "Unknown"}</span>
+                  return (
+                    <Card key={group.eventId} className="overflow-hidden">
+                      {/* Event Header - Clickable */}
+                      <div
+                        className="p-4 cursor-pointer hover:bg-accent/50 transition-colors"
+                        onClick={() => toggleEventExpansion(group.eventId)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3 flex-1">
+                            {isExpanded ? (
+                              <ChevronDown className="h-5 w-5 text-muted-foreground shrink-0" />
+                            ) : (
+                              <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold text-lg truncate">
+                                {group.eventName}
+                              </h3>
+                              <div className="flex items-center gap-4 mt-1">
+                                <div className="flex items-center gap-1">
+                                  {renderStars(Math.round(group.averageRating))}
+                                  <span className="text-sm font-medium ml-1">
+                                    {group.averageRating.toFixed(1)}
+                                  </span>
+                                </div>
+                                <Badge variant="secondary">
+                                  {group.totalFeedbacks} {group.totalFeedbacks === 1 ? "feedback" : "feedbacks"}
+                                </Badge>
+                              </div>
+                            </div>
                           </div>
                         </div>
-                        <Badge variant="outline" className="ml-2">
-                          {feedback.rating} ★
-                        </Badge>
                       </div>
 
-                      <div className="flex items-center gap-1">
-                        {renderStars(feedback.rating)}
-                      </div>
+                      {/* Feedbacks List - Expandable */}
+                      {isExpanded && (
+                        <div className="border-t bg-muted/30">
+                          <div className="p-4 space-y-3">
+                            {group.feedbacks.map((feedback) => (
+                              <Card key={feedback.feedbackId} className="bg-background">
+                                <CardContent className="p-4">
+                                  <div className="space-y-3">
+                                    {/* Rating and Date */}
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-2">
+                                        {renderStars(feedback.rating)}
+                                        <span className="text-sm font-medium">
+                                          {feedback.rating}
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                        <Calendar className="h-3 w-3" />
+                                        {format(new Date(feedback.createdAt), "MMM dd, yyyy")}
+                                      </div>
+                                    </div>
 
-                      <p className="text-sm text-muted-foreground">
-                        {feedback.comment}
-                      </p>
-
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Calendar className="h-3 w-3" />
-                        {format(new Date(feedback.createdAt), "MMM dd, yyyy")}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                                    {/* Comment */}
+                                    <p className="text-sm text-foreground">
+                                      {feedback.comment}
+                                    </p>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </Card>
+                  )
+                })}
               </div>
 
               {/* Pagination */}
@@ -372,8 +416,8 @@ export default function ClubLeaderFeedbacksPage() {
                 <div className="flex items-center justify-between mt-6 pt-6 border-t">
                   <p className="text-sm text-muted-foreground">
                     Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
-                    {Math.min(currentPage * itemsPerPage, filteredFeedbacks.length)} of{" "}
-                    {filteredFeedbacks.length} feedbacks
+                    {Math.min(currentPage * itemsPerPage, filteredGroups.length)} of{" "}
+                    {filteredGroups.length} events
                   </p>
                   <div className="flex gap-2">
                     <Button

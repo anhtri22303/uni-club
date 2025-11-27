@@ -53,15 +53,20 @@ export interface Event {
   locationId?: number
 }
 
+// Day input for creating multi-day events
+export interface CreateEventDayInput {
+  date: string // Format: YYYY-MM-DD
+  startTime: TimeObject
+  endTime: TimeObject
+}
+
 export interface CreateEventPayload {
   hostClubId: number
   coHostClubIds?: number[]
   name: string
   description: string
   type: "PUBLIC" | "PRIVATE" | "SPECIAL"
-  date: string // Format: YYYY-MM-DD
-  startTime: string  // Format: HH:MM (e.g., "09:00")
-  endTime: string    // Format: HH:MM (e.g., "15:00")
+  days: CreateEventDayInput[] // Array of days with TimeObject format
   registrationDeadline: string // Format: YYYY-MM-DD
   locationId: number
   maxCheckInCount: number
