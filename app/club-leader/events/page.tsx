@@ -19,6 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Modal } from "@/components/modal";
 import { QRModal } from "@/components/qr-modal";
 import { CalendarModal } from "@/components/calendar-modal";
+import { LocationEventDaysModal } from "@/components/location-event-days-modal";
 import { useToast } from "@/hooks/use-toast";
 import { usePagination } from "@/hooks/use-pagination";
 import {
@@ -262,6 +263,7 @@ export default function ClubLeaderEventsPage() {
   const [showPolicyModal, setShowPolicyModal] = useState(false);
   const [showFullPolicyModal, setShowFullPolicyModal] = useState(false);
   const [showCalendarModal, setShowCalendarModal] = useState(false);
+  const [showLocationDaysModal, setShowLocationDaysModal] = useState(false);
   const [policyAccepted, setPolicyAccepted] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [showPhaseModal, setShowPhaseModal] = useState(false);
@@ -387,14 +389,22 @@ export default function ClubLeaderEventsPage() {
     name: "",
     description: "",
     type: "PUBLIC",
-    date: "",
     registrationDeadline: "",
-    startTime: "09:00:00",
-    endTime: "11:00:00",
     locationId: 0,
     maxCheckInCount: 100,
     commitPointCost: 0,
   });
+
+  // Separate state for managing event days
+  const [eventDays, setEventDays] = useState<Array<{
+    date: string;
+    startTime: string; // HH:MM format
+    endTime: string;   // HH:MM format
+  }>>([{
+    date: "",
+    startTime: "09:00",
+    endTime: "11:00"
+  }]);
 
   // Update formData clubId when userClubId changes
   useEffect(() => {
@@ -585,14 +595,16 @@ export default function ClubLeaderEventsPage() {
       name: "",
       description: "",
       type: "PUBLIC",
-      date: "",
       registrationDeadline: "",
-      startTime: "09:00:00",
-      endTime: "11:00:00",
       locationId: 0,
       maxCheckInCount: 100,
       commitPointCost: 0,
     });
+    setEventDays([{
+      date: "",
+      startTime: "09:00",
+      endTime: "11:00"
+    }]);
     setSelectedLocationId("");
     setSelectedLocationCapacity(null);
     setSelectedCoHostClubIds([]);
@@ -615,20 +627,8 @@ export default function ClubLeaderEventsPage() {
       validationErrors.push("Event Type is required");
     }
 
-    if (!formData.date) {
-      validationErrors.push("Date is required");
-    }
-
     if (!formData.registrationDeadline) {
       validationErrors.push("Registration Deadline is required");
-    }
-
-    if (!formData.startTime) {
-      validationErrors.push("Start Time is required");
-    }
-
-    if (!formData.endTime) {
-      validationErrors.push("End Time is required");
     }
 
     if (!formData.locationId || formData.locationId === 0) {
@@ -643,17 +643,34 @@ export default function ClubLeaderEventsPage() {
       validationErrors.push("Point Cost cannot be negative");
     }
 
-    // Validate time range
-    if (formData.startTime && formData.endTime) {
-      const [startHour, startMin] = formData.startTime.split(":").map(Number);
-      const [endHour, endMin] = formData.endTime.split(":").map(Number);
-      const startMinutes = startHour * 60 + startMin;
-      const endMinutes = endHour * 60 + endMin;
-
-      if (endMinutes <= startMinutes) {
-        validationErrors.push("End Time must be after Start Time");
-      }
+    // Validate event days
+    if (eventDays.length === 0) {
+      validationErrors.push("At least one event day is required");
     }
+
+    eventDays.forEach((day, index) => {
+      if (!day.date) {
+        validationErrors.push(`Day ${index + 1}: Date is required`);
+      }
+      if (!day.startTime) {
+        validationErrors.push(`Day ${index + 1}: Start time is required`);
+      }
+      if (!day.endTime) {
+        validationErrors.push(`Day ${index + 1}: End time is required`);
+      }
+
+      // Validate time range for each day
+      if (day.startTime && day.endTime) {
+        const [startHour, startMin] = day.startTime.split(":").map(Number);
+        const [endHour, endMin] = day.endTime.split(":").map(Number);
+        const startMinutes = startHour * 60 + startMin;
+        const endMinutes = endHour * 60 + endMin;
+
+        if (endMinutes <= startMinutes) {
+          validationErrors.push(`Day ${index + 1}: End time must be after start time`);
+        }
+      }
+    });
 
     // Show validation errors if any
     if (validationErrors.length > 0) {
@@ -682,16 +699,36 @@ export default function ClubLeaderEventsPage() {
     try {
       const hostClubId = Number(formData.clubId);
 
-      // Format time strings to HH:MM format (API expects string, not TimeObject)
-      const startTime = formData.startTime.substring(0, 5); // Convert HH:MM:SS to HH:MM
-      const endTime = formData.endTime.substring(0, 5); // Convert HH:MM:SS to HH:MM
-
       // Ensure numeric values are properly converted (not NaN or null)
       const commitPointCost = Number(formData.commitPointCost) || 0;
+
+      // Convert eventDays to API format with TimeObject
+      const daysPayload = eventDays.map(day => {
+        const [startHour, startMinute] = day.startTime.split(':').map(Number);
+        const [endHour, endMinute] = day.endTime.split(':').map(Number);
+
+        return {
+          date: day.date,
+          startTime: {
+            hour: startHour,
+            minute: startMinute,
+            second: 0,
+            nano: 0
+          },
+          endTime: {
+            hour: endHour,
+            minute: endMinute,
+            second: 0,
+            nano: 0
+          }
+        };
+      });
 
       console.log("📊 Form data before sending:", {
         commitPointCost: formData.commitPointCost,
         convertedCommitPointCost: commitPointCost,
+        eventDays,
+        daysPayload
       });
 
       const payload: any = {
@@ -699,10 +736,8 @@ export default function ClubLeaderEventsPage() {
         name: formData.name,
         description: formData.description,
         type: formData.type as "PUBLIC" | "PRIVATE",
-        date: formData.date,
+        days: daysPayload,
         registrationDeadline: formData.registrationDeadline,
-        startTime: startTime,
-        endTime: endTime,
         locationId: formData.locationId,
         maxCheckInCount: formData.maxCheckInCount,
         commitPointCost: commitPointCost,
@@ -1582,23 +1617,6 @@ export default function ClubLeaderEventsPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="date" className="text-sm">
-                    Date *
-                  </Label>
-                  <Input
-                    id="date"
-                    type="date"
-                    value={formData.date}
-                    onChange={(e) =>
-                      setFormData({ ...formData, date: e.target.value })
-                    }
-                    min={new Date().toLocaleDateString("en-CA")}
-                    className="h-9 border-slate-300"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1.5">
                   <Label htmlFor="registrationDeadline" className="text-sm">
                     Registration Deadline<span className="text-red-500">*</span>
                   </Label>
@@ -1636,45 +1654,71 @@ export default function ClubLeaderEventsPage() {
                 />
               </div>
 
+              {/* Location & Event Days Section */}
+              <div className="space-y-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowLocationDaysModal(true)}
+                  className="w-full h-12 border-2 border-blue-300 dark:border-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-all"
+                >
+                  <MapPin className="h-5 w-5 mr-2 text-blue-600" />
+                  <span className="font-semibold">
+                    {formData.locationId && eventDays.length > 0
+                      ? `Location & ${eventDays.length} Day${eventDays.length > 1 ? 's' : ''} Selected`
+                      : 'Choose Location & Event Days *'}
+                  </span>
+                </Button>
+                
+                {formData.locationId && eventDays.length > 0 && (
+                  <div className="space-y-3">
+                    {/* Location Display */}
+                    <div className="border-2 border-blue-200 dark:border-blue-800 rounded-lg p-3 bg-blue-50 dark:bg-blue-950/30">
+                      <div className="flex items-center gap-2 mb-2">
+                        <MapPin className="h-4 w-4 text-blue-600" />
+                        <span className="text-xs font-semibold text-blue-900 dark:text-blue-200">Location</span>
+                      </div>
+                      <div className="text-sm font-medium">
+                        {locations.find(l => l.id === formData.locationId)?.name || 'Selected Location'}
+                      </div>
+                      {selectedLocationCapacity && (
+                        <div className="text-xs text-muted-foreground mt-1">
+                          Capacity: {selectedLocationCapacity}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Event Days Display */}
+                    <div className="border-2 border-green-200 dark:border-green-800 rounded-lg p-3 bg-green-50 dark:bg-green-950/30">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Calendar className="h-4 w-4 text-green-600" />
+                        <span className="text-xs font-semibold text-green-900 dark:text-green-200">
+                          Event Days ({eventDays.length})
+                        </span>
+                      </div>
+                      <div className="space-y-2">
+                        {eventDays.map((day, index) => (
+                          <div key={index} className="flex items-center justify-between text-sm bg-white dark:bg-gray-900 rounded p-2 border border-green-300 dark:border-green-700">
+                            <div className="flex items-center gap-2">
+                              <div className="w-6 h-6 rounded-full bg-green-600 text-white flex items-center justify-center text-xs font-bold">
+                                {index + 1}
+                              </div>
+                              <span className="font-medium">{day.date}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs">
+                              <span className="text-green-600 font-semibold">{day.startTime}</span>
+                              <span className="text-muted-foreground">→</span>
+                              <span className="text-red-600 font-semibold">{day.endTime}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="grid grid-cols-4 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="startTime" className="text-sm">
-                    Start Time<span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="startTime"
-                    type="time"
-                    value={formData.startTime.substring(0, 5)}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        startTime: e.target.value + ":00",
-                      })
-                    }
-                    className="h-9 border-slate-300"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="endTime" className="text-sm">
-                    End Time<span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="endTime"
-                    type="time"
-                    value={formData.endTime.substring(0, 5)}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        endTime: e.target.value + ":00",
-                      })
-                    }
-                    className="h-9 border-slate-300"
-                    required
-                  />
-                </div>
-
                 <div className="space-y-1.5">
                   <Label htmlFor="maxCheckInCount" className="text-sm">
                     Max Check-ins<span className="text-red-500">*</span>
@@ -1771,57 +1815,7 @@ export default function ClubLeaderEventsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="locationName" className="text-sm">
-                    Location<span className="text-red-500">*</span>
-                  </Label>
-                  <Select
-                    value={selectedLocationId}
-                    onValueChange={(value) => {
-                      setSelectedLocationId(value);
-                      const location = locations.find(
-                        (loc) => String(loc.id) === value
-                      );
-                      if (location) {
-                        setSelectedLocationCapacity(location.capacity || null);
-                        setFormData({
-                          ...formData,
-                          locationId: Number(location.id),
-                          maxCheckInCount: location.capacity || 100,
-                        });
-                      }
-                    }}
-                    disabled={locationsLoading}
-                    required
-                  >
-                    <SelectTrigger
-                      id="locationName"
-                      className="h-9 border-slate-300"
-                    >
-                      <SelectValue
-                        placeholder={
-                          locationsLoading
-                            ? "Loading locations..."
-                            : "Select a location"
-                        }
-                      />
-                    </SelectTrigger>
-                    <SelectContent className="z-[70]">
-                      {locations.map((location) => (
-                        <SelectItem
-                          key={location.id}
-                          value={String(location.id)}
-                        >
-                          {location.name}{" "}
-                          {location.capacity && `(${location.capacity})`}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-1.5">
+              <div className="space-y-1.5">
                   <Label className="text-sm">
                     Co-Host Clubs
                     {selectedCoHostClubIds.length > 0 && (
@@ -1886,11 +1880,9 @@ export default function ClubLeaderEventsPage() {
                       </>
                     )}
                   </div>
-                </div>
-              </div>
-
-              {/* Expandable co-host section for selecting clubs */}
-              {allClubs.filter((club) => club.id !== userClubId).length > 0 && (
+                
+                {/* Expandable co-host section for selecting clubs */}
+                {allClubs.filter((club) => club.id !== userClubId).length > 0 && (
                 <details className="space-y-2">
                   <summary
                     className={`text-sm font-medium flex items-center gap-2 ${
@@ -1956,7 +1948,8 @@ export default function ClubLeaderEventsPage() {
                     </div>
                   </div>
                 </details>
-              )}
+                )}
+              </div>
 
               <div className="space-y-2 border-t pt-3 mt-3">
                 <p className="text-xs text-muted-foreground italic pb-2">
@@ -2055,37 +2048,6 @@ export default function ClubLeaderEventsPage() {
           />
 
           {/* Calendar Modal */}
-
-          {/* QR Modal */}
-          {selectedEvent && (
-            <QRModal
-              open={showQrModal}
-              onOpenChange={setShowQrModal}
-              eventName={selectedEvent.name ?? ""}
-              checkInCode={selectedEvent.checkInCode ?? ""}
-              qrRotations={qrRotations}
-              qrLinks={qrLinks}
-              countdown={countdown}
-              isFullscreen={isFullscreen}
-              setIsFullscreen={setIsFullscreen}
-              activeEnvironment={activeEnvironment}
-              setActiveEnvironment={setActiveEnvironment}
-              displayedIndex={displayedIndex}
-              isFading={isFading}
-              handleCopyLink={handleCopyLink}
-              handleDownloadQR={handleDownloadQR}
-            />
-          )}
-
-          {/* Phase Selection Modal */}
-          <PhaseSelectionModal
-            open={showPhaseModal}
-            onOpenChange={setShowPhaseModal}
-            onConfirm={handlePhaseConfirm}
-            isLoading={isGeneratingQR}
-          />
-
-          {/* Calendar Modal */}
           <CalendarModal
             open={showCalendarModal}
             onOpenChange={setShowCalendarModal}
@@ -2093,6 +2055,29 @@ export default function ClubLeaderEventsPage() {
             onEventClick={(event) => {
               setShowCalendarModal(false);
               router.push(`/club-leader/events/${event.id}`);
+            }}
+          />
+
+          {/* Location & Event Days Modal */}
+          <LocationEventDaysModal
+            open={showLocationDaysModal}
+            onOpenChange={setShowLocationDaysModal}
+            locations={locations}
+            selectedLocationId={formData.locationId}
+            eventDays={eventDays}
+            onSave={(locationId, days) => {
+              setFormData({ ...formData, locationId });
+              setEventDays(days);
+              setSelectedLocationId(locationId.toString());
+              const location = locations.find(l => l.id === locationId);
+              if (location) {
+                setSelectedLocationCapacity(location.capacity || null);
+                setFormData(prev => ({
+                  ...prev,
+                  locationId,
+                  maxCheckInCount: location.capacity || 100
+                }));
+              }
             }}
           />
 

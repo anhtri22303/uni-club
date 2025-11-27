@@ -13,7 +13,8 @@ import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import {
-  User, Mail, Phone, Save, Calendar, MapPin, Edit3, Clock, Users, Settings, UserCheck, FileText, BarChart3, Globe, Flame,
+  User, Mail, Phone, Save, Calendar, MapPin, Edit3, Clock, Users,
+  Settings, UserCheck, FileText, BarChart3, Globe, Flame,
   Zap, Building2, Trophy, Loader2, AlertCircle, Camera, Lock,
 } from "lucide-react"
 import { editProfile, fetchProfile, uploadAvatar, uploadBackground, getProfileStats, ProfileStats } from "@/service/userApi"
@@ -417,24 +418,24 @@ export default function ProfilePage() {
     }
   }
 
-  
+
   // Validation function for studentCode
   const validateStudentCode = (code: string): string | null => {
     if (!code || code.trim() === "") {
       return null // Allow empty, validation will happen on save
     }
-    
+
     // Format: 2 letters followed by 6 numbers (e.g., SE000001)
     const pattern = /^[A-Za-z]{2}\d{6}$/
-    
+
     if (code.length !== 8) {
       return "Student code must be exactly 8 characters (2 letters + 6 numbers)"
     }
-    
+
     if (!pattern.test(code)) {
       return "Student code must start with 2 letters followed by 6 numbers (e.g., SE000001)"
     }
-    
+
     return null // Valid
   }
 
@@ -736,7 +737,7 @@ export default function ProfilePage() {
   // Destructure profile data for easier access
   const { fullName, email, phone, majorName, studentCode, bio, avatarUrl, backgroundUrl, userPoints } = profileState.data
 
-  // --- HÀM ĐÃ CẬP NHẬT: Thêm logic trả về lớp animation ---
+  // --- Thêm logic trả về lớp animation ---
   const getPointsCardStyle = (points: number) => {
     if (points >= 5000) {
       return {
@@ -814,13 +815,24 @@ export default function ProfilePage() {
                 aria-label="Upload background image"
               />
 
+              {/* --- (Input cho Avatar bị thiếu) --- */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="hidden"
+                aria-label="Upload avatar image"
+              />
+
               {/* Change Background Button - Upper Right Corner */}
               <div className="absolute top-4 right-4 z-20">
                 <Button
                   onClick={handleBackgroundClick}
                   variant="secondary"
                   size="sm"
-                  className="bg-white/90 dark:bg-gray-800/90 hover:bg-white dark:hover:bg-gray-800 text-slate-700 dark:text-slate-200 font-medium shadow-lg"
+                  className="bg-white/90 dark:bg-gray-800/90 hover:bg-white 
+                  dark:hover:bg-gray-800 text-slate-700 dark:text-slate-200 font-medium shadow-lg"
                 >
                   <Camera className="h-4 w-4 mr-2" />
                   Change Background
@@ -838,7 +850,8 @@ export default function ProfilePage() {
                       <AvatarFallback className="text-3xl bg-white/20">{getInitials(fullName || "A")}</AvatarFallback>
                     </Avatar>
                     {/* <div
-                      className="absolute bottom-0 right-0 bg-primary text-primary-foreground rounded-full p-2 cursor-pointer hover:bg-primary/80 transition-colors shadow-lg"
+                      className="absolute bottom-0 right-0 bg-primary text-primary-foreground rounded-full 
+                      p-2 cursor-pointer hover:bg-primary/80 transition-colors shadow-lg"
                       onClick={handleAvatarClick}
                     >
                       <Camera className="h-3 w-3" />
@@ -907,7 +920,7 @@ export default function ProfilePage() {
                           )}
                         </div>
 
-                        {/* --- THAY ĐỔI 4 (ADMIN): THAY THẾ INPUT BẰNG SELECT --- */}
+                        {/* --- (ADMIN): THAY THẾ INPUT BẰNG SELECT --- */}
                         <div className="space-y-1">
                           <Label htmlFor="admin-majorName">Major</Label>
                           <Select
@@ -979,18 +992,42 @@ export default function ProfilePage() {
                     <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {auth.role === "uni_staff" && (
                         <>
-                          <div className="flex items-center gap-3 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg"><Building2 className="h-5 w-5 text-primary" /><span>University Management</span></div>
-                          <div className="flex items-center gap-3 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg"><Users className="h-5 w-5 text-primary" /><span>User Administration</span></div>
-                          <div className="flex items-center gap-3 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg"><BarChart3 className="h-5 w-5 text-primary" /><span>Analytics & Reports</span></div>
-                          <div className="flex items-center gap-3 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg"><Settings className="h-5 w-5 text-primary" /><span>System Configuration</span></div>
+                          <div className="flex items-center gap-3 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                            <Building2 className="h-5 w-5 text-primary" />
+                            <span>University Management</span>
+                          </div>
+                          <div className="flex items-center gap-3 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                            <Users className="h-5 w-5 text-primary" />
+                            <span>User Administration</span>
+                          </div>
+                          <div className="flex items-center gap-3 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                            <BarChart3 className="h-5 w-5 text-primary" />
+                            <span>Analytics & Reports</span>
+                          </div>
+                          <div className="flex items-center gap-3 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                            <Settings className="h-5 w-5 text-primary" />
+                            <span>System Configuration</span>
+                          </div>
                         </>
                       )}
                       {(auth.role === "admin" || auth.role === "staff") && (
                         <>
-                          <div className="flex items-center gap-3 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg"><Globe className="h-5 w-5 text-primary" /><span>Partner Management</span></div>
-                          <div className="flex items-center gap-3 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg"><FileText className="h-5 w-5 text-primary" /><span>Offer Management</span></div>
-                          <div className="flex items-center gap-3 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg"><UserCheck className="h-5 w-5 text-primary" /><span>Customer Support</span></div>
-                          <div className="flex items-center gap-3 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg"><BarChart3 className="h-5 w-5 text-primary" /><span>Performance Analytics</span></div>
+                          <div className="flex items-center gap-3 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                            <Globe className="h-5 w-5 text-primary" />
+                            <span>Partner Management</span>
+                          </div>
+                          <div className="flex items-center gap-3 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                            <FileText className="h-5 w-5 text-primary" />
+                            <span>Offer Management</span>
+                          </div>
+                          <div className="flex items-center gap-3 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                            <UserCheck className="h-5 w-5 text-primary" />
+                            <span>Customer Support</span>
+                          </div>
+                          <div className="flex items-center gap-3 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                            <BarChart3 className="h-5 w-5 text-primary" />
+                            <span>Performance Analytics</span>
+                          </div>
                         </>
                       )}
                     </CardContent>
@@ -1147,17 +1184,21 @@ export default function ProfilePage() {
                 onClick={handleBackgroundClick}
                 variant="secondary"
                 size="sm"
-                className="bg-white/90 dark:bg-gray-800/90 hover:bg-white dark:hover:bg-gray-800 text-indigo-600 dark:text-indigo-400 font-medium shadow-lg"
+                className="bg-white/90 dark:bg-gray-800/90 hover:bg-white 
+                dark:hover:bg-gray-800 text-indigo-600 dark:text-indigo-400 font-medium shadow-lg"
               >
                 <Camera className="h-4 w-4 mr-2" />
                 Change Background
               </Button>
               <Button
                 onClick={() => router.push('/virtual-card')}
-                className="bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 hover:bg-white/90 dark:hover:bg-gray-800/90 font-semibold shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
+                className="bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 
+                hover:bg-white/90 dark:hover:bg-gray-800/90 font-semibold shadow-lg 
+                hover:shadow-xl transition-all flex items-center gap-2"
               >
                 <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z" />
+                  <path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 
+                  2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z" />
                 </svg>
                 View Card
               </Button>
@@ -1166,7 +1207,8 @@ export default function ProfilePage() {
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 text-center relative z-10">
               <div className="relative">
                 <Avatar
-                  className="w-28 h-28 mx-auto border-4 border-white/50 shadow-xl cursor-pointer hover:opacity-80 transition-opacity"
+                  className="w-28 h-28 mx-auto border-4 border-white/50 shadow-xl 
+                  cursor-pointer hover:opacity-80 transition-opacity"
                   onClick={handleAvatarClick}
                 >
                   <AvatarImage src={previewAvatarUrl || avatarUrl || "/placeholder-user.jpg"} alt={fullName} />
@@ -1181,7 +1223,8 @@ export default function ProfilePage() {
                   aria-label="Upload avatar image"
                 />
               </div>
-              <h1 className="mt-4 text-3xl font-bold text-white tracking-tight drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)] [-webkit-text-stroke:1px_black]">
+              <h1 className="mt-4 text-3xl font-bold text-white tracking-tight 
+              drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)] [-webkit-text-stroke:1px_black]">
                 {fullName}
               </h1>
               <p className="mt-1 text-lg text-white/85 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] [-webkit-text-stroke:0.4px_black]">
@@ -1379,23 +1422,39 @@ export default function ProfilePage() {
                       <>
                         <div className="text-center p-4 bg-slate-100 dark:bg-slate-800 rounded-lg">
                           <Users className="h-7 w-7 text-blue-600 dark:text-blue-400 mx-auto mb-1" />
-                          <div className="text-2xl font-bold text-blue-800 dark:text-blue-300">{userStats.totalClubsJoined}</div>
-                          <div className="text-xs text-slate-600 dark:text-slate-400">Clubs Joined</div>
+                          <div className="text-2xl font-bold text-blue-800 dark:text-blue-300">
+                            {userStats.totalClubsJoined}
+                          </div>
+                          <div className="text-xs text-slate-600 dark:text-slate-400">
+                            Clubs Joined
+                          </div>
                         </div>
                         <div className="text-center p-4 bg-slate-100 dark:bg-slate-800 rounded-lg">
                           <Calendar className="h-7 w-7 text-green-600 dark:text-green-400 mx-auto mb-1" />
-                          <div className="text-2xl font-bold text-green-800 dark:text-green-300">{userStats.totalEventsJoined}</div>
-                          <div className="text-xs text-slate-600 dark:text-slate-400">Events Joined</div>
+                          <div className="text-2xl font-bold text-green-800 dark:text-green-300">
+                            {userStats.totalEventsJoined}
+                          </div>
+                          <div className="text-xs text-slate-600 dark:text-slate-400">
+                            Events Joined
+                          </div>
                         </div>
                         <div className="text-center p-4 bg-slate-100 dark:bg-slate-800 rounded-lg">
                           <Zap className="h-7 w-7 text-purple-600 dark:text-purple-400 mx-auto mb-1" />
-                          <div className="text-2xl font-bold text-purple-800 dark:text-purple-300">{userStats.totalPointsEarned.toLocaleString()}</div>
-                          <div className="text-xs text-slate-600 dark:text-slate-400">Points Earned</div>
+                          <div className="text-2xl font-bold text-purple-800 dark:text-purple-300">
+                            {userStats.totalPointsEarned.toLocaleString()}
+                          </div>
+                          <div className="text-xs text-slate-600 dark:text-slate-400">
+                            Points Earned
+                          </div>
                         </div>
                         <div className="text-center p-4 bg-slate-100 dark:bg-slate-800 rounded-lg">
                           <Clock className="h-7 w-7 text-amber-600 dark:text-amber-400 mx-auto mb-1" />
-                          <div className="text-2xl font-bold text-amber-800 dark:text-amber-300">{userStats.totalAttendanceDays}</div>
-                          <div className="text-xs text-slate-600 dark:text-slate-400">Attendance Days</div>
+                          <div className="text-2xl font-bold text-amber-800 dark:text-amber-300">
+                            {userStats.totalAttendanceDays}
+                          </div>
+                          <div className="text-xs text-slate-600 dark:text-slate-400">
+                            Attendance Days
+                          </div>
                         </div>
                       </>
                     ) : (
@@ -1404,22 +1463,30 @@ export default function ProfilePage() {
                         <div className="text-center p-4 bg-slate-100 dark:bg-slate-800 rounded-lg">
                           <Users className="h-7 w-7 text-blue-600 dark:text-blue-400 mx-auto mb-1" />
                           <div className="text-2xl font-bold text-blue-800 dark:text-blue-300">0</div>
-                          <div className="text-xs text-slate-600 dark:text-slate-400">Clubs Joined</div>
+                          <div className="text-xs text-slate-600 dark:text-slate-400">
+                            Clubs Joined
+                          </div>
                         </div>
                         <div className="text-center p-4 bg-slate-100 dark:bg-slate-800 rounded-lg">
                           <Calendar className="h-7 w-7 text-green-600 dark:text-green-400 mx-auto mb-1" />
                           <div className="text-2xl font-bold text-green-800 dark:text-green-300">0</div>
-                          <div className="text-xs text-slate-600 dark:text-slate-400">Events Joined</div>
+                          <div className="text-xs text-slate-600 dark:text-slate-400">
+                            Events Joined
+                          </div>
                         </div>
                         <div className="text-center p-4 bg-slate-100 dark:bg-slate-800 rounded-lg">
                           <Zap className="h-7 w-7 text-purple-600 dark:text-purple-400 mx-auto mb-1" />
                           <div className="text-2xl font-bold text-purple-800 dark:text-purple-300">0</div>
-                          <div className="text-xs text-slate-600 dark:text-slate-400">Points Earned</div>
+                          <div className="text-xs text-slate-600 dark:text-slate-400">
+                            Points Earned
+                          </div>
                         </div>
                         <div className="text-center p-4 bg-slate-100 dark:bg-slate-800 rounded-lg">
                           <Clock className="h-7 w-7 text-amber-600 dark:text-amber-400 mx-auto mb-1" />
                           <div className="text-2xl font-bold text-amber-800 dark:text-amber-300">0</div>
-                          <div className="text-xs text-slate-600 dark:text-slate-400">Attendance Days</div>
+                          <div className="text-xs text-slate-600 dark:text-slate-400">
+                            Attendance Days
+                          </div>
                         </div>
                       </>
                     )}

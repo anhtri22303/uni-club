@@ -215,6 +215,9 @@ const navigationConfig = {
     { href: "/admin/locations", label: "Locations", icon: MapPin },
     { href: "/admin/wallets", label: "Wallets", icon: Wallet },
     { href: "/admin/tags", label: "Tags", icon: Tags },
+    { href: "/admin/majors", label: "Majors", icon: LibraryBig },
+    { href: "/admin/disciplines", label: "Disciplines", icon: Scale },
+
   ],
 } as const;
 
@@ -416,7 +419,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
   useEffect(() => {
     const prefetchCommonRoutes = () => {
       if (!auth.role) return;
-      
+
       // Prefetch common routes based on role
       const commonRoutes: Record<string, string[]> = {
         student: ['/student/clubs', '/student/events', '/student/myclub', '/student/gift'],
@@ -906,7 +909,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
   const handleMouseEnter = (href: string) => {
     // Prefetch the Next.js route immediately
     router.prefetch(href);
-    
+
     // Also prefetch data based on route
     if (href.includes("/clubs")) {
       prefetchClubs();
@@ -1095,12 +1098,12 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                     className={cn(
                       "w-full justify-start gap-3 h-11 text-sm font-medium relative",
                       (isActive || hasActiveChild) &&
-                        "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm",
+                      "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm",
                       isLoading && "opacity-75 cursor-wait",
                       isStaffItem && "text-muted-foreground bg-muted/30",
                       isStaffItem &&
-                        isActive &&
-                        "bg-muted text-muted-foreground"
+                      isActive &&
+                      "bg-muted text-muted-foreground"
                     )}
                     onClick={() => {
                       if (hasChildren) {
@@ -1148,7 +1151,8 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                       <div className="ml-auto flex gap-1">
                         {clubLeaderPendingEventsCount > 0 && (
                           <span
-                            className="text-xs px-1.5 py-0.5 rounded-full bg-yellow-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center"
+                            className="text-xs px-1.5 py-0.5 rounded-full bg-yellow-500 
+                            text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center"
                             title="Pending Events (PENDING_COCLUB + PENDING_UNISTAFF)"
                           >
                             {clubLeaderPendingEventsCount}
@@ -1156,7 +1160,8 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                         )}
                         {clubLeaderApprovedEventsCount > 0 && (
                           <span
-                            className="text-xs px-1.5 py-0.5 rounded-full bg-green-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center"
+                            className="text-xs px-1.5 py-0.5 rounded-full bg-green-500 
+                            text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center"
                             title="Approved Events"
                           >
                             {clubLeaderApprovedEventsCount}
@@ -1164,7 +1169,8 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                         )}
                         {clubLeaderOngoingEventsCount > 0 && (
                           <span
-                            className="text-xs px-1.5 py-0.5 rounded-full bg-purple-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center"
+                            className="text-xs px-1.5 py-0.5 rounded-full bg-purple-500 
+                            text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center"
                             title="Ongoing Events"
                           >
                             {clubLeaderOngoingEventsCount}
@@ -1177,7 +1183,8 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                       <div className="ml-auto flex gap-1">
                         {approvedEventsCount > 0 && (
                           <span
-                            className="text-xs px-1.5 py-0.5 rounded-full bg-green-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center"
+                            className="text-xs px-1.5 py-0.5 rounded-full bg-green-500 
+                            text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center"
                             title="Approved Events"
                           >
                             {approvedEventsCount}
@@ -1185,7 +1192,8 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                         )}
                         {ongoingEventsCount > 0 && (
                           <span
-                            className="text-xs px-1.5 py-0.5 rounded-full bg-purple-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center"
+                            className="text-xs px-1.5 py-0.5 rounded-full bg-purple-500 
+                            text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center"
                             title="Ongoing Events"
                           >
                             {ongoingEventsCount}
@@ -1199,44 +1207,51 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                       !isClubLeaderEventsItem &&
                       auth.role !== "student" &&
                       eventsCount > 0 && (
-                        <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
+                        <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 
+                        text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
                           {eventsCount}
                         </span>
                       )}
                     {showBadges && isUsersItem && usersCount > 0 && (
-                      <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
+                      <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 
+                      text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
                         {usersCount}
                       </span>
                     )}
                     {showBadges && isPoliciesItem && policiesCount > 0 && (
-                      <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
+                      <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 
+                      text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
                         {policiesCount}
                       </span>
                     )}
                     {showBadges &&
                       isClubRequestsItem &&
                       clubApplicationsCount > 0 && (
-                        <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
+                        <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 
+                        text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
                           {clubApplicationsCount}
                         </span>
                       )}
                     {showBadges &&
                       isEventRequestsItem &&
                       eventRequestsCount > 0 && (
-                        <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
+                        <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 
+                        text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
                           {eventRequestsCount}
                         </span>
                       )}
                     {showBadges &&
                       isApplicationsItem &&
                       clubLeaderApplicationsCount > 0 && (
-                        <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
+                        <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 
+                        text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
                           {clubLeaderApplicationsCount}
                         </span>
                       )}
                     {/* Chat item - show total unread messages badge */}
                     {isChatItem && totalUnread > 0 && (
-                      <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-blue-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
+                      <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-blue-500 
+                      text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
                         {totalUnread}
                       </span>
                     )}
@@ -1246,7 +1261,8 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                       auth.role === "club_leader" &&
                       pendingLeaveRequestsCount > 0 && (
                         <span
-                          className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-yellow-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center"
+                          className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-yellow-500 
+                          text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center"
                           title="Pending Leave Requests"
                         >
                           {pendingLeaveRequestsCount}
@@ -1259,7 +1275,8 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                       !isGiftsDropdown &&
                       !isOthersDropdown &&
                       !isRequestsDropdown && (
-                        <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
+                        <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 
+                        text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
                           {dropdownBadgeCount}
                         </span>
                       )}
@@ -1269,7 +1286,8 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                       !isDropdownOpen &&
                       pendingClubOrdersCount > 0 && (
                         <span
-                          className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-yellow-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center"
+                          className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-yellow-500 
+                          text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center"
                           title="Pending Club Orders"
                         >
                           {pendingClubOrdersCount}
@@ -1281,7 +1299,8 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                       !isDropdownOpen &&
                       totalUnread > 0 && (
                         <span
-                          className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-blue-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center"
+                          className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-blue-500 
+                          text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center"
                           title="Unread Chat Messages"
                         >
                           {totalUnread}
@@ -1292,7 +1311,8 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                       <div className="ml-auto flex gap-1">
                         {pendingUniStaffClubApplicationsCount > 0 && (
                           <span
-                            className="text-xs px-1.5 py-0.5 rounded-full bg-yellow-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center"
+                            className="text-xs px-1.5 py-0.5 rounded-full bg-yellow-500 
+                            text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center"
                             title="Pending Club Requests"
                           >
                             {pendingUniStaffClubApplicationsCount}
@@ -1300,7 +1320,8 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                         )}
                         {pendingUniStaffPointRequestsCount > 0 && (
                           <span
-                            className="text-xs px-1.5 py-0.5 rounded-full bg-orange-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center"
+                            className="text-xs px-1.5 py-0.5 rounded-full bg-orange-500 
+                            text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center"
                             title="Pending Point Requests"
                           >
                             {pendingUniStaffPointRequestsCount}
@@ -1308,7 +1329,8 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                         )}
                         {pendingUniStaffEventRequestsCount > 0 && (
                           <span
-                            className="text-xs px-1.5 py-0.5 rounded-full bg-orange-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center"
+                            className="text-xs px-1.5 py-0.5 rounded-full bg-orange-500 
+                            text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center"
                             title="Pending Event Requests"
                           >
                             {pendingUniStaffEventRequestsCount}
@@ -1321,7 +1343,8 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                       <div className="ml-auto flex gap-1">
                         {pendingMemberAppsCount > 0 && (
                           <span
-                            className="text-xs px-1.5 py-0.5 rounded-full bg-blue-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center"
+                            className="text-xs px-1.5 py-0.5 rounded-full bg-blue-500 
+                            text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center"
                             title="Pending Member Applications"
                           >
                             {pendingMemberAppsCount}
@@ -1329,7 +1352,8 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                         )}
                         {pendingClubAppsCount > 0 && (
                           <span
-                            className="text-xs px-1.5 py-0.5 rounded-full bg-orange-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center"
+                            className="text-xs px-1.5 py-0.5 rounded-full bg-orange-500 
+                            text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center"
                             title="Pending Club Applications"
                           >
                             {pendingClubAppsCount}
@@ -1337,7 +1361,8 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                         )}
                         {pendingOrdersCount > 0 && (
                           <span
-                            className="text-xs px-1.5 py-0.5 rounded-full bg-yellow-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center"
+                            className="text-xs px-1.5 py-0.5 rounded-full bg-yellow-500 
+                            text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center"
                             title="Pending Orders"
                           >
                             {pendingOrdersCount}
@@ -1379,7 +1404,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                             className={cn(
                               "w-full justify-start gap-3 h-10 text-sm font-medium",
                               isChildActive &&
-                                "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm",
+                              "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm",
                               isChildLoading && "opacity-75 cursor-wait"
                             )}
                             onClick={() =>
@@ -1406,7 +1431,8 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                                 {auth.role === "uni_staff" &&
                                   pendingUniStaffClubApplicationsCount > 0 && (
                                     <span
-                                      className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-yellow-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center"
+                                      className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-yellow-500 
+                                      text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center"
                                       title="Pending Club Applications"
                                     >
                                       {pendingUniStaffClubApplicationsCount}
@@ -1415,7 +1441,8 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                                 {/* Other roles: Show red badge for Club Requests */}
                                 {auth.role !== "uni_staff" &&
                                   clubApplicationsCount > 0 && (
-                                    <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
+                                    <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 
+                                    text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
                                       {clubApplicationsCount}
                                     </span>
                                   )}
@@ -1427,7 +1454,8 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                                 {auth.role === "uni_staff" &&
                                   pendingUniStaffEventRequestsCount > 0 && (
                                     <span
-                                      className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-orange-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center"
+                                      className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-orange-500 
+                                      text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center"
                                       title="Pending Event Requests (PENDING_COCLUB + PENDING_UNISTAFF)"
                                     >
                                       {pendingUniStaffEventRequestsCount}
@@ -1436,7 +1464,8 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                                 {/* Other roles: Show red badge for Event Requests */}
                                 {auth.role !== "uni_staff" &&
                                   eventRequestsCount > 0 && (
-                                    <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
+                                    <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-red-500 
+                                    text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
                                       {eventRequestsCount}
                                     </span>
                                   )}
@@ -1448,7 +1477,8 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                                 {auth.role === "uni_staff" &&
                                   pendingUniStaffPointRequestsCount > 0 && (
                                     <span
-                                      className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-orange-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center"
+                                      className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-orange-500 
+                                      text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center"
                                       title="Pending Point Requests"
                                     >
                                       {pendingUniStaffPointRequestsCount}
@@ -1462,7 +1492,8 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                               auth.role === "club_leader" &&
                               pendingClubOrdersCount > 0 && (
                                 <span
-                                  className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-yellow-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center"
+                                  className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-yellow-500 
+                                  text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center"
                                   title="Pending Club Orders"
                                 >
                                   {pendingClubOrdersCount}
@@ -1470,7 +1501,8 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                               )}
                             {/* Chat in dropdown - show unread badge for club_leader */}
                             {isChildChat && childClubUnread > 0 && (
-                              <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-blue-500 text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
+                              <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-blue-500 
+                              text-white font-bold min-w-[1.25rem] h-5 flex items-center justify-center">
                                 {childClubUnread}
                               </span>
                             )}

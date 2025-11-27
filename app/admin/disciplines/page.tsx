@@ -198,7 +198,7 @@ export default function UniStaffDisciplinePage() {
   }
 
   return (
-    <ProtectedRoute allowedRoles={["uni_staff"]}>
+    <ProtectedRoute allowedRoles={["admin"]}>
       <AppShell>
         <div className="space-y-6 p-6">
           <div className="flex items-center justify-between gap-4">

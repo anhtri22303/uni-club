@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { AppShell } from "@/components/app-shell"
-// (THAY ĐỔI 1) - Đổi tên component cho rõ ràng
 import { ProtectedRoute } from "@/contexts/protected-route"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -19,9 +18,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 
-// -----------------------------------------------------------------
-// Types
-// -----------------------------------------------------------------
+//  Types: Cập nhật cho Tag
 type SortField = "name" | "description" | "tagId"
 type SortOrder = "asc" | "desc"
 type ViewMode = "grid" | "list"
@@ -33,23 +30,21 @@ type TagFormData = {
     core: boolean
 }
 
-// (THAY ĐỔI 2) - Đổi tên component cho rõ ràng
-export default function AdminTagsPage() {
+export default function UniStaffTagsPage() {
     const { toast } = useToast()
-
     // State management
     const [tags, setTags] = useState<Tag[]>([])
     const [loading, setLoading] = useState(true)
     const [searchQuery, setSearchQuery] = useState("")
-    const [sortField, setSortField] = useState<SortField>("name")
-    const [sortOrder, setSortOrder] = useState<SortOrder>("asc")
+    const [sortField, setSortField] = useState<SortField>("name") // default sort
+    const [sortOrder, setSortOrder] = useState<SortOrder>("asc") // default sort
     const [viewMode, setViewMode] = useState<ViewMode>("grid")
-    const [tagFilter, setTagFilter] = useState<TagFilter>("all")
+    const [tagFilter, setTagFilter] = useState<TagFilter>("all") // capacityFilter -> tagFilter
 
     // Modal and form state
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
-    const [editingTag, setEditingTag] = useState<Tag | null>(null)
+    const [editingTag, setEditingTag] = useState<Tag | null>(null) // editingLocation -> editingTag
     const [formData, setFormData] = useState<TagFormData>({
         name: "",
         description: "",
@@ -58,12 +53,10 @@ export default function AdminTagsPage() {
 
     // Delete confirmation state
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-    const [tagToDelete, setTagToDelete] = useState<Tag | null>(null)
+    const [tagToDelete, setTagToDelete] = useState<Tag | null>(null) // locationToDelete -> tagToDelete
     const [isDeleting, setIsDeleting] = useState(false)
 
-    // -----------------------------------------------------------------
     // Fetch tags: Chỉ chạy 1 lần khi mount
-    // -----------------------------------------------------------------
     useEffect(() => {
         loadTags()
     }, [])
@@ -71,6 +64,7 @@ export default function AdminTagsPage() {
     const loadTags = async () => {
         try {
             setLoading(true)
+            //Gọi getTags() - không có tham số
             const response = await getTags()
 
             if (response) {
@@ -88,9 +82,7 @@ export default function AdminTagsPage() {
         }
     }
 
-    // -----------------------------------------------------------------
     // Helper: Chuyển từ Capacity -> Tag (Core/Custom)
-    // -----------------------------------------------------------------
     const getTagBadge = (isCore: boolean) => {
         if (isCore) {
             return {
@@ -104,9 +96,7 @@ export default function AdminTagsPage() {
         }
     }
 
-    // -----------------------------------------------------------------
     // Filter, Sort (Client-side), và Stats
-    // -----------------------------------------------------------------
     const filteredTags = useMemo(() => {
         let processedTags = [...tags]
 
@@ -143,7 +133,7 @@ export default function AdminTagsPage() {
 
         return processedTags
 
-    }, [tags, searchQuery, tagFilter, sortField, sortOrder])
+    }, [tags, searchQuery, tagFilter, sortField, sortOrder]) // Thêm sort dependencies
 
     // Statistics
     const stats = useMemo(() => {
@@ -160,15 +150,14 @@ export default function AdminTagsPage() {
             setSortOrder(sortOrder === "asc" ? "desc" : "asc")
         } else {
             setSortField(field)
-            setSortOrder("asc")
+            setSortOrder("asc") // Default to asc for names
         }
     }
 
-    /**
-     * Xử lý khi nhấn nút "Create Tag"
-     */
+    //Xử lý khi nhấn nút "Create Tag"
     const handleOpenCreateModal = () => {
         setEditingTag(null)
+        // Reset cả 'core'
         setFormData({
             name: "",
             description: "",
@@ -177,26 +166,27 @@ export default function AdminTagsPage() {
         setIsModalOpen(true)
     }
 
-    /**
-     * Xử lý khi nhấn vào Card (mở modal ở chế độ sửa)
-     */
+    //Xử lý khi nhấn vào Card (mở modal ở chế độ sửa)
     const handleEditClick = (tag: Tag) => {
+        // 4. XÓA BỎ logic chặn edit 'core' tag
+        // if (tag.core) { ... } // <-- ĐÃ XÓA
         setEditingTag(tag)
+        // 5. Thêm 'core' khi set form
         setFormData({
             name: tag.name,
             description: tag.description || "",
-            core: tag.core,
+            core: tag.core, // <-- ĐÃ THÊM
         })
         setIsModalOpen(true)
     }
 
-    /**
-     * Xử lý khi đóng/mở modal
-     */
+
+    //Xử lý khi đóng/mở modal
     const handleModalOpenChange = (isOpen: boolean) => {
         setIsModalOpen(isOpen)
         if (!isOpen) {
             setEditingTag(null)
+            // Reset cả 'core'
             setFormData({ name: "", description: "", core: false })
         }
     }
@@ -208,9 +198,8 @@ export default function AdminTagsPage() {
         }))
     }
 
-    /**
-     * Hàm Submit chính, kiểm tra validation và gọi create hoặc update
-     */
+    //Hàm Submit chính, kiểm tra validation và gọi create hoặc update
+
     const handleFormSubmit = async () => {
         // Validation
         if (!formData.name.trim()) {
@@ -226,14 +215,12 @@ export default function AdminTagsPage() {
         }
     }
 
-    /**
-     * Logic Create
-     */
+    //Logic Create
     const handleCreateTag = async () => {
         try {
             setIsSaving(true)
             // Gọi addTag chỉ với 'name'
-            await addTag(formData.name)
+            await addTag(formData);
 
             toast({
                 title: "Success",
@@ -243,19 +230,35 @@ export default function AdminTagsPage() {
             loadTags() // Tải lại danh sách
         } catch (error) {
             console.error("Error creating tag:", error)
+
+            // --- ĐỂ HIỂN THỊ LỖI CỤ THỂ ---
+            let errorMessage = "Failed to create tag. Please try again.";
+
+            // Kiểm tra nếu lỗi là lỗi HTTP/Axios và có phản hồi (response)
+            if (error && typeof error === 'object' && 'response' in error) {
+                const serverError = (error as any).response.data;
+
+                // Dựa trên ảnh chụp, lỗi nằm trong trường 'error'
+                if (serverError && serverError.error) {
+                    errorMessage = serverError.error;
+                } else if (serverError && serverError.message) {
+                    // Fallback nếu server sử dụng trường 'message'
+                    errorMessage = serverError.message;
+                }
+            }
+
             toast({
-                title: "Error",
-                description: "Failed to create tag. Please try again.",
+                title: "Creation Error", // Thay đổi tiêu đề rõ ràng hơn
+                description: errorMessage,
                 variant: "destructive",
             })
+
         } finally {
             setIsSaving(false)
         }
     }
 
-    /**
-     * Logic Update
-     */
+    //Logic Update
     const handleUpdateTag = async () => {
         if (!editingTag) return
 
@@ -289,7 +292,7 @@ export default function AdminTagsPage() {
 
     const handleDeleteClick = (tag: Tag, e: React.MouseEvent) => {
         e.stopPropagation() // Prevent card click event
-        if (tag.core) { // (LOGIC MỚI) Không cho xóa Core Tag
+        if (tag.core) { // Không cho xóa Core Tag
             toast({
                 title: "Action Prohibited",
                 description: "Core tags cannot be deleted.",
@@ -306,7 +309,7 @@ export default function AdminTagsPage() {
 
         try {
             setIsDeleting(true)
-            await deleteTag(tagToDelete.tagId)
+            await deleteTag(tagToDelete.tagId) // Dùng tagId
 
             toast({
                 title: "Success",
@@ -320,7 +323,7 @@ export default function AdminTagsPage() {
             console.error("Error deleting tag:", error)
             toast({
                 title: "Error",
-                description: "Failed to delete tag. It might be in use.",
+                description: "Failed to delete tag. It might be in use.", // Cập nhật mô tả
                 variant: "destructive",
             })
         } finally {
@@ -334,7 +337,6 @@ export default function AdminTagsPage() {
     }
 
     return (
-        // (THAY ĐỔI 3) - Thay đổi vai trò được cho phép thành "admin"
         <ProtectedRoute allowedRoles={["admin"]}>
             <AppShell>
                 <div className="space-y-6">
@@ -342,10 +344,12 @@ export default function AdminTagsPage() {
                     <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
                             <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2 sm:gap-3">
+                                {/* Icon và Title */}
                                 <Tags className="h-6 w-6 sm:h-8 sm:w-8 flex-shrink-0" />
                                 <span className="truncate">Tag Management</span>
                             </h1>
                             <p className="text-sm sm:text-base text-muted-foreground mt-1 line-clamp-2">
+                                {/* Description */}
                                 Create, edit, and manage system-wide tags for categorization.
                             </p>
                         </div>
@@ -361,9 +365,11 @@ export default function AdminTagsPage() {
                             <DialogContent className="sm:max-w-[500px]">
                                 <DialogHeader>
                                     <DialogTitle>
+                                        {/* Title động */}
                                         {editingTag ? "Edit Tag" : "Create New Tag"}
                                     </DialogTitle>
                                     <DialogDescription>
+                                        {/* Description động */}
                                         {editingTag
                                             ? `Update the details for "${editingTag.name}"`
                                             : "Add a new tag to the system"}
@@ -386,47 +392,40 @@ export default function AdminTagsPage() {
                                     </div>
 
                                     {/* Description Input - CHỈ HIỂN THỊ KHI EDIT */}
-                                    {/* Ghi chú: Logic này được giữ nguyên từ file uni-staff.
-                                        Admin cũng sẽ chỉ tạo tag với tên, sau đó edit để thêm mô tả và set 'core'.
-                                        Nếu muốn Admin có thể set 'core' và 'description' ngay khi tạo,
-                                        cần di chuyển khối này ra ngoài {editingTag && (...)}
-                                        VÀ cập nhật hàm handleCreateTag để gửi đầy đủ formData.
-                                    */}
-                                    {editingTag && (
-                                        <>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="description">
-                                                    Description
-                                                </Label>
-                                                <Input
-                                                    id="description"
-                                                    placeholder="e.g., For official academic workshops"
-                                                    value={formData.description}
-                                                    onChange={(e) => handleFormChange("description", e.target.value)}
-                                                    className="border-slate-300"
-                                                />
-                                            </div>
+                                    {/* {editingTag && (
+                                        <> */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="description">
+                                            Description
+                                        </Label>
+                                        <Input
+                                            id="description"
+                                            placeholder="e.g., For official academic workshops"
+                                            value={formData.description}
+                                            onChange={(e) => handleFormChange("description", e.target.value)}
+                                            className="border-slate-300"
+                                        />
+                                    </div>
 
-                                            {/* Checkbox "Set as Core Tag" */}
-                                            <div className="flex items-center space-x-2 pt-2">
-                                                <Checkbox
-                                                    id="core"
-                                                    checked={formData.core}
-                                                    onCheckedChange={(checked) => handleFormChange("core", !!checked)}
-                                                />
-                                                <Label
-                                                    htmlFor="core"
-                                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                                >
-                                                    Set as Core Tag
-                                                </Label>
-                                            </div>
-                                            <p className="text-xs text-muted-foreground -mt-2">
-                                                Core tags are system-defined and cannot be deleted by users.
-                                            </p>
-                                        </>
-                                    )}
-
+                                    {/* Checkbox "Set as Core Tag" */}
+                                    <div className="flex items-center space-x-2 pt-2">
+                                        <Checkbox
+                                            id="core"
+                                            checked={formData.core}
+                                            onCheckedChange={(checked) => handleFormChange("core", !!checked)}
+                                        />
+                                        <Label
+                                            htmlFor="core"
+                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                        >
+                                            Set as Core Tag
+                                        </Label>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground -mt-2">
+                                        Core tags are system-defined and cannot be deleted by users.
+                                    </p>
+                                    {/* </>
+                                    )} */}
                                 </div>
 
                                 <DialogFooter>
@@ -604,7 +603,7 @@ export default function AdminTagsPage() {
                                         className="hover:shadow-lg transition-shadow cursor-pointer group relative dark:border-slate-700"
                                         onClick={() => handleEditClick(tag)}
                                     >
-                                        {/* Delete Button */}
+                                        {/* Delete Button: Thêm logic 'disabled' */}
                                         <Button
                                             variant="ghost"
                                             size="icon"
@@ -640,9 +639,10 @@ export default function AdminTagsPage() {
                                             <div className="flex items-start gap-2 text-sm min-w-0 h-10">
                                                 <Info className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                                                 <p className="text-muted-foreground line-clamp-2 min-w-0 italic">
-                                                    {tag.description || "No description provided."}
+                                                    {tag.description || "No description."}
                                                 </p>
                                             </div>
+                                            {/* Capacity */}
                                         </CardContent>
                                     </Card>
                                 )
@@ -661,7 +661,7 @@ export default function AdminTagsPage() {
                                         className="hover:shadow-md transition-shadow cursor-pointer group relative dark:border-slate-700"
                                         onClick={() => handleEditClick(tag)}
                                     >
-                                        {/* Delete Button */}
+                                        {/* Delete Button: Thêm logic 'disabled' */}
                                         <Button
                                             variant="ghost"
                                             size="icon"
@@ -702,6 +702,7 @@ export default function AdminTagsPage() {
                             })}
                         </div>
                     )}
+
 
                     {/* Delete Confirmation Dialog */}
                     <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
