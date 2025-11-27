@@ -27,6 +27,8 @@ import {
   Activity,
   FileText,
   CheckCircle,
+  Clock,
+  XCircle,
 } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { BarChart3, List, TrendingUp } from "lucide-react"
@@ -190,6 +192,9 @@ export default function UniStaffReportsPage() {
   // Count completed club applications
   const completedClubApplications = clubApplications.filter((app: any) => app.status === "COMPLETED").length
   
+  // Count approved club applications (In Progress)
+  const approvedClubApplications = clubApplications.filter((app: any) => app.status === "APPROVED").length
+  
   // Count pending club applications
   const pendingClubApplications = clubApplications.filter((app: any) => app.status === "PENDING").length
   
@@ -266,8 +271,28 @@ export default function UniStaffReportsPage() {
               </CardHeader>
               <CardContent>
                 <div className="flex items-center justify-between">
-                <div className="text-2xl sm:text-3xl font-bold text-blue-900 dark:text-blue-100">{totalClubs}</div>
+                  <div className="text-2xl sm:text-3xl font-bold text-blue-900 dark:text-blue-100">{totalClubs}</div>
                   <ArrowUpRight className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div className="mt-3 space-y-1">
+                  <div className="flex items-center justify-between text-[10px] sm:text-xs">
+                    <span className="text-blue-600 dark:text-blue-400">Active Members:</span>
+                    <span className="font-semibold bg-blue-200 dark:bg-blue-800 px-1.5 py-0.5 rounded">
+                      {clubsWithMemberCountUnsorted.reduce((sum: number, club: any) => sum + club.memberCount, 0)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] sm:text-xs">
+                    <span className="text-blue-600 dark:text-blue-400">Total Events:</span>
+                    <span className="font-semibold bg-blue-200 dark:bg-blue-800 px-1.5 py-0.5 rounded">
+                      {clubsWithMemberCountUnsorted.reduce((sum: number, club: any) => sum + club.approvedEvents, 0)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] sm:text-xs">
+                    <span className="text-blue-600 dark:text-blue-400">Avg Members/Club:</span>
+                    <span className="font-semibold bg-blue-200 dark:bg-blue-800 px-1.5 py-0.5 rounded">
+                      {totalClubs > 0 ? Math.round(clubsWithMemberCountUnsorted.reduce((sum: number, club: any) => sum + club.memberCount, 0) / totalClubs) : 0}
+                    </span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -284,14 +309,37 @@ export default function UniStaffReportsPage() {
               </CardHeader>
               <CardContent>
                 <div className="flex items-center justify-between">
-                  <div>
-                <div className="text-2xl sm:text-3xl font-bold text-green-900 dark:text-green-100">{totalClubApplications}</div>
-                <div className="flex items-center text-[10px] sm:text-xs text-green-600 dark:text-green-400 mt-1">
-                      <CheckCircle className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1" />
-                      {completedClubApplications} completed
-                    </div>
-                  </div>
+                  <div className="text-2xl sm:text-3xl font-bold text-green-900 dark:text-green-100">{totalClubApplications}</div>
                   <ArrowUpRight className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 dark:text-green-400" />
+                </div>
+                <div className="mt-3 space-y-1">
+                  <div className="flex items-center justify-between text-[10px] sm:text-xs">
+                    <span className="text-green-600 dark:text-green-400">Pending Review:</span>
+                    <span className="font-semibold bg-yellow-200 dark:bg-yellow-800 px-1.5 py-0.5 rounded">
+                      {pendingClubApplications}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] sm:text-xs">
+                    <span className="text-green-600 dark:text-green-400">In Progress:</span>
+                    <span className="font-semibold bg-blue-200 dark:bg-blue-800 px-1.5 py-0.5 rounded">
+                      {approvedClubApplications}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] sm:text-xs">
+                    <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
+                      <CheckCircle className="h-2.5 w-2.5" />
+                      Completed:
+                    </span>
+                    <span className="font-semibold bg-green-200 dark:bg-green-800 px-1.5 py-0.5 rounded">
+                      {completedClubApplications}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] sm:text-xs">
+                    <span className="text-green-600 dark:text-green-400">Rejected:</span>
+                    <span className="font-semibold bg-red-200 dark:bg-red-800 px-1.5 py-0.5 rounded">
+                      {rejectedClubApplications}
+                    </span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -308,14 +356,52 @@ export default function UniStaffReportsPage() {
               </CardHeader>
               <CardContent>
                 <div className="flex items-center justify-between">
-                  <div>
-                <div className="text-2xl sm:text-3xl font-bold text-purple-900 dark:text-purple-100">{totalEventRequests}</div>
-                <div className="flex items-center text-[10px] sm:text-xs text-purple-600 dark:text-purple-400 mt-1">
-                      <CheckCircle className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1" />
-                      {approvedEvents} approved
-                    </div>
-                  </div>
+                  <div className="text-2xl sm:text-3xl font-bold text-purple-900 dark:text-purple-100">{totalEventRequests}</div>
                   <ArrowUpRight className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600 dark:text-purple-400" />
+                </div>
+                <div className="mt-3 space-y-1">
+                  <div className="flex items-center justify-between text-[10px] sm:text-xs">
+                    <span className="flex items-center gap-1 text-purple-600 dark:text-purple-400">
+                      <Clock className="h-2.5 w-2.5" />
+                      Pending Uni-Staff:
+                    </span>
+                    <span className="font-semibold bg-yellow-200 dark:bg-yellow-800 px-1.5 py-0.5 rounded">
+                      {pendingUniStaffEvents}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] sm:text-xs">
+                    <span className="flex items-center gap-1 text-purple-600 dark:text-purple-400">
+                      <Clock className="h-2.5 w-2.5" />
+                      Pending Co-Club:
+                    </span>
+                    <span className="font-semibold bg-orange-200 dark:bg-orange-800 px-1.5 py-0.5 rounded">
+                      {pendingCoClubEvents}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] sm:text-xs">
+                    <span className="text-purple-600 dark:text-purple-400">Active:</span>
+                    <span className="font-semibold bg-blue-200 dark:bg-blue-800 px-1.5 py-0.5 rounded">
+                      {approvedEventsCount + ongoingEventsCount}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] sm:text-xs">
+                    <span className="flex items-center gap-1 text-purple-600 dark:text-purple-400">
+                      <CheckCircle className="h-2.5 w-2.5" />
+                      Completed:
+                    </span>
+                    <span className="font-semibold bg-green-200 dark:bg-green-800 px-1.5 py-0.5 rounded">
+                      {completedEventsCount}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] sm:text-xs">
+                    <span className="flex items-center gap-1 text-purple-600 dark:text-purple-400">
+                      <XCircle className="h-2.5 w-2.5" />
+                      Cancelled:
+                    </span>
+                    <span className="font-semibold bg-red-200 dark:bg-red-800 px-1.5 py-0.5 rounded">
+                      {rejectedEvents}
+                    </span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -334,8 +420,34 @@ export default function UniStaffReportsPage() {
               </CardHeader>
               <CardContent>
                 <div className="flex items-center justify-between">
-                <div className="text-2xl sm:text-3xl font-bold text-orange-900 dark:text-orange-100">{totalPolicies}</div>
+                  <div className="text-2xl sm:text-3xl font-bold text-orange-900 dark:text-orange-100">{totalPolicies}</div>
                   <ArrowUpRight className="h-4 w-4 sm:h-5 sm:w-5 text-orange-600 dark:text-orange-400" />
+                </div>
+                <div className="mt-3 space-y-1">
+                  <div className="flex items-center justify-between text-[10px] sm:text-xs">
+                    <span className="text-orange-600 dark:text-orange-400">Major Policies:</span>
+                    <span className="font-semibold bg-orange-200 dark:bg-orange-800 px-1.5 py-0.5 rounded">
+                      {totalPolicies}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] sm:text-xs">
+                    <span className="text-orange-600 dark:text-orange-400">Multiplier Policies:</span>
+                    <span className="font-semibold bg-orange-200 dark:bg-orange-800 px-1.5 py-0.5 rounded">
+                      {totalMultiplierPolicies}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] sm:text-xs">
+                    <span className="text-orange-600 dark:text-orange-400">Active Locations:</span>
+                    <span className="font-semibold bg-orange-200 dark:bg-orange-800 px-1.5 py-0.5 rounded">
+                      {totalLocations}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] sm:text-xs">
+                    <span className="text-orange-600 dark:text-orange-400">Active Tags:</span>
+                    <span className="font-semibold bg-orange-200 dark:bg-orange-800 px-1.5 py-0.5 rounded">
+                      {totalTags}
+                    </span>
+                  </div>
                 </div>
               </CardContent>
             </Card>

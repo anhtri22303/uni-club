@@ -1,3 +1,5 @@
+tôi muốn trong modal Create New Event khi mới mở lên sẽ call api fetchEvent lấy tất cả data event sau đó check 
+
 # UniClub Frontend
 
 **Student Club Loyalty & Membership System (SCLMS)**  
