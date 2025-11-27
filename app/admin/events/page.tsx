@@ -21,7 +21,8 @@ import QRCode from "qrcode"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { fetchAdminEvents, AdminEvent, FetchAdminEventsParams } from "@/service/adminApi/adminEventApi"
-import { createEvent, eventQR, timeObjectToString } from "@/service/eventApi"
+import { createEvent, eventQR, timeObjectToString, isEventExpired as isEventExpiredUtil } from "@/service/eventApi"
+import { EventDateTimeDisplay } from "@/components/event-date-time-display"
 import { PhaseSelectionModal } from "@/components/phase-selection-modal"
 import { fetchLocation, Location } from "@/service/locationApi"
 import { useQuery } from "@tanstack/react-query"
@@ -79,20 +80,8 @@ export default function AdminEventsPage() {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [activeEnvironment, setActiveEnvironment] = useState<'local' | 'prod' | 'mobile'>('prod')
 
-  // Helper function để kiểm tra event đã hết hạn (dựa trên endTime ISO string)
-  const isEventExpired = (event: AdminEvent) => {
-    if (event.status === "COMPLETED") return true
-    if (!event.endTime) return false
-
-    try {
-      const now = new Date()
-      const eventEndDateTime = new Date(event.endTime)
-      return now > eventEndDateTime
-    } catch (error) {
-      console.error('Error checking event expiration:', error)
-      return false
-    }
-  }
+  // Use isEventExpired from eventApi.ts which supports both single-day and multi-day events
+  const isEventExpired = (event: AdminEvent) => isEventExpiredUtil(event as any)
 
   // --- Logic Fetch Data ---
   const loadEvents = async (page: number, keyword: string, filters: EventFilters) => {
@@ -734,29 +723,12 @@ export default function AdminEventsPage() {
                         <div className="space-y-3 flex-1"> */}
                       <CardContent className="flex-1 flex flex-col p-4">
                         <div className="space-y-2 flex-1">
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Calendar className="h-4 w-4" />
-                            {/* Dùng startTime để hiển thị ngày */}
-                            {new Date(event.startTime).toLocaleDateString("en-US", {
-                              weekday: "long",
-                              year: "numeric",
-                              month: "long",
-                              day: "numeric",
-                            })}
-                          </div>
+                          <EventDateTimeDisplay event={event as any} variant="compact" />
                           {/* Thay locationName bằng clubName từ API mới */}
                           {event.clubName && (
                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
                               <Ticket className="h-4 w-4" />
                               {event.clubName}
-                            </div>
-                          )}
-                          {/* Dùng helper mới để format thời gian */}
-                          {(event.startTime && event.endTime) && (
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              {/* Có thể đổi icon nếu muốn */}
-                              <Ticket className="h-4 w-4" />
-                              {formatIsoTime(event.startTime)} - {formatIsoTime(event.endTime)}
                             </div>
                           )}
                         </div>

@@ -12,11 +12,12 @@ import { Calendar, Users, MapPin, Search, CheckCircle, XCircle, Clock, Building,
 import { renderTypeBadge } from "@/lib/eventUtils"
 import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
-import { putEventStatus, getEventSettle } from "@/service/eventApi"
+import { putEventStatus, getEventSettle, isEventExpired as isEventExpiredUtil } from "@/service/eventApi"
 import { fetchLocation } from "@/service/locationApi"
 import { fetchClub } from "@/service/clubApi"
 import Link from "next/link"
 import { fetchEvent } from "@/service/eventApi"
+import { EventDateTimeDisplay } from "@/components/event-date-time-display"
 import { useRouter } from "next/navigation"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -134,35 +135,8 @@ export default function UniStaffEventRequestsPage() {
 		return "Finished"
 	}
 
-	// Helper function to check if event has expired (past endTime) or is COMPLETED
-	const isEventExpired = (event: any) => {
-		// COMPLETED status is always considered expired
-		if (event.status === "COMPLETED") return true
-
-		// Check if date and endTime are present
-		if (!event.date || !event.endTime) return false
-
-		try {
-			// Get current date/time in Vietnam timezone (UTC+7)
-			const now = new Date()
-			const vnTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }))
-
-			// Parse event date (format: YYYY-MM-DD)
-			const [year, month, day] = event.date.split('-').map(Number)
-
-			// Parse endTime (format: HH:MM:SS or HH:MM)
-			const [hours, minutes] = event.endTime.split(':').map(Number)
-
-			// Create event end datetime in Vietnam timezone
-			const eventEndDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0)
-
-			// Event is expired if current VN time is past the end time
-			return vnTime > eventEndDateTime
-		} catch (error) {
-			console.error('Error checking event expiration:', error)
-			return false
-		}
-	}
+	// Use isEventExpired from eventApi.ts which supports both single-day and multi-day events
+	const isEventExpired = isEventExpiredUtil
 
 	useEffect(() => {
 		let mounted = true

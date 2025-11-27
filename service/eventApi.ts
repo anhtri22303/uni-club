@@ -8,15 +8,28 @@ export interface TimeObject {
   nano: number
 }
 
+// Event day structure for multi-day events
+export interface EventDay {
+  id: number
+  date: string // Format: YYYY-MM-DD
+  startTime: string // Format: HH:MM
+  endTime: string // Format: HH:MM
+}
+
 export interface Event {
   id: number
   name: string
   description: string
   type: "PUBLIC" | "PRIVATE" | string
-  date: string
-  startTime: TimeObject | string | null
-  endTime: TimeObject | string | null
-  status: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED" | string
+  // Multi-day event fields (NEW)
+  startDate?: string // Format: YYYY-MM-DD
+  endDate?: string // Format: YYYY-MM-DD
+  days?: EventDay[]
+  // Legacy single-day fields (for backward compatibility)
+  date?: string
+  startTime?: TimeObject | string | null
+  endTime?: TimeObject | string | null
+  status: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED" | "COMPLETED" | "ONGOING" | "PENDING_COCLUB" | "PENDING_UNISTAFF" | "WAITING" | string
   checkInCode: string
   locationName: string
   maxCheckInCount: number
@@ -33,7 +46,7 @@ export interface Event {
     name: string
     coHostStatus: string
   }>
-  // Legacy fields for backward compatibility
+  // Legacy fields
   clubId?: number
   clubName?: string
   time?: string
@@ -73,6 +86,135 @@ export const timeObjectToString = (timeObj: TimeObject | string | null): string 
 
   const pad = (n: number) => n.toString().padStart(2, '0')
   return `${pad(timeObj.hour)}:${pad(timeObj.minute)}:${pad(timeObj.second)}`
+}
+
+// Helper function to check if event is multi-day
+export const isMultiDayEvent = (event: Event): boolean => {
+  return !!(event.days && event.days.length > 0)
+}
+
+// Helper function to get event date range
+export const getEventDateRange = (event: Event): { start: string; end: string } => {
+  if (isMultiDayEvent(event) && event.startDate && event.endDate) {
+    return { start: event.startDate, end: event.endDate }
+  }
+  // Fallback to legacy single date
+  const date = event.date || new Date().toISOString().split('T')[0]
+  return { start: date, end: date }
+}
+
+// Helper function to format date range display
+export const formatEventDateRange = (event: Event, locale: string = 'en-US'): string => {
+  const { start, end } = getEventDateRange(event)
+  const startDate = new Date(start)
+  const endDate = new Date(end)
+  
+  const options: Intl.DateTimeFormatOptions = {
+    weekday: 'short',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  }
+  
+  if (start === end) {
+    return startDate.toLocaleDateString(locale, options)
+  }
+  
+  return `${startDate.toLocaleDateString(locale, options)} - ${endDate.toLocaleDateString(locale, options)}`
+}
+
+// Helper function to get event duration in days
+export const getEventDurationDays = (event: Event): number => {
+  if (isMultiDayEvent(event) && event.days) {
+    return event.days.length
+  }
+  return 1
+}
+
+// Helper function to get first day start time
+export const getEventStartTime = (event: Event): string => {
+  if (isMultiDayEvent(event) && event.days && event.days.length > 0) {
+    return event.days[0].startTime
+  }
+  // Legacy fallback
+  return timeObjectToString(event.startTime || null)
+}
+
+// Helper function to get last day end time
+export const getEventEndTime = (event: Event): string => {
+  if (isMultiDayEvent(event) && event.days && event.days.length > 0) {
+    return event.days[event.days.length - 1].endTime
+  }
+  // Legacy fallback
+  return timeObjectToString(event.endTime || null)
+}
+
+// Helper function to check if event is currently active
+export const isEventCurrentlyActive = (event: Event): boolean => {
+  const now = new Date()
+  
+  if (isMultiDayEvent(event) && event.days) {
+    // Check each day to see if any is currently active
+    for (const day of event.days) {
+      const [startHour, startMinute] = day.startTime.split(':').map(Number)
+      const [endHour, endMinute] = day.endTime.split(':').map(Number)
+      const [year, month, dayNum] = day.date.split('-').map(Number)
+      
+      const dayStart = new Date(year, month - 1, dayNum, startHour, startMinute)
+      const dayEnd = new Date(year, month - 1, dayNum, endHour, endMinute)
+      
+      if (now >= dayStart && now <= dayEnd) {
+        return true
+      }
+    }
+    return false
+  }
+  
+  // Legacy single-day check
+  if (!event.date || !event.endTime) return false
+  
+  try {
+    const eventDate = new Date(event.date)
+    const endTimeStr = timeObjectToString(event.endTime)
+    const [hours, minutes] = endTimeStr.split(':').map(Number)
+    const eventEndDateTime = new Date(eventDate)
+    eventEndDateTime.setHours(hours, minutes, 0, 0)
+    
+    return now <= eventEndDateTime
+  } catch (error) {
+    return false
+  }
+}
+
+// Helper function to check if event has expired
+export const isEventExpired = (event: Event): boolean => {
+  if (event.status === 'COMPLETED') return true
+  
+  const now = new Date()
+  
+  if (isMultiDayEvent(event) && event.days && event.days.length > 0) {
+    const lastDay = event.days[event.days.length - 1]
+    const [endHour, endMinute] = lastDay.endTime.split(':').map(Number)
+    const [year, month, dayNum] = lastDay.date.split('-').map(Number)
+    const eventEnd = new Date(year, month - 1, dayNum, endHour, endMinute)
+    
+    return now > eventEnd
+  }
+  
+  // Legacy single-day check
+  if (!event.date || !event.endTime) return false
+  
+  try {
+    const eventDate = new Date(event.date)
+    const endTimeStr = timeObjectToString(event.endTime)
+    const [hours, minutes] = endTimeStr.split(':').map(Number)
+    const eventEndDateTime = new Date(eventDate)
+    eventEndDateTime.setHours(hours, minutes, 0, 0)
+    
+    return now > eventEndDateTime
+  } catch (error) {
+    return false
+  }
 }
 
 export const fetchEvent = async ({ page = 0, size = 70, sort = "name" } = {}): Promise<Event[]> => {
@@ -183,22 +325,68 @@ export const getEventByCode = async (code: string): Promise<Event> => {
   }
 }
 
+// export const getEventByClubId = async (clubId: string | number): Promise<Event[]> => {
+//   try {
+//     const response = await axiosInstance.get(`/api/events/club/${clubId}`)
+//     const resData: any = response.data
+//     console.log(`Fetched events for club ${clubId}:`, resData)
+
+//     // If response is direct array of events
+//     if (Array.isArray(resData)) return resData
+
+//     // If response has wrapper structure like { success, data, message }
+//     if (resData?.data && Array.isArray(resData.data)) return resData.data
+
+//     // If response has content property (pagination)
+//     if (resData?.content && Array.isArray(resData.content)) return resData.content
+
+//     // Fallback to empty array if no events found
+//     return []
+//   } catch (error) {
+//     console.error(`Error fetching events for club ${clubId}:`, error)
+//     throw error
+//   }
+// }
+
+// export const getEventCoHost = async (clubId: string | number): Promise<Event[]> => {
+//   try {
+//     const response = await axiosInstance.get(`/api/events/club/${clubId}/cohost`)
+//     const resData: any = response.data
+//     console.log(`Fetched co-host events for club ${clubId}:`, resData)
+
+//     // If response is direct array of events
+//     if (Array.isArray(resData)) return resData
+
+//     // If response has wrapper structure like { success, data, message }
+//     if (resData?.data && Array.isArray(resData.data)) return resData.data
+
+//     // If response has content property (pagination)
+//     if (resData?.content && Array.isArray(resData.content)) return resData.content
+
+//     // Fallback to empty array if no events found
+//     return []
+//   } catch (error) {
+//     console.error(`Error fetching co-host events for club ${clubId}:`, error)
+//     throw error
+//   }
+// }
+
 export const getEventByClubId = async (clubId: string | number): Promise<Event[]> => {
   try {
+    // API: /api/events/club/{clubId}
     const response = await axiosInstance.get(`/api/events/club/${clubId}`)
     const resData: any = response.data
     console.log(`Fetched events for club ${clubId}:`, resData)
 
-    // If response is direct array of events
-    if (Array.isArray(resData)) return resData
+    // Theo Swagger, response trả về trực tiếp mảng: [...]
+    if (Array.isArray(resData)) {
+      return resData
+    }
 
-    // If response has wrapper structure like { success, data, message }
+    // Fallback logic cũ (phòng hờ môi trường khác nhau)
     if (resData?.data && Array.isArray(resData.data)) return resData.data
-
-    // If response has content property (pagination)
     if (resData?.content && Array.isArray(resData.content)) return resData.content
 
-    // Fallback to empty array if no events found
     return []
   } catch (error) {
     console.error(`Error fetching events for club ${clubId}:`, error)
@@ -208,20 +396,20 @@ export const getEventByClubId = async (clubId: string | number): Promise<Event[]
 
 export const getEventCoHost = async (clubId: string | number): Promise<Event[]> => {
   try {
+    // API: /api/events/club/{clubId}/cohost
     const response = await axiosInstance.get(`/api/events/club/${clubId}/cohost`)
     const resData: any = response.data
     console.log(`Fetched co-host events for club ${clubId}:`, resData)
 
-    // If response is direct array of events
-    if (Array.isArray(resData)) return resData
+    // Theo Swagger, response trả về trực tiếp mảng: [...]
+    if (Array.isArray(resData)) {
+      return resData
+    }
 
-    // If response has wrapper structure like { success, data, message }
+    // Fallback logic cũ
     if (resData?.data && Array.isArray(resData.data)) return resData.data
-
-    // If response has content property (pagination)
     if (resData?.content && Array.isArray(resData.content)) return resData.content
 
-    // Fallback to empty array if no events found
     return []
   } catch (error) {
     console.error(`Error fetching co-host events for club ${clubId}:`, error)
@@ -366,11 +554,11 @@ export const getMyEvents = async (): Promise<Event[]> => {
     const response = await axiosInstance.get("api/events/my")
     const data: any = response.data
     console.log("Fetched my events:", data)
-    
+
     // Response structure: { success: true, message: "success", data: [...events] }
     if (data?.data && Array.isArray(data.data)) return data.data
     if (Array.isArray(data)) return data
-    
+
     return []
   } catch (error) {
     console.error("Error fetching my events:", error)
@@ -585,18 +773,18 @@ export const eventTimeExtend = async (eventId: string | number, payload: EventTi
  * @returns { success: boolean, message: string, data: string }
  */
 export const rejectEvent = async (eventId: string | number, reason: string) => {
-  try {
-    const response = await axiosInstance.put(`/api/events/${eventId}/reject`, null, {
-      params: { reason }
-    });
-    const data: any = response.data;
-    console.log(`Rejected event ${eventId} with reason: ${reason}`, data);
-    // Response: { success: true, message: "string", data: "string" }
-    return data;
-  } catch (error) {
-    console.error(`Error rejecting event ${eventId}:`, error);
-    throw error;
-  }
+  try {
+    const response = await axiosInstance.put(`/api/events/${eventId}/reject`, null, {
+      params: { reason }
+    });
+    const data: any = response.data;
+    console.log(`Rejected event ${eventId} with reason: ${reason}`, data);
+    // Response: { success: true, message: "string", data: "string" }
+    return data;
+  } catch (error) {
+    console.error(`Error rejecting event ${eventId}:`, error);
+    throw error;
+  }
 }
 
 /**
@@ -645,26 +833,26 @@ export const cancelEventRegistration = async (eventId: string | number) => {
  * @returns { } (200 OK với body rỗng)
  */
 export const refundEventProduct = async (
-  eventId: string | number, 
-  productId: string | number, 
+  eventId: string | number,
+  productId: string | number,
   userId: string | number
 ) => {
-  try {
-    const response = await axiosInstance.put(
-      `/api/events/${eventId}/refund-product/${productId}`, 
-      null, 
+  try {
+    const response = await axiosInstance.put(
+      `/api/events/${eventId}/refund-product/${productId}`,
+      null,
       {
-        params: { userId }
-      }
+        params: { userId }
+      }
     );
-    const data: any = response.data;
-    console.log(`Refunded product ${productId} for user ${userId} from event ${eventId}:`, data);
-    // Response: 200 OK with empty body {}
-    return data; // Thường trả về data rỗng
-  } catch (error) {
-    console.error(`Error refunding product for event ${eventId}:`, error);
-    throw error;
-  }
+    const data: any = response.data;
+    console.log(`Refunded product ${productId} for user ${userId} from event ${eventId}:`, data);
+    // Response: 200 OK with empty body {}
+    return data; // Thường trả về data rỗng
+  } catch (error) {
+    console.error(`Error refunding product for event ${eventId}:`, error);
+    throw error;
+  }
 }
 
 
@@ -684,10 +872,10 @@ export const getEventFeedbackSummary = async (eventId: string | number): Promise
     const response = await axiosInstance.get(`/api/events/${eventId}/feedback/summary`);
     const data: any = response.data;
     console.log(`Fetched feedback summary for event ${eventId}:`, data);
-    
+
     // Response: { success: true, message: "string", data: {...} }
     if (data?.data) return data.data;
-    
+
     return data; // Fallback nếu API trả về object data trực tiếp
   } catch (error) {
     console.error(`Error fetching feedback summary for event ${eventId}:`, error);

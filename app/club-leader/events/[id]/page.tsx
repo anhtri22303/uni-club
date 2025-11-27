@@ -35,6 +35,7 @@ import { ProtectedRoute } from "@/contexts/protected-route";
 import { LoadingSkeleton } from "@/components/loading-skeleton";
 import { PhaseSelectionModal } from "@/components/phase-selection-modal";
 import { renderTypeBadge } from "@/lib/eventUtils";
+import { EventDateTimeDisplay } from "@/components/event-date-time-display";
 
 import {
   getEventById,
@@ -42,6 +43,7 @@ import {
   timeObjectToString,
   coHostRespond,
   TimeObject,
+  EventDay,
   getEventSummary,
   EventSummary,
   completeEvent,
@@ -68,15 +70,21 @@ interface EventDetail {
   name: string;
   description: string;
   type: string;
-  date: string;
-  startTime: TimeObject | string | null;
-  endTime: TimeObject | string | null;
+  // Multi-day fields
+  startDate?: string;
+  endDate?: string;
+  days?: EventDay[];
+  // Legacy single-day fields
+  date?: string;
+  startTime?: TimeObject | string | null;
+  endTime?: TimeObject | string | null;
   status: string;
   checkInCode: string;
   locationName: string;
   maxCheckInCount: number;
   currentCheckInCount: number;
-  budgetPoints: number;
+  budgetPoints?: number;
+  commitPointCost?: number;
   hostClub: {
     id: number;
     name: string;
@@ -1077,34 +1085,7 @@ export default function EventDetailPage() {
                 {/* Date & Time */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold">Date & Time</h3>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                      <Calendar className="h-5 w-5 text-primary" />
-                      <div>
-                        <div className="font-medium">
-                          {formatDate(event.date)}
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          {event.date}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                      <Clock className="h-5 w-5 text-primary" />
-                      <div>
-                        <div className="font-medium">
-                          {event.startTime && event.endTime
-                            ? `${timeObjectToString(
-                                event.startTime
-                              )} - ${timeObjectToString(event.endTime)}`
-                            : event.time || "Time not set"}
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          Event Duration
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  <EventDateTimeDisplay event={event as any} variant="detailed" />
                 </div>
 
                 {/* Location & Club */}
@@ -1543,8 +1524,10 @@ export default function EventDetailPage() {
                                   </div>
                                   <div>
                                     <div className="font-medium">
-                                      {feedback.memberName ||
-                                        `Member #${feedback.membershipId}`}
+                                      {event.status === "COMPLETED"
+                                        ? "Anonymous"
+                                        : feedback.memberName ||
+                                          `Member #${feedback.membershipId}`}
                                     </div>
                                     <div className="text-sm text-muted-foreground">
                                       {new Date(
@@ -1687,9 +1670,9 @@ export default function EventDetailPage() {
             open={showTimeExtensionModal}
             onOpenChange={setShowTimeExtensionModal}
             onSubmit={handleExtendTime}
-            currentDate={event.date}
-            currentStartTime={timeObjectToString(event.startTime)}
-            currentEndTime={timeObjectToString(event.endTime)}
+            currentDate={event.date || ""}
+            currentStartTime={event.startTime ? timeObjectToString(event.startTime) : ""}
+            currentEndTime={event.endTime ? timeObjectToString(event.endTime) : ""}
             eventName={event.name}
             isSubmitting={isExtendingTime}
           />

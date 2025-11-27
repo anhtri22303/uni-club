@@ -15,7 +15,8 @@ import { useToast } from "@/hooks/use-toast"
 import { usePagination } from "@/hooks/use-pagination"
 import { Pagination } from "@/components/pagination"
 import { CalendarModal } from "@/components/calendar-modal"
-import { fetchEvent, getMyEvents, timeObjectToString } from "@/service/eventApi"
+import { fetchEvent, getMyEvents, timeObjectToString, isEventExpired as isEventExpiredUtil } from "@/service/eventApi"
+import { EventDateTimeDisplay } from "@/components/event-date-time-display"
 
 export default function PublicEventsPage() {
   const [searchTerm, setSearchTerm] = useState("")
@@ -76,38 +77,8 @@ export default function PublicEventsPage() {
     loadMyEvents()
   }
 
-  // Helper function to check if event has expired (past endTime) or is COMPLETED
-  const isEventExpired = (event: any) => {
-    // COMPLETED status is always considered expired
-    if (event.status === "COMPLETED") return true
-    
-    // Check if date and endTime are present
-    if (!event.date || !event.endTime) return false
-
-    try {
-      // Get current date/time in Vietnam timezone (UTC+7)
-      const now = new Date()
-      const vnTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }))
-
-      // Parse event date (format: YYYY-MM-DD)
-      const [year, month, day] = event.date.split('-').map(Number)
-
-      // Convert endTime to string if it's an object
-      const endTimeStr = timeObjectToString(event.endTime)
-      
-      // Parse endTime (format: HH:MM:SS or HH:MM)
-      const [hours, minutes] = endTimeStr.split(':').map(Number)
-
-      // Create event end datetime in Vietnam timezone
-      const eventEndDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0)
-
-      // Event is expired if current VN time is past the end time
-      return vnTime > eventEndDateTime
-    } catch (error) {
-      console.error('Error checking event expiration:', error)
-      return false
-    }
-  }
+  // Use isEventExpired from eventApi.ts which supports both single-day and multi-day events
+  const isEventExpired = isEventExpiredUtil
 
   const [activeFilters, setActiveFilters] = useState<Record<string, any>>({ expired: "hide" })
 
@@ -119,7 +90,8 @@ export default function PublicEventsPage() {
   const finalFilteredEvents = filteredEvents.filter((event: any) => {
     // Default: Show future APPROVED events (hide expired/completed and rejected)
     const isExpired = isEventExpired(event)
-    const isFutureEvent = event.date && new Date(event.date) >= new Date(new Date().toDateString())
+    const eventDate = event.startDate || event.date
+    const isFutureEvent = eventDate && new Date(eventDate) >= new Date(new Date().toDateString())
     
     // By default, only show future events that are APPROVED, ONGOING, or COMPLETED
     const expiredFilter = activeFilters["expired"]
@@ -306,18 +278,7 @@ export default function PublicEventsPage() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-3">
-                        <div className="flex items-center gap-2 text-sm">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
-                          <span>{event.date}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm">
-                          <Clock className="h-4 w-4 text-muted-foreground" />
-                          <span>
-                            {event.startTime && event.endTime
-                              ? `${timeObjectToString(event.startTime)} - ${timeObjectToString(event.endTime)}`
-                              : "Time not set"}
-                          </span>
-                        </div>
+                        <EventDateTimeDisplay event={event} variant="compact" />
                         <div className="flex items-center gap-2 text-sm">
                           <MapPin className="h-4 w-4 text-muted-foreground" />
                           <span>{event.locationName || "Location TBA"}</span>
