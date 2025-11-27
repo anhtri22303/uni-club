@@ -32,11 +32,13 @@ import {
   putEventStatus,
   getEventSummary,
   EventSummary,
+  EventDay,
   eventSettle,
   getEventSettle,
   rejectEvent,
   cancelEvent,
 } from "@/service/eventApi";
+import { EventDateTimeDisplay } from "@/components/event-date-time-display";
 import { useToast } from "@/hooks/use-toast";
 import { renderTypeBadge } from "@/lib/eventUtils";
 import { getLocationById } from "@/service/locationApi";
@@ -724,42 +726,11 @@ export default function EventRequestDetailPage({
                     <p className="mt-1">{request.description}</p>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    {(request.date || request.eventDate) && (
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">
-                          Event Date
-                        </label>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
-                          <span>
-                            {new Date(
-                              request.date || request.eventDate
-                            ).toLocaleDateString()}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                    {(request.startTime ||
-                      request.endTime ||
-                      request.time ||
-                      request.eventTime) && (
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">
-                          Event Time
-                        </label>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Clock className="h-4 w-4 text-muted-foreground" />
-                          <span>
-                            {request.startTime && request.endTime
-                              ? `${request.startTime} - ${request.endTime}`
-                              : request.time ||
-                                request.eventTime ||
-                                "Time not set"}
-                          </span>
-                        </div>
-                      </div>
-                    )}
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground mb-2 block">
+                      Date & Time
+                    </label>
+                    <EventDateTimeDisplay event={request} variant="detailed" />
                   </div>
 
                   {/* Commit Point Cost */}

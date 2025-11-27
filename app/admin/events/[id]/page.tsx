@@ -29,9 +29,11 @@ import {
   getEventSummary,
   EventSummary,
   TimeObject,
+  EventDay,
   cancelEvent,
   eventSettle,
 } from "@/service/eventApi";
+import { EventDateTimeDisplay } from "@/components/event-date-time-display";
 import QRCode from "qrcode";
 import { AppShell } from "@/components/app-shell";
 import { QRModal } from "@/components/qr-modal";
@@ -46,15 +48,21 @@ interface EventDetail {
   name: string;
   description: string;
   type: string;
-  date: string;
-  startTime: TimeObject | string | null;
-  endTime: TimeObject | string | null;
+  // Multi-day fields
+  startDate?: string;
+  endDate?: string;
+  days?: EventDay[];
+  // Legacy fields
+  date?: string;
+  startTime?: TimeObject | string | null;
+  endTime?: TimeObject | string | null;
   status: string;
   checkInCode: string;
   locationName: string;
   maxCheckInCount: number;
   currentCheckInCount: number;
-  budgetPoints: number;
+  budgetPoints?: number;
+  commitPointCost?: number;
   hostClub: {
     id: number;
     name: string;
@@ -690,34 +698,7 @@ export default function AdminEventDetailPage() {
                 {/* Date & Time */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold">Date & Time</h3>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                      <Calendar className="h-5 w-5 text-primary" />
-                      <div>
-                        <div className="font-medium">
-                          {formatDate(event.date)}
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          {event.date}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                      <Clock className="h-5 w-5 text-primary" />
-                      <div>
-                        <div className="font-medium">
-                          {event.startTime && event.endTime
-                            ? `${timeObjectToString(
-                                event.startTime
-                              )} - ${timeObjectToString(event.endTime)}`
-                            : event.time || "Time not set"}
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          Event Duration
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  <EventDateTimeDisplay event={event as any} variant="detailed" />
                 </div>
 
                 {/* Location & Club */}

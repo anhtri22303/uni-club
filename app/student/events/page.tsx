@@ -16,7 +16,17 @@ import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import { safeSessionStorage } from "@/lib/browser-utils"
 import { useClubEvents, useClubs, useMyEventRegistrations, useEventsByClubId } from "@/hooks/use-query-hooks"
-import { timeObjectToString, registerForEvent, cancelEventRegistration } from "@/service/eventApi"
+import { 
+  timeObjectToString, 
+  registerForEvent, 
+  cancelEventRegistration,
+  isMultiDayEvent, 
+  formatEventDateRange,
+  getEventDurationDays,
+  getEventStartTime,
+  getEventEndTime,
+  isEventExpired as isEventExpiredUtil
+} from "@/service/eventApi"
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useQueryClient } from "@tanstack/react-query"
@@ -114,38 +124,8 @@ export default function MemberEventsPage() {
     return myRegistrations.some((reg) => reg.eventId === eventId)
   }
 
-  // Helper function to check if event has expired (past endTime) or is COMPLETED
-  const isEventExpired = (event: any) => {
-    // COMPLETED status is always considered expired
-    if (event.status === "COMPLETED") return true
-    
-    // Check if date and endTime are present
-    if (!event.date || !event.endTime) return false
-
-    try {
-      // Get current date/time in Vietnam timezone (UTC+7)
-      const now = new Date()
-      const vnTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }))
-
-      // Parse event date (format: YYYY-MM-DD)
-      const [year, month, day] = event.date.split('-').map(Number)
-
-      // Convert endTime to string if it's an object
-      const endTimeStr = timeObjectToString(event.endTime)
-      
-      // Parse endTime (format: HH:MM:SS or HH:MM)
-      const [hours, minutes] = endTimeStr.split(':').map(Number)
-
-      // Create event end datetime in Vietnam timezone
-      const eventEndDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0)
-
-      // Event is expired if current VN time is past the end time
-      return vnTime > eventEndDateTime
-    } catch (error) {
-      console.error('Error checking event expiration:', error)
-      return false
-    }
-  }
+  // Use isEventExpired from eventApi.ts which supports both single-day and multi-day events
+  const isEventExpired = isEventExpiredUtil
 
   const [activeFilters, setActiveFilters] = useState<Record<string, any>>({ expired: "hide" })
 
@@ -165,7 +145,8 @@ export default function MemberEventsPage() {
 
     // Default: Show future PENDING and APPROVED events (hide expired/completed and rejected)
     const isExpired = isEventExpired(event)
-    const isFutureEvent = event.date && new Date(event.date) >= new Date(new Date().toDateString())
+    const eventDate = event.startDate || event.date
+    const isFutureEvent = eventDate && new Date(eventDate) >= new Date(new Date().toDateString())
     
     // By default, only show future events that are APPROVED, ONGOING, or COMPLETED
     const expiredFilter = activeFilters["expired"]
@@ -528,21 +509,36 @@ export default function MemberEventsPage() {
                       <div className="space-y-3">
                         <p className="text-sm text-muted-foreground line-clamp-2">{event.description}</p>
 
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Calendar className="h-4 w-4" />
-                          {new Date(event.date).toLocaleDateString("en-US", {
-                            weekday: "long",
-                            year: "numeric",
-                            month: "long",
-                            day: "numeric",
-                          })}
-                        </div>
+                        {isMultiDayEvent(event) ? (
+                          <>
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Calendar className="h-4 w-4" />
+                              <span className="font-medium">{formatEventDateRange(event, "en-US")}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Ticket className="h-4 w-4" />
+                              <span>{getEventDurationDays(event)} day{getEventDurationDays(event) > 1 ? 's' : ''} event</span>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Calendar className="h-4 w-4" />
+                              {event.date && new Date(event.date).toLocaleDateString("en-US", {
+                                weekday: "long",
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                              })}
+                            </div>
 
-                        {(event.startTime && event.endTime) && (
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Ticket className="h-4 w-4" />
-                            {timeObjectToString(event.startTime)} - {timeObjectToString(event.endTime)}
-                          </div>
+                            {(event.startTime && event.endTime) && (
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Ticket className="h-4 w-4" />
+                                {timeObjectToString(event.startTime)} - {timeObjectToString(event.endTime)}
+                              </div>
+                            )}
+                          </>
                         )}
 
                         <div className="flex flex-col sm:flex-row gap-2">

@@ -27,6 +27,10 @@ import {
   timeObjectToString,
   getEventSummary,
   EventSummary,
+  isMultiDayEvent,
+  formatEventDateRange,
+  getEventDurationDays,
+  EventDay,
 } from "@/service/eventApi";
 import {
   getFeedbackByEventId,
@@ -53,14 +57,21 @@ interface EventDetail {
   name: string;
   description: string;
   type: string;
-  date: string;
-  startTime: string | null;
-  endTime: string | null;
+  // Multi-day fields
+  startDate?: string;
+  endDate?: string;
+  days?: EventDay[];
+  // Legacy single-day fields
+  date?: string;
+  startTime?: string | null;
+  endTime?: string | null;
   status: string;
   checkInCode: string;
   locationName: string;
   maxCheckInCount: number;
   currentCheckInCount: number;
+  budgetPoints?: number;
+  commitPointCost?: number;
   hostClub: {
     id: number;
     name: string;
@@ -489,34 +500,75 @@ export default function EventDetailPage() {
                 {/* Date & Time */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold">Date & Time</h3>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                      <Calendar className="h-5 w-5 text-primary" />
-                      <div>
-                        <div className="font-medium">
-                          {formatDate(event.date)}
+                  {isMultiDayEvent(event as any) ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                        <Calendar className="h-5 w-5 text-primary" />
+                        <div className="flex-1">
+                          <div className="font-medium">
+                            {formatEventDateRange(event as any, "en-US")}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {getEventDurationDays(event as any)} day{getEventDurationDays(event as any) > 1 ? 's' : ''} event
+                          </div>
                         </div>
-                        <div className="text-sm text-muted-foreground">
-                          {event.date}
+                      </div>
+                      
+                      {/* Schedule for each day */}
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-semibold text-muted-foreground">Event Schedule</h4>
+                        {event.days?.map((day, index) => (
+                          <div key={day.id} className="flex items-start gap-3 p-3 bg-muted/30 rounded-lg border border-muted">
+                            <div className="flex-shrink-0 w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                              <span className="text-sm font-bold text-primary">D{index + 1}</span>
+                            </div>
+                            <div className="flex-1">
+                              <div className="font-medium">
+                                {new Date(day.date).toLocaleDateString("en-US", {
+                                  weekday: "short",
+                                  month: "short",
+                                  day: "numeric",
+                                })}
+                              </div>
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Clock className="h-3 w-3" />
+                                {day.startTime} - {day.endTime}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                        <Calendar className="h-5 w-5 text-primary" />
+                        <div>
+                          <div className="font-medium">
+                            {event.date && formatDate(event.date)}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {event.date}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                        <Clock className="h-5 w-5 text-primary" />
+                        <div>
+                          <div className="font-medium">
+                            {event.startTime && event.endTime
+                              ? `${timeObjectToString(
+                                  event.startTime
+                                )} - ${timeObjectToString(event.endTime)}`
+                              : event.time || "Time not set"}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            Event Duration
+                          </div>
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                      <Clock className="h-5 w-5 text-primary" />
-                      <div>
-                        <div className="font-medium">
-                          {event.startTime && event.endTime
-                            ? `${timeObjectToString(
-                                event.startTime
-                              )} - ${timeObjectToString(event.endTime)}`
-                            : event.time || "Time not set"}
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          Event Duration
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  )}
                 </div>
 
                 {/* Location & Club */}
@@ -736,8 +788,10 @@ export default function EventDetailPage() {
                                   </div>
                                   <div>
                                     <div className="font-medium">
-                                      {feedback.memberName ||
-                                        `Member #${feedback.membershipId}`}
+                                      {event.status === "COMPLETED"
+                                        ? "Anonymous"
+                                        : feedback.memberName ||
+                                          `Member #${feedback.membershipId}`}
                                     </div>
                                     <div className="text-sm text-muted-foreground">
                                       {new Date(
