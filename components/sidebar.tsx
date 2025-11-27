@@ -215,6 +215,8 @@ const navigationConfig = {
     { href: "/admin/locations", label: "Locations", icon: MapPin },
     { href: "/admin/wallets", label: "Wallets", icon: Wallet },
     { href: "/admin/tags", label: "Tags", icon: Tags },
+    { href: "/admin/majors", label: "Majors", icon: LibraryBig },
+
   ],
 } as const;
 
@@ -416,7 +418,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
   useEffect(() => {
     const prefetchCommonRoutes = () => {
       if (!auth.role) return;
-      
+
       // Prefetch common routes based on role
       const commonRoutes: Record<string, string[]> = {
         student: ['/student/clubs', '/student/events', '/student/myclub', '/student/gift'],
@@ -906,7 +908,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
   const handleMouseEnter = (href: string) => {
     // Prefetch the Next.js route immediately
     router.prefetch(href);
-    
+
     // Also prefetch data based on route
     if (href.includes("/clubs")) {
       prefetchClubs();
@@ -1095,12 +1097,12 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                     className={cn(
                       "w-full justify-start gap-3 h-11 text-sm font-medium relative",
                       (isActive || hasActiveChild) &&
-                        "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm",
+                      "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm",
                       isLoading && "opacity-75 cursor-wait",
                       isStaffItem && "text-muted-foreground bg-muted/30",
                       isStaffItem &&
-                        isActive &&
-                        "bg-muted text-muted-foreground"
+                      isActive &&
+                      "bg-muted text-muted-foreground"
                     )}
                     onClick={() => {
                       if (hasChildren) {
@@ -1379,7 +1381,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                             className={cn(
                               "w-full justify-start gap-3 h-10 text-sm font-medium",
                               isChildActive &&
-                                "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm",
+                              "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm",
                               isChildLoading && "opacity-75 cursor-wait"
                             )}
                             onClick={() =>
