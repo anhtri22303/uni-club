@@ -834,19 +834,19 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
     }
   }
 
-  // If the user is a STUDENT and auth indicates they are also staff,
+  // If the user is a STUDENT and cachedProfile indicates they are also staff,
   // show additional staff functionality
-  if (auth.role === "student" && auth.staff) {
+  if (auth.role === "student" && cachedProfile?.staff === true) {
     // Add staff-specific navigation items for students
     const staffItems = [
-      // { href: "/staff/validate", label: "Validate", icon: CheckCircle, isStaff: true },
+      // { href: "/student/staff/validate", label: "Validate", icon: CheckCircle, isStaff: true },
       {
-        href: "/staff/history",
+        href: "/student/staff/history",
         label: "Staff History",
         icon: History,
         isStaff: true,
       },
-      { href: "/staff/gift", label: "Staff Gift", icon: Gift, isStaff: true },
+      { href: "/student/staff/gift", label: "Staff Gift", icon: Gift, isStaff: true },
     ];
 
     // Add staff items that don't already exist

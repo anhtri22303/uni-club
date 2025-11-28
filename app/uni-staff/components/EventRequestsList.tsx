@@ -8,16 +8,47 @@ import { usePagination } from "@/hooks/use-pagination"
 import { timeObjectToString } from "@/service/eventApi"
 import { Calendar, ChevronLeft, ChevronRight, Clock, Filter } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
+import { useRouter } from "next/navigation"
 
 interface EventRequestsListProps {
   events: any[]
   eventsLoading: boolean
   pendingEvents: number
+  showAllEvents?: boolean // New prop to show all events including expired
 }
 
-export function EventRequestsList({ events, eventsLoading, pendingEvents }: EventRequestsListProps) {
+export function EventRequestsList({ events, eventsLoading, pendingEvents, showAllEvents = false }: EventRequestsListProps) {
   const [eventStatusFilter, setEventStatusFilter] = useState<string>("PENDING_UNISTAFF")
   const [eventTypeFilter, setEventTypeFilter] = useState<string>("ALL")
+  const router = useRouter()
+
+  // Function to handle clicking on an event
+  const handleEventClick = (eventId: string) => {
+    router.push(`/uni-staff/events-req/${eventId}`)
+  }
+
+  // Helper function to safely get event date
+  const getEventDate = (event: any): Date | null => {
+    // Multi-day event: use startDate or first day's date
+    if (event.days && event.days.length > 0) {
+      return new Date(event.days[0].date)
+    }
+    // Single-day event: use startDate or date
+    const dateStr = event.startDate || event.date
+    if (dateStr) {
+      return new Date(dateStr)
+    }
+    return null
+  }
+
+  // Helper function to get event display date string
+  const getEventDateString = (event: any): string => {
+    const eventDate = getEventDate(event)
+    if (!eventDate || isNaN(eventDate.getTime())) {
+      return "Invalid Date"
+    }
+    return eventDate.toLocaleDateString("en-US")
+  }
 
   // Filter and check non-expired events
   const filteredEvents = useMemo(() => {
@@ -34,42 +65,63 @@ export function EventRequestsList({ events, eventsLoading, pendingEvents }: Even
         return false
       }
 
-      // Check if event is not expired (date + endTime)
-      try {
-        const eventDate = new Date(event.date)
-        
-        // If there's an endTime, combine date and endTime for evaluation
-        if (event.endTime) {
-          const endTimeStr = timeObjectToString(event.endTime)
-          const [hours, minutes] = endTimeStr.split(':')
-          eventDate.setHours(parseInt(hours), parseInt(minutes))
+      // Check if event is not expired - Skip if showAllEvents is true
+      if (!showAllEvents) {
+        try {
+          const eventDate = getEventDate(event)
+          if (!eventDate || isNaN(eventDate.getTime())) {
+            console.warn("Invalid event date for event:", event.id, event.name)
+            return false
+          }
+          
+          // If there's an endTime, combine date and endTime for evaluation
+          if (event.endTime) {
+            const endTimeStr = timeObjectToString(event.endTime)
+            const [hours, minutes] = endTimeStr.split(':')
+            eventDate.setHours(parseInt(hours), parseInt(minutes))
+          }
+          
+          // Event must be in the future or today
+          const isNotExpired = eventDate >= now || 
+                 (eventDate.toDateString() === now.toDateString())
+          
+          if (!isNotExpired) {
+            return false
+          }
+        } catch (error) {
+          console.error("Error parsing event date:", error, "for event:", event.id)
+          return false
         }
-        
-        // Event must be in the future or today
-        return eventDate >= now || 
-               (eventDate.toDateString() === now.toDateString())
-      } catch (error) {
-        console.error("Error parsing event date:", error)
-        return false
       }
+      
+      return true
     })
-  }, [events, eventStatusFilter, eventTypeFilter])
+  }, [events, eventStatusFilter, eventTypeFilter, showAllEvents])
 
-  // Pagination for Event Requests
-  const {
-    currentPage: eventsCurrentPage,
-    totalPages: eventsTotalPages,
-    paginatedData: paginatedEventsList,
-    setCurrentPage: setEventsCurrentPage,
-  } = usePagination({
-    data: filteredEvents,
-    initialPageSize: 3,
+  // Manual pagination implementation for debugging
+  const pageSize = 3
+  const totalEvents = filteredEvents.length
+  const totalPages = Math.ceil(totalEvents / pageSize)
+  const [currentPage, setCurrentPage] = useState(1)
+  
+  const startIndex = (currentPage - 1) * pageSize
+  const endIndex = startIndex + pageSize
+  const paginatedEvents = filteredEvents.slice(startIndex, endIndex)
+
+  console.log('📊 Manual Pagination Debug:', {
+    totalEvents,
+    totalPages,
+    currentPage,
+    startIndex,
+    endIndex,
+    pageSize,
+    paginatedEventsLength: paginatedEvents.length
   })
 
-  // Reset Events pagination when filters change
+  // Reset pagination when filters change
   useEffect(() => {
-    setEventsCurrentPage(1)
-  }, [eventStatusFilter, eventTypeFilter, setEventsCurrentPage])
+    setCurrentPage(1)
+  }, [eventStatusFilter, eventTypeFilter, showAllEvents])
 
   const statusDotClass: Record<string, string> = {
     APPROVED: "bg-green-500",
@@ -77,8 +129,16 @@ export function EventRequestsList({ events, eventsLoading, pendingEvents }: Even
     REJECTED: "bg-red-500",
   }
 
-  const goEventsPrev = () => setEventsCurrentPage(Math.max(1, eventsCurrentPage - 1))
-  const goEventsNext = () => setEventsCurrentPage(Math.min(eventsTotalPages, eventsCurrentPage + 1))
+  const goEventsPrev = () => {
+    const newPage = Math.max(1, currentPage - 1)
+    console.log('🔙 Previous clicked:', { current: currentPage, total: totalPages, newPage })
+    setCurrentPage(newPage)
+  }
+  const goEventsNext = () => {
+    const newPage = Math.min(totalPages, currentPage + 1)
+    console.log('▶️ Next clicked:', { current: currentPage, total: totalPages, newPage })
+    setCurrentPage(newPage)
+  }
 
   return (
     <Card className="border-2 dark:border-slate-700">
@@ -94,7 +154,9 @@ export function EventRequestsList({ events, eventsLoading, pendingEvents }: Even
           </div>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
             <CardDescription className="text-[10px] sm:text-xs">
-              <span className="hidden sm:inline">Filter upcoming events (non-expired) • </span>
+              <span className="hidden sm:inline">
+                {showAllEvents ? "All events (including expired) " : "Filter upcoming events (non-expired) "} • 
+              </span>
               <span className="font-semibold text-amber-600 dark:text-amber-400">{pendingEvents} pending</span>
             </CardDescription>
             <div className="flex items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
@@ -135,18 +197,18 @@ export function EventRequestsList({ events, eventsLoading, pendingEvents }: Even
         <div className="space-y-2">
           {eventsLoading ? (
             <div className="text-center py-6 sm:py-8 text-sm sm:text-base text-muted-foreground">Loading...</div>
-          ) : paginatedEventsList.length === 0 ? (
+          ) : paginatedEvents.length === 0 ? (
             <div className="text-center py-6 sm:py-8 text-sm sm:text-base text-muted-foreground">No events found matching criteria</div>
           ) : (
-            paginatedEventsList.map((event: any) => {
-              const eventDate = new Date(event.date)
-              const formattedDate = eventDate.toLocaleDateString("en-US")
+            paginatedEvents.map((event: any) => {
+              const formattedDate = getEventDateString(event)
               const statusClass = statusDotClass[event.status] || "bg-gray-500"
               
               return (
                 <div
                   key={event.id}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between p-2 sm:p-3 border rounded-lg hover:bg-muted/50 dark:border-slate-700 dark:hover:bg-slate-800/50 transition-colors gap-2 sm:gap-0"
+                  onClick={() => handleEventClick(event.id)}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between p-2 sm:p-3 border rounded-lg hover:bg-muted/50 dark:border-slate-700 dark:hover:bg-slate-800/50 transition-colors gap-2 sm:gap-0 cursor-pointer"
                 >
                   <div className="flex items-start sm:items-center gap-2 sm:gap-3 flex-1 min-w-0">
                     <div className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full flex-shrink-0 mt-1 sm:mt-0 ${statusClass}`} />
@@ -213,17 +275,23 @@ export function EventRequestsList({ events, eventsLoading, pendingEvents }: Even
           )}
         </div>
 
-        {eventsTotalPages > 1 && (
+        {totalPages > 1 && (
           <div className="mt-3 sm:mt-4 flex items-center justify-center gap-1.5 sm:gap-2">
             <button
-              onClick={goEventsPrev}
-              disabled={eventsCurrentPage === 1}
+              type="button"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                console.log('🔙 Previous button clicked')
+                goEventsPrev()
+              }}
+              disabled={currentPage === 1}
               className={`
                 flex items-center gap-1 px-2 sm:px-3 py-1.5 text-[10px] sm:text-xs font-medium
-                transition-colors
-                ${eventsCurrentPage === 1 
+                transition-colors border-0 bg-transparent
+                ${currentPage === 1 
                   ? 'text-muted-foreground/50 cursor-not-allowed' 
-                  : 'text-cyan-500 hover:text-cyan-400 dark:text-cyan-400 dark:hover:text-cyan-300 cursor-pointer'
+                  : 'text-cyan-500 hover:text-cyan-400 dark:text-cyan-400 dark:hover:text-cyan-300 cursor-pointer hover:bg-cyan-50 dark:hover:bg-cyan-950/20'
                 }
               `}
               aria-label="Previous page"
@@ -232,17 +300,23 @@ export function EventRequestsList({ events, eventsLoading, pendingEvents }: Even
               <span className="hidden sm:inline">Previous</span>
             </button>
             <span className="text-[10px] sm:text-xs font-medium text-cyan-500 dark:text-cyan-400 px-1 sm:px-2">
-              {eventsCurrentPage}/{eventsTotalPages}
+              {currentPage}/{totalPages}
             </span>
             <button
-              onClick={goEventsNext}
-              disabled={eventsCurrentPage === eventsTotalPages}
+              type="button"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                console.log('▶️ Next button clicked')
+                goEventsNext()
+              }}
+              disabled={currentPage === totalPages}
               className={`
                 flex items-center gap-1 px-2 sm:px-3 py-1.5 text-[10px] sm:text-xs font-medium
-                transition-colors
-                ${eventsCurrentPage === eventsTotalPages 
+                transition-colors border-0 bg-transparent
+                ${currentPage === totalPages 
                   ? 'text-muted-foreground/50 cursor-not-allowed' 
-                  : 'text-cyan-500 hover:text-cyan-400 dark:text-cyan-400 dark:hover:text-cyan-300 cursor-pointer'
+                  : 'text-cyan-500 hover:text-cyan-400 dark:text-cyan-400 dark:hover:text-cyan-300 cursor-pointer hover:bg-cyan-50 dark:hover:bg-cyan-950/20'
                 }
               `}
               aria-label="Next page"

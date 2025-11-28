@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AppShell } from "@/components/app-shell"
 import { ProtectedRoute } from "@/contexts/protected-route"
-import { Calendar, MapPin, Clock, Users, History } from "lucide-react"
+import { Calendar, MapPin, Clock, Users, History, Gift } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { usePagination } from "@/hooks/use-pagination"
 import { Pagination } from "@/components/pagination"
@@ -24,6 +24,7 @@ export default function PublicEventsPage() {
   const [showCalendarModal, setShowCalendarModal] = useState(false)
   const [showHistoryModal, setShowHistoryModal] = useState(false)
   const [events, setEvents] = useState<any[]>([])
+  const [allEvents, setAllEvents] = useState<any[]>([])
   const [myEvents, setMyEvents] = useState<any[]>([])
   const [myEventsLoading, setMyEventsLoading] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -37,6 +38,7 @@ export default function PublicEventsPage() {
         const allEvents = await fetchEvent()
         // Filter only PUBLIC events
         const publicEvents = allEvents.filter((event: any) => event.type === "PUBLIC")
+        setAllEvents(publicEvents) // Store all public events for calendar
         setEvents(publicEvents)
       } catch (error) {
         console.error("Failed to load public events:", error)
@@ -284,10 +286,22 @@ export default function PublicEventsPage() {
                           <span>{event.locationName || "Location TBA"}</span>
                         </div>
 
-                        {/* Public Badge at bottom left */}
+                        {/* Event Type and Status Badges at bottom left */}
                         <div className="flex items-center gap-2 pt-2">
                           <Badge variant={event.type === "PUBLIC" ? "default" : "secondary"}>
                             {event.type}
+                          </Badge>
+                          <Badge variant="outline">
+                            {event.status}
+                          </Badge>
+                          <Badge variant="default" className="flex items-center gap-1 shrink-0 bg-emerald-600 hover:bg-emerald-700">
+                            <Gift className="h-3 w-3" />
+                            {(() => {
+                              const budgetPoints = event.budgetPoints ?? 0
+                              const maxCheckInCount = event.maxCheckInCount ?? 1
+                              const receivePoint = maxCheckInCount > 0 ? Math.floor(budgetPoints / maxCheckInCount) : 0
+                              return receivePoint
+                            })()} pts
                           </Badge>
                         </div>
 
@@ -416,7 +430,7 @@ export default function PublicEventsPage() {
           <CalendarModal
             open={showCalendarModal}
             onOpenChange={setShowCalendarModal}
-            events={events}
+            events={allEvents}
             onEventClick={(event) => {
               setShowCalendarModal(false)
               router.push(`/student/events-public/${event.id}`)

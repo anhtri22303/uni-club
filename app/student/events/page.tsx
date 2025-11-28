@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CalendarModal } from "@/components/calendar-modal"
 import { usePagination } from "@/hooks/use-pagination"
 import { useState } from "react"
-import { Calendar, Users, Ticket, Layers, History, X } from "lucide-react"
+import { Calendar, Users, Ticket, Layers, History, X, Gift } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import { safeSessionStorage } from "@/lib/browser-utils"
@@ -109,6 +109,9 @@ export default function MemberEventsPage() {
     selectedClubIdNumber || 0, 
     !!selectedClubIdNumber
   )
+  
+  // Store all events for calendar (without filter)
+  const allClubEvents = selectedClubEvents
 
   // Use selectedClubEvents instead of eventsData for filtering
   const filteredEvents = selectedClubEvents.filter(
@@ -464,6 +467,15 @@ export default function MemberEventsPage() {
                             <Ticket className="h-3 w-3" />
                             {(event.commitPointCost ?? 0)} pts
                           </Badge>
+                          <Badge variant="default" className="flex items-center gap-1 shrink-0 bg-emerald-600 hover:bg-emerald-700">
+                            <Gift className="h-3 w-3" />
+                            {(() => {
+                              const budgetPoints = event.budgetPoints ?? 0
+                              const maxCheckInCount = event.maxCheckInCount ?? 1
+                              const receivePoint = maxCheckInCount > 0 ? Math.floor(budgetPoints / maxCheckInCount) : 0
+                              return receivePoint
+                            })()} pts
+                          </Badge>
                           
                           {event.status === "COMPLETED" ? (
                             <Badge variant="outline" className="bg-blue-900 text-white border-blue-900 font-semibold text-xs">
@@ -478,7 +490,7 @@ export default function MemberEventsPage() {
                           ) : event.status === "APPROVED" ? (
                             <Badge variant="outline" className="bg-green-100 text-green-700 border-green-500 font-semibold text-xs">
                               <span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-1"></span>
-                              {status === "Finished" ? "Past" : status === "Soon" ? "Upcoming" : "Approved"}
+                              {event.status}
                             </Badge>
                           ) : event.status === "PENDING_COCLUB" ? (
                             <Badge variant="outline" className="bg-orange-100 text-orange-700 border-orange-500 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-700 font-semibold text-[10px] sm:text-xs">
@@ -605,7 +617,7 @@ export default function MemberEventsPage() {
           <CalendarModal
             open={showCalendarModal}
             onOpenChange={setShowCalendarModal}
-            events={selectedClubEvents}
+            events={allClubEvents}
             onEventClick={(event) => {
               setShowCalendarModal(false)
               router.push(`/student/events/${event.id}`)

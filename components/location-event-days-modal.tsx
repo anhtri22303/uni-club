@@ -22,6 +22,7 @@ import {
   ChevronRight,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { getEventByDate, Event as ApiEvent } from "@/service/eventApi"
 
 interface EventDay {
   date: string
@@ -54,6 +55,8 @@ export function LocationEventDaysModal({
   const [showTimeSelection, setShowTimeSelection] = useState(false)
   const [selectedDateForTime, setSelectedDateForTime] = useState<string>("")
   const [editingDayIndex, setEditingDayIndex] = useState<number>(-1)
+  const [existingEvents, setExistingEvents] = useState<ApiEvent[]>([])
+  const [loadingEvents, setLoadingEvents] = useState(false)
 
   useEffect(() => {
     if (open) {
@@ -65,6 +68,14 @@ export function LocationEventDaysModal({
       setSelectedDateForTime("")
     }
   }, [open, selectedLocationId, locations])
+
+  // Auto-fetch events when location changes and we have a selected date
+  useEffect(() => {
+    if (locationId > 0 && selectedDateForTime) {
+      console.log('🔄 Location or date changed, fetching events...', { locationId, selectedDateForTime })
+      fetchExistingEvents(selectedDateForTime, locationId)
+    }
+  }, [locationId, selectedDateForTime, locations])
 
   // Generate time slots (6:00 - 22:00, every 30 minutes)
   const generateTimeSlots = () => {
@@ -79,6 +90,48 @@ export function LocationEventDaysModal({
   }
 
   const timeSlots = generateTimeSlots()
+
+  // Fetch existing events for selected date and location
+  const fetchExistingEvents = async (date: string, locationId: number) => {
+    if (!date || !locationId) {
+      console.log('❌ Missing date or locationId:', { date, locationId })
+      return
+    }
+    
+    console.log('🚀 Starting fetchExistingEvents...', { date, locationId })
+    
+    try {
+      setLoadingEvents(true)
+      console.log('📡 Calling getEventByDate API...')
+      const events = await getEventByDate(date)
+      console.log('✅ API response received:', events)
+      
+      // Filter events by selected location
+      const selectedLocation = locations.find(loc => loc.id === locationId)
+      console.log('🏢 Selected location:', selectedLocation)
+      
+      // First filter by approved/ongoing/completed status
+      const approvedEvents = events.filter(event => {
+        const allowedStatuses = ['APPROVED', 'ONGOING', 'COMPLETED']
+        return allowedStatuses.includes(event.status)
+      })
+      console.log(`📋 Filtered to ${approvedEvents.length} approved/ongoing/completed events from ${events.length} total`)
+      
+      // Then filter by location
+      const eventsAtLocation = approvedEvents.filter(event => {
+        console.log('🔍 Comparing event location:', event.locationName, 'with selected:', selectedLocation?.name)
+        return event.locationName === selectedLocation?.name
+      })
+      
+      setExistingEvents(eventsAtLocation)
+      console.log(`✅ Found ${eventsAtLocation.length} existing events at ${selectedLocation?.name} on ${date}:`, eventsAtLocation)
+    } catch (error) {
+      console.error('Error fetching existing events:', error)
+      setExistingEvents([])
+    } finally {
+      setLoadingEvents(false)
+    }
+  }
 
   // Calendar logic
   const getDaysInMonth = (date: Date) => {
@@ -114,8 +167,17 @@ export function LocationEventDaysModal({
     const selectedDate = new Date(year, month, day)
     if (selectedDate < today) return
 
+    console.log('📅 Date selected:', dateStr, 'with locationId:', locationId)
     setSelectedDateForTime(dateStr)
     setShowTimeSelection(true)
+    
+    // Fetch existing events for this date and location
+    if (locationId > 0) {
+      console.log('🔥 Calling fetchExistingEvents from handleDateClick')
+      fetchExistingEvents(dateStr, locationId)
+    } else {
+      console.log('⚠️ No locationId, skipping API call')
+    }
   }
 
   const handleTimeSlotClick = (time: string, isStart: boolean) => {
@@ -220,6 +282,31 @@ export function LocationEventDaysModal({
   const currentDay = days.find(d => d.date === selectedDateForTime)
   const needsStartTime = currentDay && !currentDay.startTime
   const needsEndTime = currentDay && currentDay.startTime && !currentDay.endTime
+
+  // Function to check if a time slot conflicts with existing events
+  const isTimeSlotConflicted = (timeSlot: string) => {
+    if (!selectedDateForTime || existingEvents.length === 0) return false
+    
+    const timeInMinutes = (time: string) => {
+      const [hour, minute] = time.split(':').map(Number)
+      return hour * 60 + minute
+    }
+    
+    const slotMinutes = timeInMinutes(timeSlot)
+    
+    return existingEvents.some(event => {
+      // Check if event has days array (multi-day event)
+      if (event.days && event.days.length > 0) {
+        const dayData = event.days.find(day => day.date === selectedDateForTime)
+        if (dayData) {
+          const startMinutes = timeInMinutes(dayData.startTime)
+          const endMinutes = timeInMinutes(dayData.endTime)
+          return slotMinutes >= startMinutes && slotMinutes < endMinutes
+        }
+      }
+      return false
+    })
+  }
 
   return (
     <Modal
@@ -392,9 +479,11 @@ export function LocationEventDaysModal({
                 <div className="grid grid-cols-4 gap-2 pr-4">
                   {timeSlots.map((time) => {
                     const isSelected = currentDay?.startTime === time || currentDay?.endTime === time
+                    const isConflicted = isTimeSlotConflicted(time)
                     
                     // Disable logic: if selecting end time, disable all times <= start time
-                    let isDisabled = false
+                    let isDisabled = isConflicted // Always disable if conflicted
+                    
                     if (needsEndTime && currentDay?.startTime) {
                       // Convert time strings to minutes for comparison
                       const [startHour, startMin] = currentDay.startTime.split(':').map(Number)
@@ -402,8 +491,8 @@ export function LocationEventDaysModal({
                       const startMinutes = startHour * 60 + startMin
                       const timeMinutes = timeHour * 60 + timeMin
                       
-                      // Disable if time is less than or equal to start time
-                      isDisabled = timeMinutes <= startMinutes
+                      // Disable if time is less than or equal to start time OR conflicted
+                      isDisabled = isDisabled || (timeMinutes <= startMinutes)
                     }
                     
                     return (
@@ -417,10 +506,15 @@ export function LocationEventDaysModal({
                           isSelected
                             ? "bg-blue-600 text-white border-blue-700 shadow-lg"
                             : "bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 hover:border-blue-400",
-                          isDisabled && "opacity-40 cursor-not-allowed bg-gray-100 dark:bg-gray-900"
+                          isConflicted && "bg-red-100 border-red-300 text-red-600 cursor-not-allowed dark:bg-red-950/30 dark:border-red-800",
+                          isDisabled && !isConflicted && "opacity-40 cursor-not-allowed bg-gray-100 dark:bg-gray-900"
                         )}
+                        title={isConflicted ? "This time slot is already occupied by another event" : undefined}
                       >
                         {time}
+                        {isConflicted && (
+                          <div className="text-xs mt-1 leading-none">Booked</div>
+                        )}
                       </button>
                     )
                   })}

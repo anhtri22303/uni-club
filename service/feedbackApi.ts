@@ -67,6 +67,7 @@ export const getFeedbackByClubId = async (clubId: string | number): Promise<Feed
     const response = await axiosInstance.get<FeedbackApiResponse>(
       `/api/events/clubs/${clubId}/feedbacks`
     )
+    // console.log("Feedback Club:", response.data);
     return response.data.data
   } catch (error) {
     console.error(`Failed to fetch feedback for club ${clubId}:`, error)

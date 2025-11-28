@@ -271,30 +271,71 @@ export default function MemberHistoryPage() {
     }))
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
+  // Helper functions for event date handling
+  const getEventDate = (event: any): Date | null => {
+    // Multi-day event - use startDate
+    if (event.days && event.days.length > 0 && event.startDate) {
+      const dateStr = event.startDate
+      const dateParts = dateStr.split('-')
+      return new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]))
+    }
+    // Single-day event - use date field
+    if (event.date) {
+      const dateParts = event.date.split('-')
+      return new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]))
+    }
+    return null
+  }
+
+  const formatEventDateTime = (event: any): string => {
+    // Multi-day event
+    if (event.days && event.days.length > 0) {
+      const firstDay = event.days[0]
+      const lastDay = event.days[event.days.length - 1]
+      if (event.days.length === 1) {
+        return `${firstDay.date} | ${firstDay.startTime} - ${firstDay.endTime}`
+      }
+      return `${firstDay.date} to ${lastDay.date} | ${firstDay.startTime} - ${lastDay.endTime}`
+    }
+    // Single-day event
+    if (event.date) {
+      const startTime = timeObjectToString(event.startTime)
+      const endTime = timeObjectToString(event.endTime)
+      return `${event.date} | ${startTime} - ${endTime}`
+    }
+    return 'Date not available'
+  }
+
   // EVENT HISTORY
   const eventActivities = (myEvents || [])
-    .map((event: any) => ({
-      type: "event" as const,
-      date: event.date || new Date().toISOString(),
-      data: {
-        id: event.id,
-        name: event.name,
-        description: event.description,
-        type: event.type,
-        date: event.date,
-        startTime: event.startTime,
-        endTime: event.endTime,
-        status: event.status,
-        checkInCode: event.checkInCode,
-        budgetPoints: event.budgetPoints,
-        locationName: event.locationName,
-        maxCheckInCount: event.maxCheckInCount,
-        currentCheckInCount: event.currentCheckInCount,
-        commitPointCost: event.commitPointCost,
-        hostClub: event.hostClub,
-        coHostedClubs: event.coHostedClubs,
-      },
-    }))
+    .map((event: any) => {
+      const eventDate = getEventDate(event)
+      return {
+        type: "event" as const,
+        date: eventDate ? eventDate.toISOString() : new Date().toISOString(),
+        data: {
+          id: event.id,
+          name: event.name,
+          description: event.description,
+          type: event.type,
+          date: event.date,
+          startDate: event.startDate,
+          endDate: event.endDate,
+          days: event.days,
+          startTime: event.startTime,
+          endTime: event.endTime,
+          status: event.status,
+          checkInCode: event.checkInCode,
+          budgetPoints: event.budgetPoints,
+          locationName: event.locationName,
+          maxCheckInCount: event.maxCheckInCount,
+          currentCheckInCount: event.currentCheckInCount,
+          commitPointCost: event.commitPointCost,
+          hostClub: event.hostClub,
+          coHostedClubs: event.coHostedClubs,
+        },
+      }
+    })
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
   // Switch activities based on active tab
@@ -914,7 +955,7 @@ export default function MemberHistoryPage() {
                                     Host: {activity.data.hostClub?.name || "Unknown Club"}
                                   </p>
                                   <p className="text-xs text-muted-foreground mt-1">
-                                    📍 {activity.data.locationName} | 🕒 {timeObjectToString(activity.data.startTime)} - {timeObjectToString(activity.data.endTime)}
+                                    📍 {activity.data.locationName} | 🕒 {formatEventDateTime(activity.data)}
                                   </p>
                                   <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
                                     Commit points: {activity.data.commitPointCost} points

@@ -481,10 +481,9 @@ export default function UniStaffReportsPage() {
                   events={events}
                   eventsLoading={eventsLoading}
                   pendingEvents={pendingEvents}
+                  showAllEvents={true}
                 />
-          </div>
-
-          {/* Attendance Summary Card (full width) */}
+              </div>          {/* Attendance Summary Card (full width) */}
               <AttendanceSummaryCard 
                 attendanceSummary={attendanceSummary}
                 attendanceRanking={attendanceRanking}

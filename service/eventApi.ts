@@ -887,3 +887,33 @@ export const getEventFeedbackSummary = async (eventId: string | number): Promise
     throw error;
   }
 }
+
+/**
+ * GET /api/events/by-date
+ * Lấy tất cả sự kiện theo ngày cụ thể
+ * @param date - Ngày cần lấy sự kiện (format: YYYY-MM-DD)
+ * @returns Array of Event objects on that date
+ */
+export const getEventByDate = async (date: string): Promise<Event[]> => {
+  try {
+    const response = await axiosInstance.get(`/api/events/by-date?date=${date}`)
+    const resData: any = response.data
+    console.log(`Fetched events for date ${date}:`, resData)
+    
+    // Response structure: { success: true, message: "success", data: [...] }
+    if (resData?.success && Array.isArray(resData.data)) {
+      return resData.data
+    }
+    
+    // Fallback: if direct array
+    if (Array.isArray(resData)) {
+      return resData
+    }
+    
+    // Fallback: empty array
+    return []
+  } catch (error) {
+    console.error(`Error fetching events for date ${date}:`, error)
+    throw error
+  }
+}

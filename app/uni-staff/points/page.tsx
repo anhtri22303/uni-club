@@ -462,7 +462,7 @@ export default function UniversityStaffRewardPage() {
                                             <Table className="min-w-full">
                                                 <TableHeader>
                                                     <TableRow>
-                                                        <TableHead className="w-[80px]">ID</TableHead>
+                                                        <TableHead className="w-[80px]">#</TableHead>
                                                         <TableHead>Type</TableHead>
                                                         <TableHead>Amount</TableHead>
                                                         <TableHead className="w-[20%]">Sender</TableHead>
@@ -472,38 +472,41 @@ export default function UniversityStaffRewardPage() {
                                                     </TableRow>
                                                 </TableHeader>
                                                 <TableBody>
-                                                    {transactions.map((t) => (
-                                                        <TableRow key={t.id}>
-                                                            <TableCell className="font-medium">#{t.id}</TableCell>
-                                                            <TableCell><Badge variant="secondary">{t.type}</Badge></TableCell>
-                                                            <TableCell className="font-semibold text-green-600">+{t.amount} pts</TableCell>
-                                                            <TableCell className="font-medium text-slate-800 dark:text-blue-300">
-                                                                {t.senderName || "—"}
-                                                            </TableCell>
-                                                            <TableCell className="font-medium text-slate-800 dark:text-purple-300">
-                                                                {t.receiverName || "—"}
-                                                            </TableCell>
-                                                            <TableCell className="max-w-[200px] pr-2">
-                                                                {t.description && t.description.length > 50 ? (
-                                                                    <Tooltip>
-                                                                        <TooltipTrigger asChild>
-                                                                            <div className="truncate cursor-help">
-                                                                                {t.description}
-                                                                            </div>
-                                                                        </TooltipTrigger>
-                                                                        <TooltipContent className="max-w-[400px] break-words" side="top">
-                                                                            <p className="whitespace-normal">{t.description}</p>
-                                                                        </TooltipContent>
-                                                                    </Tooltip>
-                                                                ) : (
-                                                                    <div className="truncate">{t.description || "—"}</div>
-                                                                )}
-                                                            </TableCell>
-                                                            <TableCell className="text-sm text-muted-foreground whitespace-nowrap pl-2">
-                                                                {formatDate(t.createdAt)}
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    ))}
+                                                    {[...transactions].reverse().map((t, idx) => {
+                                                        const displayIndex = idx + 1;
+                                                        return (
+                                                            <TableRow key={t.id}>
+                                                                <TableCell className="font-medium">{displayIndex}</TableCell>
+                                                                <TableCell><Badge variant="secondary">{t.type}</Badge></TableCell>
+                                                                <TableCell className="font-semibold text-green-600">+{t.amount} pts</TableCell>
+                                                                <TableCell className="font-medium text-slate-800 dark:text-blue-300">
+                                                                    {t.senderName || "—"}
+                                                                </TableCell>
+                                                                <TableCell className="font-medium text-slate-800 dark:text-purple-300">
+                                                                    {t.receiverName || "—"}
+                                                                </TableCell>
+                                                                <TableCell className="max-w-[200px] pr-2">
+                                                                    {t.description && t.description.length > 50 ? (
+                                                                        <Tooltip>
+                                                                            <TooltipTrigger asChild>
+                                                                                <div className="truncate cursor-help">
+                                                                                    {t.description}
+                                                                                </div>
+                                                                            </TooltipTrigger>
+                                                                            <TooltipContent className="max-w-[400px] break-words" side="top">
+                                                                                <p className="whitespace-normal">{t.description}</p>
+                                                                            </TooltipContent>
+                                                                        </Tooltip>
+                                                                    ) : (
+                                                                        <div className="truncate">{t.description || "—"}</div>
+                                                                    )}
+                                                                </TableCell>
+                                                                <TableCell className="text-sm text-muted-foreground whitespace-nowrap pl-2">
+                                                                    {formatDate(t.createdAt)}
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        );
+                                                    })}
                                                 </TableBody>
                                             </Table>
                                         </div>

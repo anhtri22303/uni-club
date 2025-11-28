@@ -138,7 +138,7 @@ export default function StaffHomePage() {
           <div className="grid gap-8 lg:grid-cols-2">
             <Card
               className="staff-card-hover border-0 shadow-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white cursor-pointer overflow-hidden relative group"
-              onClick={() => router.push("/staff/validate")}
+              onClick={() => router.push("/student/staff/validate")}
             >
               <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
               <CardHeader className="relative z-10">
@@ -170,7 +170,7 @@ export default function StaffHomePage() {
 
             <Card
               className="staff-card-hover border-0 shadow-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white cursor-pointer overflow-hidden relative group"
-              onClick={() => router.push("/staff/history")}
+              onClick={() => router.push("/student/staff/history")}
             >
               <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
               <CardHeader className="relative z-10">

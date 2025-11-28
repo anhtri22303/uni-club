@@ -19,7 +19,7 @@ export interface EventStaff {
   membershipId: number;
   memberName: string;
   duty: string;
-  state: "ACTIVE" | "INACTIVE";
+  state: "ACTIVE" | "INACTIVE" | "REMOVED";
   assignedAt: string;
   unassignedAt: string | null;
 }
@@ -57,6 +57,7 @@ export async function getEventStaff(
   const res = await axiosInstance.get<ApiResponse<EventStaff[]>>(
     `/api/events/${eventId}/staffs`
   );
+  console.log("getEventStaff res:", res);
   return res.data.data;
 }
 
@@ -93,6 +94,20 @@ export async function postEventStaff(
         duty,
       },
     }
+  );
+  return res.data.data;
+}
+
+/**
+ * Xóa nhân sự (staff) khỏi sự kiện
+ * DELETE /api/events/{id}/staffs/{staffId}
+ */
+export async function deleteEventStaff(
+  eventId: number | string,
+  staffId: number | string
+): Promise<string> {
+  const res = await axiosInstance.delete<ApiResponse<string>>(
+    `/api/events/${eventId}/staffs/${staffId}`
   );
   return res.data.data;
 }
@@ -142,6 +157,7 @@ export default {
   getEventStaff,
   getEventStaffCompleted,
   postEventStaff,
+  deleteEventStaff,
   evaluateEventStaff,
   getEvaluateEventStaff,
   getTopEvaluatedStaff,
