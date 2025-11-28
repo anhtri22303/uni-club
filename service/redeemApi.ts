@@ -28,12 +28,13 @@ export interface RedeemOrder {
   clubName: string;
   memberName: string;
   reasonRefund?: string;
+  refundImages?: string[];
   clubId?: number;
   eventId?: number;
 }
 
 /**
- * (MỚI) Interface cho item đơn hàng trong danh sách Admin
+ *  Interface cho item đơn hàng trong danh sách Admin
  * (Response từ GET /api/admin/products/orders)
  */
 export interface AdminRedeemOrderItem {
@@ -51,7 +52,7 @@ export interface AdminRedeemOrderItem {
 }
 
 /**
- * (MỚI) Interface cho cấu trúc phân trang chuẩn (Spring Page)
+ *  Interface cho cấu trúc phân trang chuẩn (Spring Page)
  * (Response từ GET /api/admin/products/orders)
  */
 export interface PaginationResponse<T> {
@@ -88,7 +89,7 @@ export interface PaginationResponse<T> {
 }
 
 /**
- * (MỚI) Interface cho tham số phân trang
+ *  Interface cho tham số phân trang
  */
 export interface PaginationParams {
   page: number;
@@ -115,9 +116,18 @@ export interface RefundPayload {
   reason: string;
 }
 
-// --- API Functions ---
+/**
+ * Interface cho đối tượng ảnh lỗi (Refund Image)
+ * (Response từ GET /api/redeem/order/{orderId}/refund/images)
+ */
+export interface RefundImage {
+  id: number;
+  imageUrl: string;
+  publicId: string;
+  displayOrder: number;
+}
 
-// === POST (Tạo đơn) ===
+// --- API Functions ---
 
 /**
  * Đổi một sản phẩm của Club (Club Item)
@@ -152,7 +162,7 @@ export async function redeemEventProduct(
 // === GET (Lấy danh sách đơn) ===
 
 /**
- * (MỚI) [ADMIN] Lấy tất cả đơn hàng đổi quà (phân trang)
+ *  [ADMIN] Lấy tất cả đơn hàng đổi quà (phân trang)
  * (GET /api/admin/products/orders)
  */
 export async function getAdminAllRedeemOrders(
@@ -183,7 +193,7 @@ export async function getClubRedeemOrders(
 }
 
 /**
- * (MỚI) Lấy lịch sử các đơn hàng đổi quà của một Event
+ * Lấy lịch sử các đơn hàng đổi quà của một Event
  * (GET /api/redeem/orders/event/{eventId})
  */
 export async function getEventRedeemOrders(
@@ -196,7 +206,7 @@ export async function getEventRedeemOrders(
 }
 
 /**
- * (MỚI) Lấy tất cả đơn hàng Event của một Club
+ * Lấy tất cả đơn hàng Event của một Club
  * (GET /api/redeem/event/club/{clubId})
  */
 export async function getAllEventOrdersByClub(
@@ -209,7 +219,7 @@ export async function getAllEventOrdersByClub(
 }
 
 /**
- * (MỚI) Lấy lịch sử các đơn hàng đổi quà của chính member đang đăng nhập
+ *  Lấy lịch sử các đơn hàng đổi quà của chính member đang đăng nhập
  * (GET /api/redeem/orders/member)
  */
 export async function getMemberRedeemOrders(): Promise<RedeemOrder[]> {
@@ -223,7 +233,7 @@ export async function getMemberRedeemOrders(): Promise<RedeemOrder[]> {
 // === PUT (Cập nhật trạng thái đơn) ===
 
 /**
- * (MỚI) Lấy thông tin chi tiết đơn hàng theo orderId
+ *  Lấy thông tin chi tiết đơn hàng theo orderId
  * (GET /api/redeem/orders/{orderId})
  */
 // export async function getRedeemOrderById(
@@ -236,7 +246,7 @@ export async function getMemberRedeemOrders(): Promise<RedeemOrder[]> {
 // }
 
 /**
- * (MỚI) Lấy thông tin chi tiết đơn hàng theo orderCode (QR Scan)
+ *  Lấy thông tin chi tiết đơn hàng theo orderCode (QR Scan)
  * (GET /api/redeem/orders/{orderCode})
  */
 export async function getRedeemOrderByOrderCode(
@@ -249,7 +259,7 @@ export async function getRedeemOrderByOrderCode(
 }
 
 /**
- * (MỚI) Hoàn thành một đơn hàng (chuyển status sang COMPLETED)
+ *  Hoàn thành một đơn hàng (chuyển status sang COMPLETED)
  * (PUT /api/redeem/order/{orderId}/complete)
  */
 export async function completeRedeemOrder(
@@ -289,3 +299,62 @@ export async function refundPartialRedeemOrder(
   return res.data.data;
 }
 
+// === QUẢN LÝ ẢNH REFUND (GET & DELETE) ===
+
+/**
+ * Upload ảnh lỗi sản phẩm khi hoàn hàng (Refund)
+ * (POST /api/redeem/order/{orderId}/refund/upload-images)
+ * Lưu ý: Tối đa 5 ảnh.
+ */
+export async function uploadRefundImages(
+  orderId: number | string,
+  files: File[]
+): Promise<string[]> {
+  const formData = new FormData();
+
+  // Duyệt qua mảng file và append vào key 'files' theo yêu cầu API
+  files.forEach((file) => {
+    formData.append("files", file);
+  });
+
+  const res = await axiosInstance.post<ApiResponse<string[]>>(
+    `/api/redeem/order/${orderId}/refund/upload-images`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
+
+  // Trả về danh sách URL ảnh
+  return res.data.data;
+}
+
+/**
+ * Lấy danh sách ảnh lỗi đã upload của một Order
+ * (GET /api/redeem/order/{orderId}/refund/images)
+ */
+export async function getRefundImages(
+  orderId: number | string
+): Promise<RefundImage[]> {
+  const res = await axiosInstance.get<ApiResponse<RefundImage[]>>(
+    `/api/redeem/order/${orderId}/refund/images`
+  );
+  return res.data.data;
+}
+
+/**
+ * Xóa một ảnh lỗi cụ thể
+ * (DELETE /api/redeem/order/{orderId}/refund/image/{imageId})
+ */
+export async function deleteRefundImage(
+  orderId: number | string,
+  imageId: number | string
+): Promise<string> {
+  const res = await axiosInstance.delete<ApiResponse<string>>(
+    `/api/redeem/order/${orderId}/refund/image/${imageId}`
+  );
+  // Trả về message hoặc data string từ server
+  return res.data.data;
+}
