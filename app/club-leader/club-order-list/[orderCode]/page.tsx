@@ -8,12 +8,16 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import {
-    CheckCircle, XCircle, ArrowLeft, Clock, Package, DollarSign, ShoppingCart, User, Hash, Calendar, Undo2, Loader2, Info, WalletCards
+    CheckCircle, XCircle, ArrowLeft, Clock, Package, DollarSign, ShoppingCart, User, Hash, Calendar, Undo2, Loader2, Info, WalletCards,
+    ImagePlus, Trash2, UploadCloud, Image as ImageIcon
 } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { getRedeemOrderByOrderCode, RedeemOrder, completeRedeemOrder, refundRedeemOrder, refundPartialRedeemOrder, RefundPayload } from "@/service/redeemApi"
+import {
+    getRedeemOrderByOrderCode, RedeemOrder, completeRedeemOrder, refundRedeemOrder,
+    refundPartialRedeemOrder, RefundPayload, uploadRefundImages
+} from "@/service/redeemApi"
 import {
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger,
 } from "@/components/ui/dialog"
@@ -94,11 +98,112 @@ export default function ClubOrderDetailByCodePage({ params }: OrderDetailPagePro
         }
     };
 
+    // [MỚI] State cho hình ảnh hoàn trả
+    const [refundImages, setRefundImages] = useState<File[]>([]);
+
+    // [MỚI] Hàm xử lý chọn ảnh
+    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files) {
+            const filesArray = Array.from(e.target.files);
+            // Giới hạn tối đa 5 ảnh theo API
+            if (refundImages.length + filesArray.length > 5) {
+                toast({
+                    title: "Limit Exceeded",
+                    description: "You can only upload a maximum of 5 images.",
+                    variant: "destructive",
+                });
+                return;
+            }
+            setRefundImages((prev) => [...prev, ...filesArray]);
+        }
+    };
+
+    // [MỚI] Hàm xóa ảnh đã chọn
+    const removeImage = (index: number) => {
+        setRefundImages((prev) => prev.filter((_, i) => i !== index));
+    };
+
     // Xử lý "Cancel/Refund"
+    // const handleRefund = async () => {
+    //     if (!order) return
+
+    //     // Kiểm tra Reason
+    //     if (!refundReason.trim()) {
+    //         toast({
+    //             title: "Validation Error",
+    //             description: "Please provide a reason for the refund.",
+    //             variant: "destructive",
+    //         })
+    //         return;
+    //     }
+
+    //     setIsProcessing(true)
+    //     try {
+    //         if (refundType === "full") {
+    //             // --- Logic Full Refund ---
+    //             const payload: RefundPayload = {
+    //                 orderId: order.orderId,
+    //                 quantityToRefund: order.quantity, // Hoàn trả toàn bộ
+    //                 reason: refundReason,
+    //             };
+    //             await refundRedeemOrder(payload) // Gửi payload
+
+    //             toast({
+    //                 title: "Success",
+    //                 description: "Order has been successfully cancelled and refunded.",
+    //                 variant: "success",
+    //             })
+    //         } else {
+    //             // --- Logic Partial Refund ---
+    //             const qty = parseInt(partialQuantity);
+
+    //             if (!qty || qty <= 0) {
+    //                 throw new Error("Quantity to refund must be greater than 0.");
+    //             }
+    //             if (qty >= order.quantity) {
+    //                 throw new Error("Quantity is too high. Use 'Full Refund' instead.");
+    //             }
+
+    //             // 👈 Tạo payload mới
+    //             const payload: RefundPayload = {
+    //                 orderId: order.orderId,
+    //                 quantityToRefund: qty,
+    //                 reason: refundReason,
+    //             };
+    //             await refundPartialRedeemOrder(payload) // Gửi payload
+
+    //             toast({
+    //                 title: "Success",
+    //                 description: `Successfully refunded ${qty} item(s).`,
+    //                 variant: "success",
+    //             })
+    //         }
+
+    //         // Đóng modal và reset state
+    //         setIsRefundModalOpen(false)
+    //         setRefundType("full")
+    //         setPartialQuantity("1")
+    //         setRefundReason("") // Reset reason
+
+    //         // Tải lại thông tin order và refresh page
+    //         await queryClient.invalidateQueries({ queryKey: queryKeys.orderDetailByCode(params.orderCode) })
+    //         router.refresh();
+
+    //     } catch (error: any) {
+    //         console.error("Failed to refund order:", error)
+    //         toast({
+    //             title: "Error",
+    //             description: error.response?.data?.message || error.message || "Failed to refund order",
+    //             variant: "destructive",
+    //         })
+    //     } finally {
+    //         setIsProcessing(false)
+    //     }
+    // }
+    // CẬP NHẬT hàm handleRefund
     const handleRefund = async () => {
         if (!order) return
 
-        // Kiểm tra Reason
         if (!refundReason.trim()) {
             toast({
                 title: "Validation Error",
@@ -110,39 +215,43 @@ export default function ClubOrderDetailByCodePage({ params }: OrderDetailPagePro
 
         setIsProcessing(true)
         try {
+            // --- [BƯỚC 1: UPLOAD ẢNH (NẾU CÓ)] ---
+            if (refundImages.length > 0) {
+                try {
+                    await uploadRefundImages(order.orderId, refundImages);
+                } catch (uploadError) {
+                    console.error("Image upload failed:", uploadError);
+                    toast({
+                        title: "Warning",
+                        description: "Failed to upload refund images, but proceeding with refund.",
+                        variant: "destructive", // Hoặc warning nếu có
+                    });
+                    // Tùy chọn: return; nếu muốn bắt buộc upload thành công mới cho refund
+                }
+            }
+
+            // --- [BƯỚC 2: GỬI REQUEST REFUND (CODE CŨ)] ---
             if (refundType === "full") {
-                // --- Logic Full Refund ---
                 const payload: RefundPayload = {
                     orderId: order.orderId,
-                    quantityToRefund: order.quantity, // Hoàn trả toàn bộ
+                    quantityToRefund: order.quantity,
                     reason: refundReason,
                 };
-                await refundRedeemOrder(payload) // Gửi payload
-
+                await refundRedeemOrder(payload)
                 toast({
                     title: "Success",
                     description: "Order has been successfully cancelled and refunded.",
                     variant: "success",
                 })
             } else {
-                // --- Logic Partial Refund ---
                 const qty = parseInt(partialQuantity);
-
-                if (!qty || qty <= 0) {
-                    throw new Error("Quantity to refund must be greater than 0.");
-                }
-                if (qty >= order.quantity) {
-                    throw new Error("Quantity is too high. Use 'Full Refund' instead.");
-                }
-
-                // 👈 Tạo payload mới
+                // ... logic partial cũ giữ nguyên ...
                 const payload: RefundPayload = {
                     orderId: order.orderId,
                     quantityToRefund: qty,
                     reason: refundReason,
                 };
-                await refundPartialRedeemOrder(payload) // Gửi payload
-
+                await refundPartialRedeemOrder(payload)
                 toast({
                     title: "Success",
                     description: `Successfully refunded ${qty} item(s).`,
@@ -150,17 +259,18 @@ export default function ClubOrderDetailByCodePage({ params }: OrderDetailPagePro
                 })
             }
 
-            // Đóng modal và reset state
+            // Reset tất cả state
             setIsRefundModalOpen(false)
             setRefundType("full")
             setPartialQuantity("1")
-            setRefundReason("") // Reset reason
+            setRefundReason("")
+            setRefundImages([]) // Reset ảnh
 
-            // Tải lại thông tin order và refresh page
             await queryClient.invalidateQueries({ queryKey: queryKeys.orderDetailByCode(params.orderCode) })
             router.refresh();
 
         } catch (error: any) {
+            // ... Error handling cũ ...
             console.error("Failed to refund order:", error)
             toast({
                 title: "Error",
@@ -754,6 +864,69 @@ export default function ClubOrderDetailByCodePage({ params }: OrderDetailPagePro
                                                         );
                                                     })()}
 
+                                                    {/* --- [MỚI] Image Upload Section --- */}
+                                                    <div className="space-y-3">
+                                                        <Label className="text-sm font-semibold flex items-center gap-2 dark:text-white">
+                                                            <ImageIcon className="h-4 w-4 text-gray-600 dark:text-slate-400" />
+                                                            Product Defects / Proof Images
+                                                            <span className="text-xs font-normal text-muted-foreground ml-auto">
+                                                                (Max 5 images)
+                                                            </span>
+                                                        </Label>
+
+                                                        {/* Upload Box */}
+                                                        <div className="grid w-full gap-4">
+                                                            <div className="flex items-center justify-center w-full">
+                                                                <label
+                                                                    htmlFor="dropzone-file"
+                                                                    className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-xl cursor-pointer bg-gray-50 dark:bg-slate-700/50 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors ${refundImages.length >= 5 ? 'opacity-50 cursor-not-allowed' : 'border-gray-300 dark:border-slate-600'
+                                                                        }`}
+                                                                >
+                                                                    <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4">
+                                                                        <UploadCloud className="w-8 h-8 mb-3 text-gray-400" />
+                                                                        <p className="mb-1 text-sm text-gray-500 dark:text-slate-400">
+                                                                            <span className="font-semibold">Click to upload</span> or drag and drop
+                                                                        </p>
+                                                                        <p className="text-xs text-gray-400 dark:text-slate-500">
+                                                                            PNG, JPG or JPEG
+                                                                        </p>
+                                                                    </div>
+                                                                    <Input
+                                                                        id="dropzone-file"
+                                                                        type="file"
+                                                                        multiple
+                                                                        accept="image/*"
+                                                                        className="hidden"
+                                                                        onChange={handleImageChange}
+                                                                        disabled={refundImages.length >= 5}
+                                                                    />
+                                                                </label>
+                                                            </div>
+
+                                                            {/* Image Previews */}
+                                                            {refundImages.length > 0 && (
+                                                                <div className="grid grid-cols-5 gap-2 mt-2">
+                                                                    {refundImages.map((file, index) => (
+                                                                        <div key={index} className="relative group aspect-square rounded-lg overflow-hidden border border-gray-200 dark:border-slate-600">
+                                                                            <img
+                                                                                src={URL.createObjectURL(file)}
+                                                                                alt="preview"
+                                                                                className="w-full h-full object-cover"
+                                                                            />
+                                                                            <button
+                                                                                onClick={() => removeImage(index)}
+                                                                                className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                                type="button"
+                                                                            >
+                                                                                <XCircle className="h-3 w-3" />
+                                                                            </button>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
                                                     {/* Refund Reason Input */}
                                                     <div className="space-y-3">
                                                         <Label htmlFor="refundReason" className="text-sm font-semibold flex items-center gap-2 dark:text-white">
@@ -782,6 +955,7 @@ export default function ClubOrderDetailByCodePage({ params }: OrderDetailPagePro
                                                             setRefundType("full")
                                                             setPartialQuantity("1")
                                                             setPartialQuantityError(null)
+                                                            setRefundImages([])
                                                         }}
                                                         disabled={isProcessing}
                                                         className="flex-1 h-11 border-2 hover:bg-gray-50 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:hover:bg-slate-600"
