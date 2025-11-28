@@ -28,6 +28,7 @@ export interface RedeemOrder {
   clubName: string;
   memberName: string;
   reasonRefund?: string;
+  refundImages?: string[];
   clubId?: number;
   eventId?: number;
 }
