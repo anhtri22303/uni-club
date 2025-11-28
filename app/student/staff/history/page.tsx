@@ -75,7 +75,7 @@ export default function StaffHistoryPage() {
               description="Your voucher validations will appear here once you start processing customer vouchers"
               action={{
                 label: "Start Validating",
-                onClick: () => (window.location.href = "/staff/validate"),
+                onClick: () => (window.location.href = "/student/staff/validate"),
               }}
             />
           </div>

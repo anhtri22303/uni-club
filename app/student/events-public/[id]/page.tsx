@@ -24,13 +24,13 @@ import {
   MessageSquare,
   ChevronLeft,
   ChevronRight,
+  Gift,
+  Ticket,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   getEventById,
   timeObjectToString,
-  getEventSummary,
-  EventSummary,
   EventDay,
 } from "@/service/eventApi";
 import { EventDateTimeDisplay } from "@/components/event-date-time-display";
@@ -92,10 +92,6 @@ export default function PublicEventDetailPage() {
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Event summary states
-  const [eventSummary, setEventSummary] = useState<EventSummary | null>(null);
-  const [summaryLoading, setSummaryLoading] = useState(false);
-
   // Feedback states
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [feedbackLoading, setFeedbackLoading] = useState(false);
@@ -127,24 +123,6 @@ export default function PublicEventDetailPage() {
           endTime: data.endTime ? timeObjectToString(data.endTime) : null,
         };
         setEvent(normalizedEvent);
-
-        // Fetch event summary if APPROVED, ONGOING or COMPLETED
-        if (
-          data.status === "APPROVED" ||
-          data.status === "ONGOING" ||
-          data.status === "COMPLETED"
-        ) {
-          try {
-            setSummaryLoading(true);
-            const summaryData = await getEventSummary(params.id as string);
-            setEventSummary(summaryData);
-          } catch (summaryError) {
-            console.error("Failed to load event summary:", summaryError);
-            // Don't show error toast for summary, it's not critical
-          } finally {
-            setSummaryLoading(false);
-          }
-        }
 
         // Fetch feedback for APPROVED, ONGOING, COMPLETED events
         if (
@@ -521,6 +499,40 @@ export default function PublicEventDetailPage() {
                           Organizing Club
                         </div>
                       </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Points Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Points Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-4 bg-muted/50 rounded-lg">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                      <Ticket className="h-4 w-4" />
+                      <span>Commit Point Cost</span>
+                    </div>
+                    <div className="font-semibold text-lg">
+                      {event.commitPointCost ?? 0} points
+                    </div>
+                  </div>
+                  <div className="p-4 bg-emerald-50 dark:bg-emerald-950/20 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                    <div className="flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-400 mb-1">
+                      <Gift className="h-4 w-4" />
+                      <span>Receive Point</span>
+                    </div>
+                    <div className="font-semibold text-lg text-emerald-700 dark:text-emerald-400">
+                      {(() => {
+                        const budgetPoints = event.budgetPoints ?? 0
+                        const maxCheckInCount = event.maxCheckInCount ?? 1
+                        return maxCheckInCount > 0 ? Math.floor(budgetPoints / maxCheckInCount) : 0
+                      })()} points
+                    </div>
+                    <div className="text-xs text-emerald-600 dark:text-emerald-500 mt-1">
+                      Per full attendance
                     </div>
                   </div>
                 </div>

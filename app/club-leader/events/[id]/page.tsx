@@ -24,6 +24,8 @@ import {
   RotateCcw,
   Monitor,
   Smartphone,
+  Gift,
+  Ticket,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 // import { getEventById } from "@/service/eventApi"
@@ -999,7 +1001,7 @@ export default function EventDetailPage() {
                 </Button>
               )}
               {/* Show More Time and End Event buttons only when status is ONGOING */}
-              {event.status === "ONGOING" && (
+              {/* {event.status === "ONGOING" && (
                 <>
                   <Button
                     onClick={() => setShowTimeExtensionModal(true)}
@@ -1037,7 +1039,7 @@ export default function EventDetailPage() {
                     )}
                   </Button>
                 </>
-              )}
+              )} */}
               <div className="flex items-center gap-2">
                 <Eye className="h-5 w-5 text-muted-foreground" />
                 <span className="text-sm text-muted-foreground">
@@ -1156,6 +1158,40 @@ export default function EventDetailPage() {
                   </div>
                 </div>
               )}
+
+              {/* Points Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Points Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-4 bg-muted/50 rounded-lg">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                      <Ticket className="h-4 w-4" />
+                      <span>Commit Point Cost</span>
+                    </div>
+                    <div className="font-semibold text-lg">
+                      {event.commitPointCost ?? 0} points
+                    </div>
+                  </div>
+                  <div className="p-4 bg-emerald-50 dark:bg-emerald-950/20 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                    <div className="flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-400 mb-1">
+                      <Gift className="h-4 w-4" />
+                      <span>Receive Point</span>
+                    </div>
+                    <div className="font-semibold text-lg text-emerald-700 dark:text-emerald-400">
+                      {(() => {
+                        const budgetPoints = event.budgetPoints ?? 0
+                        const maxCheckInCount = event.maxCheckInCount ?? 1
+                        return maxCheckInCount > 0 ? Math.floor(budgetPoints / maxCheckInCount) : 0
+                      })()} points
+                    </div>
+                    <div className="text-xs text-emerald-600 dark:text-emerald-500 mt-1">
+                      Per full attendance
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
 
               {/* Check-in Information */}
               <div className="space-y-4">

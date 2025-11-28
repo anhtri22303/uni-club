@@ -95,6 +95,50 @@ const getContrastTextColor = (hexColor: string): string => {
   return yiq >= 140 ? "#111827" : "#FFFFFF";
 };
 
+// Helper functions to safely get event date
+const getEventDate = (event: any): Date | null => {
+  // Multi-day event: use startDate or first day's date
+  if (event.days && event.days.length > 0) {
+    return event.days[0].date ? new Date(event.days[0].date) : null
+  }
+  // Single-day event: use date field
+  if (event.date) {
+    return new Date(event.date)
+  }
+  return null
+}
+
+const getEventDateString = (event: any): string => {
+  const date = getEventDate(event)
+  return date ? date.toISOString().split('T')[0] : ''
+}
+
+const formatEventDateTime = (event: any): string => {
+  const date = getEventDate(event)
+  if (!date) return 'Invalid Date'
+  
+  // Add time if available
+  const time = event.startTime || event.time
+  if (time) {
+    let timeStr = time
+    if (typeof time === 'object' && time !== null) {
+      const pad = (n: number) => n.toString().padStart(2, '0')
+      timeStr = `${pad(time.hour || 0)}:${pad(time.minute || 0)}`
+    }
+    return `${date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short', 
+      day: 'numeric'
+    })} at ${timeStr}`
+  }
+  
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  })
+}
+
 interface EventRequestDetailPageProps {
   params: {
     id: string;
@@ -1010,7 +1054,7 @@ export default function EventRequestDetailPage({
                   <CardTitle className="text-lg">Request Details</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {(request.requestDate || request.date) && (
+                  {(request.requestDate || getEventDateString(request)) && (
                     <div>
                       <label className="text-sm font-medium text-muted-foreground">
                         Request Date
@@ -1018,9 +1062,10 @@ export default function EventRequestDetailPage({
                       <div className="flex items-center gap-2 mt-1">
                         <Calendar className="h-4 w-4 text-muted-foreground" />
                         <span>
-                          {new Date(
-                            request.requestDate || request.date
-                          ).toLocaleDateString()}
+                          {request.requestDate 
+                            ? new Date(request.requestDate).toLocaleDateString()
+                            : formatEventDateTime(request)
+                          }
                         </span>
                       </div>
                     </div>

@@ -15,7 +15,7 @@ import { Modal } from "@/components/modal"
 import { QRModal } from "@/components/qr-modal"
 import { CalendarModal } from "@/components/calendar-modal"
 import { useToast } from "@/hooks/use-toast"
-import { Calendar, Plus, Ticket, ChevronLeft, ChevronRight, Eye, Filter, X } from "lucide-react"
+import { Calendar, Plus, Ticket, ChevronLeft, ChevronRight, Eye, Filter, X, Gift } from "lucide-react"
 import { QrCode } from "lucide-react"
 import QRCode from "qrcode"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -51,6 +51,7 @@ type EventFilters = {
 export default function AdminEventsPage() {
   const router = useRouter()
   const [events, setEvents] = useState<AdminEvent[]>([])
+  const [allEvents, setAllEvents] = useState<AdminEvent[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const { toast } = useToast()
   // --- Query để lấy danh sách Locations ---
@@ -119,6 +120,11 @@ export default function AdminEventsPage() {
   useEffect(() => {
     loadEvents(currentPage, searchTerm, activeFilters)
   }, [currentPage, searchTerm, activeFilters])
+
+  // Load all events for calendar on mount
+  useEffect(() => {
+    loadAllEventsForCalendar()
+  }, [])
 
   // --- Các state cho Modals ---
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -667,7 +673,7 @@ export default function AdminEventsPage() {
                           )}
                         </div>
                         {/* Approval status badge */}
-                        <div className="mt-2">
+                        <div className="mt-2 flex flex-wrap gap-2">
                           {isCompleted ? (
                             <Badge variant="secondary" className="bg-blue-900 text-white border-blue-900 font-semibold">
                               <span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
@@ -717,6 +723,18 @@ export default function AdminEventsPage() {
                               )}
                             </>
                           )}
+                          {/* Receive Point badge */}
+                          <Badge
+                            variant="default"
+                            className="flex items-center gap-1 shrink-0 bg-emerald-600 hover:bg-emerald-700 text-xs font-semibold"
+                          >
+                            <Gift className="h-3 w-3" />
+                            {(() => {
+                              const budgetPoints = event.budgetPoints ?? 0
+                              const maxCheckInCount = event.maxCheckInCount ?? 1
+                              return maxCheckInCount > 0 ? Math.floor(budgetPoints / maxCheckInCount) : 0
+                            })()} pts
+                          </Badge>
                         </div>
                       </CardHeader>
                       {/* <CardContent className="flex-1 flex flex-col">
@@ -963,7 +981,7 @@ export default function AdminEventsPage() {
           <CalendarModal
             open={showCalendarModal}
             onOpenChange={setShowCalendarModal}
-            events={events.map(e => ({ ...e, date: e.startTime }))} // Map startTime -> date cho CalendarModal
+            events={allEvents.map(e => ({ ...e, date: e.startTime }))} // Map startTime -> date cho CalendarModal
             onEventClick={(event) => {
               setShowCalendarModal(false)
               router.push(`/admin/events/${event.id}`)

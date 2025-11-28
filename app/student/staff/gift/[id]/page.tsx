@@ -8,17 +8,13 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import {
-    CheckCircle, XCircle, ArrowLeft, Clock, Package, ShoppingCart, User, Hash, Calendar, Undo2, Loader2, Info, WalletCards,
-    Image as ImageIcon, ChevronLeft, ChevronRight, X, UploadCloud
+    CheckCircle, XCircle, ArrowLeft, Clock, Package, ShoppingCart, User, Hash, Calendar, Undo2, Loader2, Info, WalletCards 
 } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { getClubIdFromToken } from "@/service/clubApi"
-import {
-    getClubRedeemOrders, RedeemOrder, completeRedeemOrder, refundRedeemOrder, refundPartialRedeemOrder, RefundPayload,
-    uploadRefundImages, getRefundImages, RefundImage,
-} from "@/service/redeemApi"
+import { getClubRedeemOrders, RedeemOrder, completeRedeemOrder, refundRedeemOrder, refundPartialRedeemOrder, RefundPayload } from "@/service/redeemApi"
 import {
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger,
 } from "@/components/ui/dialog"
@@ -28,21 +24,19 @@ import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 
-// Props cho trang chi tiết
 interface OrderDetailPageProps {
     params: {
-        id: string // Đây sẽ là orderId
+        id: string
     }
 }
 
-// Đặt key cho react-query
 export const queryKeys = {
-    eventOrders: (clubId: number) => ["eventOrders", clubId] as const,
+    eventOrders: (clubId: number) => ["staffEventOrders", clubId] as const,
 }
 
 type UiOrder = RedeemOrder
 
-export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
+export default function StaffGiftDetailPage({ params }: OrderDetailPageProps) {
     const router = useRouter()
     const { toast } = useToast()
     const queryClient = useQueryClient()
@@ -50,32 +44,24 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
     const [clubId, setClubId] = useState<number | null>(null)
     const [isProcessing, setIsProcessing] = useState<boolean>(false)
 
-    // CHO LOGIC REFUND
     const [isRefundModalOpen, setIsRefundModalOpen] = useState<boolean>(false)
     const [refundReason, setRefundReason] = useState<string>("")
     const [refundType, setRefundType] = useState<"full" | "partial">("full")
     const [partialQuantity, setPartialQuantity] = useState<string>("1")
-    // [MỚI] State cho hình ảnh hoàn trả (Upload)
-    const [refundImages, setRefundImages] = useState<File[]>([]);
 
-    // [MỚI] State để xem ảnh phóng to (Preview Gallery)
-    const [previewIndex, setPreviewIndex] = useState<number | null>(null);
-
-    // 1. Lấy clubId của leader (Giữ nguyên)
     useEffect(() => {
         const id = getClubIdFromToken()
         if (id) {
             setClubId(id)
         } else {
             toast({
-                title: "Lỗi",
-                description: "Không tìm thấy Club ID của bạn.",
+                title: "Error",
+                description: "Could not find your Club ID.",
                 variant: "destructive",
             })
         }
     }, [toast])
 
-    // Lấy TẤT CẢ đơn hàng (giống logic trang chi tiết CLB)
     const {
         data: orders = [],
         isLoading: loading,
@@ -86,74 +72,24 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
         enabled: !!clubId,
     })
 
-    // Tìm đơn hàng cụ thể
     const order: UiOrder | undefined = useMemo(() => {
         if (loading || !params.id) return undefined
-        // params.id là string, orderId là number
         return orders.find(o => String(o.orderId) === params.id)
     }, [orders, loading, params.id])
 
-    // === [MỚI] Query lấy danh sách ảnh lỗi từ Server ===
-    const { data: serverRefundImages } = useQuery<RefundImage[]>({
-        queryKey: ["refundImages", order?.orderId],
-        queryFn: () => getRefundImages(order!.orderId),
-        enabled: !!order?.orderId && (order.status === "REFUNDED" || order.status === "PARTIALLY_REFUNDED"),
-    });
-
-    // [MỚI] Các hàm xử lý ảnh (Copy y nguyên từ trang club)
-    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files) {
-            const filesArray = Array.from(e.target.files);
-            if (refundImages.length + filesArray.length > 5) {
-                toast({ title: "Limit Exceeded", description: "Max 5 images allowed.", variant: "destructive" });
-                return;
-            }
-            setRefundImages((prev) => [...prev, ...filesArray]);
-        }
-    };
-
-    const removeImage = (index: number) => {
-        setRefundImages((prev) => prev.filter((_, i) => i !== index));
-    };
-
-    const showNextImage = () => {
-        if (serverRefundImages && previewIndex !== null) {
-            setPreviewIndex((prev) => (prev! + 1) % serverRefundImages.length);
-        }
-    };
-
-    const showPrevImage = () => {
-        if (serverRefundImages && previewIndex !== null) {
-            setPreviewIndex((prev) => (prev! - 1 + serverRefundImages.length) % serverRefundImages.length);
-        }
-    };
-
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (previewIndex === null) return;
-            if (e.key === "ArrowRight") showNextImage();
-            if (e.key === "ArrowLeft") showPrevImage();
-            if (e.key === "Escape") setPreviewIndex(null);
-        };
-        window.addEventListener("keydown", handleKeyDown);
-        return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [previewIndex, serverRefundImages]);
-
-    //: Xử lý "Delivered"
     const handleDeliver = async () => {
         if (!order || !clubId) return;
 
         setIsProcessing(true);
         try {
             await completeRedeemOrder(order.orderId);
-
+            
             toast({
                 title: "Success",
                 description: "Order marked as 'Delivered' successfully!",
                 variant: "success",
             })
-
-            // Tải lại danh sách orders và refresh page
+            
             await queryClient.invalidateQueries({ queryKey: queryKeys.eventOrders(clubId) });
             router.refresh();
         } catch (error) {
@@ -168,87 +104,9 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
         }
     };
 
-    // Xử lý "Cancel/Refund"
-    // const handleRefund = async () => {
-    //     if (!order || !clubId) return
-
-    //     // Kiểm tra Reason
-    //     if (!refundReason.trim()) {
-    //         toast({
-    //             title: "Validation Error",
-    //             description: "Please provide a reason for the refund.",
-    //             variant: "destructive",
-    //         })
-    //         return;
-    //     }
-
-    //     setIsProcessing(true)
-    //     try {
-    //         if (refundType === "full") {
-    //             // --- Logic Full Refund ---
-    //             const payload: RefundPayload = {
-    //                 orderId: order.orderId,
-    //                 quantityToRefund: order.quantity, // Hoàn trả toàn bộ
-    //                 reason: refundReason,
-    //             };
-    //             await refundRedeemOrder(payload) // Gửi payload
-
-    //             toast({
-    //                 title: "Success",
-    //                 description: "Order has been successfully cancelled and refunded.",
-    //                 variant: "success",
-    //             })
-    //         } else {
-    //             // --- Logic Partial Refund ---
-    //             const qty = parseInt(partialQuantity);
-
-    //             if (!qty || qty <= 0) {
-    //                 throw new Error("Quantity to refund must be greater than 0.");
-    //             }
-    //             if (qty >= order.quantity) {
-    //                 throw new Error("Quantity is too high. Use 'Full Refund' instead.");
-    //             }
-
-    //             // 👈 Tạo payload mới
-    //             const payload: RefundPayload = {
-    //                 orderId: order.orderId,
-    //                 quantityToRefund: qty,
-    //                 reason: refundReason,
-    //             };
-    //             await refundPartialRedeemOrder(payload) // Gửi payload
-
-    //             toast({
-    //                 title: "Success",
-    //                 description: `Successfully refunded ${qty} item(s).`,
-    //                 variant: "success",
-    //             })
-    //         }
-
-    //         // Đóng modal và reset state
-    //         setIsRefundModalOpen(false)
-    //         setRefundType("full")
-    //         setPartialQuantity("1")
-    //         setRefundReason("") // Reset reason
-
-    //         // Tải lại danh sách orders và refresh page
-    //         await queryClient.invalidateQueries({ queryKey: queryKeys.eventOrders(clubId) })
-    //         router.refresh();
-
-    //     } catch (error: any) {
-    //         console.error("Failed to refund order:", error)
-    //         toast({
-    //             title: "Error",
-    //             description: error.response?.data?.message || error.message || "Failed to refund order",
-    //             variant: "destructive",
-    //         })
-    //     } finally {
-    //         setIsProcessing(false)
-    //     }
-    // }
     const handleRefund = async () => {
         if (!order || !clubId) return
 
-        // Kiểm tra Reason
         if (!refundReason.trim()) {
             toast({
                 title: "Validation Error",
@@ -260,28 +118,13 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
 
         setIsProcessing(true)
         try {
-            // --- [BƯỚC 1: UPLOAD ẢNH (NẾU CÓ)] ---
-            if (refundImages.length > 0) {
-                try {
-                    await uploadRefundImages(order.orderId, refundImages);
-                } catch (uploadError) {
-                    console.error("Image upload failed:", uploadError);
-                    toast({
-                        title: "Warning",
-                        description: "Failed to upload refund images, but proceeding with refund.",
-                        variant: "destructive",
-                    });
-                }
-            }
-
             if (refundType === "full") {
-                // --- Logic Full Refund ---
                 const payload: RefundPayload = {
                     orderId: order.orderId,
-                    quantityToRefund: order.quantity, // Hoàn trả toàn bộ
+                    quantityToRefund: order.quantity,
                     reason: refundReason,
                 };
-                await refundRedeemOrder(payload) // Gửi payload
+                await refundRedeemOrder(payload)
 
                 toast({
                     title: "Success",
@@ -289,7 +132,6 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                     variant: "success",
                 })
             } else {
-                // --- Logic Partial Refund ---
                 const qty = parseInt(partialQuantity);
 
                 if (!qty || qty <= 0) {
@@ -299,13 +141,12 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                     throw new Error("Quantity is too high. Use 'Full Refund' instead.");
                 }
 
-                // 👈 Tạo payload mới
                 const payload: RefundPayload = {
                     orderId: order.orderId,
                     quantityToRefund: qty,
                     reason: refundReason,
                 };
-                await refundPartialRedeemOrder(payload) // Gửi payload
+                await refundPartialRedeemOrder(payload)
 
                 toast({
                     title: "Success",
@@ -314,14 +155,11 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                 })
             }
 
-            // Đóng modal và reset state
             setIsRefundModalOpen(false)
             setRefundType("full")
             setPartialQuantity("1")
-            setRefundReason("") // Reset reason
-            setRefundImages([]) // Reset ảnh upload
-
-            // Tải lại danh sách orders và refresh page
+            setRefundReason("")
+            
             await queryClient.invalidateQueries({ queryKey: queryKeys.eventOrders(clubId) })
             router.refresh();
 
@@ -337,9 +175,6 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
         }
     }
 
-
-
-    // Enhanced Status Badge Function
     const getStatusBadge = (status: string) => {
         switch (status) {
             case "PENDING":
@@ -380,10 +215,9 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
         }
     }
 
-    // Enhanced Loading State
     if (loading) {
         return (
-            <ProtectedRoute allowedRoles={["club_leader"]}>
+            <ProtectedRoute allowedRoles={["student"]}>
                 <AppShell>
                     <div className="flex items-center justify-center min-h-[60vh]">
                         <div className="text-center space-y-4">
@@ -399,10 +233,9 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
         )
     }
 
-    // Enhanced Error/Not Found State
     if (error || !order) {
         return (
-            <ProtectedRoute allowedRoles={["club_leader"]}>
+            <ProtectedRoute allowedRoles={["student"]}>
                 <AppShell>
                     <div className="flex items-center justify-center min-h-[60vh]">
                         <Card className="max-w-md border-0 shadow-2xl">
@@ -418,10 +251,10 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                         {error ? String(error) : "The requested order could not be found or you don't have permission to view it."}
                                     </p>
                                 </div>
-                                <Link href="/club-leader/event-order-list">
+                                <Link href="/student/staff/gift">
                                     <Button className="h-12 px-6 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold shadow-lg">
                                         <ArrowLeft className="h-4 w-4 mr-2" />
-                                        Back to Event Order List
+                                        Back to Gift List
                                     </Button>
                                 </Link>
                             </CardContent>
@@ -432,59 +265,54 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
         )
     }
 
-    // Determine status color theme
-    const statusTheme =
+    const statusTheme = 
         order.status === "PENDING" ? {
             gradient: "from-yellow-50 via-yellow-50/50 to-transparent",
             border: "border-yellow-200",
             icon: "from-yellow-400 to-yellow-500",
             text: "text-yellow-700"
         } :
-            order.status === "COMPLETED" ? {
-                gradient: "from-green-50 via-green-50/50 to-transparent",
-                border: "border-green-200",
-                icon: "from-green-400 to-green-500",
-                text: "text-green-700"
-            } :
-                order.status === "PARTIALLY_REFUNDED" ? {
-                    gradient: "from-orange-50 via-orange-50/50 to-transparent",
-                    border: "border-orange-200",
-                    icon: "from-orange-400 to-orange-500",
-                    text: "text-orange-700"
-                } : {
-                    gradient: "from-blue-50 via-blue-50/50 to-transparent",
-                    border: "border-blue-200",
-                    icon: "from-blue-400 to-blue-500",
-                    text: "text-blue-700"
-                }
+        order.status === "COMPLETED" ? {
+            gradient: "from-green-50 via-green-50/50 to-transparent",
+            border: "border-green-200",
+            icon: "from-green-400 to-green-500",
+            text: "text-green-700"
+        } :
+        order.status === "PARTIALLY_REFUNDED" ? {
+            gradient: "from-orange-50 via-orange-50/50 to-transparent",
+            border: "border-orange-200",
+            icon: "from-orange-400 to-orange-500",
+            text: "text-orange-700"
+        } : {
+            gradient: "from-blue-50 via-blue-50/50 to-transparent",
+            border: "border-blue-200",
+            icon: "from-blue-400 to-blue-500",
+            text: "text-blue-700"
+        }
 
     return (
-        <ProtectedRoute allowedRoles={["club_leader"]}>
+        <ProtectedRoute allowedRoles={["student"]}>
             <AppShell>
                 <div className="space-y-6">
-                    {/* Enhanced Header with Background */}
                     <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${statusTheme.gradient} border ${statusTheme.border} p-6 shadow-lg`}>
-                        {/* Decorative circles */}
                         <div className="absolute top-0 right-0 w-64 h-64 bg-white/30 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
                         <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/20 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2" />
-
+                        
                         <div className="relative z-10">
-                            {/* Back button */}
-                            <Link href="/club-leader/event-order-list">
+                            <Link href="/student/staff/gift">
                                 <Button variant="ghost" size="sm" className="mb-4 hover:bg-white/50">
                                     <ArrowLeft className="h-4 w-4 mr-2" />
-                                    Back to Event Order List
+                                    Back to Gift List
                                 </Button>
                             </Link>
-
-                            {/* Title section */}
+                            
                             <div className="flex items-start justify-between gap-4">
                                 <div className="flex items-center gap-4">
                                     <div className={`p-4 rounded-2xl bg-gradient-to-br ${statusTheme.icon} shadow-xl`}>
                                         <Package className="h-8 w-8 text-white" />
                                     </div>
                                     <div>
-                                        <h1 className="text-4xl font-bold text-gray-900 mb-1">Event Order Details</h1>
+                                        <h1 className="text-4xl font-bold text-gray-900 mb-1">Staff Gift Order</h1>
                                         <p className="text-lg text-gray-600">Order #{order.orderCode}</p>
                                     </div>
                                 </div>
@@ -496,13 +324,10 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        {/* Main Information */}
                         <div className="lg:col-span-2 space-y-6">
-                            {/* Product Information Card */}
                             <Card className="border-0 shadow-xl overflow-hidden dark:bg-slate-800 dark:border-slate-700">
-                                {/* Colorful top border */}
                                 <div className="h-2 w-full bg-gradient-to-r from-purple-400 via-pink-400 to-orange-400" />
-
+                                
                                 <CardHeader className="bg-gradient-to-br from-gray-50 to-white dark:from-slate-800 dark:to-slate-800">
                                     <CardTitle className="flex items-center gap-3 text-2xl dark:text-white">
                                         <div className="p-2 rounded-lg bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/50 dark:to-pink-900/50">
@@ -511,9 +336,8 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                         Product Information
                                     </CardTitle>
                                 </CardHeader>
-
+                                
                                 <CardContent className="space-y-6 pt-6">
-                                    {/* Product Name - Featured */}
                                     <div className="p-4 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl border border-purple-200 dark:border-purple-800/50">
                                         <label className="text-xs font-semibold text-purple-700 dark:text-purple-300 uppercase tracking-wide mb-2 block">
                                             Event Product Name
@@ -521,9 +345,7 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                         <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{order.productName}</p>
                                     </div>
 
-                                    {/* Stats Grid */}
                                     <div className="grid grid-cols-2 gap-4">
-                                        {/* Quantity Card */}
                                         <div className="p-5 bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 rounded-xl border border-indigo-200 dark:border-indigo-800/50 shadow-sm hover:shadow-md transition-shadow">
                                             <div className="flex items-center gap-3 mb-3">
                                                 <div className="p-2 rounded-lg bg-gradient-to-br from-indigo-400 to-indigo-500 shadow-md">
@@ -533,8 +355,7 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                             </div>
                                             <p className="text-3xl font-bold text-indigo-900 dark:text-indigo-200">{order.quantity.toLocaleString('en-US')}</p>
                                         </div>
-
-                                        {/* Total Points Card */}
+                                        
                                         <div className="p-5 bg-gradient-to-br from-cyan-50 to-teal-50 dark:from-cyan-900/20 dark:to-teal-900/20 rounded-xl border border-cyan-200 dark:border-cyan-800/50 shadow-sm hover:shadow-md transition-shadow">
                                             <div className="flex items-center gap-3 mb-3">
                                                 <div className="p-2 rounded-lg bg-gradient-to-br from-cyan-400 to-teal-500 shadow-md">
@@ -546,7 +367,6 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                         </div>
                                     </div>
 
-                                    {/* Points calculation footer */}
                                     <div className="pt-4 border-t border-gray-200 dark:border-slate-700">
                                         <p className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-2">
                                             <Info className="h-4 w-4" />
@@ -556,25 +376,25 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                 </CardContent>
                             </Card>
 
-                            {/* Status Log Card */}
                             {order.status !== "PENDING" && (
                                 <Card className="border-0 shadow-xl dark:bg-slate-800 dark:border-slate-700">
-                                    <CardHeader className={`bg-gradient-to-br ${order.status === "COMPLETED" ? "from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20" :
+                                    <CardHeader className={`bg-gradient-to-br ${
+                                        order.status === "COMPLETED" ? "from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20" :
                                         order.status === "PARTIALLY_REFUNDED" ? "from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20" :
-                                            "from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20"
-                                        }`}>
+                                        "from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20"
+                                    }`}>
                                         <CardTitle className="flex items-center gap-3 text-xl dark:text-white">
-                                            <div className={`p-2 rounded-lg bg-gradient-to-br ${order.status === "COMPLETED" ? "from-green-400 to-emerald-500" :
+                                            <div className={`p-2 rounded-lg bg-gradient-to-br ${
+                                                order.status === "COMPLETED" ? "from-green-400 to-emerald-500" :
                                                 order.status === "PARTIALLY_REFUNDED" ? "from-orange-400 to-amber-500" :
-                                                    "from-blue-400 to-cyan-500"
-                                                } shadow-md`}>
+                                                "from-blue-400 to-cyan-500"
+                                            } shadow-md`}>
                                                 <Info className="h-5 w-5 text-white" />
                                             </div>
                                             Order Status Log
                                         </CardTitle>
                                     </CardHeader>
                                     <CardContent className="space-y-4 pt-6">
-                                        {/* Completed Status */}
                                         {order.status === "COMPLETED" && (
                                             <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl border border-green-200 dark:border-green-800/50">
                                                 <div className="flex items-start gap-3">
@@ -588,10 +408,10 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                                         </p>
                                                         <p className="text-xs text-green-600 dark:text-green-400 mt-2 flex items-center gap-1.5">
                                                             <Calendar className="h-3.5 w-3.5" />
-                                                            {new Date(order.completedAt).toLocaleDateString('en-US', {
-                                                                weekday: 'long',
-                                                                year: 'numeric',
-                                                                month: 'long',
+                                                            {new Date(order.completedAt).toLocaleDateString('en-US', { 
+                                                                weekday: 'long', 
+                                                                year: 'numeric', 
+                                                                month: 'long', 
                                                                 day: 'numeric',
                                                                 hour: '2-digit',
                                                                 minute: '2-digit'
@@ -602,7 +422,6 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                             </div>
                                         )}
 
-                                        {/* Partially Refunded Status */}
                                         {order.status === "PARTIALLY_REFUNDED" && (
                                             <div className="p-4 bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20 rounded-xl border border-orange-200 dark:border-orange-800/50">
                                                 <div className="flex items-start gap-3">
@@ -616,47 +435,20 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                                         </p>
                                                         <p className="text-xs text-orange-600 dark:text-orange-400 mt-2 flex items-center gap-1.5">
                                                             <Calendar className="h-3.5 w-3.5" />
-                                                            {new Date(order.completedAt).toLocaleDateString('en-US', {
-                                                                weekday: 'long',
-                                                                year: 'numeric',
-                                                                month: 'long',
+                                                            {new Date(order.completedAt).toLocaleDateString('en-US', { 
+                                                                weekday: 'long', 
+                                                                year: 'numeric', 
+                                                                month: 'long', 
                                                                 day: 'numeric',
                                                                 hour: '2-digit',
                                                                 minute: '2-digit'
                                                             })}
                                                         </p>
-
-                                                        {/* [MỚI] Hiển thị ảnh chứng minh lỗi */}
-                                                        {serverRefundImages && serverRefundImages.length > 0 && (
-                                                            <div className="mt-5 pt-4 border-t border-orange-200/60 dark:border-orange-700/50">
-                                                                <label className="text-xs font-bold text-orange-800 dark:text-orange-300 uppercase tracking-wide flex items-center gap-2 mb-3">
-                                                                    <ImageIcon className="h-4 w-4" />
-                                                                    Proof of Defect
-                                                                </label>
-                                                                <div className="flex flex-wrap gap-3">
-                                                                    {serverRefundImages.map((imgItem, index) => (
-                                                                        <div
-                                                                            key={imgItem.id}
-                                                                            className="relative group w-20 h-20 rounded-lg overflow-hidden border border-orange-200 dark:border-orange-700 shadow-sm cursor-zoom-in bg-white"
-                                                                            onClick={() => setPreviewIndex(index)}
-                                                                        >
-                                                                            <img
-                                                                                src={imgItem.imageUrl}
-                                                                                alt={`Proof ${imgItem.id}`}
-                                                                                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-                                                                            />
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                        )}
-
                                                     </div>
                                                 </div>
                                             </div>
                                         )}
 
-                                        {/* Fully Refunded Status */}
                                         {order.status === "REFUNDED" && (
                                             <div className="p-4 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-xl border border-blue-200 dark:border-blue-800/50">
                                                 <div className="flex items-start gap-3">
@@ -670,41 +462,15 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                                         </p>
                                                         <p className="text-xs text-blue-600 dark:text-blue-400 mt-2 flex items-center gap-1.5">
                                                             <Calendar className="h-3.5 w-3.5" />
-                                                            {new Date(order.completedAt).toLocaleDateString('en-US', {
-                                                                weekday: 'long',
-                                                                year: 'numeric',
-                                                                month: 'long',
+                                                            {new Date(order.completedAt).toLocaleDateString('en-US', { 
+                                                                weekday: 'long', 
+                                                                year: 'numeric', 
+                                                                month: 'long', 
                                                                 day: 'numeric',
                                                                 hour: '2-digit',
                                                                 minute: '2-digit'
                                                             })}
                                                         </p>
-
-                                                        {/* [MỚI] Hiển thị ảnh chứng minh lỗi */}
-                                                        {serverRefundImages && serverRefundImages.length > 0 && (
-                                                            <div className="mt-5 pt-4 border-t border-blue-200/60 dark:border-blue-700/50">
-                                                                <label className="text-xs font-bold text-blue-800 dark:text-blue-300 uppercase tracking-wide flex items-center gap-2 mb-3">
-                                                                    <ImageIcon className="h-4 w-4" />
-                                                                    Proof of Defect
-                                                                </label>
-                                                                <div className="flex flex-wrap gap-3">
-                                                                    {serverRefundImages.map((imgItem, index) => (
-                                                                        <div
-                                                                            key={imgItem.id}
-                                                                            className="relative group w-20 h-20 rounded-lg overflow-hidden border border-blue-200 dark:border-blue-700 shadow-sm cursor-zoom-in bg-white"
-                                                                            onClick={() => setPreviewIndex(index)}
-                                                                        >
-                                                                            <img
-                                                                                src={imgItem.imageUrl}
-                                                                                alt={`Proof ${imgItem.id}`}
-                                                                                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-                                                                            />
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                        )}
-
                                                     </div>
                                                 </div>
                                             </div>
@@ -714,9 +480,7 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                             )}
                         </div>
 
-                        {/* Sidebar Information */}
                         <div className="space-y-6">
-                            {/* Member & Order Details Card */}
                             <Card className="border-0 shadow-xl dark:bg-slate-800 dark:border-slate-700">
                                 <CardHeader className="bg-gradient-to-br from-gray-50 to-white dark:from-slate-800 dark:to-slate-800">
                                     <CardTitle className="text-lg flex items-center gap-2 dark:text-white">
@@ -725,7 +489,6 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-5 pt-6">
-                                    {/* Member Name - Highlighted */}
                                     <div className="p-4 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-xl border border-blue-200 dark:border-blue-800/50">
                                         <label className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wide mb-2 flex items-center gap-1.5">
                                             <User className="h-3.5 w-3.5" />
@@ -736,7 +499,6 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
 
                                     <Separator className="dark:bg-slate-700" />
 
-                                    {/* Order Code */}
                                     <div>
                                         <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-2 flex items-center gap-1.5">
                                             <Hash className="h-3.5 w-3.5" />
@@ -749,7 +511,6 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
 
                                     <Separator className="dark:bg-slate-700" />
 
-                                    {/* Order Date */}
                                     <div>
                                         <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-2 flex items-center gap-1.5">
                                             <Calendar className="h-3.5 w-3.5" />
@@ -757,11 +518,11 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                         </label>
                                         <div className="space-y-1">
                                             <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                                                {new Date(order.createdAt).toLocaleDateString('en-US', {
-                                                    weekday: 'long',
-                                                    year: 'numeric',
-                                                    month: 'long',
-                                                    day: 'numeric'
+                                                {new Date(order.createdAt).toLocaleDateString('en-US', { 
+                                                    weekday: 'long', 
+                                                    year: 'numeric', 
+                                                    month: 'long', 
+                                                    day: 'numeric' 
                                                 })}
                                             </p>
                                             <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -772,7 +533,6 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
 
                                     <Separator className="dark:bg-slate-700" />
 
-                                    {/* Current Status - Centered */}
                                     <div>
                                         <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-3 block text-center">
                                             Current Status
@@ -782,7 +542,6 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                         </div>
                                     </div>
 
-                                    {/* Refund Reason */}
                                     {(order.status === "REFUNDED" || order.status === "PARTIALLY_REFUNDED") && order.reasonRefund && (
                                         <>
                                             <Separator className="my-4 dark:bg-slate-700" />
@@ -798,8 +557,6 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                 </CardContent>
                             </Card>
 
-                            {/* Action Buttons */}
-                            {/* Deliver Button - Only for PENDING orders */}
                             {order.status === "PENDING" && (
                                 <Card className="border-0 shadow-xl bg-gradient-to-br from-green-50 to-emerald-50">
                                     <CardContent className="pt-6 space-y-4">
@@ -833,7 +590,6 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                 </Card>
                             )}
 
-                            {/* Refund Button - Only for COMPLETED or PARTIALLY_REFUNDED orders */}
                             {(order.status === "COMPLETED" || order.status === "PARTIALLY_REFUNDED") && (
                                 <Card className="border-0 shadow-xl bg-gradient-to-br from-red-50 to-rose-50">
                                     <CardContent className="pt-6 space-y-4">
@@ -858,191 +614,118 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                                 </Button>
                                             </DialogTrigger>
 
-                                            {/* <DialogContent className="sm:max-w-lg"> */}
-                                            <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col dark:bg-slate-800 dark:border-slate-700">
-
+                                            <DialogContent className="sm:max-w-lg">
                                                 <DialogHeader className="space-y-3">
                                                     <div className="flex justify-center">
                                                         <div className="p-3 rounded-full bg-gradient-to-br from-red-100 to-rose-100">
                                                             <Undo2 className="h-8 w-8 text-red-600" />
                                                         </div>
                                                     </div>
-                                                    {/* <DialogTitle className="text-2xl text-center">Process Refund</DialogTitle> */}
-                                                    <DialogTitle className="text-2xl text-center dark:text-white">Process Refund</DialogTitle>
+                                                    <DialogTitle className="text-2xl text-center">Process Refund</DialogTitle>
                                                     <DialogDescription className="text-center">
                                                         Select refund type and provide a reason for <span className="font-semibold">{order.memberName}&apos;s</span> order
                                                     </DialogDescription>
                                                 </DialogHeader>
 
-                                                <div className="flex-1 overflow-y-auto p-1 pr-2 space-y-6">
-                                                    {/* --- BẮT ĐẦU PHẦN FORM --- */}
-                                                    {/* Order Summary */}
-                                                    <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
-                                                        <p className="text-sm font-semibold text-blue-900 mb-2">Order Summary</p>
-                                                        <div className="space-y-1 text-sm text-blue-800">
-                                                            <p><span className="font-medium">Product:</span> {order.productName}</p>
-                                                            <p><span className="font-medium">Quantity:</span> {order.quantity} items</p>
-                                                            <p><span className="font-medium">Total Points:</span> {order.totalPoints.toLocaleString('en-US')} points</p>
-                                                        </div>
+                                                <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
+                                                    <p className="text-sm font-semibold text-blue-900 mb-2">Order Summary</p>
+                                                    <div className="space-y-1 text-sm text-blue-800">
+                                                        <p><span className="font-medium">Product:</span> {order.productName}</p>
+                                                        <p><span className="font-medium">Quantity:</span> {order.quantity} items</p>
+                                                        <p><span className="font-medium">Total Points:</span> {order.totalPoints.toLocaleString('en-US')} points</p>
                                                     </div>
-
-                                                    {/* Refund Type Selection */}
-                                                    <RadioGroup value={refundType} onValueChange={(v) => setRefundType(v as any)} className="space-y-3">
-                                                        <div>
-                                                            <RadioGroupItem value="full" id="r-full" className="peer sr-only" />
-                                                            <Label
-                                                                htmlFor="r-full"
-                                                                className="flex flex-col gap-2 rounded-xl border-2 border-gray-200 bg-white p-4 hover:bg-gray-50 peer-data-[state=checked]:border-blue-500 peer-data-[state=checked]:bg-blue-50 cursor-pointer transition-all"
-                                                            >
-                                                                <div className="flex items-center gap-3">
-                                                                    <div className="p-2 rounded-lg bg-gradient-to-br from-blue-100 to-blue-200">
-                                                                        <Undo2 className="h-5 w-5 text-blue-600" />
-                                                                    </div>
-                                                                    <div className="flex-1">
-                                                                        <span className="font-bold text-base text-gray-900">Full Refund</span>
-                                                                        <p className="text-sm text-gray-600 mt-1">
-                                                                            Cancel entire order and refund all {order.totalPoints.toLocaleString('en-US')} points for {order.quantity} item(s)
-                                                                        </p>
-                                                                    </div>
-                                                                </div>
-                                                            </Label>
-                                                        </div>
-
-                                                        <div>
-                                                            <RadioGroupItem value="partial" id="r-partial" className="peer sr-only" disabled={order.quantity <= 1} />
-                                                            <Label
-                                                                htmlFor="r-partial"
-                                                                className={`flex flex-col gap-2 rounded-xl border-2 border-gray-200 bg-white p-4 ${order.quantity > 1
-                                                                    ? 'cursor-pointer hover:bg-gray-50 peer-data-[state=checked]:border-orange-500 peer-data-[state=checked]:bg-orange-50'
-                                                                    : 'cursor-not-allowed opacity-50'
-                                                                    } transition-all`}
-                                                            >
-                                                                <div className="flex items-center gap-3">
-                                                                    <div className="p-2 rounded-lg bg-gradient-to-br from-orange-100 to-orange-200">
-                                                                        <Undo2 className="h-5 w-5 text-orange-600" />
-                                                                    </div>
-                                                                    <div className="flex-1">
-                                                                        <span className="font-bold text-base text-gray-900">Partial Refund</span>
-                                                                        <p className="text-sm text-gray-600 mt-1">
-                                                                            {order.quantity > 1
-                                                                                ? "Refund specific quantity while keeping order active"
-                                                                                : "Only available for orders with more than 1 item"
-                                                                            }
-                                                                        </p>
-                                                                    </div>
-                                                                </div>
-                                                            </Label>
-                                                        </div>
-                                                    </RadioGroup>
-
-                                                    {/* Partial Quantity Input */}
-                                                    {refundType === "partial" && (() => {
-                                                        const pointsPerItem = order.totalPoints / order.quantity;
-                                                        const partialPoints = (pointsPerItem * (parseInt(partialQuantity) || 0)).toFixed(0);
-
-                                                        return (
-                                                            <div className="p-4 bg-gradient-to-br from-orange-50 to-amber-50 rounded-xl border border-orange-200 space-y-3">
-                                                                <Label htmlFor="partialQuantity" className="text-sm font-semibold text-orange-900">
-                                                                    Quantity to Refund
-                                                                </Label>
-                                                                <Input
-                                                                    id="partialQuantity"
-                                                                    type="number"
-                                                                    value={partialQuantity}
-                                                                    onChange={(e) => setPartialQuantity(e.target.value)}
-                                                                    min={1}
-                                                                    max={order.quantity - 1}
-                                                                    className="text-base h-11"
-                                                                />
-                                                                <p className="text-sm text-orange-700 flex items-center gap-1.5">
-                                                                    <Info className="h-4 w-4" />
-                                                                    This will refund <span className="font-bold">{partialPoints} points</span>
-                                                                </p>
-                                                            </div>
-                                                        );
-                                                    })()}
-
-                                                    {/* --- [MỚI] Image Upload Section --- */}
-                                                    <div className="space-y-3">
-                                                        <Label className="text-sm font-semibold flex items-center gap-2 dark:text-white">
-                                                            <ImageIcon className="h-4 w-4 text-gray-600 dark:text-slate-400" />
-                                                            Product Defects / Proof Images
-                                                            <span className="text-xs font-normal text-muted-foreground ml-auto">
-                                                                (Max 5 images)
-                                                            </span>
-                                                        </Label>
-
-                                                        {/* Upload Box */}
-                                                        <div className="grid w-full gap-4">
-                                                            <div className="flex items-center justify-center w-full">
-                                                                <label
-                                                                    htmlFor="dropzone-file"
-                                                                    className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-xl cursor-pointer bg-gray-50 dark:bg-slate-700/50 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors ${refundImages.length >= 5 ? 'opacity-50 cursor-not-allowed' : 'border-gray-300 dark:border-slate-600'
-                                                                        }`}
-                                                                >
-                                                                    <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4">
-                                                                        <UploadCloud className="w-8 h-8 mb-3 text-gray-400" />
-                                                                        <p className="mb-1 text-sm text-gray-500 dark:text-slate-400">
-                                                                            <span className="font-semibold">Click to upload</span> or drag and drop
-                                                                        </p>
-                                                                        <p className="text-xs text-gray-400 dark:text-slate-500">
-                                                                            PNG, JPG or JPEG
-                                                                        </p>
-                                                                    </div>
-                                                                    <Input
-                                                                        id="dropzone-file"
-                                                                        type="file"
-                                                                        multiple
-                                                                        accept="image/*"
-                                                                        className="hidden"
-                                                                        onChange={handleImageChange}
-                                                                        disabled={refundImages.length >= 5}
-                                                                    />
-                                                                </label>
-                                                            </div>
-
-                                                            {/* Image Previews (Upload) */}
-                                                            {refundImages.length > 0 && (
-                                                                <div className="grid grid-cols-5 gap-2 mt-2">
-                                                                    {refundImages.map((file, index) => (
-                                                                        <div key={index} className="relative group aspect-square rounded-lg overflow-hidden border border-gray-200 dark:border-slate-600">
-                                                                            <img
-                                                                                src={URL.createObjectURL(file)}
-                                                                                alt="preview"
-                                                                                className="w-full h-full object-cover"
-                                                                            />
-                                                                            <button
-                                                                                onClick={() => removeImage(index)}
-                                                                                className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                                                                                type="button"
-                                                                            >
-                                                                                <XCircle className="h-3 w-3" />
-                                                                            </button>
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Refund Reason */}
-                                                    <div className="space-y-2">
-                                                        <Label htmlFor="refundReason" className="text-sm font-semibold">
-                                                            Reason for Refund <span className="text-red-500">*</span>
-                                                        </Label>
-                                                        <Textarea
-                                                            id="refundReason"
-                                                            value={refundReason}
-                                                            onChange={(e) => setRefundReason(e.target.value)}
-                                                            placeholder="e.g., Product unavailable, member request, event cancelled..."
-                                                            className="min-h-[100px] resize-none"
-                                                        />
-                                                        <p className="text-xs text-gray-500">Please provide a clear reason for this refund</p>
-                                                    </div>
-                                                    {/* --- KẾT THÚC PHẦN FORM --- */}
                                                 </div>
 
-                                                <DialogFooter className="gap-2 sm:gap-0 pt-2">
+                                                <RadioGroup value={refundType} onValueChange={(v) => setRefundType(v as any)} className="space-y-3">
+                                                    <div>
+                                                        <RadioGroupItem value="full" id="r-full" className="peer sr-only" />
+                                                        <Label
+                                                            htmlFor="r-full"
+                                                            className="flex flex-col gap-2 rounded-xl border-2 border-gray-200 bg-white p-4 hover:bg-gray-50 peer-data-[state=checked]:border-blue-500 peer-data-[state=checked]:bg-blue-50 cursor-pointer transition-all"
+                                                        >
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="p-2 rounded-lg bg-gradient-to-br from-blue-100 to-blue-200">
+                                                                    <Undo2 className="h-5 w-5 text-blue-600" />
+                                                                </div>
+                                                                <div className="flex-1">
+                                                                    <span className="font-bold text-base text-gray-900">Full Refund</span>
+                                                                    <p className="text-sm text-gray-600 mt-1">
+                                                                        Cancel entire order and refund all {order.totalPoints.toLocaleString('en-US')} points for {order.quantity} item(s)
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                        </Label>
+                                                    </div>
+                                                    
+                                                    <div>
+                                                        <RadioGroupItem value="partial" id="r-partial" className="peer sr-only" disabled={order.quantity <= 1} />
+                                                        <Label
+                                                            htmlFor="r-partial"
+                                                            className={`flex flex-col gap-2 rounded-xl border-2 border-gray-200 bg-white p-4 ${
+                                                                order.quantity > 1 
+                                                                    ? 'cursor-pointer hover:bg-gray-50 peer-data-[state=checked]:border-orange-500 peer-data-[state=checked]:bg-orange-50' 
+                                                                    : 'cursor-not-allowed opacity-50'
+                                                            } transition-all`}
+                                                        >
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="p-2 rounded-lg bg-gradient-to-br from-orange-100 to-orange-200">
+                                                                    <Undo2 className="h-5 w-5 text-orange-600" />
+                                                                </div>
+                                                                <div className="flex-1">
+                                                                    <span className="font-bold text-base text-gray-900">Partial Refund</span>
+                                                                    <p className="text-sm text-gray-600 mt-1">
+                                                                        {order.quantity > 1 
+                                                                            ? "Refund specific quantity while keeping order active"
+                                                                            : "Only available for orders with more than 1 item"
+                                                                        }
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                        </Label>
+                                                    </div>
+                                                </RadioGroup>
+
+                                                {refundType === "partial" && (() => {
+                                                    const pointsPerItem = order.totalPoints / order.quantity;
+                                                    const partialPoints = (pointsPerItem * (parseInt(partialQuantity) || 0)).toFixed(0);
+
+                                                    return (
+                                                        <div className="p-4 bg-gradient-to-br from-orange-50 to-amber-50 rounded-xl border border-orange-200 space-y-3">
+                                                            <Label htmlFor="partialQuantity" className="text-sm font-semibold text-orange-900">
+                                                                Quantity to Refund
+                                                            </Label>
+                                                            <Input
+                                                                id="partialQuantity"
+                                                                type="number"
+                                                                value={partialQuantity}
+                                                                onChange={(e) => setPartialQuantity(e.target.value)}
+                                                                min={1}
+                                                                max={order.quantity - 1}
+                                                                className="text-base h-11"
+                                                            />
+                                                            <p className="text-sm text-orange-700 flex items-center gap-1.5">
+                                                                <Info className="h-4 w-4" />
+                                                                This will refund <span className="font-bold">{partialPoints} points</span>
+                                                            </p>
+                                                        </div>
+                                                    );
+                                                })()}
+
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="refundReason" className="text-sm font-semibold">
+                                                        Reason for Refund <span className="text-red-500">*</span>
+                                                    </Label>
+                                                    <Textarea
+                                                        id="refundReason"
+                                                        value={refundReason}
+                                                        onChange={(e) => setRefundReason(e.target.value)}
+                                                        placeholder="e.g., Product unavailable, member request, event cancelled..."
+                                                        className="min-h-[100px] resize-none"
+                                                    />
+                                                    <p className="text-xs text-gray-500">Please provide a clear reason for this refund</p>
+                                                </div>
+
+                                                <DialogFooter className="gap-2 sm:gap-0">
                                                     <Button
                                                         type="button"
                                                         variant="outline"
@@ -1078,32 +761,8 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                             )}
                         </div>
                     </div>
-
-                    {/* [MỚI] Gallery Modal xem ảnh */}
-                    <Dialog open={previewIndex !== null} onOpenChange={(open) => !open && setPreviewIndex(null)}>
-                        <DialogContent className="max-w-[95vw] md:max-w-5xl w-auto h-auto bg-transparent border-none shadow-none p-0 flex items-center justify-center outline-none focus:outline-none [&>button]:hidden">
-                            {serverRefundImages && previewIndex !== null && (
-                                <div className="relative bg-white dark:bg-slate-800 p-2 md:p-10 rounded-xl shadow-2xl overflow-hidden flex flex-col items-center">
-                                    <button onClick={() => setPreviewIndex(null)} className="absolute top-2 right-2 p-2 bg-gray-100 hover:bg-gray-200 rounded-full text-gray-600 transition-all z-50"><X className="h-5 w-5" /></button>
-                                    <div className="relative flex items-center justify-center mt-2">
-                                        {serverRefundImages.length > 1 && (
-                                            <button onClick={(e) => { e.stopPropagation(); showPrevImage(); }} className="absolute left-2 p-2 bg-black/40 hover:bg-black/60 rounded-full text-white transition-all z-40 group backdrop-blur-sm"><ChevronLeft className="h-6 w-6" /></button>
-                                        )}
-                                        <div className="relative rounded-lg overflow-hidden bg-gray-50 dark:bg-slate-900">
-                                            <img src={serverRefundImages[previewIndex].imageUrl} alt="Proof" className="max-h-[80vh] max-w-[85vw] w-auto object-contain" />
-                                            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/50 text-white text-xs font-medium rounded-full backdrop-blur-md border border-white/10">{previewIndex + 1} / {serverRefundImages.length}</div>
-                                        </div>
-                                        {serverRefundImages.length > 1 && (
-                                            <button onClick={(e) => { e.stopPropagation(); showNextImage(); }} className="absolute right-2 p-2 bg-black/40 hover:bg-black/60 rounded-full text-white transition-all z-40 group backdrop-blur-sm"><ChevronRight className="h-6 w-6" /></button>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-                        </DialogContent>
-                    </Dialog>
-
                 </div>
             </AppShell>
-        </ProtectedRoute >
+        </ProtectedRoute>
     )
 }

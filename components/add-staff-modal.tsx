@@ -9,6 +9,7 @@ import {
   UserCheck,
   Star,
   CheckCircle2,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,7 @@ import { getMembersByClubId, ApiMembership } from "@/service/membershipApi";
 import {
   postEventStaff,
   getEventStaff,
+  deleteEventStaff,
   EventStaff,
   getEvaluateEventStaff,
   StaffEvaluation,
@@ -74,6 +76,11 @@ export default function AddStaffModal({
   );
   const [evaluationsLoading, setEvaluationsLoading] = useState(false);
   const [topEvaluations, setTopEvaluations] = useState<StaffEvaluation[]>([]);
+
+  // Delete confirmation modal state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [staffToDelete, setStaffToDelete] = useState<EventStaff | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Check if event is completed
   const isEventCompleted = eventStatus === "COMPLETED";
@@ -181,18 +188,14 @@ export default function AddStaffModal({
         title: "Success",
         description: "Staff member added successfully",
       });
-      // Reload members list after successful addition
-      await loadMembers();
       // Clear duty input for this member
       setDutyInput((prev) => {
         const newInputs = { ...prev };
         delete newInputs[membershipId];
         return newInputs;
       });
-      // Also reload event staff if on staff-list tab
-      if (activeTab === "staff-list") {
-        await loadEventStaff();
-      }
+      // Reload both lists after successful addition
+      await Promise.all([loadMembers(), loadEventStaff()]);
     } catch (error: any) {
       console.error("Failed to add staff:", error);
       toast({
@@ -256,10 +259,51 @@ export default function AddStaffModal({
     setSelectedEvaluation(null);
   };
 
+  const handleOpenDeleteConfirm = (staff: EventStaff) => {
+    setStaffToDelete(staff);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleCloseDeleteConfirm = () => {
+    setShowDeleteConfirm(false);
+    setStaffToDelete(null);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!staffToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      await deleteEventStaff(eventId, staffToDelete.id);
+      toast({
+        title: "Success",
+        description: "Staff member removed successfully",
+      });
+      
+      // Reload staff list
+      await loadEventStaff();
+      
+      // Close delete confirmation modal
+      handleCloseDeleteConfirm();
+    } catch (error: any) {
+      console.error("Failed to delete staff:", error);
+      toast({
+        title: "Error",
+        description:
+          error?.response?.data?.error ||
+          error?.response?.data?.message ||
+          "Failed to remove staff member",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const filteredMembers = members.filter((member) => {
-    // Exclude members who are already assigned as event staff
+    // Exclude members who are already assigned as event staff (only ACTIVE staff)
     const isAlreadyStaff = eventStaff.some(
-      (staff) => staff.membershipId === member.membershipId
+      (staff) => staff.membershipId === member.membershipId && staff.state === "ACTIVE"
     );
 
     if (isAlreadyStaff) return false;
@@ -272,11 +316,13 @@ export default function AddStaffModal({
     );
   });
 
-  const filteredStaff = eventStaff.filter(
-    (staff) =>
-      staff.memberName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      staff.duty.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredStaff = eventStaff
+    .filter((staff) => staff.state !== "REMOVED") // Exclude REMOVED staff
+    .filter(
+      (staff) =>
+        staff.memberName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        staff.duty.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
   // Sort staff by performance if event is completed and top evaluations are available
   const sortedFilteredStaff =
@@ -329,7 +375,7 @@ export default function AddStaffModal({
             <div className="flex-1 px-6 py-4 text-sm font-medium border-b-2 border-purple-600 text-purple-600 dark:text-purple-400">
               <div className="flex items-center justify-center gap-2">
                 <UserCheck className="h-4 w-4" />
-                <span>Event Staff ({eventStaff.length})</span>
+                <span>Event Staff</span>
               </div>
             </div>
           </div>
@@ -346,7 +392,7 @@ export default function AddStaffModal({
             >
               <div className="flex items-center justify-center gap-2">
                 <UserCheck className="h-4 w-4" />
-                <span>Event Staff ({eventStaff.length})</span>
+                <span>Event Staff </span>
               </div>
             </button>
             <button
@@ -466,37 +512,52 @@ export default function AddStaffModal({
                         {staff.state}
                       </Badge>
 
-                      {/* Evaluate Button - Only show for completed events */}
-                      {isEventCompleted &&
-                        (() => {
-                          const evaluation = getStaffEvaluation(
-                            staff.membershipId
-                          );
-                          if (evaluation) {
+                      {/* Action Buttons */}
+                      <div className="flex items-center gap-2">
+                        {/* Delete Button - Only show if event is not completed */}
+                        {!isEventCompleted && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleOpenDeleteConfirm(staff)}
+                            className="shrink-0 border-red-500 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+
+                        {/* Evaluate Button - Only show for completed events */}
+                        {isEventCompleted &&
+                          (() => {
+                            const evaluation = getStaffEvaluation(
+                              staff.membershipId
+                            );
+                            if (evaluation) {
+                              return (
+                                <Button
+                                  size="sm"
+                                  onClick={() =>
+                                    handleOpenEvaluationDetail(staff)
+                                  }
+                                  className="shrink-0 bg-green-600 hover:bg-green-700"
+                                >
+                                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                                  Has Been Evaluated
+                                </Button>
+                              );
+                            }
                             return (
                               <Button
                                 size="sm"
-                                onClick={() =>
-                                  handleOpenEvaluationDetail(staff)
-                                }
-                                className="shrink-0 bg-green-600 hover:bg-green-700"
+                                onClick={() => handleOpenEvaluateModal(staff)}
+                                className="shrink-0 bg-amber-600 hover:bg-amber-700"
                               >
-                                <CheckCircle2 className="h-4 w-4 mr-2" />
-                                Has Been Evaluated
+                                <Star className="h-4 w-4 mr-2" />
+                                Evaluate
                               </Button>
                             );
-                          }
-                          return (
-                            <Button
-                              size="sm"
-                              onClick={() => handleOpenEvaluateModal(staff)}
-                              className="shrink-0 bg-amber-600 hover:bg-amber-700"
-                            >
-                              <Star className="h-4 w-4 mr-2" />
-                              Evaluate
-                            </Button>
-                          );
-                        })()}
+                          })()}
+                      </div>
                     </div>
                   );
                 })}
@@ -616,6 +677,55 @@ export default function AddStaffModal({
         onClose={handleCloseEvaluationDetail}
         evaluation={selectedEvaluation}
       />
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && staffToDelete && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50">
+          <div className="relative w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30 mb-4">
+                <Trash2 className="h-6 w-6 text-red-600 dark:text-red-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                Remove Staff Member
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+                Are you sure you want to remove{" "}
+                <span className="font-semibold text-gray-900 dark:text-white">
+                  {staffToDelete.memberName}
+                </span>{" "}
+                from this event? This action cannot be undone.
+              </p>
+              <div className="flex gap-3 justify-center">
+                <Button
+                  variant="outline"
+                  onClick={handleCloseDeleteConfirm}
+                  disabled={isDeleting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleConfirmDelete}
+                  disabled={isDeleting}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  {isDeleting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Removing...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Remove
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

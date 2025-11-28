@@ -42,6 +42,7 @@ import {
   Users,
   QrCode,
   BarChart3,
+  Gift,
 } from "lucide-react";
 import QRCode from "qrcode";
 import {
@@ -1261,6 +1262,18 @@ export default function ClubLeaderEventsPage() {
                             >
                               {event.type || "UNKNOWN"}
                             </Badge>
+                            {/* Receive Point badge */}
+                            <Badge
+                              variant="default"
+                              className="flex items-center gap-1 shrink-0 bg-emerald-600 hover:bg-emerald-700 text-xs font-semibold"
+                            >
+                              <Gift className="h-3 w-3" />
+                              {(() => {
+                                const budgetPoints = event.budgetPoints ?? 0
+                                const maxCheckInCount = event.maxCheckInCount ?? 1
+                                return maxCheckInCount > 0 ? Math.floor(budgetPoints / maxCheckInCount) : 0
+                              })()} pts
+                            </Badge>
                           </div>
                         </div>
                         {/* Approval status badge - show COMPLETED in dark blue, gray for expired events */}
@@ -2051,7 +2064,7 @@ export default function ClubLeaderEventsPage() {
           <CalendarModal
             open={showCalendarModal}
             onOpenChange={setShowCalendarModal}
-            events={events}
+            events={viewMode === "hosted" ? rawEvents : rawCoHostEvents}
             onEventClick={(event) => {
               setShowCalendarModal(false);
               router.push(`/club-leader/events/${event.id}`);

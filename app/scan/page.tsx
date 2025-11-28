@@ -43,7 +43,7 @@ export default function ScanPage() {
     if (auth.role === "student") {
       router.push("/student")
     } else if (auth.role === "staff") {
-      router.push("/staff/validate")
+      router.push("/student/staff/validate")
     } else {
       router.back()
     }

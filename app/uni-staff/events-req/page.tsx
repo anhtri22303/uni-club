@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { CalendarModal } from "@/components/calendar-modal"
-import { Calendar, Users, MapPin, Search, CheckCircle, XCircle, Clock, Building, Eye, Filter, DollarSign } from "lucide-react"
+import { Calendar, Users, MapPin, Search, CheckCircle, XCircle, Clock, Building, Eye, Filter, DollarSign, Gift } from "lucide-react"
 import { renderTypeBadge } from "@/lib/eventUtils"
 import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
@@ -72,6 +72,7 @@ export default function UniStaffEventRequestsPage() {
 	const [showWaitingCoClub, setShowWaitingCoClub] = useState<boolean>(false)
 
 	const [events, setEvents] = useState<any[]>([])
+	const [allEvents, setAllEvents] = useState<any[]>([])
 	const [locations, setLocations] = useState<any[]>([])
 	const [clubs, setClubs] = useState<any[]>([])
 	const [loading, setLoading] = useState<boolean>(false)
@@ -100,16 +101,19 @@ export default function UniStaffEventRequestsPage() {
 	}
 
 	// Helper to get event status based on date and time
-	const getEventStatus = (eventDate: string, eventTime: string | any, eventStatus?: string) => {
+	const getEventStatus = (event: any, eventStatus?: string) => {
 		// Nếu event.status là ONGOING thì bắt buộc phải là "Now"
 		if (eventStatus === "ONGOING") return "Now"
 
+		const eventDate = getEventDateString(event)
 		if (!eventDate) return "Finished"
+
 		// Get current time in Vietnam timezone (UTC+7)
 		const now = new Date()
 		const vnTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }))
 
-		// Handle both string and TimeObject formats
+		// Handle both string and TimeObject formats for time
+		let eventTime = event.startTime || event.time
 		let eventTimeStr = eventTime
 		if (typeof eventTime === 'object' && eventTime !== null) {
 			const pad = (n: number) => n.toString().padStart(2, '0')
@@ -119,11 +123,11 @@ export default function UniStaffEventRequestsPage() {
 		// Parse event date and time
 		const [hour = "00", minute = "00"] = (eventTimeStr || "00:00").split(":")
 		const [year, month, day] = eventDate.split('-').map(Number)
-		const event = new Date(year, month - 1, day, Number(hour), Number(minute), 0, 0)
+		const eventDateTime = new Date(year, month - 1, day, Number(hour), Number(minute), 0, 0)
 
 		// Event duration: assume 2 hours for "Now" window (customize as needed)
 		const EVENT_DURATION_MS = 2 * 60 * 60 * 1000
-		const start = event.getTime()
+		const start = eventDateTime.getTime()
 		const end = start + EVENT_DURATION_MS
 
 		if (vnTime.getTime() < start) {
@@ -133,6 +137,24 @@ export default function UniStaffEventRequestsPage() {
 		}
 		if (vnTime.getTime() >= start && vnTime.getTime() <= end) return "Now"
 		return "Finished"
+	}
+
+	// Helper functions to safely get event date
+	const getEventDate = (event: any): Date | null => {
+		// Multi-day event: use startDate or first day's date
+		if (event.days && event.days.length > 0) {
+			return event.days[0].date ? new Date(event.days[0].date) : null
+		}
+		// Single-day event: use date field
+		if (event.date) {
+			return new Date(event.date)
+		}
+		return null
+	}
+
+	const getEventDateString = (event: any): string => {
+		const date = getEventDate(event)
+		return date ? date.toISOString().split('T')[0] : ''
 	}
 
 	// Use isEventExpired from eventApi.ts which supports both single-day and multi-day events
@@ -177,6 +199,7 @@ export default function UniStaffEventRequestsPage() {
 				if (mounted) {
 					console.log(" Setting state with data:", { eventsContent, locationsContent, clubsContent, settledIds })
 					setEvents(eventsContent)
+					setAllEvents(eventsContent) // Store all events for CalendarModal
 					setLocations(locationsContent)
 					setClubs(clubsContent)
 					setSettledEventIds(settledIds)
@@ -219,9 +242,9 @@ export default function UniStaffEventRequestsPage() {
 			// Type filter
 			const matchType = typeFilter === "all" ? true : (evt.type || "") === typeFilter
 
-			// Date filter
+			// Date filter - use helper function for proper date handling
 			const matchDate = !dateFilter ? true : (
-				new Date(evt.date).toDateString() === new Date(dateFilter).toDateString()
+				getEventDateString(evt) === dateFilter
 			)
 
 			// Expired filter
@@ -232,7 +255,7 @@ export default function UniStaffEventRequestsPage() {
 			} else if (expiredFilter === "only") {
 				matchExpired = isExpired
 			} else if (expiredFilter === "Soon" || expiredFilter === "Finished") {
-				const status = getEventStatus(evt.date, evt.startTime || evt.time, evt.status)
+				const status = getEventStatus(evt, evt.status)
 				matchExpired = status.toLowerCase() === expiredFilter.toLowerCase()
 			}
 			// "show" means show all - no filtering needed
@@ -241,8 +264,8 @@ export default function UniStaffEventRequestsPage() {
 		})
 		// Sort by latest date (newest first)
 		.sort((a, b) => {
-			const dateA = a.date ? new Date(a.date).getTime() : 0
-			const dateB = b.date ? new Date(b.date).getTime() : 0
+			const dateA = getEventDate(a)?.getTime() || 0
+			const dateB = getEventDate(b)?.getTime() || 0
 			return dateB - dateA // Descending order (latest first)
 		})
 
@@ -339,8 +362,9 @@ export default function UniStaffEventRequestsPage() {
 		}).format(amount)
 	}
 
-	const formatDate = (dateString: string) => {
-		const date = new Date(dateString)
+	const formatDate = (event: any) => {
+		const date = getEventDate(event)
+		if (!date) return 'Invalid Date'
 		return date.toLocaleString('en-US', {
 			year: 'numeric',
 			month: 'short',
@@ -348,6 +372,22 @@ export default function UniStaffEventRequestsPage() {
 			hour: '2-digit',
 			minute: '2-digit'
 		})
+	}
+
+	const formatTransactionDate = (dateString: string) => {
+		try {
+			const date = new Date(dateString)
+			if (isNaN(date.getTime())) return 'Invalid Date'
+			return date.toLocaleString('en-US', {
+				year: 'numeric',
+				month: 'short',
+				day: 'numeric',
+				hour: '2-digit',
+				minute: '2-digit'
+			})
+		} catch (error) {
+			return 'Invalid Date'
+		}
 	}
 
 	const loadEventTransactionHistory = async () => {
@@ -687,6 +727,18 @@ export default function UniStaffEventRequestsPage() {
 																	Need Settle
 																</Badge>
 															)}
+															{/* Receive Point badge */}
+															<Badge
+																variant="default"
+																className="flex items-center gap-1 shrink-0 bg-emerald-600 hover:bg-emerald-700 text-xs font-semibold"
+															>
+																<Gift className="h-3 w-3" />
+																{(() => {
+																	const budgetPoints = request.budgetPoints ?? 0
+																	const maxCheckInCount = request.maxCheckInCount ?? 1
+																	return maxCheckInCount > 0 ? Math.floor(budgetPoints / maxCheckInCount) : 0
+																})()} pts
+															</Badge>
 														</div>
 
 														<p className="text-muted-foreground mb-3 line-clamp-2">{request.description}</p>
@@ -694,7 +746,7 @@ export default function UniStaffEventRequestsPage() {
 														<div className="flex items-center gap-6 text-sm text-muted-foreground">
 															<div className="flex items-center gap-1">
 																<Calendar className="h-4 w-4" />
-																<span>{request.date ? new Date(request.date).toLocaleDateString() : request.eventDate}</span>
+																<span>{formatDate(request)}</span>
 															</div>
 															<div className="flex items-center gap-1">
 																<MapPin className="h-4 w-4" />
@@ -766,7 +818,7 @@ export default function UniStaffEventRequestsPage() {
 					<CalendarModal
 						open={showCalendarModal}
 						onOpenChange={setShowCalendarModal}
-						events={events}
+						events={allEvents}
 						onEventClick={(event) => {
 							setShowCalendarModal(false)
 							router.push(`/uni-staff/events-req/${event.id}`)
@@ -847,9 +899,9 @@ export default function UniStaffEventRequestsPage() {
 																	<div className="truncate">{t.description || "—"}</div>
 																)}
 															</TableCell>
-															<TableCell className="text-sm text-muted-foreground whitespace-nowrap pl-2">
-																{formatDate(t.createdAt)}
-															</TableCell>
+														<TableCell className="text-sm text-muted-foreground whitespace-nowrap pl-2">
+															{formatTransactionDate(t.createdAt)}
+														</TableCell>
 														</TableRow>
 													))}
 												</TableBody>

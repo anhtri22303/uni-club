@@ -45,6 +45,7 @@ export interface UserProfile {
   role: string; // Vẫn giữ, vì code của bạn xử lý nó
   roleName: string;
   needCompleteProfile: boolean;
+  staff: boolean; // Thuộc tính staff để xác định quyền truy cập Staff
   clubs: ProfileClub[];
   wallet: Wallet | null; // (CẬP NHẬT) Sử dụng kiểu Wallet
   wallets: Wallet[]; // Vẫn giữ, vì code của bạn xử lý nó
@@ -133,6 +134,7 @@ export const fetchProfile = async (): Promise<UserProfile | null> => {
         role: profileData?.role, // Vẫn giữ, code của bạn đã xử lý
         roleName: profileData?.roleName,
         needCompleteProfile: profileData?.needCompleteProfile,
+        staff: profileData?.staff || false, // Lấy thuộc tính staff từ API
         clubs: profileData?.clubs || [],
         wallet: profileData?.wallet,
         wallets: profileData?.wallets || [], // Vẫn giữ, code của bạn đã xử lý
