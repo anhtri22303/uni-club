@@ -486,3 +486,35 @@ export async function reorderMedia(
   );
   return res.data.data;
 }
+
+// === Order/Refund Management ===
+
+/**
+ * Upload ảnh lỗi sản phẩm khi hoàn hàng (Refund)
+ * (POST /api/redeem/order/{orderId}/refund/upload-images)
+ * FE upload tối đa 5 ảnh, BE trả về danh sách URL.
+ */
+export async function uploadRefundImages(
+  orderId: number | string,
+  files: File[]
+): Promise<string[]> {
+  const formData = new FormData();
+  
+  // Swagger yêu cầu param tên là "files" (array)
+  files.forEach((file) => {
+    formData.append("files", file);
+  });
+
+  const res = await axiosInstance.post<ApiResponse<string[]>>(
+    `/api/redeem/order/${orderId}/refund/upload-images`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
+
+  // Trả về mảng các URL ảnh
+  return res.data.data;
+}
