@@ -141,6 +141,7 @@ export async function redeemClubProduct(
     `/api/redeem/club/${clubId}/order`,
     payload
   );
+  console.log("Redeem club product response:", res.data);
   return res.data.data;
 }
 

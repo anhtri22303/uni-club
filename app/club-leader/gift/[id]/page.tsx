@@ -1203,7 +1203,11 @@ export default function EditProductPage() {
 
             {/* Cột phải: Thông tin phụ */}
             <div className="md:col-span-2 space-y-6">
+              {/* ───────────────────────────────────────────── */}
+              {/* CARD STATUS & CLASSIFICATION */}
+              {/* ───────────────────────────────────────────── */}
               <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 dark:bg-slate-800 dark:border-slate-700 overflow-hidden">
+                {/* Gradient line */}
                 <div className="h-2 bg-gradient-to-r from-orange-400 via-orange-500 to-amber-500" />
 
                 {/* HEADER */}
@@ -1218,8 +1222,9 @@ export default function EditProductPage() {
                   </div>
                 </CardHeader>
 
+                {/* CONTENT */}
                 <CardContent className="space-y-4 pt-0 pb-0">
-                  {/* GRID 2 CỘT */}
+                  {/* GRID – always responsive */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* PRODUCT STATUS */}
                     <div className="space-y-2">
@@ -1242,7 +1247,6 @@ export default function EditProductPage() {
                           name="status"
                           value={form.status}
                           onValueChange={handleSelectChange("status")}
-                          disabled={isArchived}
                         >
                           <SelectTrigger className="h-11 w-full border-2 border-slate-200 focus:border-orange-500 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:focus:border-orange-400">
                             <SelectValue placeholder="Select status" />
@@ -1280,7 +1284,6 @@ export default function EditProductPage() {
                         name="type"
                         value={form.type}
                         onValueChange={handleSelectChange("type")}
-                        disabled={isArchived}
                       >
                         <SelectTrigger className="h-11 w-full border-2 border-slate-200 focus:border-orange-500 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:focus:border-orange-400">
                           <SelectValue placeholder="Select product type" />
@@ -1293,37 +1296,33 @@ export default function EditProductPage() {
                       </Select>
                     </div>
 
-                    {/* SELECT EVENT */}
+                    {/* SELECT EVENT – RESPONSIVE – FULL WIDTH */}
                     {form.type === "EVENT_ITEM" && (
-                      <div className="space-y-2">
-                        <Label
-                          htmlFor="eventId"
-                          className="text-base font-semibold dark:text-white"
-                        >
+                      <div className="space-y-2 md:col-span-2">
+                        <Label className="text-base font-semibold dark:text-white">
                           Select Event
                         </Label>
 
                         <Select
                           name="eventId"
-                          value={form.eventId ? String(form.eventId) : "0"}
-                          onValueChange={(value) => {
-                            setForm({ ...form, eventId: Number(value) });
-                          }}
-                          disabled={isArchived}
+                          value={String(form.eventId || "0")}
+                          onValueChange={(value) =>
+                            setForm({ ...form, eventId: Number(value) })
+                          }
                         >
                           <SelectTrigger
                             className="h-11 w-full border-2 border-slate-200 focus:border-orange-500 
                 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:focus:border-orange-400"
                             title={
-                              form.eventId && form.eventId > 0
+                              form.eventId
                                 ? events.find((e) => e.id === form.eventId)
                                     ?.name
                                 : "Select an event"
                             }
                           >
                             <SelectValue>
-                              <span className="truncate block max-w-full">
-                                {form.eventId && form.eventId > 0
+                              <span className="block truncate max-w-full">
+                                {form.eventId
                                   ? events.find((e) => e.id === form.eventId)
                                       ?.name
                                   : "Select an event"}
@@ -1340,9 +1339,9 @@ export default function EditProductPage() {
 
                             {events
                               .filter(
-                                (event) =>
-                                  event.status === "APPROVED" ||
-                                  event.status === "ONGOING"
+                                (e) =>
+                                  e.status === "APPROVED" ||
+                                  e.status === "ONGOING"
                               )
                               .map((event) => (
                                 <SelectItem
@@ -1360,6 +1359,176 @@ export default function EditProductPage() {
                       </div>
                     )}
                   </div>
+                </CardContent>
+              </Card>
+
+              {/* ───────────────────────────────────────────── */}
+              {/* CARD PRICE & INVENTORY */}
+              {/* ───────────────────────────────────────────── */}
+              <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 dark:bg-slate-800 dark:border-slate-700 overflow-hidden">
+                <div className="h-2 bg-gradient-to-r from-indigo-400 via-indigo-500 to-blue-500" />
+
+                <CardHeader className="py-4 bg-gradient-to-br from-indigo-200 to-indigo-50 dark:from-indigo-900/20 dark:via-slate-800/50 dark:to-slate-800 border-b border-indigo-200 dark:border-slate-700 pb-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 shadow-lg">
+                        <HandCoins className="h-5 w-5 text-white" />
+                      </div>
+                      <CardTitle className="text-xl font-bold dark:text-white">
+                        Price, Stock & Tags
+                      </CardTitle>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsHistoryOpen(true)}
+                        disabled={isArchived}
+                        className="border-2 flex items-center gap-2 hover:bg-indigo-100 hover:text-indigo-700 
+            dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:hover:bg-indigo-900/30"
+                      >
+                        <History className="h-4 w-4" />
+                        <span>Stock History</span>
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="space-y-4 pt-0">
+                  {/* GRID PRICE & STOCK */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* PRICE */}
+                    <div className="space-y-2">
+                      <Label className="text-base font-semibold dark:text-white">
+                        Price (Points) <span className="text-red-500">*</span>
+                      </Label>
+
+                      <Input
+                        id="pointCost"
+                        name="pointCost"
+                        className="h-11 w-full border-2 border-slate-200 dark:bg-slate-700 dark:text-white dark:border-slate-600"
+                        value={displayPrice}
+                        onChange={handleChange}
+                        placeholder="0"
+                        inputMode="numeric"
+                      />
+                    </div>
+
+                    {/* STOCK */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-base font-semibold dark:text-white">
+                          Current Stock
+                        </Label>
+                        {form.stockQuantity === 0 && (
+                          <Badge variant="destructive" className="text-xs">
+                            Out of Stock
+                          </Badge>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <div className="relative flex-1">
+                          <Input
+                            id="stockQuantity"
+                            className="h-11 w-full border-2 border-slate-200 dark:bg-slate-700 dark:text-white dark:border-slate-600 font-semibold text-lg"
+                            value={form.stockQuantity}
+                            readOnly
+                          />
+                          <Package className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-slate-400" />
+                        </div>
+
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => setIsStockDialogOpen(true)}
+                          className="h-11 w-11 border-2 dark:bg-slate-700 dark:text-white dark:border-slate-600"
+                        >
+                          <Plus className="h-5 w-5" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Separator className="my-6 dark:bg-slate-700" />
+
+                  {/* TAGS */}
+                  <div className="relative mb-4">
+                    <Input
+                      placeholder="Search tags..."
+                      value={tagSearchTerm}
+                      onChange={(e) => setTagSearchTerm(e.target.value)}
+                      className="h-10 w-full border-2 border-slate-200 dark:bg-slate-700 dark:text-white dark:border-slate-600 pl-10"
+                    />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-slate-400" />
+                  </div>
+
+                  {allTags.length > 0 ? (
+                    <ScrollArea className="h-52 rounded-lg border-2 p-4 bg-gray-50 dark:bg-slate-700/50 dark:border-slate-600">
+                      <div className="space-y-3">
+                        {allTags
+                          .filter((tag) =>
+                            tag.name
+                              .toLowerCase()
+                              .includes(tagSearchTerm.toLowerCase())
+                          )
+                          .map((tag) => {
+                            const isCoreTag =
+                              tag.tagId === fixedTagIds.clubTagId ||
+                              tag.tagId === fixedTagIds.eventTagId;
+
+                            const isDisabled = isCoreTag || isArchived;
+
+                            return (
+                              <div
+                                key={tag.tagId}
+                                className="flex items-center space-x-3 p-2 rounded-md hover:bg-white dark:hover:bg-slate-600 transition-colors"
+                              >
+                                <Checkbox
+                                  id={`tag-${tag.tagId}`}
+                                  checked={form.tagIds.includes(tag.tagId)}
+                                  onCheckedChange={(checked) =>
+                                    handleTagChange(tag.tagId)(
+                                      checked as boolean
+                                    )
+                                  }
+                                  disabled={isDisabled}
+                                  className="h-5 w-5"
+                                />
+
+                                <Label
+                                  htmlFor={`tag-${tag.tagId}`}
+                                  className={`font-medium flex-1 cursor-pointer dark:text-white ${
+                                    isDisabled
+                                      ? "text-muted-foreground dark:text-slate-400"
+                                      : ""
+                                  }`}
+                                >
+                                  {tag.name}
+
+                                  {isCoreTag && (
+                                    <Badge
+                                      variant="outline"
+                                      className="ml-2 text-xs dark:border-slate-500 dark:text-slate-300"
+                                    >
+                                      Auto
+                                    </Badge>
+                                  )}
+                                </Label>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </ScrollArea>
+                  ) : (
+                    <div className="text-center py-8 bg-gray-50 dark:bg-slate-700/50 rounded-lg border-2 border-dashed dark:border-slate-600">
+                      <Tag className="h-8 w-8 text-gray-400 dark:text-slate-400 mx-auto mb-2" />
+                      <p className="text-sm text-muted-foreground dark:text-slate-400">
+                        No tags available
+                      </p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
