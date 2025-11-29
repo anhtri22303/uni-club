@@ -9,14 +9,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
-  ShoppingCart, Search, CheckCircle, XCircle, Clock, Eye, Filter, DollarSign, Package, User, Hash, Calendar, Undo2,
+  ShoppingCart, Search, CheckCircle, XCircle, Clock, Eye, Filter, Package, User, Hash, Calendar, Undo2,
   WalletCards, ChevronLeft, ChevronRight, ScanLine,
 } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { getClubIdFromToken } from "@/service/clubApi"
 import { getEventRedeemOrders, RedeemOrder } from "@/service/redeemApi"
+import { useMyStaffEvents } from "@/hooks/use-query-hooks"
 import { Skeleton } from "@/components/ui/skeleton"
 import { EventRedeemScanner } from "@/components/event-redeem-scanner"
 
@@ -26,10 +26,12 @@ export const queryKeys = {
 
 type UiOrder = RedeemOrder
 
-export default function ClubLeaderEventOrdersPage() {
+export default function StaffEventOrdersPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [activeTab, setActiveTab] = useState<string>("completed")
   const [clubId, setClubId] = useState<number | null>(null)
+  const [eventId, setEventId] = useState<number | null>(null)
+  const [selectedEventId, setSelectedEventId] = useState<number | null>(null) // Tab hiện tại
   const [isScannerOpen, setIsScannerOpen] = useState(false)
 
   // Pagination states separated for tabs
@@ -45,24 +47,48 @@ export default function ClubLeaderEventOrdersPage() {
   const { toast } = useToast()
   const queryClient = useQueryClient()
 
-  // 1. Lấy clubId
+  // 1. Lấy thông tin staff events của user
+  const { data: staffEvents = [], isLoading: staffEventsLoading } = useMyStaffEvents()
+
+  // 2. Set clubId và eventId từ API response
   useEffect(() => {
-    const id = getClubIdFromToken()
-    if (id) {
-      setClubId(id)
-    } else {
+    if (staffEvents.length > 0) {
+      const activeEvents = staffEvents.filter(e => e.state === "ACTIVE");
+      if (activeEvents.length > 0) {
+        const firstEvent = activeEvents[0];
+        console.log("🔍 [Staff Event Order] Active staff events:", activeEvents);
+        setClubId(firstEvent.clubId);
+        // Nếu có nhiều events, dùng selectedEventId từ tab
+        // Nếu chỉ có 1 event, dùng eventId đó
+        if (activeEvents.length === 1) {
+          setEventId(firstEvent.eventId);
+          setSelectedEventId(firstEvent.eventId);
+        } else {
+          // Nhiều events: set selectedEventId là event đầu tiên
+          setSelectedEventId(firstEvent.eventId);
+          setEventId(firstEvent.eventId);
+        }
+      }
+    } else if (staffEvents.length === 0 && !staffEventsLoading) {
       toast({
-        title: "Error",
-        description: "Can't find your Club ID.",
+        title: "No Active Event",
+        description: "You are not assigned as staff to any active event.",
         variant: "destructive",
       })
     }
-  }, [toast])
+  }, [staffEvents, staffEventsLoading, toast])
 
-  // 2. Lấy dữ liệu đơn hàng Event
+  // 3. Cập nhật eventId khi đổi tab
+  useEffect(() => {
+    if (selectedEventId) {
+      setEventId(selectedEventId);
+    }
+  }, [selectedEventId])
+
+  // 4. Fetch event orders khi có clubId
   const {
     data: orders = [],
-    isLoading,
+    isLoading: ordersLoading,
     error,
   } = useQuery<UiOrder[], Error>({
     queryKey: queryKeys.eventOrders(clubId!),
@@ -71,11 +97,19 @@ export default function ClubLeaderEventOrdersPage() {
     staleTime: 3 * 60 * 1000,
   })
 
-  // 3. Hàm lọc (Updated logic similar to Club Orders)
+  // Biến loading tổng hợp
+  const isLoading = ordersLoading || staffEventsLoading
+
+  // 5. Hàm lọc (Updated logic - Filter by eventId first)
   const getFilteredOrders = (
     tabType: "pending" | "completed" | "cancelled"
   ) => {
     return orders.filter((order) => {
+      // Filter by eventId FIRST (only show orders from selected event)
+      if (eventId && order.eventId !== eventId) {
+        return false;
+      }
+
       // Search filter
       const matchSearch =
         searchTerm === "" ||
@@ -113,12 +147,12 @@ export default function ClubLeaderEventOrdersPage() {
     })
   }
 
-  // 4. Phân loại đơn hàng
+  // 6. Phân loại đơn hàng (đã được lọc theo eventId)
   const pendingOrders = useMemo(
     () => getFilteredOrders("pending").sort((a, b) => 
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     ),
-    [orders, searchTerm, dateFromFilter, dateToFilter]
+    [orders, searchTerm, dateFromFilter, dateToFilter, eventId]
   )
   const completedOrders = useMemo(
     () => getFilteredOrders("completed").sort((a, b) => {
@@ -126,7 +160,7 @@ export default function ClubLeaderEventOrdersPage() {
         const dateB = b.completedAt ? new Date(b.completedAt).getTime() : new Date(b.createdAt).getTime()
         return dateB - dateA
     }),
-    [orders, searchTerm, dateFromFilter, dateToFilter]
+    [orders, searchTerm, dateFromFilter, dateToFilter, eventId]
   )
   const cancelledOrders = useMemo(
     () => getFilteredOrders("cancelled").sort((a, b) => {
@@ -134,10 +168,15 @@ export default function ClubLeaderEventOrdersPage() {
         const dateB = b.completedAt ? new Date(b.completedAt).getTime() : new Date(b.createdAt).getTime()
         return dateB - dateA
     }),
-    [orders, searchTerm, dateFromFilter, dateToFilter]
+    [orders, searchTerm, dateFromFilter, dateToFilter, eventId]
   )
 
-  // 5. Logic cho Stats Cards
+  // 7. Lọc các active events cho tabs
+  const activeStaffEvents = useMemo(() => {
+    return staffEvents.filter(e => e.state === "ACTIVE");
+  }, [staffEvents]);
+
+  // 8. Logic cho Stats Cards
   const completedCount = isLoading ? "-" : completedOrders.length
   const cancelledCount = isLoading ? "-" : cancelledOrders.length
   const totalPointsCompleted = isLoading
@@ -146,7 +185,7 @@ export default function ClubLeaderEventOrdersPage() {
       .reduce((sum, order) => sum + order.totalPoints, 0)
       .toLocaleString()
 
-  // 6. Logic phân trang
+  // 9. Logic phân trang
   const [prevPendingLength, setPrevPendingLength] = useState(0)
   const [prevCompletedLength, setPrevCompletedLength] = useState(0)
   const [prevCancelledLength, setPrevCancelledLength] = useState(0)
@@ -185,9 +224,9 @@ export default function ClubLeaderEventOrdersPage() {
     queryClient.invalidateQueries({ queryKey: queryKeys.eventOrders(clubId!) })
   }
 
-  // 8. Render JSX
+  // 10. Render JSX
   return (
-    <ProtectedRoute allowedRoles={["club_leader"]}>
+    <ProtectedRoute allowedRoles={["student"]}>
       <AppShell>
         <div className="space-y-6">
           <div>
@@ -328,7 +367,28 @@ export default function ClubLeaderEventOrdersPage() {
             </CardContent>
           </Card>
 
-          {/* Tabs (New addition for Event Page) */}
+          {/* Event Tabs - Hiển thị khi có nhiều hơn 1 event */}
+          {activeStaffEvents.length > 1 && (
+            <Card className="border-2 shadow-sm dark:bg-slate-800/90 dark:border-slate-700">
+              <CardContent className="p-4">
+                <Tabs value={String(selectedEventId)} onValueChange={(value) => setSelectedEventId(Number(value))}>
+                  <TabsList className="w-full grid" style={{ gridTemplateColumns: `repeat(${activeStaffEvents.length}, 1fr)` }}>
+                    {activeStaffEvents.map((event) => (
+                      <TabsTrigger 
+                        key={event.eventId} 
+                        value={String(event.eventId)}
+                        className="text-sm font-medium"
+                      >
+                        {event.eventName}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                </Tabs>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Order Status Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2 gap-3">
               <TabsTrigger value="completed" className="flex items-center gap-2">
@@ -500,7 +560,7 @@ function RenderOrderList({
         return (
           <Link
             key={order.orderId}
-            href={`/club-leader/event-order-list/${order.orderId}`}
+            href={`/student/staff/event-order-list/${order.orderId}`}
             className="group"
           >
             <Card className={`border-0 shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] bg-gradient-to-br 

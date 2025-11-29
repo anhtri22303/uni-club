@@ -79,7 +79,7 @@ export default function ScanOrderQRPage() {
       return
     }
     
-    console.log("🔍 Scanned QR data:", decodedText)
+    console.log("  Scanned QR data:", decodedText)
     
     // Loại bỏ khoảng trắng và chuyển về uppercase để check
     const trimmedText = decodedText.trim()

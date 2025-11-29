@@ -174,126 +174,129 @@ export function ProductFilters({ onFilterChange, onSortChange, availableTags = [
     const totalActiveFilters = (filters.inStock ? 1 : 0) + filters.selectedTags.size
 
     return (
-        <div className="space-y-6">
-            {/* 1. Hàng Filter chính (CHỌN THEO TIÊU CHÍ) */}
-            <div>
-                <h3 className="text-lg font-semibold mb-3">Select by criteria</h3>
-                <div className="flex flex-wrap gap-3">
-                    {/* <Button variant="outline" className="border-primary text-primary">
-                    <Filter className="mr-2 h-4 w-4" /> Bộ lọc ({totalActiveFilters})
-                    </Button> */}
-                    <Toggle
-                        variant="outline"
-                        pressed={filters.inStock}
-                        onPressedChange={handleToggleChange("inStock")}
-                        className="data-[state=on]:border-primary data-[state=on]:text-primary"
-                    >
-                        <Store className="mr-2 h-4 w-4" /> Available
-                    </Toggle>
+        <div className="space-y-5">
+            {/* 1. QUICK FILTERS & TAGS - Compact Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Quick Filters */}
+                <div>
+                    <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide mb-3">Quick Filters</h3>
+                    <div className="flex flex-wrap gap-2">
+                        <Toggle
+                            variant="outline"
+                            pressed={filters.inStock}
+                            onPressedChange={handleToggleChange("inStock")}
+                            className="data-[state=on]:bg-blue-50 data-[state=on]:border-blue-500 data-[state=on]:text-blue-700 dark:data-[state=on]:bg-blue-900/30 dark:data-[state=on]:text-blue-300 transition-all"
+                        >
+                            <Store className="mr-2 h-4 w-4" /> 
+                            In Stock
+                        </Toggle>
+                    </div>
+                </div>
 
-                    {/* Popover filter cho Tags (dữ liệu thật) */}
+                {/* Tag Filters */}
+                <div>
+                    <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide mb-3">Filter by Tags</h3>
                     <FilterPopover
-                        title="Filter by Tags"
+                        title="Select Tags"
                         options={tagOptions}
                         selectedValues={filters.selectedTags}
                         onSelectChange={handleMultiSelectChange("selectedTags")}
                     />
-
-                    {/* Thêm các popover khác (Giá, Kích thước, v.v.) tại đây */}
                 </div>
             </div>
 
-            {/* 2. Hàng Filter đang chọn (ĐANG LỌC THEO) */}
+            {/* 2. ACTIVE FILTERS - Show selected filters as badges */}
             {totalActiveFilters > 0 && (
-                <div>
-                    <h3 className="text-lg font-semibold mb-3">Filtering by</h3>
+                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3 border border-slate-200 dark:border-slate-700">
+                    <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wide">
+                            Active Filters ({totalActiveFilters})
+                        </span>
+                        <Button 
+                            variant="ghost" 
+                            size="sm"
+                            className="h-6 px-2 text-xs hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                            onClick={clearAllFilters}
+                        >
+                            <X className="h-3 w-3 mr-1" />
+                            Clear All
+                        </Button>
+                    </div>
                     <div className="flex flex-wrap items-center gap-2">
                         {filters.inStock && (
-                            <Badge variant="outline" className="py-1">
-                                Available
+                            <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200 dark:bg-blue-900/40 dark:text-blue-300 border-blue-300 dark:border-blue-700">
+                                <Store className="h-3 w-3 mr-1" />
+                                In Stock
                                 <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="ml-1 h-4 w-4 rounded-full"
+                                    className="ml-1 h-3 w-3 p-0 hover:bg-blue-200 dark:hover:bg-blue-800 rounded-full"
                                     onClick={() => handleToggleChange("inStock")(false)}
                                 >
-                                    <X className="h-3 w-3" />
+                                    <X className="h-2.5 w-2.5" />
                                 </Button>
                             </Badge>
                         )}
-                        {/* {filters.newArrivals && (
-                            <Badge variant="outline" className="py-1">
-                                Hàng mới về
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="ml-1 h-4 w-4 rounded-full"
-                                    onClick={() => handleToggleChange("newArrivals")(false)}
-                                >
-                                    <X className="h-3 w-3" />
-                                </Button>
-                            </Badge>
-                        )} */}
-                        {/* {activeUseCases.map((label, i) => (
-                            <Badge variant="outline" className="py-1" key={label}>
-                                {label}
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="ml-1 h-4 w-4 rounded-full"
-                                    onClick={() => removeFilterTag("useCases", Array.from(filters.useCases)[i])}
-                                >
-                                    <X className="h-3 w-3" />
-                                </Button>
-                            </Badge>
-                        ))} */}
-                        {/* Hiển thị các tag đang chọn */}
                         {activeTags.map((tag) => (
-                            <Badge variant="outline" className="py-1" key={tag}>
+                            <Badge 
+                                key={tag}
+                                className="bg-purple-100 text-purple-800 hover:bg-purple-200 dark:bg-purple-900/40 dark:text-purple-300 border-purple-300 dark:border-purple-700"
+                            >
                                 {tag}
                                 <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="ml-1 h-4 w-4 rounded-full"
+                                    className="ml-1 h-3 w-3 p-0 hover:bg-purple-200 dark:hover:bg-purple-800 rounded-full"
                                     onClick={() => removeFilterTag("selectedTags", tag)}
                                 >
-                                    <X className="h-3 w-3" />
+                                    <X className="h-2.5 w-2.5" />
                                 </Button>
                             </Badge>
                         ))}
-
-                        <Button variant="link" className="px-1 text-sm" onClick={clearAllFilters}>
-                            Deselect all
-                        </Button>
                     </div>
                 </div>
             )}
 
-            {/* 3. Hàng Sắp xếp (SẮP XẾP THEO) */}
+            {/* 3. SORT OPTIONS - Compact Toggle Group */}
             <div>
-                <h3 className="text-lg font-semibold mb-3">Sort by</h3>
+                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide mb-3">Sort By</h3>
                 <ToggleGroup
                     type="single"
-                    variant="outline"
                     value={sortBy}
-                    onValueChange={(value: SortState) => value && setSortBy(value)} // Đảm bảo value không rỗng
-                    className="flex-wrap justify-start"
+                    onValueChange={(value: SortState) => value && setSortBy(value)}
+                    className="justify-start gap-2 flex-wrap"
                 >
-                    <ToggleGroupItem value="popular" aria-label="Sort by popularity">
-                        <Star className="mr-2 h-4 w-4" />
+                    <ToggleGroupItem 
+                        value="popular" 
+                        aria-label="Sort by popularity"
+                        className="data-[state=on]:bg-amber-100 data-[state=on]:text-amber-700 data-[state=on]:border-amber-400 dark:data-[state=on]:bg-amber-900/30 dark:data-[state=on]:text-amber-300"
+                    >
+                        <Star className="mr-1.5 h-3.5 w-3.5" />
                         Popular
                     </ToggleGroupItem>
-                    <ToggleGroupItem value="hot_promo" aria-label="Sort by HOT promotions">
-                        <Flame className="mr-2 h-4 w-4" />
-                        HOT Promotion
+                    <ToggleGroupItem 
+                        value="hot_promo" 
+                        aria-label="Sort by HOT promotions"
+                        className="data-[state=on]:bg-orange-100 data-[state=on]:text-orange-700 data-[state=on]:border-orange-400 dark:data-[state=on]:bg-orange-900/30 dark:data-[state=on]:text-orange-300"
+                    >
+                        <Flame className="mr-1.5 h-3.5 w-3.5" />
+                        Hot Promo
                     </ToggleGroupItem>
-                    <ToggleGroupItem value="price_asc" aria-label="Sort by price low to high">
-                        <ArrowUpDown className="mr-2 h-4 w-4" />
-                        Low - High Price
+                    <ToggleGroupItem 
+                        value="price_asc" 
+                        aria-label="Sort by price low to high"
+                        className="data-[state=on]:bg-green-100 data-[state=on]:text-green-700 data-[state=on]:border-green-400 dark:data-[state=on]:bg-green-900/30 dark:data-[state=on]:text-green-300"
+                    >
+                        <ArrowUpDown className="mr-1.5 h-3.5 w-3.5" />
+                        Price: Low-High
                     </ToggleGroupItem>
-                    <ToggleGroupItem value="price_desc" aria-label="Sort by price high to low">
-                        <ArrowDownUp className="mr-2 h-4 w-4" />
-                        High - Low Price
+                    <ToggleGroupItem 
+                        value="price_desc" 
+                        aria-label="Sort by price high to low"
+                        className="data-[state=on]:bg-red-100 data-[state=on]:text-red-700 data-[state=on]:border-red-400 dark:data-[state=on]:bg-red-900/30 dark:data-[state=on]:text-red-300"
+                    >
+                        <ArrowDownUp className="mr-1.5 h-3.5 w-3.5" />
+                        Price: High-Low
                     </ToggleGroupItem>
                 </ToggleGroup>
             </div>

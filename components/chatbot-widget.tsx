@@ -566,7 +566,7 @@ Present in this format:
 • 💸 Average Spending per Event: [X] points
 • 📈 Budget Utilization Rate: [X]%
 
-🔍 FINANCIAL HEALTH:
+  FINANCIAL HEALTH:
 • Status: [Healthy/Moderate/Critical - based on balance]
 • Recommendation: [Conservative/Balanced/Aggressive spending]
 • Budget Remaining: [X] points available
@@ -848,7 +848,7 @@ For each application, provide detailed analysis:
 • Feasibility: [High/Medium/Low]
 • Expected Impact: [High/Medium/Low]
 
-🎯 RECOMMENDATION: [✅ STRONGLY APPROVE / ⚠️ APPROVE WITH CONDITIONS / 🔍 NEEDS REVIEW / ❌ DECLINE]
+🎯 RECOMMENDATION: [✅ STRONGLY APPROVE / ⚠️ APPROVE WITH CONDITIONS /   NEEDS REVIEW / ❌ DECLINE]
 
 💡 Rationale:
 • Diversity Impact: [How this affects major diversity]
@@ -867,7 +867,7 @@ For each application, provide detailed analysis:
 ⚠️ Conditional Approval ([X] applications):
 1. [Club Name] - [Major] - [Conditions required]
 
-🔍 Requires Further Review ([X] applications):
+  Requires Further Review ([X] applications):
 1. [Club Name] - [Major] - [Concerns to address]
 
 ❌ Recommended for Decline ([X] applications):

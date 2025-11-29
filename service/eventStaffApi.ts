@@ -153,6 +153,30 @@ export async function getTopEvaluatedStaff(
   return res.data.data;
 }
 
+/**
+ * My Staff Event - Staff Event của tôi
+ */
+export interface MyStaffEvent {
+  eventId: number;
+  eventName: string;
+  clubId: number;
+  clubName: string;
+  duty: string;
+  state: "ACTIVE" | "INACTIVE" | "REMOVED";
+}
+
+/**
+ * Lấy danh sách event mà user hiện tại là staff
+ * GET /api/events/my/staff
+ */
+export async function getMyStaff(): Promise<MyStaffEvent[]> {
+  const res = await axiosInstance.get<ApiResponse<MyStaffEvent[]>>(
+    "/api/events/my/staff"
+  );
+  console.log("getMyStaff res:", res);
+  return res.data.data;
+}
+
 export default {
   getEventStaff,
   getEventStaffCompleted,
@@ -161,4 +185,5 @@ export default {
   evaluateEventStaff,
   getEvaluateEventStaff,
   getTopEvaluatedStaff,
+  getMyStaff,
 };

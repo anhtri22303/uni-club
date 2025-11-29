@@ -850,6 +850,12 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
         isStaff: true,
       },
       { href: "/student/staff/gift", label: "Staff Gift", icon: Gift, isStaff: true },
+      {
+        href: "/student/staff/event-order-list",
+        label: "Event Orders",
+        icon: Truck,
+        isStaff: true,
+      },
     ];
 
     // Add staff items that don't already exist

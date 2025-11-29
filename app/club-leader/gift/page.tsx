@@ -199,7 +199,7 @@ export default function ClubLeaderGiftPage() {
       // Debug: Log chi tiết từng event
       if (result && result.length > 0) {
         result.forEach((event, index) => {
-          console.log(`🔍 Event ${index + 1}:`, {
+          console.log(` Event ${index + 1}:`, {
             name: event.name,
             status: event.status,
             date: event.date,
@@ -218,7 +218,6 @@ export default function ClubLeaderGiftPage() {
 
   // Lọc các event hợp lệ (APPROVED và chưa/đang diễn ra, hoặc ONGOING)
   const availableEvents = useMemo(() => {
-    // console.log("🔍 [Gift] Filtering events. clubId:", clubId, "clubEvents:", clubEvents?.length)
 
     if (!clubId) return [];
     const numericClubId = Number(clubId);
@@ -237,7 +236,6 @@ export default function ClubLeaderGiftPage() {
     today.setHours(0, 0, 0, 0);
 
     const filtered = events.filter(event => {
-      // console.log("🔍 [Gift] Checking event:", event.name, "status:", event.status, "startDate:", event.startDate)
 
       // Dùng startDate thay vì date
       const dateToUse = event.startDate || event.date;
@@ -254,7 +252,6 @@ export default function ClubLeaderGiftPage() {
       // Chuẩn hóa status để xử lý cả "ONGOING", "ON-GOING" và "PENDING_COCLUB"
       const normalizedStatus = (event.status || "").toString().toUpperCase().replace(/-|_/g, "");
 
-      console.log("🔍 [Gift] Event:", event.name, "normalizedStatus:", normalizedStatus, "eventDate:", eventDate, "today:", today)
 
       // Điều kiện 1: Event đang diễn ra (ONGOING) thì luôn hiển thị
       if (normalizedStatus === "ONGOING") {
