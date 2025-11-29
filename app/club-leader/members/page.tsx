@@ -16,7 +16,10 @@ import { useToast } from "@/hooks/use-toast"
 import { usePagination } from "@/hooks/use-pagination"
 import { useClub, useClubMembers } from "@/hooks/use-query-hooks"
 import { useQueryClient } from "@tanstack/react-query"
-import { Users, Trash2, ChevronLeft, ChevronRight, Mail, GraduationCap, Calendar, UserCircle, Filter, X, LogOut, Check, XCircle, ClipboardList } from "lucide-react"
+import {
+  Users, Trash2, ChevronLeft, ChevronRight, Mail, GraduationCap, Calendar, UserCircle, Filter, X, LogOut, Check, XCircle, ClipboardList
+
+} from "lucide-react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { useRouter } from "next/navigation"
 import {
@@ -49,7 +52,7 @@ export default function ClubLeaderMembersPage() {
   const queryClient = useQueryClient()
   const router = useRouter()
   const [clubId] = useState(() => getClubIdFromToken())
-  
+
   // Leave requests state
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([])
   const [showLeaveRequestModal, setShowLeaveRequestModal] = useState(false)
@@ -75,23 +78,23 @@ export default function ClubLeaderMembersPage() {
   // Lọc thành viên dựa trên managedClub đã được tải về
   const allClubMembers = managedClub
     ? apiMembers
-        .filter((m: any) => String(m.clubId) === String(managedClub.id) && m.state === "ACTIVE")
-        .map((m: any) => ({
-          id: m.membershipId ?? `m-${m.userId}`,
-          userId: m.userId,
-          clubId: m.clubId,
-          fullName: m.fullName ?? `User ${m.userId}`,
-          email: m.email ?? "N/A",
-          phone: m.phone ?? "N/A",
-          studentCode: m.studentCode ?? "N/A",
-          majorName: m.major ?? "N/A",
-          avatarUrl: m.avatarUrl ?? "/placeholder-user.jpg",
-          role: m.clubRole ?? "MEMBER",
-          isStaff: m.staff ?? false,
-          status: m.state,
-          joinedAt: m.joinedDate ? new Date(m.joinedDate).toLocaleDateString() : "N/A",
-          joinedDate: m.joinedDate,
-        }))
+      .filter((m: any) => String(m.clubId) === String(managedClub.id) && m.state === "ACTIVE")
+      .map((m: any) => ({
+        id: m.membershipId ?? `m-${m.userId}`,
+        userId: m.userId,
+        clubId: m.clubId,
+        fullName: m.fullName ?? `User ${m.userId}`,
+        email: m.email ?? "N/A",
+        phone: m.phone ?? "N/A",
+        studentCode: m.studentCode ?? "N/A",
+        majorName: m.major ?? "N/A",
+        avatarUrl: m.avatarUrl ?? "/placeholder-user.jpg",
+        role: m.clubRole ?? "MEMBER",
+        isStaff: m.staff ?? false,
+        status: m.state,
+        joinedAt: m.joinedDate ? new Date(m.joinedDate).toLocaleDateString() : "N/A",
+        joinedDate: m.joinedDate,
+      }))
     : []
 
   // Apply filters
@@ -174,19 +177,19 @@ export default function ClubLeaderMembersPage() {
     try {
       const membershipIdNum = typeof membershipId === 'string' ? parseInt(membershipId, 10) : membershipId
       await deleteMember(membershipIdNum)
-      
+
       // Invalidate and refetch the members list using the correct query key
       queryClient.invalidateQueries({ queryKey: ['clubs', clubId, 'members'] })
-      
-      toast({ 
-        title: "Member Removed", 
+
+      toast({
+        title: "Member Removed",
         description: `${member.fullName} has been removed from the club successfully`
       })
-      
+
       setMembersPage(1)
     } catch (error: any) {
-      toast({ 
-        title: "Failed to Remove Member", 
+      toast({
+        title: "Failed to Remove Member",
         description: error?.message || "An error occurred while removing the member",
         variant: "destructive"
       })
@@ -205,7 +208,7 @@ export default function ClubLeaderMembersPage() {
 
   const loadLeaveRequests = async () => {
     if (!clubId) return
-    
+
     setLoadingLeaveRequests(true)
     try {
       const requests = await getLeaveReq(clubId)
@@ -307,7 +310,7 @@ export default function ClubLeaderMembersPage() {
                   </div>
                 )}
               </div>
-              
+
               {/* Request Out Button */}
               {managedClub && (
                 <div className="flex justify-end gap-3">
@@ -325,7 +328,8 @@ export default function ClubLeaderMembersPage() {
                     <LogOut className="h-4 w-4" />
                     Request Out
                     {pendingRequestsCount > 0 && (
-                      <span className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center border-2 border-white">
+                      <span className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-red-500 text-white text-xs font-bold 
+                      flex items-center justify-center border-2 border-white">
                         {pendingRequestsCount}
                       </span>
                     )}
@@ -338,7 +342,7 @@ export default function ClubLeaderMembersPage() {
           {!membersLoading && allClubMembers.length > 0 && (
             <div className="space-y-4">
               <div className="flex items-center gap-3">
-                <div className="flex-1 relative">
+                <div className="flex-1 relative w-full max-w-md">
                   <Input
                     placeholder="Search by name, email, or student code..."
                     value={searchTerm}
@@ -346,15 +350,34 @@ export default function ClubLeaderMembersPage() {
                       setSearchTerm(e.target.value)
                       setMembersPage(1)
                     }}
-                    className="pl-4 pr-4 py-2.5 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    // Thay đổi: Tăng padding-right (pr-10) để chữ không bị nút X che mất
+                    className="pl-4 pr-10 py-2.5 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 
+                    focus:ring-blue-500 focus:border-transparent transition-all border-slate-300"
                   />
+
+                  {/* Nút Clear xuất hiện khi có nội dung tìm kiếm */}
+                  {searchTerm && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        setSearchTerm("")
+                        setMembersPage(1) // Reset về trang 1 khi xóa tìm kiếm
+                      }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full text-slate-400 hover:bg-primary 
+                      hover:text-primary-foreground transition-colors"
+                    >
+                      <X className="h-4 w-4" />
+                      <span className="sr-only">Clear search</span>
+                    </Button>
+                  )}
                 </div>
 
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setShowFilters(!showFilters)}
-                  className="flex items-center gap-2 rounded-lg border-slate-200 hover:bg-slate-50 transition-colors"
+                  className="flex items-center gap-2 rounded-lg border-slate-200 hover:bg-slate-50 transition-colors bg-white"
                 >
                   <Filter className="h-4 w-4" />
                   Filters
@@ -526,91 +549,100 @@ export default function ClubLeaderMembersPage() {
                   return (
                     <Card
                       key={member.id}
-                      className={`border-0 shadow-sm hover:shadow-md transition-all duration-300 bg-white dark:bg-slate-800/90 hover:bg-gradient-to-br hover:from-white hover:to-slate-50 dark:hover:from-slate-800 dark:hover:to-slate-700/80 group ${borderColor}`}
+                      className={`border-0 shadow-sm hover:shadow-md transition-all duration-300 bg-white dark:bg-slate-800/90 hover:bg-gradient-to-br 
+                        hover:from-white hover:to-slate-50 dark:hover:from-slate-800 dark:hover:to-slate-700/80 group ${borderColor}`}
                     >
                       <CardContent className="px-6 py-0.3">
-                      <div className="flex items-start justify-between gap-6">
-                        {/* Left: Avatar + Basic Info */}
-                        <div className="flex items-start gap-4 flex-1">
-                          <Avatar className="h-16 w-16 border-2 border-slate-200 dark:border-slate-700 ring-2 ring-blue-100 dark:ring-blue-900/50 group-hover:ring-blue-200 dark:group-hover:ring-blue-800/70 transition-all">
-                            <AvatarImage src={member.avatarUrl || "/placeholder.svg"} alt={member.fullName} />
-                            <AvatarFallback className="text-lg font-semibold bg-gradient-to-br from-blue-400 to-blue-600 dark:from-blue-500 dark:to-blue-700 text-white">
-                              {member.fullName
-                                .split(" ")
-                                .map((n: string) => n[0])
-                                .join("")
-                                .slice(0, 2)
-                                .toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
+                        <div className="flex items-start justify-between gap-6">
+                          {/* Left: Avatar + Basic Info */}
+                          <div className="flex items-start gap-4 flex-1">
+                            <Avatar className="h-16 w-16 border-2 border-slate-200 dark:border-slate-700 ring-2 ring-blue-100 dark:ring-blue-900/50 
+                            group-hover:ring-blue-200 dark:group-hover:ring-blue-800/70 transition-all">
+                              <AvatarImage src={member.avatarUrl || "/placeholder.svg"} alt={member.fullName} />
+                              <AvatarFallback className="text-lg font-semibold bg-gradient-to-br from-blue-400 to-blue-600 dark:from-blue-500 
+                              dark:to-blue-700 text-white">
+                                {member.fullName
+                                  .split(" ")
+                                  .map((n: string) => n[0])
+                                  .join("")
+                                  .slice(0, 2)
+                                  .toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
 
-                          <div className="space-y-3 flex-1">
-                            {/* Name and Role */}
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">{member.fullName}</h3>
-                              {/* Colored badge by role */}
-                              {(() => {
-                                let badgeClass = "font-semibold text-xs rounded-full ";
-                                if (member.role === "LEADER") {
-                                  badgeClass += "bg-purple-100 text-purple-700 border border-purple-200 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-700/50";
-                                } else if (member.role === "VICE_LEADER" || member.role === "VICE LEADER") {
-                                  badgeClass += "bg-blue-100 text-blue-700 border border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700/50";
-                                } else {
-                                  badgeClass += "bg-green-100 text-green-700 border border-green-200 dark:bg-green-900/40 dark:text-green-300 dark:border-green-700/50";
-                                }
-                                return (
-                                  <Badge className={badgeClass}>
-                                    {member.role.replace(/_/g, ' ')}
+                            <div className="space-y-3 flex-1">
+                              {/* Name and Role */}
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">{member.fullName}</h3>
+                                {/* Colored badge by role */}
+                                {(() => {
+                                  let badgeClass = "font-semibold text-xs rounded-full ";
+                                  if (member.role === "LEADER") {
+                                    badgeClass += "bg-purple-100 text-purple-700 border border-purple-200 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-700/50";
+                                  } else if (member.role === "VICE_LEADER" || member.role === "VICE LEADER") {
+                                    badgeClass += "bg-blue-100 text-blue-700 border border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700/50";
+                                  } else {
+                                    badgeClass += "bg-green-100 text-green-700 border border-green-200 dark:bg-green-900/40 dark:text-green-300 dark:border-green-700/50";
+                                  }
+                                  return (
+                                    <Badge className={badgeClass}>
+                                      {member.role.replace(/_/g, ' ')}
+                                    </Badge>
+                                  );
+                                })()}
+                                {member.isStaff && (
+                                  <Badge className="font-semibold text-xs rounded-full bg-blue-100 text-blue-700 border border-blue-200 
+                                  dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700/50">
+                                    Staff
                                   </Badge>
-                                );
-                              })()}
-                              {member.isStaff && (
-                                <Badge className="font-semibold text-xs rounded-full bg-blue-100 text-blue-700 border border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700/50">
-                                  Staff
-                                </Badge>
-                              )}
-                            </div>
-
-                            {/* Contact and Academic Info Grid */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                              <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-200 transition-colors">
-                                <Mail className="h-4 w-4 flex-shrink-0 text-blue-500 dark:text-blue-400" />
-                                <span className="truncate">Mail: {member.email}</span>
+                                )}
                               </div>
 
-                              <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-200 transition-colors">
-                                <UserCircle className="h-4 w-4 flex-shrink-0 text-blue-500 dark:text-blue-400" />
-                                <span>Student Code: {member.studentCode}</span>
-                              </div>
+                              {/* Contact and Academic Info Grid */}
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                                <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 group-hover:text-slate-900 
+                                dark:group-hover:text-slate-200 transition-colors">
+                                  <Mail className="h-4 w-4 flex-shrink-0 text-blue-500 dark:text-blue-400" />
+                                  <span className="truncate">Mail: {member.email}</span>
+                                </div>
 
-                              <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-200 transition-colors">
-                                <GraduationCap className="h-4 w-4 flex-shrink-0 text-blue-500 dark:text-blue-400" />
-                                <span className="truncate">Major: {member.majorName}</span>
-                              </div>
+                                <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 group-hover:text-slate-900 
+                                dark:group-hover:text-slate-200 transition-colors">
+                                  <UserCircle className="h-4 w-4 flex-shrink-0 text-blue-500 dark:text-blue-400" />
+                                  <span>Student Code: {member.studentCode}</span>
+                                </div>
 
-                              <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-200 transition-colors">
-                                <Calendar className="h-4 w-4 flex-shrink-0 text-blue-500 dark:text-blue-400" />
-                                <span>Joined: {member.joinedAt}</span>
+                                <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 group-hover:text-slate-900 
+                                dark:group-hover:text-slate-200 transition-colors">
+                                  <GraduationCap className="h-4 w-4 flex-shrink-0 text-blue-500 dark:text-blue-400" />
+                                  <span className="truncate">Major: {member.majorName}</span>
+                                </div>
+
+                                <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 group-hover:text-slate-900 
+                                dark:group-hover:text-slate-200 transition-colors">
+                                  <Calendar className="h-4 w-4 flex-shrink-0 text-blue-500 dark:text-blue-400" />
+                                  <span>Joined: {member.joinedAt}</span>
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
 
-                        {/* Right: Actions */}
-                        <div className="flex flex-col items-end gap-2">
-                          {member.role !== "LEADER" && member.role !== "VICE_LEADER" && (
-                            <Button
-                              size="sm"
-                              className="rounded-lg bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 dark:hover:text-red-300 transition-all duration-200 border border-red-200 dark:border-red-800/50"
-                              onClick={() => handleDeleteMember(member.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
+                          {/* Right: Actions */}
+                          <div className="flex flex-col items-end gap-2">
+                            {member.role !== "LEADER" && member.role !== "VICE_LEADER" && (
+                              <Button
+                                size="sm"
+                                className="rounded-lg bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 dark:bg-red-900/30 
+                                dark:text-red-400 dark:hover:bg-red-900/50 dark:hover:text-red-300 transition-all duration-200 border border-red-200 dark:border-red-800/50"
+                                onClick={() => handleDeleteMember(member.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                      </CardContent>
+                    </Card>
                   )
                 })}
 
@@ -622,8 +654,8 @@ export default function ClubLeaderMembersPage() {
                       className={`
                         flex items-center gap-1 px-3 py-1.5 text-sm font-medium
                         transition-colors
-                        ${membersPage === 1 
-                          ? 'text-muted-foreground/50 cursor-not-allowed' 
+                        ${membersPage === 1
+                          ? 'text-muted-foreground/50 cursor-not-allowed'
                           : 'text-cyan-500 hover:text-cyan-400 dark:text-cyan-400 dark:hover:text-cyan-300 cursor-pointer'
                         }
                       `}
@@ -641,8 +673,8 @@ export default function ClubLeaderMembersPage() {
                       className={`
                         flex items-center gap-1 px-3 py-1.5 text-sm font-medium
                         transition-colors
-                        ${membersPage === membersPages 
-                          ? 'text-muted-foreground/50 cursor-not-allowed' 
+                        ${membersPage === membersPages
+                          ? 'text-muted-foreground/50 cursor-not-allowed'
                           : 'text-cyan-500 hover:text-cyan-400 dark:text-cyan-400 dark:hover:text-cyan-300 cursor-pointer'
                         }
                       `}
@@ -664,7 +696,7 @@ export default function ClubLeaderMembersPage() {
             <DialogHeader>
               <DialogTitle className="text-2xl font-bold text-white dark:text-white">Leave Requests</DialogTitle>
               <DialogDescription className="text-slate-400 dark:text-slate-400">
-                  List of requests to leave the club from club members
+                List of requests to leave the club from club members
               </DialogDescription>
             </DialogHeader>
 
@@ -702,9 +734,9 @@ export default function ClubLeaderMembersPage() {
                     return (
                       <Card
                         key={request.requestId}
-                        className={`border shadow-sm hover:shadow-md transition-all dark:bg-slate-800/90 dark:border-slate-700 ${
-                          request.status === "PENDING" ? "border-yellow-300 bg-yellow-50/30 dark:border-yellow-700/50 dark:bg-yellow-900/20" : ""
-                        }`}
+                        className={`border shadow-sm hover:shadow-md transition-all dark:bg-slate-800/90 dark:border-slate-700 
+                          ${request.status === "PENDING" ? "border-yellow-300 bg-yellow-50/30 dark:border-yellow-700/50 dark:bg-yellow-900/20" : ""
+                          }`}
                       >
                         <CardContent className="p-4">
                           <div className="flex items-start justify-between gap-4">
@@ -777,15 +809,15 @@ export default function ClubLeaderMembersPage() {
             </div>
 
             <div className="flex justify-end gap-3 pt-4 border-t dark:border-slate-700">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => setShowLeaveRequestModal(false)}
                 className="dark:bg-slate-800 dark:text-white dark:border-slate-600 dark:hover:bg-slate-700"
               >
                 Close
               </Button>
-              <Button 
-                onClick={loadLeaveRequests} 
+              <Button
+                onClick={loadLeaveRequests}
                 disabled={loadingLeaveRequests}
                 className="bg-green-500 hover:bg-green-600 text-white dark:bg-green-600 dark:hover:bg-green-700"
               >

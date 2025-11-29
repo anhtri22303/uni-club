@@ -243,7 +243,7 @@ export default function ClubLeaderEventsPage() {
         const myCoHostStatus =
           viewMode === "cohost" && userClubId
             ? e.coHostedClubs?.find((club: any) => club.id === userClubId)
-                ?.coHostStatus
+              ?.coHostStatus
             : null;
 
         return {
@@ -923,9 +923,8 @@ export default function ClubLeaderEventsPage() {
       await navigator.clipboard.writeText(link);
       toast({
         title: "Copied",
-        description: `${
-          environment.charAt(0).toUpperCase() + environment.slice(1)
-        } link copied to clipboard`,
+        description: `${environment.charAt(0).toUpperCase() + environment.slice(1)
+          } link copied to clipboard`,
       });
     } catch {
       toast({
@@ -1012,21 +1011,42 @@ export default function ClubLeaderEventsPage() {
           {/* Search + Filters (DataTable-style) */}
           <div className="space-y-3">
             <div className="flex items-center gap-3">
-              <Input
-                placeholder="Search by name"
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="max-w-sm"
-              />
+              {/* Search Input Container */}
+              <div className="relative w-full max-w-sm">
+                <Input
+                  placeholder="Search by name"
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  // Thêm pr-10 để chữ không bị nút X che
+                  className="pr-10 border-slate-300 bg-white"
+                />
+
+                {searchTerm && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    type="button"
+                    onClick={() => {
+                      setSearchTerm("");
+                      setCurrentPage(1); // Reset về trang 1
+                    }}
+                    // Style: Tuyệt đối bên phải, tròn, hover chuyển nền Primary + chữ sáng
+                    className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full text-slate-400 hover:bg-primary hover:text-primary-foreground transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                    <span className="sr-only">Clear search</span>
+                  </Button>
+                )}
+              </div>
 
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 bg-white"
               >
                 <Filter className="h-4 w-4" />
                 Filters
@@ -1041,6 +1061,9 @@ export default function ClubLeaderEventsPage() {
                   </Badge>
                 )}
               </Button>
+
+
+
             </div>
 
             {showFilters && (
@@ -1206,9 +1229,8 @@ export default function ClubLeaderEventsPage() {
                   return (
                     <Card
                       key={event.id}
-                      className={`hover:shadow-md transition-shadow ${borderColor} ${
-                        expired || isCompleted ? "opacity-60" : ""
-                      } h-full flex flex-col`}
+                      className={`hover:shadow-md transition-shadow ${borderColor} ${expired || isCompleted ? "opacity-60" : ""
+                        } h-full flex flex-col`}
                     >
                       <CardHeader>
                         <div className="flex items-start justify-between gap-2">
@@ -1241,8 +1263,8 @@ export default function ClubLeaderEventsPage() {
                                 event.type === "PRIVATE"
                                   ? "bg-purple-100 text-purple-700 border-purple-300 shrink-0 text-xs font-semibold"
                                   : event.type === "SPECIAL"
-                                  ? "bg-pink-100 text-pink-700 border-pink-300 shrink-0 text-xs font-semibold"
-                                  : "bg-blue-100 text-blue-700 border-blue-300 shrink-0 text-xs font-semibold"
+                                    ? "bg-pink-100 text-pink-700 border-pink-300 shrink-0 text-xs font-semibold"
+                                    : "bg-blue-100 text-blue-700 border-blue-300 shrink-0 text-xs font-semibold"
                               }
                             >
                               {event.type || "UNKNOWN"}
@@ -1390,20 +1412,20 @@ export default function ClubLeaderEventsPage() {
                           {(event.status === "APPROVED" ||
                             event.status === "ONGOING" ||
                             event.status === "COMPLETED") && (
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              className="w-full"
-                              onClick={() =>
-                                router.push(
-                                  `/club-leader/events/${event.id}/stats`
-                                )
-                              }
-                            >
-                              <BarChart3 className="h-4 w-4 mr-2" />
-                              Stats
-                            </Button>
-                          )}
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                className="w-full"
+                                onClick={() =>
+                                  router.push(
+                                    `/club-leader/events/${event.id}/stats`
+                                  )
+                                }
+                              >
+                                <BarChart3 className="h-4 w-4 mr-2" />
+                                Stats
+                              </Button>
+                            )}
 
                           {/* QR Code Section - Only show if ONGOING and event is still active */}
                           {isEventActive(event) && (
@@ -1518,11 +1540,10 @@ export default function ClubLeaderEventsPage() {
                     {section.items.map((item, itemIndex) => (
                       <li
                         key={itemIndex}
-                        className={`text-sm leading-relaxed flex items-start gap-3 rounded-xl transition-all duration-200 ${
-                          item.important
+                        className={`text-sm leading-relaxed flex items-start gap-3 rounded-xl transition-all duration-200 ${item.important
                             ? "bg-gradient-to-r from-amber-50 via-yellow-50 to-orange-50 dark:from-amber-900/20 dark:via-yellow-900/20 dark:to-orange-900/20 border-l-4 border-amber-500 dark:border-amber-400 pl-4 pr-3 py-3 font-semibold text-amber-950 dark:text-amber-200 shadow-md hover:shadow-lg"
                             : "text-gray-700 dark:text-gray-300 pl-1 pr-2 py-1 hover:pl-2 hover:bg-blue-50/50 dark:hover:bg-blue-900/20 rounded-lg"
-                        }`}
+                          }`}
                       >
                         {item.important ? (
                           <>
@@ -1667,7 +1688,7 @@ export default function ClubLeaderEventsPage() {
                       : 'Choose Location & Event Days *'}
                   </span>
                 </Button>
-                
+
                 {formData.locationId && eventDays.length > 0 && (
                   <div className="space-y-3">
                     {/* Location Display */}
@@ -1732,14 +1753,13 @@ export default function ClubLeaderEventsPage() {
                         cleanValue === "" ? 0 : Number.parseInt(cleanValue, 10);
                       setFormData({ ...formData, maxCheckInCount: numValue });
                     }}
-                    className={`h-9 border-slate-300${
-                      selectedLocationCapacity &&
-                      formData.maxCheckInCount > selectedLocationCapacity
+                    className={`h-9 border-slate-300${selectedLocationCapacity &&
+                        formData.maxCheckInCount > selectedLocationCapacity
                         ? "border-red-500 focus-visible:ring-red-500"
                         : selectedLocationId
-                        ? "bg-muted border-blue-300"
-                        : ""
-                    }`}
+                          ? "bg-muted border-blue-300"
+                          : ""
+                      }`}
                     placeholder="100"
                     required
                   />
@@ -1814,138 +1834,136 @@ export default function ClubLeaderEventsPage() {
               </div>
 
               <div className="space-y-1.5">
-                  <Label className="text-sm">
-                    Co-Host Clubs
-                    {selectedCoHostClubIds.length > 0 && (
-                      <span className="text-xs text-muted-foreground ml-1">
-                        ({selectedCoHostClubIds.length} selected)
-                      </span>
-                    )}
-                    {formData.type === "PRIVATE" && (
-                      <span className="text-xs text-amber-600 dark:text-amber-400 ml-2">
-                        (Not available for private events)
-                      </span>
-                    )}
-                  </Label>
-                  <div
-                    className={`border rounded-md p-2 min-h-[2.25rem] bg-muted/30 flex items-center gap-1 flex-wrap border-slate-300 ${
-                      formData.type === "PRIVATE"
-                        ? "opacity-50 cursor-not-allowed"
-                        : ""
+                <Label className="text-sm">
+                  Co-Host Clubs
+                  {selectedCoHostClubIds.length > 0 && (
+                    <span className="text-xs text-muted-foreground ml-1">
+                      ({selectedCoHostClubIds.length} selected)
+                    </span>
+                  )}
+                  {formData.type === "PRIVATE" && (
+                    <span className="text-xs text-amber-600 dark:text-amber-400 ml-2">
+                      (Not available for private events)
+                    </span>
+                  )}
+                </Label>
+                <div
+                  className={`border rounded-md p-2 min-h-[2.25rem] bg-muted/30 flex items-center gap-1 flex-wrap border-slate-300 ${formData.type === "PRIVATE"
+                      ? "opacity-50 cursor-not-allowed"
+                      : ""
                     }`}
-                  >
-                    {clubsLoading ? (
-                      <p className="text-xs text-muted-foreground">
-                        Loading...
-                      </p>
-                    ) : allClubs.length === 0 ? (
-                      <p className="text-xs text-muted-foreground">
-                        No clubs available
-                      </p>
-                    ) : formData.type === "PRIVATE" ? (
-                      <p className="text-xs text-muted-foreground">
-                        Co-hosting is not available for private events
-                      </p>
-                    ) : selectedCoHostClubIds.length === 0 ? (
-                      <p className="text-xs text-muted-foreground">
-                        Click below to select clubs
-                      </p>
-                    ) : (
-                      <>
-                        {selectedCoHostClubIds.map((clubId) => {
-                          const club = allClubs.find((c) => c.id === clubId);
-                          if (!club) return null;
-                          return (
-                            <Badge
-                              key={clubId}
-                              variant="secondary"
-                              className="text-xs px-2 py-0.5 flex items-center gap-1"
-                            >
-                              {club.name}
-                              <X
-                                className="h-3 w-3 cursor-pointer hover:text-destructive"
-                                onClick={() =>
-                                  setSelectedCoHostClubIds(
-                                    selectedCoHostClubIds.filter(
-                                      (id) => id !== clubId
-                                    )
+                >
+                  {clubsLoading ? (
+                    <p className="text-xs text-muted-foreground">
+                      Loading...
+                    </p>
+                  ) : allClubs.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">
+                      No clubs available
+                    </p>
+                  ) : formData.type === "PRIVATE" ? (
+                    <p className="text-xs text-muted-foreground">
+                      Co-hosting is not available for private events
+                    </p>
+                  ) : selectedCoHostClubIds.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">
+                      Click below to select clubs
+                    </p>
+                  ) : (
+                    <>
+                      {selectedCoHostClubIds.map((clubId) => {
+                        const club = allClubs.find((c) => c.id === clubId);
+                        if (!club) return null;
+                        return (
+                          <Badge
+                            key={clubId}
+                            variant="secondary"
+                            className="text-xs px-2 py-0.5 flex items-center gap-1"
+                          >
+                            {club.name}
+                            <X
+                              className="h-3 w-3 cursor-pointer hover:text-destructive"
+                              onClick={() =>
+                                setSelectedCoHostClubIds(
+                                  selectedCoHostClubIds.filter(
+                                    (id) => id !== clubId
                                   )
-                                }
-                              />
-                            </Badge>
-                          );
-                        })}
-                      </>
-                    )}
-                  </div>
-                
+                                )
+                              }
+                            />
+                          </Badge>
+                        );
+                      })}
+                    </>
+                  )}
+                </div>
+
                 {/* Expandable co-host section for selecting clubs */}
                 {allClubs.filter((club) => club.id !== userClubId).length > 0 && (
-                <details className="space-y-2">
-                  <summary
-                    className={`text-sm font-medium flex items-center gap-2 ${
-                      formData.type === "PRIVATE"
-                        ? "cursor-not-allowed opacity-50 pointer-events-none"
-                        : "cursor-pointer hover:text-primary"
-                    }`}
-                    onClick={(e) => {
-                      if (formData.type === "PRIVATE") {
-                        e.preventDefault();
-                      }
-                    }}
-                  >
-                    <Plus className="h-4 w-4" />
-                    Select Co-Host Clubs (
-                    {
-                      allClubs.filter((club) => club.id !== userClubId).length
-                    }{" "}
-                    available)
-                    {formData.type === "PRIVATE" && (
-                      <span className="text-xs text-amber-600 dark:text-amber-400">
-                        - Disabled for private events
-                      </span>
-                    )}
-                  </summary>
-                  <div className="border rounded-md p-3 max-h-40 overflow-y-auto bg-muted/30 mt-2">
-                    <div className="grid grid-cols-2 gap-2">
-                      {allClubs
-                        .filter((club) => club.id !== userClubId)
-                        .map((club) => (
-                          <div
-                            key={club.id}
-                            className="flex items-center space-x-2 p-1.5 hover:bg-background rounded"
-                          >
-                            <Checkbox
-                              id={`club-full-${club.id}`}
-                              checked={selectedCoHostClubIds.includes(club.id)}
-                              onCheckedChange={(checked: boolean) => {
-                                if (checked) {
-                                  setSelectedCoHostClubIds([
-                                    ...selectedCoHostClubIds,
-                                    club.id,
-                                  ]);
-                                } else {
-                                  setSelectedCoHostClubIds(
-                                    selectedCoHostClubIds.filter(
-                                      (id) => id !== club.id
-                                    )
-                                  );
-                                }
-                              }}
-                              disabled={formData.type === "PRIVATE"}
-                              className="h-4 w-4"
-                            />
-                            <label
-                              htmlFor={`club-full-${club.id}`}
-                              className="text-sm cursor-pointer flex-1"
+                  <details className="space-y-2">
+                    <summary
+                      className={`text-sm font-medium flex items-center gap-2 ${formData.type === "PRIVATE"
+                          ? "cursor-not-allowed opacity-50 pointer-events-none"
+                          : "cursor-pointer hover:text-primary"
+                        }`}
+                      onClick={(e) => {
+                        if (formData.type === "PRIVATE") {
+                          e.preventDefault();
+                        }
+                      }}
+                    >
+                      <Plus className="h-4 w-4" />
+                      Select Co-Host Clubs (
+                      {
+                        allClubs.filter((club) => club.id !== userClubId).length
+                      }{" "}
+                      available)
+                      {formData.type === "PRIVATE" && (
+                        <span className="text-xs text-amber-600 dark:text-amber-400">
+                          - Disabled for private events
+                        </span>
+                      )}
+                    </summary>
+                    <div className="border rounded-md p-3 max-h-40 overflow-y-auto bg-muted/30 mt-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        {allClubs
+                          .filter((club) => club.id !== userClubId)
+                          .map((club) => (
+                            <div
+                              key={club.id}
+                              className="flex items-center space-x-2 p-1.5 hover:bg-background rounded"
                             >
-                              {club.name}
-                            </label>
-                          </div>
-                        ))}
+                              <Checkbox
+                                id={`club-full-${club.id}`}
+                                checked={selectedCoHostClubIds.includes(club.id)}
+                                onCheckedChange={(checked: boolean) => {
+                                  if (checked) {
+                                    setSelectedCoHostClubIds([
+                                      ...selectedCoHostClubIds,
+                                      club.id,
+                                    ]);
+                                  } else {
+                                    setSelectedCoHostClubIds(
+                                      selectedCoHostClubIds.filter(
+                                        (id) => id !== club.id
+                                      )
+                                    );
+                                  }
+                                }}
+                                disabled={formData.type === "PRIVATE"}
+                                className="h-4 w-4"
+                              />
+                              <label
+                                htmlFor={`club-full-${club.id}`}
+                                className="text-sm cursor-pointer flex-1"
+                              >
+                                {club.name}
+                              </label>
+                            </div>
+                          ))}
+                      </div>
                     </div>
-                  </div>
-                </details>
+                  </details>
                 )}
               </div>
 

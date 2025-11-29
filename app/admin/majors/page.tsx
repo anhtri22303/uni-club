@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { BookMarked, Search, Eye, Trash, Plus } from "lucide-react"
+import { BookMarked, Search, Eye, Trash, Plus, X } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import { useMajors } from "@/hooks/use-query-hooks"
@@ -297,7 +297,7 @@ export default function UniStaffMajorsPage() {
                             <div className="w-24 h-24 flex-shrink-0"> {/* Added flex-shrink-0 to prevent card shrinking */}
                                 <Card className="border-0 shadow-md bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 h-full">
                                     <CardContent className="p-2 h-full flex flex-col justify-center">
-                                        <div className="text-[10px] font-medium text-blue-700 dark:text-blue-300 mb-1">Total Majors</div>
+                                        <div className="text-[12px] font-medium text-blue-700 dark:text-blue-300 mb-1">Total Majors</div>
                                         <div className="flex items-center gap-2">
                                             <div className="p-1 bg-blue-500 rounded-md">
                                                 <BookMarked className="h-3 w-3 text-white" />
@@ -313,14 +313,30 @@ export default function UniStaffMajorsPage() {
 
                             {/* Search Input and Buttons */}
                             <div className="flex items-center gap-2">
-                                <Input
-                                    placeholder="Search majors"
-                                    value={query}
-                                    onChange={(e) => setQuery((e.target as HTMLInputElement).value)}
-                                    className="max-w-sm bg-white dark:bg-slate-800 rounded-md px-3 py-2 shadow-sm border border-gray-200 
-                                    dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/40"
-                                />
-                                <Button onClick={() => { setQuery("") }} variant="ghost">Clear</Button>
+                                {/* Wrapper for Input and Clear Button */}
+                                <div className="relative w-full max-w-sm">
+                                    <Input
+                                        placeholder="Search majors"
+                                        value={query}
+                                        onChange={(e) => setQuery((e.target as HTMLInputElement).value)}
+                                        // Added pr-12 (padding-right) to prevent text from overlapping with the clear button
+                                        className="w-[250px] pr-12 bg-white dark:bg-slate-800 rounded-md px-3 py-2 shadow-sm border border-gray-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                                    />
+
+                                    {/* Clear Button (X) - Only shown when there is a query */}
+                                    {query && (
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => setQuery("")}
+                                            type="button"
+                                            className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full"
+                                        >
+                                            <X className="h-4 w-4 text-muted-foreground" />
+                                        </Button>
+                                    )}
+                                </div>
+
                                 <Button size="sm" className="ml-2" onClick={() => setCreateOpen(true)} title="Create major">
                                     Create major
                                     <Plus className="h-4 w-4 ml-1" />

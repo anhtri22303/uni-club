@@ -504,7 +504,8 @@ export default function ClubAttendancePage() {
         <button
           onClick={onPrev}
           disabled={current === 1}
-          className="text-sm border rounded-md px-2 py-1 dark:bg-slate-800 dark:text-white dark:border-slate-600 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="text-sm border rounded-md px-2 py-1 dark:bg-slate-800 dark:text-white dark:border-slate-600 dark:hover:bg-slate-700 
+          disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <ChevronLeft className="inline h-4 w-4" /> Prev
         </button>
@@ -514,7 +515,8 @@ export default function ClubAttendancePage() {
         <button
           onClick={onNext}
           disabled={current === total}
-          className="text-sm border rounded-md px-2 py-1 dark:bg-slate-800 dark:text-white dark:border-slate-600 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="text-sm border rounded-md px-2 py-1 dark:bg-slate-800 dark:text-white dark:border-slate-600 dark:hover:bg-slate-700 
+          disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Next <ChevronRight className="inline h-4 w-4" />
         </button>
@@ -587,7 +589,7 @@ export default function ClubAttendancePage() {
         {/* Thanh tìm kiếm và bộ lọc */}
         <div className="space-y-4 mb-6">
           <div className="flex items-center gap-3">
-            <div className="flex-1 relative">
+            <div className="flex-1 relative w-full max-w-sm">
               <Input
                 placeholder="Search by name or student code..."
                 value={searchTerm}
@@ -595,20 +597,42 @@ export default function ClubAttendancePage() {
                   setSearchTerm(e.target.value)
                   setMembersPage(1)
                 }}
-                className="pl-4 pr-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm dark:text-white dark:placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all"
+                // pr-4 -> pr-10 để chừa chỗ cho nút X
+                className="pl-4 pr-10 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm dark:text-white 
+                dark:placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all"
               />
+
+              {/* Nút Clear Search */}
+              {searchTerm && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setSearchTerm("")
+                    setMembersPage(1) // Reset về trang 1 khi xóa tìm kiếm
+                  }}
+                  // Style: Tròn, nằm bên phải, hover chuyển màu Primary
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full text-slate-400 hover:bg-primary 
+                  hover:text-primary-foreground transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                  <span className="sr-only">Clear search</span>
+                </Button>
+              )}
             </div>
 
             <Button
               variant="outline"
               size="sm"
               onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2 rounded-lg border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 dark:bg-slate-800 dark:text-white transition-colors"
+              className="flex items-center gap-2 rounded-lg border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 
+              dark:bg-slate-800 dark:text-white transition-colors bg-white hover:text-black"
             >
               <Filter className="h-4 w-4" />
               Filters
               {hasActiveFilters && (
-                <Badge className="ml-1 h-5 w-5 p-0 text-xs bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-full flex items-center justify-center">
+                <Badge className="ml-1 h-5 w-5 p-0 text-xs bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-full 
+                flex items-center justify-center">
                   {Object.values(activeFilters).filter((v) => v && v !== "all").length + (searchTerm ? 1 : 0)}
                 </Badge>
               )}
@@ -616,7 +640,8 @@ export default function ClubAttendancePage() {
           </div>
 
           {showFilters && (
-            <div className="space-y-4 p-6 border border-slate-200 dark:border-slate-700 rounded-xl bg-gradient-to-br from-slate-50 to-white dark:from-slate-800 dark:to-slate-900">
+            <div className="space-y-4 p-6 border border-slate-200 dark:border-slate-700 rounded-xl bg-gradient-to-br from-slate-50 to-white 
+            dark:from-slate-800 dark:to-slate-900">
               <div className="flex items-center justify-between">
                 <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Advanced Filters</h4>
                 {hasActiveFilters && (
@@ -624,7 +649,8 @@ export default function ClubAttendancePage() {
                     variant="ghost"
                     size="sm"
                     onClick={clearFilters}
-                    className="h-auto p-1 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors"
+                    className="h-auto p-1 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/50 
+                    dark:hover:bg-slate-700 transition-colors"
                   >
                     <X className="h-3 w-3 mr-1" />
                     Clear all
@@ -640,7 +666,8 @@ export default function ClubAttendancePage() {
                     value={activeFilters["role"] || "all"}
                     onValueChange={(v) => handleFilterChange("role", v)}
                   >
-                    <SelectTrigger className="h-9 text-sm rounded-lg border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 dark:text-white hover:border-slate-300 dark:hover:border-slate-500 transition-colors">
+                    <SelectTrigger className="h-9 text-sm rounded-lg border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 dark:text-white 
+                    hover:border-slate-300 dark:hover:border-slate-500 transition-colors">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -660,7 +687,8 @@ export default function ClubAttendancePage() {
                     value={activeFilters["staff"] || "all"}
                     onValueChange={(v) => handleFilterChange("staff", v)}
                   >
-                    <SelectTrigger className="h-9 text-sm rounded-lg border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 dark:text-white hover:border-slate-300 dark:hover:border-slate-500 transition-colors">
+                    <SelectTrigger className="h-9 text-sm rounded-lg border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 dark:text-white 
+                    hover:border-slate-300 dark:hover:border-slate-500 transition-colors">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -722,18 +750,18 @@ export default function ClubAttendancePage() {
                 </span>
               </div>
               <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => handleBulkAction("present")}
                   disabled={isReadOnly || !sessionId}
                   className="dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:hover:bg-slate-600"
                 >
                   Mark All Present
                 </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => handleBulkAction("absent")}
                   disabled={isReadOnly || !sessionId}
                   className="dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:hover:bg-slate-600"
@@ -839,10 +867,14 @@ export default function ClubAttendancePage() {
                           <SelectTrigger
                             className={cn(
                               "w-[130px] dark:bg-slate-700 dark:text-white dark:border-slate-600",
-                              attendance[member.id] === "present" && "bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300 border-green-200 dark:border-green-700",
-                              attendance[member.id] === "absent" && "bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300 border-red-200 dark:border-red-700",
-                              attendance[member.id] === "late" && "bg-orange-100 dark:bg-orange-900/40 text-orange-800 dark:text-orange-300 border-orange-200 dark:border-orange-700",
-                              attendance[member.id] === "excused" && "bg-gray-100 dark:bg-gray-800/50 text-gray-800 dark:text-gray-300 border-gray-200 dark:border-gray-700",
+                              attendance[member.id] === "present" && 
+                              "bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300 border-green-200 dark:border-green-700",
+                              attendance[member.id] === "absent" && 
+                              "bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300 border-red-200 dark:border-red-700",
+                              attendance[member.id] === "late" && 
+                              "bg-orange-100 dark:bg-orange-900/40 text-orange-800 dark:text-orange-300 border-orange-200 dark:border-orange-700",
+                              attendance[member.id] === "excused" && 
+                              "bg-gray-100 dark:bg-gray-800/50 text-gray-800 dark:text-gray-300 border-gray-200 dark:border-gray-700",
                             )}
                           >
                             <SelectValue />
@@ -902,7 +934,8 @@ export default function ClubAttendancePage() {
                   <Button
                     onClick={handleSaveAttendance}
                     disabled={isSaving || !sessionId} // Disable khi đang lưu hoặc không có session
-                    className="flex items-center gap-2 mr-10 mb-5 w-[180px] bg-green-500 hover:bg-green-600 text-white dark:bg-green-600 dark:hover:bg-green-700" // Thêm độ rộng cố định
+                    className="flex items-center gap-2 mr-10 mb-5 w-[180px] bg-green-500 hover:bg-green-600 text-white dark:bg-green-600 
+                    dark:hover:bg-green-700" // Thêm độ rộng cố định
                   >
                     {isSaving ? (
                       // Thêm icon spinner đơn giản

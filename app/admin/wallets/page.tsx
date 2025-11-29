@@ -7,13 +7,15 @@ import { CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { AdminTransaction, AdminWallet, AdjustWalletParams, adjustAdminWallet, fetchAdminTransactions, fetchAdminWallets, } from "@/service/adminApi/adminWalletApi"
+import {
+    AdminTransaction, AdminWallet, AdjustWalletParams, adjustAdminWallet, fetchAdminTransactions, fetchAdminWallets,
+} from "@/service/adminApi/adminWalletApi"
 import { useMemo, useState } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, } from "@/components/ui/dialog"
-import { FileText, Eye, Trash, Plus, Minus, Search, Wallet, History, ArrowRight } from "lucide-react"
+import { FileText, Eye, Trash, Plus, Minus, Search, Wallet, History, ArrowRight, X } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -177,15 +179,28 @@ export default function AdminWalletsPage() {
                             <Card>
                                 <CardHeader>
                                     <CardTitle>All Wallets</CardTitle>
-                                    <div className="relative mt-2">
+                                    <div className="relative mt-2 max-w-sm">
                                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                         <Input
                                             placeholder="Search wallets by name, type, or ID..."
                                             value={walletQuery}
                                             onChange={(e) => setWalletQuery(e.target.value)}
-                                            className="pl-10"
+                                            // Thêm pr-12 để tránh chữ bị che bởi nút X
+                                            className="pl-10 pr-12"
                                         />
+                                        {/*  Nút X (Clear) */}
+                                        {walletQuery && (
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => setWalletQuery("")}
+                                                className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full"
+                                            >
+                                                <X className="h-4 w-4 text-muted-foreground" />
+                                            </Button>
+                                        )}
                                     </div>
+
                                 </CardHeader>
                                 <CardContent>
                                     <div className="w-full overflow-x-auto">
@@ -249,10 +264,12 @@ export default function AdminWalletsPage() {
                                             <Button size="sm" variant="outline" onClick={() => setWalletPage(p => p - 1)} disabled={walletPage === 0}>
                                                 Prev
                                             </Button>
-                                            <Button size="sm" variant="outline" onClick={() => setWalletPage(p => p + 1)} disabled={walletPage >= walletTotalPages - 1}>
+                                            <Button size="sm" variant="outline" onClick={() => setWalletPage(p => p + 1)}
+                                                disabled={walletPage >= walletTotalPages - 1}>
                                                 Next
                                             </Button>
-                                            <Button size="sm" variant="outline" onClick={() => setWalletPage(walletTotalPages - 1)} disabled={walletPage >= walletTotalPages - 1}>
+                                            <Button size="sm" variant="outline" onClick={() => setWalletPage(walletTotalPages - 1)}
+                                                disabled={walletPage >= walletTotalPages - 1}>
                                                 Last
                                             </Button>
                                         </div>
@@ -266,15 +283,28 @@ export default function AdminWalletsPage() {
                             <Card>
                                 <CardHeader>
                                     <CardTitle>All Transactions</CardTitle>
-                                    <div className="relative mt-2">
+                                    <div className="relative mt-2 max-w-sm">
                                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                         <Input
                                             placeholder="Search transactions by sender, receiver, note, or type..."
                                             value={txQuery}
                                             onChange={(e) => setTxQuery(e.target.value)}
-                                            className="pl-10"
+                                            // Thêm pr-12
+                                            className="pl-10 pr-12"
                                         />
+                                        {/* Nút X (Clear) */}
+                                        {txQuery && (
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => setTxQuery("")}
+                                                className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full"
+                                            >
+                                                <X className="h-4 w-4 text-muted-foreground" />
+                                            </Button>
+                                        )}
                                     </div>
+
                                 </CardHeader>
                                 <CardContent>
                                     <div className="w-full overflow-x-auto">

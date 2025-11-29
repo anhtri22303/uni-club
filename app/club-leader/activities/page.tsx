@@ -12,15 +12,20 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import {
     getClubMemberActivity,
     getClubMemberActivityLive,
+    updateBulkMonthlyActivity,
     MemberActivityScore,
+    MemberLiveActivityScore,
     ActivityLevel,
+    UpdateBulkMonthlyActivityBody,
+    MonthlyActivityItem
 } from "@/service/activityApi"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
-import { LineChart, Users, BarChart2, TrendingUp, TrendingDown, Minus, Check, ShieldAlert, Star, RotateCw, Calculator } from "lucide-react"
+import { Users, BarChart2, Star, RotateCw, Calculator, Check, Save, AlertCircle } from "lucide-react"
 import { Label } from "@/components/ui/label"
 import { getClubIdFromToken } from "@/service/clubApi"
 import { Input } from "@/components/ui/input"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 // --- Tiện ích (Helpers) ---
 
@@ -107,7 +112,7 @@ const ActivityScoreDetail = ({ score }: { score: MemberActivityScore }) => {
                             </div>
                             <div className="flex justify-between">
                                 <span>Sessions:</span>
-                                <span>{score.totalClubPresent}/{score.totalClubSessions}</span>
+                                <span>{score.totalClubPresent ?? 0}/{score.totalClubSessions ?? 0}</span>
                             </div>
                         </div>
                     </CardContent>
@@ -155,7 +160,7 @@ const ActivityScoreDetail = ({ score }: { score: MemberActivityScore }) => {
                 <CardContent className="pt-4">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <ShieldAlert className="h-4 w-4" /> Penalty Points
+                            <AlertCircle className="h-4 w-4" /> Penalty Points
                         </div>
                         <span className="text-red-600 font-bold">-{score.totalPenaltyPoints ?? 0}</span>
                     </div>
@@ -179,11 +184,14 @@ export default function ActivityReportPage() {
     const [isLoading, setIsLoading] = useState(true)
     const [selectedMember, setSelectedMember] = useState<MemberActivityScore | null>(null)
     
-    // State Base Score
-    const [attendanceBaseInput, setAttendanceBaseInput] = useState<string>("")
-    const [staffBaseInput, setStaffBaseInput] = useState<string>("")
-    
+    // State Base Score & Chế độ
+    // [CẬP NHẬT] Mặc định là "0"
+    const [attendanceBaseInput, setAttendanceBaseInput] = useState<string>("0")
+    const [staffBaseInput, setStaffBaseInput] = useState<string>("0")
     const [isCalculating, setIsCalculating] = useState(false)
+    const [isSaving, setIsSaving] = useState(false)
+    const [isPreviewMode, setIsPreviewMode] = useState(false) // Đánh dấu đang xem Live Preview
+
     const [clubId] = useState(() => getClubIdFromToken())
 
     // Hàm tải dữ liệu lịch sử (ban đầu)
@@ -195,22 +203,21 @@ export default function ActivityReportPage() {
 
         console.log(`Loading historical data for Club ID: ${clubId}, ${selectedMonth}/${selectedYear}`)
         setIsLoading(true)
+        setIsPreviewMode(false) // Reset preview mode khi load lại trang
+        
+        // [CẬP NHẬT] Reset input về 0 mỗi khi load lại dữ liệu (chuyển tháng/năm)
+        setAttendanceBaseInput("0");
+        setStaffBaseInput("0");
+
         try {
+            // Vẫn gọi API để lấy dữ liệu hoạt động mới nhất của member trong tháng
             const data = await getClubMemberActivity({
                 clubId: clubId,
                 year: selectedYear,
                 month: selectedMonth,
             })
             setActivities(data)
-            
-            // Lấy giá trị Base Score từ dữ liệu cũ để điền vào input (nếu có)
-            if (data.length > 0) {
-                setAttendanceBaseInput(String(data[0].attendanceBaseScore ?? 30)); // Mặc định 30 nếu chưa có
-                setStaffBaseInput(String(data[0].staffBaseScore ?? 20)); // Mặc định 20 nếu chưa có
-            } else {
-                setAttendanceBaseInput("30");
-                setStaffBaseInput("20");
-            }
+            // [QUAN TRỌNG] Đã bỏ đoạn code tự động điền base score cũ vào input
         } catch (error: any) {
             console.error("Error loading activity report:", error)
             toast({
@@ -224,7 +231,7 @@ export default function ActivityReportPage() {
         }
     }, [clubId, selectedYear, selectedMonth, toast])
 
-    // Hàm tính toán LIVE (Sử dụng API activity-live mới)
+    // Hàm tính toán LIVE
     const handleLiveCalculation = async () => {
         if (!clubId) return
 
@@ -242,18 +249,63 @@ export default function ActivityReportPage() {
 
         setIsCalculating(true)
         try {
-            // Gọi API Live để lấy dữ liệu tính toán real-time
-            const liveData = await getClubMemberActivityLive({
+            // 1. Gọi API Live để lấy dữ liệu tính toán real-time
+            const liveData: MemberLiveActivityScore[] = await getClubMemberActivityLive({
                 clubId: clubId,
                 attendanceBase: attBase,
                 staffBase: stfBase
             })
             
-            setActivities(liveData)
+            // 2. MERGE Logic: Kết hợp dữ liệu Live vào dữ liệu hiện tại
+            // Lý do: Live Data chỉ có Score, thiếu Stats (Level, Events...).
+            // Ta cần giữ lại Stats từ `activities` cũ (nếu có) và cập nhật Score từ `liveData`.
+            
+            const mergedActivities: MemberActivityScore[] = liveData.map(liveItem => {
+                // Tìm member tương ứng trong danh sách hiện tại
+                const existingMember = activities.find(a => a.membershipId === liveItem.membershipId);
+
+                if (existingMember) {
+                    // Nếu có dữ liệu cũ, ghi đè Score mới vào, giữ nguyên Stats cũ
+                    return {
+                        ...existingMember,
+                        attendanceBaseScore: liveItem.attendanceBaseScore,
+                        attendanceMultiplier: liveItem.attendanceMultiplier,
+                        attendanceTotalScore: liveItem.attendanceTotalScore,
+                        staffBaseScore: liveItem.staffBaseScore,
+                        staffMultiplier: liveItem.staffMultiplier,
+                        staffTotalScore: liveItem.staffTotalScore,
+                        finalScore: liveItem.finalScore
+                    };
+                } else {
+                    // Nếu là tháng mới tinh chưa có dữ liệu, tạo mới object với default stats
+                    return {
+                        ...liveItem,
+                        // Default stats cho các trường thiếu
+                        clubId: clubId,
+                        clubName: "", // Live không trả về cái này, có thể để trống
+                        year: selectedYear,
+                        month: selectedMonth,
+                        totalEventRegistered: 0,
+                        totalEventAttended: 0,
+                        eventAttendanceRate: 0,
+                        totalPenaltyPoints: 0,
+                        activityLevel: "UNKNOWN",
+                        totalClubSessions: 0,
+                        totalClubPresent: 0,
+                        sessionAttendanceRate: 0,
+                        totalStaffCount: 0,
+                        staffEvaluation: "UNKNOWN",
+                        staffScore: 0
+                    } as MemberActivityScore;
+                }
+            });
+
+            setActivities(mergedActivities)
+            setIsPreviewMode(true) // Bật chế độ Preview
             
             toast({
-                title: "Live Calculation Applied",
-                description: `Scores recalculated with Attendance Base: ${attBase} and Staff Base: ${stfBase}.`,
+                title: "Live Preview Ready",
+                description: `Scores recalculated based on Att: ${attBase}, Staff: ${stfBase}. Don't forget to SAVE.`,
                 variant: "default",
             })
         } catch (error: any) {
@@ -267,6 +319,70 @@ export default function ActivityReportPage() {
             setIsCalculating(false)
         }
     }
+
+    // Hàm Lưu Báo Cáo (Bulk Update)
+    const handleSaveReport = async () => {
+        if (!clubId || activities.length === 0) return;
+
+        setIsSaving(true);
+        try {
+            // Map dữ liệu hiện tại sang format Body của API Bulk Update
+            const itemsToUpdate: MonthlyActivityItem[] = activities.map(item => ({
+                membershipId: item.membershipId,
+                year: selectedYear, // Đảm bảo dùng năm đang chọn
+                month: selectedMonth, // Đảm bảo dùng tháng đang chọn
+                totalEventRegistered: item.totalEventRegistered ?? 0,
+                totalEventAttended: item.totalEventAttended ?? 0,
+                eventAttendanceRate: item.eventAttendanceRate ?? 0,
+                totalPenaltyPoints: item.totalPenaltyPoints ?? 0,
+                activityLevel: item.activityLevel || "UNKNOWN",
+                attendanceBaseScore: item.attendanceBaseScore,
+                attendanceMultiplier: item.attendanceMultiplier,
+                attendanceTotalScore: item.attendanceTotalScore,
+                staffBaseScore: item.staffBaseScore,
+                totalStaffCount: item.totalStaffCount ?? 0,
+                staffEvaluation: item.staffEvaluation || "UNKNOWN",
+                staffMultiplier: item.staffMultiplier,
+                staffScore: item.staffScore ?? 0,
+                staffTotalScore: item.staffTotalScore,
+                totalClubSessions: item.totalClubSessions ?? 0,
+                totalClubPresent: item.totalClubPresent ?? 0,
+                sessionAttendanceRate: item.sessionAttendanceRate ?? 0,
+                finalScore: item.finalScore
+            }));
+
+            const payload: UpdateBulkMonthlyActivityBody = {
+                year: selectedYear,
+                month: selectedMonth,
+                items: itemsToUpdate
+            };
+
+            await updateBulkMonthlyActivity({
+                clubId: clubId,
+                body: payload
+            });
+
+            toast({
+                title: "Report Saved",
+                description: "All member scores have been successfully updated.",
+                variant: "default",
+            });
+            
+            // Sau khi save thành công, tắt chế độ Preview và reload lại dữ liệu sạch
+            setIsPreviewMode(false);
+            loadActivities();
+
+        } catch (error: any) {
+            console.error("Error saving report:", error);
+            toast({
+                title: "Save Failed",
+                description: error.message || "Could not save the report.",
+                variant: "destructive",
+            });
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     // Tải dữ liệu khi component mount hoặc filter thay đổi
     useEffect(() => {
@@ -288,12 +404,28 @@ export default function ActivityReportPage() {
                                 Manage attendance and staff points for <strong>{selectedMonth}/{selectedYear}</strong>.
                             </p>
                         </div>
-                        {/* Nút Save/Approve (Có thể implement sau) */}
-                        <Button className="gap-2" variant="outline" disabled={isLoading || activities.length === 0}>
-                            <Check className="h-4 w-4" />
+                        
+                        {/* Nút Save */}
+                        <Button 
+                            className="gap-2 bg-green-600 hover:bg-green-700" 
+                            disabled={isLoading || isSaving || activities.length === 0}
+                            onClick={handleSaveReport}
+                        >
+                            {isSaving ? <RotateCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                             Confirm & Save Report
                         </Button>
                     </div>
+                    
+                    {/* Alert thông báo Preview Mode */}
+                    {isPreviewMode && (
+                        <Alert className="bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-800 dark:text-yellow-200">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertTitle>Preview Mode Active</AlertTitle>
+                            <AlertDescription>
+                                You are viewing recalculated live scores. These changes are <strong>not saved</strong> yet. Click "Confirm & Save Report" to apply them.
+                            </AlertDescription>
+                        </Alert>
+                    )}
 
                     {/* Panel Điều khiển: Filter & Inputs */}
                     <Card className="border-primary/20 shadow-sm">
@@ -309,7 +441,7 @@ export default function ActivityReportPage() {
                                     <Select
                                         value={String(selectedYear)}
                                         onValueChange={(value) => setSelectedYear(Number(value))}
-                                        disabled={isLoading || isCalculating}
+                                        disabled={isLoading || isCalculating || isSaving}
                                     >
                                         <SelectTrigger id="year-select"><SelectValue /></SelectTrigger>
                                         <SelectContent>
@@ -324,7 +456,7 @@ export default function ActivityReportPage() {
                                     <Select
                                         value={String(selectedMonth)}
                                         onValueChange={(value) => setSelectedMonth(Number(value))}
-                                        disabled={isLoading || isCalculating}
+                                        disabled={isLoading || isCalculating || isSaving}
                                     >
                                         <SelectTrigger id="month-select"><SelectValue /></SelectTrigger>
                                         <SelectContent>
@@ -344,7 +476,7 @@ export default function ActivityReportPage() {
                                             placeholder="e.g. 30"
                                             value={attendanceBaseInput}
                                             onChange={(e) => setAttendanceBaseInput(e.target.value)}
-                                            disabled={isLoading || isCalculating}
+                                            disabled={isLoading || isCalculating || isSaving}
                                             className="pl-9"
                                         />
                                         <Users className="h-4 w-4 absolute left-3 top-3 text-muted-foreground" />
@@ -362,7 +494,7 @@ export default function ActivityReportPage() {
                                             placeholder="e.g. 20"
                                             value={staffBaseInput}
                                             onChange={(e) => setStaffBaseInput(e.target.value)}
-                                            disabled={isLoading || isCalculating}
+                                            disabled={isLoading || isCalculating || isSaving}
                                             className="pl-9"
                                         />
                                         <Star className="h-4 w-4 absolute left-3 top-3 text-muted-foreground" />
@@ -373,8 +505,9 @@ export default function ActivityReportPage() {
                         <CardFooter className="border-t pt-4 bg-muted/20 flex justify-end">
                             <Button 
                                 onClick={handleLiveCalculation}
-                                disabled={isLoading || isCalculating || !attendanceBaseInput || !staffBaseInput}
+                                disabled={isLoading || isCalculating || isSaving || !attendanceBaseInput || !staffBaseInput}
                                 className="w-full sm:w-auto min-w-[200px] gap-2"
+                                variant="secondary"
                             >
                                 {isCalculating ? <RotateCw className="h-4 w-4 animate-spin" /> : <Calculator className="h-4 w-4" />}
                                 Calculate Live Preview
@@ -386,7 +519,10 @@ export default function ActivityReportPage() {
                     <Card>
                         <CardHeader>
                             <div className="flex justify-between items-center">
-                                <CardTitle>Member Score Report</CardTitle>
+                                <div className="flex items-center gap-3">
+                                    <CardTitle>Member Score Report</CardTitle>
+                                    {isPreviewMode && <Badge variant="destructive" className="animate-pulse">PREVIEW</Badge>}
+                                </div>
                                 <Badge variant="secondary">{activities.length} Members</Badge>
                             </div>
                             <CardDescription>
@@ -420,7 +556,7 @@ export default function ActivityReportPage() {
                                     ) : activities.length === 0 ? (
                                         <TableRow>
                                             <TableCell colSpan={6} className="text-center h-32 text-muted-foreground">
-                                                No data found for this period.
+                                                No data found for this period. Try calculating live scores.
                                             </TableCell>
                                         </TableRow>
                                     ) : (
@@ -433,8 +569,8 @@ export default function ActivityReportPage() {
                                                 <TableCell className="font-medium">{member.fullName}</TableCell>
                                                 <TableCell className="text-muted-foreground">{member.studentCode}</TableCell>
                                                 <TableCell>
-                                                    <Badge variant="outline" className={getLevelBadgeColor(member.activityLevel)}>
-                                                        {member.activityLevel}
+                                                    <Badge variant="outline" className={getLevelBadgeColor(member.activityLevel || "UNKNOWN")}>
+                                                        {member.activityLevel || "UNKNOWN"}
                                                     </Badge>
                                                 </TableCell>
                                                 <TableCell className="text-center font-mono text-blue-600">

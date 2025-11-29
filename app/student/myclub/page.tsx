@@ -82,18 +82,18 @@ export default function MyClubPage() {
         if (saved) {
           const parsed = JSON.parse(saved)
           console.log("MyClub - Parsed sessionStorage data:", parsed)
-          
+
           let clubIdNumbers: number[] = []
-          
+
           if (parsed.clubIds && Array.isArray(parsed.clubIds)) {
             clubIdNumbers = parsed.clubIds.map((id: any) => Number(id)).filter((id: number) => !isNaN(id))
           } else if (parsed.clubId) {
             clubIdNumbers = [Number(parsed.clubId)]
           }
-          
+
           console.log("MyClub - Setting userClubIds to:", clubIdNumbers)
           setUserClubIds(clubIdNumbers)
-          
+
           // Set first club as default selected
           if (clubIdNumbers.length > 0) {
             setSelectedClubId(clubIdNumbers[0])
@@ -103,56 +103,56 @@ export default function MyClubPage() {
         console.error("Failed to get clubIds from sessionStorage:", error)
       }
     }
-    
+
     loadUserClubs()
   }, [])
 
   // State to store fetched club details for dropdown
   const [userClubsDetails, setUserClubsDetails] = useState<Club[]>([])
-  
+
   // Load club details for dropdown when userClubIds change
   useEffect(() => {
     if (userClubIds.length === 0) return
-    
+
     const loadClubsDetails = async () => {
       try {
         const clubsPromises = userClubIds.map(clubId => getClubById(clubId))
         const clubsResponses = await Promise.all(clubsPromises)
-        
+
         const validClubs = clubsResponses
           .filter((res: any) => res?.success && res?.data)
           .map((res: any) => res.data)
-        
+
         console.log("Loaded clubs details for dropdown:", validClubs)
         setUserClubsDetails(validClubs)
       } catch (err) {
         console.error("Failed to load clubs details:", err)
       }
     }
-    
+
     loadClubsDetails()
   }, [userClubIds])
 
   // Format members with user info
   const allClubMembers = selectedClubId
     ? apiMembers
-        .filter((m: any) => String(m.clubId) === String(selectedClubId) && m.state === "ACTIVE")
-        .map((m: any) => ({
-          id: m.membershipId ?? `m-${m.userId}`,
-          userId: m.userId,
-          clubId: m.clubId,
-          fullName: m.fullName ?? `User ${m.userId}`,
-          email: m.email ?? "N/A",
-          phone: m.phone ?? "N/A",
-          studentCode: m.studentCode ?? "N/A",
-          majorName: m.major ?? "N/A",
-          avatarUrl: m.avatarUrl ?? "/placeholder-user.jpg",
-          role: m.clubRole ?? "MEMBER",
-          isStaff: m.staff ?? false,
-          status: m.state,
-          joinedAt: m.joinedDate ? new Date(m.joinedDate).toLocaleDateString() : "N/A",
-          joinedDate: m.joinedDate,
-        }))
+      .filter((m: any) => String(m.clubId) === String(selectedClubId) && m.state === "ACTIVE")
+      .map((m: any) => ({
+        id: m.membershipId ?? `m-${m.userId}`,
+        userId: m.userId,
+        clubId: m.clubId,
+        fullName: m.fullName ?? `User ${m.userId}`,
+        email: m.email ?? "N/A",
+        phone: m.phone ?? "N/A",
+        studentCode: m.studentCode ?? "N/A",
+        majorName: m.major ?? "N/A",
+        avatarUrl: m.avatarUrl ?? "/placeholder-user.jpg",
+        role: m.clubRole ?? "MEMBER",
+        isStaff: m.staff ?? false,
+        status: m.state,
+        joinedAt: m.joinedDate ? new Date(m.joinedDate).toLocaleDateString() : "N/A",
+        joinedDate: m.joinedDate,
+      }))
     : []
 
   // Apply filters
@@ -244,7 +244,7 @@ export default function MyClubPage() {
 
   const handleLeaveClub = async () => {
     if (!selectedClubId) return
-    
+
     if (!leaveReason.trim()) {
       toast({
         title: "Error",
@@ -382,7 +382,7 @@ export default function MyClubPage() {
           {!membersLoading && allClubMembers.length > 0 && selectedClubId && (
             <div className="space-y-4">
               <div className="flex items-center gap-3">
-                <div className="flex-1 relative">
+                <div className="flex-1 relative w-full max-w-sm">
                   <Input
                     placeholder="Search by name, email, or student code..."
                     value={searchTerm}
@@ -390,15 +390,37 @@ export default function MyClubPage() {
                       setSearchTerm(e.target.value)
                       setMembersPage(1)
                     }}
-                    className="pl-4 pr-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm dark:text-slate-200 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all"
+                    // Cập nhật: Thay pr-4 thành pr-10 để tránh chữ bị nút X che
+                    className="pl-4 pr-10 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm 
+                    dark:text-slate-200 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all"
                   />
+
+                  {/* Nút Clear Search */}
+                  {searchTerm && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      type="button"
+                      onClick={() => {
+                        setSearchTerm("")
+                        setMembersPage(1) // Reset về trang 1 khi xóa tìm kiếm
+                      }}
+                      // Style: Tuyệt đối bên phải, hover chuyển màu Primary
+                      className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full text-slate-400 hover:bg-primary
+                      hover:text-primary-foreground transition-colors"
+                    >
+                      <X className="h-4 w-4" />
+                      <span className="sr-only">Clear search</span>
+                    </Button>
+                  )}
                 </div>
 
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setShowFilters(!showFilters)}
-                  className="flex items-center gap-2 rounded-lg border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 dark:text-slate-300 transition-colors"
+                  className="flex items-center gap-2 rounded-lg border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 
+                  dark:text-slate-300 transition-colors"
                 >
                   <Filter className="h-4 w-4" />
                   Filters
@@ -411,7 +433,8 @@ export default function MyClubPage() {
               </div>
 
               {showFilters && (
-                <div className="space-y-4 p-6 border border-slate-200 dark:border-slate-700 rounded-xl bg-gradient-to-br from-slate-50 to-white dark:from-slate-800 dark:to-slate-900">
+                <div className="space-y-4 p-6 border border-slate-200 dark:border-slate-700 rounded-xl bg-gradient-to-br from-slate-50 to-white 
+                dark:from-slate-800 dark:to-slate-900">
                   <div className="flex items-center justify-between">
                     <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Advanced Filters</h4>
                     {hasActiveFilters && (
@@ -419,7 +442,8 @@ export default function MyClubPage() {
                         variant="ghost"
                         size="sm"
                         onClick={clearFilters}
-                        className="h-auto p-1 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-colors"
+                        className="h-auto p-1 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/50 
+                        dark:hover:bg-slate-700/50 transition-colors"
                       >
                         <X className="h-3 w-3 mr-1" />
                         Clear all
@@ -435,7 +459,8 @@ export default function MyClubPage() {
                         value={activeFilters["role"] || "all"}
                         onValueChange={(v) => handleFilterChange("role", v)}
                       >
-                        <SelectTrigger className="h-9 text-sm rounded-lg border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-500 transition-colors">
+                        <SelectTrigger className="h-9 text-sm rounded-lg border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 
+                        hover:border-slate-300 dark:hover:border-slate-500 transition-colors">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -456,7 +481,8 @@ export default function MyClubPage() {
                         value={activeFilters["staff"] || "all"}
                         onValueChange={(v) => handleFilterChange("staff", v)}
                       >
-                        <SelectTrigger className="h-9 text-sm rounded-lg border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-500 transition-colors">
+                        <SelectTrigger className="h-9 text-sm rounded-lg border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 
+                        hover:border-slate-300 dark:hover:border-slate-500 transition-colors">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -474,7 +500,8 @@ export default function MyClubPage() {
                         value={activeFilters["major"] || "all"}
                         onValueChange={(v) => handleFilterChange("major", v)}
                       >
-                        <SelectTrigger className="h-9 text-sm rounded-lg border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-500 transition-colors">
+                        <SelectTrigger className="h-9 text-sm rounded-lg border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 
+                        hover:border-slate-300 dark:hover:border-slate-500 transition-colors">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -495,7 +522,8 @@ export default function MyClubPage() {
                         type="month"
                         value={activeFilters["joinMonth"] || ""}
                         onChange={(e) => handleFilterChange("joinMonth", e.target.value)}
-                        className="h-9 text-sm rounded-lg border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-500 transition-colors"
+                        className="h-9 text-sm rounded-lg border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 hover:border-slate-300 
+                        dark:hover:border-slate-500 transition-colors"
                       />
                     </div>
                   </div>
@@ -595,15 +623,18 @@ export default function MyClubPage() {
                   return (
                     <Card
                       key={member.id}
-                      className={`border-0 shadow-sm hover:shadow-md transition-all duration-300 bg-white dark:bg-slate-800/90 hover:bg-gradient-to-br hover:from-white hover:to-slate-50 dark:hover:from-slate-800 dark:hover:to-slate-700/80 group ${borderColor}`}
+                      className={`border-0 shadow-sm hover:shadow-md transition-all duration-300 bg-white dark:bg-slate-800/90 hover:bg-gradient-to-br 
+                        hover:from-white hover:to-slate-50 dark:hover:from-slate-800 dark:hover:to-slate-700/80 group ${borderColor}`}
                     >
                       <CardContent className="px-6 py-1.5">
                         <div className="flex items-start justify-between gap-6">
                           {/* Left: Avatar + Basic Info */}
                           <div className="flex items-start gap-4 flex-1">
-                            <Avatar className="h-16 w-16 border-2 border-slate-200 dark:border-slate-700 ring-2 ring-blue-100 dark:ring-blue-900/50 group-hover:ring-blue-200 dark:group-hover:ring-blue-800/70 transition-all">
+                            <Avatar className="h-16 w-16 border-2 border-slate-200 dark:border-slate-700 ring-2 ring-blue-100 dark:ring-blue-900/50 
+                            group-hover:ring-blue-200 dark:group-hover:ring-blue-800/70 transition-all">
                               <AvatarImage src={member.avatarUrl || "/placeholder.svg"} alt={member.fullName} />
-                              <AvatarFallback className="text-lg font-semibold bg-gradient-to-br from-blue-400 to-blue-600 dark:from-blue-500 dark:to-blue-700 text-white">
+                              <AvatarFallback className="text-lg font-semibold bg-gradient-to-br from-blue-400 to-blue-600 dark:from-blue-500 
+                              dark:to-blue-700 text-white">
                                 {member.fullName
                                   .split(" ")
                                   .map((n: string) => n[0])
@@ -618,11 +649,10 @@ export default function MyClubPage() {
                               <div className="flex items-center gap-2 flex-wrap">
                                 <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">{member.fullName}</h3>
                                 <Badge
-                                  className={`font-semibold text-xs rounded-full ${
-                                    member.role === "LEADER" || member.role === "VICE_LEADER"
+                                  className={`font-semibold text-xs rounded-full ${member.role === "LEADER" || member.role === "VICE_LEADER"
                                       ? "bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-700/50"
                                       : "bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-700/50"
-                                  }`}
+                                    }`}
                                 >
                                   {member.role}
                                 </Badge>
@@ -635,22 +665,26 @@ export default function MyClubPage() {
 
                               {/* Contact and Academic Info Grid */}
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                                <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-200 transition-colors">
+                                <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 group-hover:text-slate-900 
+                                dark:group-hover:text-slate-200 transition-colors">
                                   <Mail className="h-4 w-4 flex-shrink-0 text-blue-500 dark:text-blue-400" />
                                   <span className="truncate">{member.email}</span>
                                 </div>
 
-                                <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-200 transition-colors">
+                                <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 group-hover:text-slate-900 
+                                dark:group-hover:text-slate-200 transition-colors">
                                   <UserCircle className="h-4 w-4 flex-shrink-0 text-blue-500 dark:text-blue-400" />
                                   <span>Student: {member.studentCode}</span>
                                 </div>
 
-                                <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-200 transition-colors">
+                                <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 group-hover:text-slate-900 
+                                dark:group-hover:text-slate-200 transition-colors">
                                   <GraduationCap className="h-4 w-4 flex-shrink-0 text-blue-500 dark:text-blue-400" />
                                   <span className="truncate">{member.majorName}</span>
                                 </div>
 
-                                <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-200 transition-colors">
+                                <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 group-hover:text-slate-900 
+                                dark:group-hover:text-slate-200 transition-colors">
                                   <Calendar className="h-4 w-4 flex-shrink-0 text-blue-500 dark:text-blue-400" />
                                   <span>Joined: {member.joinedAt}</span>
                                 </div>
@@ -713,7 +747,7 @@ export default function MyClubPage() {
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <label htmlFor="leave-reason" className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                Reason for leaving the club <span className="text-red-500">*</span>
+                  Reason for leaving the club <span className="text-red-500">*</span>
                 </label>
                 <Textarea
                   id="leave-reason"
