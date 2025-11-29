@@ -6,7 +6,7 @@ import { useEffect, useState } from "react"
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query"
 import { keepPreviousData } from "@tanstack/react-query"
 import {
-    Package, Search, Loader2, CheckCircle, XCircle, Archive, MoreHorizontal, ToggleLeft, ToggleRight,
+    Package, Search, Loader2, CheckCircle, XCircle, Archive, MoreHorizontal, ToggleLeft, ToggleRight, X
 } from "lucide-react"
 import {
     fetchAdminProducts, toggleProductStatus, type AdminProduct, type Page,
@@ -159,14 +159,25 @@ export default function AdminGiftPage() {
 
                     {/* Filter Bar */}
                     <div className="flex items-center gap-4">
-                        <div className="relative flex-1">
+                        <div className="relative flex-1 w-full max-w-md">
                             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                             <Input
                                 placeholder="Search by name or product code..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="h-11 pl-10 text-base"
+                                className="h-10 pl-10 pr-12 text-base bg-white border-slate-300"
                             />
+                            {/*  Nút Clear (X) */}
+                            {searchTerm && (
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => setSearchTerm("")}
+                                    className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full"
+                                >
+                                    <X className="h-4 w-4 text-muted-foreground" />
+                                </Button>
+                            )}
                         </div>
                         <Select
                             value={statusFilter}
@@ -175,7 +186,7 @@ export default function AdminGiftPage() {
                                 // useEffect (THAY ĐỔI 4) sẽ tự động reset page về 0
                             }}
                         >
-                            <SelectTrigger className="w-[180px] h-11 text-base">
+                            <SelectTrigger className="w-[180px] h-12 text-base bg-white border-slate-300">
                                 <SelectValue placeholder="Filter by status" />
                             </SelectTrigger>
                             <SelectContent>

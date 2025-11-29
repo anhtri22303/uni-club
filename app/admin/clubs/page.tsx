@@ -281,8 +281,8 @@ export default function AdminClubsPage() {
             searchKey="name"
             searchPlaceholder="Search clubs..."
             filters={filters}
-            initialPageSize={12}
-            pageSizeOptions={[12, 24, 48]}
+            initialPageSize={10}
+            pageSizeOptions={[12, 20, 50]}
           />
 
           {isLoading && (

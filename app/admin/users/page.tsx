@@ -6,7 +6,7 @@ import { DataTable } from "@/components/data-table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Mail, Shield, Users, Plus, Star, Activity, Edit, Trash, Filter, X, CheckCircle, Eye, EyeOff, Ban } from "lucide-react"
+import { Mail, Shield, Users, Plus, Star, Activity, Edit, Trash, Filter, X, CheckCircle, Eye, EyeOff, Ban, Search } from "lucide-react"
 import React from "react"
 import { useUsers } from "@/hooks/use-query-hooks"
 import { fetchUserById, updateUserById } from "@/service/userApi"
@@ -840,12 +840,27 @@ export default function AdminUsersPage() {
           {/* Filter UI giống admin/events */}
           <div className="space-y-3 mb-4">
             <div className="flex items-center gap-3">
-              <Input
-                placeholder="Search by name"
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                className="max-w-sm"
-              />
+              <div className="relative max-w-sm w-full bg-white border border-slate-300 rounded-md">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by name"
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                  // Added padding-left for search icon and padding-right for clear button
+                  className="pl-9 pr-12"
+                />
+                {searchTerm && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setSearchTerm("")}
+                    className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full"
+                  >
+                    <X className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                )}
+              </div>
+
               <Button variant="outline" size="sm" onClick={() => setShowFilters(!showFilters)} className="flex items-center gap-2">
                 <Filter className="h-4 w-4" />
                 Filters
@@ -855,7 +870,10 @@ export default function AdminUsersPage() {
                   </Badge>
                 )}
               </Button>
+
+
             </div>
+
             {showFilters && (
               <div className="space-y-3 p-4 border rounded-lg bg-muted/50">
                 <div className="flex items-center justify-between">
