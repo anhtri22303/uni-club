@@ -16,7 +16,7 @@ import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { getClubIdFromToken } from "@/service/clubApi"
-import { getAllEventOrdersByClub, RedeemOrder } from "@/service/redeemApi"
+import { getEventRedeemOrders, RedeemOrder } from "@/service/redeemApi"
 import { Skeleton } from "@/components/ui/skeleton"
 import { EventRedeemScanner } from "@/components/event-redeem-scanner"
 
@@ -66,7 +66,7 @@ export default function ClubLeaderEventOrdersPage() {
     error,
   } = useQuery<UiOrder[], Error>({
     queryKey: queryKeys.eventOrders(clubId!),
-    queryFn: () => getAllEventOrdersByClub(clubId!),
+    queryFn: () => getEventRedeemOrders(clubId!),
     enabled: !!clubId,
     staleTime: 3 * 60 * 1000,
   })

@@ -703,27 +703,12 @@ export default function ClubLeaderEventsPage() {
       // Ensure numeric values are properly converted (not NaN or null)
       const commitPointCost = Number(formData.commitPointCost) || 0;
 
-      // Convert eventDays to API format with TimeObject
-      const daysPayload = eventDays.map(day => {
-        const [startHour, startMinute] = day.startTime.split(':').map(Number);
-        const [endHour, endMinute] = day.endTime.split(':').map(Number);
-
-        return {
-          date: day.date,
-          startTime: {
-            hour: startHour,
-            minute: startMinute,
-            second: 0,
-            nano: 0
-          },
-          endTime: {
-            hour: endHour,
-            minute: endMinute,
-            second: 0,
-            nano: 0
-          }
-        };
-      });
+      // Convert eventDays to API format - send as simple time strings (HH:MM)
+      const daysPayload = eventDays.map(day => ({
+        date: day.date,
+        startTime: day.startTime, // Send as string "HH:MM"
+        endTime: day.endTime       // Send as string "HH:MM"
+      }));
 
       console.log("📊 Form data before sending:", {
         commitPointCost: formData.commitPointCost,

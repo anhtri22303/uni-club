@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/use-toast"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { getClubIdFromToken } from "@/service/clubApi"
 import {
-    getClubRedeemOrders, RedeemOrder, completeRedeemOrder, refundRedeemOrder, refundPartialRedeemOrder, RefundPayload,
+     RedeemOrder, completeRedeemOrder, refundRedeemOrder, refundPartialRedeemOrder, RefundPayload,
     uploadRefundImages, getRefundImages, RefundImage,
 } from "@/service/redeemApi"
 import {
@@ -82,7 +82,7 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
         error,
     } = useQuery<UiOrder[], Error>({
         queryKey: queryKeys.eventOrders(clubId!),
-        queryFn: () => getClubRedeemOrders(clubId!),
+        queryFn: () => getEventRedeemOrders(clubId!),
         enabled: !!clubId,
     })
 
@@ -396,7 +396,6 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                         <h1 className="text-4xl font-bold text-gray-900 mb-1">Order #{order.orderCode}</h1>
                                         <p className="text-muted-foreground mt-1 flex items-center gap-2">
                                             <Hash className="h-4 w-4" />
-                                            Order ID: {order.orderId}
                                         </p>
                                     </div>
                                 </div>
@@ -849,7 +848,7 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                                                     {refundImages.map((file, index) => (
                                                                         <div key={index} className="relative group aspect-square rounded-lg overflow-hidden border border-gray-200 dark:border-slate-600">
                                                                             <img src={URL.createObjectURL(file)} alt="preview" className="w-full h-full object-cover" />
-                                                                            <button type="button" onClick={() => removeImage(index)} className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"><XCircle className="h-3 w-3" /></button>
+                                                                            <button type="button" onClick={() => removeImage(index)} aria-label="Remove image" className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"><XCircle className="h-3 w-3" /></button>
                                                                         </div>
                                                                     ))}
                                                                 </div>
@@ -919,18 +918,18 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                             {serverRefundImages && previewIndex !== null && (
                                 <div className="relative bg-white dark:bg-slate-800 rounded-xl shadow-2xl overflow-hidden flex flex-col w-[95vw] h-[70vh] md:w-[1200px] md:h-[800px] p-4">
                                     <div className="absolute top-4 right-4 z-50">
-                                        <button onClick={() => setPreviewIndex(null)} className="p-2 bg-gray-100 hover:bg-gray-200 dark:bg-slate-700 dark:hover:bg-slate-600 rounded-full text-gray-600 dark:text-gray-300 transition-all">
+                                        <button onClick={() => setPreviewIndex(null)} aria-label="Close image preview" className="p-2 bg-gray-100 hover:bg-gray-200 dark:bg-slate-700 dark:hover:bg-slate-600 rounded-full text-gray-600 dark:text-gray-300 transition-all">
                                             <X className="h-6 w-6" />
                                         </button>
                                     </div>
                                     <div className="relative flex-1 w-full h-full flex items-center justify-center bg-gray-50 dark:bg-slate-900 rounded-lg overflow-hidden mt-10 md:mt-0">
                                         {serverRefundImages.length > 1 && (
-                                            <button onClick={(e) => { e.stopPropagation(); showPrevImage(); }} className="absolute left-4 p-3 bg-black/30 hover:bg-black/50 rounded-full text-white transition-all z-40 group backdrop-blur-sm"><ChevronLeft className="h-8 w-8 group-hover:-translate-x-0.5 transition-transform" /></button>
+                                            <button onClick={(e) => { e.stopPropagation(); showPrevImage(); }} aria-label="Previous image" className="absolute left-4 p-3 bg-black/30 hover:bg-black/50 rounded-full text-white transition-all z-40 group backdrop-blur-sm"><ChevronLeft className="h-8 w-8 group-hover:-translate-x-0.5 transition-transform" /></button>
                                         )}
                                         <img src={serverRefundImages[previewIndex].imageUrl} alt="Refund Proof Fullsize" className="w-full h-full object-contain" />
                                         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/50 text-white text-xs font-medium rounded-full backdrop-blur-md border border-white/10">{previewIndex + 1} / {serverRefundImages.length}</div>
                                         {serverRefundImages.length > 1 && (
-                                            <button onClick={(e) => { e.stopPropagation(); showNextImage(); }} className="absolute right-4 p-3 bg-black/30 hover:bg-black/50 rounded-full text-white transition-all z-40 group backdrop-blur-sm"><ChevronRight className="h-8 w-8 group-hover:translate-x-0.5 transition-transform" /></button>
+                                            <button onClick={(e) => { e.stopPropagation(); showNextImage(); }} aria-label="Next image" className="absolute right-4 p-3 bg-black/30 hover:bg-black/50 rounded-full text-white transition-all z-40 group backdrop-blur-sm"><ChevronRight className="h-8 w-8 group-hover:translate-x-0.5 transition-transform" /></button>
                                         )}
                                     </div>
                                 </div>
@@ -941,4 +940,8 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
             </AppShell>
         </ProtectedRoute>
     )
+}
+
+function getEventRedeemOrders(arg0: number): RedeemOrder[] | Promise<RedeemOrder[]> {
+    throw new Error("Function not implemented.")
 }

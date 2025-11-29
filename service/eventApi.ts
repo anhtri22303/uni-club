@@ -56,8 +56,8 @@ export interface Event {
 // Day input for creating multi-day events
 export interface CreateEventDayInput {
   date: string // Format: YYYY-MM-DD
-  startTime: TimeObject
-  endTime: TimeObject
+  startTime: string // Format: HH:MM
+  endTime: string // Format: HH:MM
 }
 
 export interface CreateEventPayload {
@@ -383,6 +383,12 @@ export const getEventByClubId = async (clubId: string | number): Promise<Event[]
     const resData: any = response.data
     console.log(`Fetched events for club ${clubId}:`, resData)
 
+    // KIỂM TRA CẤU TRÚC {success, message, data: {events: [...]}}
+    if (resData?.data?.events && Array.isArray(resData.data.events)) {
+      console.log(`✅ Found events in data.events:`, resData.data.events.length)
+      return resData.data.events
+    }
+
     // Theo Swagger, response trả về trực tiếp mảng: [...]
     if (Array.isArray(resData)) {
       return resData
@@ -392,6 +398,7 @@ export const getEventByClubId = async (clubId: string | number): Promise<Event[]
     if (resData?.data && Array.isArray(resData.data)) return resData.data
     if (resData?.content && Array.isArray(resData.content)) return resData.content
 
+    console.warn(`⚠️ Unexpected response structure for club ${clubId}:`, resData)
     return []
   } catch (error) {
     console.error(`Error fetching events for club ${clubId}:`, error)
