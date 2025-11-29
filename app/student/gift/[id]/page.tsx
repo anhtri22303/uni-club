@@ -254,8 +254,9 @@ export default function StudentProductViewPage() {
     });
   };
 
-  const handleRedeem = async () => {
-    // **THÊM KIỂM TRA ĐIỂM**
+  const handleRedeem = () => {
+    // CHỈ MỞ MODAL - KHÔNG GỌI API Ở ĐÂY
+    // Validation cơ bản trước khi mở modal
     if (!product || !currentMembership) {
       toast({
         title: "Error",
@@ -263,18 +264,6 @@ export default function StudentProductViewPage() {
         variant: "destructive",
       });
       return;
-    }
-    if (!hasEnoughPoints) {
-      toast({
-        title: "Redemption Failed",
-        description: `You don't have enough points! Required: ${totalCost.toLocaleString(
-          "en-US"
-        )} pts, Your balance: ${userBalancePoints.toLocaleString(
-          "en-US"
-        )} pts.`,
-        variant: "destructive",
-      });
-      return; // DỪNG Ở ĐÂY NẾU KHÔNG ĐỦ ĐIỂM
     }
 
     if (!currentMembership.membershipId) {
@@ -286,55 +275,8 @@ export default function StudentProductViewPage() {
       return;
     }
 
+    // Mở modal confirm
     setIsConfirmOpen(true);
-    setIsRedeeming(true);
-    const payload: RedeemPayload = {
-      productId: product.id,
-      quantity: quantity,
-      membershipId: currentMembership.membershipId, // Lấy ID từ membership
-    };
-
-    try {
-      let redeemedOrder;
-      if (product.type === "EVENT_ITEM" && product.eventId) {
-        redeemedOrder = await redeemEventProduct(product.eventId, payload);
-      } else if (product.type === "CLUB_ITEM") {
-        redeemedOrder = await redeemClubProduct(product.clubId, payload);
-      } else {
-        throw new Error(
-          "Invalid product data. Cannot determine redeem endpoint."
-        );
-      }
-
-      toast({
-        title: "Success",
-        description: `You have successfully redeemed ${redeemedOrder.quantity} x ${redeemedOrder.productName}.`,
-        variant: "success",
-      });
-      setIsConfirmOpen(false);
-      setQuantity(1);
-
-      // 1. Làm mới danh sách membership (đã có)
-      queryClient.invalidateQueries({ queryKey: queryKeys.profile });
-
-      // 2. Làm mới profile ĐẦY ĐỦ (cho UserProfileWidget)
-      queryClient.invalidateQueries({ queryKey: queryKeys.fullProfile });
-
-      // 3. Làm mới lịch sử đổi quà (cho trang History)
-      queryClient.invalidateQueries({ queryKey: queryKeys.myRedeemOrders() });
-
-      // 4. Tải lại thông tin sản phẩm (đã có - để cập nhật stock)
-      await fetchProduct();
-    } catch (error: any) {
-      toast({
-        title: "Redemption Failed",
-        description:
-          error.message || "Not enough points or product is out of stock.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsRedeeming(false);
-    }
   };
 
   const handleConfirmRedeem = async () => {
@@ -388,6 +330,7 @@ export default function StudentProductViewPage() {
 
       // 4. Tải lại thông tin sản phẩm (đã có - để cập nhật stock)
       await fetchProduct();
+      setIsRedeeming(false);
     } catch (error: any) {
       // Đóng modal và hiển thị lỗi
       setIsConfirmOpen(false);
@@ -400,14 +343,10 @@ export default function StudentProductViewPage() {
         variant: "destructive",
       });
       
-      // Reload trang sau khi hiển thị toast
+      // Reload trang sau khi hiển thị toast (đủ thời gian để user đọc message)
       setTimeout(() => {
         window.location.reload();
-      }, 1500);
-      
-      return; // Dừng thực thi
-    } finally {
-      setIsRedeeming(false);
+      }, 2000);
     }
   };
 
