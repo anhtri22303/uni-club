@@ -66,7 +66,9 @@ import {
   Truck,
   Scale,
   Bell,
-  BellOff,
+  BellOff, 
+  Code,
+
 } from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
@@ -159,6 +161,7 @@ const navigationConfig = {
     { href: "/uni-staff/clubs", label: "Clubs", icon: Building },
     { href: "/uni-staff/locations", label: "Locations", icon: MapPin },
     { href: "/uni-staff/tags", label: "Tags", icon: Tags },
+    { href: "/uni-staff/student-codes", label: "Student Codes", icon: Code },
     { href: "/uni-staff/feedbacks", label: "Feedbacks", icon: MessagesSquare },
     {
       label: "Policy Management",

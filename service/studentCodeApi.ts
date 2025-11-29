@@ -7,11 +7,12 @@ import axiosInstance from "@/lib/axiosInstance";
  * (Dựa trên context quản lý sinh viên)
  */
 export interface StudentRegistryItem {
-  studentCode: string; // MSSV
+  id?: number;            // Thêm id (có trong response)
+  studentCode: string;
   fullName: string;
-  majorCode?: string; // Mã ngành (nếu có)
-  enrollmentYear?: number; // Khóa (nếu có)
-  // Các trường khác tùy thuộc vào dữ liệu trả về thực tế từ BE
+  majorCode?: string;
+  intake?: number;        // <--- SỬA: Đổi từ enrollmentYear thành intake
+  orderNumber?: string;   // Thêm orderNumber nếu cần dùng
 }
 
 /**
