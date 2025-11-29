@@ -9,8 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
-  ShoppingCart, Search, CheckCircle, XCircle, Clock, Eye, Filter, DollarSign, Package, User, Hash, Calendar, Undo2, 
-  WalletCards, ChevronLeft, ChevronRight, ScanLine,
+  ShoppingCart, Search, CheckCircle, XCircle, Clock, Eye, Filter, DollarSign, Package, User, Hash, Calendar, Undo2,
+  WalletCards, ChevronLeft, ChevronRight, ScanLine, X
 } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
@@ -115,7 +115,7 @@ export default function ClubLeaderOrdersPage() {
 
   // 4. Phân loại đơn hàng (có sắp xếp theo ngày mới nhất)
   const pendingOrders = useMemo(
-    () => getFilteredOrders("pending").sort((a, b) => 
+    () => getFilteredOrders("pending").sort((a, b) =>
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     ),
     [orders, searchTerm, dateFromFilter, dateToFilter]
@@ -346,14 +346,44 @@ export default function ClubLeaderOrdersPage() {
               <div className="flex flex-col gap-3 md:flex-row md:items-center">
                 <div className="flex items-center gap-2 flex-1 max-w-sm">
                   <Search className="h-4 w-4 text-muted-foreground dark:text-slate-400" />
-                  <Input
-                    placeholder="Search by product, member, or code..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:placeholder:text-slate-400"
-                  />
+                  <div className="relative w-full">
+                    <Input
+                      placeholder="Search by product, member, or code..."
+                      value={searchTerm}
+                      onChange={(e) => {
+                        setSearchTerm(e.target.value)
+                        // Reset phân trang cho cả 3 tab khi search thay đổi
+                        setPendingPage(0)
+                        setCompletedPage(0)
+                        setCancelledPage(0)
+                      }}
+                      className="pr-10 dark:bg-slate-700 dark:text-white dark:border-slate-600 
+                      dark:placeholder:text-slate-400 border-slate-300"
+                    />
+
+                    {/* Nút Clear Search */}
+                    {searchTerm && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        type="button"
+                        onClick={() => {
+                          setSearchTerm("")
+                          // Reset phân trang về 0 khi clear
+                          setPendingPage(0)
+                          setCompletedPage(0)
+                          setCancelledPage(0)
+                        }}
+                        // Style: Tuyệt đối bên phải, hover chuyển màu Primary
+                        className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full text-slate-400 hover:bg-primary hover:text-primary-foreground transition-colors"
+                      >
+                        <X className="h-4 w-4" />
+                        <span className="sr-only">Clear search</span>
+                      </Button>
+                    )}
+                  </div>
+
                 </div>
-                {/* <div> (Phần Major filter đã bị xóa) </div> */}
               </div>
 
               <div className="flex flex-col gap-3 md:flex-row md:items-center">
@@ -567,36 +597,34 @@ function RenderOrderList({
     <div className="grid md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
       {orders.map((order) => {
         // Determine status styling
-        const gradientClasses = 
+        const gradientClasses =
           order.status === "PENDING" ? "from-yellow-50 via-white to-white dark:from-yellow-900/20 dark:via-slate-800 dark:to-slate-800" :
-          order.status === "COMPLETED" ? "from-green-50 via-white to-white dark:from-green-900/20 dark:via-slate-800 dark:to-slate-800" :
-          order.status === "CANCELLED" ? "from-red-50 via-white to-white dark:from-red-900/20 dark:via-slate-800 dark:to-slate-800" : 
-          "from-blue-50 via-white to-white dark:from-blue-900/20 dark:via-slate-800 dark:to-slate-800"
+            order.status === "COMPLETED" ? "from-green-50 via-white to-white dark:from-green-900/20 dark:via-slate-800 dark:to-slate-800" :
+              order.status === "CANCELLED" ? "from-red-50 via-white to-white dark:from-red-900/20 dark:via-slate-800 dark:to-slate-800" :
+                "from-blue-50 via-white to-white dark:from-blue-900/20 dark:via-slate-800 dark:to-slate-800"
 
         return (
-          <Link 
-            key={order.orderId} 
+          <Link
+            key={order.orderId}
             href={`/club-leader/club-order-list/${order.orderCode}`}
             className="group"
           >
             <Card className={`border-0 shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] bg-gradient-to-br 
               ${gradientClasses} dark:border-slate-700 overflow-hidden relative`}>
               {/* Decorative top border */}
-              <div className={`h-1.5 w-full bg-gradient-to-r ${
-                order.status === "PENDING" ? "from-yellow-400 via-yellow-500 to-yellow-600" :
-                order.status === "COMPLETED" ? "from-green-400 via-green-500 to-green-600" :
-                order.status === "CANCELLED" ? "from-red-400 via-red-500 to-red-600" : "from-blue-400 via-blue-500 to-blue-600"
-              }`} />
-              
+              <div className={`h-1.5 w-full bg-gradient-to-r ${order.status === "PENDING" ? "from-yellow-400 via-yellow-500 to-yellow-600" :
+                  order.status === "COMPLETED" ? "from-green-400 via-green-500 to-green-600" :
+                    order.status === "CANCELLED" ? "from-red-400 via-red-500 to-red-600" : "from-blue-400 via-blue-500 to-blue-600"
+                }`} />
+
               <CardContent className="p-6">
                 {/* Header Section */}
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className={`p-2.5 rounded-xl bg-gradient-to-br ${
-                      order.status === "PENDING" ? "from-yellow-400 to-yellow-500" :
-                      order.status === "COMPLETED" ? "from-green-400 to-green-500" :
-                      order.status === "CANCELLED" ? "from-red-400 to-red-500" : "from-blue-400 to-blue-500"
-                    } shadow-lg flex-shrink-0`}>
+                    <div className={`p-2.5 rounded-xl bg-gradient-to-br ${order.status === "PENDING" ? "from-yellow-400 to-yellow-500" :
+                        order.status === "COMPLETED" ? "from-green-400 to-green-500" :
+                          order.status === "CANCELLED" ? "from-red-400 to-red-500" : "from-blue-400 to-blue-500"
+                      } shadow-lg flex-shrink-0`}>
                       <Package className="h-5 w-5 text-white" />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -637,7 +665,7 @@ function RenderOrderList({
                     </div>
                     <p className="text-xl font-bold text-purple-900 dark:text-purple-200">{order.quantity.toLocaleString('en-US')}</p>
                   </div>
-                  
+
                   <div className="p-3 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
                     <div className="flex items-center gap-2 mb-1">
                       <WalletCards className="h-4 w-4 text-blue-600 dark:text-blue-400" />
@@ -652,9 +680,9 @@ function RenderOrderList({
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground dark:text-slate-400">
                       <Calendar className="h-3.5 w-3.5" />
-                      <span>{new Date(order.createdAt).toLocaleDateString('en-US', { 
-                        month: 'short', 
-                        day: 'numeric', 
+                      <span>{new Date(order.createdAt).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
                         year: 'numeric',
                         hour: '2-digit',
                         minute: '2-digit'
@@ -716,8 +744,8 @@ function PaginationControls({
           className={`
             flex items-center gap-1 px-3 py-1.5 text-sm font-medium
             transition-colors
-            ${isFirstPage 
-              ? 'text-muted-foreground/50 cursor-not-allowed' 
+            ${isFirstPage
+              ? 'text-muted-foreground/50 cursor-not-allowed'
               : 'text-cyan-500 hover:text-cyan-400 dark:text-cyan-400 dark:hover:text-cyan-300 cursor-pointer'
             }
           `}
@@ -735,8 +763,8 @@ function PaginationControls({
           className={`
             flex items-center gap-1 px-3 py-1.5 text-sm font-medium
             transition-colors
-            ${isLastPage 
-              ? 'text-muted-foreground/50 cursor-not-allowed' 
+            ${isLastPage
+              ? 'text-muted-foreground/50 cursor-not-allowed'
               : 'text-cyan-500 hover:text-cyan-400 dark:text-cyan-400 dark:hover:text-cyan-300 cursor-pointer'
             }
           `}

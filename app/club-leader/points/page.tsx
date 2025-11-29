@@ -231,21 +231,21 @@ export default function ClubLeaderRewardDistributionPage() {
 
   const clubMembers = managedClub
     ? (apiMembers ?? [])
-        .filter(
-          (m: any) =>
-            String(m.clubId) === String(managedClub.id) && m.state === "ACTIVE"
-        )
-        .map((m: any) => {
-          return {
-            id: m.membershipId ?? `m-${m.userId}`,
-            userId: m.userId,
-            fullName: m.fullName ?? `User ${m.userId}`,
-            studentCode: m.studentCode ?? "—",
-            avatarUrl: m.avatarUrl ?? null,
-            role: m.clubRole ?? "MEMBER",
-            isStaff: m.staff ?? false,
-          };
-        })
+      .filter(
+        (m: any) =>
+          String(m.clubId) === String(managedClub.id) && m.state === "ACTIVE"
+      )
+      .map((m: any) => {
+        return {
+          id: m.membershipId ?? `m-${m.userId}`,
+          userId: m.userId,
+          fullName: m.fullName ?? `User ${m.userId}`,
+          studentCode: m.studentCode ?? "—",
+          avatarUrl: m.avatarUrl ?? null,
+          role: m.clubRole ?? "MEMBER",
+          isStaff: m.staff ?? false,
+        };
+      })
     : [];
 
   const filteredMembers = clubMembers.filter((member) => {
@@ -487,7 +487,8 @@ export default function ClubLeaderRewardDistributionPage() {
       toast({
         title: isTimeout ? "Request Timeout" : "Delivery error",
         description: isTimeout
-          ? `The request took too long (processing ${targetUserIds.length} members). The points may still be distributed successfully. Please check the transaction history.`
+          ? `The request took too long (processing 
+          ${targetUserIds.length} members). The points may still be distributed successfully. Please check the transaction history.`
           : errorMessage,
         variant: "destructive",
       });
@@ -511,7 +512,7 @@ export default function ClubLeaderRewardDistributionPage() {
       });
       return;
     }
-    
+
     setTransactionsLoading(true);
     try {
       const data = await getWalletTransactions(clubWallet.walletId);
@@ -781,9 +782,9 @@ export default function ClubLeaderRewardDistributionPage() {
                                   {t.type}
                                 </Badge>
                               </TableCell>
-                              <TableCell className={`font-semibold whitespace-nowrap ${
-                                t.amount >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-                              }`}>
+                              <TableCell className={`font-semibold whitespace-nowrap 
+                              ${t.amount >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                                }`}>
                                 {t.signedAmount} pts
                               </TableCell>
                               <TableCell className="font-medium text-purple-600 dark:text-purple-400 truncate max-w-[180px]" title={t.senderName}>
@@ -829,9 +830,9 @@ export default function ClubLeaderRewardDistributionPage() {
                                   {t.type}
                                 </Badge>
                               </div>
-                              <span className={`text-lg font-bold whitespace-nowrap ${
-                                t.amount >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-                              }`}>
+                              <span className={`text-lg font-bold whitespace-nowrap 
+                              ${t.amount >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                                }`}>
                                 {t.signedAmount} pts
                               </span>
                             </div>
@@ -1105,6 +1106,7 @@ export default function ClubLeaderRewardDistributionPage() {
                         }
                       }}
                       disabled={isDistributing}
+                      className="border-slate-300"
                     />
                   </div>
 
@@ -1148,7 +1150,7 @@ export default function ClubLeaderRewardDistributionPage() {
                   placeholder="e.g., Event giving, Monthly bonus, Achievement reward..."
                   value={rewardReason}
                   onChange={(e) => setRewardReason(e.target.value)}
-                  className="min-h-[100px]"
+                  className="min-h-[100px] border-slate-300"
                   disabled={isDistributing}
                 />
               </div>
@@ -1163,7 +1165,7 @@ export default function ClubLeaderRewardDistributionPage() {
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               {/* Thanh tìm kiếm (từ lần trước) */}
-              <div className="flex-1 relative">
+              <div className="flex-1 relative w-full max-w-sm">
                 <Input
                   placeholder="Search by name or student code..."
                   value={searchTerm}
@@ -1171,16 +1173,37 @@ export default function ClubLeaderRewardDistributionPage() {
                     setSearchTerm(e.target.value);
                     setMembersPage(1);
                   }}
-                  className="pl-4 pr-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm dark:text-slate-200 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all"
+                  // Cập nhật: Thêm pr-10 để tránh chữ bị nút X che
+                  className="pl-4 pr-10 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm 
+                  dark:text-slate-200 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all"
                 />
-              </div>
+
+                {/* Nút Clear Search */}
+                {searchTerm && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    type="button"
+                    onClick={() => {
+                      setSearchTerm("");
+                      setMembersPage(1); // Reset về trang 1
+                    }}
+                    // Style: Tuyệt đối bên phải, hover chuyển màu Primary
+                    className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full text-slate-400 hover:bg-primary 
+                    hover:text-primary-foreground transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                    <span className="sr-only">Clear search</span>
+                  </Button>
+                )}              </div>
 
               {/* Nút Filter */}
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center gap-2 rounded-lg border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 dark:text-slate-300 transition-colors"
+                className="flex items-center gap-2 rounded-lg border-slate-200 dark:border-slate-600 hover:bg-slate-50
+                dark:hover:bg-slate-700 dark:text-slate-300 transition-colors hover:text-dark"
               >
                 <Filter className="h-4 w-4" />
                 Filters
@@ -1196,7 +1219,8 @@ export default function ClubLeaderRewardDistributionPage() {
 
             {/* Bảng điều khiển Filter */}
             {showFilters && (
-              <div className="space-y-4 p-6 border border-slate-200 dark:border-slate-600 rounded-xl bg-gradient-to-br from-slate-50 to-white dark:from-slate-800 dark:to-slate-700">
+              <div className="space-y-4 p-6 border border-slate-200 dark:border-slate-600 rounded-xl bg-gradient-to-br from-slate-50 to-white 
+              dark:from-slate-800 dark:to-slate-700">
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                     Advanced Filters
@@ -1206,7 +1230,8 @@ export default function ClubLeaderRewardDistributionPage() {
                       variant="ghost"
                       size="sm"
                       onClick={clearFilters}
-                      className="h-auto p-1 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/50 dark:hover:bg-slate-600 transition-colors"
+                      className="h-auto p-1 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 
+                      hover:bg-slate-200/50 dark:hover:bg-slate-600 transition-colors"
                     >
                       <X className="h-3 w-3 mr-1" />
                       Clear all
@@ -1224,7 +1249,8 @@ export default function ClubLeaderRewardDistributionPage() {
                       value={activeFilters["role"] || "all"}
                       onValueChange={(v) => handleFilterChange("role", v)}
                     >
-                      <SelectTrigger className="h-9 text-sm rounded-lg border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-500 transition-colors">
+                      <SelectTrigger className="h-9 text-sm rounded-lg border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 
+                      hover:border-slate-300 dark:hover:border-slate-500 transition-colors">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -1247,7 +1273,8 @@ export default function ClubLeaderRewardDistributionPage() {
                       value={activeFilters["staff"] || "all"}
                       onValueChange={(v) => handleFilterChange("staff", v)}
                     >
-                      <SelectTrigger className="h-9 text-sm rounded-lg border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-500 transition-colors">
+                      <SelectTrigger className="h-9 text-sm rounded-lg border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 
+                      hover:border-slate-300 dark:hover:border-slate-500 transition-colors">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -1333,7 +1360,8 @@ export default function ClubLeaderRewardDistributionPage() {
                     variant="outline"
                     size="sm"
                     onClick={clearFilters}
-                    className="rounded-lg border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 bg-transparent dark:text-slate-300"
+                    className="rounded-lg border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 
+                    bg-transparent dark:text-slate-300"
                   >
                     <X className="h-4 w-4 mr-2" />
                     Clear Search
@@ -1348,11 +1376,10 @@ export default function ClubLeaderRewardDistributionPage() {
                   return (
                     <Card
                       key={member.id}
-                      className={`transition-all duration-200 border-2 dark:bg-slate-800 dark:border-slate-700 ${
-                        isSelected
+                      className={`transition-all duration-200 border-2 dark:bg-slate-800 dark:border-slate-700 ${isSelected
                           ? "border-primary/70 bg-primary/5 dark:bg-primary/10 dark:border-primary/50 shadow-sm"
                           : "border-transparent hover:border-muted dark:hover:border-slate-600"
-                      }`}
+                        }`}
                     >
                       <CardContent className="py-3 flex items-center justify-between">
                         <div className="flex items-center gap-3">
@@ -1375,13 +1402,12 @@ export default function ClubLeaderRewardDistributionPage() {
                             <div className="flex items-center gap-2 mt-1">
                               <Badge
                                 variant="secondary"
-                                className={`text-xs ${
-                                  member.role === "LEADER"
+                                className={`text-xs ${member.role === "LEADER"
                                     ? "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/40 dark:text-red-300 dark:border-red-700/50"
                                     : member.role === "VICE_LEADER"
-                                    ? "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/40 dark:text-orange-300 dark:border-orange-700/50"
-                                    : "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/40 dark:text-green-300 dark:border-green-700/50"
-                                }`}
+                                      ? "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/40 dark:text-orange-300 dark:border-orange-700/50"
+                                      : "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/40 dark:text-green-300 dark:border-green-700/50"
+                                  }`}
                               >
                                 {member.role}
                               </Badge>
@@ -1428,11 +1454,10 @@ export default function ClubLeaderRewardDistributionPage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            className={`dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700 ${
-                              isSelected
+                            className={`dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700 ${isSelected
                                 ? "border-primary text-primary dark:border-primary dark:text-primary"
                                 : ""
-                            }`}
+                              }`}
                           >
                             + {rewardAmount || 0} pts
                           </Button>

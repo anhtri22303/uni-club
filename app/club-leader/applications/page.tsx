@@ -296,7 +296,7 @@ export default function ClubLeaderApplicationsPage() {
           {/* Filter Section */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="flex-1 relative">
+              <div className="flex-1 relative w-full max-w-md">
                 <Input
                   placeholder="Search by applicant name, email, or student code..."
                   value={searchTerm}
@@ -305,15 +305,37 @@ export default function ClubLeaderApplicationsPage() {
                     setPendingPage(1)
                     setReviewedPage(1)
                   }}
-                  className="pl-4 pr-4 py-2.5 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  // Thêm pr-10 để chừa chỗ cho nút X, tránh gõ chữ dài bị che
+                  className="pl-4 pr-10 py-2.5 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-blue-500 
+                  focus:border-transparent transition-all"
                 />
+
+                {/* Clear Button */}
+                {searchTerm && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      setSearchTerm("")
+                      // Reset về trang 1 khi clear
+                      setPendingPage(1)
+                      setReviewedPage(1)
+                    }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full text-slate-400 hover:bg-primary 
+                    hover:text-primary-foreground transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                    <span className="sr-only">Clear search</span>
+                  </Button>
+                )}
               </div>
 
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center gap-2 rounded-lg border-slate-200 hover:bg-slate-50 transition-colors"
+                className="flex items-center gap-2 rounded-lg border-slate-200 hover:bg-slate-50 transition-colors bg-white hover:text-black"
               >
                 <Filter className="h-4 w-4" />
                 Filters

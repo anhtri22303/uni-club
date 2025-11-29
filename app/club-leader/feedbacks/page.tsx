@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Star, Search, Calendar, MessageSquare, ChevronDown, ChevronRight } from "lucide-react"
+import { Star, Search, Calendar, MessageSquare, ChevronDown, ChevronRight, X } from "lucide-react"
 import { format } from "date-fns"
 import { toast } from "@/hooks/use-toast"
 
@@ -45,7 +45,7 @@ export default function ClubLeaderFeedbacksPage() {
   useEffect(() => {
     const fetchFeedbacks = async () => {
       const clubId = getClubIdFromToken()
-      
+
       if (!clubId) {
         toast({
           title: "Error",
@@ -166,11 +166,10 @@ export default function ClubLeaderFeedbacksPage() {
         {[1, 2, 3, 4, 5].map((star) => (
           <Star
             key={star}
-            className={`h-4 w-4 ${
-              star <= rating
-                ? "fill-yellow-400 text-yellow-400"
-                : "text-gray-300"
-            }`}
+            className={`h-4 w-4 ${star <= rating
+              ? "fill-yellow-400 text-yellow-400"
+              : "text-gray-300"
+              }`}
           />
         ))}
       </div>
@@ -208,278 +207,306 @@ export default function ClubLeaderFeedbacksPage() {
     <ProtectedRoute allowedRoles={["club_leader"]}>
       <AppShell>
         <div className="container mx-auto p-4 md:p-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Club Feedbacks</h1>
-          <p className="text-muted-foreground">
-            View and manage feedback from club events
-          </p>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Total Feedbacks
-              </CardTitle>
-              <MessageSquare className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{totalFeedbacksCount}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Average Rating
-              </CardTitle>
-              <Star className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{averageRating}</div>
-              <div className="mt-1">{renderStars(Math.round(Number(averageRating)))}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Events with Feedback
-              </CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{uniqueEvents.length}</div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Filters</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            {/* Search */}
-            <div className="space-y-2">
-              <Label htmlFor="search">Search</Label>
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="search"
-                  placeholder="Search by member, event, or comment..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8"
-                />
-              </div>
-            </div>
-
-            {/* Event Filter */}
-            <div className="space-y-2">
-              <Label htmlFor="event">Event</Label>
-              <Select value={selectedEvent} onValueChange={setSelectedEvent}>
-                <SelectTrigger id="event">
-                  <SelectValue placeholder="All Events" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Events</SelectItem>
-                  {uniqueEvents.map((event) => (
-                    <SelectItem key={event.id} value={event.id.toString()}>
-                      {event.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Rating Filter */}
-            <div className="space-y-2">
-              <Label htmlFor="rating">Rating</Label>
-              <Select value={selectedRating} onValueChange={setSelectedRating}>
-                <SelectTrigger id="rating">
-                  <SelectValue placeholder="All Ratings" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Ratings</SelectItem>
-                  <SelectItem value="5">5 Stars</SelectItem>
-                  <SelectItem value="4">4 Stars</SelectItem>
-                  <SelectItem value="3">3 Stars</SelectItem>
-                  <SelectItem value="2">2 Stars</SelectItem>
-                  <SelectItem value="1">1 Star</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Events with Feedbacks */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Events & Feedbacks</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {paginatedGroups.length === 0 ? (
-            <div className="text-center py-12">
-              <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-lg font-medium">No feedbacks found</p>
-              <p className="text-sm text-muted-foreground">
-                Try adjusting your filters or wait for members to submit feedback
+          {/* Header */}
+          <div className="flex flex-col gap-4">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Club Feedbacks</h1>
+              <p className="text-muted-foreground">
+                View and manage feedback from club events
               </p>
             </div>
-          ) : (
-            <>
-              <div className="space-y-4">
-                {paginatedGroups.map((group) => {
-                  const isExpanded = expandedEvents.has(group.eventId)
 
-                  return (
-                    <Card key={group.eventId} className="overflow-hidden">
-                      {/* Event Header - Clickable */}
-                      <div
-                        className="p-4 cursor-pointer hover:bg-accent/50 transition-colors"
-                        onClick={() => toggleEventExpansion(group.eventId)}
+            {/* Stats Cards */}
+            <div className="grid gap-4 md:grid-cols-3">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Total Feedbacks
+                  </CardTitle>
+                  <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{totalFeedbacksCount}</div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Average Rating
+                  </CardTitle>
+                  <Star className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{averageRating}</div>
+                  <div className="mt-1">{renderStars(Math.round(Number(averageRating)))}</div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Events with Feedback
+                  </CardTitle>
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{uniqueEvents.length}</div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* Filters */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Filters</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-3">
+                {/* Search */}
+                <div className="space-y-2">
+                  <Label htmlFor="search">Search</Label>
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+
+                    <Input
+                      id="search"
+                      placeholder="Search by member, event, or comment..."
+                      value={searchTerm}
+                      onChange={(e) => {
+                        setSearchTerm(e.target.value)
+                        setCurrentPage(1)
+                      }}
+                      // Cập nhật: Thêm pr-10 để tránh chữ bị nút X che
+                      className="pl-8 pr-10 border-slate-300"
+                    />
+
+                    {/* Nút Clear Search */}
+                    {searchTerm && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        type="button"
+                        onClick={() => {
+                          setSearchTerm("")
+                          setCurrentPage(1) // Reset về trang 1
+                        }}
+                        // Style: Tuyệt đối bên phải, hover chuyển màu Primary
+                        className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full text-slate-400 hover:bg-primary 
+                        hover:text-primary-foreground transition-colors"
                       >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3 flex-1">
-                            {isExpanded ? (
-                              <ChevronDown className="h-5 w-5 text-muted-foreground shrink-0" />
-                            ) : (
-                              <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <h3 className="font-semibold text-lg truncate">
-                                {group.eventName}
-                              </h3>
-                              <div className="flex items-center gap-4 mt-1">
-                                <div className="flex items-center gap-1">
-                                  {renderStars(Math.round(group.averageRating))}
-                                  <span className="text-sm font-medium ml-1">
-                                    {group.averageRating.toFixed(1)}
-                                  </span>
+                        <X className="h-4 w-4" />
+                        <span className="sr-only">Clear search</span>
+                      </Button>
+                    )}
+                  </div>
+
+
+
+
+                </div>
+
+                {/* Event Filter */}
+                <div className="space-y-2">
+                  <Label htmlFor="event">Event</Label>
+                  <Select value={selectedEvent} onValueChange={setSelectedEvent}>
+                    <SelectTrigger id="event" className="border-slate-300">
+                      <SelectValue placeholder="All Events" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Events</SelectItem>
+                      {uniqueEvents.map((event) => (
+                        <SelectItem key={event.id} value={event.id.toString()}>
+                          {event.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Rating Filter */}
+                <div className="space-y-2">
+                  <Label htmlFor="rating">Rating</Label>
+                  <Select value={selectedRating} onValueChange={setSelectedRating}>
+                    <SelectTrigger id="rating" className="border-slate-300">
+                      <SelectValue placeholder="All Ratings" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Ratings</SelectItem>
+                      <SelectItem value="5">5 Stars</SelectItem>
+                      <SelectItem value="4">4 Stars</SelectItem>
+                      <SelectItem value="3">3 Stars</SelectItem>
+                      <SelectItem value="2">2 Stars</SelectItem>
+                      <SelectItem value="1">1 Star</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Events with Feedbacks */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Events & Feedbacks</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {paginatedGroups.length === 0 ? (
+                <div className="text-center py-12">
+                  <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-lg font-medium">No feedbacks found</p>
+                  <p className="text-sm text-muted-foreground">
+                    Try adjusting your filters or wait for members to submit feedback
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-4">
+                    {paginatedGroups.map((group) => {
+                      const isExpanded = expandedEvents.has(group.eventId)
+
+                      return (
+                        <Card key={group.eventId} className="overflow-hidden">
+                          {/* Event Header - Clickable */}
+                          <div
+                            className="p-4 cursor-pointer hover:bg-accent/50 transition-colors"
+                            onClick={() => toggleEventExpansion(group.eventId)}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3 flex-1">
+                                {isExpanded ? (
+                                  <ChevronDown className="h-5 w-5 text-muted-foreground shrink-0" />
+                                ) : (
+                                  <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <h3 className="font-semibold text-lg truncate">
+                                    {group.eventName}
+                                  </h3>
+                                  <div className="flex items-center gap-4 mt-1">
+                                    <div className="flex items-center gap-1">
+                                      {renderStars(Math.round(group.averageRating))}
+                                      <span className="text-sm font-medium ml-1">
+                                        {group.averageRating.toFixed(1)}
+                                      </span>
+                                    </div>
+                                    <Badge variant="secondary">
+                                      {group.totalFeedbacks} {group.totalFeedbacks === 1 ? "feedback" : "feedbacks"}
+                                    </Badge>
+                                  </div>
                                 </div>
-                                <Badge variant="secondary">
-                                  {group.totalFeedbacks} {group.totalFeedbacks === 1 ? "feedback" : "feedbacks"}
-                                </Badge>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      </div>
 
-                      {/* Feedbacks List - Expandable */}
-                      {isExpanded && (
-                        <div className="border-t bg-muted/30">
-                          <div className="p-4 space-y-3">
-                            {group.feedbacks.map((feedback) => (
-                              <Card key={feedback.feedbackId} className="bg-background">
-                                <CardContent className="p-4">
-                                  <div className="space-y-3">
-                                    {/* Rating and Date */}
-                                    <div className="flex items-center justify-between">
-                                      <div className="flex items-center gap-2">
-                                        {renderStars(feedback.rating)}
-                                        <span className="text-sm font-medium">
-                                          {feedback.rating}
-                                        </span>
+                          {/* Feedbacks List - Expandable */}
+                          {isExpanded && (
+                            <div className="border-t bg-muted/30">
+                              <div className="p-4 space-y-3">
+                                {group.feedbacks.map((feedback) => (
+                                  <Card key={feedback.feedbackId} className="bg-background">
+                                    <CardContent className="p-4">
+                                      <div className="space-y-3">
+                                        {/* Rating and Date */}
+                                        <div className="flex items-center justify-between">
+                                          <div className="flex items-center gap-2">
+                                            {renderStars(feedback.rating)}
+                                            <span className="text-sm font-medium">
+                                              {feedback.rating}
+                                            </span>
+                                          </div>
+                                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                            <Calendar className="h-3 w-3" />
+                                            {format(new Date(feedback.createdAt), "MMM dd, yyyy")}
+                                          </div>
+                                        </div>
+
+                                        {/* Comment */}
+                                        <p className="text-sm text-foreground">
+                                          {feedback.comment}
+                                        </p>
                                       </div>
-                                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                        <Calendar className="h-3 w-3" />
-                                        {format(new Date(feedback.createdAt), "MMM dd, yyyy")}
-                                      </div>
-                                    </div>
-
-                                    {/* Comment */}
-                                    <p className="text-sm text-foreground">
-                                      {feedback.comment}
-                                    </p>
-                                  </div>
-                                </CardContent>
-                              </Card>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </Card>
-                  )
-                })}
-              </div>
-
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between mt-6 pt-6 border-t">
-                  <p className="text-sm text-muted-foreground">
-                    Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
-                    {Math.min(currentPage * itemsPerPage, filteredGroups.length)} of{" "}
-                    {filteredGroups.length} events
-                  </p>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                    >
-                      Previous
-                    </Button>
-                    <div className="flex items-center gap-1">
-                      {Array.from({ length: totalPages }, (_, i) => i + 1)
-                        .filter((page) => {
-                          // Show first page, last page, current page, and pages around current
-                          return (
-                            page === 1 ||
-                            page === totalPages ||
-                            Math.abs(page - currentPage) <= 1
-                          )
-                        })
-                        .map((page, idx, arr) => {
-                          // Add ellipsis if there's a gap
-                          const prevPage = arr[idx - 1]
-                          const showEllipsis = prevPage && page - prevPage > 1
-
-                          return (
-                            <div key={page} className="flex items-center">
-                              {showEllipsis && (
-                                <span className="px-2 text-muted-foreground">
-                                  ...
-                                </span>
-                              )}
-                              <Button
-                                variant={
-                                  currentPage === page ? "default" : "outline"
-                                }
-                                size="sm"
-                                onClick={() => setCurrentPage(page)}
-                              >
-                                {page}
-                              </Button>
+                                    </CardContent>
+                                  </Card>
+                                ))}
+                              </div>
                             </div>
-                          )
-                        })}
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        setCurrentPage((p) => Math.min(totalPages, p + 1))
-                      }
-                      disabled={currentPage === totalPages}
-                    >
-                      Next
-                    </Button>
+                          )}
+                        </Card>
+                      )
+                    })}
                   </div>
-                </div>
+
+                  {/* Pagination */}
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-between mt-6 pt-6 border-t">
+                      <p className="text-sm text-muted-foreground">
+                        Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
+                        {Math.min(currentPage * itemsPerPage, filteredGroups.length)} of{" "}
+                        {filteredGroups.length} events
+                      </p>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                          disabled={currentPage === 1}
+                        >
+                          Previous
+                        </Button>
+                        <div className="flex items-center gap-1">
+                          {Array.from({ length: totalPages }, (_, i) => i + 1)
+                            .filter((page) => {
+                              // Show first page, last page, current page, and pages around current
+                              return (
+                                page === 1 ||
+                                page === totalPages ||
+                                Math.abs(page - currentPage) <= 1
+                              )
+                            })
+                            .map((page, idx, arr) => {
+                              // Add ellipsis if there's a gap
+                              const prevPage = arr[idx - 1]
+                              const showEllipsis = prevPage && page - prevPage > 1
+
+                              return (
+                                <div key={page} className="flex items-center">
+                                  {showEllipsis && (
+                                    <span className="px-2 text-muted-foreground">
+                                      ...
+                                    </span>
+                                  )}
+                                  <Button
+                                    variant={
+                                      currentPage === page ? "default" : "outline"
+                                    }
+                                    size="sm"
+                                    onClick={() => setCurrentPage(page)}
+                                  >
+                                    {page}
+                                  </Button>
+                                </div>
+                              )
+                            })}
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setCurrentPage((p) => Math.min(totalPages, p + 1))
+                          }
+                          disabled={currentPage === totalPages}
+                        >
+                          Next
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
-            </>
-          )}
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
         </div>
       </AppShell>
     </ProtectedRoute>
