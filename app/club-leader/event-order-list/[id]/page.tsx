@@ -17,7 +17,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { getClubIdFromToken } from "@/service/clubApi"
 import {
      RedeemOrder, completeRedeemOrder, refundRedeemOrder, refundPartialRedeemOrder, RefundPayload,
-    uploadRefundImages, getRefundImages, RefundImage,
+    uploadRefundImages, getRefundImages, RefundImage, getRedeemOrderById,
 } from "@/service/redeemApi"
 import {
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger,
@@ -75,22 +75,16 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
         }
     }, [toast])
 
-    // Lấy TẤT CẢ đơn hàng
+    // Lấy chi tiết đơn hàng theo orderId
     const {
-        data: orders = [],
+        data: order,
         isLoading: loading,
         error,
-    } = useQuery<UiOrder[], Error>({
-        queryKey: queryKeys.eventOrders(clubId!),
-        queryFn: () => getEventRedeemOrders(clubId!),
-        enabled: !!clubId,
+    } = useQuery<UiOrder, Error>({
+        queryKey: ["eventOrderDetail", params.id],
+        queryFn: () => getRedeemOrderById(params.id),
+        enabled: !!params.id,
     })
-
-    // Tìm đơn hàng cụ thể
-    const order: UiOrder | undefined = useMemo(() => {
-        if (loading || !params.id) return undefined
-        return orders.find(o => String(o.orderId) === params.id)
-    }, [orders, loading, params.id])
 
     // === Query lấy danh sách ảnh lỗi từ Server ===
     const { data: serverRefundImages } = useQuery<RefundImage[]>({
@@ -152,7 +146,7 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                 variant: "success",
             })
 
-            await queryClient.invalidateQueries({ queryKey: queryKeys.eventOrders(clubId) });
+            await queryClient.invalidateQueries({ queryKey: ["eventOrderDetail", params.id] });
             router.refresh();
         } catch (error) {
             console.error("Failed to complete order:", error);
@@ -232,7 +226,7 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
             setRefundReason("")
             setRefundImages([])
 
-            await queryClient.invalidateQueries({ queryKey: queryKeys.eventOrders(clubId) })
+            await queryClient.invalidateQueries({ queryKey: ["eventOrderDetail", params.id] })
             router.refresh();
 
         } catch (error: any) {
@@ -375,13 +369,13 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
             <AppShell>
                 <div className="space-y-6">
                     {/* Header Section */}
-                    <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${statusTheme.gradient} border ${statusTheme.border} p-6 shadow-lg`}>
-                        <div className="absolute top-0 right-0 w-64 h-64 bg-white/30 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-                        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/20 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2" />
+                    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 dark:from-slate-800 dark:via-slate-900 dark:to-black border border-slate-600 dark:border-slate-700 p-6 shadow-lg">
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+                        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2" />
                         
                         <div className="relative z-10">
                             <Link href="/club-leader/event-order-list">
-                                <Button variant="ghost" size="sm" className="mb-4 hover:bg-white/50">
+                                <Button variant="ghost" size="sm" className="mb-4 hover:bg-white/10 text-white">
                                     <ArrowLeft className="h-4 w-4 mr-2" />
                                     Back to Event Order List
                                 </Button>
@@ -389,14 +383,11 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                             
                             <div className="flex items-start justify-between gap-4">
                                 <div className="flex items-center gap-4">
-                                    <div className={`p-4 rounded-2xl bg-gradient-to-br ${statusTheme.icon} shadow-xl`}>
+                                    <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 shadow-xl">
                                         <Package className="h-8 w-8 text-white" />
                                     </div>
                                     <div>
-                                        <h1 className="text-4xl font-bold text-gray-900 mb-1">Order #{order.orderCode}</h1>
-                                        <p className="text-muted-foreground mt-1 flex items-center gap-2">
-                                            <Hash className="h-4 w-4" />
-                                        </p>
+                                        <h1 className="text-4xl font-bold text-white mb-1">Order #{order.orderCode}</h1>
                                     </div>
                                 </div>
                                 <div>
@@ -940,8 +931,4 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
             </AppShell>
         </ProtectedRoute>
     )
-}
-
-function getEventRedeemOrders(arg0: number): RedeemOrder[] | Promise<RedeemOrder[]> {
-    throw new Error("Function not implemented.")
 }

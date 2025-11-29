@@ -338,8 +338,7 @@ export default function StudentProductViewPage() {
       
       toast({
         title: "Redemption Failed",
-        description:
-          error.message || "Not enough points or product is out of stock.",
+        description: "Product out of stock",
         variant: "destructive",
       });
       

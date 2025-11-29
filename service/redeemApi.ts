@@ -224,14 +224,14 @@ export async function getMemberRedeemOrders(): Promise<RedeemOrder[]> {
  *  Lấy thông tin chi tiết đơn hàng theo orderId
  * (GET /api/redeem/orders/{orderId})
  */
-// export async function getRedeemOrderById(
-//   orderId: number | string
-// ): Promise<RedeemOrder> {
-//   const res = await axiosInstance.get<ApiResponse<RedeemOrder>>(
-//     `/api/redeem/order/id/${orderId}`
-//   );
-//   return res.data.data;
-// }
+export async function getRedeemOrderById(
+  orderId: number | string
+): Promise<RedeemOrder> {
+  const res = await axiosInstance.get<ApiResponse<RedeemOrder>>(
+    `/api/redeem/order/id/${orderId}`
+  );
+  return res.data.data;
+}
 
 /**
  *  Lấy thông tin chi tiết đơn hàng theo orderCode (QR Scan)
