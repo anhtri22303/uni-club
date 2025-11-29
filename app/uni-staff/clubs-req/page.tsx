@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Building, Users, Calendar, Search, CheckCircle, XCircle, Clock, Eye, Plus, CheckCheck, Filter } from "lucide-react"
+import { Building, Users, Calendar, Search, CheckCircle, XCircle, Clock, Eye, Plus, CheckCheck, Filter, X } from "lucide-react"
 import Link from "next/link"
 // import { postClubApplication } from "@/service/clubApplicationAPI"
 // import { Modal } from "@/components/modal"
@@ -60,12 +60,12 @@ export default function UniStaffClubRequestsPage() {
 	// const queryClient = useQueryClient()
 	// Use React Query hook to fetch club applications
 	const { data: applications = [], isLoading: loading, error } = useClubApplications()
-	
+
 	// Debug: Log the raw data from API
 	console.log("📊 Raw applications data:", applications)
 	console.log("📊 Loading state:", loading)
 	console.log("📊 Error state:", error)
-	
+
 	// Map API shape to UI shape and sort by latest submittedAt
 	const requests: UiClubRequest[] = applications
 		.map((d: any) => {
@@ -89,7 +89,7 @@ export default function UniStaffClubRequestsPage() {
 			}
 		})
 		.sort((a, b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime())
-	
+
 	console.log("   Mapped requests:", requests)
 
 	// async function handleSendNewApplication() {
@@ -302,32 +302,35 @@ export default function UniStaffClubRequestsPage() {
 						</div>
 					</Modal> */}
 
-					   {/* Redesigned Stat Cards */}
-					   <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
-						   {/* Pending Requests */}
-						   <div className="rounded-xl bg-yellow-100 dark:bg-yellow-900 shadow flex flex-col items-center justify-center py-6 px-4 border border-yellow-200 dark:border-yellow-800 transition hover:scale-[1.02]">
-							   <Clock className="h-8 w-8 text-yellow-500 mb-2" />
-							   <div className="text-3xl font-extrabold text-yellow-700 dark:text-yellow-200">{pendingCount}</div>
-							   <div className="text-base font-semibold text-yellow-800 dark:text-yellow-100 mt-1">Pending</div>
-							   <div className="text-xs text-yellow-600 dark:text-yellow-300 mt-1">Awaiting review</div>
-						   </div>
+					{/* Redesigned Stat Cards */}
+					<div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
+						{/* Pending Requests */}
+						<div className="rounded-xl bg-yellow-100 dark:bg-yellow-900 shadow flex flex-col items-center justify-center 
+						   py-6 px-4 border border-yellow-200 dark:border-yellow-800 transition hover:scale-[1.02]">
+							<Clock className="h-8 w-8 text-yellow-500 mb-2" />
+							<div className="text-3xl font-extrabold text-yellow-700 dark:text-yellow-200">{pendingCount}</div>
+							<div className="text-base font-semibold text-yellow-800 dark:text-yellow-100 mt-1">Pending</div>
+							<div className="text-xs text-yellow-600 dark:text-yellow-300 mt-1">Awaiting review</div>
+						</div>
 
-						   {/* Complete */}
-						   <div className="rounded-xl bg-blue-100 dark:bg-blue-900 shadow flex flex-col items-center justify-center py-6 px-4 border border-blue-200 dark:border-blue-800 transition hover:scale-[1.02]">
-							   <CheckCheck className="h-8 w-8 text-blue-500 mb-2" />
-							   <div className="text-3xl font-extrabold text-blue-700 dark:text-blue-200">{completedCount}</div>
-							   <div className="text-base font-semibold text-blue-800 dark:text-blue-100 mt-1">Complete</div>
-							   <div className="text-xs text-blue-600 dark:text-blue-300 mt-1">Successfully processed</div>
-						   </div>
+						{/* Complete */}
+						<div className="rounded-xl bg-blue-100 dark:bg-blue-900 shadow flex flex-col items-center justify-center 
+						   py-6 px-4 border border-blue-200 dark:border-blue-800 transition hover:scale-[1.02]">
+							<CheckCheck className="h-8 w-8 text-blue-500 mb-2" />
+							<div className="text-3xl font-extrabold text-blue-700 dark:text-blue-200">{completedCount}</div>
+							<div className="text-base font-semibold text-blue-800 dark:text-blue-100 mt-1">Complete</div>
+							<div className="text-xs text-blue-600 dark:text-blue-300 mt-1">Successfully processed</div>
+						</div>
 
-						   {/* Rejected */}
-						   <div className="rounded-xl bg-red-100 dark:bg-red-900 shadow flex flex-col items-center justify-center py-6 px-4 border border-red-200 dark:border-red-800 transition hover:scale-[1.02]">
-							   <XCircle className="h-8 w-8 text-red-500 mb-2" />
-							   <div className="text-3xl font-extrabold text-red-700 dark:text-red-200">{rejectedCount}</div>
-							   <div className="text-base font-semibold text-red-800 dark:text-red-100 mt-1">Rejected</div>
-							   <div className="text-xs text-red-600 dark:text-red-300 mt-1">Not eligible</div>
-						   </div>
-					   </div>
+						{/* Rejected */}
+						<div className="rounded-xl bg-red-100 dark:bg-red-900 shadow flex flex-col items-center justify-center 
+						   py-6 px-4 border border-red-200 dark:border-red-800 transition hover:scale-[1.02]">
+							<XCircle className="h-8 w-8 text-red-500 mb-2" />
+							<div className="text-3xl font-extrabold text-red-700 dark:text-red-200">{rejectedCount}</div>
+							<div className="text-base font-semibold text-red-800 dark:text-red-100 mt-1">Rejected</div>
+							<div className="text-xs text-red-600 dark:text-red-300 mt-1">Not eligible</div>
+						</div>
+					</div>
 
 					{/* Filters */}
 					<Card className="border-muted">
@@ -341,11 +344,27 @@ export default function UniStaffClubRequestsPage() {
 							<div className="flex flex-col gap-3 md:flex-row md:items-center">
 								<div className="flex items-center gap-2 flex-1 max-w-sm">
 									<Search className="h-4 w-4 text-muted-foreground" />
-									<Input
-										placeholder="Search by club name or requester..."
-										value={searchTerm}
-										onChange={(e) => setSearchTerm(e.target.value)}
-									/>
+									{/* Bọc Input và Nút Clear trong div relative */}
+									<div className="relative w-full">
+										<Input
+											placeholder="Search by club name or requester..."
+											value={searchTerm}
+											onChange={(e) => setSearchTerm(e.target.value)}
+											// THAY ĐỔI: Thêm pr-12 để chữ không bị nút che
+											className="pr-12"
+										/>
+										{/* THÊM: Nút Clear (X) */}
+										{searchTerm && (
+											<Button
+												variant="ghost"
+												size="icon"
+												onClick={() => setSearchTerm("")}
+												className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full"
+											>
+												<X className="h-4 w-4 text-muted-foreground" />
+											</Button>
+										)}
+									</div>
 								</div>
 
 								<div className="flex items-center gap-2">

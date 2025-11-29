@@ -354,7 +354,7 @@ export default function ClubOrderDetailByCodePage({ params }: OrderDetailPagePro
                                     <Button className="h-12 px-6 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 
                                     dark:from-blue-600 dark:to-indigo-700 dark:hover:from-blue-700 dark:hover:to-indigo-800 text-white font-semibold shadow-lg">
                                         <ArrowLeft className="h-4 w-4 mr-2" />
-                                        Back to Order List
+                                        Back to Club Order List
                                     </Button>
                                 </Link>
                             </CardContent>
@@ -407,7 +407,7 @@ export default function ClubOrderDetailByCodePage({ params }: OrderDetailPagePro
                             <Link href="/club-leader/club-order-list">
                                 <Button variant="ghost" size="sm" className="mb-4 hover:bg-white/50 dark:hover:bg-slate-700/50 dark:text-white">
                                     <ArrowLeft className="h-4 w-4 mr-2" />
-                                    Back to Order List
+                                    Back to Club Order List
                                 </Button>
                             </Link>
 
@@ -1067,8 +1067,6 @@ export default function ClubOrderDetailByCodePage({ params }: OrderDetailPagePro
                                             </DialogContent>
                                         </Dialog>
 
-
-
                                     </CardContent>
                                 </Card>
                             )}
@@ -1077,26 +1075,30 @@ export default function ClubOrderDetailByCodePage({ params }: OrderDetailPagePro
 
                     {/* --- Image Preview Dialog --- */}
                     <Dialog open={previewIndex !== null} onOpenChange={(open) => !open && setPreviewIndex(null)}>
-                        {/* DialogContent vẫn giữ nền trong suốt để ta tự custom cái card bên trong */}
-                        <DialogContent className="max-w-[95vw] md:max-w-5xl w-auto h-auto bg-transparent border-none shadow-none p-0 flex items-center justify-center outline-none 
-                        focus:outline-none [&>button]:hidden">
-
+                        <DialogContent className="max-w-none w-auto h-auto bg-transparent border-none shadow-none p-0 flex items-center justify-center outline-none focus:outline-none [&>button]:hidden">
+                            
                             {serverRefundImages && previewIndex !== null && (
-                                /* Đây là cái Form/Card trắng bọc bên ngoài */
-                                <div className="relative bg-white dark:bg-slate-800 p-2 md:p-10 rounded-xl shadow-2xl overflow-hidden flex flex-col items-center">
+                                /* WRAPPER CARD: 
+                                    - w-[90vw] md:w-[800px]: Chiều rộng cố định trên desktop (800px), mobile (90%).
+                                    - h-[60vh] md:h-[600px]: Chiều cao cố định.
+                                    - flex flex-col: Để sắp xếp nút đóng và ảnh.
+                                */
+                                <div className="relative bg-white dark:bg-slate-800 rounded-xl shadow-2xl overflow-hidden flex flex-col 
+                                                w-[90vw] h-[60vh] md:w-[900px] md:h-[650px] p-4">
+                                    
+                                    {/* Header nhỏ chứa nút đóng */}
+                                    <div className="absolute top-4 right-4 z-50">
+                                        <button
+                                            onClick={() => setPreviewIndex(null)}
+                                            className="p-2 bg-gray-100 hover:bg-gray-200 dark:bg-slate-700 dark:hover:bg-slate-600 rounded-full text-gray-600 dark:text-gray-300 transition-all"
+                                        >
+                                            <X className="h-5 w-5" />
+                                        </button>
+                                    </div>
 
-                                    {/* Nút Đóng (X) - Nằm gọn trong góc phải của Card */}
-                                    <button
-                                        onClick={() => setPreviewIndex(null)}
-                                        className="absolute top-2 right-2 p-2 bg-gray-100 hover:bg-gray-200 dark:bg-slate-700 dark:hover:bg-slate-600 rounded-full text-gray-600 
-                                        dark:text-gray-300 transition-all z-50"
-                                    >
-                                        <X className="h-5 w-5" />
-                                    </button>
-
-                                    {/* Container chứa Ảnh và Nút điều hướng */}
-                                    <div className="relative flex items-center justify-center mt-2"> {/* mt-2 để tránh đè nút X nếu ảnh quá to */}
-
+                                    {/* Vùng chứa ảnh chính (Chiếm toàn bộ không gian còn lại) */}
+                                    <div className="relative flex-1 w-full h-full flex items-center justify-center bg-gray-50 dark:bg-slate-900 rounded-lg overflow-hidden mt-8 md:mt-0">
+                                        
                                         {/* Nút Previous */}
                                         {serverRefundImages.length > 1 && (
                                             <button
@@ -1104,25 +1106,22 @@ export default function ClubOrderDetailByCodePage({ params }: OrderDetailPagePro
                                                     e.stopPropagation();
                                                     showPrevImage();
                                                 }}
-                                                className="absolute left-2 p-2 bg-black/40 hover:bg-black/60 rounded-full text-white transition-all z-40 group backdrop-blur-sm"
+                                                className="absolute left-4 p-3 bg-black/30 hover:bg-black/50 rounded-full text-white transition-all z-40 group backdrop-blur-sm"
                                             >
                                                 <ChevronLeft className="h-6 w-6 group-hover:-translate-x-0.5 transition-transform" />
                                             </button>
                                         )}
 
-                                        {/* Ảnh chính */}
-                                        <div className="relative rounded-lg overflow-hidden bg-gray-50 dark:bg-slate-900">
-                                            <img
-                                                src={serverRefundImages[previewIndex].imageUrl}
-                                                alt="Refund Proof Fullsize"
-                                                className="max-h-[80vh] max-w-[85vw] w-auto object-contain" // Giới hạn chiều cao để không bị tràn màn hình
-                                            />
-
-                                            {/* Số thứ tự ảnh */}
-                                            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/50 text-white text-xs font-medium rounded-full 
-                                            backdrop-blur-md border border-white/10">
-                                                {previewIndex + 1} / {serverRefundImages.length}
-                                            </div>
+                                        {/* ẢNH (Quan trọng: object-contain h-full w-full) */}
+                                        <img
+                                            src={serverRefundImages[previewIndex].imageUrl}
+                                            alt="Refund Proof Fullsize"
+                                            className="w-full h-full object-contain" 
+                                        />
+                                        
+                                        {/* Số thứ tự ảnh */}
+                                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/50 text-white text-xs font-medium rounded-full backdrop-blur-md border border-white/10">
+                                            {previewIndex + 1} / {serverRefundImages.length}
                                         </div>
 
                                         {/* Nút Next */}
@@ -1132,7 +1131,7 @@ export default function ClubOrderDetailByCodePage({ params }: OrderDetailPagePro
                                                     e.stopPropagation();
                                                     showNextImage();
                                                 }}
-                                                className="absolute right-2 p-2 bg-black/40 hover:bg-black/60 rounded-full text-white transition-all z-40 group backdrop-blur-sm"
+                                                className="absolute right-4 p-3 bg-black/30 hover:bg-black/50 rounded-full text-white transition-all z-40 group backdrop-blur-sm"
                                             >
                                                 <ChevronRight className="h-6 w-6 group-hover:translate-x-0.5 transition-transform" />
                                             </button>

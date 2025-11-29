@@ -257,7 +257,8 @@ export default function ClubLeaderOrdersPage() {
 
           {/* Stats Cards (Đã cập nhật) */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card className="border-0 shadow-md bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/30 dark:to-yellow-800/30 dark:border-slate-700">
+            <Card className="border-0 shadow-md bg-gradient-to-br from-yellow-50 to-yellow-100 
+            dark:from-yellow-900/30 dark:to-yellow-800/30 dark:border-slate-700">
               <CardHeader className="pb-1 px-4 pt-3">
                 <CardTitle className="text-xs font-medium text-yellow-700 dark:text-yellow-300">
                   Pending Orders
@@ -275,7 +276,8 @@ export default function ClubLeaderOrdersPage() {
               </CardContent>
             </Card>
 
-            <Card className="border-0 shadow-md bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/30 dark:border-slate-700">
+            <Card className="border-0 shadow-md bg-gradient-to-br from-green-50 to-green-100 
+            dark:from-green-900/30 dark:to-green-800/30 dark:border-slate-700">
               <CardHeader className="pb-1 px-4 pt-3">
                 <CardTitle className="text-xs font-medium text-green-700 dark:text-green-300">
                   Completed Orders
@@ -293,7 +295,8 @@ export default function ClubLeaderOrdersPage() {
               </CardContent>
             </Card>
 
-            <Card className="border-0 shadow-md bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/30 dark:to-red-800/30 dark:border-slate-700">
+            <Card className="border-0 shadow-md bg-gradient-to-br from-red-50 to-red-100 
+            dark:from-red-900/30 dark:to-red-800/30 dark:border-slate-700">
               <CardHeader className="pb-1 px-4 pt-3">
                 <CardTitle className="text-xs font-medium text-red-700 dark:text-red-300">
                   Cancelled/Refunded
@@ -311,7 +314,8 @@ export default function ClubLeaderOrdersPage() {
               </CardContent>
             </Card>
 
-            <Card className="border-0 shadow-md bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 dark:border-slate-700">
+            <Card className="border-0 shadow-md bg-gradient-to-br from-blue-50 to-blue-100 
+            dark:from-blue-900/30 dark:to-blue-800/30 dark:border-slate-700">
               <CardHeader className="pb-1 px-4 pt-3">
                 <CardTitle className="text-xs font-medium text-blue-700 dark:text-blue-300">
                   Points Redeemed
@@ -514,7 +518,8 @@ function RenderOrderList({
         return (
           <Badge
             variant="outline"
-            className="bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700"
+            className="bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 
+            dark:text-yellow-300 border-yellow-300 dark:border-yellow-700"
           >
             <Clock className="h-3 w-3 mr-1" />
             Pending
@@ -524,7 +529,8 @@ function RenderOrderList({
         return (
           <Badge
             variant="default"
-            className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-300 dark:border-green-700"
+            className="bg-green-100 dark:bg-green-900/30 text-green-700 
+            dark:text-green-300 border-green-300 dark:border-green-700"
           >
             <CheckCircle className="h-3 w-3 mr-1" />
             Completed
@@ -534,7 +540,8 @@ function RenderOrderList({
         return (
           <Badge
             variant="destructive"
-            className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-300 dark:border-red-700"
+            className="bg-red-100 dark:bg-red-900/30 text-red-700 
+            dark:text-red-300 border-red-300 dark:border-red-700"
           >
             <XCircle className="h-3 w-3 mr-1" />
             Cancelled
@@ -544,7 +551,8 @@ function RenderOrderList({
         return (
           <Badge
             variant="outline"
-            className="bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700"
+            className="bg-blue-50 dark:bg-blue-900/30 text-blue-700 
+            dark:text-blue-300 border-blue-300 dark:border-blue-700"
           >
             <Undo2 className="h-3 w-3 mr-1" />
             Refunded
@@ -562,7 +570,8 @@ function RenderOrderList({
         const gradientClasses = 
           order.status === "PENDING" ? "from-yellow-50 via-white to-white dark:from-yellow-900/20 dark:via-slate-800 dark:to-slate-800" :
           order.status === "COMPLETED" ? "from-green-50 via-white to-white dark:from-green-900/20 dark:via-slate-800 dark:to-slate-800" :
-          order.status === "CANCELLED" ? "from-red-50 via-white to-white dark:from-red-900/20 dark:via-slate-800 dark:to-slate-800" : "from-blue-50 via-white to-white dark:from-blue-900/20 dark:via-slate-800 dark:to-slate-800"
+          order.status === "CANCELLED" ? "from-red-50 via-white to-white dark:from-red-900/20 dark:via-slate-800 dark:to-slate-800" : 
+          "from-blue-50 via-white to-white dark:from-blue-900/20 dark:via-slate-800 dark:to-slate-800"
 
         return (
           <Link 
@@ -570,7 +579,8 @@ function RenderOrderList({
             href={`/club-leader/club-order-list/${order.orderCode}`}
             className="group"
           >
-            <Card className={`border-0 shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] bg-gradient-to-br ${gradientClasses} dark:border-slate-700 overflow-hidden relative`}>
+            <Card className={`border-0 shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] bg-gradient-to-br 
+              ${gradientClasses} dark:border-slate-700 overflow-hidden relative`}>
               {/* Decorative top border */}
               <div className={`h-1.5 w-full bg-gradient-to-r ${
                 order.status === "PENDING" ? "from-yellow-400 via-yellow-500 to-yellow-600" :
@@ -619,7 +629,8 @@ function RenderOrderList({
 
                 {/* Order Details Grid */}
                 <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div className="p-3 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-lg border border-purple-100 dark:border-purple-800">
+                  <div className="p-3 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 
+                  rounded-lg border border-purple-100 dark:border-purple-800">
                     <div className="flex items-center gap-2 mb-1">
                       <ShoppingCart className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                       <span className="text-xs font-medium text-purple-700 dark:text-purple-300">Quantity</span>
@@ -652,7 +663,8 @@ function RenderOrderList({
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="h-8 px-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white hover:from-blue-600 hover:to-purple-600 hover:text-white group-hover:shadow-lg transition-all"
+                      className="h-8 px-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white hover:from-blue-600 hover:to-purple-600 
+                      hover:text-white group-hover:shadow-lg transition-all"
                     >
                       <Eye className="h-3.5 w-3.5 mr-1.5" />
                       View Details
@@ -662,7 +674,8 @@ function RenderOrderList({
               </CardContent>
 
               {/* Hover effect overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-transparent via-transparent to-white/20 dark:to-slate-700/20 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-t from-transparent via-transparent to-white/20 dark:to-slate-700/20 opacity-0 
+              group-hover:opacity-100 transition-opacity pointer-events-none" />
             </Card>
           </Link>
         )

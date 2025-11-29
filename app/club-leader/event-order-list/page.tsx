@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   ShoppingCart, Search, CheckCircle, XCircle, Clock, Eye, Filter, DollarSign, Package, User, Hash, Calendar, Undo2,
   WalletCards, ChevronLeft, ChevronRight, ScanLine,
@@ -15,67 +16,67 @@ import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { getClubIdFromToken } from "@/service/clubApi"
-import { getAllEventOrdersByClub, RedeemOrder } from "@/service/redeemApi"
+import { getEventRedeemOrders, RedeemOrder } from "@/service/redeemApi"
 import { Skeleton } from "@/components/ui/skeleton"
 import { EventRedeemScanner } from "@/components/event-redeem-scanner"
 
-// 👈 Đổi tên Key
 export const queryKeys = {
   eventOrders: (clubId: number) => ["eventOrders", clubId] as const,
 }
 
-// Định nghĩa kiểu dữ liệu cho UI (dùng trực tiếp từ API)
 type UiOrder = RedeemOrder
 
-// 👈 Đổi tên Component
 export default function ClubLeaderEventOrdersPage() {
   const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState<string>("ALL")
+  const [activeTab, setActiveTab] = useState<string>("pending")
   const [clubId, setClubId] = useState<number | null>(null)
   const [isScannerOpen, setIsScannerOpen] = useState(false)
 
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(0)
-  const [pageSize, setPageSize] = useState(4)
+  // Pagination states separated for tabs
+  const [pendingPage, setPendingPage] = useState(0)
+  const [completedPage, setCompletedPage] = useState(0)
+  const [cancelledPage, setCancelledPage] = useState(0)
+  const [pageSize, setPageSize] = useState(6)
 
   // Filter states
   const [dateFromFilter, setDateFromFilter] = useState<string>("")
   const [dateToFilter, setDateToFilter] = useState<string>("")
-  const [isFilterOpen, setIsFilterOpen] = useState(false)
 
   const { toast } = useToast()
   const queryClient = useQueryClient()
 
-  // 1. Lấy clubId của leader (Giữ nguyên)
+  // 1. Lấy clubId
   useEffect(() => {
     const id = getClubIdFromToken()
     if (id) {
       setClubId(id)
     } else {
       toast({
-        title: "Lỗi",
-        description: "Không tìm thấy Club ID của bạn.",
+        title: "Error",
+        description: "Can't find your Club ID.",
         variant: "destructive",
       })
     }
   }, [toast])
 
-  // 2. Lấy dữ liệu đơn hàng Event của Club
+  // 2. Lấy dữ liệu đơn hàng Event
   const {
     data: orders = [],
     isLoading,
     error,
   } = useQuery<UiOrder[], Error>({
     queryKey: queryKeys.eventOrders(clubId!),
-    queryFn: () => getAllEventOrdersByClub(clubId!),
+    queryFn: () => getEventRedeemOrders(clubId!),
     enabled: !!clubId,
     staleTime: 3 * 60 * 1000,
   })
 
-  // 3. Hàm lọc đơn hàng
-  const filteredOrders = useMemo(() => {
+  // 3. Hàm lọc (Updated logic similar to Club Orders)
+  const getFilteredOrders = (
+    tabType: "pending" | "completed" | "cancelled"
+  ) => {
     return orders.filter((order) => {
-      // Search filter (Tên sản phẩm, Tên thành viên, Mã đơn)
+      // Search filter
       const matchSearch =
         searchTerm === "" ||
         order.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -83,9 +84,14 @@ export default function ClubLeaderEventOrdersPage() {
         order.orderCode.toLowerCase().includes(searchTerm.toLowerCase())
 
       // Status filter
-      const matchStatus =
-        statusFilter === "ALL" ||
-        order.status === statusFilter
+      let matchStatus = false
+      if (tabType === "pending") {
+        matchStatus = order.status === "PENDING"
+      } else if (tabType === "completed") {
+        matchStatus = order.status === "COMPLETED"
+      } else {
+        matchStatus = order.status === "CANCELLED" || order.status === "REFUNDED" || order.status === "PARTIALLY_REFUNDED"
+      }
 
       // Date range filter
       let matchDateRange = true
@@ -104,38 +110,79 @@ export default function ClubLeaderEventOrdersPage() {
       }
 
       return matchSearch && matchStatus && matchDateRange
-    }).sort((a, b) => 
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    )
-  }, [orders, searchTerm, statusFilter, dateFromFilter, dateToFilter])
+    })
+  }
 
-  // 4. Tính toán số liệu thống kê
-  const totalOrders = isLoading ? "-" : filteredOrders.length
-  const totalPointsUsed = isLoading
+  // 4. Phân loại đơn hàng
+  const pendingOrders = useMemo(
+    () => getFilteredOrders("pending").sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    ),
+    [orders, searchTerm, dateFromFilter, dateToFilter]
+  )
+  const completedOrders = useMemo(
+    () => getFilteredOrders("completed").sort((a, b) => {
+        const dateA = a.completedAt ? new Date(a.completedAt).getTime() : new Date(a.createdAt).getTime()
+        const dateB = b.completedAt ? new Date(b.completedAt).getTime() : new Date(b.createdAt).getTime()
+        return dateB - dateA
+    }),
+    [orders, searchTerm, dateFromFilter, dateToFilter]
+  )
+  const cancelledOrders = useMemo(
+    () => getFilteredOrders("cancelled").sort((a, b) => {
+        const dateA = a.completedAt ? new Date(a.completedAt).getTime() : new Date(a.createdAt).getTime()
+        const dateB = b.completedAt ? new Date(b.completedAt).getTime() : new Date(b.createdAt).getTime()
+        return dateB - dateA
+    }),
+    [orders, searchTerm, dateFromFilter, dateToFilter]
+  )
+
+  // 5. Logic cho Stats Cards
+  const pendingCount = isLoading ? "-" : pendingOrders.length
+  const completedCount = isLoading ? "-" : completedOrders.length
+  const cancelledCount = isLoading ? "-" : cancelledOrders.length
+  const totalPointsCompleted = isLoading
     ? "-"
-    : filteredOrders
+    : completedOrders
       .reduce((sum, order) => sum + order.totalPoints, 0)
       .toLocaleString()
 
-  // 5. Logic phân trang
-  const [prevFilteredLength, setPrevFilteredLength] = useState(0)
+  // 6. Logic phân trang
+  const [prevPendingLength, setPrevPendingLength] = useState(0)
+  const [prevCompletedLength, setPrevCompletedLength] = useState(0)
+  const [prevCancelledLength, setPrevCancelledLength] = useState(0)
 
-  if (filteredOrders.length !== prevFilteredLength) {
-    setPrevFilteredLength(filteredOrders.length)
-    const lastPage = Math.max(0, Math.ceil(filteredOrders.length / pageSize) - 1)
-    if (currentPage > lastPage) setCurrentPage(lastPage)
+  if (pendingOrders.length !== prevPendingLength) {
+    setPrevPendingLength(pendingOrders.length)
+    const lastPage = Math.max(0, Math.ceil(pendingOrders.length / pageSize) - 1)
+    if (pendingPage > lastPage) setPendingPage(lastPage)
+  }
+  if (completedOrders.length !== prevCompletedLength) {
+    setPrevCompletedLength(completedOrders.length)
+    const lastPage = Math.max(0, Math.ceil(completedOrders.length / pageSize) - 1)
+    if (completedPage > lastPage) setCompletedPage(lastPage)
+  }
+  if (cancelledOrders.length !== prevCancelledLength) {
+    setPrevCancelledLength(cancelledOrders.length)
+    const lastPage = Math.max(0, Math.ceil(cancelledOrders.length / pageSize) - 1)
+    if (cancelledPage > lastPage) setCancelledPage(lastPage)
   }
 
-  const paginatedOrders = filteredOrders.slice(
-    currentPage * pageSize,
-    currentPage * pageSize + pageSize
+  const paginatedPending = pendingOrders.slice(
+    pendingPage * pageSize,
+    pendingPage * pageSize + pageSize
   )
-
-
+  const paginatedCompleted = completedOrders.slice(
+    completedPage * pageSize,
+    completedPage * pageSize + pageSize
+  )
+  const paginatedCancelled = cancelledOrders.slice(
+    cancelledPage * pageSize,
+    cancelledPage * pageSize + pageSize
+  )
 
   // Callback khi scan thành công
   const handleScanSuccess = () => {
-    // Reload data
     queryClient.invalidateQueries({ queryKey: queryKeys.eventOrders(clubId!) })
   }
 
@@ -145,17 +192,17 @@ export default function ClubLeaderEventOrdersPage() {
       <AppShell>
         <div className="space-y-6">
           <div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-3">
               <div>
-                <h1 className="text-3xl font-bold">Redeem Orders in Event</h1>
-                <p className="text-muted-foreground">
+                <h1 className="text-3xl font-bold dark:text-white">Redeem Orders in Event</h1>
+                <p className="text-muted-foreground dark:text-slate-400">
                   Manage event product redemption orders from members
                 </p>
               </div>
               <Button
-                size="lg"
+                size="default" // Match size with Club Page
                 onClick={() => setIsScannerOpen(true)}
-                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+                className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600"
                 disabled={!clubId}
               >
                 <ScanLine className="h-5 w-5 mr-2" />
@@ -164,114 +211,121 @@ export default function ClubLeaderEventOrdersPage() {
             </div>
           </div>
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <Card className="border-0 shadow-md bg-gradient-to-br from-purple-50 via-purple-100 to-pink-100 dark:from-purple-900/30 dark:via-purple-800/20 dark:to-pink-900/20">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-1 flex items-center gap-1.5">
-                      <Package className="h-3.5 w-3.5" />
-                      Total Orders
-                    </p>
-                    <div className="text-2xl font-bold text-purple-900 dark:text-purple-100">
-                      {isLoading ? <Skeleton className="h-7 w-12" /> : totalOrders}
-                    </div>
+          {/* Stats Cards (Updated to match Club Page 4-grid) */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Card className="border-0 shadow-md bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/30 dark:to-yellow-800/30 dark:border-slate-700">
+              <CardHeader className="pb-1 px-4 pt-3">
+                <CardTitle className="text-xs font-medium text-yellow-700 dark:text-yellow-300">
+                  Pending Orders
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pb-3 px-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-yellow-500 dark:bg-yellow-600 rounded-md">
+                    <Clock className="h-4 w-4 text-white" />
                   </div>
-                  <div className="p-2.5 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg">
-                    <ShoppingCart className="h-5 w-5 text-white" />
+                  <div className="text-lg font-bold text-yellow-900 dark:text-yellow-200">
+                    {isLoading ? <Skeleton className="h-6 w-10 dark:bg-slate-700" /> : pendingCount}
                   </div>
                 </div>
               </CardContent>
             </Card>
-            
-            <Card className="border-0 shadow-md bg-gradient-to-br from-blue-50 via-blue-100 to-cyan-100 dark:from-blue-900/30 dark:via-blue-800/20 dark:to-cyan-900/20">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-medium text-blue-700 dark:text-blue-300 mb-1 flex items-center gap-1.5">
-                      <WalletCards className="h-3.5 w-3.5" />
-                      Total Points Used
-                    </p>
-                    <div className="text-2xl font-bold text-blue-900 dark:text-blue-100">
-                      {isLoading ? <Skeleton className="h-7 w-16" /> : totalPointsUsed}
-                    </div>
+
+            <Card className="border-0 shadow-md bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/30 dark:border-slate-700">
+              <CardHeader className="pb-1 px-4 pt-3">
+                <CardTitle className="text-xs font-medium text-green-700 dark:text-green-300">
+                  Completed Orders
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pb-3 px-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-green-500 dark:bg-green-600 rounded-md">
+                    <CheckCircle className="h-4 w-4 text-white" />
                   </div>
-                  <div className="p-2.5 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg">
-                    <DollarSign className="h-5 w-5 text-white" />
+                  <div className="text-lg font-bold text-green-900 dark:text-green-200">
+                    {isLoading ? <Skeleton className="h-6 w-10 dark:bg-slate-700" /> : completedCount}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-md bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/30 dark:to-red-800/30 dark:border-slate-700">
+              <CardHeader className="pb-1 px-4 pt-3">
+                <CardTitle className="text-xs font-medium text-red-700 dark:text-red-300">
+                  Cancelled/Refunded
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pb-3 px-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-red-500 dark:bg-red-600 rounded-md">
+                    <XCircle className="h-4 w-4 text-white" />
+                  </div>
+                  <div className="text-lg font-bold text-red-900 dark:text-red-200">
+                    {isLoading ? <Skeleton className="h-6 w-10 dark:bg-slate-700" /> : cancelledCount}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-md bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 dark:border-slate-700">
+              <CardHeader className="pb-1 px-4 pt-3">
+                <CardTitle className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                  Points Redeemed
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pb-3 px-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-blue-500 dark:bg-blue-600 rounded-md">
+                    <WalletCards className="h-4 w-4 text-white" />
+                  </div>
+                  <div className="text-lg font-bold text-blue-900 dark:text-blue-200">
+                    {isLoading ? <Skeleton className="h-6 w-16 dark:bg-slate-700" /> : totalPointsCompleted}
                   </div>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Filters */}
-          <Card className="border-muted">
-            <CardHeader className="pb-3 cursor-pointer" onClick={() => setIsFilterOpen(!isFilterOpen)}>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base font-medium flex items-center gap-2">
-                  <Filter className="h-4 w-4" />
-                  Filters & Search
-                </CardTitle>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                  {isFilterOpen ? (
-                    <ChevronLeft className="h-4 w-4 rotate-90" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4 rotate-90" />
-                  )}
-                </Button>
-              </div>
+          {/* Filters (Updated to match Club Page - Open Filters) */}
+          <Card className="border-muted dark:bg-slate-800 dark:border-slate-700">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-medium flex items-center gap-2 dark:text-white">
+                <Filter className="h-4 w-4" />
+                Filters & Search
+              </CardTitle>
             </CardHeader>
-            {isFilterOpen && (
             <CardContent className="space-y-3">
               <div className="flex flex-col gap-3 md:flex-row md:items-center">
                 <div className="flex items-center gap-2 flex-1 max-w-sm">
-                  <Search className="h-4 w-4 text-muted-foreground" />
+                  <Search className="h-4 w-4 text-muted-foreground dark:text-slate-400" />
                   <Input
                     placeholder="Search by product, member, or code..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
+                    className="dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:placeholder:text-slate-400"
                   />
-                </div>
-                <div className="flex items-center gap-2">
-                  <label htmlFor="status-filter" className="text-sm font-medium whitespace-nowrap">
-                    Status:
-                  </label>
-                  <select
-                    id="status-filter"
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                  >
-                    <option value="ALL">All Status</option>
-                    <option value="PENDING">Pending</option>
-                    <option value="COMPLETED">Completed</option>
-                    <option value="CANCELLED">Cancelled</option>
-                    <option value="REFUNDED">Refunded</option>
-                    <option value="PARTIALLY_REFUNDED">Partially Refunded</option>
-                  </select>
                 </div>
               </div>
 
               <div className="flex flex-col gap-3 md:flex-row md:items-center">
                 <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium whitespace-nowrap">
+                  <label className="text-sm font-medium whitespace-nowrap dark:text-white">
                     From:
                   </label>
                   <Input
                     type="date"
-                    className="w-auto"
+                    className="w-auto dark:bg-slate-700 dark:text-white dark:border-slate-600"
                     value={dateFromFilter}
                     onChange={(e) => setDateFromFilter(e.target.value)}
                   />
                 </div>
                 <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium whitespace-nowrap">
+                  <label className="text-sm font-medium whitespace-nowrap dark:text-white">
                     To:
                   </label>
                   <Input
                     type="date"
-                    className="w-auto"
+                    className="w-auto dark:bg-slate-700 dark:text-white dark:border-slate-600"
                     value={dateToFilter}
                     onChange={(e) => setDateToFilter(e.target.value)}
                   />
@@ -284,31 +338,83 @@ export default function ClubLeaderEventOrdersPage() {
                       setDateFromFilter("")
                       setDateToFilter("")
                     }}
+                    className="dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:hover:bg-slate-600"
                   >
                     Clear Dates
                   </Button>
                 )}
               </div>
             </CardContent>
-            )}
           </Card>
 
-          {/* Order List */}
-          <div className="space-y-4">
-            <RenderOrderList
-              isLoading={isLoading}
-              error={error}
-              orders={paginatedOrders}
-              emptyMessage="No event orders found."
-            />
-            <PaginationControls
-              currentPage={currentPage}
-              setPage={setCurrentPage}
-              totalItems={filteredOrders.length}
-              pageSize={pageSize}
-              setPageSize={setPageSize}
-            />
-          </div>
+          {/* Tabs (New addition for Event Page) */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-3 gap-3">
+              <TabsTrigger value="pending" className="flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                Pending ({pendingOrders.length})
+              </TabsTrigger>
+              <TabsTrigger value="completed" className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4" />
+                Completed ({completedOrders.length})
+              </TabsTrigger>
+              <TabsTrigger value="cancelled" className="flex items-center gap-2">
+                <XCircle className="h-4 w-4" />
+                Cancelled/Refunded ({cancelledOrders.length})
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Tab Content: PENDING */}
+            <TabsContent value="pending" className="space-y-4 mt-6">
+              <RenderOrderList
+                isLoading={isLoading}
+                error={error}
+                orders={paginatedPending}
+                emptyMessage="No pending orders found."
+              />
+              <PaginationControls
+                currentPage={pendingPage}
+                setPage={setPendingPage}
+                totalItems={pendingOrders.length}
+                pageSize={pageSize}
+                setPageSize={setPageSize}
+              />
+            </TabsContent>
+
+            {/* Tab Content: COMPLETED */}
+            <TabsContent value="completed" className="space-y-4 mt-6">
+              <RenderOrderList
+                isLoading={isLoading}
+                error={error}
+                orders={paginatedCompleted}
+                emptyMessage="No completed orders found."
+              />
+              <PaginationControls
+                currentPage={completedPage}
+                setPage={setCompletedPage}
+                totalItems={completedOrders.length}
+                pageSize={pageSize}
+                setPageSize={setPageSize}
+              />
+            </TabsContent>
+
+            {/* Tab Content: CANCELLED */}
+            <TabsContent value="cancelled" className="space-y-4 mt-6">
+              <RenderOrderList
+                isLoading={isLoading}
+                error={error}
+                orders={paginatedCancelled}
+                emptyMessage="No cancelled or refunded orders found."
+              />
+              <PaginationControls
+                currentPage={cancelledPage}
+                setPage={setCancelledPage}
+                totalItems={cancelledOrders.length}
+                pageSize={pageSize}
+                setPageSize={setPageSize}
+              />
+            </TabsContent>
+          </Tabs>
         </div>
 
         {/* Event Redeem Scanner Modal */}
@@ -322,7 +428,7 @@ export default function ClubLeaderEventOrdersPage() {
   )
 }
 
-// --- Component con để render danh sách (Giữ nguyên) ---
+// --- Component con để render danh sách (Cập nhật style giống trang Club) ---
 function RenderOrderList({
   isLoading,
   error,
@@ -337,17 +443,17 @@ function RenderOrderList({
   if (isLoading) {
     return (
       <div className="grid md:grid-cols-2 gap-4">
-        <Skeleton className="h-40 w-full" />
-        <Skeleton className="h-40 w-full" />
-        <Skeleton className="h-40 w-full" />
-        <Skeleton className="h-40 w-full" />
+        <Skeleton className="h-40 w-full dark:bg-slate-700" />
+        <Skeleton className="h-40 w-full dark:bg-slate-700" />
+        <Skeleton className="h-40 w-full dark:bg-slate-700" />
+        <Skeleton className="h-40 w-full dark:bg-slate-700" />
       </div>
     )
   }
   if (error) {
     return (
-      <Card>
-        <CardContent className="py-8 text-center text-destructive">
+      <Card className="dark:bg-slate-800 dark:border-slate-700">
+        <CardContent className="py-8 text-center text-destructive dark:text-red-400">
           {String(error.message)}
         </CardContent>
       </Card>
@@ -355,49 +461,64 @@ function RenderOrderList({
   }
   if (orders.length === 0) {
     return (
-      <Card>
-        <CardContent className="py-8 text-center text-muted-foreground">
+      <Card className="dark:bg-slate-800 dark:border-slate-700">
+        <CardContent className="py-8 text-center text-muted-foreground dark:text-slate-400">
           {emptyMessage}
         </CardContent>
       </Card>
     )
   }
 
-  // Hàm render Badge (với gradient styling)
+  // Hàm render Badge
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "PENDING":
         return (
-          <Badge className="px-4 py-2 bg-gradient-to-r from-yellow-400 to-amber-500 text-white border-0 shadow-lg">
-            <Clock className="h-4 w-4 mr-1.5" />
+          <Badge
+            variant="outline"
+            className="bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700"
+          >
+            <Clock className="h-3 w-3 mr-1" />
             Pending
           </Badge>
         )
       case "COMPLETED":
         return (
-          <Badge className="px-4 py-2 bg-gradient-to-r from-green-400 to-emerald-500 text-white border-0 shadow-lg">
-            <CheckCircle className="h-4 w-4 mr-1.5" />
-            Delivered
+          <Badge
+            variant="default"
+            className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-300 dark:border-green-700"
+          >
+            <CheckCircle className="h-3 w-3 mr-1" />
+            Completed
           </Badge>
         )
       case "CANCELLED":
         return (
-          <Badge className="px-4 py-2 bg-gradient-to-r from-red-400 to-rose-500 text-white border-0 shadow-lg">
-            <XCircle className="h-4 w-4 mr-1.5" />
+          <Badge
+            variant="destructive"
+            className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-300 dark:border-red-700"
+          >
+            <XCircle className="h-3 w-3 mr-1" />
             Cancelled
           </Badge>
         )
       case "REFUNDED":
         return (
-          <Badge className="px-4 py-2 bg-gradient-to-r from-blue-400 to-cyan-500 text-white border-0 shadow-lg">
-            <Undo2 className="h-4 w-4 mr-1.5" />
+          <Badge
+            variant="outline"
+            className="bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700"
+          >
+            <Undo2 className="h-3 w-3 mr-1" />
             Refunded
           </Badge>
         )
       case "PARTIALLY_REFUNDED":
         return (
-          <Badge className="px-4 py-2 bg-gradient-to-r from-orange-400 to-amber-500 text-white border-0 shadow-lg">
-            <Undo2 className="h-4 w-4 mr-1.5" />
+          <Badge
+            variant="outline"
+            className="bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border-orange-300 dark:border-orange-700"
+          >
+            <Undo2 className="h-3 w-3 mr-1" />
             Partially Refunded
           </Badge>
         )
@@ -407,84 +528,118 @@ function RenderOrderList({
   }
 
   return (
-    <div className="grid md:grid-cols-2 gap-4">
+    <div className="grid md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
       {orders.map((order) => {
-        const borderColor = 
-          order.status === "PENDING" ? "border-l-yellow-500" :
-          order.status === "COMPLETED" ? "border-l-green-500" :
-          order.status === "CANCELLED" ? "border-l-red-500" : "border-l-blue-500"
+        // Determine status styling
+        const gradientClasses =
+          order.status === "PENDING" ? "from-yellow-50 via-white to-white dark:from-yellow-900/20 dark:via-slate-800 dark:to-slate-800" :
+          order.status === "COMPLETED" ? "from-green-50 via-white to-white dark:from-green-900/20 dark:via-slate-800 dark:to-slate-800" :
+          (order.status === "CANCELLED" || order.status.includes("REFUNDED")) ? "from-red-50 via-white to-white dark:from-red-900/20 dark:via-slate-800 dark:to-slate-800" : 
+          "from-blue-50 via-white to-white dark:from-blue-900/20 dark:via-slate-800 dark:to-slate-800"
 
         return (
-          <Link 
-            key={order.orderId} 
+          <Link
+            key={order.orderId}
             href={`/club-leader/event-order-list/${order.orderId}`}
             className="group"
           >
-            <Card className={`border-0 border-l-4 ${borderColor} shadow-md hover:shadow-lg transition-all duration-200 bg-card`}>
-              <CardContent className="p-4">
-                {/* Header: Product Name + Status */}
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <div className={`p-2 rounded-lg ${
-                      order.status === "PENDING" ? "bg-yellow-100 dark:bg-yellow-900/30" :
-                      order.status === "COMPLETED" ? "bg-green-100 dark:bg-green-900/30" :
-                      order.status === "CANCELLED" ? "bg-red-100 dark:bg-red-900/30" : "bg-blue-100 dark:bg-blue-900/30"
-                    }`}>
-                      <Package className="h-4 w-4" />
+            <Card className={`border-0 shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] bg-gradient-to-br 
+              ${gradientClasses} dark:border-slate-700 overflow-hidden relative`}>
+              {/* Decorative top border */}
+              <div className={`h-1.5 w-full bg-gradient-to-r ${
+                order.status === "PENDING" ? "from-yellow-400 via-yellow-500 to-yellow-600" :
+                order.status === "COMPLETED" ? "from-green-400 via-green-500 to-green-600" :
+                (order.status === "CANCELLED" || order.status.includes("REFUNDED")) ? "from-red-400 via-red-500 to-red-600" : "from-blue-400 via-blue-500 to-blue-600"
+              }`} />
+
+              <CardContent className="p-6">
+                {/* Header Section */}
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className={`p-2.5 rounded-xl bg-gradient-to-br ${
+                      order.status === "PENDING" ? "from-yellow-400 to-yellow-500" :
+                      order.status === "COMPLETED" ? "from-green-400 to-green-500" :
+                      (order.status === "CANCELLED" || order.status.includes("REFUNDED")) ? "from-red-400 to-red-500" : "from-blue-400 to-blue-500"
+                    } shadow-lg flex-shrink-0`}>
+                      <Package className="h-5 w-5 text-white" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-base line-clamp-1 group-hover:text-primary transition-colors">
+                      <h3 className="font-bold text-lg text-gray-900 dark:text-white line-clamp-1 group-hover:text-primary transition-colors">
                         {order.productName}
                       </h3>
-                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <p className="text-sm text-muted-foreground dark:text-slate-400 flex items-center gap-1 mt-0.5">
                         <Hash className="h-3 w-3" />
                         {order.orderCode}
                       </p>
                     </div>
                   </div>
-                  <div className="ml-2">
+                  <div className="flex-shrink-0 ml-2">
                     {getStatusBadge(order.status)}
                   </div>
                 </div>
 
-                {/* Member + Order Info in one row */}
-                <div className="space-y-2 mb-3">
-                  <div className="flex items-center gap-2 p-2 bg-muted/50 rounded">
-                    <User className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="text-sm font-medium line-clamp-1">{order.memberName}</span>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="flex items-center gap-2 p-2 bg-purple-50 dark:bg-purple-900/20 rounded">
-                      <ShoppingCart className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Quantity</p>
-                        <p className="text-sm font-bold">{order.quantity}</p>
-                      </div>
+                {/* Member Information */}
+                <div className="mb-4 p-3 bg-white/80 dark:bg-slate-700/50 backdrop-blur-sm rounded-lg border border-gray-100 dark:border-slate-600">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-800/50 dark:to-purple-800/50 rounded-lg">
+                      <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                     </div>
-                    
-                    <div className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded">
-                      <WalletCards className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Points</p>
-                        <p className="text-sm font-bold">{order.totalPoints}</p>
-                      </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground dark:text-slate-400 font-medium">Ordered by</p>
+                      <p className="font-semibold text-sm text-gray-900 dark:text-white line-clamp-1">{order.memberName}</p>
                     </div>
                   </div>
                 </div>
 
-                {/* Date + View Details */}
-                <div className="flex items-center justify-between pt-2 border-t">
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Calendar className="h-3 w-3" />
-                    <span>{new Date(order.createdAt).toLocaleString()}</span>
+                {/* Order Details Grid */}
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <div className="p-3 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-lg border 
+                  border-purple-100 dark:border-purple-800">
+                    <div className="flex items-center gap-2 mb-1">
+                      <ShoppingCart className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                      <span className="text-xs font-medium text-purple-700 dark:text-purple-300">Quantity</span>
+                    </div>
+                    <p className="text-xl font-bold text-purple-900 dark:text-purple-200">{order.quantity.toLocaleString('en-US')}</p>
                   </div>
-                  <div className="flex items-center gap-1 text-xs font-medium text-primary">
-                    <span>View Details</span>
-                    <Eye className="h-3 w-3" />
+
+                  <div className="p-3 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
+                    <div className="flex items-center gap-2 mb-1">
+                      <WalletCards className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      <span className="text-xs font-medium text-blue-700 dark:text-blue-300">Points</span>
+                    </div>
+                    <p className="text-xl font-bold text-blue-900 dark:text-blue-200">{order.totalPoints.toLocaleString('en-US')}</p>
+                  </div>
+                </div>
+
+                {/* Date Footer */}
+                <div className="pt-3 border-t border-gray-200/60 dark:border-slate-700">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground dark:text-slate-400">
+                      <Calendar className="h-3.5 w-3.5" />
+                      <span>{new Date(order.createdAt).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}</span>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 px-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white hover:from-blue-600 hover:to-purple-600 
+                      hover:text-white group-hover:shadow-lg transition-all"
+                    >
+                      <Eye className="h-3.5 w-3.5 mr-1.5" />
+                      View Details
+                    </Button>
                   </div>
                 </div>
               </CardContent>
+
+              {/* Hover effect overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-transparent via-transparent to-white/20 dark:to-slate-700/20 opacity-0 
+              group-hover:opacity-100 transition-opacity pointer-events-none" />
             </Card>
           </Link>
         )
@@ -493,7 +648,7 @@ function RenderOrderList({
   )
 }
 
-// --- Component con để Phân trang (cho gọn) ---
+// --- Component con để Phân trang (Giữ nguyên) ---
 function PaginationControls({
   currentPage,
   setPage,
@@ -511,6 +666,11 @@ function PaginationControls({
   const isFirstPage = currentPage === 0
   const isLastPage = (currentPage + 1) * pageSize >= totalItems
 
+  const handlePageSizeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setPageSize(Number(e.target.value))
+    setPage(0)
+  }
+
   return (
     <div className="flex items-center justify-center mt-4">
       <div className="flex items-center gap-2">
@@ -520,8 +680,8 @@ function PaginationControls({
           className={`
             flex items-center gap-1 px-3 py-1.5 text-sm font-medium
             transition-colors
-            ${isFirstPage 
-              ? 'text-muted-foreground/50 cursor-not-allowed' 
+            ${isFirstPage
+              ? 'text-muted-foreground/50 cursor-not-allowed'
               : 'text-cyan-500 hover:text-cyan-400 dark:text-cyan-400 dark:hover:text-cyan-300 cursor-pointer'
             }
           `}
@@ -539,8 +699,8 @@ function PaginationControls({
           className={`
             flex items-center gap-1 px-3 py-1.5 text-sm font-medium
             transition-colors
-            ${isLastPage 
-              ? 'text-muted-foreground/50 cursor-not-allowed' 
+            ${isLastPage
+              ? 'text-muted-foreground/50 cursor-not-allowed'
               : 'text-cyan-500 hover:text-cyan-400 dark:text-cyan-400 dark:hover:text-cyan-300 cursor-pointer'
             }
           `}

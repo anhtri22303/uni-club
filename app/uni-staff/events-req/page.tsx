@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { CalendarModal } from "@/components/calendar-modal"
-import { Calendar, Users, MapPin, Search, CheckCircle, XCircle, Clock, Building, Eye, Filter, DollarSign, Gift } from "lucide-react"
+import { Calendar, Users, MapPin, Search, CheckCircle, XCircle, Clock, Building, Eye, Filter, DollarSign, Gift, X } from "lucide-react"
 import { renderTypeBadge } from "@/lib/eventUtils"
 import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
@@ -297,7 +297,8 @@ export default function UniStaffEventRequestsPage() {
 		// COMPLETED status gets dark blue badge - highest priority
 		if (isCompleted || status === "COMPLETED") {
 			return (
-				<Badge variant="secondary" className="bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-700 font-semibold">
+				<Badge variant="secondary" className="bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/50 dark:text-blue-300 
+				dark:border-blue-700 font-semibold">
 					<span className="inline-block w-2 h-2 rounded-full bg-blue-600 dark:bg-blue-400 mr-1.5"></span>
 					Complete
 				</Badge>
@@ -307,7 +308,8 @@ export default function UniStaffEventRequestsPage() {
 		// Override with Expired badge if expired - gray color to override approval status
 		if (isExpired) {
 			return (
-				<Badge variant="secondary" className="bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 font-semibold">
+				<Badge variant="secondary" className="bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 
+				font-semibold">
 					<span className="inline-block w-2 h-2 rounded-full bg-gray-500 dark:bg-gray-400 mr-1.5"></span>
 					Expired
 				</Badge>
@@ -317,35 +319,40 @@ export default function UniStaffEventRequestsPage() {
 		switch (status) {
 			case "ONGOING":
 				return (
-					<Badge variant="default" className="bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-900/50 dark:text-purple-300 dark:border-purple-700 font-semibold">
+					<Badge variant="default" className="bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-900/50 dark:text-purple-300 
+					dark:border-purple-700 font-semibold">
 						<span className="inline-block w-2 h-2 rounded-full bg-purple-600 dark:bg-purple-400 mr-1.5"></span>
 						Ongoing
 					</Badge>
 				)
 			case "PENDING_UNISTAFF":
 				return (
-					<Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/50 dark:text-yellow-300 dark:border-yellow-700 font-semibold">
+					<Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/50 dark:text-yellow-300 
+					dark:border-yellow-700 font-semibold">
 						<span className="inline-block w-2 h-2 rounded-full bg-yellow-500 dark:bg-yellow-400 mr-1.5"></span>
 						Pending Uni-Staff
 					</Badge>
 				)
 			case "APPROVED":
 				return (
-					<Badge variant="default" className="bg-green-100 text-green-700 border-green-300 dark:bg-green-900/50 dark:text-green-300 dark:border-green-700 font-semibold">
+					<Badge variant="default" className="bg-green-100 text-green-700 border-green-300 dark:bg-green-900/50 dark:text-green-300 
+					dark:border-green-700 font-semibold">
 						<span className="inline-block w-2 h-2 rounded-full bg-green-600 dark:bg-green-400 mr-1.5"></span>
 						Approved
 					</Badge>
 				)
 			case "PENDING_COCLUB":
 				return (
-					<Badge variant="outline" className="bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-900/50 dark:text-orange-300 dark:border-orange-700 font-semibold">
+					<Badge variant="outline" className="bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-900/50 dark:text-orange-300 
+					dark:border-orange-700 font-semibold">
 						<span className="inline-block w-2 h-2 rounded-full bg-orange-500 dark:bg-orange-400 mr-1.5"></span>
 						Waiting
 					</Badge>
 				)
 			case "REJECTED":
 				return (
-					<Badge variant="destructive" className="bg-red-100 text-red-700 border-red-300 dark:bg-red-900/50 dark:text-red-300 dark:border-red-700 font-semibold">
+					<Badge variant="destructive" className="bg-red-100 text-red-700 border-red-300 dark:bg-red-900/50 dark:text-red-300 
+					dark:border-red-700 font-semibold">
 						<span className="inline-block w-2 h-2 rounded-full bg-red-600 dark:bg-red-400 mr-1.5"></span>
 						Rejected
 					</Badge>
@@ -433,14 +440,16 @@ export default function UniStaffEventRequestsPage() {
 							<Button
 								variant="outline"
 								onClick={handleOpenEventPointsModal}
-								className="bg-blue-50 border-blue-400 text-blue-700 hover:bg-blue-100 hover:border-blue-600 font-semibold shadow-sm dark:bg-blue-900/30 dark:border-blue-300 dark:text-blue-200 dark:hover:bg-blue-800/60 dark:hover:border-blue-100"
+								className="bg-blue-50 border-blue-400 text-blue-700 hover:bg-blue-100 hover:border-blue-600 font-semibold shadow-sm 
+								dark:bg-blue-900/30 dark:border-blue-300 dark:text-blue-200 dark:hover:bg-blue-800/60 dark:hover:border-blue-100"
 							>
 								<History className="h-4 w-4 mr-2" /> Event Points
 							</Button>
 							<Button
 								variant="outline"
 								onClick={() => setShowCalendarModal(true)}
-								className="bg-purple-50 border-purple-400 text-purple-700 hover:bg-purple-100 hover:border-purple-600 font-semibold shadow-sm dark:bg-purple-900/30 dark:border-purple-300 dark:text-purple-200 dark:hover:bg-purple-800/60 dark:hover:border-purple-100"
+								className="bg-purple-50 border-purple-400 text-purple-700 hover:bg-purple-100 hover:border-purple-600 font-semibold 
+								shadow-sm dark:bg-purple-900/30 dark:border-purple-300 dark:text-purple-200 dark:hover:bg-purple-800/60 dark:hover:border-purple-100"
 							>
 								<Calendar className="h-4 w-4 mr-2" /> Calendar View
 							</Button>
@@ -598,14 +607,39 @@ export default function UniStaffEventRequestsPage() {
 
 					{/* Filters */}
 					<div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-						<div className="flex items-center gap-2 max-w-sm w-full">
+						{/* <div className="flex items-center gap-2 max-w-sm w-full">
 							<Search className="h-4 w-4 text-muted-foreground" />
 							<Input
 								placeholder="Search by event name or organizer..."
 								value={searchTerm}
 								onChange={(e) => setSearchTerm(e.target.value)}
 							/>
+						</div> */}
+						<div className="flex items-center gap-2 max-w-sm w-full">
+							<Search className="h-4 w-4 text-muted-foreground" />
+							{/* Wrap Input and Button in relative div */}
+							<div className="relative w-full">
+								<Input
+									placeholder="Search by event name or organizer..."
+									value={searchTerm}
+									onChange={(e) => setSearchTerm(e.target.value)}
+									// Add padding-right so text doesn't hit the button
+									className="pr-12"
+								/>
+								{/* Render Clear Button only when there is text */}
+								{searchTerm && (
+									<Button
+										variant="ghost"
+										size="icon"
+										onClick={() => setSearchTerm("")}
+										className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full"
+									>
+										<X className="h-4 w-4 text-muted-foreground" />
+									</Button>
+								)}
+							</div>
 						</div>
+
 
 						<div className="flex items-center gap-3">
 							<Select value={typeFilter} onValueChange={setTypeFilter}>
@@ -722,7 +756,8 @@ export default function UniStaffEventRequestsPage() {
 															{getStatusBadge(request.status || request.type, expired, isCompleted)}
 															{/* Show "Need Settle" badge if event is COMPLETED but not in settled list */}
 															{isCompleted && !settledEventIds.has(request.id) && (
-																<Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/50 dark:text-amber-300 dark:border-amber-700 font-semibold animate-pulse">
+																<Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/50 
+																dark:text-amber-300 dark:border-amber-700 font-semibold animate-pulse">
 																	<DollarSign className="h-3 w-3 mr-1" />
 																	Need Settle
 																</Badge>
@@ -803,13 +838,20 @@ export default function UniStaffEventRequestsPage() {
 						<div className="flex items-center gap-2">
 							<Button size="sm" variant="outline" onClick={() => setPage(0)} disabled={page === 0}>First</Button>
 							<Button size="sm" variant="outline" onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}>Prev</Button>
-							<div className="px-2 text-sm">Page {filteredRequests.length === 0 ? 0 : page + 1} / {Math.max(1, Math.ceil(filteredRequests.length / pageSize))}</div>
-							<Button size="sm" variant="outline" onClick={() => setPage(p => Math.min(p + 1, Math.max(0, Math.ceil(filteredRequests.length / pageSize) - 1)))} disabled={(page + 1) * pageSize >= filteredRequests.length}>Next</Button>
-							<Button size="sm" variant="outline" onClick={() => setPage(Math.max(0, Math.ceil(filteredRequests.length / pageSize) - 1))} disabled={(page + 1) * pageSize >= filteredRequests.length}>Last</Button>
-							<select aria-label="Items per page" className="ml-2 rounded border px-2 py-1 text-sm" value={pageSize} onChange={(e) => { setPageSize(Number((e.target as HTMLSelectElement).value)); setPage(0) }}>
-								<option value={3}>3</option>
-								<option value={6}>6</option>
-								<option value={12}>12</option>
+							<div className="px-2 text-sm">
+								Page {filteredRequests.length === 0 ? 0 : page + 1} / {Math.max(1, Math.ceil(filteredRequests.length / pageSize))}
+							</div>
+							<Button size="sm" variant="outline"
+								onClick={() => setPage(p => Math.min(p + 1, Math.max(0, Math.ceil(filteredRequests.length / pageSize) - 1)))}
+								disabled={(page + 1) * pageSize >= filteredRequests.length}>Next</Button>
+							<Button size="sm" variant="outline"
+								onClick={() => setPage(Math.max(0, Math.ceil(filteredRequests.length / pageSize) - 1))}
+								disabled={(page + 1) * pageSize >= filteredRequests.length}>Last</Button>
+							<select aria-label="Items per page" className="ml-2 rounded border px-2 py-1 text-sm" value={pageSize} 
+							onChange={(e) => { setPageSize(Number((e.target as HTMLSelectElement).value)); setPage(0) }}>
+								<option value={10}>10</option>
+								<option value={20}>20</option>
+								<option value={50}>50</option>
 							</select>
 						</div>
 					</div>
@@ -899,9 +941,9 @@ export default function UniStaffEventRequestsPage() {
 																	<div className="truncate">{t.description || "—"}</div>
 																)}
 															</TableCell>
-														<TableCell className="text-sm text-muted-foreground whitespace-nowrap pl-2">
-															{formatTransactionDate(t.createdAt)}
-														</TableCell>
+															<TableCell className="text-sm text-muted-foreground whitespace-nowrap pl-2">
+																{formatTransactionDate(t.createdAt)}
+															</TableCell>
 														</TableRow>
 													))}
 												</TableBody>

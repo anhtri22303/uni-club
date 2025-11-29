@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Search, CheckCircle, XCircle, Clock, Building, DollarSign, Loader2, Info, Eye, } from "lucide-react"
+import { Search, CheckCircle, XCircle, Clock, Building, DollarSign, Loader2, Info, Eye, X } from "lucide-react"
 import {
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog"
@@ -308,11 +308,29 @@ export default function UniStaffPointRequestsPage() {
                     {/* Filters (Đã đơn giản hóa từ trang Event) */}
                     <div className="flex items-center gap-2 max-w-sm w-full">
                         <Search className="h-4 w-4 text-muted-foreground" />
-                        <Input
-                            placeholder="Search by club name or reason..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
+
+                        {/* Wrap Input and Button in a relative div */}
+                        <div className="relative w-full">
+                            <Input
+                                placeholder="Search by club name or reason..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                // Add padding-right to prevent text overlapping the button
+                                className="pr-12"
+                            />
+
+                            {/* Render Clear button only when there is text */}
+                            {searchTerm && (
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => setSearchTerm("")}
+                                    className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full"
+                                >
+                                    <X className="h-4 w-4 text-muted-foreground" />
+                                </Button>
+                            )}
+                        </div>
                     </div>
 
                     {/* Danh sách Card (Layout từ trang Event) */}

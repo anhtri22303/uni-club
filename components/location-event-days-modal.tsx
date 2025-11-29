@@ -60,14 +60,15 @@ export function LocationEventDaysModal({
 
   useEffect(() => {
     if (open) {
-      console.log('Modal opened - locations:', locations.length, 'selectedLocationId:', selectedLocationId)
+      console.log('Modal opened - locations:', locations.length, 'selectedLocationId:', selectedLocationId, 'eventDays:', eventDays)
       setLocationId(selectedLocationId || 0)
-      setDays([]) // Always start with empty array
+      // Load existing event days if available
+      setDays(eventDays && eventDays.length > 0 ? [...eventDays] : [])
       setShowTimeSelection(false)
       setEditingDayIndex(-1)
       setSelectedDateForTime("")
     }
-  }, [open, selectedLocationId, locations])
+  }, [open, selectedLocationId, locations, eventDays])
 
   // Auto-fetch events when location changes and we have a selected date
   useEffect(() => {
@@ -481,15 +482,32 @@ export function LocationEventDaysModal({
                     const isSelected = currentDay?.startTime === time || currentDay?.endTime === time
                     const isConflicted = isTimeSlotConflicted(time)
                     
+                    // Get current time in Vietnam timezone (UTC+7)
+                    const nowVietnam = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }))
+                    const currentHour = nowVietnam.getHours()
+                    const currentMinute = nowVietnam.getMinutes()
+                    const currentTimeInMinutes = currentHour * 60 + currentMinute
+                    
+                    // Check if selected date is today (compare date strings YYYY-MM-DD)
+                    const todayStr = `${nowVietnam.getFullYear()}-${String(nowVietnam.getMonth() + 1).padStart(2, '0')}-${String(nowVietnam.getDate()).padStart(2, '0')}`
+                    const isToday = selectedDateForTime === todayStr
+                    
                     // Disable logic: if selecting end time, disable all times <= start time
                     let isDisabled = isConflicted // Always disable if conflicted
+                    
+                    // Parse time slot
+                    const [timeHour, timeMin] = time.split(':').map(Number)
+                    const timeMinutes = timeHour * 60 + timeMin
+                    
+                    // Disable past times for today
+                    if (isToday && timeMinutes <= currentTimeInMinutes) {
+                      isDisabled = true
+                    }
                     
                     if (needsEndTime && currentDay?.startTime) {
                       // Convert time strings to minutes for comparison
                       const [startHour, startMin] = currentDay.startTime.split(':').map(Number)
-                      const [timeHour, timeMin] = time.split(':').map(Number)
                       const startMinutes = startHour * 60 + startMin
-                      const timeMinutes = timeHour * 60 + timeMin
                       
                       // Disable if time is less than or equal to start time OR conflicted
                       isDisabled = isDisabled || (timeMinutes <= startMinutes)

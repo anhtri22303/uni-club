@@ -146,32 +146,51 @@ export function DataTable<T extends Record<string, any>>({
 
           <div className="space-y-4">
             {searchKey && (
-              <Input
-                placeholder={searchPlaceholder}
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value)
-                  if (enablePagination) {
-                    setCurrentPage(1)
-                  }
-                }}
-                className="max-w-sm"
-              />
+              <div className="relative max-w-sm">
+                <Input
+                  placeholder={searchPlaceholder}
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value)
+                    if (enablePagination) {
+                      setCurrentPage(1)
+                    }
+                  }}
+                  className="pr-12"
+                />
+                {searchTerm && (
+                  // <button
+                  //   onClick={() => {
+                  //       setSearchTerm("")
+                  //       if (enablePagination) {
+                  //           setCurrentPage(1)
+                  //       }
+                  //   }}
+                  //   className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  //   type="button"
+                  // >
+                  //   <X className="h-4 w-4" />
+                  // </button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      setSearchTerm("")
+                      if (enablePagination) {
+                        setCurrentPage(1)
+                      }
+                    }}
+                    // Class giống locations/page.tsx: căn giữa, tròn, size chuẩn
+                    className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full"
+                  >
+                    <X className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                )}
+              </div>
             )}
 
             {showFilters && filters.length > 0 && (
               <div className="space-y-3 p-4 border rounded-lg bg-muted/50">
-                {/* <div className="flex items-center justify-between"> */}
-                {/* <h4 className="text-sm font-medium">Filters</h4> */}
-                {/* {hasActiveFilters && (
-                    <Button variant="ghost" size="sm" onClick={clearFilters} className="h-auto p-1 text-xs">
-                      <X className="h-3 w-3 mr-1" />
-                      Clear all
-                    </Button>
-                  )}
-                </div> */}
-                
-                {/* <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"> */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-[repeat(auto-fit,_minmax(200px,_1fr))] gap-3">
                   {filters.map((filter) => (
                     <div key={filter.key} className="space-y-1">
@@ -234,7 +253,7 @@ export function DataTable<T extends Record<string, any>>({
                     </Button>
                   )}
                 </div>
-                
+
               </div>
             )}
           </div>

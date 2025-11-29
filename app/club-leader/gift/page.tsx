@@ -190,7 +190,27 @@ export default function ClubLeaderGiftPage() {
   const { data: clubEvents = [], isLoading: eventsLoadingHost } = useQuery<Event[]>({
     // Cần queryKey duy nhất, thêm 'clubId' để nó fetch lại khi clubId thay đổi
     queryKey: ['clubEvents_host', clubId],
-    queryFn: () => getEventByClubId(clubId as number),
+    queryFn: async () => {
+      // console.log("🚀 [Gift] Fetching events for clubId:", clubId)
+      const result = await getEventByClubId(clubId as number)
+      // console.log("✅ [Gift] Received events:", result?.length || 0, "items")
+      // console.log("📦 [Gift] Events data:", result)
+      
+      // Debug: Log chi tiết từng event
+      if (result && result.length > 0) {
+        result.forEach((event, index) => {
+          console.log(`🔍 Event ${index + 1}:`, {
+            name: event.name,
+            status: event.status,
+            date: event.date,
+            startDate: event.startDate,
+            allKeys: Object.keys(event)
+          })
+        })
+      }
+      
+      return result
+    },
     // Chỉ fetch khi có clubId VÀ dialog đang mở (tối ưu)
     enabled: !!clubId && open,
   });
@@ -198,6 +218,8 @@ export default function ClubLeaderGiftPage() {
 
   // Lọc các event hợp lệ (APPROVED và chưa/đang diễn ra, hoặc ONGOING)
   const availableEvents = useMemo(() => {
+    // console.log("🔍 [Gift] Filtering events. clubId:", clubId, "clubEvents:", clubEvents?.length)
+    
     if (!clubId) return [];
     const numericClubId = Number(clubId);
     const events =
@@ -205,31 +227,53 @@ export default function ClubLeaderGiftPage() {
         const hostId = event.hostClub?.id ?? event.clubId;
         return Number(hostId) === numericClubId;
       }) || [];
+    
+    // console.log("📋 [Gift] Events after club filter:", events.length)
+    
     if (!events) return [];
 
     // Lấy thời điểm đầu ngày hôm nay (00:00:00) theo giờ địa phương
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    return events.filter(event => {
-      const parts = event.date.split('-').map(Number);
+    const filtered = events.filter(event => {
+      // console.log("🔍 [Gift] Checking event:", event.name, "status:", event.status, "startDate:", event.startDate)
+      
+      // Dùng startDate thay vì date
+      const dateToUse = event.startDate || event.date;
+      
+      if (!dateToUse) {
+        console.log("❌ [Gift] Event has no startDate or date:", event.name)
+        return false;
+      }
+
+      const parts = dateToUse.split('-').map(Number);
       // new Date(year, monthIndex, day)
       const eventDate = new Date(parts[0], parts[1] - 1, parts[2]);
 
-      // Chuẩn hóa status để xử lý cả "ONGOING" và "ON-GOING"
-      const normalizedStatus = (event.status || "").toString().toUpperCase().replace(/-/g, "");
+      // Chuẩn hóa status để xử lý cả "ONGOING", "ON-GOING" và "PENDING_COCLUB"
+      const normalizedStatus = (event.status || "").toString().toUpperCase().replace(/-|_/g, "");
+
+      console.log("🔍 [Gift] Event:", event.name, "normalizedStatus:", normalizedStatus, "eventDate:", eventDate, "today:", today)
 
       // Điều kiện 1: Event đang diễn ra (ONGOING) thì luôn hiển thị
       if (normalizedStatus === "ONGOING") {
+        // console.log("✅ [Gift] Event ONGOING:", event.name)
         return true;
       }
+      // Điều kiện 2: Event APPROVED và chưa qua ngày
       if (normalizedStatus === "APPROVED" && eventDate >= today) {
+        // console.log("✅ [Gift] Event APPROVED and upcoming:", event.name)
         return true;
       }
 
-      // Tất cả các trường hợp khác (PENDING, REJECTED, APPROVED nhưng đã qua ngày)
+      // console.log("❌ [Gift] Event filtered out:", event.name, "- Status:", normalizedStatus)
+      // Tất cả các trường hợp khác (PENDING, REJECTED, PENDINGCOCLUB, APPROVED nhưng đã qua ngày)
       return false;
     });
+    
+    // console.log("✅ [Gift] Final availableEvents:", filtered.length, filtered.map(e => e.name))
+    return filtered;
   }, [clubEvents, clubId]);
 
   // useEffect ĐỂ TÌM VÀ SET ID CỦA TAG CỐ ĐỊNH

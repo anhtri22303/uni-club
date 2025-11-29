@@ -389,12 +389,23 @@ export default function StudentProductViewPage() {
       // 4. Tải lại thông tin sản phẩm (đã có - để cập nhật stock)
       await fetchProduct();
     } catch (error: any) {
+      // Đóng modal và hiển thị lỗi
+      setIsConfirmOpen(false);
+      setIsRedeeming(false);
+      
       toast({
         title: "Redemption Failed",
         description:
           error.message || "Not enough points or product is out of stock.",
         variant: "destructive",
       });
+      
+      // Reload trang sau khi hiển thị toast
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+      
+      return; // Dừng thực thi
     } finally {
       setIsRedeeming(false);
     }

@@ -193,23 +193,10 @@ export async function getClubRedeemOrders(
 }
 
 /**
- * Lấy lịch sử các đơn hàng đổi quà của một Event
- * (GET /api/redeem/orders/event/{eventId})
- */
-export async function getEventRedeemOrders(
-  eventId: number | string
-): Promise<RedeemOrder[]> {
-  const res = await axiosInstance.get<ApiResponse<RedeemOrder[]>>(
-    `/api/redeem/orders/event/${eventId}`
-  );
-  return res.data.data;
-}
-
-/**
  * Lấy tất cả đơn hàng Event của một Club
  * (GET /api/redeem/event/club/{clubId})
  */
-export async function getAllEventOrdersByClub(
+export async function getEventRedeemOrders(
   clubId: number | string
 ): Promise<RedeemOrder[]> {
   const res = await axiosInstance.get<ApiResponse<RedeemOrder[]>>(

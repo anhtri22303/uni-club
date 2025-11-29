@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { FileText, Search, Eye, Trash, Plus } from "lucide-react"
+import { FileText, Search, Eye, Trash, Plus, X } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import { usePolicies } from "@/hooks/use-query-hooks"
@@ -125,7 +125,7 @@ export default function UniStaffPoliciesPage() {
 
       // refresh list with React Query
       await reloadPolicies()
-      
+
       // Reload page
       router.refresh()
     } catch (err) {
@@ -150,7 +150,7 @@ export default function UniStaffPoliciesPage() {
               <div className="w-24 h-24">
                 <Card className="border-0 shadow-md bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 h-full">
                   <CardContent className="p-2 h-full flex flex-col justify-center">
-                    <div className="text-[10px] font-medium text-blue-700 dark:text-blue-300 mb-1">Total Policies</div>
+                    <div className="text-[12px] font-medium text-blue-700 dark:text-blue-300 mb-1">Total Policies</div>
                     <div className="flex items-center gap-2">
                       <div className="p-1 bg-blue-500 rounded-md">
                         <FileText className="h-3 w-3 text-white" />
@@ -164,13 +164,30 @@ export default function UniStaffPoliciesPage() {
                 </Card>
               </div>
               <div className="flex items-center gap-2">
-                <Input
-                  placeholder="Search policies"
-                  value={query}
-                  onChange={(e) => setQuery((e.target as HTMLInputElement).value)}
-                  className="max-w-sm bg-white dark:bg-slate-800 rounded-md px-3 py-2 shadow-sm border border-gray-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/40"
-                />
-                <Button onClick={() => { setQuery("") }} variant="ghost">Clear</Button>
+                <div className="relative w-full max-w-sm">
+                  <Input
+                    placeholder="Search policies"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    // Thêm 'pr-12' để tạo khoảng trống bên phải cho nút X
+                    className="w-[250px] pr-12 bg-white dark:bg-slate-800 rounded-md px-3 py-2 shadow-sm border border-gray-200 
+                    dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+
+                  {/* Nút X (Clear) nằm đè lên Input */}
+                  {query && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setQuery("")}
+                      type="button"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full"
+                    >
+                      <X className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                  )}
+                </div>
+
                 <Button size="sm" className="ml-2" onClick={() => setCreateOpen(true)} title="Create policy">
                   Create policy
                   <Plus className="h-4 w-4 ml-1" />
@@ -296,9 +313,12 @@ export default function UniStaffPoliciesPage() {
                     <Button size="sm" variant="outline" onClick={() => setPage(0)} disabled={page === 0}>First</Button>
                     <Button size="sm" variant="outline" onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}>Prev</Button>
                     <div className="px-2 text-sm">Page {filtered.length === 0 ? 0 : page + 1} / {Math.max(1, Math.ceil(filtered.length / pageSize))}</div>
-                    <Button size="sm" variant="outline" onClick={() => setPage(p => Math.min(p + 1, Math.max(0, Math.ceil(filtered.length / pageSize) - 1)))} disabled={(page + 1) * pageSize >= filtered.length}>Next</Button>
-                    <Button size="sm" variant="outline" onClick={() => setPage(Math.max(0, Math.ceil(filtered.length / pageSize) - 1))} disabled={(page + 1) * pageSize >= filtered.length}>Last</Button>
-                    <select aria-label="Items per page" className="ml-2 rounded border px-2 py-1 text-sm" value={pageSize} onChange={(e) => { setPageSize(Number((e.target as HTMLSelectElement).value)); setPage(0) }}>
+                    <Button size="sm" variant="outline" onClick={() => setPage(p => Math.min(p + 1, Math.max(0, Math.ceil(filtered.length / pageSize) - 1)))} 
+                    disabled={(page + 1) * pageSize >= filtered.length}>Next</Button>
+                    <Button size="sm" variant="outline" onClick={() => setPage(Math.max(0, Math.ceil(filtered.length / pageSize) - 1))} 
+                    disabled={(page + 1) * pageSize >= filtered.length}>Last</Button>
+                    <select aria-label="Items per page" className="ml-2 rounded border px-2 py-1 text-sm" value={pageSize} 
+                    onChange={(e) => { setPageSize(Number((e.target as HTMLSelectElement).value)); setPage(0) }}>
                       <option value={5}>5</option>
                       <option value={10}>10</option>
                       <option value={20}>20</option>
@@ -319,7 +339,8 @@ export default function UniStaffPoliciesPage() {
               <div className="mt-2 space-y-3">
                 <div>
                   <Label htmlFor="policy-name">Policy Name</Label>
-                  <Input id="policy-name" className="mt-2 border-slate-300" value={editPolicyName} onChange={(e) => setEditPolicyName((e.target as HTMLInputElement).value)} />
+                  <Input id="policy-name" className="mt-2 border-slate-300" value={editPolicyName} 
+                  onChange={(e) => setEditPolicyName((e.target as HTMLInputElement).value)} />
                 </div>
 
                 <div>
@@ -352,19 +373,22 @@ export default function UniStaffPoliciesPage() {
 
                 <div>
                   <Label htmlFor="policy-desc">Description</Label>
-                  <Textarea id="policy-desc" className="mt-2 border-slate-300" value={editDescription} onChange={(e) => setEditDescription((e.target as HTMLTextAreaElement).value)} />
+                  <Textarea id="policy-desc" className="mt-2 border-slate-300" value={editDescription} 
+                  onChange={(e) => setEditDescription((e.target as HTMLTextAreaElement).value)} />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="policy-max">Max Club Join</Label>
-                    <Input id="policy-max" className="mt-2 border-slate-300" type="number" value={editMaxClubJoin ?? ''} onChange={(e) => setEditMaxClubJoin(e.target.value === '' ? undefined : Number(e.target.value))} />
+                    <Input id="policy-max" className="mt-2 border-slate-300" type="number" value={editMaxClubJoin ?? ''} 
+                    onChange={(e) => setEditMaxClubJoin(e.target.value === '' ? undefined : Number(e.target.value))} />
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2">
                   <Label htmlFor="policy-active">Change status: </Label>
-                  <input id="policy-active" title="Active" type="checkbox" checked={editActive} onChange={(e) => setEditActive(e.target.checked)} className="h-4 w-4" />
+                  <input id="policy-active" title="Active" type="checkbox" checked={editActive} 
+                  onChange={(e) => setEditActive(e.target.checked)} className="h-4 w-4" />
                   <Label htmlFor="policy-active">Active</Label>
                 </div>
 
@@ -453,20 +477,20 @@ export default function UniStaffPoliciesPage() {
 
                       // Nếu 'await' thành công, 'res' là policy mới
                       toast({ title: "Create success", description: `Policy created: ${res.policyName}` })
-                      
+
                       // Close modal
                       setCreateOpen(false)
-                      
+
                       // reset fields
                       setCreatePolicyName("")
                       setCreateDescription("")
                       setCreateMajorId(undefined)
                       setCreateMajorName(undefined)
                       setCreateMaxClubJoin(undefined)
-                      
+
                       // reload list
                       await reloadPolicies()
-                      
+
                       // Reload page
                       router.refresh()
                     } catch (err: any) { // Thêm ': any'

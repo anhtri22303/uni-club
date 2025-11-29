@@ -249,7 +249,7 @@ export default function UniStaffReportsPage() {
               <Button
                 size="sm"
                 className="gap-2 bg-gradient-to-r from-primary to-secondary flex-1 sm:flex-initial"
-                onClick={() => router.push('/uni-staff/reports')}
+                onClick={() => router.push('/uni-staff/report')}
               >
                 <Download className="h-4 w-4" />
                 <span className="hidden xs:inline">To Report Page</span>
