@@ -7,6 +7,7 @@ import { login as loginApi, LoginResponse, loginWithGoogleToken } from "@/servic
 import { safeSessionStorage, safeLocalStorage } from "@/lib/browser-utils";
 import { ClientOnlyWrapper } from "@/components/client-only-wrapper";
 import { useQueryClient } from "@tanstack/react-query";
+import axios from "axios";
 
 interface AuthState {
   userId: string | number | null;
@@ -30,7 +31,7 @@ interface AuthContextType {
     redirectTo?: string
   ) => Promise<boolean>;
   loginWithGoogle: (googleToken: string) => Promise<boolean>;
-  logout: () => void;
+  logout: () => Promise<void>;
   isAuthenticated: boolean;
   initialized: boolean;
 }
@@ -260,7 +261,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Trong file AuthContext của bạn
 
-  const logout = () => {
+  const logout = async () => {
+    // --- Bước 0: Clear chatbot conversation history from Redis ---
+    try {
+      const saved = safeSessionStorage.getItem("uniclub-auth");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const userId = parsed.userId || parsed.id;
+        if (userId) {
+          console.log("Logout: Clearing chatbot conversation history for userId:", userId);
+          await axios.delete(`/api/chatbot/history?userId=${userId}`);
+          console.log("✅ Logout: Chatbot history cleared successfully");
+        }
+      }
+    } catch (error) {
+      console.error("⚠️ Logout: Error clearing chatbot history:", error);
+      // Continue with logout even if this fails
+    }
+
     // --- Bước 1: Định nghĩa tất cả các key cần xóa ---
     const keysToRemove = [
       // Local Storage keys
