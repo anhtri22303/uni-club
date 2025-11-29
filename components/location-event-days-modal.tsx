@@ -120,7 +120,7 @@ export function LocationEventDaysModal({
       
       // Then filter by location
       const eventsAtLocation = approvedEvents.filter(event => {
-        console.log('🔍 Comparing event location:', event.locationName, 'with selected:', selectedLocation?.name)
+        console.log('  Comparing event location:', event.locationName, 'with selected:', selectedLocation?.name)
         return event.locationName === selectedLocation?.name
       })
       

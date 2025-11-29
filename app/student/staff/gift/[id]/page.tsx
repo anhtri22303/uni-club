@@ -1,768 +1,1976 @@
-"use client"
+"use client";
 
-import { useState, useEffect, useMemo } from "react"
-import { AppShell } from "@/components/app-shell"
-import { ProtectedRoute } from "@/contexts/protected-route"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
+import React, { useEffect, useState, useCallback, useRef } from "react";
+import { useRouter, useParams } from "next/navigation";
+import ReactCrop, { Crop, PixelCrop } from "react-image-crop";
+import "react-image-crop/dist/ReactCrop.css";
 import {
-    CheckCircle, XCircle, ArrowLeft, Clock, Package, ShoppingCart, User, Hash, Calendar, Undo2, Loader2, Info, WalletCards 
-} from "lucide-react"
-import Link from "next/link"
-import { useToast } from "@/hooks/use-toast"
-import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { getClubIdFromToken } from "@/service/clubApi"
-import { getClubRedeemOrders, RedeemOrder, completeRedeemOrder, refundRedeemOrder, refundPartialRedeemOrder, RefundPayload } from "@/service/redeemApi"
+  getProductById,
+  Product,
+  AddProductPayload,
+  updateProduct,
+  UpdateProductPayload,
+  addMediaToProduct,
+  deleteMediaFromProduct,
+  setMediaThumbnail,
+  getStockHistory,
+  StockHistory,
+  updateStock,
+  checkEventProductValid,
+  EventProductValidation,
+} from "@/service/productApi";
+import { getTags, Tag as ProductTag } from "@/service/tagApi";
+import { getEventByClubId, Event } from "@/service/eventApi";
+import { useToast } from "@/hooks/use-toast";
+import { AppShell } from "@/components/app-shell";
+import { ProtectedRoute } from "@/contexts/protected-route";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import {
-    Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger,
-} from "@/components/ui/dialog"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
-import { useRouter } from "next/navigation"
-import { Input } from "@/components/ui/input"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+  ArrowLeft,
+  Save,
+  Loader2,
+  Package,
+  DollarSign,
+  Archive,
+  Tag,
+  Image as ImageIcon,
+  CheckCircle,
+  Upload,
+  Trash,
+  Star,
+  History,
+  Plus,
+  XCircle,
+  Video as VideoIcon,
+  Play,
+  Eye,
+  HandCoins,
+  Search,
+  AlertCircle,
+} from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { Switch } from "@/components/ui/switch";
+import { LoadingSkeleton } from "@/components/loading-skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Skeleton } from "@/components/ui/skeleton";
+import { queryKeys, useMyStaffEvents } from "@/hooks/use-query-hooks";
 
-interface OrderDetailPageProps {
-    params: {
-        id: string
+type ProductEditForm = UpdateProductPayload;
+interface FixedTagIds {
+  clubTagId: number | null;
+  eventTagId: number | null;
+}
+
+export default function EditProductPage() {
+  const router = useRouter();
+  const params = useParams();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const [product, setProduct] = useState<Product | null>(null); // Dữ liệu gốc
+  const [form, setForm] = useState<ProductEditForm | null>(null);
+  const [allTags, setAllTags] = useState<ProductTag[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [clubId, setClubId] = useState<number | null>(null);
+  const productId = params.id as string;
+  const [tagSearchTerm, setTagSearchTerm] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false); // State cho việc xóa
+  const [eventValidation, setEventValidation] =
+    useState<EventProductValidation | null>(null);
+  const [isEventExpired, setIsEventExpired] = useState(false);
+  // STATE MEDIA DIALOG
+  const [isMediaDialogOpen, setIsMediaDialogOpen] = useState(false);
+  const [isMediaLoading, setIsMediaLoading] = useState(false);
+  const [newMediaFile, setNewMediaFile] = useState<File | null>(null);
+  // STATE ĐỂ LƯU ID CỦA TAG "CLUB" VÀ "EVENT"
+  const [fixedTagIds, setFixedTagIds] = useState<FixedTagIds>({
+    clubTagId: null,
+    eventTagId: null,
+  });
+  //State cho Dialog Lịch sử
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  // State cho Dialog Nhập kho
+  const [isStockDialogOpen, setIsStockDialogOpen] = useState(false);
+  const [stockChange, setStockChange] = useState<string>("");
+  const [stockNote, setStockNote] = useState<string>("");
+  const [isStockLoading, setIsStockLoading] = useState(false);
+  // STATE ĐỂ HIỂN THỊ GIÁ
+  const [displayPrice, setDisplayPrice] = useState<string>("");
+  //Biến kiểm tra xem có bị Archived không
+  const isArchived = product?.status === "ARCHIVED";
+  // STATE CHO MEDIA VIEWER
+  const [isMediaViewerOpen, setIsMediaViewerOpen] = useState(false);
+  const [selectedMedia, setSelectedMedia] = useState<{
+    url: string;
+    type: string;
+  } | null>(null);
+  // STATE CHO IMAGE CROP
+  const [isCropDialogOpen, setIsCropDialogOpen] = useState(false);
+  const [imageSrc, setImageSrc] = useState<string>("");
+  // STATE CHO EVENTS LIST
+  const [events, setEvents] = useState<Event[]>([]);
+  const [crop, setCrop] = useState<Crop>({
+    unit: "%",
+    width: 90,
+    height: 90,
+    x: 5,
+    y: 5,
+  });
+  const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
+  const imgRef = useRef<HTMLImageElement>(null);
+  const [croppedImageBlob, setCroppedImageBlob] = useState<Blob | null>(null);
+  const [originalFileName, setOriginalFileName] = useState<string>("");
+  // --- Hàm Helper (Hàm hỗ trợ) ---
+  const formatNumber = (num: number | string): string => {
+    return Number(num).toLocaleString("en-US");
+  };
+  const parseFormattedNumber = (str: string): number => {
+    return Number(str.replace(/,/g, ""));
+  };
+  // Hàm truncate tên file nếu quá dài
+  const truncateFileName = (
+    fileName: string,
+    maxLength: number = 40
+  ): string => {
+    if (fileName.length <= maxLength) return fileName;
+
+    const lastDotIndex = fileName.lastIndexOf(".");
+    // Nếu không có extension hoặc extension quá dài
+    if (lastDotIndex === -1 || lastDotIndex === 0) {
+      // File không có extension, truncate từ đầu
+      return fileName.substring(0, maxLength - 3) + "...";
     }
-}
 
-export const queryKeys = {
-    eventOrders: (clubId: number) => ["staffEventOrders", clubId] as const,
-}
+    const extension = fileName.substring(lastDotIndex);
+    const nameWithoutExt = fileName.substring(0, lastDotIndex);
 
-type UiOrder = RedeemOrder
+    // Đảm bảo extension không quá dài
+    if (extension.length > maxLength / 2) {
+      return fileName.substring(0, maxLength - 3) + "...";
+    }
 
-export default function StaffGiftDetailPage({ params }: OrderDetailPageProps) {
-    const router = useRouter()
-    const { toast } = useToast()
-    const queryClient = useQueryClient()
+    // Truncate phần tên, giữ lại extension
+    const availableLength = maxLength - extension.length - 3; // 3 cho "..."
+    if (availableLength <= 0) {
+      return "..." + extension;
+    }
 
-    const [clubId, setClubId] = useState<number | null>(null)
-    const [isProcessing, setIsProcessing] = useState<boolean>(false)
+    const truncatedName = nameWithoutExt.substring(0, availableLength);
+    return `${truncatedName}...${extension}`;
+  };
 
-    const [isRefundModalOpen, setIsRefundModalOpen] = useState<boolean>(false)
-    const [refundReason, setRefundReason] = useState<string>("")
-    const [refundType, setRefundType] = useState<"full" | "partial">("full")
-    const [partialQuantity, setPartialQuantity] = useState<string>("1")
+  // Crop image utility function with high quality preservation
+  const getCroppedImg = useCallback(
+    (image: HTMLImageElement, crop: PixelCrop): Promise<Blob> => {
+      const canvas = document.createElement("canvas");
+      const scaleX = image.naturalWidth / image.width;
+      const scaleY = image.naturalHeight / image.height;
 
-    useEffect(() => {
-        const id = getClubIdFromToken()
-        if (id) {
-            setClubId(id)
-        } else {
-            toast({
-                title: "Error",
-                description: "Could not find your Club ID.",
-                variant: "destructive",
-            })
-        }
-    }, [toast])
+      // Use natural dimensions for high quality output
+      const naturalCropWidth = crop.width * scaleX;
+      const naturalCropHeight = crop.height * scaleY;
 
-    const {
-        data: orders = [],
-        isLoading: loading,
-        error,
-    } = useQuery<UiOrder[], Error>({
-        queryKey: queryKeys.eventOrders(clubId!),
-        queryFn: () => getClubRedeemOrders(clubId!),
-        enabled: !!clubId,
-    })
+      canvas.width = naturalCropWidth;
+      canvas.height = naturalCropHeight;
+      const ctx = canvas.getContext("2d");
 
-    const order: UiOrder | undefined = useMemo(() => {
-        if (loading || !params.id) return undefined
-        return orders.find(o => String(o.orderId) === params.id)
-    }, [orders, loading, params.id])
+      if (!ctx) {
+        return Promise.reject(new Error("No 2d context"));
+      }
 
-    const handleDeliver = async () => {
-        if (!order || !clubId) return;
+      // Enable high-quality image rendering
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
 
-        setIsProcessing(true);
-        try {
-            await completeRedeemOrder(order.orderId);
-            
-            toast({
-                title: "Success",
-                description: "Order marked as 'Delivered' successfully!",
-                variant: "success",
-            })
-            
-            await queryClient.invalidateQueries({ queryKey: queryKeys.eventOrders(clubId) });
-            router.refresh();
-        } catch (error) {
-            console.error("Failed to complete order:", error);
-            toast({
-                title: "Error",
-                description: (error as Error).message || "Failed to mark order as delivered",
-                variant: "destructive",
-            })
-        } finally {
-            setIsProcessing(false);
-        }
-    };
+      ctx.drawImage(
+        image,
+        crop.x * scaleX,
+        crop.y * scaleY,
+        naturalCropWidth,
+        naturalCropHeight,
+        0,
+        0,
+        naturalCropWidth,
+        naturalCropHeight
+      );
 
-    const handleRefund = async () => {
-        if (!order || !clubId) return
-
-        if (!refundReason.trim()) {
-            toast({
-                title: "Validation Error",
-                description: "Please provide a reason for the refund.",
-                variant: "destructive",
-            })
-            return;
-        }
-
-        setIsProcessing(true)
-        try {
-            if (refundType === "full") {
-                const payload: RefundPayload = {
-                    orderId: order.orderId,
-                    quantityToRefund: order.quantity,
-                    reason: refundReason,
-                };
-                await refundRedeemOrder(payload)
-
-                toast({
-                    title: "Success",
-                    description: "Order has been successfully cancelled and refunded.",
-                    variant: "success",
-                })
-            } else {
-                const qty = parseInt(partialQuantity);
-
-                if (!qty || qty <= 0) {
-                    throw new Error("Quantity to refund must be greater than 0.");
-                }
-                if (qty >= order.quantity) {
-                    throw new Error("Quantity is too high. Use 'Full Refund' instead.");
-                }
-
-                const payload: RefundPayload = {
-                    orderId: order.orderId,
-                    quantityToRefund: qty,
-                    reason: refundReason,
-                };
-                await refundPartialRedeemOrder(payload)
-
-                toast({
-                    title: "Success",
-                    description: `Successfully refunded ${qty} item(s).`,
-                    variant: "success",
-                })
+      return new Promise((resolve, reject) => {
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              reject(new Error("Canvas is empty"));
+              return;
             }
+            resolve(blob);
+          },
+          "image/jpeg",
+          0.95
+        );
+      });
+    },
+    []
+  );
 
-            setIsRefundModalOpen(false)
-            setRefundType("full")
-            setPartialQuantity("1")
-            setRefundReason("")
-            
-            await queryClient.invalidateQueries({ queryKey: queryKeys.eventOrders(clubId) })
-            router.refresh();
+  const handleCropComplete = useCallback(async () => {
+    if (!imgRef.current || !completedCrop) {
+      toast({
+        title: "Error",
+        description: "Please select a crop area first",
+        variant: "destructive",
+      });
+      return;
+    }
 
-        } catch (error: any) {
-            console.error("Failed to refund order:", error)
-            toast({
-                title: "Error",
-                description: error.response?.data?.message || error.message || "Failed to refund order",
-                variant: "destructive",
-            })
-        } finally {
-            setIsProcessing(false)
+    try {
+      const croppedBlob = await getCroppedImg(imgRef.current, completedCrop);
+      setCroppedImageBlob(croppedBlob);
+
+      // Convert blob to file
+      const croppedFile = new File(
+        [croppedBlob],
+        originalFileName || "cropped-image.jpg",
+        {
+          type: "image/jpeg",
         }
-    }
+      );
 
-    const getStatusBadge = (status: string) => {
-        switch (status) {
-            case "PENDING":
-                return (
-                    <Badge className="px-4 py-2 bg-gradient-to-r from-yellow-400 to-amber-500 text-white border-0 shadow-lg font-semibold text-sm">
-                        <Clock className="h-4 w-4 mr-2" />
-                        Pending
-                    </Badge>
-                )
-            case "COMPLETED":
-                return (
-                    <Badge className="px-4 py-2 bg-gradient-to-r from-green-400 to-emerald-500 text-white border-0 shadow-lg font-semibold text-sm">
-                        <CheckCircle className="h-4 w-4 mr-2" />
-                        Delivered
-                    </Badge>
-                )
-            case "REFUNDED":
-                return (
-                    <Badge className="px-4 py-2 bg-gradient-to-r from-blue-400 to-cyan-500 text-white border-0 shadow-lg font-semibold text-sm">
-                        <Undo2 className="h-4 w-4 mr-2" />
-                        Refunded
-                    </Badge>
-                )
-            case "PARTIALLY_REFUNDED":
-                return (
-                    <Badge className="px-4 py-2 bg-gradient-to-r from-orange-400 to-amber-500 text-white border-0 shadow-lg font-semibold text-sm">
-                        <Undo2 className="h-4 w-4 mr-2" />
-                        Partially Refunded
-                    </Badge>
-                )
-            default:
-                return (
-                    <Badge className="px-4 py-2 bg-gradient-to-r from-red-400 to-rose-500 text-white border-0 shadow-lg font-semibold text-sm">
-                        <XCircle className="h-4 w-4 mr-2" />
-                        {status}
-                    </Badge>
-                )
-        }
-    }
+      setNewMediaFile(croppedFile);
+      setIsCropDialogOpen(false);
 
-    if (loading) {
-        return (
-            <ProtectedRoute allowedRoles={["student"]}>
-                <AppShell>
-                    <div className="flex items-center justify-center min-h-[60vh]">
-                        <div className="text-center space-y-4">
-                            <div className="relative">
-                                <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto" />
-                                <Package className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 h-6 w-6 text-blue-600" />
-                            </div>
-                            <p className="text-lg font-medium text-gray-600">Loading order details...</p>
-                        </div>
-                    </div>
-                </AppShell>
-            </ProtectedRoute>
-        )
+      toast({
+        title: "Success",
+        description: "Image cropped successfully! Click 'Upload' to add it.",
+        variant: "success",
+      });
+    } catch (error) {
+      console.error("Error cropping image:", error);
+      toast({
+        title: "Error",
+        description: "Failed to crop image",
+        variant: "destructive",
+      });
     }
+  }, [completedCrop, getCroppedImg, originalFileName, toast]);
 
-    if (error || !order) {
-        return (
-            <ProtectedRoute allowedRoles={["student"]}>
-                <AppShell>
-                    <div className="flex items-center justify-center min-h-[60vh]">
-                        <Card className="max-w-md border-0 shadow-2xl">
-                            <CardContent className="pt-8 pb-8 text-center space-y-6">
-                                <div className="flex justify-center">
-                                    <div className="p-4 rounded-full bg-gradient-to-br from-red-50 to-rose-100">
-                                        <XCircle className="h-16 w-16 text-red-500" />
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <h1 className="text-3xl font-bold text-gray-900">Order Not Found</h1>
-                                    <p className="text-gray-600">
-                                        {error ? String(error) : "The requested order could not be found or you don't have permission to view it."}
-                                    </p>
-                                </div>
-                                <Link href="/student/staff/gift">
-                                    <Button className="h-12 px-6 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold shadow-lg">
-                                        <ArrowLeft className="h-4 w-4 mr-2" />
-                                        Back to Gift List
-                                    </Button>
-                                </Link>
-                            </CardContent>
-                        </Card>
-                    </div>
-                </AppShell>
-            </ProtectedRoute>
-        )
+  const handleCropCancel = () => {
+    setIsCropDialogOpen(false);
+    setImageSrc("");
+    setCrop({
+      unit: "%",
+      width: 90,
+      height: 90,
+      x: 5,
+      y: 5,
+    });
+    setCompletedCrop(undefined);
+    setCroppedImageBlob(null);
+  };
+
+  // 1. Lấy clubId từ staff event của user
+  const { data: staffEvents = [], isLoading: staffEventsLoading } = useMyStaffEvents();
+
+  useEffect(() => {
+    if (staffEvents.length > 0 && staffEvents[0].state === "ACTIVE") {
+      const activeEvent = staffEvents[0];
+      const id = activeEvent.clubId;
+      console.log("🔍 [Staff Gift Detail] Active staff event:", activeEvent);
+      console.log("🔍 [Staff Gift Detail] Using clubId:", id);
+      
+      setClubId(id);
+      // Fetch events list
+      getEventByClubId(id)
+        .then(setEvents)
+        .catch((err) => {
+          console.error("Failed to fetch events:", err);
+        });
+    } else if (staffEvents.length === 0 && !staffEventsLoading) {
+      toast({
+        title: "Error",
+        description: "You are not assigned as staff to any active event.",
+        variant: "destructive",
+      });
+      router.back();
     }
+  }, [staffEvents, staffEventsLoading, router, toast]);
 
-    const statusTheme = 
-        order.status === "PENDING" ? {
-            gradient: "from-yellow-50 via-yellow-50/50 to-transparent",
-            border: "border-yellow-200",
-            icon: "from-yellow-400 to-yellow-500",
-            text: "text-yellow-700"
-        } :
-        order.status === "COMPLETED" ? {
-            gradient: "from-green-50 via-green-50/50 to-transparent",
-            border: "border-green-200",
-            icon: "from-green-400 to-green-500",
-            text: "text-green-700"
-        } :
-        order.status === "PARTIALLY_REFUNDED" ? {
-            gradient: "from-orange-50 via-orange-50/50 to-transparent",
-            border: "border-orange-200",
-            icon: "from-orange-400 to-orange-500",
-            text: "text-orange-700"
-        } : {
-            gradient: "from-blue-50 via-blue-50/50 to-transparent",
-            border: "border-blue-200",
-            icon: "from-blue-400 to-blue-500",
-            text: "text-blue-700"
+  // }, [router, toast]) // Thêm dependencies
+  const fetchProductData = useCallback(
+    async (cId: number, pId: string) => {
+      try {
+        const [productData, tagsData] = await Promise.all([
+          getProductById(cId, pId),
+          getTags(),
+        ]);
+
+        setProduct(productData);
+        setAllTags(tagsData);
+
+        // Kiểm tra nếu là EVENT_ITEM thì gọi API kiểm tra event còn hạn không
+        if (productData.type === "EVENT_ITEM") {
+          try {
+            const validation = await checkEventProductValid(cId, pId);
+            setEventValidation(validation);
+            // Kiểm tra nếu event đã COMPLETED và expired
+            setIsEventExpired(
+              validation.eventStatus === "COMPLETED" && validation.expired
+            );
+          } catch (error) {
+            console.error("Failed to validate event product:", error);
+            // Nếu API lỗi, giả định sản phẩm vẫn hợp lệ
+            setIsEventExpired(false);
+          }
+        } else {
+          setIsEventExpired(false);
         }
 
+        // Tìm và lưu các tag cố định
+        const clubTag = tagsData.find(
+          (tag) => tag.name.toLowerCase() === "club"
+        );
+        const eventTag = tagsData.find(
+          (tag) => tag.name.toLowerCase() === "event"
+        );
+        setFixedTagIds({
+          clubTagId: clubTag ? clubTag.tagId : null,
+          eventTagId: eventTag ? eventTag.tagId : null,
+        });
+
+        // --- QUAN TRỌNG: Chuyển đổi dữ liệu cho form ---
+        const loadedTagIds = tagsData
+          .filter((tag) => productData.tags.includes(tag.name))
+          .map((tag) => tag.tagId);
+
+        setForm({
+          name: productData.name,
+          description: productData.description,
+          pointCost: productData.pointCost,
+          stockQuantity: productData.stockQuantity,
+          type: productData.type || "CLUB_ITEM",
+          eventId: productData.eventId,
+          tagIds: loadedTagIds,
+          status: productData.status,
+        });
+
+        setDisplayPrice(formatNumber(productData.pointCost));
+      } catch (error) {
+        console.error("Failed to load product details:", error);
+        toast({
+          title: "Error",
+          description: "Unable to load product details.",
+          variant: "destructive",
+        });
+        router.back();
+      }
+    },
+    [router, toast]
+  ); // Thêm dependencies
+
+  // 2. Fetch dữ liệu lần đầu
+  useEffect(() => {
+    if (clubId && productId) {
+      setLoading(true);
+      fetchProductData(clubId, productId).finally(() => {
+        setLoading(false);
+      });
+    }
+  }, [clubId, productId, fetchProductData]); // Thêm fetchProductData
+
+  // HANDLERS CHO FORM
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    if (!form) return;
+
+    // XỬ LÝ ĐẶC BIỆT CHO "pointCost"
+    if (name === "pointCost") {
+      // Chỉ cho phép số và dấu phẩy
+      const numericValue = value.replace(/[^0-9]/g, "");
+      if (numericValue === "") {
+        setDisplayPrice("");
+        setForm({ ...form, pointCost: 0 });
+        return;
+      }
+
+      const numberValue = parseInt(numericValue, 10);
+
+      // Cập nhật giá trị hiển thị (có dấu phẩy)
+      setDisplayPrice(formatNumber(numberValue));
+      // Cập nhật state của form (dạng số)
+      setForm({ ...form, pointCost: numberValue });
+    } else {
+      // Logic cũ cho các trường khác
+      setForm({
+        ...form,
+        [name]: name === "eventId" ? (value === "" ? 0 : Number(value)) : value,
+      });
+    }
+  };
+  const handleSelectChange = (name: string) => (value: string) => {
+    if (!form) return;
+
+    // Chỉ xử lý logic đặc biệt khi đổi 'type' (Product Type)
+    if (name === "type") {
+      const { clubTagId, eventTagId } = fixedTagIds;
+
+      setForm((prev) => {
+        if (!prev) return null; // Thêm kiểm tra null
+
+        let newTagIds = [...prev.tagIds];
+
+        // Lọc bỏ cả 2 tag cố định
+        newTagIds = newTagIds.filter(
+          (id) => id !== clubTagId && id !== eventTagId
+        );
+
+        // Thêm tag tương ứng
+        if (value === "CLUB_ITEM" && clubTagId) {
+          newTagIds.push(clubTagId);
+        } else if (value === "EVENT_ITEM" && eventTagId) {
+          newTagIds.push(eventTagId);
+        }
+
+        return { ...prev, [name]: value, tagIds: newTagIds };
+      });
+    } else {
+      // Giữ nguyên logic cũ cho các select khác (vd: status)
+      setForm((prev) => (prev ? { ...prev, [name]: value } : null));
+    }
+  };
+
+  // handleTagChange (Không cho phép bỏ chọn tag cố định)
+  const handleTagChange = (tagId: number) => (checked: boolean) => {
+    if (!form) return;
+    const { clubTagId, eventTagId } = fixedTagIds;
+
+    // Nếu tag là tag cố định, không cho làm gì cả
+    if (tagId === clubTagId || tagId === eventTagId) {
+      return;
+    }
+
+    // Logic cũ cho các tag khác
+    const currentTags = form.tagIds || [];
+    let newTagIds: number[];
+    if (checked) {
+      newTagIds = [...currentTags, tagId];
+    } else {
+      newTagIds = currentTags.filter((id) => id !== tagId);
+    }
+    setForm({ ...form, tagIds: newTagIds });
+  };
+
+  const handleSave = async () => {
+    if (!form || !clubId || !productId || !product) return; // Thêm !product
+
+    if (product.status === "ARCHIVED") {
+      toast({
+        title: "Error",
+        description: "Cannot edit products that are in ARCHIVED status",
+        variant: "destructive",
+      });
+      return; // Dừng hàm
+    }
+
+    if (!form.tagIds || form.tagIds.length === 0) {
+      toast({
+        title: "Error",
+        description: "Product must have at least one tag.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await updateProduct(clubId, productId, form);
+
+      toast({
+        title: "Success",
+        description: "Product updated successfully.",
+        variant: "success",
+      });
+
+      // Báo cho React Query rằng "danh sách sản phẩm của club này" đã cũ.
+      // Bất kỳ trang nào đang dùng hook `useProductsByClubId(clubId)` sẽ tự động tải lại.
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.productsByClubId(clubId),
+      });
+
+      // Bước 3: Tải lại dữ liệu
+      await fetchProductData(clubId, productId);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description:
+          (error as any).response?.data?.message ||
+          error.message ||
+          "Failed to update product.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // HÀM TẢI LẠI SẢN PHẨM (Dùng cho Media)
+  const refetchProduct = async () => {
+    if (!clubId || !productId) return;
+    try {
+      setIsMediaLoading(true); // Chỉ dùng loading của Media
+      await fetchProductData(clubId, productId);
+
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.productsByClubId(clubId),
+      });
+
+      toast({
+        title: "Success",
+        description: "Media updated.",
+        variant: "success",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to reload product.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsMediaLoading(false);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setOriginalFileName(file.name);
+
+      // Check if it's an image
+      if (file.type.startsWith("image/")) {
+        // Open crop modal for images
+        const reader = new FileReader();
+        reader.addEventListener("load", () => {
+          setImageSrc(reader.result?.toString() || "");
+          setIsCropDialogOpen(true);
+        });
+        reader.readAsDataURL(file);
+      } else {
+        // For videos, use directly without cropping
+        setNewMediaFile(file);
+      }
+    } else {
+      setNewMediaFile(null);
+    }
+  };
+
+  const handleAddMedia = async () => {
+    if (!clubId || !productId || !newMediaFile) {
+      toast({
+        title: "Error",
+        description: "Please select a file to upload.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsMediaLoading(true);
+
+    try {
+      // Gọi API mới, chỉ cần truyền File
+      await addMediaToProduct(clubId, productId, newMediaFile);
+
+      // Reset state của dialog
+      setIsMediaDialogOpen(false);
+      setNewMediaFile(null);
+
+      await refetchProduct(); // Tải lại dữ liệu
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add media.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsMediaLoading(false);
+    }
+  };
+
+  const handleDeleteMedia = async (mediaId: number) => {
+    if (!clubId || !productId) return;
+    if (!window.confirm("Are you sure you want to delete this image?")) return;
+
+    setIsMediaLoading(true);
+    try {
+      await deleteMediaFromProduct(clubId, productId, mediaId);
+      await refetchProduct(); // Tải lại
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete media.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsMediaLoading(false);
+    }
+  };
+
+  const handleSetThumbnail = async (newMediaId: number) => {
+    if (!clubId || !productId || !product) return;
+
+    // Kiểm tra xem đã là thumbnail chưa
+    const currentMedia = product.media.find((m) => m.mediaId === newMediaId);
+    if (currentMedia && currentMedia.thumbnail) {
+      toast({ title: "Info", description: "This is already the thumbnail." });
+      return; // Không làm gì cả
+    }
+
+    // Kiểm tra xem có phải là video không - video không thể được set làm thumbnail
+    if (currentMedia && currentMedia.type === "VIDEO") {
+      toast({
+        title: "Error",
+        description: "Videos cannot be set as thumbnail.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsMediaLoading(true);
+
+    try {
+      // Chỉ cần gọi API mới
+      // Backend sẽ tự động gỡ thumbnail cũ (theo Swagger)
+      await setMediaThumbnail(clubId, productId, newMediaId);
+
+      await refetchProduct(); // Tải lại để cập nhật UI
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to set thumbnail.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsMediaLoading(false);
+    }
+  };
+
+  // Handler cho Nhập kho
+  const handleUpdateStock = async () => {
+    if (!clubId || !productId) return;
+    // SỬ DỤNG HÀM PARSE MỚI
+    const delta = parseFormattedNumber(stockChange);
+
+    if (isNaN(delta) || delta === 0) {
+      toast({
+        title: "Error",
+        description:
+          "Please enter a valid number to add or remove stock (e.g. 50 or -10).",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!stockNote.trim()) {
+      toast({
+        title: "Error",
+        description: "Please provide a note for this stock change.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsStockLoading(true);
+    try {
+      // Gọi API (API 'updateStock' vẫn nhận 'delta' là number)
+      await updateStock(clubId, productId, delta, stockNote);
+
+      toast({ title: "Success", description: "Stock updated successfully!" });
+
+      // Đóng dialog và reset
+      setIsStockDialogOpen(false);
+      setStockChange(""); // Reset về rỗng
+      setStockNote("");
+
+      // 1. Báo cho trang list biết (vì stockQuantity thay đổi)
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.productsByClubId(clubId),
+      });
+
+      // 2. Báo cho dialog lịch sử biết (đã có)
+      queryClient.invalidateQueries({
+        queryKey: ["stockHistory", clubId, productId],
+      });
+
+      await fetchProductData(clubId, productId);
+      queryClient.invalidateQueries({
+        queryKey: ["stockHistory", clubId, productId],
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description:
+          (error as any).response?.data?.message ||
+          error.message ||
+          "Failed to update stock.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsStockLoading(false);
+    }
+  };
+
+  // Hook fetch Lịch sử Tồn kho
+  const { data: stockHistory = [], isLoading: historyLoading } = useQuery<
+    StockHistory[],
+    Error
+  >({
+    queryKey: ["stockHistory", clubId, productId],
+    queryFn: () => getStockHistory(clubId!, productId),
+    // Chỉ fetch khi dialog được mở
+    enabled: !!clubId && !!productId && isHistoryOpen,
+    staleTime: 1000, // Luôn lấy dữ liệu mới khi mở dialog
+  });
+
+  const handleDeleteProduct = async () => {
+    if (!form || !clubId || !productId) return;
+
+    setIsDeleting(true);
+    try {
+      // Gọi API updateProduct, nhưng GHI ĐÈ status thành "ARCHIVED"
+      await updateProduct(clubId, productId, {
+        ...form, // Gửi tất cả dữ liệu form hiện tại
+        status: "ARCHIVED", // Ghi đè trạng thái
+      });
+
+      toast({
+        title: "Product Archived",
+        description: "The product has been successfully archived.",
+        variant: "success",
+      });
+
+      // Báo cho trang list (nơi chúng ta sắp quay về) rằng dữ liệu đã cũ.
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.productsByClubId(clubId),
+      });
+
+      // Chuyển hướng về trang danh sách
+      router.push("/student/staff/gift");
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to archive product.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  if (loading && !product) {
+    // Chỉ hiển thị skeleton khi tải lần đầu
     return (
-        <ProtectedRoute allowedRoles={["student"]}>
-            <AppShell>
-                <div className="space-y-6">
-                    <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${statusTheme.gradient} border ${statusTheme.border} p-6 shadow-lg`}>
-                        <div className="absolute top-0 right-0 w-64 h-64 bg-white/30 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-                        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/20 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2" />
-                        
-                        <div className="relative z-10">
-                            <Link href="/student/staff/gift">
-                                <Button variant="ghost" size="sm" className="mb-4 hover:bg-white/50">
-                                    <ArrowLeft className="h-4 w-4 mr-2" />
-                                    Back to Gift List
-                                </Button>
-                            </Link>
-                            
-                            <div className="flex items-start justify-between gap-4">
-                                <div className="flex items-center gap-4">
-                                    <div className={`p-4 rounded-2xl bg-gradient-to-br ${statusTheme.icon} shadow-xl`}>
-                                        <Package className="h-8 w-8 text-white" />
-                                    </div>
-                                    <div>
-                                        <h1 className="text-4xl font-bold text-gray-900 mb-1">Staff Gift Order</h1>
-                                        <p className="text-lg text-gray-600">Order #{order.orderCode}</p>
-                                    </div>
-                                </div>
-                                <div>
-                                    {getStatusBadge(order.status)}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+      <ProtectedRoute allowedRoles={["student"]}>
+        <AppShell>
+          <LoadingSkeleton className="h-96" />
+        </AppShell>
+      </ProtectedRoute>
+    );
+  }
 
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <div className="lg:col-span-2 space-y-6">
-                            <Card className="border-0 shadow-xl overflow-hidden dark:bg-slate-800 dark:border-slate-700">
-                                <div className="h-2 w-full bg-gradient-to-r from-purple-400 via-pink-400 to-orange-400" />
-                                
-                                <CardHeader className="bg-gradient-to-br from-gray-50 to-white dark:from-slate-800 dark:to-slate-800">
-                                    <CardTitle className="flex items-center gap-3 text-2xl dark:text-white">
-                                        <div className="p-2 rounded-lg bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/50 dark:to-pink-900/50">
-                                            <Package className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-                                        </div>
-                                        Product Information
-                                    </CardTitle>
-                                </CardHeader>
-                                
-                                <CardContent className="space-y-6 pt-6">
-                                    <div className="p-4 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl border border-purple-200 dark:border-purple-800/50">
-                                        <label className="text-xs font-semibold text-purple-700 dark:text-purple-300 uppercase tracking-wide mb-2 block">
-                                            Event Product Name
-                                        </label>
-                                        <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{order.productName}</p>
-                                    </div>
+  if (!form || !product) {
+    // Xử lý khi không tìm thấy form (lỗi fetch)
+    return (
+      <ProtectedRoute allowedRoles={["student"]}>
+        <AppShell>
+          <Button variant="ghost" onClick={() => router.back()}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Come back
+          </Button>
+          <Card>
+            <CardContent className="py-12 text-center">
+              <h3 className="text-lg font-semibold">No products found</h3>
+            </CardContent>
+          </Card>
+        </AppShell>
+      </ProtectedRoute>
+    );
+  }
 
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="p-5 bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 rounded-xl border border-indigo-200 dark:border-indigo-800/50 shadow-sm hover:shadow-md transition-shadow">
-                                            <div className="flex items-center gap-3 mb-3">
-                                                <div className="p-2 rounded-lg bg-gradient-to-br from-indigo-400 to-indigo-500 shadow-md">
-                                                    <ShoppingCart className="h-5 w-5 text-white" />
-                                                </div>
-                                                <label className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">Quantity</label>
-                                            </div>
-                                            <p className="text-3xl font-bold text-indigo-900 dark:text-indigo-200">{order.quantity.toLocaleString('en-US')}</p>
-                                        </div>
-                                        
-                                        <div className="p-5 bg-gradient-to-br from-cyan-50 to-teal-50 dark:from-cyan-900/20 dark:to-teal-900/20 rounded-xl border border-cyan-200 dark:border-cyan-800/50 shadow-sm hover:shadow-md transition-shadow">
-                                            <div className="flex items-center gap-3 mb-3">
-                                                <div className="p-2 rounded-lg bg-gradient-to-br from-cyan-400 to-teal-500 shadow-md">
-                                                    <WalletCards className="h-5 w-5 text-white" />
-                                                </div>
-                                                <label className="text-sm font-semibold text-cyan-700 dark:text-cyan-300">Total Points</label>
-                                            </div>
-                                            <p className="text-3xl font-bold text-cyan-900 dark:text-cyan-200">{order.totalPoints.toLocaleString('en-US')}</p>
-                                        </div>
-                                    </div>
+  return (
+    <ProtectedRoute allowedRoles={["student"]}>
+      <AppShell>
+        <div className="space-y-8">
+          {/* Enhanced Header */}
+          <div className="flex items-center justify-between bg-gradient-to-r from-blue-50 to-purple-50 dark:from-slate-800 dark:to-slate-800 p-6 rounded-xl border-2 border-blue-100 dark:border-slate-700">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="outline"
+                onClick={() => router.back()}
+                className="hover:bg-white hover:text-black dark:hover:bg-slate-700 dark:bg-slate-800 dark:text-white dark:border-slate-600 transition-colors"
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Products
+              </Button>
+              <Separator
+                orientation="vertical"
+                className="h-8 dark:bg-slate-700"
+              />
+              <div>
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
+                  Edit Product
+                </h1>
+              </div>
+            </div>
 
-                                    <div className="pt-4 border-t border-gray-200 dark:border-slate-700">
-                                        <p className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-2">
-                                            <Info className="h-4 w-4" />
-                                            <span>Price per item: <span className="font-semibold text-gray-900 dark:text-gray-100">{(order.totalPoints / order.quantity).toLocaleString('en-US')} points</span></span>
-                                        </p>
-                                    </div>
-                                </CardContent>
-                            </Card>
-
-                            {order.status !== "PENDING" && (
-                                <Card className="border-0 shadow-xl dark:bg-slate-800 dark:border-slate-700">
-                                    <CardHeader className={`bg-gradient-to-br ${
-                                        order.status === "COMPLETED" ? "from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20" :
-                                        order.status === "PARTIALLY_REFUNDED" ? "from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20" :
-                                        "from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20"
-                                    }`}>
-                                        <CardTitle className="flex items-center gap-3 text-xl dark:text-white">
-                                            <div className={`p-2 rounded-lg bg-gradient-to-br ${
-                                                order.status === "COMPLETED" ? "from-green-400 to-emerald-500" :
-                                                order.status === "PARTIALLY_REFUNDED" ? "from-orange-400 to-amber-500" :
-                                                "from-blue-400 to-cyan-500"
-                                            } shadow-md`}>
-                                                <Info className="h-5 w-5 text-white" />
-                                            </div>
-                                            Order Status Log
-                                        </CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="space-y-4 pt-6">
-                                        {order.status === "COMPLETED" && (
-                                            <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl border border-green-200 dark:border-green-800/50">
-                                                <div className="flex items-start gap-3">
-                                                    <div className="p-2 rounded-lg bg-gradient-to-br from-green-400 to-emerald-500 shadow-md mt-1">
-                                                        <CheckCircle className="h-5 w-5 text-white" />
-                                                    </div>
-                                                    <div className="flex-1">
-                                                        <p className="text-sm font-semibold text-green-700 dark:text-green-300 mb-1">Order Delivered Successfully</p>
-                                                        <p className="text-sm text-green-600 dark:text-green-400">
-                                                            This order was successfully delivered and completed.
-                                                        </p>
-                                                        <p className="text-xs text-green-600 dark:text-green-400 mt-2 flex items-center gap-1.5">
-                                                            <Calendar className="h-3.5 w-3.5" />
-                                                            {new Date(order.completedAt).toLocaleDateString('en-US', { 
-                                                                weekday: 'long', 
-                                                                year: 'numeric', 
-                                                                month: 'long', 
-                                                                day: 'numeric',
-                                                                hour: '2-digit',
-                                                                minute: '2-digit'
-                                                            })}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {order.status === "PARTIALLY_REFUNDED" && (
-                                            <div className="p-4 bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20 rounded-xl border border-orange-200 dark:border-orange-800/50">
-                                                <div className="flex items-start gap-3">
-                                                    <div className="p-2 rounded-lg bg-gradient-to-br from-orange-400 to-amber-500 shadow-md mt-1">
-                                                        <Undo2 className="h-5 w-5 text-white" />
-                                                    </div>
-                                                    <div className="flex-1">
-                                                        <p className="text-sm font-semibold text-orange-700 dark:text-orange-300 mb-1">Partial Refund Processed</p>
-                                                        <p className="text-sm text-orange-600 dark:text-orange-400">
-                                                            A portion of this order has been refunded to the member.
-                                                        </p>
-                                                        <p className="text-xs text-orange-600 dark:text-orange-400 mt-2 flex items-center gap-1.5">
-                                                            <Calendar className="h-3.5 w-3.5" />
-                                                            {new Date(order.completedAt).toLocaleDateString('en-US', { 
-                                                                weekday: 'long', 
-                                                                year: 'numeric', 
-                                                                month: 'long', 
-                                                                day: 'numeric',
-                                                                hour: '2-digit',
-                                                                minute: '2-digit'
-                                                            })}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {order.status === "REFUNDED" && (
-                                            <div className="p-4 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-xl border border-blue-200 dark:border-blue-800/50">
-                                                <div className="flex items-start gap-3">
-                                                    <div className="p-2 rounded-lg bg-gradient-to-br from-blue-400 to-cyan-500 shadow-md mt-1">
-                                                        <Undo2 className="h-5 w-5 text-white" />
-                                                    </div>
-                                                    <div className="flex-1">
-                                                        <p className="text-sm font-semibold text-blue-700 dark:text-blue-300 mb-1">Full Refund Completed</p>
-                                                        <p className="text-sm text-blue-600 dark:text-blue-400">
-                                                            This order has been fully refunded and cancelled.
-                                                        </p>
-                                                        <p className="text-xs text-blue-600 dark:text-blue-400 mt-2 flex items-center gap-1.5">
-                                                            <Calendar className="h-3.5 w-3.5" />
-                                                            {new Date(order.completedAt).toLocaleDateString('en-US', { 
-                                                                weekday: 'long', 
-                                                                year: 'numeric', 
-                                                                month: 'long', 
-                                                                day: 'numeric',
-                                                                hour: '2-digit',
-                                                                minute: '2-digit'
-                                                            })}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </CardContent>
-                                </Card>
-                            )}
-                        </div>
-
-                        <div className="space-y-6">
-                            <Card className="border-0 shadow-xl dark:bg-slate-800 dark:border-slate-700">
-                                <CardHeader className="bg-gradient-to-br from-gray-50 to-white dark:from-slate-800 dark:to-slate-800">
-                                    <CardTitle className="text-lg flex items-center gap-2 dark:text-white">
-                                        <User className="h-5 w-5 text-gray-600 dark:text-gray-400" />
-                                        Order Details
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-5 pt-6">
-                                    <div className="p-4 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-xl border border-blue-200 dark:border-blue-800/50">
-                                        <label className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wide mb-2 flex items-center gap-1.5">
-                                            <User className="h-3.5 w-3.5" />
-                                            Member Name
-                                        </label>
-                                        <p className="text-lg font-bold text-gray-900 dark:text-gray-100">{order.memberName}</p>
-                                    </div>
-
-                                    <Separator className="dark:bg-slate-700" />
-
-                                    <div>
-                                        <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-2 flex items-center gap-1.5">
-                                            <Hash className="h-3.5 w-3.5" />
-                                            Order Code
-                                        </label>
-                                        <div className="p-3 bg-gray-50 dark:bg-slate-700 rounded-lg border border-gray-200 dark:border-slate-600 font-mono text-sm dark:text-gray-200">
-                                            {order.orderCode}
-                                        </div>
-                                    </div>
-
-                                    <Separator className="dark:bg-slate-700" />
-
-                                    <div>
-                                        <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-2 flex items-center gap-1.5">
-                                            <Calendar className="h-3.5 w-3.5" />
-                                            Order Date
-                                        </label>
-                                        <div className="space-y-1">
-                                            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                                                {new Date(order.createdAt).toLocaleDateString('en-US', { 
-                                                    weekday: 'long', 
-                                                    year: 'numeric', 
-                                                    month: 'long', 
-                                                    day: 'numeric' 
-                                                })}
-                                            </p>
-                                            <p className="text-xs text-gray-500 dark:text-gray-400">
-                                                {new Date(order.createdAt).toLocaleTimeString('en-US')}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <Separator className="dark:bg-slate-700" />
-
-                                    <div>
-                                        <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-3 block text-center">
-                                            Current Status
-                                        </label>
-                                        <div className="flex justify-center">
-                                            {getStatusBadge(order.status)}
-                                        </div>
-                                    </div>
-
-                                    {(order.status === "REFUNDED" || order.status === "PARTIALLY_REFUNDED") && order.reasonRefund && (
-                                        <>
-                                            <Separator className="my-4 dark:bg-slate-700" />
-                                            <div className="p-4 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-xl border border-amber-200 dark:border-amber-800/50">
-                                                <label className="text-xs font-semibold text-amber-700 dark:text-amber-300 uppercase tracking-wide mb-2 flex items-center gap-2">
-                                                    <Info className="h-3.5 w-3.5" />
-                                                    Refund Reason
-                                                </label>
-                                                <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed italic">&quot;{order.reasonRefund}&quot;</p>
-                                            </div>
-                                        </>
-                                    )}
-                                </CardContent>
-                            </Card>
-
-                            {order.status === "PENDING" && (
-                                <Card className="border-0 shadow-xl bg-gradient-to-br from-green-50 to-emerald-50">
-                                    <CardContent className="pt-6 space-y-4">
-                                        <div className="text-center space-y-2">
-                                            <div className="flex justify-center">
-                                                <div className="p-3 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 shadow-lg">
-                                                    <CheckCircle className="h-6 w-6 text-white" />
-                                                </div>
-                                            </div>
-                                            <h3 className="font-bold text-lg text-gray-900">Ready to Deliver?</h3>
-                                            <p className="text-sm text-gray-600">Mark this order as delivered when the event product has been given to the member</p>
-                                        </div>
-                                        <Button
-                                            onClick={handleDeliver}
-                                            disabled={isProcessing}
-                                            className="w-full h-12 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold text-base shadow-lg"
-                                        >
-                                            {isProcessing ? (
-                                                <>
-                                                    <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                                                    Processing...
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <CheckCircle className="h-5 w-5 mr-2" />
-                                                    Mark as Delivered
-                                                </>
-                                            )}
-                                        </Button>
-                                    </CardContent>
-                                </Card>
-                            )}
-
-                            {(order.status === "COMPLETED" || order.status === "PARTIALLY_REFUNDED") && (
-                                <Card className="border-0 shadow-xl bg-gradient-to-br from-red-50 to-rose-50">
-                                    <CardContent className="pt-6 space-y-4">
-                                        <div className="text-center space-y-2">
-                                            <div className="flex justify-center">
-                                                <div className="p-3 rounded-full bg-gradient-to-br from-red-400 to-rose-500 shadow-lg">
-                                                    <Undo2 className="h-6 w-6 text-white" />
-                                                </div>
-                                            </div>
-                                            <h3 className="font-bold text-lg text-gray-900">Need to Refund?</h3>
-                                            <p className="text-sm text-gray-600">Process a full or partial refund if there&apos;s an issue with this order</p>
-                                        </div>
-
-                                        <Dialog open={isRefundModalOpen} onOpenChange={setIsRefundModalOpen}>
-                                            <DialogTrigger asChild>
-                                                <Button
-                                                    className="w-full h-12 bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white font-semibold text-base shadow-lg"
-                                                    disabled={isProcessing}
-                                                >
-                                                    <Undo2 className="h-5 w-5 mr-2" />
-                                                    Process Refund
-                                                </Button>
-                                            </DialogTrigger>
-
-                                            <DialogContent className="sm:max-w-lg">
-                                                <DialogHeader className="space-y-3">
-                                                    <div className="flex justify-center">
-                                                        <div className="p-3 rounded-full bg-gradient-to-br from-red-100 to-rose-100">
-                                                            <Undo2 className="h-8 w-8 text-red-600" />
-                                                        </div>
-                                                    </div>
-                                                    <DialogTitle className="text-2xl text-center">Process Refund</DialogTitle>
-                                                    <DialogDescription className="text-center">
-                                                        Select refund type and provide a reason for <span className="font-semibold">{order.memberName}&apos;s</span> order
-                                                    </DialogDescription>
-                                                </DialogHeader>
-
-                                                <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
-                                                    <p className="text-sm font-semibold text-blue-900 mb-2">Order Summary</p>
-                                                    <div className="space-y-1 text-sm text-blue-800">
-                                                        <p><span className="font-medium">Product:</span> {order.productName}</p>
-                                                        <p><span className="font-medium">Quantity:</span> {order.quantity} items</p>
-                                                        <p><span className="font-medium">Total Points:</span> {order.totalPoints.toLocaleString('en-US')} points</p>
-                                                    </div>
-                                                </div>
-
-                                                <RadioGroup value={refundType} onValueChange={(v) => setRefundType(v as any)} className="space-y-3">
-                                                    <div>
-                                                        <RadioGroupItem value="full" id="r-full" className="peer sr-only" />
-                                                        <Label
-                                                            htmlFor="r-full"
-                                                            className="flex flex-col gap-2 rounded-xl border-2 border-gray-200 bg-white p-4 hover:bg-gray-50 peer-data-[state=checked]:border-blue-500 peer-data-[state=checked]:bg-blue-50 cursor-pointer transition-all"
-                                                        >
-                                                            <div className="flex items-center gap-3">
-                                                                <div className="p-2 rounded-lg bg-gradient-to-br from-blue-100 to-blue-200">
-                                                                    <Undo2 className="h-5 w-5 text-blue-600" />
-                                                                </div>
-                                                                <div className="flex-1">
-                                                                    <span className="font-bold text-base text-gray-900">Full Refund</span>
-                                                                    <p className="text-sm text-gray-600 mt-1">
-                                                                        Cancel entire order and refund all {order.totalPoints.toLocaleString('en-US')} points for {order.quantity} item(s)
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-                                                        </Label>
-                                                    </div>
-                                                    
-                                                    <div>
-                                                        <RadioGroupItem value="partial" id="r-partial" className="peer sr-only" disabled={order.quantity <= 1} />
-                                                        <Label
-                                                            htmlFor="r-partial"
-                                                            className={`flex flex-col gap-2 rounded-xl border-2 border-gray-200 bg-white p-4 ${
-                                                                order.quantity > 1 
-                                                                    ? 'cursor-pointer hover:bg-gray-50 peer-data-[state=checked]:border-orange-500 peer-data-[state=checked]:bg-orange-50' 
-                                                                    : 'cursor-not-allowed opacity-50'
-                                                            } transition-all`}
-                                                        >
-                                                            <div className="flex items-center gap-3">
-                                                                <div className="p-2 rounded-lg bg-gradient-to-br from-orange-100 to-orange-200">
-                                                                    <Undo2 className="h-5 w-5 text-orange-600" />
-                                                                </div>
-                                                                <div className="flex-1">
-                                                                    <span className="font-bold text-base text-gray-900">Partial Refund</span>
-                                                                    <p className="text-sm text-gray-600 mt-1">
-                                                                        {order.quantity > 1 
-                                                                            ? "Refund specific quantity while keeping order active"
-                                                                            : "Only available for orders with more than 1 item"
-                                                                        }
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-                                                        </Label>
-                                                    </div>
-                                                </RadioGroup>
-
-                                                {refundType === "partial" && (() => {
-                                                    const pointsPerItem = order.totalPoints / order.quantity;
-                                                    const partialPoints = (pointsPerItem * (parseInt(partialQuantity) || 0)).toFixed(0);
-
-                                                    return (
-                                                        <div className="p-4 bg-gradient-to-br from-orange-50 to-amber-50 rounded-xl border border-orange-200 space-y-3">
-                                                            <Label htmlFor="partialQuantity" className="text-sm font-semibold text-orange-900">
-                                                                Quantity to Refund
-                                                            </Label>
-                                                            <Input
-                                                                id="partialQuantity"
-                                                                type="number"
-                                                                value={partialQuantity}
-                                                                onChange={(e) => setPartialQuantity(e.target.value)}
-                                                                min={1}
-                                                                max={order.quantity - 1}
-                                                                className="text-base h-11"
-                                                            />
-                                                            <p className="text-sm text-orange-700 flex items-center gap-1.5">
-                                                                <Info className="h-4 w-4" />
-                                                                This will refund <span className="font-bold">{partialPoints} points</span>
-                                                            </p>
-                                                        </div>
-                                                    );
-                                                })()}
-
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="refundReason" className="text-sm font-semibold">
-                                                        Reason for Refund <span className="text-red-500">*</span>
-                                                    </Label>
-                                                    <Textarea
-                                                        id="refundReason"
-                                                        value={refundReason}
-                                                        onChange={(e) => setRefundReason(e.target.value)}
-                                                        placeholder="e.g., Product unavailable, member request, event cancelled..."
-                                                        className="min-h-[100px] resize-none"
-                                                    />
-                                                    <p className="text-xs text-gray-500">Please provide a clear reason for this refund</p>
-                                                </div>
-
-                                                <DialogFooter className="gap-2 sm:gap-0">
-                                                    <Button
-                                                        type="button"
-                                                        variant="outline"
-                                                        onClick={() => setIsRefundModalOpen(false)}
-                                                        disabled={isProcessing}
-                                                        className="flex-1 h-11"
-                                                    >
-                                                        Cancel
-                                                    </Button>
-                                                    <Button
-                                                        type="submit"
-                                                        onClick={handleRefund}
-                                                        disabled={isProcessing || !refundReason.trim()}
-                                                        className="flex-1 h-11 bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white font-semibold shadow-lg"
-                                                    >
-                                                        {isProcessing ? (
-                                                            <>
-                                                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                                                Processing...
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <Undo2 className="h-4 w-4 mr-2" />
-                                                                Confirm Refund
-                                                            </>
-                                                        )}
-                                                    </Button>
-                                                </DialogFooter>
-                                            </DialogContent>
-                                        </Dialog>
-                                    </CardContent>
-                                </Card>
-                            )}
-                        </div>
-                    </div>
+            <div className="flex items-center gap-3">
+              {isArchived ? (
+                // 1. NẾU ĐÃ ARCHIVED: Hiển thị Badge
+                <Badge
+                  variant="destructive"
+                  className="text-base py-2 px-4 shadow-lg"
+                >
+                  <Archive className="h-5 w-5 mr-2" />
+                  Archived Product
+                </Badge>
+              ) : isEventExpired ? (
+                // 2. NẾU LÀ EVENT EXPIRED: Hiển thị Badge cảnh báo với gradient và text trắng cho dark mode
+                <div className="flex items-center w-full max-w-xs mx-auto bg-gradient-to-r from-indigo-600 to-fuchsia-700 text-white px-4 py-3 rounded-lg shadow-lg font-semibold justify-center gap-2">
+                  <AlertCircle className="h-5 w-5 mr-2" />
+                  Event Has Ended
                 </div>
-            </AppShell>
-        </ProtectedRoute>
-    )
+              ) : (
+                // 3. NẾU CHƯA ARCHIVED VÀ CHƯA EXPIRED: Hiển thị nút Archive
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      className="border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 hover:border-red-300 dark:hover:border-red-700"
+                      disabled={isSaving || isDeleting}
+                    >
+                      <Trash className="h-4 w-4 mr-2" />
+                      Archive Product
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent className="max-w-lg dark:bg-slate-800 dark:border-slate-700">
+                    <AlertDialogHeader>
+                      <div className="mx-auto w-20 h-20 bg-gradient-to-br from-red-100 to-red-200 dark:from-red-900/50 dark:to-red-800/50 rounded-full flex items-center justify-center mb-4 shadow-lg">
+                        <Archive className="h-10 w-10 text-red-600 dark:text-red-400" />
+                      </div>
+                      <AlertDialogTitle className="text-center text-2xl font-bold text-gray-900 dark:text-gray-100">
+                        Archive Product?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription className="text-center text-base space-y-4 pt-2">
+                        <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-lg p-4">
+                          <p className="text-gray-700 dark:text-gray-200 font-medium mb-2">
+                            "{product?.name}"
+                          </p>
+                          <p className="text-gray-600 dark:text-gray-400 text-sm">
+                            will be permanently archived and:
+                          </p>
+                        </div>
+
+                        <div className="space-y-2 text-left">
+                          <div className="flex items-start gap-3 text-gray-700 dark:text-gray-300">
+                            <div className="bg-red-100 dark:bg-red-900/30 p-1 rounded mt-0.5">
+                              <XCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
+                            </div>
+                            <span className="text-sm">
+                              Hidden from all students
+                            </span>
+                          </div>
+                          <div className="flex items-start gap-3 text-gray-700 dark:text-gray-300">
+                            <div className="bg-red-100 dark:bg-red-900/30 p-1 rounded mt-0.5">
+                              <XCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
+                            </div>
+                            <span className="text-sm">
+                              Cannot be redeemed or purchased
+                            </span>
+                          </div>
+                          <div className="flex items-start gap-3 text-gray-700 dark:text-gray-300">
+                            <div className="bg-red-100 dark:bg-red-900/30 p-1 rounded mt-0.5">
+                              <XCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
+                            </div>
+                            <span className="text-sm">
+                              Cannot be edited or restored
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-300 dark:border-amber-700 rounded-lg p-3 mt-4">
+                          <p className="text-amber-900 dark:text-amber-200 text-sm font-bold flex items-center gap-2">
+                            <span className="text-lg">⚠️</span>
+                            This action is permanent and cannot be undone!
+                          </p>
+                        </div>
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="flex gap-3 mt-2">
+                      <AlertDialogCancel
+                        disabled={isDeleting}
+                        className="flex-1 h-11 border-2 hover:bg-gray-100 dark:hover:bg-slate-700 dark:border-slate-600"
+                      >
+                        <XCircle className="h-4 w-4 mr-2" />
+                        Cancel
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        className="flex-1 h-11 bg-gradient-to-r from-red-600 to-red-700 text-white hover:from-red-700 hover:to-red-800 shadow-lg"
+                        onClick={handleDeleteProduct}
+                        disabled={isDeleting}
+                      >
+                        {isDeleting ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Archiving...
+                          </>
+                        ) : (
+                          <>
+                            <Archive className="h-4 w-4 mr-2" />
+                            Yes, Archive Product
+                          </>
+                        )}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+
+              {/* Nút Save (Disabled nếu đã Archived) */}
+              <Button
+                onClick={handleSave}
+                disabled={isSaving || isDeleting || isArchived}
+                size="lg"
+                className="bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-500 dark:to-purple-500 hover:from-blue-700 hover:to-purple-700 dark:hover:from-blue-600 dark:hover:to-purple-600 text-white shadow-lg"
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-5 w-5 mr-2" />
+                    Save Changes
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+
+          {/* Form Grid */}
+          {/* <div className="grid grid-cols-1 md:grid-cols-3 gap-6"> */}
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+            {/* Cột trái: Thông tin chính */}
+            <div className="md:col-span-3 space-y-6">
+              <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 dark:bg-slate-800 dark:border-slate-700 overflow-hidden">
+                <div className="h-2 bg-gradient-to-r from-blue-400 via-blue-500 to-indigo-500" />
+                <CardHeader className="py-4 bg-gradient-to-br from-blue-200 to-blue-50 dark:from-blue-900/20 dark:via-slate-800/50 dark:to-slate-800 border-b border-blue-200 dark:border-slate-700">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg">
+                      <Package className="h-4 w-5 text-white" />
+                    </div>
+                    <CardTitle className="text-xl font-bold dark:text-white">
+                      Product Details
+                    </CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4 pt-0">
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="name"
+                      className="text-base font-semibold dark:text-white"
+                    >
+                      Product Name{" "}
+                      <span className="text-red-500 dark:text-red-400">*</span>
+                    </Label>
+                    <Input
+                      id="name"
+                      className="h-11 border-2 focus:border-blue-500 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:placeholder:text-slate-400 dark:focus:border-blue-400"
+                      name="name"
+                      value={form.name}
+                      onChange={handleChange}
+                      placeholder="Enter product name"
+                      disabled={isArchived}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="description"
+                      className="text-base font-semibold dark:text-white"
+                    >
+                      Description
+                    </Label>
+                    <Textarea
+                      id="description"
+                      name="description"
+                      value={form.description}
+                      onChange={handleChange}
+                      rows={6}
+                      className="border-2 focus:border-blue-500 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:placeholder:text-slate-400 dark:focus:border-blue-400 resize-none"
+                      placeholder="Enter a detailed description of your product..."
+                      disabled={isArchived}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* CARD IMAGE */}
+              <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 dark:bg-slate-800 dark:border-slate-700 overflow-hidden">
+                <div className="h-2 bg-gradient-to-r from-purple-400 via-purple-500 to-pink-500" />
+                <CardHeader className="py-4 flex flex-row items-center justify-between bg-gradient-to-br from-purple-200 to-purple-50 dark:from-purple-900/20 dark:via-slate-800/50 dark:to-slate-800 border-b border-purple-200 dark:border-slate-700 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 shadow-lg">
+                      <ImageIcon className="h-5 w-5 text-white" />
+                    </div>
+                    <CardTitle className="text-xl font-bold dark:text-white">
+                      Product Images
+                    </CardTitle>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsMediaDialogOpen(true)}
+                    disabled={isArchived}
+                    className="border-2 hover:bg-purple-100 hover:text-purple-700 dark:hover:bg-purple-900/30 hover:border-purple-400 dark:bg-slate-700 dark:text-white dark:border-slate-600"
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Upload Media
+                  </Button>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  {isMediaLoading && ( // Hiển thị loading khi đang thao tác media
+                    <div className="absolute inset-0 bg-white/80 dark:bg-slate-900/80 flex items-center justify-center z-20 rounded-lg backdrop-blur-sm">
+                      <div className="text-center">
+                        <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-purple-600 dark:text-purple-400" />
+                        <p className="text-sm text-muted-foreground dark:text-slate-300">
+                          Processing...
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  {product.media && product.media.length > 0 ? (
+                    <ScrollArea className="w-full rounded-md border dark:border-slate-700">
+                      <div className="flex w-max space-x-4 p-4">
+                        {product.media.map((m) => (
+                          <div
+                            key={m.mediaId}
+                            // Thêm w-40 (160px) và shrink-0 để các item không bị co lại
+                            className="relative aspect-square w-40 group rounded-lg overflow-hidden border-2 border-gray-200 dark:border-slate-600 hover:border-purple-300 dark:hover:border-purple-500 transition-all shrink-0"
+                          >
+                            {/* Render video or image based on type */}
+                            {m.type === "VIDEO" ? (
+                              <video
+                                src={m.url}
+                                controls
+                                className="object-cover w-full h-full"
+                              >
+                                Your browser does not support the video tag.
+                              </video>
+                            ) : (
+                              <img
+                                src={m.url}
+                                alt="Product media"
+                                className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-300"
+                              />
+                            )}
+
+                            {/* Media Type Badge */}
+                            <Badge
+                              className={`absolute top-3 right-3 z-10 ${m.type === "VIDEO"
+                                ? "bg-purple-500 text-white"
+                                : "bg-blue-500 text-white"
+                                } border-0 shadow-lg`}
+                            >
+                              {m.type === "VIDEO" ? (
+                                <>
+                                  <VideoIcon className="h-3 w-3 mr-1" />
+                                  Video
+                                </>
+                              ) : (
+                                <>
+                                  <ImageIcon className="h-3 w-3 mr-1" />
+                                  Image
+                                </>
+                              )}
+                            </Badge>
+
+                            {/* Overlay khi hover */}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 z-10">
+                              <Button
+                                variant="secondary"
+                                size="icon"
+                                className="h-10 w-10 shadow-lg hover:scale-110 transition-transform bg-blue-500 hover:bg-blue-600"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  setSelectedMedia({
+                                    url: m.url,
+                                    type: m.type,
+                                  });
+                                  setIsMediaViewerOpen(true);
+                                }}
+                              >
+                                <Eye className="h-5 w-5 text-white" />
+                              </Button>
+                              {!isArchived && (
+                                <>
+                                  <Button
+                                    variant="destructive"
+                                    size="icon"
+                                    className="h-10 w-10 shadow-lg hover:scale-110 transition-transform"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      handleDeleteMedia(m.mediaId);
+                                    }}
+                                  >
+                                    <Trash className="h-5 w-5" />
+                                  </Button>
+                                  {!m.thumbnail && m.type !== "VIDEO" && (
+                                    <Button
+                                      variant="secondary"
+                                      size="icon"
+                                      className="h-10 w-10 shadow-lg hover:scale-110 transition-transform bg-yellow-400 hover:bg-yellow-500"
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        handleSetThumbnail(m.mediaId);
+                                      }}
+                                    >
+                                      <Star className="h-5 w-5 text-yellow-900" />
+                                    </Button>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                            {m.thumbnail && (
+                              <Badge className="absolute top-3 left-3 z-10 bg-yellow-400 text-yellow-900 border-2 border-yellow-300 shadow-lg">
+                                <Star className="h-3 w-3 mr-1 fill-yellow-900" />
+                              </Badge>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      <ScrollBar orientation="horizontal" />
+                    </ScrollArea>
+                  ) : (
+                    <div className="text-center py-12 bg-gray-50 dark:bg-slate-700/50 rounded-lg border-2 border-dashed border-gray-300 dark:border-slate-600">
+                      <ImageIcon className="h-12 w-12 text-gray-400 dark:text-slate-400 mx-auto mb-3" />
+                      <p className="text-muted-foreground dark:text-slate-300 font-medium">
+                        No media uploaded yet
+                      </p>
+                      <p className="text-sm text-muted-foreground dark:text-slate-400 mt-1">
+                        Click "Upload Image" to add product photos or videos
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Cột phải: Thông tin phụ */}
+            <div className="md:col-span-2 space-y-6">
+              {/* ───────────────────────────────────────────── */}
+              {/* CARD STATUS & CLASSIFICATION */}
+              {/* ───────────────────────────────────────────── */}
+              <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 dark:bg-slate-800 dark:border-slate-700 overflow-hidden">
+                {/* Gradient line */}
+                <div className="h-2 bg-gradient-to-r from-orange-400 via-orange-500 to-amber-500" />
+
+                {/* HEADER */}
+                <CardHeader className="py-4 bg-gradient-to-br from-orange-200 to-orange-50 dark:from-orange-900/20 dark:via-slate-800/50 dark:to-slate-800 border-b border-orange-200 dark:border-slate-700 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 shadow-lg">
+                      <Tag className="h-5 w-5 text-white" />
+                    </div>
+                    <CardTitle className="text-xl font-bold dark:text-white">
+                      Status & Classification
+                    </CardTitle>
+                  </div>
+                </CardHeader>
+
+                {/* CONTENT */}
+                <CardContent className="space-y-4 pt-0 pb-0">
+                  {/* GRID – always responsive */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* PRODUCT STATUS */}
+                    <div className="space-y-2">
+                      <Label className="text-base font-semibold dark:text-white">
+                        Product Status
+                      </Label>
+
+                      {isArchived ? (
+                        <div className="p-3 bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-lg">
+                          <Badge
+                            variant="destructive"
+                            className="text-base w-full justify-center py-2"
+                          >
+                            <Archive className="h-4 w-4 mr-2" />
+                            Archived
+                          </Badge>
+                        </div>
+                      ) : (
+                        <Select
+                          name="status"
+                          value={form.status}
+                          onValueChange={handleSelectChange("status")}
+                        >
+                          <SelectTrigger className="h-11 w-full border-2 border-slate-200 focus:border-orange-500 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:focus:border-orange-400">
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+
+                          <SelectContent>
+                            <SelectItem value="ACTIVE">
+                              <div className="flex items-center gap-2">
+                                <CheckCircle className="h-4 w-4 text-green-600" />
+                                Active (On sale)
+                              </div>
+                            </SelectItem>
+
+                            <SelectItem value="INACTIVE">
+                              <div className="flex items-center gap-2">
+                                <XCircle className="h-4 w-4 text-gray-600" />
+                                Inactive (Hidden)
+                              </div>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+
+                    {/* PRODUCT TYPE */}
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="type"
+                        className="text-base font-semibold dark:text-white"
+                      >
+                        Product Type
+                      </Label>
+
+                      <Select
+                        name="type"
+                        value={form.type}
+                        onValueChange={handleSelectChange("type")}
+                      >
+                        <SelectTrigger className="h-11 w-full border-2 border-slate-200 focus:border-orange-500 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:focus:border-orange-400">
+                          <SelectValue placeholder="Select product type" />
+                        </SelectTrigger>
+
+                        <SelectContent>
+                          <SelectItem value="CLUB_ITEM">Club Item</SelectItem>
+                          <SelectItem value="EVENT_ITEM">Event Item</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* SELECT EVENT – RESPONSIVE – FULL WIDTH */}
+                    {form.type === "EVENT_ITEM" && (
+                      <div className="space-y-2 md:col-span-2">
+                        <Label className="text-base font-semibold dark:text-white">
+                          Select Event
+                        </Label>
+
+                        <Select
+                          name="eventId"
+                          value={String(form.eventId || "0")}
+                          onValueChange={(value) =>
+                            setForm({ ...form, eventId: Number(value) })
+                          }
+                        >
+                          <SelectTrigger
+                            className="h-11 w-full border-2 border-slate-200 focus:border-orange-500 
+                dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:focus:border-orange-400"
+                            title={
+                              form.eventId
+                                ? events.find((e) => e.id === form.eventId)
+                                  ?.name
+                                : "Select an event"
+                            }
+                          >
+                            <SelectValue>
+                              <span className="block truncate max-w-full">
+                                {form.eventId
+                                  ? events.find((e) => e.id === form.eventId)
+                                    ?.name
+                                  : "Select an event"}
+                              </span>
+                            </SelectValue>
+                          </SelectTrigger>
+
+                          <SelectContent>
+                            <SelectItem value="0" disabled>
+                              <span className="text-muted-foreground">
+                                -- Select an event --
+                              </span>
+                            </SelectItem>
+
+                            {events
+                              .filter(
+                                (e) =>
+                                  e.status === "APPROVED" ||
+                                  e.status === "ONGOING"
+                              )
+                              .map((event) => (
+                                <SelectItem
+                                  key={event.id}
+                                  value={String(event.id)}
+                                  title={event.name}
+                                >
+                                  <span className="truncate max-w-[300px] block">
+                                    {event.name}
+                                  </span>
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* ───────────────────────────────────────────── */}
+              {/* CARD PRICE & INVENTORY */}
+              {/* ───────────────────────────────────────────── */}
+              <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 dark:bg-slate-800 dark:border-slate-700 overflow-hidden">
+                <div className="h-2 bg-gradient-to-r from-indigo-400 via-indigo-500 to-blue-500" />
+
+                <CardHeader className="py-4 bg-gradient-to-br from-indigo-200 to-indigo-50 dark:from-indigo-900/20 dark:via-slate-800/50 dark:to-slate-800 border-b border-indigo-200 dark:border-slate-700 pb-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 shadow-lg">
+                        <HandCoins className="h-5 w-5 text-white" />
+                      </div>
+                      <CardTitle className="text-xl font-bold dark:text-white">
+                        Price, Stock & Tags
+                      </CardTitle>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsHistoryOpen(true)}
+                        disabled={isArchived}
+                        className="border-2 flex items-center gap-2 hover:bg-indigo-100 hover:text-indigo-700 
+            dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:hover:bg-indigo-900/30"
+                      >
+                        <History className="h-4 w-4" />
+                        <span>Stock History</span>
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="space-y-4 pt-0">
+                  {/* GRID PRICE & STOCK */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* PRICE */}
+                    <div className="space-y-2">
+                      <Label className="text-base font-semibold dark:text-white">
+                        Price (Points) <span className="text-red-500">*</span>
+                      </Label>
+
+                      <Input
+                        id="pointCost"
+                        name="pointCost"
+                        className="h-11 w-full border-2 border-slate-200 dark:bg-slate-700 dark:text-white dark:border-slate-600"
+                        value={displayPrice}
+                        onChange={handleChange}
+                        placeholder="0"
+                        inputMode="numeric"
+                      />
+                    </div>
+
+                    {/* STOCK */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-base font-semibold dark:text-white">
+                          Current Stock
+                        </Label>
+                        {form.stockQuantity === 0 && (
+                          <Badge variant="destructive" className="text-xs">
+                            Out of Stock
+                          </Badge>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <div className="relative flex-1">
+                          <Input
+                            id="stockQuantity"
+                            className="h-11 w-full border-2 border-slate-200 dark:bg-slate-700 dark:text-white dark:border-slate-600 font-semibold text-lg"
+                            value={form.stockQuantity}
+                            readOnly
+                          />
+                          <Package className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-slate-400" />
+                        </div>
+
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => setIsStockDialogOpen(true)}
+                          className="h-11 w-11 border-2 dark:bg-slate-700 dark:text-white dark:border-slate-600"
+                        >
+                          <Plus className="h-5 w-5" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Separator className="my-6 dark:bg-slate-700" />
+
+                  {/* TAGS */}
+                  <div className="relative mb-4">
+                    <Input
+                      placeholder="Search tags..."
+                      value={tagSearchTerm}
+                      onChange={(e) => setTagSearchTerm(e.target.value)}
+                      className="h-10 w-full border-2 border-slate-200 dark:bg-slate-700 dark:text-white dark:border-slate-600 pl-10"
+                    />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-slate-400" />
+                  </div>
+
+                  {allTags.length > 0 ? (
+                    <ScrollArea className="h-52 rounded-lg border-2 p-4 bg-gray-50 dark:bg-slate-700/50 dark:border-slate-600">
+                      <div className="space-y-3">
+                        {allTags
+                          .filter((tag) => {
+                            // tag.name
+                            //   .toLowerCase()
+                            //   .includes(tagSearchTerm.toLowerCase())
+                            const matchesSearch = tag.name.toLowerCase().includes(tagSearchTerm.toLowerCase());
+
+                            // Logic ẩn tag "new" (
+                            const isNotNewTag = tag.name.toLowerCase() !== "new";
+
+                            return matchesSearch && isNotNewTag;
+                          })
+                          .map((tag) => {
+                            const isCoreTag =
+                              tag.tagId === fixedTagIds.clubTagId ||
+                              tag.tagId === fixedTagIds.eventTagId;
+
+                            const isDisabled = isCoreTag || isArchived;
+
+                            return (
+                              <div
+                                key={tag.tagId}
+                                className="flex items-center space-x-3 p-2 rounded-md hover:bg-white dark:hover:bg-slate-600 transition-colors"
+                              >
+                                <Checkbox
+                                  id={`tag-${tag.tagId}`}
+                                  checked={form.tagIds.includes(tag.tagId)}
+                                  onCheckedChange={(checked) =>
+                                    handleTagChange(tag.tagId)(
+                                      checked as boolean
+                                    )
+                                  }
+                                  disabled={isDisabled}
+                                  className="h-5 w-5"
+                                />
+
+                                <Label
+                                  htmlFor={`tag-${tag.tagId}`}
+                                  className={`font-medium flex-1 cursor-pointer dark:text-white ${isDisabled
+                                    ? "text-muted-foreground dark:text-slate-400"
+                                    : ""
+                                    }`}
+                                >
+                                  {tag.name}
+
+                                  {isCoreTag && (
+                                    <Badge
+                                      variant="outline"
+                                      className="ml-2 text-xs dark:border-slate-500 dark:text-slate-300"
+                                    >
+                                      Auto
+                                    </Badge>
+                                  )}
+                                </Label>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </ScrollArea>
+                  ) : (
+                    <div className="text-center py-8 bg-gray-50 dark:bg-slate-700/50 rounded-lg border-2 border-dashed dark:border-slate-600">
+                      <Tag className="h-8 w-8 text-gray-400 dark:text-slate-400 mx-auto mb-2" />
+                      <p className="text-sm text-muted-foreground dark:text-slate-400">
+                        No tags available
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+
+        <Dialog open={isMediaDialogOpen} onOpenChange={setIsMediaDialogOpen}>
+          <DialogContent className="sm:max-w-md dark:bg-slate-800 dark:border-slate-700">
+            <DialogHeader>
+              <div className="mx-auto w-16 h-16 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center mb-4">
+                <Upload className="h-8 w-8 text-purple-600 dark:text-purple-400" />
+              </div>
+              <DialogTitle className="text-center text-2xl dark:text-white">
+                Upload Product Media
+              </DialogTitle>
+              <DialogDescription className="text-center dark:text-slate-300">
+                Choose an image or video file to add to your product gallery.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label
+                  htmlFor="media-file"
+                  className="text-base font-semibold dark:text-white"
+                >
+                  Select File
+                </Label>
+                <Input
+                  id="media-file"
+                  type="file"
+                  accept="image/*,video/*"
+                  onChange={handleFileChange}
+                  className="border-2 focus:border-purple-500 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:focus:border-purple-400 cursor-pointer"
+                />
+                {newMediaFile && (
+                  <div className="flex items-center gap-2 p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+                    {newMediaFile.type.startsWith("video/") ? (
+                      <VideoIcon className="h-5 w-5 text-purple-600 dark:text-purple-400 shrink-0" />
+                    ) : (
+                      <ImageIcon className="h-5 w-5 text-purple-600 dark:text-purple-400 shrink-0" />
+                    )}
+                    <span
+                      className="text-sm font-medium text-purple-900 dark:text-purple-200 truncate flex-1 min-w-0"
+                      title={newMediaFile.name}
+                    >
+                      {truncateFileName(newMediaFile.name, 40)}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <DialogFooter className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsMediaDialogOpen(false);
+                  setNewMediaFile(null);
+                }}
+                className="flex-1 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:hover:bg-slate-600"
+                disabled={isMediaLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleAddMedia}
+                disabled={isMediaLoading || !newMediaFile}
+                className="flex-1 bg-purple-600 hover:bg-purple-700 dark:bg-purple-600 dark:hover:bg-purple-700 text-white"
+              >
+                {isMediaLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Upload
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog Lịch sử Tồn kho */}
+        <Dialog open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
+          <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col dark:bg-slate-800 dark:border-slate-700">
+            <DialogHeader>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="bg-indigo-100 dark:bg-indigo-900/30 p-2 rounded-lg">
+                  <History className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+                </div>
+                <div>
+                  <DialogTitle className="text-2xl dark:text-white">
+                    Stock History
+                  </DialogTitle>
+                  <DialogDescription className="text-base dark:text-slate-300">
+                    {product.name}
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+            {/* Thêm flex-1 và overflow-hidden để ScrollArea hoạt động */}
+            <div className="flex-1 overflow-hidden border-2 rounded-lg dark:border-slate-700">
+              <ScrollArea className="h-full">
+                <div className="p-4">
+                  {historyLoading ? (
+                    <div className="space-y-3 py-4">
+                      <Skeleton className="h-12 w-full dark:bg-slate-700" />
+                      <Skeleton className="h-12 w-full dark:bg-slate-700" />
+                      <Skeleton className="h-12 w-full dark:bg-slate-700" />
+                    </div>
+                  ) : stockHistory.length === 0 ? (
+                    <div className="text-center py-16">
+                      <div className="mx-auto w-20 h-20 bg-gray-100 dark:bg-slate-700 rounded-full flex items-center justify-center mb-4">
+                        <History className="h-10 w-10 text-gray-400 dark:text-slate-400" />
+                      </div>
+                      <p className="text-base text-muted-foreground dark:text-slate-300 font-medium">
+                        No stock history found
+                      </p>
+                      <p className="text-sm text-muted-foreground dark:text-slate-400 mt-1">
+                        Stock changes will appear here
+                      </p>
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-gray-50 dark:bg-slate-700">
+                          <TableHead className="w-[200px] font-bold dark:text-white">
+                            Date & Time
+                          </TableHead>
+                          <TableHead className="text-center font-bold dark:text-white">
+                            Change
+                          </TableHead>
+                          <TableHead className="text-center font-bold dark:text-white">
+                            New Stock
+                          </TableHead>
+                          <TableHead className="font-bold dark:text-white">
+                            Note
+                          </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {stockHistory.map((entry) => {
+                          const change = entry.newStock - entry.oldStock;
+                          const changeColor =
+                            change > 0
+                              ? "text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-900/30"
+                              : "text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-900/30";
+                          const changeSign = change > 0 ? "+" : "";
+
+                          return (
+                            <TableRow
+                              key={entry.id}
+                              className="hover:bg-gray-50 dark:hover:bg-slate-700/50"
+                            >
+                              <TableCell className="text-sm whitespace-nowrap font-medium dark:text-slate-200">
+                                {new Date(entry.changedAt).toLocaleString()}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Badge
+                                  className={`${changeColor} font-bold text-base px-3 py-1`}
+                                >
+                                  {changeSign}
+                                  {change}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <span className="font-bold text-lg dark:text-slate-200">
+                                  {entry.newStock}
+                                </span>
+                              </TableCell>
+                              <TableCell className="text-sm dark:text-slate-300">
+                                {entry.note || "N/A"}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  )}
+                </div>
+              </ScrollArea>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsHistoryOpen(false)}
+                className="w-full sm:w-auto dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:hover:bg-slate-600"
+              >
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog Thêm hàng hóa */}
+        <Dialog open={isStockDialogOpen} onOpenChange={setIsStockDialogOpen}>
+          <DialogContent className="sm:max-w-lg dark:bg-slate-800 dark:border-slate-700">
+            <DialogHeader>
+              <div className="mx-auto w-16 h-16 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center mb-4">
+                <Package className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />
+              </div>
+              <DialogTitle className="text-center text-2xl dark:text-white">
+                Update Stock
+              </DialogTitle>
+              <DialogDescription className="text-center dark:text-slate-300">
+                Add or remove stock. Use a negative number to remove items.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-6 py-4">
+              <div className="space-y-2">
+                <Label
+                  htmlFor="stockChange"
+                  className="text-base font-semibold dark:text-white"
+                >
+                  Stock Change{" "}
+                  <span className="text-red-500 dark:text-red-400">*</span>
+                </Label>
+                <Input
+                  id="stockChange"
+                  type="text"
+                  inputMode="numeric"
+                  value={stockChange}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Cho phép dấu âm chỉ ở đầu
+                    const isNegative = value.startsWith("-");
+                    // Chỉ lấy số
+                    const numericValue = value.replace(/[^0-9]/g, "");
+
+                    if (numericValue === "") {
+                      // Cho phép người dùng gõ dấu "-"
+                      setStockChange(isNegative ? "-" : "");
+                      return;
+                    }
+
+                    const numberValue = parseInt(numericValue, 10);
+                    const formattedValue = formatNumber(numberValue);
+
+                    // Set lại giá trị (có dấu phẩy và dấu âm)
+                    setStockChange(
+                      isNegative ? `-${formattedValue}` : formattedValue
+                    );
+                  }}
+                  placeholder="e.g., 50 (to add) or -10 (to remove)"
+                  className="h-12 border-2 focus:border-indigo-500 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:placeholder:text-slate-400 dark:focus:border-indigo-400 text-lg"
+                />
+                <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <div className="bg-blue-100 dark:bg-blue-800/50 p-1 rounded">
+                    <CheckCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div className="text-xs text-blue-900 dark:text-blue-200">
+                    <p className="font-semibold mb-1">Examples:</p>
+                    <p>
+                      • Type <span className="font-bold">50</span> to add 50
+                      items
+                    </p>
+                    <p>
+                      • Type <span className="font-bold">-10</span> to remove 10
+                      items
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label
+                  htmlFor="stockNote"
+                  className="text-base font-semibold dark:text-white"
+                >
+                  Note <span className="text-red-500 dark:text-red-400">*</span>
+                </Label>
+                <Textarea
+                  id="stockNote"
+                  value={stockNote}
+                  onChange={(e) => setStockNote(e.target.value)}
+                  placeholder="e.g., 'Initial stock import' or 'Manual correction'"
+                  className="border-2 focus:border-indigo-500 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:placeholder:text-slate-400 dark:focus:border-indigo-400 resize-none"
+                  rows={4}
+                />
+              </div>
+            </div>
+            <DialogFooter className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsStockDialogOpen(false);
+                  setStockChange("");
+                  setStockNote("");
+                }}
+                disabled={isStockLoading}
+                className="flex-1 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:hover:bg-slate-600"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleUpdateStock}
+                disabled={
+                  isStockLoading ||
+                  parseFormattedNumber(stockChange) === 0 ||
+                  !stockNote.trim()
+                }
+                className="flex-1 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-700 text-white"
+              >
+                {isStockLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Confirm Update
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Image Crop Dialog */}
+        <Dialog open={isCropDialogOpen} onOpenChange={setIsCropDialogOpen}>
+          <DialogContent className="max-w-[90vw] w-[90vw] max-h-[95vh] overflow-auto dark:bg-slate-800 dark:border-slate-700">
+            <DialogHeader>
+              <div className="mx-auto w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mb-4">
+                <ImageIcon className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+              </div>
+              <DialogTitle className="text-center text-2xl dark:text-white">
+                Crop Image
+              </DialogTitle>
+              <DialogDescription className="text-center dark:text-slate-300">
+                Drag and resize the selection to crop your image
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4 px-6">
+              <div className="border-2 border-gray-200 dark:border-slate-700 rounded-lg p-8 bg-gray-50 dark:bg-slate-900/50 w-full">
+                <div className="flex justify-center w-full">
+                  {imageSrc && (
+                    <ReactCrop
+                      crop={crop}
+                      onChange={(c) => setCrop(c)}
+                      onComplete={(c) => setCompletedCrop(c)}
+                      aspect={undefined}
+                      className="max-h-[75vh] w-full"
+                      style={{ maxWidth: "100%" }}
+                    >
+                      <img
+                        ref={imgRef}
+                        alt="Crop preview"
+                        src={imageSrc}
+                        style={{
+                          maxHeight: "75vh",
+                          width: "100%",
+                          maxWidth: "100%",
+                          objectFit: "contain",
+                        }}
+                      />
+                    </ReactCrop>
+                  )}
+                </div>
+              </div>
+            </div>
+            <DialogFooter className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={handleCropCancel}
+                className="flex-1 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:hover:bg-slate-600"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleCropComplete}
+                disabled={!completedCrop}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white"
+              >
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Apply Crop
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Media Viewer Dialog */}
+        <Dialog open={isMediaViewerOpen} onOpenChange={setIsMediaViewerOpen}>
+          <DialogContent className="max-w-[90vw] max-h-[90vh] p-0 overflow-hidden">
+            <DialogHeader className="p-6 pb-0">
+              <DialogTitle className="flex items-center gap-2">
+                {selectedMedia?.type === "VIDEO" ? (
+                  <>
+                    <VideoIcon className="h-5 w-5 text-purple-600" />
+                    Video Preview
+                  </>
+                ) : (
+                  <>
+                    <ImageIcon className="h-5 w-5 text-blue-600" />
+                    Image Preview
+                  </>
+                )}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="flex items-center justify-center p-6 pt-4 bg-gray-100">
+              {selectedMedia?.type === "VIDEO" ? (
+                <video
+                  src={selectedMedia.url}
+                  controls
+                  autoPlay
+                  className="max-w-full max-h-[70vh] rounded-lg shadow-2xl"
+                >
+                  Your browser does not support the video tag.
+                </video>
+              ) : (
+                <img
+                  src={selectedMedia?.url}
+                  alt="Full size preview"
+                  className="max-w-full max-h-[70vh] rounded-lg shadow-2xl object-contain"
+                />
+              )}
+            </div>
+            <DialogFooter className="p-6 pt-0">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsMediaViewerOpen(false);
+                  setSelectedMedia(null);
+                }}
+                className="w-full"
+              >
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </AppShell>
+    </ProtectedRoute>
+  );
 }

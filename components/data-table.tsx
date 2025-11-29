@@ -146,7 +146,7 @@ export function DataTable<T extends Record<string, any>>({
 
           <div className="space-y-4">
             {searchKey && (
-              <div className="relative max-w-sm">
+              <div className="relative max-w-sm border rounded-md">
                 <Input
                   placeholder={searchPlaceholder}
                   value={searchTerm}

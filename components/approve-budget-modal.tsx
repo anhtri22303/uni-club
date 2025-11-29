@@ -120,7 +120,7 @@ export function ApproveBudgetModal(props: ApproveBudgetModalProps) {
     if (!open) return;
     setApprovedPointsInput(defaultRequestPoints ? String(defaultRequestPoints) : "");
     // Debug: Kiểm tra dữ liệu nhận được
-    console.log("🔍 Modal Debug:", {
+    console.log("  Modal Debug:", {
       eventType,
       originalCommitPointCost: commitPointCost,
       effectiveCommitPointCost: eventType?.toUpperCase() === "PUBLIC" || commitPointCost === 0 ? 100 : commitPointCost,

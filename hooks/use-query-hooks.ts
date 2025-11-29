@@ -16,6 +16,7 @@ import { fetchUniversityPoints, fetchAttendanceSummary, fetchAttendanceRanking }
 import { getWallet, ApiMembershipWallet } from "@/service/walletApi"
 import { getMemberRedeemOrders } from "@/service/redeemApi"
 import { getAllPenaltyRules, PenaltyRule } from "@/service/disciplineApi";
+import { getMyStaff, MyStaffEvent } from "@/service/eventStaffApi";
 
 // ============================================
 // INTERFACES
@@ -151,6 +152,9 @@ export const queryKeys = {
     // Discipline
     discipline: ["discipline"] as const,
     penaltyRulesList: () => [...queryKeys.discipline, "penalty-rules"] as const,
+    
+    // My Staff Events
+    myStaffEvents: () => ["my-staff-events"] as const,
 }
 
 // ============================================
@@ -1014,5 +1018,24 @@ export function usePenaltyRules(enabled = true) {
         },
         enabled,
         staleTime: 10 * 60 * 1000, // 10 minutes (rules rarely change)
+    })
+}
+
+// ============================================
+// MY STAFF EVENTS QUERIES
+// ============================================
+
+/**
+ * Hook to fetch events where current user is staff
+ */
+export function useMyStaffEvents(enabled = true) {
+    return useQuery<MyStaffEvent[], Error>({
+        queryKey: queryKeys.myStaffEvents(),
+        queryFn: async () => {
+            const events = await getMyStaff();
+            return events;
+        },
+        enabled,
+        staleTime: 3 * 60 * 1000, // 3 minutes (staff assignments can change)
     })
 }

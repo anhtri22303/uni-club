@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { MessageCircle, X, Send, Maximize2, Minimize2, ShieldCheck } from "lucide-react"
+import { MessageCircle, X, Send, Maximize2, Minimize2, ShieldCheck, Trash2 } from "lucide-react"
 import { ChatbotPromptMenu } from "@/components/chatbot-prompt-menu"
 import { PolicyModal } from "@/components/policy-modal"
 import axios from "axios"
@@ -64,8 +64,10 @@ export function ChatbotWidget() {
   const [clubIds, setClubIds] = useState<number[]>([])
   const [activePrompts, setActivePrompts] = useState<Record<string, string>>(STUDENT_PROMPTS)
   const [isPolicyOpen, setIsPolicyOpen] = useState(false)
+  const [userId, setUserId] = useState<string | number | null>(null)
+  const [historyLoaded, setHistoryLoaded] = useState(false)
 
-  // Load user role and clubIds from sessionStorage
+  // Load user role, userId and clubIds from sessionStorage
   useEffect(() => {
     try {
       const authDataString = sessionStorage.getItem("uniclub-auth")
@@ -73,6 +75,11 @@ export function ChatbotWidget() {
         const authData = JSON.parse(authDataString)
         const role = authData.role || authData.userRole || "STUDENT"
         setUserRole(role)
+        
+        // Set userId for conversation history
+        const userIdValue = authData.userId || authData.id
+        setUserId(userIdValue)
+        console.log("Loaded userId for chatbot:", userIdValue)
 
         // Collect clubIds from multiple possible sources
         let extractedClubIds: number[] = []
@@ -112,6 +119,46 @@ export function ChatbotWidget() {
       console.error("Error loading auth data:", error)
     }
   }, [])
+
+  // Load conversation history when chatbot opens
+  useEffect(() => {
+    const loadHistory = async () => {
+      if (isOpen && userId && !historyLoaded) {
+        try {
+          const response = await axios.get<{ messages: any[] }>(`/api/chatbot/history?userId=${userId}`)
+          const historyMessages = response.data.messages || []
+          
+          if (historyMessages.length > 0) {
+            // Convert history to Message format and prepend to messages (exclude welcome message)
+            const convertedMessages: Message[] = historyMessages.reverse().map((msg: any, index: number) => ({
+              id: `history-${index}`,
+              text: msg.content,
+              isUser: msg.role === 'user',
+              timestamp: new Date(msg.timestamp),
+            }))
+            
+            // Add welcome message first, then history
+            setMessages([
+              {
+                id: "1",
+                text: "Hello! I am UniBot AI assistant. How can I help you?",
+                isUser: false,
+                timestamp: new Date(),
+              },
+              ...convertedMessages
+            ])
+            console.log(`Loaded ${historyMessages.length} messages from history`)
+          }
+          setHistoryLoaded(true)
+        } catch (error) {
+          console.error("Error loading conversation history:", error)
+          setHistoryLoaded(true) // Mark as loaded even on error to prevent retry
+        }
+      }
+    }
+
+    loadHistory()
+  }, [isOpen, userId, historyLoaded])
 
   // Scroll to bottom when messages change
   React.useEffect(() => {
@@ -566,7 +613,7 @@ Present in this format:
 • 💸 Average Spending per Event: [X] points
 • 📈 Budget Utilization Rate: [X]%
 
-🔍 FINANCIAL HEALTH:
+  FINANCIAL HEALTH:
 • Status: [Healthy/Moderate/Critical - based on balance]
 • Recommendation: [Conservative/Balanced/Aggressive spending]
 • Budget Remaining: [X] points available
@@ -848,7 +895,7 @@ For each application, provide detailed analysis:
 • Feasibility: [High/Medium/Low]
 • Expected Impact: [High/Medium/Low]
 
-🎯 RECOMMENDATION: [✅ STRONGLY APPROVE / ⚠️ APPROVE WITH CONDITIONS / 🔍 NEEDS REVIEW / ❌ DECLINE]
+🎯 RECOMMENDATION: [✅ STRONGLY APPROVE / ⚠️ APPROVE WITH CONDITIONS /   NEEDS REVIEW / ❌ DECLINE]
 
 💡 Rationale:
 • Diversity Impact: [How this affects major diversity]
@@ -867,7 +914,7 @@ For each application, provide detailed analysis:
 ⚠️ Conditional Approval ([X] applications):
 1. [Club Name] - [Major] - [Conditions required]
 
-🔍 Requires Further Review ([X] applications):
+  Requires Further Review ([X] applications):
 1. [Club Name] - [Major] - [Concerns to address]
 
 ❌ Recommended for Decline ([X] applications):
@@ -922,7 +969,16 @@ Please analyze the pending applications and recommend which ones to approve base
         }
       }
 
-      // Call Groq API
+      // Build conversation context from existing messages (exclude welcome message)
+      const conversationHistory = messages
+        .filter(msg => msg.id !== "1") // Exclude welcome message
+        .slice(-8) // Get last 8 messages (4 exchanges) for context without overwhelming the API
+        .map(msg => ({
+          role: msg.isUser ? "user" : "assistant",
+          content: msg.text
+        }))
+
+      // Call Groq API with conversation history
       const response = await axios.post<ChatbotResponse>(
         chatbotUrl,
         {
@@ -932,7 +988,8 @@ Please analyze the pending applications and recommend which ones to approve base
               role: "system",
               content: systemContent,
             },
-            { role: "user", content: userContent },
+            ...conversationHistory, // Include conversation history for context
+            { role: "user", content: userContent }, // Current message
           ],
           temperature: 1,
           top_p: 1,
@@ -959,18 +1016,71 @@ Please analyze the pending applications and recommend which ones to approve base
         timestamp: new Date(),
       }
       setMessages((prev) => [...prev, botMessage])
+
+      // Save conversation history to Redis
+      if (userId) {
+        try {
+          await axios.post('/api/chatbot/history', {
+            userId,
+            messages: [
+              { role: 'user', content: userMessage.text },
+              { role: 'assistant', content: botText }
+            ]
+          })
+          console.log('Conversation history saved')
+        } catch (historyError) {
+          console.error('Error saving conversation history:', historyError)
+          // Don't throw error, just log it
+        }
+      }
     } catch (error) {
-      setMessages((prev) => [
-        ...prev,
+      const errorMessage = {
+        id: (Date.now() + 1).toString(),
+        text: "Sorry, I cannot answer your question right now.",
+        isUser: false,
+        timestamp: new Date(),
+      }
+      setMessages((prev) => [...prev, errorMessage])
+
+      // Save error response to history as well
+      if (userId) {
+        try {
+          await axios.post('/api/chatbot/history', {
+            userId,
+            messages: [
+              { role: 'user', content: userMessage.text },
+              { role: 'assistant', content: errorMessage.text }
+            ]
+          })
+        } catch (historyError) {
+          console.error('Error saving error to history:', historyError)
+        }
+      }
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleClearHistory = async () => {
+    if (!userId) {
+      console.warn('No userId available for clearing history')
+      return
+    }
+
+    try {
+      await axios.delete(`/api/chatbot/history?userId=${userId}`)
+      // Reset messages to just the welcome message
+      setMessages([
         {
-          id: (Date.now() + 1).toString(),
-          text: "Sorry, I cannot answer your question right now.",
+          id: "1",
+          text: "Hello! I am UniBot AI assistant. How can I help you?",
           isUser: false,
           timestamp: new Date(),
         },
       ])
-    } finally {
-      setIsLoading(false)
+      console.log('Conversation history cleared')
+    } catch (error) {
+      console.error('Error clearing conversation history:', error)
     }
   }
 
@@ -1030,6 +1140,17 @@ Please analyze the pending applications and recommend which ones to approve base
                     </Button>
                   </div>
                   <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 hover:bg-destructive/10 hover:text-destructive"
+                      onClick={handleClearHistory}
+                      aria-label="Clear conversation history"
+                      title="Clear conversation history"
+                      disabled={messages.length <= 1}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="icon"

@@ -1111,11 +1111,10 @@ export default function EditProductPage() {
 
                             {/* Media Type Badge */}
                             <Badge
-                              className={`absolute top-3 right-3 z-10 ${
-                                m.type === "VIDEO"
-                                  ? "bg-purple-500 text-white"
-                                  : "bg-blue-500 text-white"
-                              } border-0 shadow-lg`}
+                              className={`absolute top-3 right-3 z-10 ${m.type === "VIDEO"
+                                ? "bg-purple-500 text-white"
+                                : "bg-blue-500 text-white"
+                                } border-0 shadow-lg`}
                             >
                               {m.type === "VIDEO" ? (
                                 <>
@@ -1316,7 +1315,7 @@ export default function EditProductPage() {
                             title={
                               form.eventId
                                 ? events.find((e) => e.id === form.eventId)
-                                    ?.name
+                                  ?.name
                                 : "Select an event"
                             }
                           >
@@ -1324,7 +1323,7 @@ export default function EditProductPage() {
                               <span className="block truncate max-w-full">
                                 {form.eventId
                                   ? events.find((e) => e.id === form.eventId)
-                                      ?.name
+                                    ?.name
                                   : "Select an event"}
                               </span>
                             </SelectValue>
@@ -1468,11 +1467,17 @@ export default function EditProductPage() {
                     <ScrollArea className="h-52 rounded-lg border-2 p-4 bg-gray-50 dark:bg-slate-700/50 dark:border-slate-600">
                       <div className="space-y-3">
                         {allTags
-                          .filter((tag) =>
-                            tag.name
-                              .toLowerCase()
-                              .includes(tagSearchTerm.toLowerCase())
-                          )
+                          .filter((tag) => {
+                            // tag.name
+                            //   .toLowerCase()
+                            //   .includes(tagSearchTerm.toLowerCase())
+                            const matchesSearch = tag.name.toLowerCase().includes(tagSearchTerm.toLowerCase());
+
+                            // Logic ẩn tag "new" (
+                            const isNotNewTag = tag.name.toLowerCase() !== "new";
+
+                            return matchesSearch && isNotNewTag;
+                          })
                           .map((tag) => {
                             const isCoreTag =
                               tag.tagId === fixedTagIds.clubTagId ||
@@ -1499,11 +1504,10 @@ export default function EditProductPage() {
 
                                 <Label
                                   htmlFor={`tag-${tag.tagId}`}
-                                  className={`font-medium flex-1 cursor-pointer dark:text-white ${
-                                    isDisabled
-                                      ? "text-muted-foreground dark:text-slate-400"
-                                      : ""
-                                  }`}
+                                  className={`font-medium flex-1 cursor-pointer dark:text-white ${isDisabled
+                                    ? "text-muted-foreground dark:text-slate-400"
+                                    : ""
+                                    }`}
                                 >
                                   {tag.name}
 

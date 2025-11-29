@@ -83,12 +83,34 @@ export default function UniStaffStudentRegistryPage() {
         staleTime: 1000 * 60 * 5, // 5 phút
     })
 
+    // --- SORT LOGIC ---
+    // Sắp xếp theo majorCode (alphabet) trước, sau đó theo 4 số trong studentCode
+    const sortedStudents = useMemo(() => {
+        return [...students].sort((a, b) => {
+            // So sánh majorCode trước (alphabet)
+            const majorA = (a.majorCode || '').toLowerCase()
+            const majorB = (b.majorCode || '').toLowerCase()
+            
+            if (majorA !== majorB) {
+                return majorA.localeCompare(majorB)
+            }
+            
+            // Nếu majorCode giống nhau, so sánh 4 số trong studentCode
+            // Giả sử studentCode có format: SE123456 (2 chữ cái + 6 số)
+            // Lấy 4 số cuối
+            const numA = a.studentCode.slice(-4)
+            const numB = b.studentCode.slice(-4)
+            
+            return numA.localeCompare(numB)
+        })
+    }, [students])
+
     // --- PAGINATION LOGIC (Client-side pagination for simplicity) ---
     // Lưu ý: Nếu dữ liệu quá lớn, nên chuyển sang Server-side pagination
     const paginatedStudents = useMemo(() => {
         const start = page * pageSize
-        return students.slice(start, start + pageSize)
-    }, [students, page, pageSize])
+        return sortedStudents.slice(start, start + pageSize)
+    }, [sortedStudents, page, pageSize])
 
     // --- HANDLERS ---
 
@@ -246,7 +268,7 @@ export default function UniStaffStudentRegistryPage() {
                         <CardHeader className="pb-3">
                             <CardTitle className="text-base font-medium">Registry List</CardTitle>
                             <CardDescription>
-                                Showing {paginatedStudents.length} of {students.length} students
+                                Showing {paginatedStudents.length} of {sortedStudents.length} students
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -314,10 +336,10 @@ export default function UniStaffStudentRegistryPage() {
                             </div>
 
                             {/* Pagination Controls */}
-                            {students.length > 0 && (
+                            {sortedStudents.length > 0 && (
                                 <div className="flex items-center justify-between space-x-2 py-4">
                                     <div className="text-sm text-muted-foreground">
-                                        Page {page + 1} of {Math.ceil(students.length / pageSize)}
+                                        Page {page + 1} of {Math.ceil(sortedStudents.length / pageSize)}
                                     </div>
                                     <div className="flex items-center space-x-2">
                                         <Button
@@ -331,8 +353,8 @@ export default function UniStaffStudentRegistryPage() {
                                         <Button
                                             variant="outline"
                                             size="sm"
-                                            onClick={() => setPage(p => Math.min(Math.ceil(students.length / pageSize) - 1, p + 1))}
-                                            disabled={page >= Math.ceil(students.length / pageSize) - 1}
+                                            onClick={() => setPage(p => Math.min(Math.ceil(sortedStudents.length / pageSize) - 1, p + 1))}
+                                            disabled={page >= Math.ceil(sortedStudents.length / pageSize) - 1}
                                         >
                                             Next
                                         </Button>
@@ -343,6 +365,7 @@ export default function UniStaffStudentRegistryPage() {
                                                 setPageSize(Number(e.target.value))
                                                 setPage(0)
                                             }}
+                                            aria-label="Rows per page"
                                         >
                                             <option value={10}>10</option>
                                             <option value={50}>50</option>

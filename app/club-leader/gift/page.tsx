@@ -195,11 +195,11 @@ export default function ClubLeaderGiftPage() {
       const result = await getEventByClubId(clubId as number)
       // console.log("✅ [Gift] Received events:", result?.length || 0, "items")
       // console.log("📦 [Gift] Events data:", result)
-      
+
       // Debug: Log chi tiết từng event
       if (result && result.length > 0) {
         result.forEach((event, index) => {
-          console.log(`🔍 Event ${index + 1}:`, {
+          console.log(` Event ${index + 1}:`, {
             name: event.name,
             status: event.status,
             date: event.date,
@@ -208,7 +208,7 @@ export default function ClubLeaderGiftPage() {
           })
         })
       }
-      
+
       return result
     },
     // Chỉ fetch khi có clubId VÀ dialog đang mở (tối ưu)
@@ -218,8 +218,7 @@ export default function ClubLeaderGiftPage() {
 
   // Lọc các event hợp lệ (APPROVED và chưa/đang diễn ra, hoặc ONGOING)
   const availableEvents = useMemo(() => {
-    // console.log("🔍 [Gift] Filtering events. clubId:", clubId, "clubEvents:", clubEvents?.length)
-    
+
     if (!clubId) return [];
     const numericClubId = Number(clubId);
     const events =
@@ -227,9 +226,9 @@ export default function ClubLeaderGiftPage() {
         const hostId = event.hostClub?.id ?? event.clubId;
         return Number(hostId) === numericClubId;
       }) || [];
-    
+
     // console.log("📋 [Gift] Events after club filter:", events.length)
-    
+
     if (!events) return [];
 
     // Lấy thời điểm đầu ngày hôm nay (00:00:00) theo giờ địa phương
@@ -237,11 +236,10 @@ export default function ClubLeaderGiftPage() {
     today.setHours(0, 0, 0, 0);
 
     const filtered = events.filter(event => {
-      // console.log("🔍 [Gift] Checking event:", event.name, "status:", event.status, "startDate:", event.startDate)
-      
+
       // Dùng startDate thay vì date
       const dateToUse = event.startDate || event.date;
-      
+
       if (!dateToUse) {
         console.log("❌ [Gift] Event has no startDate or date:", event.name)
         return false;
@@ -254,7 +252,6 @@ export default function ClubLeaderGiftPage() {
       // Chuẩn hóa status để xử lý cả "ONGOING", "ON-GOING" và "PENDING_COCLUB"
       const normalizedStatus = (event.status || "").toString().toUpperCase().replace(/-|_/g, "");
 
-      console.log("🔍 [Gift] Event:", event.name, "normalizedStatus:", normalizedStatus, "eventDate:", eventDate, "today:", today)
 
       // Điều kiện 1: Event đang diễn ra (ONGOING) thì luôn hiển thị
       if (normalizedStatus === "ONGOING") {
@@ -271,7 +268,7 @@ export default function ClubLeaderGiftPage() {
       // Tất cả các trường hợp khác (PENDING, REJECTED, PENDINGCOCLUB, APPROVED nhưng đã qua ngày)
       return false;
     });
-    
+
     // console.log("✅ [Gift] Final availableEvents:", filtered.length, filtered.map(e => e.name))
     return filtered;
   }, [clubEvents, clubId]);
@@ -734,9 +731,14 @@ export default function ClubLeaderGiftPage() {
                       <ScrollArea className="h-36 rounded-md border p-3 border-slate-300 dark:border-slate-600 dark:bg-slate-800/50">
                         <div className="space-y-2">
                           {productTags
-                            .filter((tag) =>
-                              tag.name.toLowerCase().includes(tagSearchTerm.toLowerCase())
-                            )
+                            .filter((tag) => {
+                              // tag.name.toLowerCase().includes(tagSearchTerm.toLowerCase())
+                              // Logic ẩn tag "new"
+                              const matchesSearch = tag.name.toLowerCase().includes(tagSearchTerm.toLowerCase());
+                              const isNotNewTag = tag.name.toLowerCase() !== "new";
+
+                              return matchesSearch && isNotNewTag;
+                            })
                             .map((tag: Tag) => { //Dùng kiểu 'Tag'
 
                               // KIỂM TRA XEM TAG CÓ BỊ VÔ HIỆU HÓA KHÔNG

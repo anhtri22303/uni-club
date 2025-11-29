@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, } from "
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, } from "@/components/ui/dialog"
-import { FileText, Eye, Trash, Plus, Percent, Users, UserCheck } from "lucide-react"
+import { FileText, Eye, Trash, Plus, Percent, Users, UserCheck, X } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
@@ -264,26 +264,38 @@ export default function AdminPoliciesPage() {
                                     </CardContent>
                                 </Card>
                             </div>
-                            <div className="flex items-center gap-2">
+
+                            <div className="relative w-full max-w-sm">
                                 <Input
                                     placeholder="Search policies"
                                     value={query}
                                     onChange={(e) => setQuery((e.target as HTMLInputElement).value)}
-                                    className="max-w-sm bg-white dark:bg-slate-800 rounded-md px-3 py-2 shadow-sm border border-gray-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                                    className="pr-12 bg-white dark:bg-slate-800 rounded-md px-3 py-2 shadow-sm border border-gray-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/40"
                                 />
-                                <Button onClick={() => setQuery("")} variant="ghost">
-                                    Clear
-                                </Button>
-                                <Button
-                                    size="sm"
-                                    className="ml-2"
-                                    onClick={() => setCreateOpen(true)}
-                                    title="Create policy"
-                                >
-                                    Create policy
-                                    <Plus className="h-4 w-4 ml-1" />
-                                </Button>
+
+                                {/* Nút X (Clear) nằm đè lên Input */}
+                                {query && (
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => setQuery("")}
+                                        className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full"
+                                    >
+                                        <X className="h-4 w-4 text-muted-foreground" />
+                                    </Button>
+                                )}
                             </div>
+
+                            <Button
+                                size="sm"
+                                className="ml-2"
+                                onClick={() => setCreateOpen(true)}
+                                title="Create policy"
+                            >
+                                Create policy
+                                <Plus className="h-4 w-4 ml-1" />
+                            </Button>
+
                         </div>
                     </div>
 
