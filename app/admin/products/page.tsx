@@ -1,17 +1,21 @@
-// file: app/admin/gift/page.tsx
 "use client"
 
 import type React from "react"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query"
 import { keepPreviousData } from "@tanstack/react-query"
 import {
-    Package, Search, Loader2, CheckCircle, XCircle, Archive, MoreHorizontal, ToggleLeft, ToggleRight, X
+    Package, Search, Loader2, CheckCircle, XCircle, Archive, MoreHorizontal, ToggleLeft, ToggleRight, X, Building2
 } from "lucide-react"
+import {
+    Accordion,
+    AccordionContent,
+    AccordionItem,
+    AccordionTrigger,
+} from "@/components/ui/accordion"
 import {
     fetchAdminProducts, toggleProductStatus, type AdminProduct, type Page,
 } from "@/service/adminApi/adminProductApi" // 1. Import từ API của Admin
-
 // --- Hooks ---
 import { useToast } from "@/hooks/use-toast"
 // --- Components ---
@@ -56,6 +60,22 @@ const ProductStatusBadge = ({ status }: { status: string }) => {
     return <Badge variant="outline">{status}</Badge>
 }
 
+const ProductTypeBadge = ({ type }: { type: string }) => {
+    // Format text: "CLUB_ITEM" -> "Club Item" cho đẹp
+    const label = type.replace("_", " ");
+
+    if (type === "CLUB_ITEM") {
+        // Dùng variant 'minor' (Sky Blue) từ badge.tsx
+        return <Badge variant="minor">{label}</Badge>
+    }
+    if (type === "EVENT_ITEM") {
+        // Dùng variant 'major' (Orange) từ badge.tsx
+        return <Badge variant="major">{label}</Badge>
+    }
+
+    // Mặc định dùng outline
+    return <Badge variant="outline">{label}</Badge>
+}
 
 // --- Main Page Component ---
 export default function AdminGiftPage() {
@@ -104,6 +124,32 @@ export default function AdminGiftPage() {
             }),
         placeholderData: keepPreviousData,
     })
+
+    // 3. THÊM ĐOẠN NÀY: Logic gộp sản phẩm theo ClubName từ dữ liệu API trả về
+    const groupedProducts = useMemo(() => {
+        if (!pagedData?.content) return []
+
+        const groups = new Map()
+
+        pagedData.content.forEach((product: AdminProduct) => {
+            // Dùng clubName để gom nhóm
+            const groupKey = product.clubName || "Unknown Club"
+
+            if (!groups.has(groupKey)) {
+                groups.set(groupKey, {
+                    clubName: groupKey,
+                    products: [],
+                    totalProducts: 0
+                })
+            }
+
+            const group = groups.get(groupKey)
+            group.products.push(product)
+            group.totalProducts++
+        })
+
+        return Array.from(groups.values())
+    }, [pagedData])
 
     // 7. Mutation để bật/tắt status
     const { mutate: toggleStatus, isPending: isToggling } = useMutation({
@@ -165,7 +211,8 @@ export default function AdminGiftPage() {
                                 placeholder="Search by name or product code..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="h-10 pl-10 pr-12 text-base bg-white border-slate-300"
+                                // className="h-10 pl-10 pr-12 text-base bg-white border-slate-300"
+                                className="h-10 pl-10 pr-12 text-base bg-white border-slate-300 dark:bg-slate-950 dark:border-slate-800"
                             />
                             {/*  Nút Clear (X) */}
                             {searchTerm && (
@@ -186,7 +233,8 @@ export default function AdminGiftPage() {
                                 // useEffect (THAY ĐỔI 4) sẽ tự động reset page về 0
                             }}
                         >
-                            <SelectTrigger className="w-[180px] h-12 text-base bg-white border-slate-300">
+                            {/* <SelectTrigger className="w-[180px] h-12 text-base bg-white border-slate-300"> */}
+                            <SelectTrigger className="w-[180px] h-12 text-base bg-white border-slate-300 dark:bg-slate-950 dark:border-slate-800">
                                 <SelectValue placeholder="Filter by status" />
                             </SelectTrigger>
                             <SelectContent>
@@ -207,118 +255,149 @@ export default function AdminGiftPage() {
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead className="w-[300px]">Product</TableHead>
-                                        <TableHead>Club</TableHead>
-                                        <TableHead>Type</TableHead>
-                                        <TableHead>Status</TableHead>
-                                        <TableHead className="text-right">Stock</TableHead>
-                                        <TableHead className="text-right">Cost</TableHead>
-                                        <TableHead className="text-right">Redeemed</TableHead>
-                                        <TableHead>Created At</TableHead>
-                                        <TableHead>Actions</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {isLoading ? (
-                                        <TableRow>
-                                            <TableCell colSpan={9} className="text-center h-24">
-                                                <Loader2 className="h-6 w-6 animate-spin inline-block" />
-                                                <p>Loading products...</p>
-                                            </TableCell>
-                                        </TableRow>
-                                    ) : isError ? (
-                                        <TableRow>
-                                            <TableCell
-                                                colSpan={9}
-                                                className="text-center h-24 text-red-600"
+
+                            <div className="space-y-4">
+                                {isLoading ? (
+                                    <Card className="flex h-40 items-center justify-center">
+                                        <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                                            <Loader2 className="h-8 w-8 animate-spin" />
+                                            <p>Loading products...</p>
+                                        </div>
+                                    </Card>
+                                ) : groupedProducts.length === 0 ? (
+                                    <Card className="flex h-40 items-center justify-center">
+                                        <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                                            <Package className="h-8 w-8" />
+                                            <p>No products found.</p>
+                                        </div>
+                                    </Card>
+                                ) : (
+                                    <Accordion type="multiple" className="space-y-4" defaultValue={groupedProducts.map((g: any) => g.clubName)}>
+                                        {groupedProducts.map((group: any) => (
+                                            <AccordionItem
+                                                key={group.clubName}
+                                                value={group.clubName}
+                                                // className="border rounded-lg bg-white shadow-sm overflow-hidden"
+                                                className="border rounded-lg bg-white shadow-sm overflow-hidden dark:bg-slate-950 dark:border-slate-800"
                                             >
-                                                Failed to load products.
-                                            </TableCell>
-                                        </TableRow>
-                                    ) : products.length === 0 ? (
-                                        <TableRow>
-                                            <TableCell
-                                                colSpan={9}
-                                                className="text-center h-24"
-                                            >
-                                                <Package className="h-10 w-10 mx-auto text-muted-foreground" />
-                                                <p className="mt-2">No products found.</p>
-                                                <p className="text-sm text-muted-foreground">
-                                                    Try adjusting your filters.
-                                                </p>
-                                            </TableCell>
-                                        </TableRow>
-                                    ) : (
-                                        products.map((p) => (
-                                            <TableRow key={p.id}>
-                                                <TableCell>
-                                                    <div className="font-medium">{p.name}</div>
-                                                    <div className="text-xs text-muted-foreground">
-                                                        {p.productCode}
+                                                <AccordionTrigger
+                                                    // className="px-6 py-4 hover:bg-slate-50 hover:no-underline"
+                                                    className="px-6 py-4 hover:bg-slate-50 hover:no-underline dark:hover:bg-slate-900"
+                                                >
+                                                    <div className="flex items-center gap-4 w-full">
+                                                        <div
+                                                            // className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shrink-0"
+                                                            className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shrink-0 dark:bg-blue-900/20 dark:text-blue-400"
+                                                        >
+                                                            <Building2 size={20} />
+                                                        </div>
+                                                        <div className="flex flex-col items-start text-left flex-1">
+                                                            <h3
+                                                                // className="font-semibold text-lg text-slate-900"
+                                                                className="font-semibold text-lg text-slate-900 dark:text-slate-100"
+                                                            >{group.clubName}
+                                                            </h3>
+                                                            <span className="text-sm text-slate-500 font-normal">
+                                                                {group.totalProducts} items listed
+                                                            </span>
+                                                        </div>
                                                     </div>
-                                                </TableCell>
-                                                <TableCell>{p.clubName}</TableCell>
-                                                <TableCell>{p.type}</TableCell>
-                                                <TableCell>
-                                                    <ProductStatusBadge status={p.status} />
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    {p.stockQuantity}
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    {p.pointCost.toLocaleString()}
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    {p.redeemCount}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {new Date(p.createdAt).toLocaleDateString()}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" className="h-8 w-8 p-0">
-                                                                <span className="sr-only">Open menu</span>
-                                                                <MoreHorizontal className="h-4 w-4" />
-                                                            </Button>
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end">
-                                                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                            <DropdownMenuItem
-                                                                onSelect={(e) => {
-                                                                    e.preventDefault() // Ngăn dropdown đóng
-                                                                    if (isToggling) return
-                                                                    toggleStatus(p.id)
-                                                                }}
-                                                                disabled={isToggling}
-                                                            >
-                                                                <Switch
-                                                                    id={`status-switch-${p.id}`}
-                                                                    checked={p.status === "ACTIVE"}
-                                                                    // onClick để toggle
-                                                                    onCheckedChange={() => toggleStatus(p.id)}
-                                                                    disabled={isToggling}
-                                                                    className="mr-2"
-                                                                />
-                                                                <label htmlFor={`status-switch-${p.id}`}>
-                                                                    {p.status === "ACTIVE"
-                                                                        ? "Deactivate"
-                                                                        : "Activate"}
-                                                                </label>
-                                                            </DropdownMenuItem>
-                                                            {/* Bạn có thể thêm link tới trang chi tiết ở đây */}
-                                                            {/* <DropdownMenuItem>View Details</DropdownMenuItem> */}
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))
-                                    )}
-                                </TableBody>
-                            </Table>
+                                                </AccordionTrigger>
+
+                                                {/* <AccordionContent className="border-t bg-slate-50/50 p-0"> */}
+                                                <AccordionContent className="border-t bg-slate-50/50 p-0 dark:bg-slate-900/50 dark:border-slate-800">
+                                                    {/* BẢNG SẢN PHẨM CON */}
+                                                    <Table>
+                                                        {/* <TableHeader> */}
+                                                        <TableHeader>
+                                                            {/* <TableRow className="border-b-slate-200"> */}
+                                                            <TableRow className="border-b-slate-200 dark:border-slate-800 hover:bg-transparent">
+                                                                {/* Product: Chiếm phần không gian lớn nhất còn lại */}
+                                                                <TableHead className="pl-6 text-left">
+                                                                    Product
+                                                                </TableHead>
+
+                                                                {/* Type & Status: Thu hẹp tối đa theo nội dung (Badge) */}
+                                                                <TableHead className="w-[2%] whitespace-nowrap text-center pr-10">
+                                                                    Type
+                                                                </TableHead>
+                                                                <TableHead className="w-[2%] whitespace-nowrap text-center pr-5">
+                                                                    Status
+                                                                </TableHead>
+
+                                                                {/* Stock, Cost, Redeemed: Chia đều nhau (ví dụ 10% hoặc 100px mỗi cột) */}
+                                                                <TableHead className="w-[10%] text-right">
+                                                                    Stock
+                                                                </TableHead>
+                                                                <TableHead className="w-[10%] text-right">
+                                                                    Cost
+                                                                </TableHead>
+                                                                <TableHead className="w-[10%] text-right">
+                                                                    Redeemed
+                                                                </TableHead>
+
+                                                                {/* Actions: Thu hẹp */}
+                                                                <TableHead className="w-[2%] pr-6 text-center">
+                                                                    Actions
+                                                                </TableHead>
+                                                            </TableRow>
+                                                        </TableHeader>
+
+                                                        <TableBody>
+                                                            {group.products.map((p: AdminProduct) => (
+                                                                <TableRow key={p.id}
+                                                                    // className="hover:bg-white border-b-slate-100 last:border-0"
+                                                                    className="hover:bg-white border-b-slate-100 last:border-0 dark:border-slate-800 dark:hover:bg-slate-800/50"
+                                                                >
+                                                                    <TableCell className="pl-6 font-medium">
+                                                                        <div>{p.name}</div>
+                                                                        <div className="text-xs text-muted-foreground">{p.productCode}</div>
+                                                                    </TableCell>
+                                                                    {/* <TableCell><Badge variant="outline">{p.type}</Badge></TableCell> */}
+                                                                    <TableCell className="text-center pr-10">
+                                                                        <ProductTypeBadge type={p.type} />
+                                                                    </TableCell>
+                                                                    <TableCell className="text-center pr-5">
+                                                                        <ProductStatusBadge status={p.status} />
+                                                                    </TableCell>
+                                                                    <TableCell className="text-right">{p.stockQuantity}</TableCell>
+                                                                    <TableCell className="text-right font-semibold text-orange-600">
+                                                                        {p.pointCost.toLocaleString()}
+                                                                    </TableCell>
+                                                                    <TableCell className="text-right">{p.redeemCount}</TableCell>
+                                                                    <TableCell className="pr-6 text-center">
+                                                                        <DropdownMenu>
+                                                                            <DropdownMenuTrigger asChild>
+                                                                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                                                                    <MoreHorizontal className="h-4 w-4" />
+                                                                                </Button>
+                                                                            </DropdownMenuTrigger>
+                                                                            <DropdownMenuContent align="end">
+                                                                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                                                                <DropdownMenuItem
+                                                                                    onSelect={(e) => {
+                                                                                        e.preventDefault()
+                                                                                        if (!isToggling) toggleStatus(p.id)
+                                                                                    }}
+                                                                                    disabled={isToggling}
+                                                                                >
+                                                                                    <Switch checked={p.status === "ACTIVE"} className="mr-2 h-4 w-8" />
+                                                                                    {p.status === "ACTIVE" ? "Deactivate" : "Activate"}
+                                                                                </DropdownMenuItem>
+                                                                            </DropdownMenuContent>
+                                                                        </DropdownMenu>
+                                                                    </TableCell>
+                                                                </TableRow>
+                                                            ))}
+                                                        </TableBody>
+                                                    </Table>
+                                                </AccordionContent>
+                                            </AccordionItem>
+                                        ))}
+                                    </Accordion>
+                                )}
+                            </div>
+
                         </CardContent>
                     </Card>
 
@@ -331,7 +410,7 @@ export default function AdminGiftPage() {
                         onPageChange={handlePageChange}
                         onPageSizeChange={handlePageSizeChange}
                         // Bạn có thể tùy chỉnh các tùy chọn này nếu muốn
-                        pageSizeOptions={[10, 25, 50]}
+                        pageSizeOptions={[10, 20, 50]}
                     />
                 </div>
             </AppShell>

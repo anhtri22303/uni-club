@@ -16,7 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { FileText, Search, Eye, Trash, Plus, Frown } from "lucide-react"
+import { FileText, Search, Eye, Trash, Plus, Frown, X } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import { useQueryClient } from "@tanstack/react-query"
@@ -209,7 +209,8 @@ export default function UniStaffDisciplinePage() {
 
             <div className="flex items-center gap-4">
               <div className="w-24 h-24">
-                <Card className="border-0 shadow-md bg-gradient-to-br from-red-50 to-red-100 dark:from-red-950 dark:to-red-900 h-full">
+                <Card className="border-0 shadow-md bg-gradient-to-br from-red-50 to-red-100 dark:from-red-950 dark:to-red-900 
+                h-full">
                   <CardContent className="p-2 h-full flex flex-col justify-center">
                     <div className="text-[10px] font-medium text-red-700 dark:text-red-300 mb-1">Total Rules</div>
                     <div className="flex items-center gap-2">
@@ -225,14 +226,29 @@ export default function UniStaffDisciplinePage() {
                 </Card>
               </div>
               <div className="flex items-center gap-2">
-                <Input
-                  placeholder="Search rules"
-                  value={query}
-                  onChange={(e) => setQuery((e.target as HTMLInputElement).value)}
-                  className="max-w-sm bg-white dark:bg-slate-800 rounded-md px-3 py-2 shadow-sm border border-gray-200 dark:border-slate-700 
-                  focus:outline-none focus:ring-2 focus:ring-primary/40"
-                />
-                <Button onClick={() => { setQuery("") }} variant="ghost">Clear Search</Button>
+                <div className="relative w-full max-w-sm">
+                  <Input
+                    placeholder="Search rules"
+                    value={query}
+                    onChange={(e) => setQuery((e.target as HTMLInputElement).value)}
+                    // Thêm 'pr-12' và điều chỉnh width
+                    className="w-[250px] pr-12 bg-white dark:bg-slate-800 rounded-md px-3 py-2 shadow-sm border border-gray-200 
+                    dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+
+                  {/* Nút X (Clear) nằm đè lên Input */}
+                  {query && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setQuery("")}
+                      className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full"
+                    >
+                      <X className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                  )}
+                </div>
+
                 <Button size="sm" className="ml-2" onClick={() => setCreateOpen(true)} title="Create penalty rule">
                   Create Rule
                   <Plus className="h-4 w-4 ml-1" />
@@ -356,19 +372,19 @@ export default function UniStaffDisciplinePage() {
                     <Button size="sm" variant="outline" onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}>Prev</Button>
                     <div className="px-2 text-sm">
                       Page {filtered.length === 0 ? 0 : page + 1} / {Math.max(1, Math.ceil(filtered.length / pageSize))}
-                      </div>
-                    <Button size="sm" variant="outline" 
-                    onClick={() => setPage(p => Math.min(p + 1, Math.max(0, Math.ceil(filtered.length / pageSize) - 1)))} 
-                    disabled={(page + 1) * pageSize >= filtered.length}>
+                    </div>
+                    <Button size="sm" variant="outline"
+                      onClick={() => setPage(p => Math.min(p + 1, Math.max(0, Math.ceil(filtered.length / pageSize) - 1)))}
+                      disabled={(page + 1) * pageSize >= filtered.length}>
                       Next
-                      </Button>
-                    <Button size="sm" variant="outline" 
-                    onClick={() => setPage(Math.max(0, Math.ceil(filtered.length / pageSize) - 1))} 
-                    disabled={(page + 1) * pageSize >= filtered.length}>
+                    </Button>
+                    <Button size="sm" variant="outline"
+                      onClick={() => setPage(Math.max(0, Math.ceil(filtered.length / pageSize) - 1))}
+                      disabled={(page + 1) * pageSize >= filtered.length}>
                       Last
-                      </Button>
-                    <select aria-label="Items per page" className="ml-2 rounded border px-2 py-1 text-sm" value={pageSize} 
-                    onChange={(e) => { setPageSize(Number((e.target as HTMLSelectElement).value)); setPage(0) }}>
+                    </Button>
+                    <select aria-label="Items per page" className="ml-2 rounded border px-2 py-1 text-sm" value={pageSize}
+                      onChange={(e) => { setPageSize(Number((e.target as HTMLSelectElement).value)); setPage(0) }}>
                       <option value={5}>5</option>
                       <option value={10}>10</option>
                       <option value={20}>20</option>
@@ -412,8 +428,8 @@ export default function UniStaffDisciplinePage() {
 
                 <div>
                   <Label htmlFor="rule-desc">Description</Label>
-                  <Textarea id="rule-desc" className="mt-2 border-slate-300" value={editDescription} 
-                  onChange={(e) => setEditDescription((e.target as HTMLTextAreaElement).value)} />
+                  <Textarea id="rule-desc" className="mt-2 border-slate-300" value={editDescription}
+                    onChange={(e) => setEditDescription((e.target as HTMLTextAreaElement).value)} />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -441,7 +457,7 @@ export default function UniStaffDisciplinePage() {
 
                   <Button
                     onClick={handleSave}
-                    disabled={saving} 
+                    disabled={saving}
                   >
                     {saving ? 'Saving...' : 'Save'}
                   </Button>
@@ -512,7 +528,7 @@ export default function UniStaffDisciplinePage() {
 
                   <Button
                     onClick={handleCreate}
-                    disabled={creating} 
+                    disabled={creating}
                   >
                     {creating ? 'Creating...' : 'Create'}
                   </Button>
