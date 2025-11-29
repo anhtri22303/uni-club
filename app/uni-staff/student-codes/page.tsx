@@ -201,17 +201,20 @@ export default function UniStaffStudentRegistryPage() {
                                     placeholder="Search by Name or MSSV..."
                                     value={query}
                                     onChange={(e) => setQuery(e.target.value)}
-                                    className="pl-9 pr-9 bg-white dark:bg-slate-950"
+                                    className="pl-9 pr-12 bg-white dark:bg-slate-950"
                                 />
                                 {/* Logic hiển thị nút Clear */}
                                 {query && (
-                                    <button
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
                                         onClick={() => setQuery("")}
-                                        className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
                                         type="button"
+                                        // CẬP NHẬT: Class tạo hiệu ứng tròn, căn giữa chính xác
+                                        className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full"
                                     >
-                                        <X className="h-4 w-4" />
-                                    </button>
+                                        <X className="h-4 w-4 text-muted-foreground" />
+                                    </Button>
                                 )}
                             </div>
                             {isFetching && <RefreshCcw className="h-4 w-4 animate-spin text-muted-foreground" />}

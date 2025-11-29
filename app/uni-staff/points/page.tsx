@@ -11,15 +11,14 @@ import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { useToast } from "@/hooks/use-toast"
 import { usePagination } from "@/hooks/use-pagination"
-import { Users, ShieldCheck, ChevronLeft, ChevronRight, Send, UserCircle, History, Search } from "lucide-react"
+import { Users, ShieldCheck, ChevronLeft, ChevronRight, Send, UserCircle, History, Search, X } from "lucide-react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group" // ✨ THÊM DÒNG NÀY
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip"
 import { useSearchParams } from "next/navigation"
-// ✨ --- IMPORT API THẬT --- ✨
 import { fetchClub } from "@/service/clubApi"
 import { pointsToClubs, getUniToClubTransactions, ApiUniToClubTransaction, getUniToEventTransactions, ApiUniToEventTransaction } from "@/service/walletApi"
 import { usePointRequests, PointRequest } from "@/service/pointRequestsApi"
@@ -41,7 +40,7 @@ export default function UniversityStaffRewardPage() {
     const [error, setError] = useState<string | null>(null)
 
     const [selectedClubs, setSelectedClubs] = useState<Record<string, boolean>>({})
-    const [targetClubIds, setTargetClubIds] = useState<number[]>([]) // ✨ State lưu danh sách clubId đã chọn
+    const [targetClubIds, setTargetClubIds] = useState<number[]>([]) // State lưu danh sách clubId đã chọn
     const [rewardAmount, setRewardAmount] = useState<number | ''>('')
     const [isDistributing, setIsDistributing] = useState(false)
 
@@ -58,11 +57,11 @@ export default function UniversityStaffRewardPage() {
     const [customReason, setCustomReason] = useState<string>("")
     const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null)
     const [searchQuery, setSearchQuery] = useState<string>("")
-    
+
     // Fetch approved point requests
     const { data: pointRequestsResponse } = usePointRequests()
     const allPointRequests: PointRequest[] = pointRequestsResponse?.data || []
-    const approvedRequests = useMemo(() => 
+    const approvedRequests = useMemo(() =>
         allPointRequests.filter(req => req.status === "APPROVED"),
         [allPointRequests]
     )
@@ -75,7 +74,7 @@ export default function UniversityStaffRewardPage() {
                 // response bây giờ sẽ có dạng { content: [...] }
                 const response = await fetchClub({ page: 0, size: 70, sort: ["name"] });
 
-                // ✨ THAY ĐỔI QUAN TRỌNG: Truy cập trực tiếp vào response.content ✨
+                //  THAY ĐỔI QUAN TRỌNG: Truy cập trực tiếp vào response.content 
                 if (response && (response as any).data && (response as any).data.content) {
                     setAllClubs((response as any).data.content);
                 } else {
@@ -134,8 +133,8 @@ export default function UniversityStaffRewardPage() {
         const numericId = Number(clubId)
         setSelectedClubs((prev) => {
             const newState = !prev[String(clubId)]
-            
-            // ✨ Cập nhật targetClubIds ngay lập tức
+
+            //  Cập nhật targetClubIds ngay lập tức
             setTargetClubIds((prevIds) => {
                 if (newState) {
                     // Thêm vào nếu chưa có
@@ -145,7 +144,7 @@ export default function UniversityStaffRewardPage() {
                     return prevIds.filter(id => id !== numericId)
                 }
             })
-            
+
             return { ...prev, [String(clubId)]: newState }
         })
     }
@@ -165,8 +164,8 @@ export default function UniversityStaffRewardPage() {
             })
             return newSelected
         })
-        
-        // ✨ Cập nhật targetClubIds
+
+        //  Cập nhật targetClubIds
         if (newSelectionState) {
             // Select all: thêm tất cả filteredClubs vào targetClubIds
             setTargetClubIds((prevIds) => {
@@ -192,7 +191,7 @@ export default function UniversityStaffRewardPage() {
         return Object.values(selectedClubs).filter(v => v === true).length
     }, [selectedClubs])
 
-    // ✨ --- TẠO DANH SÁCH CLB ĐÃ LỌC --- ✨
+    //  --- TẠO DANH SÁCH CLB ĐÃ LỌC --- 
     const filteredClubs = useMemo(() => {
         if (!searchQuery) {
             return allClubs // Trả về tất cả nếu không tìm kiếm
@@ -201,7 +200,7 @@ export default function UniversityStaffRewardPage() {
             club.name.toLowerCase().includes(searchQuery.toLowerCase())
         )
     }, [allClubs, searchQuery])
-    // ✨ --------------------------------- ✨
+    //  --------------------------------- 
 
     // const allSelected = useMemo(() => {
     //     if (allClubs.length === 0) {
@@ -210,11 +209,11 @@ export default function UniversityStaffRewardPage() {
     //     return allClubs.every((club) => selectedClubs[String(club.id)] === true)
     // }, [allClubs, selectedClubs])
     const allSelected = useMemo(() => {
-        if (filteredClubs.length === 0) { // ✨ THAY ĐỔI
+        if (filteredClubs.length === 0) { //  THAY ĐỔI
             return false
         }
-        return filteredClubs.every((club) => selectedClubs[String(club.id)] === true) // ✨ THAY ĐỔI
-    }, [filteredClubs, selectedClubs]) // ✨ THAY ĐỔI
+        return filteredClubs.every((club) => selectedClubs[String(club.id)] === true) //  THAY ĐỔI
+    }, [filteredClubs, selectedClubs]) //  THAY ĐỔI
 
 
 
@@ -235,7 +234,7 @@ export default function UniversityStaffRewardPage() {
             return
         }
 
-        // ✨ Kiểm tra targetClubIds thay vì filter lại
+        //  Kiểm tra targetClubIds thay vì filter lại
         if (targetClubIds.length === 0) {
             toast({
                 title: "No clubs selected",
@@ -245,7 +244,7 @@ export default function UniversityStaffRewardPage() {
             return
         }
 
-        // ✨ --- KIỂM TRA LÝ DO --- ✨
+        //  --- KIỂM TRA LÝ DO --- 
         let finalReason = ""
         if (reasonType === "monthly") {
             finalReason = "Monthly club points" // Lý do theo yêu cầu
@@ -280,11 +279,11 @@ export default function UniversityStaffRewardPage() {
             })
             return
         }
-        // ✨ ------------------------- ✨
+        //  ------------------------- 
 
         setIsDistributing(true)
         try {
-            // ✨ Sử dụng targetClubIds đã được chuẩn bị sẵn
+            //  Sử dụng targetClubIds đã được chuẩn bị sẵn
             const response = await pointsToClubs(
                 targetClubIds,
                 rewardAmount as number,
@@ -300,7 +299,7 @@ export default function UniversityStaffRewardPage() {
                 setCustomReason('')
                 setSelectedRequestId(null)
                 setReasonType("monthly")
-                // ✨ Reset selections
+                //  Reset selections
                 setSelectedClubs({})
                 setTargetClubIds([])
             } else {
@@ -309,11 +308,12 @@ export default function UniversityStaffRewardPage() {
         } catch (err: any) {
             const errorMessage = err?.response?.data?.error || err?.response?.data?.message || err.message || "An error occurred."
             const isTimeout = err?.code === 'ECONNABORTED' || errorMessage.toLowerCase().includes('timeout')
-            
+
             toast({
                 title: isTimeout ? "Request Timeout" : "Distribution Error",
-                description: isTimeout 
-                    ? `The request took too long (processing ${targetClubIds.length} clubs). The points may still be distributed successfully. Please check the transaction history.`
+                description: isTimeout
+                    ? `The request took too long (processing ${targetClubIds.length} clubs). The points may still be distributed successfully. 
+                    Please check the transaction history.`
                     : errorMessage,
                 variant: "destructive"
             })
@@ -388,7 +388,7 @@ export default function UniversityStaffRewardPage() {
             </div>
         ) : null
 
-    const isReasonInvalid = 
+    const isReasonInvalid =
         (reasonType === 'other' && !customReason.trim()) ||
         (reasonType === 'fromRequest' && !selectedRequestId)
 
@@ -726,7 +726,7 @@ export default function UniversityStaffRewardPage() {
                                     rewardAmount === '' ||
                                     rewardAmount <= 0 ||
                                     selectedCount === 0 ||
-                                    isReasonInvalid // ✨ THÊM ĐIỀU KIỆN VÔ HIỆU HÓA
+                                    isReasonInvalid //  THÊM ĐIỀU KIỆN VÔ HIỆU HÓA
                                 }
                             >
                                 {isDistributing ? (
@@ -760,20 +760,32 @@ export default function UniversityStaffRewardPage() {
                         )}
                     </div>
 
-                    {/* ✨ --- THÊM THANH SEARCH --- ✨ */}
+                    {/*  --- THANH SEARCH ---  */}
                     {allClubs.length > 0 && ( // Chỉ hiển thị search nếu có CLB
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                        <div className="relative w-full max-w-[500px]">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground " />
                             <Input
-                                type="search"
                                 placeholder="Search by club name..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-10" // Thêm padding trái cho icon
+                                // pr-12 to prevent text overlap
+                                className="pl-10 pr-12 border-slate-300 w-full mb-4 bg-white"
                             />
+
+                            {/* Clear Button */}
+                            {searchQuery && (
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => setSearchQuery("")}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full"
+                                >
+                                    <X className="h-4 w-4 text-muted-foreground" />
+                                </Button>
+                            )}
                         </div>
                     )}
-                    {/* ✨ ------------------------- ✨ */}
+                    {/*  -------------------------  */}
 
                     <div className="space-y-4">
                         {loading ? (
@@ -785,9 +797,9 @@ export default function UniversityStaffRewardPage() {
                             // ) : (
                         ) : error ? (
                             <p className="text-red-500">{error}</p>
-                        ) : allClubs.length === 0 ? ( // ✨ Cập nhật logic hiển thị
+                        ) : allClubs.length === 0 ? ( //  Cập nhật logic hiển thị
                             <p>No active clubs found.</p>
-                        ) : filteredClubs.length === 0 ? ( // ✨ Thêm trường hợp không có kết quả search
+                        ) : filteredClubs.length === 0 ? ( //  Thêm trường hợp không có kết quả search
                             <p>No clubs match your search.</p>
                         ) : (
                             <>

@@ -25,7 +25,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Star, Search, Calendar, MessageSquare, User, Building } from "lucide-react"
+import { Star, Search, Calendar, MessageSquare, User, Building, X } from "lucide-react"
 import { format } from "date-fns"
 import { toast } from "@/hooks/use-toast"
 
@@ -145,11 +145,10 @@ export default function UniStaffFeedbacksPage() {
         {[1, 2, 3, 4, 5].map((star) => (
           <Star
             key={star}
-            className={`h-4 w-4 ${
-              star <= rating
-                ? "fill-yellow-400 text-yellow-400"
-                : "text-gray-300"
-            }`}
+            className={`h-4 w-4 ${star <= rating
+              ? "fill-yellow-400 text-yellow-400"
+              : "text-gray-300"
+              }`}
           />
         ))}
       </div>
@@ -188,326 +187,338 @@ export default function UniStaffFeedbacksPage() {
     <ProtectedRoute allowedRoles={["uni_staff"]}>
       <AppShell>
         <div className="container mx-auto p-4 md:p-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Club Feedbacks</h1>
-          <p className="text-muted-foreground">
-            View and analyze feedback from club events across the university
-          </p>
-        </div>
-
-        {/* Club Selection */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Building className="h-5 w-5" />
-              Select Club
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <Label htmlFor="club">Club</Label>
-              <Select value={selectedClub} onValueChange={setSelectedClub}>
-                <SelectTrigger id="club">
-                  <SelectValue placeholder="Select a club to view feedbacks" />
-                </SelectTrigger>
-                <SelectContent>
-                  {clubs.map((club) => (
-                    <SelectItem key={club.id} value={club.id.toString()}>
-                      {club.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          {/* Header */}
+          <div className="flex flex-col gap-4">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Club Feedbacks</h1>
+              <p className="text-muted-foreground">
+                View and analyze feedback from club events across the university
+              </p>
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Show stats only when club is selected */}
-        {selectedClub && (
-          <div className="grid gap-4 md:grid-cols-3">
+            {/* Club Selection */}
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Total Feedbacks
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Building className="h-5 w-5" />
+                  Select Club
                 </CardTitle>
-                <MessageSquare className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{filteredFeedbacks.length}</div>
-                <p className="text-xs text-muted-foreground mt-1">{selectedClubName}</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Average Rating
-                </CardTitle>
-                <Star className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{averageRating}</div>
-                <div className="mt-1">{renderStars(Math.round(Number(averageRating)))}</div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Events with Feedback
-                </CardTitle>
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{uniqueEvents.length}</div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-      </div>
-
-      {/* Show filters and table only when club is selected */}
-      {selectedClub && (
-        <>
-          {/* Filters */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Filters</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-3">
-                {/* Search */}
                 <div className="space-y-2">
-                  <Label htmlFor="search">Search</Label>
-                  <div className="relative">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="search"
-                      placeholder="Search by member, event, or comment..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-8"
-                    />
-                  </div>
-                </div>
-
-                {/* Event Filter */}
-                <div className="space-y-2">
-                  <Label htmlFor="event">Event</Label>
-                  <Select value={selectedEvent} onValueChange={setSelectedEvent}>
-                    <SelectTrigger id="event">
-                      <SelectValue placeholder="All Events" />
+                  <Label htmlFor="club">Club</Label>
+                  <Select value={selectedClub} onValueChange={setSelectedClub}>
+                    <SelectTrigger id="club">
+                      <SelectValue placeholder="Select a club to view feedbacks" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Events</SelectItem>
-                      {uniqueEvents.map((event) => (
-                        <SelectItem key={event.id} value={event.id.toString()}>
-                          {event.name}
+                      {clubs.map((club) => (
+                        <SelectItem key={club.id} value={club.id.toString()}>
+                          {club.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
+              </CardContent>
+            </Card>
 
-                {/* Rating Filter */}
-                <div className="space-y-2">
-                  <Label htmlFor="rating">Rating</Label>
-                  <Select value={selectedRating} onValueChange={setSelectedRating}>
-                    <SelectTrigger id="rating">
-                      <SelectValue placeholder="All Ratings" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Ratings</SelectItem>
-                      <SelectItem value="5">5 Stars</SelectItem>
-                      <SelectItem value="4">4 Stars</SelectItem>
-                      <SelectItem value="3">3 Stars</SelectItem>
-                      <SelectItem value="2">2 Stars</SelectItem>
-                      <SelectItem value="1">1 Star</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+            {/* Show stats only when club is selected */}
+            {selectedClub && (
+              <div className="grid gap-4 md:grid-cols-3">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      Total Feedbacks
+                    </CardTitle>
+                    <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{filteredFeedbacks.length}</div>
+                    <p className="text-xs text-muted-foreground mt-1">{selectedClubName}</p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      Average Rating
+                    </CardTitle>
+                    <Star className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{averageRating}</div>
+                    <div className="mt-1">{renderStars(Math.round(Number(averageRating)))}</div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      Events with Feedback
+                    </CardTitle>
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{uniqueEvents.length}</div>
+                  </CardContent>
+                </Card>
               </div>
-            </CardContent>
-          </Card>
+            )}
+          </div>
 
-          {/* Feedbacks Table */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Feedback List</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-                    <p className="mt-4 text-muted-foreground">Loading feedbacks...</p>
-                  </div>
-                </div>
-              ) : paginatedFeedbacks.length === 0 ? (
-                <div className="text-center py-12">
-                  <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-lg font-medium">No feedbacks found</p>
-                  <p className="text-sm text-muted-foreground">
-                    {selectedClub
-                      ? "Try adjusting your filters or this club hasn't received any feedback yet"
-                      : "Select a club to view feedbacks"}
-                  </p>
-                </div>
-              ) : (
-                <>
-                  {/* Desktop Table View */}
-                  <div className="hidden md:block overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Event</TableHead>
-                          <TableHead>Member</TableHead>
-                          <TableHead>Rating</TableHead>
-                          <TableHead>Comment</TableHead>
-                          <TableHead>Date</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {paginatedFeedbacks.map((feedback) => (
-                          <TableRow key={feedback.feedbackId}>
-                            <TableCell className="font-medium">
-                              {feedback.eventName}
-                            </TableCell>
-                            <TableCell>
-                              {feedback.memberName || "Unknown"}
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                {renderStars(feedback.rating)}
-                                <span className="text-sm font-medium">
-                                  {feedback.rating}
-                                </span>
-                              </div>
-                            </TableCell>
-                            <TableCell className="max-w-md">
-                              <p className="line-clamp-2 text-sm">
-                                {feedback.comment}
-                              </p>
-                            </TableCell>
-                            <TableCell>
-                              {format(new Date(feedback.createdAt), "MMM dd, yyyy")}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
+          {/* Show filters and table only when club is selected */}
+          {selectedClub && (
+            <>
+              {/* Filters */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Filters</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-4 md:grid-cols-3">
+                    {/* Search */}
+                    <div className="space-y-2">
+                      <Label htmlFor="search">Search</Label>
+                      <div className="relative">
+                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="search"
+                          placeholder="Search by member, event, or comment..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="pl-9 pr-12 bg-white dark:bg-slate-950"
+                        />
 
-                  {/* Mobile Card View */}
-                  <div className="md:hidden space-y-4">
-                    {paginatedFeedbacks.map((feedback) => (
-                      <Card key={feedback.feedbackId}>
-                        <CardContent className="pt-6 space-y-3">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <p className="font-semibold text-sm">
-                                {feedback.eventName}
-                              </p>
-                              <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
-                                <User className="h-3 w-3" />
-                                <span>{feedback.memberName || "Unknown"}</span>
-                              </div>
-                            </div>
-                            <Badge variant="outline" className="ml-2">
-                              {feedback.rating} ★
-                            </Badge>
-                          </div>
-
-                          <div className="flex items-center gap-1">
-                            {renderStars(feedback.rating)}
-                          </div>
-
-                          <p className="text-sm text-muted-foreground">
-                            {feedback.comment}
-                          </p>
-
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <Calendar className="h-3 w-3" />
-                            {format(new Date(feedback.createdAt), "MMM dd, yyyy")}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-
-                  {/* Pagination */}
-                  {totalPages > 1 && (
-                    <div className="flex items-center justify-between mt-6 pt-6 border-t">
-                      <p className="text-sm text-muted-foreground">
-                        Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
-                        {Math.min(currentPage * itemsPerPage, filteredFeedbacks.length)} of{" "}
-                        {filteredFeedbacks.length} feedbacks
-                      </p>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                          disabled={currentPage === 1}
-                        >
-                          Previous
-                        </Button>
-                        <div className="flex items-center gap-1">
-                          {Array.from({ length: totalPages }, (_, i) => i + 1)
-                            .filter((page) => {
-                              // Show first page, last page, current page, and pages around current
-                              return (
-                                page === 1 ||
-                                page === totalPages ||
-                                Math.abs(page - currentPage) <= 1
-                              )
-                            })
-                            .map((page, idx, arr) => {
-                              // Add ellipsis if there's a gap
-                              const prevPage = arr[idx - 1]
-                              const showEllipsis = prevPage && page - prevPage > 1
-
-                              return (
-                                <div key={page} className="flex items-center">
-                                  {showEllipsis && (
-                                    <span className="px-2 text-muted-foreground">
-                                      ...
-                                    </span>
-                                  )}
-                                  <Button
-                                    variant={
-                                      currentPage === page ? "default" : "outline"
-                                    }
-                                    size="sm"
-                                    onClick={() => setCurrentPage(page)}
-                                  >
-                                    {page}
-                                  </Button>
-                                </div>
-                              )
-                            })}
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            setCurrentPage((p) => Math.min(totalPages, p + 1))
-                          }
-                          disabled={currentPage === totalPages}
-                        >
-                          Next
-                        </Button>
+                        {/* Nút Clear với hiệu ứng rounded-full và ghost */}
+                        {searchTerm && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setSearchTerm("")}
+                            className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full"
+                          >
+                            <X className="h-4 w-4 text-muted-foreground" />
+                          </Button>
+                        )}
                       </div>
                     </div>
+
+                    {/* Event Filter */}
+                    <div className="space-y-2">
+                      <Label htmlFor="event">Event</Label>
+                      <Select value={selectedEvent} onValueChange={setSelectedEvent}>
+                        <SelectTrigger id="event">
+                          <SelectValue placeholder="All Events" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Events</SelectItem>
+                          {uniqueEvents.map((event) => (
+                            <SelectItem key={event.id} value={event.id.toString()}>
+                              {event.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Rating Filter */}
+                    <div className="space-y-2">
+                      <Label htmlFor="rating">Rating</Label>
+                      <Select value={selectedRating} onValueChange={setSelectedRating}>
+                        <SelectTrigger id="rating">
+                          <SelectValue placeholder="All Ratings" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Ratings</SelectItem>
+                          <SelectItem value="5">5 Stars</SelectItem>
+                          <SelectItem value="4">4 Stars</SelectItem>
+                          <SelectItem value="3">3 Stars</SelectItem>
+                          <SelectItem value="2">2 Stars</SelectItem>
+                          <SelectItem value="1">1 Star</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Feedbacks Table */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Feedback List</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {loading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <div className="text-center">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+                        <p className="mt-4 text-muted-foreground">Loading feedbacks...</p>
+                      </div>
+                    </div>
+                  ) : paginatedFeedbacks.length === 0 ? (
+                    <div className="text-center py-12">
+                      <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <p className="text-lg font-medium">No feedbacks found</p>
+                      <p className="text-sm text-muted-foreground">
+                        {selectedClub
+                          ? "Try adjusting your filters or this club hasn't received any feedback yet"
+                          : "Select a club to view feedbacks"}
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Desktop Table View */}
+                      <div className="hidden md:block overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Event</TableHead>
+                              <TableHead>Member</TableHead>
+                              <TableHead>Rating</TableHead>
+                              <TableHead>Comment</TableHead>
+                              <TableHead>Date</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {paginatedFeedbacks.map((feedback) => (
+                              <TableRow key={feedback.feedbackId}>
+                                <TableCell className="font-medium">
+                                  {feedback.eventName}
+                                </TableCell>
+                                <TableCell>
+                                  {feedback.memberName || "Unknown"}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-2">
+                                    {renderStars(feedback.rating)}
+                                    <span className="text-sm font-medium">
+                                      {feedback.rating}
+                                    </span>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="max-w-md">
+                                  <p className="line-clamp-2 text-sm">
+                                    {feedback.comment}
+                                  </p>
+                                </TableCell>
+                                <TableCell>
+                                  {format(new Date(feedback.createdAt), "MMM dd, yyyy")}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+
+                      {/* Mobile Card View */}
+                      <div className="md:hidden space-y-4">
+                        {paginatedFeedbacks.map((feedback) => (
+                          <Card key={feedback.feedbackId}>
+                            <CardContent className="pt-6 space-y-3">
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <p className="font-semibold text-sm">
+                                    {feedback.eventName}
+                                  </p>
+                                  <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
+                                    <User className="h-3 w-3" />
+                                    <span>{feedback.memberName || "Unknown"}</span>
+                                  </div>
+                                </div>
+                                <Badge variant="outline" className="ml-2">
+                                  {feedback.rating} ★
+                                </Badge>
+                              </div>
+
+                              <div className="flex items-center gap-1">
+                                {renderStars(feedback.rating)}
+                              </div>
+
+                              <p className="text-sm text-muted-foreground">
+                                {feedback.comment}
+                              </p>
+
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                <Calendar className="h-3 w-3" />
+                                {format(new Date(feedback.createdAt), "MMM dd, yyyy")}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+
+                      {/* Pagination */}
+                      {totalPages > 1 && (
+                        <div className="flex items-center justify-between mt-6 pt-6 border-t">
+                          <p className="text-sm text-muted-foreground">
+                            Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
+                            {Math.min(currentPage * itemsPerPage, filteredFeedbacks.length)} of{" "}
+                            {filteredFeedbacks.length} feedbacks
+                          </p>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                              disabled={currentPage === 1}
+                            >
+                              Previous
+                            </Button>
+                            <div className="flex items-center gap-1">
+                              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                                .filter((page) => {
+                                  // Show first page, last page, current page, and pages around current
+                                  return (
+                                    page === 1 ||
+                                    page === totalPages ||
+                                    Math.abs(page - currentPage) <= 1
+                                  )
+                                })
+                                .map((page, idx, arr) => {
+                                  // Add ellipsis if there's a gap
+                                  const prevPage = arr[idx - 1]
+                                  const showEllipsis = prevPage && page - prevPage > 1
+
+                                  return (
+                                    <div key={page} className="flex items-center">
+                                      {showEllipsis && (
+                                        <span className="px-2 text-muted-foreground">
+                                          ...
+                                        </span>
+                                      )}
+                                      <Button
+                                        variant={
+                                          currentPage === page ? "default" : "outline"
+                                        }
+                                        size="sm"
+                                        onClick={() => setCurrentPage(page)}
+                                      >
+                                        {page}
+                                      </Button>
+                                    </div>
+                                  )
+                                })}
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                setCurrentPage((p) => Math.min(totalPages, p + 1))
+                              }
+                              disabled={currentPage === totalPages}
+                            >
+                              Next
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </>
-      )}
+                </CardContent>
+              </Card>
+            </>
+          )}
         </div>
       </AppShell>
     </ProtectedRoute>

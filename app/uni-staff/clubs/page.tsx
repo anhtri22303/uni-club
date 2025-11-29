@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Modal } from "@/components/modal"
 import { DataTable } from "@/components/data-table"
 import { useToast } from "@/hooks/use-toast"
-import { Users, Trash, Plus, Loader2, Mail } from "lucide-react"
+import { Users, Trash, Plus, Loader2, Mail, X } from "lucide-react"
 import { fetchClub, getClubMemberCount } from "@/service/clubApi"
 import { fetchMajors, Major } from "@/service/majorApi" // Thêm import fetchMajors và Major
 

@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { BookMarked, Search, Eye, Trash, Plus } from "lucide-react"
+import { BookMarked, Search, Eye, Trash, Plus, X } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import { useMajors } from "@/hooks/use-query-hooks"
@@ -297,7 +297,7 @@ export default function UniStaffMajorsPage() {
                             <div className="w-24 h-24 flex-shrink-0"> {/* Added flex-shrink-0 to prevent card shrinking */}
                                 <Card className="border-0 shadow-md bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 h-full">
                                     <CardContent className="p-2 h-full flex flex-col justify-center">
-                                        <div className="text-[10px] font-medium text-blue-700 dark:text-blue-300 mb-1">Total Majors</div>
+                                        <div className="text-[12px] font-medium text-blue-700 dark:text-blue-300 mb-1">Total Majors</div>
                                         <div className="flex items-center gap-2">
                                             <div className="p-1 bg-blue-500 rounded-md">
                                                 <BookMarked className="h-3 w-3 text-white" />
@@ -313,14 +313,29 @@ export default function UniStaffMajorsPage() {
 
                             {/* Search Input and Buttons */}
                             <div className="flex items-center gap-2">
-                                <Input
-                                    placeholder="Search majors"
-                                    value={query}
-                                    onChange={(e) => setQuery((e.target as HTMLInputElement).value)}
-                                    className="max-w-sm bg-white dark:bg-slate-800 rounded-md px-3 py-2 shadow-sm border border-gray-200 
-                                    dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/40"
-                                />
-                                <Button onClick={() => { setQuery("") }} variant="ghost">Clear</Button>
+                                <div className="relative w-full max-w-sm">
+                                    <Input
+                                        placeholder="Search majors"
+                                        value={query}
+                                        onChange={(e) => setQuery((e.target as HTMLInputElement).value)}
+                                        // Thêm 'pr-12' để chừa chỗ cho nút X
+                                        className="w-[250px] pr-12 bg-white dark:bg-slate-800 rounded-md px-3 py-2 shadow-sm border 
+                                        border-gray-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                                    />
+
+                                    {/* Nút X (Clear) nằm đè lên Input */}
+                                    {query && (
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => setQuery("")}
+                                            // Style định vị tuyệt đối, bo tròn
+                                            className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full"
+                                        >
+                                            <X className="h-4 w-4 text-muted-foreground" />
+                                        </Button>
+                                    )}
+                                </div>
                                 <Button size="sm" className="ml-2" onClick={() => setCreateOpen(true)} title="Create major">
                                     Create major
                                     <Plus className="h-4 w-4 ml-1" />
@@ -373,7 +388,9 @@ export default function UniStaffMajorsPage() {
                                                         <TableCell className="text-sm text-muted-foreground text-center">{m.id}</TableCell>
                                                         <TableCell className="font-medium text-primary/90">{m.name}</TableCell>
                                                         <TableCell className="text-sm text-muted-foreground text-center">{m.majorCode || "—"}</TableCell>
-                                                        <TableCell className="text-sm text-muted-foreground truncate max-w-xs">{m.description || "—"}</TableCell>
+                                                        <TableCell className="text-sm text-muted-foreground truncate max-w-xs">
+                                                            {m.description || "—"}
+                                                        </TableCell>
                                                         {/* Cell cho Color */}
                                                         <TableCell>
                                                             <div className="flex items-center gap-2">
@@ -434,21 +451,21 @@ export default function UniStaffMajorsPage() {
                                         <Button size="sm" variant="outline" onClick={() => setPage(0)} disabled={page === 0}>First</Button>
                                         <Button size="sm" variant="outline" onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}>
                                             Prev
-                                            </Button>
+                                        </Button>
                                         <div className="px-2 text-sm">
                                             Page {filtered.length === 0 ? 0 : page + 1} / {Math.max(1, Math.ceil(filtered.length / pageSize))}
-                                            </div>
-                                        <Button size="sm" variant="outline" 
-                                        onClick={() => setPage(p => Math.min(p + 1, Math.max(0, Math.ceil(filtered.length / pageSize) - 1)))} 
-                                        disabled={(page + 1) * pageSize >= filtered.length}>
+                                        </div>
+                                        <Button size="sm" variant="outline"
+                                            onClick={() => setPage(p => Math.min(p + 1, Math.max(0, Math.ceil(filtered.length / pageSize) - 1)))}
+                                            disabled={(page + 1) * pageSize >= filtered.length}>
                                             Next
-                                            </Button>
-                                        <Button size="sm" variant="outline" onClick={() => setPage(Math.max(0, Math.ceil(filtered.length / pageSize) - 1))} 
-                                        disabled={(page + 1) * pageSize >= filtered.length}>
+                                        </Button>
+                                        <Button size="sm" variant="outline" onClick={() => setPage(Math.max(0, Math.ceil(filtered.length / pageSize) - 1))}
+                                            disabled={(page + 1) * pageSize >= filtered.length}>
                                             Last
-                                            </Button>
-                                        <select aria-label="Items per page" className="ml-2 rounded border px-2 py-1 text-sm" value={pageSize} 
-                                        onChange={(e) => { setPageSize(Number((e.target as HTMLSelectElement).value)); setPage(0) }}>
+                                        </Button>
+                                        <select aria-label="Items per page" className="ml-2 rounded border px-2 py-1 text-sm" value={pageSize}
+                                            onChange={(e) => { setPageSize(Number((e.target as HTMLSelectElement).value)); setPage(0) }}>
                                             <option value={5}>5</option>
                                             <option value={10}>10</option>
                                             <option value={20}>20</option>
@@ -470,14 +487,14 @@ export default function UniStaffMajorsPage() {
                             <div className="mt-2 space-y-3">
                                 <div>
                                     <Label htmlFor="major-name">Major Name</Label>
-                                    <Input id="major-name" className="mt-2 border-slate-300" value={editMajorName} 
-                                    onChange={(e) => setEditMajorName((e.target as HTMLInputElement).value)} />
+                                    <Input id="major-name" className="mt-2 border-slate-300" value={editMajorName}
+                                        onChange={(e) => setEditMajorName((e.target as HTMLInputElement).value)} />
                                 </div>
 
                                 <div>
                                     <Label htmlFor="major-code">Major Code</Label>
-                                    <Input id="major-code" className="mt-2 border-slate-300" value={editMajorCode} 
-                                    onChange={(e) => setEditMajorCode((e.target as HTMLInputElement).value)} />
+                                    <Input id="major-code" className="mt-2 border-slate-300" value={editMajorCode}
+                                        onChange={(e) => setEditMajorCode((e.target as HTMLInputElement).value)} />
                                 </div>
 
                                 {/* Dropdown cho Color Hex (Edit) */}
@@ -537,14 +554,14 @@ export default function UniStaffMajorsPage() {
 
                                 <div>
                                     <Label htmlFor="major-desc">Description</Label>
-                                    <Textarea id="major-desc" className="mt-2 border-slate-300" value={editDescription} 
-                                    onChange={(e) => setEditDescription((e.target as HTMLTextAreaElement).value)} />
+                                    <Textarea id="major-desc" className="mt-2 border-slate-300" value={editDescription}
+                                        onChange={(e) => setEditDescription((e.target as HTMLTextAreaElement).value)} />
                                 </div>
 
                                 <div className="flex items-center gap-2">
                                     <Label htmlFor="major-active">Change status: </Label>
-                                    <input id="major-active" title="Active" type="checkbox" checked={editActive} 
-                                    onChange={(e) => setEditActive(e.target.checked)} className="h-4 w-4" />
+                                    <input id="major-active" title="Active" type="checkbox" checked={editActive}
+                                        onChange={(e) => setEditActive(e.target.checked)} className="h-4 w-4" />
                                     <Label htmlFor="major-active">Active</Label>
                                 </div>
 
