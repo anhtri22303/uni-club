@@ -585,7 +585,7 @@ export default function MemberClubsPage() {
               searchPlaceholder="Search clubs..."
               filters={filters}
               initialPageSize={8}
-              pageSizeOptions={[10, 20, 30]}
+              pageSizeOptions={[10, 20, 50]}
             />
           )}
 

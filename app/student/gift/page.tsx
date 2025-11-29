@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Gift, Package, ChevronLeft, ChevronRight, Layers, Loader2, Eye, WalletCards, Search } from "lucide-react"
+import { Gift, Package, ChevronLeft, ChevronRight, Layers, Loader2, Eye, WalletCards, Search, X } from "lucide-react"
 import { usePagination } from "@/hooks/use-pagination"
 import { useClubs, useProductsByClubId, useProfile, queryKeys, useEventProductsOnTime } from "@/hooks/use-query-hooks"
 import { Product } from "@/service/productApi"
@@ -37,7 +37,8 @@ const MinimalPager = ({
 			<button
 				onClick={onPrev}
 				disabled={current === 1}
-				className="h-10 w-10 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors dark:bg-slate-900 dark:hover:bg-slate-800 dark:border-slate-700"
+				className="h-10 w-10 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed 
+				flex items-center justify-center transition-colors dark:bg-slate-900 dark:hover:bg-slate-800 dark:border-slate-700"
 				aria-label="Previous page"
 			>
 				<ChevronLeft className="h-5 w-5 text-gray-600 dark:text-slate-200" />
@@ -48,7 +49,8 @@ const MinimalPager = ({
 			<button
 				onClick={onNext}
 				disabled={current === total}
-				className="h-10 w-10 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors dark:bg-slate-900 dark:hover:bg-slate-800 dark:border-slate-700"
+				className="h-10 w-10 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex 
+				items-center justify-center transition-colors dark:bg-slate-900 dark:hover:bg-slate-800 dark:border-slate-700"
 				aria-label="Next page"
 			>
 				<ChevronRight className="h-5 w-5 text-gray-600 dark:text-slate-200" />
@@ -189,7 +191,7 @@ export default function MemberGiftPage() {
 	// Logic lọc (Luôn lọc 'ACTIVE' trước, sau đó filter theo tab và search)
 	const filteredProducts = useMemo(() => {
 		const activeProducts = products.filter(p => p.status === "ACTIVE");
-		
+
 		// Filter by selected tab (type)
 		const typeFilteredProducts = activeProducts.filter(p => p.type === selectedTab);
 
@@ -285,53 +287,54 @@ export default function MemberGiftPage() {
 						<p className="text-blue-100">Redeem your points for amazing rewards</p>
 					</div>
 
-				{/* Tab Buttons - Moved to top */}
-				<div className="flex gap-3 -mt-4">
-					<button
-						onClick={() => {
-							setSelectedTab("CLUB_ITEM")
-							setCurrentPage(1)
-						}}
-						className={`flex-1 py-4 px-6 rounded-lg font-semibold text-base transition-all duration-200 flex items-center justify-center gap-2 ${
-							selectedTab === "CLUB_ITEM"
-								? "bg-blue-600 text-white shadow-lg shadow-blue-200"
-								: "bg-white text-gray-700 hover:bg-gray-50 border-2 border-gray-200"
-						}`}
-					>
-						<Gift className="h-5 w-5" />
-						Club Gift
-					</button>
-					<button
-						onClick={() => {
-							setSelectedTab("EVENT_ITEM")
-							setCurrentPage(1)
-						}}
-						className={`flex-1 py-4 px-6 rounded-lg font-semibold text-base transition-all duration-200 flex items-center justify-center gap-2 ${
-							selectedTab === "EVENT_ITEM"
-								? "bg-purple-600 text-white shadow-lg shadow-purple-200"
-								: "bg-white text-gray-700 hover:bg-gray-50 border-2 border-gray-200"
-						}`}
-					>
-						<Package className="h-5 w-5" />
-						Event Gift
-					</button>
-				</div>
-
-				{/* Gift Completed Button - Only show when EVENT_ITEM tab is selected */}
-				{selectedTab === "EVENT_ITEM" && (
-					<div className="flex justify-end -mt-4">
+					{/* Tab Buttons - Moved to top */}
+					<div className="flex gap-3 -mt-4">
 						<button
-							onClick={() => router.push(`/student/gift/completed?clubId=${selectedClubId}`)}
-							className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors inline-flex items-center gap-2 shadow-md"
+							onClick={() => {
+								setSelectedTab("CLUB_ITEM")
+								setCurrentPage(1)
+							}}
+							className={`flex-1 py-4 px-6 rounded-lg font-semibold text-base transition-all duration-200 flex items-center justify-center gap-2 
+								${selectedTab === "CLUB_ITEM"
+									? "bg-blue-600 text-white shadow-lg shadow-blue-200"
+									: "bg-white text-gray-700 hover:bg-gray-50 border-2 border-gray-200"
+								}`}
+						>
+							<Gift className="h-5 w-5" />
+							Club Gift
+						</button>
+						<button
+							onClick={() => {
+								setSelectedTab("EVENT_ITEM")
+								setCurrentPage(1)
+							}}
+							className={`flex-1 py-4 px-6 rounded-lg font-semibold text-base transition-all duration-200 flex items-center justify-center gap-2 
+								${selectedTab === "EVENT_ITEM"
+									? "bg-purple-600 text-white shadow-lg shadow-purple-200"
+									: "bg-white text-gray-700 hover:bg-gray-50 border-2 border-gray-200"
+								}`}
 						>
 							<Package className="h-5 w-5" />
-							Gift Completed
+							Event Gift
 						</button>
 					</div>
-				)}					{/* Search and Filter Section */}
+
+					{/* Gift Completed Button - Only show when EVENT_ITEM tab is selected */}
+					{selectedTab === "EVENT_ITEM" && (
+						<div className="flex justify-end -mt-4">
+							<button
+								onClick={() => router.push(`/student/gift/completed?clubId=${selectedClubId}`)}
+								className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors inline-flex items-center 
+								gap-2 shadow-md"
+							>
+								<Package className="h-5 w-5" />
+								Gift Completed
+							</button>
+						</div>
+					)}					{/* Search and Filter Section */}
 					<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 dark:bg-slate-900 dark:border-slate-800">
 						<div className="flex flex-col md:flex-row gap-3">
-							<div className="relative flex-1">
+							<div className="relative flex-1 ">
 								<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-slate-400" />
 								<Input
 									placeholder="Search for gifts..."
@@ -340,8 +343,29 @@ export default function MemberGiftPage() {
 										setSearchTerm(e.target.value)
 										setCurrentPage(1)
 									}}
-									className="pl-10 h-11 border-gray-300 focus:border-blue-500 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-950/50 dark:text-slate-100"
+									// Cập nhật: Thêm pr-10 để tránh chữ bị nút X che
+									className="pl-10 pr-10 h-11 border-gray-300 focus:border-blue-500 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-950/50 
+									dark:text-slate-100"
 								/>
+
+								{/* Nút Clear Search */}
+								{searchTerm && (
+									<Button
+										variant="ghost"
+										size="icon"
+										type="button"
+										onClick={() => {
+											setSearchTerm("")
+											setCurrentPage(1) // Reset về trang 1 khi xóa tìm kiếm
+										}}
+										// Style: Tuyệt đối bên phải, hover chuyển màu Primary
+										className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full text-slate-400 hover:bg-primary 
+										hover:text-primary-foreground transition-colors"
+									>
+										<X className="h-4 w-4" />
+										<span className="sr-only">Clear search</span>
+									</Button>
+								)}
 							</div>
 
 							{userClubIds.length > 0 && (
@@ -371,8 +395,8 @@ export default function MemberGiftPage() {
 						</div>
 					</div>
 
-				{/* Products Grid */}
-				<div className="grid gap-4 grid-cols-4">
+					{/* Products Grid */}
+					<div className="grid gap-4 grid-cols-4">
 						{(isLoading || profileLoading) ? (
 							<div className="col-span-full">
 								<div className="bg-white rounded-lg border border-gray-200 p-16 text-center dark:bg-slate-900 dark:border-slate-800">
@@ -401,9 +425,10 @@ export default function MemberGiftPage() {
 									</div>
 									<h3 className="text-2xl font-bold mb-2 text-orange-900">No Club Membership</h3>
 									<p className="text-orange-700 mb-6">Join a club to start redeeming amazing rewards!</p>
-									<button 
+									<button
 										onClick={() => router.push('/student/club')}
-										className="px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-semibold rounded-lg transition-colors inline-flex items-center gap-2"
+										className="px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white 
+										font-semibold rounded-lg transition-colors inline-flex items-center gap-2"
 									>
 										<Layers className="h-4 w-4" />
 										Browse Clubs
@@ -421,9 +446,10 @@ export default function MemberGiftPage() {
 										{searchTerm ? "Try adjusting your search terms" : `No ${selectedTab === "CLUB_ITEM" ? "club" : "event"} gifts available`}
 									</p>
 									{searchTerm && (
-										<button 
+										<button
 											onClick={() => setSearchTerm("")}
-											className="px-6 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium rounded-lg transition-colors dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-100"
+											className="px-6 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium rounded-lg transition-colors 
+											dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-100"
 										>
 											Clear Search
 										</button>
@@ -440,10 +466,11 @@ export default function MemberGiftPage() {
 								return (
 									<div
 										key={p.id}
-										className="group bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-1 flex flex-col dark:bg-slate-900 dark:border-slate-800"
+										className="group bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300 
+										hover:-translate-y-1 flex flex-col dark:bg-slate-900 dark:border-slate-800"
 									>
 										{/* Image Section */}
-										<div 
+										<div
 											className="relative aspect-square overflow-hidden bg-gray-100 cursor-pointer dark:bg-slate-800"
 											onClick={() => router.push(detailUrl)}
 										>
@@ -453,7 +480,7 @@ export default function MemberGiftPage() {
 												className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
 												onError={(e) => (e.currentTarget.src = "/placeholder.svg")}
 											/>
-											
+
 											{/* Stock Badge */}
 											{isOutOfStock && (
 												<div className="absolute top-2 left-2 bg-red-500 text-white text-xs font-semibold px-2 py-1 rounded-full">
@@ -465,7 +492,8 @@ export default function MemberGiftPage() {
 										<div className="p-3 flex flex-col gap-2 grow">
 											{/* Title */}
 											<h3
-												className="text-sm font-bold line-clamp-2 cursor-pointer hover:text-blue-600 transition-colors min-h-10 dark:text-slate-100 dark:hover:text-blue-400"
+												className="text-sm font-bold line-clamp-2 cursor-pointer hover:text-blue-600 transition-colors min-h-10 
+												dark:text-slate-100 dark:hover:text-blue-400"
 												title={p.name}
 												onClick={() => router.push(detailUrl)}
 											>
@@ -483,13 +511,15 @@ export default function MemberGiftPage() {
 													{p.tags.slice(0, 4).map((tag) => (
 														<span
 															key={tag}
-															className="text-xs font-medium px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800"
+															className="text-xs font-medium px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200 
+															dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800"
 														>
 															{tag}
 														</span>
 													))}
 													{p.tags.length > 4 && (
-														<span className="text-xs font-medium px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded dark:bg-slate-800 dark:text-slate-200">
+														<span className="text-xs font-medium px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded dark:bg-slate-800 
+														dark:text-slate-200">
 															+{p.tags.length - 4}
 														</span>
 													)}
@@ -517,7 +547,8 @@ export default function MemberGiftPage() {
 												<button
 													onClick={() => router.push(detailUrl)}
 													disabled={isRedeeming}
-													className="w-full py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+													className="w-full py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg 
+													transition-colors duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
 												>
 													{isRedeeming ? (
 														<>

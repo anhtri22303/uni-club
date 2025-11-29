@@ -16,11 +16,11 @@ import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import { safeSessionStorage } from "@/lib/browser-utils"
 import { useClubEvents, useClubs, useMyEventRegistrations, useEventsByClubId } from "@/hooks/use-query-hooks"
-import { 
-  timeObjectToString, 
-  registerForEvent, 
+import {
+  timeObjectToString,
+  registerForEvent,
   cancelEventRegistration,
-  isMultiDayEvent, 
+  isMultiDayEvent,
   formatEventDateRange,
   getEventDurationDays,
   getEventStartTime,
@@ -106,10 +106,10 @@ export default function MemberEventsPage() {
   //    USE REACT QUERY to fetch events for the SELECTED club only
   const selectedClubIdNumber = selectedClubId ? Number(selectedClubId) : null
   const { data: selectedClubEvents = [], isLoading: selectedClubLoading } = useEventsByClubId(
-    selectedClubIdNumber || 0, 
+    selectedClubIdNumber || 0,
     !!selectedClubIdNumber
   )
-  
+
   // Store all events for calendar (without filter)
   const allClubEvents = selectedClubEvents
 
@@ -140,7 +140,7 @@ export default function MemberEventsPage() {
         return false // Hide PRIVATE events from clubs the user is not a member of
       }
     }
-    
+
     // Filter by registered events only if showRegisteredOnly is true
     if (showRegisteredOnly && !isEventRegistered(event.id)) {
       return false
@@ -150,7 +150,7 @@ export default function MemberEventsPage() {
     const isExpired = isEventExpired(event)
     const eventDate = event.startDate || event.date
     const isFutureEvent = eventDate && new Date(eventDate) >= new Date(new Date().toDateString())
-    
+
     // By default, only show future events that are APPROVED, ONGOING, or COMPLETED
     const expiredFilter = activeFilters["expired"]
     if (expiredFilter === "hide") {
@@ -171,7 +171,7 @@ export default function MemberEventsPage() {
       // Only show APPROVED, ONGOING, or COMPLETED events (exclude REJECTED, PENDING, etc.)
       if (event.status !== "APPROVED" && event.status !== "ONGOING" && event.status !== "COMPLETED") return false
     }
-    
+
     return true
   })
 
@@ -192,7 +192,7 @@ export default function MemberEventsPage() {
   const getEventStatus = (event: any) => {
     // Nếu event.status là ONGOING thì bắt buộc phải là "Now"
     if (event?.status === "ONGOING") return "Now"
-    
+
     if (!event?.date) return "Finished"
     const now = new Date()
     const startTimeStr = timeObjectToString(event.startTime || event.time)
@@ -230,11 +230,11 @@ export default function MemberEventsPage() {
 
   const handleConfirmRegister = async () => {
     if (!selectedEventForRegistration) return
-    
+
     const eventId = selectedEventForRegistration.id
     setRegisteringEventId(eventId)
     setShowConfirmModal(false)
-    
+
     try {
       const result = await registerForEvent(eventId)
       toast({
@@ -264,11 +264,11 @@ export default function MemberEventsPage() {
 
   const handleConfirmCancel = async () => {
     if (!selectedEventForCancellation) return
-    
+
     const eventId = selectedEventForCancellation.id
     setCancellingEventId(eventId)
     setShowCancelModal(false)
-    
+
     try {
       const result = await cancelEventRegistration(eventId)
       toast({
@@ -316,17 +316,40 @@ export default function MemberEventsPage() {
             </div>
           </div>
 
-          {/*    CẬP NHẬT: Thêm dropdown chọn club */}
+          {/* Thêm dropdown chọn club */}
           <div className="flex flex-wrap gap-4">
-            <Input
-              placeholder="Search events..."
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value)
-                setCurrentPage(1)
-              }}
-              className="max-w-sm flex-1 min-w-[200px]"
-            />
+            {/* Search Bar Wrapper */}
+            <div className="relative max-w-sm flex-1 min-w-[200px]">
+              <Input
+                placeholder="Search events..."
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value)
+                  setCurrentPage(1)
+                }}
+                // Thêm pr-10 để tránh chữ bị nút X che
+                className="pr-10 w-full bg-white border-slate-300"
+              />
+
+              {/* Nút Clear Search */}
+              {searchTerm && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  type="button"
+                  onClick={() => {
+                    setSearchTerm("")
+                    setCurrentPage(1) // Reset về trang 1 khi xóa tìm kiếm
+                  }}
+                  // Style: Tuyệt đối bên phải, hover chuyển màu Primary + chữ trắng
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full text-slate-400 hover:bg-primary hover:text-primary-foreground transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                  <span className="sr-only">Clear search</span>
+                </Button>
+              )}
+            </div>
+
 
             {/* Dropdown chọn Club */}
             {userClubIds.length > 0 && (
@@ -425,7 +448,7 @@ export default function MemberEventsPage() {
               paginatedEvents.map((event: any) => {
                 const isExpired = isEventExpired(event)
                 const status = isExpired ? "Finished" : getEventStatus(event)
-                
+
                 // Determine border color based on event status
                 let borderColor = ""
                 if (event.status === "COMPLETED") {
@@ -451,7 +474,7 @@ export default function MemberEventsPage() {
                             </CardDescription>
                           </div>
                         </div>
-                        
+
                         <div className="flex flex-wrap items-start gap-2">
                           <Badge
                             variant="outline"
@@ -476,7 +499,7 @@ export default function MemberEventsPage() {
                               return receivePoint
                             })()} pts
                           </Badge>
-                          
+
                           {event.status === "COMPLETED" ? (
                             <Badge variant="outline" className="bg-blue-900 text-white border-blue-900 font-semibold text-xs">
                               <span className="inline-block w-2 h-2 rounded-full bg-white mr-1"></span>
@@ -569,12 +592,12 @@ export default function MemberEventsPage() {
                                 disabled={registeringEventId === event.id || event.status === "COMPLETED" || isExpired || isEventRegistered(event.id)}
                                 onClick={() => handleRegisterClick(event)}
                               >
-                                {registeringEventId === event.id 
-                                  ? "Registering..." 
-                                  : isEventRegistered(event.id) 
-                                    ? "Registered" 
+                                {registeringEventId === event.id
+                                  ? "Registering..."
+                                  : isEventRegistered(event.id)
+                                    ? "Registered"
                                     : event.status === "COMPLETED" || isExpired
-                                      ? "Ended" 
+                                      ? "Ended"
                                       : "Register"}
                               </Button>
                               {isEventRegistered(event.id) && (
@@ -635,7 +658,7 @@ export default function MemberEventsPage() {
                 <div className="rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
                   <div className="flex flex-wrap items-center gap-3">
                     <div className="flex items-center gap-2">
-                      <Badge 
+                      <Badge
                         variant="outline"
                         className="bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border-blue-500 dark:border-blue-700"
                       >
@@ -647,7 +670,7 @@ export default function MemberEventsPage() {
                       <span>Registered successfully.</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Badge 
+                      <Badge
                         variant="outline"
                         className="bg-green-100 dark:bg-green-950/50 text-green-700 dark:text-green-400 border-green-500 dark:border-green-700"
                       >
@@ -680,20 +703,20 @@ export default function MemberEventsPage() {
                               </CardDescription>
                             </div>
                             <div className="flex flex-col items-end gap-2">
-                              <Badge 
+                              <Badge
                                 variant="outline"
                                 className={
-                                  registration.status === "ATTENDED" 
-                                    ? "bg-green-100 dark:bg-green-950/50 text-green-700 dark:text-green-400 border-green-500 dark:border-green-700" 
-                                    : registration.status === "CHECKED_IN"
+                                  registration.status === "ATTENDED"
                                     ? "bg-green-100 dark:bg-green-950/50 text-green-700 dark:text-green-400 border-green-500 dark:border-green-700"
-                                    : registration.status === "REGISTERED"
-                                    ? "bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border-blue-500 dark:border-blue-700"
-                                    : registration.status === "CONFIRMED"
-                                    ? "bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border-blue-500 dark:border-blue-700"
-                                    : registration.status === "ABSENT"
-                                    ? "bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-400 border-red-500 dark:border-red-700"
-                                    : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-400 dark:border-gray-600"
+                                    : registration.status === "CHECKED_IN"
+                                      ? "bg-green-100 dark:bg-green-950/50 text-green-700 dark:text-green-400 border-green-500 dark:border-green-700"
+                                      : registration.status === "REGISTERED"
+                                        ? "bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border-blue-500 dark:border-blue-700"
+                                        : registration.status === "CONFIRMED"
+                                          ? "bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border-blue-500 dark:border-blue-700"
+                                          : registration.status === "ABSENT"
+                                            ? "bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-400 border-red-500 dark:border-red-700"
+                                            : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-400 dark:border-gray-600"
                                 }
                               >
                                 {registration.status}
@@ -764,10 +787,10 @@ export default function MemberEventsPage() {
                         {selectedEventForRegistration.hostClub?.name}
                       </div>
                     </div>
-                    
+
                     <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 space-y-3">
                       <div className="flex items-start gap-3">
-                            <Ticket className="h-5 w-5 text-yellow-600 mt-0.5 shrink-0" />
+                        <Ticket className="h-5 w-5 text-yellow-600 mt-0.5 shrink-0" />
                         <div className="space-y-2 text-sm">
                           <p className="font-semibold text-yellow-900">
                             Point Cost: {selectedEventForRegistration.commitPointCost || 0} points
@@ -783,7 +806,7 @@ export default function MemberEventsPage() {
                     </div>
                   </>
                 )}
-                
+
                 <div className="flex gap-3 pt-2">
                   <Button
                     variant="outline"
@@ -823,7 +846,7 @@ export default function MemberEventsPage() {
                         {selectedEventForCancellation.hostClub?.name}
                       </div>
                     </div>
-                    
+
                     <div className="bg-red-50 border border-red-200 rounded-lg p-4 space-y-2">
                       <p className="text-sm text-red-800">
                         Are you sure you want to cancel your registration for this event?
@@ -834,7 +857,7 @@ export default function MemberEventsPage() {
                     </div>
                   </>
                 )}
-                
+
                 <div className="flex gap-3 pt-2">
                   <Button
                     variant="outline"
