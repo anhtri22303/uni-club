@@ -218,9 +218,27 @@ export default function UniStaffEventRequestsPage() {
 		}
 	}, [])
 
+	// Helper function to check if event has valid date/time
+	const hasValidDateTime = (event: any): boolean => {
+		// Check if event has multi-day format (days array)
+		const isMultiDay = !!(event.days && event.days.length > 0)
+		
+		// Check if event has single-day format (date and endTime)
+		const isSingleDay = !!(event.date || event.endTime)
+		
+		// Event must have either multi-day or single-day date/time
+		return isMultiDay || isSingleDay
+	}
+
 	// Filter events based on active tab and search/filters
 	const filteredRequests = events
 		.filter((evt) => {
+			// Filter out events without valid date/time (draft events)
+			// These events are not ready for review and should not appear in the list
+			if (!hasValidDateTime(evt)) {
+				return false
+			}
+
 			// Hide PENDING_COCLUB events by default unless toggle is enabled
 			if (!showWaitingCoClub && (evt.status ?? "").toUpperCase() === "PENDING_COCLUB") {
 				return false
@@ -419,13 +437,36 @@ export default function UniStaffEventRequestsPage() {
 	}
 
 	// Compute counts by status (prefer `status` field). Fallback to type-based heuristics when missing
+	// Only count events with valid date/time
 	const totalCount = events.length
-	const waitingUniStaffCount = events.filter((e) => (e.status ?? "").toUpperCase() === "PENDING_UNISTAFF" && !isEventExpired(e)).length
-	const approvedCount = events.filter((e) => (e.status ?? "").toUpperCase() === "APPROVED" && !isEventExpired(e)).length
-	const ongoingCount = events.filter((e) => (e.status ?? "").toUpperCase() === "ONGOING" && !isEventExpired(e)).length
-	const rejectedCount = events.filter((e) => (e.status ?? "").toUpperCase() === "REJECTED").length
-	const completedCount = events.filter((e) => (e.status ?? "").toUpperCase() === "COMPLETED").length
-	const waitingCoClubCount = events.filter((e) => (e.status ?? "").toUpperCase() === "PENDING_COCLUB" && !isEventExpired(e)).length
+	const waitingUniStaffCount = events.filter((e) => 
+		(e.status ?? "").toUpperCase() === "PENDING_UNISTAFF" && 
+		hasValidDateTime(e) && 
+		!isEventExpired(e)
+	).length
+	const approvedCount = events.filter((e) => 
+		(e.status ?? "").toUpperCase() === "APPROVED" && 
+		hasValidDateTime(e) && 
+		!isEventExpired(e)
+	).length
+	const ongoingCount = events.filter((e) => 
+		(e.status ?? "").toUpperCase() === "ONGOING" && 
+		hasValidDateTime(e) && 
+		!isEventExpired(e)
+	).length
+	const rejectedCount = events.filter((e) => 
+		(e.status ?? "").toUpperCase() === "REJECTED" && 
+		hasValidDateTime(e)
+	).length
+	const completedCount = events.filter((e) => 
+		(e.status ?? "").toUpperCase() === "COMPLETED" && 
+		hasValidDateTime(e)
+	).length
+	const waitingCoClubCount = events.filter((e) => 
+		(e.status ?? "").toUpperCase() === "PENDING_COCLUB" && 
+		hasValidDateTime(e) && 
+		!isEventExpired(e)
+	).length
 
 	return (
 		<ProtectedRoute allowedRoles={["uni_staff"]}>

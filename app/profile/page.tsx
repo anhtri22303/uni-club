@@ -24,6 +24,9 @@ import { CompleteProfileModal } from "@/components/complete-profile-modal"
 import { ApiMembershipWallet } from "@/service/walletApi"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from "@/components/ui/select"
 import { Major, fetchMajors } from "@/service/majorApi" // Import từ majorApi
+import { fetchUser } from "@/service/userApi"
+import { fetchEvent } from "@/service/eventApi"
+import { fetchClub } from "@/service/clubApi"
 
 // Types for profile data
 interface ProfileData {
@@ -97,12 +100,13 @@ export default function ProfilePage() {
   // State for studentCode validation error
   const [studentCodeError, setStudentCodeError] = useState<string | null>(null)
 
-  // Static data for administrators
-  const adminStats = {
-    totalUsers: "1,247",
-    activeEvents: "89",
-    reportsGenerated: "156",
-  }
+  // State for admin statistics (real data from APIs)
+  const [adminStats, setAdminStats] = useState({
+    totalUsers: 0,
+    totalClubs: 0,
+    totalEvents: 0,
+  })
+  const [adminStatsLoading, setAdminStatsLoading] = useState(true)
 
   const formatRoleName = (roleId?: string | null) => {
     if (!roleId) return ""
@@ -115,6 +119,38 @@ export default function ProfilePage() {
       staff: "STAFF",
     }
     return map[String(roleId).toLowerCase()] || String(roleId).replace(/_/g, " ").toUpperCase()
+  }
+
+  // Load admin statistics from APIs
+  const loadAdminStats = async () => {
+    try {
+      setAdminStatsLoading(true)
+      
+      // Call all APIs in parallel
+      const [users, events, clubs] = await Promise.all([
+        fetchUser(),
+        fetchEvent(),
+        fetchClub()
+      ])
+      
+      // Calculate totals
+      const totalUsers = Array.isArray(users) ? users.length : 0
+      const totalEvents = Array.isArray(events) ? events.length : 0
+      const totalClubs = clubs?.data?.content ? clubs.data.content.length : 0
+      
+      setAdminStats({
+        totalUsers,
+        totalClubs,
+        totalEvents,
+      })
+      
+      console.log('Admin stats loaded:', { totalUsers, totalClubs, totalEvents })
+    } catch (error) {
+      console.error('Error loading admin stats:', error)
+      // Keep default values on error
+    } finally {
+      setAdminStatsLoading(false)
+    }
   }
 
   // Load profile data from API
@@ -270,6 +306,14 @@ export default function ProfilePage() {
   useEffect(() => {
     loadProfile()
   }, [auth.userId])
+
+  // Load admin statistics for admin users
+  useEffect(() => {
+    const isAdminRole = ["uni_staff", "uni_admin", "admin", "staff"].includes(auth.role || "")
+    if (isAdminRole) {
+      loadAdminStats()
+    }
+  }, [auth.role])
 
   // Handle profile update (không bao gồm avatar)
   // const handleSave = async () => {
@@ -1044,31 +1088,43 @@ export default function ProfilePage() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                      <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
                         <div className="flex items-center gap-3">
                           <Users className="h-6 w-6 text-blue-600" />
-                          <span className="text-gray-700">Total Users</span>
+                          <span className="text-gray-700 dark:text-gray-300">Total Users</span>
                         </div>
-                        <span className="text-xl font-bold text-blue-600">{adminStats.totalUsers}</span>
+                        {adminStatsLoading ? (
+                          <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                        ) : (
+                          <span className="text-xl font-bold text-blue-600">{adminStats.totalUsers.toLocaleString()}</span>
+                        )}
                       </div>
-                      <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                      <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-950/30 rounded-lg">
                         <div className="flex items-center gap-3">
                           <Calendar className="h-6 w-6 text-green-600" />
-                          <span className="text-gray-700">Active Events</span>
+                          <span className="text-gray-700 dark:text-gray-300">Total Events</span>
                         </div>
-                        <span className="text-xl font-bold text-green-600">{adminStats.activeEvents}</span>
+                        {adminStatsLoading ? (
+                          <Loader2 className="h-5 w-5 animate-spin text-green-600" />
+                        ) : (
+                          <span className="text-xl font-bold text-green-600">{adminStats.totalEvents.toLocaleString()}</span>
+                        )}
                       </div>
-                      <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+                      <div className="flex items-center justify-between p-3 bg-purple-50 dark:bg-purple-950/30 rounded-lg">
                         <div className="flex items-center gap-3">
-                          <FileText className="h-6 w-6 text-purple-600" />
-                          <span className="text-gray-700">Reports Generated</span>
+                          <Building2 className="h-6 w-6 text-purple-600" />
+                          <span className="text-gray-700 dark:text-gray-300">Total Clubs</span>
                         </div>
-                        <span className="text-xl font-bold text-purple-600">{adminStats.reportsGenerated}</span>
+                        {adminStatsLoading ? (
+                          <Loader2 className="h-5 w-5 animate-spin text-purple-600" />
+                        ) : (
+                          <span className="text-xl font-bold text-purple-600">{adminStats.totalClubs.toLocaleString()}</span>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
 
-                  <Card>
+                  {/* <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-3 text-xl">
                         <Clock className="h-5 w-5 text-primary" />
@@ -1098,7 +1154,7 @@ export default function ProfilePage() {
                         </div>
                       </div>
                     </CardContent>
-                  </Card>
+                  </Card> */}
                 </div>
               </div>
             </div>

@@ -78,6 +78,9 @@ export default function StudentProductViewPage() {
   const searchParams = useSearchParams();
   const clubIdFromQuery = searchParams.get("clubId");
 
+  // Giới hạn số lượng tối đa mỗi lần redeem
+  const MAX_QUANTITY_PER_REDEEM = 5;
+
   const fetchProduct = useCallback(async () => {
     // Chờ cả productId VÀ clubIdFromQuery
     if (!productId || !clubIdFromQuery) {
@@ -198,6 +201,11 @@ export default function StudentProductViewPage() {
     return fullProfile?.wallet?.balancePoints ?? 0;
   }, [fullProfile]);
 
+  // **TÍNH TOÁN GIỚI HẠN SỐ LƯỢNG MỖI LẦN REDEEM**
+  const maxAllowedQuantity = product
+    ? Math.min(product.stockQuantity, MAX_QUANTITY_PER_REDEEM)
+    : 0;
+
   // **TÍNH TOÁN TỔNG CHI PHÍ**
   const totalCost = product ? product.pointCost * quantity : 0;
   // **KIỂM TRA ĐỦ ĐIỂM**
@@ -243,6 +251,17 @@ export default function StudentProductViewPage() {
     setQuantity((prev) => {
       const newQuantity = prev + amount;
       if (newQuantity < 1) return 1; // Tối thiểu là 1
+      
+      // Check max quantity per redeem
+      if (newQuantity > MAX_QUANTITY_PER_REDEEM) {
+        toast({
+          title: "Quantity Limit",
+          description: `You can only redeem up to ${MAX_QUANTITY_PER_REDEEM} items per transaction.`,
+          variant: "destructive",
+        });
+        return MAX_QUANTITY_PER_REDEEM;
+      }
+      
       if (product && newQuantity > product.stockQuantity) {
         toast({
           title: "Warning",
@@ -650,7 +669,7 @@ export default function StudentProductViewPage() {
                         size="icon"
                         onClick={() => handleQuantityChange(1)}
                         disabled={
-                          quantity >= product.stockQuantity || !canRedeem
+                          quantity >= maxAllowedQuantity || !canRedeem
                         }
                         className="h-12 w-12 rounded-xl border-2 hover:bg-gradient-to-br hover:from-blue-50 hover:to-purple-50 transition-all duration-300 hover:scale-110 disabled:hover:scale-100 dark:border-slate-700 dark:bg-slate-900"
                       >

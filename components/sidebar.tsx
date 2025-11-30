@@ -18,6 +18,7 @@ import { getClubStats, getClubIdFromToken } from "@/service/clubApi";
 import {
   getEventByClubId,
   timeObjectToString,
+  isEventExpired,
   type Event,
 } from "@/service/eventApi";
 import { getLeaveReq, type LeaveRequest } from "@/service/membershipApi";
@@ -223,46 +224,6 @@ const navigationConfig = {
 
   ],
 } as const;
-
-// Helper function to check if event has expired
-const isEventExpired = (event: Event): boolean => {
-  // COMPLETED status is always considered expired
-  if (event.status === "COMPLETED") return true;
-
-  // Check if date and endTime are present
-  if (!event.date || !event.endTime) return false;
-
-  try {
-    // Get current date/time
-    const now = new Date();
-
-    // Parse event date (format: YYYY-MM-DD)
-    const [year, month, day] = event.date.split("-").map(Number);
-
-    // Convert endTime to string if it's an object
-    const endTimeStr = timeObjectToString(event.endTime);
-
-    // Parse endTime (format: HH:MM:SS or HH:MM)
-    const [hours, minutes] = endTimeStr.split(":").map(Number);
-
-    // Create event end datetime (using local timezone consistently)
-    const eventEndDateTime = new Date(
-      year,
-      month - 1,
-      day,
-      hours,
-      minutes,
-      0,
-      0
-    );
-
-    // Event is expired if current time is past the end time
-    return now > eventEndDateTime;
-  } catch (error) {
-    console.error("Error checking event expiration:", error);
-    return false;
-  }
-};
 
 export function Sidebar({ onNavigate, open = true }: SidebarProps) {
   const { auth } = useAuth();
@@ -718,8 +679,6 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
         (app: any) => app.status === "PENDING"
       ).length;
       setPendingUniStaffClubApplicationsCount(pendingCount);
-
-      // console.log("Uni Staff sidebar - Pending club applications:", pendingCount)
     } else {
       setPendingUniStaffClubApplicationsCount(0);
     }
@@ -734,53 +693,44 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
         : (uniStaffEventsData as any)?.data || [];
 
       // Filter events that:
-      // 1. Have valid date and endTime
-      // 2. Are not expired (still in current time or future)
-      // 3. Have status PENDING_COCLUB or PENDING_UNISTAFF
+      // 1. Have status PENDING_COCLUB or PENDING_UNISTAFF
+      // 2. Have valid date/time AND are not expired
+      // Note: Events without date/time are shown in the list but NOT counted in badge
       const pendingEvents = events.filter((event: Event) => {
-        // Check status first
-        const isPending =
-          event.status === "PENDING_COCLUB" ||
-          event.status === "PENDING_UNISTAFF";
-        if (!isPending) return false;
-
-        // Check if event has valid date and endTime
-        if (!event.date || !event.endTime) {
-          console.warn("Event missing date or endTime:", event);
-          return false;
-        }
-
-        // Check if event is not expired (still in current time or future)
-        const notExpired = !isEventExpired(event);
-        if (!notExpired) return false;
-
-        // Additional validation: ensure event end time is in the future or current
         try {
-          const now = new Date();
-          const [year, month, day] = event.date.split("-").map(Number);
-          const endTimeStr = timeObjectToString(event.endTime);
-          const [hours, minutes] = endTimeStr.split(":").map(Number);
-          const eventEndDateTime = new Date(
-            year,
-            month - 1,
-            day,
-            hours,
-            minutes,
-            0,
-            0
-          );
+          // Check status first
+          const isPending =
+            event.status === "PENDING_COCLUB" ||
+            event.status === "PENDING_UNISTAFF";
+          
+          if (!isPending) {
+            return false;
+          }
 
-          // Event is valid if end time is in the future or current (not past)
-          return now <= eventEndDateTime;
+          // Check if event has multi-day format (days array)
+          const isMultiDay = !!(event.days && event.days.length > 0);
+          
+          // Check if event has single-day format (date and endTime)
+          const isSingleDay = !!(event.date || event.endTime);
+          
+          // Events without date info are NOT counted in badge (excluded from filter)
+          // They appear in the main list but don't contribute to pending count
+          if (!isMultiDay && !isSingleDay) {
+            return false;
+          }
+          
+          // If event has date info, check if expired
+          const expired = isEventExpired(event);
+          
+          return !expired;
         } catch (error) {
-          console.error("Error validating event time:", error, event);
+          console.error(`Error filtering event "${event.name}":`, error);
+          // On error, exclude from badge count for safety
           return false;
         }
       });
 
       setPendingUniStaffEventRequestsCount(pendingEvents.length);
-
-      // console.log("Uni Staff sidebar - Pending event requests (not expired):", pendingEvents.length)
     } else {
       setPendingUniStaffEventRequestsCount(0);
     }
@@ -800,8 +750,6 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
       );
 
       setPendingUniStaffPointRequestsCount(pendingPointRequests.length);
-
-      // console.log("Uni Staff sidebar - Pending point requests:", pendingPointRequests.length)
     } else {
       setPendingUniStaffPointRequestsCount(0);
     }

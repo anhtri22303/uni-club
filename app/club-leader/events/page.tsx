@@ -191,8 +191,16 @@ export default function ClubLeaderEventsPage() {
   const sortEventsByDateTime = (eventList: any[]) => {
     return eventList.sort((a: any, b: any) => {
       // Parse dates for comparison - support both multi-day and single-day events
-      const dateA = new Date(a.startDate || a.date || "1970-01-01");
-      const dateB = new Date(b.startDate || b.date || "1970-01-01");
+      // For multi-day, use first day's date (startDate)
+      let dateAStr = a.startDate || a.date || "1970-01-01";
+      let dateBStr = b.startDate || b.date || "1970-01-01";
+      
+      // If event has days array, use first day's date
+      if (a.days && a.days.length > 0) dateAStr = a.days[0].date;
+      if (b.days && b.days.length > 0) dateBStr = b.days[0].date;
+
+      const dateA = new Date(dateAStr);
+      const dateB = new Date(dateBStr);
 
       // Compare dates first (newest first)
       if (dateA.getTime() !== dateB.getTime()) {
@@ -429,11 +437,35 @@ export default function ClubLeaderEventsPage() {
     // Nếu event.status là ONGOING thì bắt buộc phải là "Now"
     if (event?.status === "ONGOING") return "Now";
 
-    // Support both multi-day (startDate) and single-day (date) events
+    const now = new Date();
+
+    // For multi-day events, use last day's endTime
+    if (event.days && event.days.length > 0) {
+      const firstDay = event.days[0];
+      const lastDay = event.days[event.days.length - 1];
+
+      // Parse first day start
+      const [startHour = "00", startMinute = "00"] = firstDay.startTime.split(":");
+      const [startYear, startMonth, startDay] = firstDay.date.split("-").map(Number);
+      const eventStart = new Date(startYear, startMonth - 1, startDay, Number(startHour), Number(startMinute));
+
+      // Parse last day end
+      const [endHour = "23", endMinute = "59"] = lastDay.endTime.split(":");
+      const [endYear, endMonth, endDay] = lastDay.date.split("-").map(Number);
+      const eventEnd = new Date(endYear, endMonth - 1, endDay, Number(endHour), Number(endMinute));
+
+      if (now.getTime() < eventStart.getTime()) {
+        // If event starts within next 7 days, it's "Soon"
+        if (eventStart.getTime() - now.getTime() < 7 * 24 * 60 * 60 * 1000) return "Soon";
+        return "Future";
+      }
+      if (now.getTime() >= eventStart.getTime() && now.getTime() <= eventEnd.getTime()) return "Now";
+      return "Finished";
+    }
+
+    // Legacy single-day events
     const eventDate = event.startDate || event.date;
     if (!eventDate) return "Finished";
-    // Get current time
-    const now = new Date();
 
     // Convert TimeObject to string if needed
     const startTimeStr = timeObjectToString(event.startTime || event.time);
@@ -487,10 +519,18 @@ export default function ClubLeaderEventsPage() {
   const filteredEvents = effectiveEvents.filter((item) => {
     // Calculate status values
     const isExpired = isEventExpired(item);
-    // Support both multi-day (startDate) and single-day (date) events
-    const itemDate = item.startDate || item.date;
-    const isFutureEvent =
-      itemDate && new Date(itemDate) >= new Date(new Date().toDateString());
+    // For multi-day events, check if event hasn't ended yet (use endDate or last day)
+    // For single-day events, check if event date is today or future
+    let isFutureEvent = false;
+    if (item.days && item.days.length > 0) {
+      // Multi-day: check if last day is today or future
+      const lastDay = item.days[item.days.length - 1];
+      isFutureEvent = lastDay.date && new Date(lastDay.date) >= new Date(new Date().toDateString());
+    } else {
+      // Single-day: check if event date is today or future
+      const itemDate = item.startDate || item.date;
+      isFutureEvent = itemDate && new Date(itemDate) >= new Date(new Date().toDateString());
+    }
 
     const approvalFilter = activeFilters["approval"];
     const expiredFilter = activeFilters["expired"] || "hide";

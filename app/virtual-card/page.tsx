@@ -55,6 +55,9 @@ export default function VirtualCardPage() {
   const [availableClubIds, setAvailableClubIds] = useState<number[]>([])
   const [selectedClubId, setSelectedClubId] = useState<number | null>(null)
   const [loadingCard, setLoadingCard] = useState(false)
+  
+  // Store all clubs data from profile
+  const [allClubsData, setAllClubsData] = useState<Array<{clubId: number, clubName: string}>>([])
 
   // Load profile data and initialize clubIds
   useEffect(() => {
@@ -158,26 +161,16 @@ export default function VirtualCardPage() {
           setSelectedClubId(clubIds[0])
         }
         
-        // Generate QR code with profile data
-        const qrData = JSON.stringify({
-          studentCode: safeProfile.studentCode,
-          email: safeProfile.email,
-          memberId: safeProfile.userId,
-        })
+        // Extract and store clubs data from profile
+        const clubsData = profileAny.clubs && Array.isArray(profileAny.clubs) 
+          ? profileAny.clubs.map((club: any) => ({
+              clubId: club.clubId,
+              clubName: sanitizeString(club.clubName)
+            }))
+          : []
         
-        console.log('Generating QR code with data:', qrData)
-        
-        const qrUrl = await QRCode.toDataURL(qrData, {
-          width: 300,
-          margin: 1,
-          color: {
-            dark: '#000000',
-            light: '#FFFFFF'
-          },
-        })
-        
-        console.log('QR code generated successfully')
-        setQrCodeUrl(qrUrl)
+        setAllClubsData(clubsData)
+        console.log('Stored clubs data:', clubsData)
       } catch (err) {
         console.error("Error loading data:", err)
         setError(err instanceof Error ? err.message : "Failed to load card data")
@@ -188,6 +181,45 @@ export default function VirtualCardPage() {
 
     loadData()
   }, [])
+
+  // Generate QR code when selectedClubId changes
+  useEffect(() => {
+    const generateQRCode = async () => {
+      if (!profileData || !selectedClubId) return
+      
+      try {
+        // Find the selected club from all clubs data
+        const selectedClub = allClubsData.find(club => club.clubId === selectedClubId)
+        
+        // Generate QR code with only the selected club's data
+        const qrData = JSON.stringify({
+          studentCode: profileData.studentCode,
+          email: profileData.email,
+          memberId: profileData.userId,
+          clubId: selectedClub?.clubId,
+          clubName: selectedClub?.clubName,
+        })
+        
+        console.log('Generating QR code for selected club:', qrData)
+        
+        const qrUrl = await QRCode.toDataURL(qrData, {
+          width: 300,
+          margin: 1,
+          color: {
+            dark: '#000000',
+            light: '#FFFFFF'
+          },
+        })
+        
+        console.log('QR code generated successfully for club:', selectedClubId)
+        setQrCodeUrl(qrUrl)
+      } catch (err) {
+        console.error('Error generating QR code:', err)
+      }
+    }
+    
+    generateQRCode()
+  }, [selectedClubId, profileData, allClubsData])
 
   // Fetch card design when selectedClubId changes
   useEffect(() => {
