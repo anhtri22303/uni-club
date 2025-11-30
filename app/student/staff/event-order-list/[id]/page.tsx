@@ -273,7 +273,7 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                 )
             case "REFUNDED":
                 return (
-                    <Badge className="px-4 py-2 bg-gradient-to-r from-blue-400 to-cyan-500 text-white border-0 shadow-lg font-semibold text-sm">
+                    <Badge className="px-4 py-2 bg-gradient-to-r from-red-400 to-rose-500 text-white border-0 shadow-lg font-semibold text-sm">
                         <Undo2 className="h-4 w-4 mr-2" />
                         Refunded
                     </Badge>
@@ -375,30 +375,140 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
         <ProtectedRoute allowedRoles={["student"]}>
             <AppShell>
                 <div className="space-y-6">
-                    {/* Header Section */}
-                    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 dark:from-slate-800 dark:via-slate-900 dark:to-black border border-slate-600 dark:border-slate-700 p-6 shadow-lg">
-                        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-                        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2" />
-                        
-                        <div className="relative z-10">
+                    {/* Order Progress Bar */}
+                    <div className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 shadow-lg">
+                        {/* Back Button */}
+                        <div className="p-4 border-b border-gray-200 dark:border-slate-700">
                             <Link href="/student/staff/event-order-list">
-                                <Button variant="ghost" size="sm" className="mb-4 hover:bg-white/10 text-white">
-                                    <ArrowLeft className="h-4 w-4 mr-2" />
+                                <Button variant="ghost" size="sm" className="gap-2 hover:bg-gray-100 dark:hover:bg-slate-700">
+                                    <ArrowLeft className="h-4 w-4" />
                                     Back to Event Order List
                                 </Button>
                             </Link>
-                            
-                            <div className="flex items-start justify-between gap-4">
-                                <div className="flex items-center gap-4">
-                                    <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 shadow-xl">
-                                        <Package className="h-8 w-8 text-white" />
-                                    </div>
-                                    <div>
-                                        <h1 className="text-4xl font-bold text-white mb-1">Order #{order.orderCode}</h1>
-                                    </div>
+                        </div>
+
+                        {/* Order Header */}
+                        <div className="px-6 py-4 flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg">
+                                    <Package className="h-6 w-6 text-white" />
                                 </div>
                                 <div>
-                                    {getStatusBadge(order.status)}
+                                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                                        Order #{order.orderCode}
+                                    </h1>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                        Placed on {new Date(order.createdAt).toLocaleDateString('en-US', { 
+                                            year: 'numeric', month: 'long', day: 'numeric' 
+                                        })}
+                                    </p>
+                                </div>
+                            </div>
+                            {getStatusBadge(order.status)}
+                        </div>
+
+                        {/* Progress Bar */}
+                        <div className="px-6 pb-6">
+                            <div className="relative">
+                                {/* Progress Line */}
+                                <div className="absolute top-6 left-0 right-0 h-1 bg-gray-200 dark:bg-slate-700" style={{ marginLeft: '2rem', marginRight: '2rem' }} />
+                                <div 
+                                    className="absolute top-6 left-0 h-1 transition-all duration-500 ease-in-out"
+                                    style={{
+                                        marginLeft: '2rem',
+                                        width: order.status === 'PENDING' ? '0%' : 
+                                               order.status === 'COMPLETED' ? 'calc(50% - 2rem)' : 
+                                               'calc(100% - 4rem)',
+                                        background: order.status === 'PENDING' ? 'transparent' :
+                                                   order.status === 'COMPLETED' ? 'linear-gradient(to right, #10b981, #14b8a6)' :
+                                                   'linear-gradient(to right, #10b981, #14b8a6, #f87171)'
+                                    }}
+                                />
+
+                                {/* Progress Steps */}
+                                <div className="relative flex justify-between items-start">
+                                    {/* Step 1: PENDING */}
+                                    <div className="flex flex-col items-center" style={{ flex: 1 }}>
+                                        <div className={`w-12 h-12 rounded-full flex items-center justify-center border-4 transition-all duration-300 ${
+                                            order.status === 'PENDING' || order.status === 'COMPLETED' || order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
+                                                ? 'bg-gradient-to-br from-yellow-400 to-amber-500 border-yellow-300 shadow-lg shadow-yellow-500/50'
+                                                : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600'
+                                        }`}>
+                                            <Clock className={`h-6 w-6 ${
+                                                order.status === 'PENDING' || order.status === 'COMPLETED' || order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
+                                                    ? 'text-white'
+                                                    : 'text-gray-400 dark:text-gray-500'
+                                            }`} />
+                                        </div>
+                                        <div className="mt-3 text-center">
+                                            <p className={`text-sm font-semibold ${
+                                                order.status === 'PENDING' || order.status === 'COMPLETED' || order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
+                                                    ? 'text-yellow-600 dark:text-yellow-400'
+                                                    : 'text-gray-400 dark:text-gray-500'
+                                            }`}>
+                                                Pending
+                                            </p>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                                Order placed
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Step 2: DELIVERED */}
+                                    <div className="flex flex-col items-center" style={{ flex: 1 }}>
+                                        <div className={`w-12 h-12 rounded-full flex items-center justify-center border-4 transition-all duration-300 ${
+                                            order.status === 'COMPLETED'
+                                                ? 'bg-gradient-to-br from-green-400 to-emerald-500 border-green-300 shadow-lg shadow-green-500/50'
+                                                : (order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED')
+                                                ? 'bg-gradient-to-br from-green-400 to-emerald-500 border-green-300 shadow-lg shadow-green-500/50'
+                                                : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600'
+                                        }`}>
+                                            <CheckCircle className={`h-6 w-6 ${
+                                                order.status === 'COMPLETED' || order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
+                                                    ? 'text-white'
+                                                    : 'text-gray-400 dark:text-gray-500'
+                                            }`} />
+                                        </div>
+                                        <div className="mt-3 text-center">
+                                            <p className={`text-sm font-semibold ${
+                                                order.status === 'COMPLETED' || order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
+                                                    ? 'text-green-600 dark:text-green-400'
+                                                    : 'text-gray-400 dark:text-gray-500'
+                                            }`}>
+                                                Delivered
+                                            </p>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                                Order completed
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Step 3: REFUNDED */}
+                                    <div className="flex flex-col items-center" style={{ flex: 1 }}>
+                                        <div className={`w-12 h-12 rounded-full flex items-center justify-center border-4 transition-all duration-300 ${
+                                            order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
+                                                ? 'bg-gradient-to-br from-red-400 to-rose-500 border-red-300 shadow-lg shadow-red-500/50'
+                                                : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600'
+                                        }`}>
+                                            <Undo2 className={`h-6 w-6 ${
+                                                order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
+                                                    ? 'text-white'
+                                                    : 'text-gray-400 dark:text-gray-500'
+                                            }`} />
+                                        </div>
+                                        <div className="mt-3 text-center">
+                                            <p className={`text-sm font-semibold ${
+                                                order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
+                                                    ? 'text-red-600 dark:text-red-400'
+                                                    : 'text-gray-400 dark:text-gray-500'
+                                            }`}>
+                                                {order.status === 'PARTIALLY_REFUNDED' ? 'Partial Refund' : 'Refunded'}
+                                            </p>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                                {order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED' ? 'Refund processed' : 'If needed'}
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -537,25 +647,25 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
 
                                     {order.status === "REFUNDED" && (
                                         <>
-                                            <div className="h-2 bg-gradient-to-r from-blue-400 via-blue-500 to-cyan-500" />
-                                            <div className="bg-gradient-to-br from-blue-50 via-cyan-50/50 to-white dark:from-blue-900/20 dark:via-cyan-900/20 dark:to-slate-800 p-6">
+                                            <div className="h-2 bg-gradient-to-r from-red-400 via-rose-500 to-pink-500" />
+                                            <div className="bg-gradient-to-br from-red-50 via-rose-50/50 to-white dark:from-red-900/20 dark:via-rose-900/20 dark:to-slate-800 p-6">
                                                 <div className="flex items-start gap-4">
-                                                    <div className="p-3 rounded-xl bg-gradient-to-br from-blue-400 to-cyan-500 shadow-lg flex-shrink-0">
+                                                    <div className="p-3 rounded-xl bg-gradient-to-br from-red-400 to-rose-500 shadow-lg flex-shrink-0">
                                                         <Undo2 className="h-6 w-6 text-white" />
                                                     </div>
                                                     <div className="flex-1">
-                                                        <h3 className="text-lg font-bold text-blue-900 dark:text-blue-200 mb-1">Fully Refunded</h3>
-                                                        <p className="text-sm text-blue-700 dark:text-blue-300">
+                                                        <h3 className="text-lg font-bold text-red-900 dark:text-red-200 mb-1">Fully Refunded</h3>
+                                                        <p className="text-sm text-red-700 dark:text-red-300">
                                                             This order has been completely cancelled and all points refunded.
                                                         </p>
-                                                        <div className="mt-3 flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400">
+                                                        <div className="mt-3 flex items-center gap-2 text-xs text-red-600 dark:text-red-400">
                                                             <Calendar className="h-3.5 w-3.5" />
                                                             <span>{new Date(order.completedAt).toLocaleString('en-US')}</span>
                                                         </div>
 
                                                         {serverRefundImages && serverRefundImages.length > 0 && (
-                                                            <div className="mt-5 pt-4 border-t border-blue-200/60 dark:border-blue-700/50">
-                                                                <label className="text-xs font-bold text-blue-800 dark:text-blue-300 uppercase tracking-wide flex items-center gap-2 mb-3">
+                                                            <div className="mt-5 pt-4 border-t border-red-200/60 dark:border-red-700/50">
+                                                                <label className="text-xs font-bold text-red-800 dark:text-red-300 uppercase tracking-wide flex items-center gap-2 mb-3">
                                                                     <ImageIcon className="h-4 w-4" />
                                                                     Proof of Defect
                                                                 </label>
@@ -563,7 +673,7 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                                                     {serverRefundImages.map((imgItem, index) => (
                                                                         <div 
                                                                             key={imgItem.id}
-                                                                            className="relative group w-20 h-20 rounded-lg overflow-hidden border border-blue-200 dark:border-blue-700 shadow-sm cursor-zoom-in bg-white"
+                                                                            className="relative group w-20 h-20 rounded-lg overflow-hidden border border-red-200 dark:border-red-700 shadow-sm cursor-zoom-in bg-white"
                                                                             onClick={() => setPreviewIndex(index)}
                                                                         >
                                                                             <img 

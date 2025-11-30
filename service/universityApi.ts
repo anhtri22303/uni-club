@@ -117,3 +117,66 @@ export const fetchAttendanceRanking = async (): Promise<AttendanceRankingRespons
   }
 }
 
+// Interface for club overview
+interface ClubOverview {
+  clubId: number
+  clubName: string
+  ratingEvent: number
+  totalCheckin: number
+  checkinRate: number
+  totalMember: number
+  totalStaff: number
+  totalBudgetEvent: number
+  totalProductEvent: number
+  totalDiscipline: number
+  attendanceRate: number
+}
+
+/**
+ * Fetch club overview with comprehensive metrics
+ * GET /api/university/overview/clubs
+ */
+export const fetchClubOverview = async (): Promise<ClubOverview[]> => {
+  try {
+    const response = await axiosInstance.get("/api/university/overview/clubs")
+    console.log("Fetched club overview response:", response.data)
+    
+    // If backend wraps the response with { success, message, data }
+    if (response.data && typeof response.data === "object" && "data" in response.data) {
+      return response.data.data as ClubOverview[]
+    }
+    
+    // If the endpoint returns the data directly
+    return response.data as ClubOverview[]
+  } catch (error) {
+    console.error("Error fetching club overview:", error)
+    throw error
+  }
+}
+
+/**
+ * Fetch club overview by month with comprehensive metrics
+ * GET /api/university/overview/clubs/month
+ * @param year - Year to fetch data for
+ * @param month - Month to fetch data for (1-12)
+ */
+export const fetchClubOverviewByMonth = async (year: number, month: number): Promise<ClubOverview[]> => {
+  try {
+    const response = await axiosInstance.get("/api/university/overview/clubs/month", {
+      params: { year, month }
+    })
+    console.log("Fetched club overview by month response:", response.data)
+    
+    // If backend wraps the response with { success, message, data }
+    if (response.data && typeof response.data === "object" && "data" in response.data) {
+      return response.data.data as ClubOverview[]
+    }
+    
+    // If the endpoint returns the data directly
+    return response.data as ClubOverview[]
+  } catch (error) {
+    console.error("Error fetching club overview by month:", error)
+    throw error
+  }
+}
+

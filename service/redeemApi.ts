@@ -203,6 +203,7 @@ export async function getEventRedeemOrders(
   const res = await axiosInstance.get<ApiResponse<RedeemOrder[]>>(
     `/api/redeem/event/club/${clubId}`
   );
+  console.log("Event redeem orders for club:", res.data.data);
   return res.data.data;
 }
 
@@ -230,6 +231,7 @@ export async function getRedeemOrderById(
   const res = await axiosInstance.get<ApiResponse<RedeemOrder>>(
     `/api/redeem/order/id/${orderId}`
   );
+  console.log("Redeem order by ID:", res.data.data);
   return res.data.data;
 }
 

@@ -36,6 +36,7 @@ export default function LoginPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [showLoginError, setShowLoginError] = useState(false)
   const [isLoadingForgotPassword, setIsLoadingForgotPassword] = useState(false)
+  const [isRedirecting, setIsRedirecting] = useState(false)
   const { login } = useAuth()
   const { toast } = useToast()
   const searchParams = useSearchParams()
@@ -255,6 +256,7 @@ export default function LoginPage() {
 
     if (success) {
       setShowLoginError(false) // Reset error state on success
+      setIsRedirecting(true) // Show loading spinner
 
       // Check if CLUB_LEADER logged in with default password "123"
       const userRole = sessionStorage.getItem("userRole")
@@ -283,6 +285,7 @@ export default function LoginPage() {
         description: "Redirecting...",
       })
     } else {
+      setIsRedirecting(false)
       setShowLoginError(true) // Show forgot password option
       toast({
         title: "Login Failed",
@@ -362,6 +365,26 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-emerald-50 dark:from-slate-900 dark:via-blue-950 dark:to-slate-900 flex items-center justify-center p-3 sm:p-4 overflow-hidden relative">
+      {/* Loading overlay when redirecting */}
+      {isRedirecting && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-2xl flex flex-col items-center gap-4 animate-fade-in-up">
+            <div className="relative">
+              <div className="w-16 h-16 border-4 border-blue-200 dark:border-blue-900 rounded-full"></div>
+              <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+            </div>
+            <div className="text-center space-y-2">
+              <h3 className="text-xl font-bold bg-gradient-to-r from-blue-600 via-cyan-500 to-emerald-500 bg-clip-text text-transparent">
+                Logging you in...
+              </h3>
+              <p className="text-sm text-slate-600 dark:text-slate-300">
+                Please wait while we redirect you
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Floating university-themed icons background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {floatingIcons.map((item) => (
@@ -710,6 +733,7 @@ export default function LoginPage() {
               <div className="flex justify-center">
                 <GoogleSignInButton
                   mode={isSignUpMode ? "sign-up" : "sign-in"}
+                  onLoginSuccess={() => setIsRedirecting(true)}
                 />
               </div>
               

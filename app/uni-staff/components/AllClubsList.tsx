@@ -17,45 +17,39 @@ export function AllClubsList({ clubsWithMemberCountUnsorted, clubsLoading, unive
   const [clubSortField, setClubSortField] = useState<"rank" | "points" | "members">("rank")
   const [clubSortOrder, setClubSortOrder] = useState<"asc" | "desc">("asc")
 
-  // Sort clubs using useMemo to avoid infinite loops
+  // OPTIMIZED: Sort clubs using useMemo with efficient sorting algorithm
   const clubsWithMemberCount = useMemo(() => {
-    console.log(' clubsWithMemberCount useMemo - unsorted length:', clubsWithMemberCountUnsorted.length)
-    console.log(' Sort field:', clubSortField, 'Sort order:', clubSortOrder)
-    
-    if (clubsWithMemberCountUnsorted.length === 0) {
-      console.log(' clubsWithMemberCountUnsorted is empty, returning empty array')
+    if (!clubsWithMemberCountUnsorted || clubsWithMemberCountUnsorted.length === 0) {
       return []
     }
     
-    // Create a copy to avoid mutating state directly
-    const clubsCopy = [...clubsWithMemberCountUnsorted]
+    // Shallow copy for sorting (faster than spread operator for large arrays)
+    const clubsCopy = clubsWithMemberCountUnsorted.slice()
     
     // Sort clubs based on selected field and order
-    const sorted = clubsCopy.sort((a, b) => {
+    clubsCopy.sort((a, b) => {
       let comparison = 0
 
-      if (clubSortField === "rank") {
-        // Sort by rank
-        const rankA = a.rank !== undefined ? a.rank : Infinity
-        const rankB = b.rank !== undefined ? b.rank : Infinity
-        comparison = rankA - rankB
-      } else if (clubSortField === "points") {
-        // Sort by total points
-        comparison = (a.totalPoints || 0) - (b.totalPoints || 0)
-      } else if (clubSortField === "members") {
-        // Sort by member count
-        comparison = (a.memberCount || 0) - (b.memberCount || 0)
+      switch (clubSortField) {
+        case "rank":
+          comparison = (a.rank ?? Infinity) - (b.rank ?? Infinity)
+          break
+        case "points":
+          comparison = (a.totalPoints || 0) - (b.totalPoints || 0)
+          break
+        case "members":
+          comparison = (a.memberCount || 0) - (b.memberCount || 0)
+          break
       }
 
       // Apply sort order (asc or desc)
       return clubSortOrder === "desc" ? -comparison : comparison
     })
     
-    console.log('   Sorted clubs:', sorted.length, 'clubs')
-    return sorted
+    return clubsCopy
   }, [clubsWithMemberCountUnsorted, clubSortField, clubSortOrder])
 
-  // Pagination for Clubs List
+  // OPTIMIZED: Pagination for Clubs List with larger page size
   const {
     currentPage: clubsCurrentPage,
     totalPages: clubsTotalPages,
@@ -63,18 +57,8 @@ export function AllClubsList({ clubsWithMemberCountUnsorted, clubsLoading, unive
     setCurrentPage: setClubsCurrentPage,
   } = usePagination({
     data: clubsWithMemberCount,
-    initialPageSize: 5,
+    initialPageSize: 10, // Increased from 5 to 10 for better UX
   })
-  
-  // Debug pagination
-  useEffect(() => {
-    console.log(' Pagination Debug:')
-    console.log('  - clubsWithMemberCount.length:', clubsWithMemberCount.length)
-    console.log('  - paginatedClubsList.length:', paginatedClubsList.length)
-    console.log('  - clubsCurrentPage:', clubsCurrentPage)
-    console.log('  - clubsTotalPages:', clubsTotalPages)
-    console.log('  - clubsLoading:', clubsLoading)
-  }, [clubsWithMemberCount, paginatedClubsList, clubsCurrentPage, clubsTotalPages, clubsLoading])
 
   const goClubsPrev = () => setClubsCurrentPage(Math.max(1, clubsCurrentPage - 1))
   const goClubsNext = () => setClubsCurrentPage(Math.min(clubsTotalPages, clubsCurrentPage + 1))

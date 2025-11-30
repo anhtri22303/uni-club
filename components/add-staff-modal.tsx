@@ -634,7 +634,8 @@ export default function AddStaffModal({
                     onClick={() => handleAddStaff(member.membershipId)}
                     disabled={
                       addingStaff === member.membershipId ||
-                      !dutyInput[member.membershipId]?.trim()
+                      !dutyInput[member.membershipId]?.trim() ||
+                      eventStatus === "ONGOING"
                     }
                     className="shrink-0"
                   >

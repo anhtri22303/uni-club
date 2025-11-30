@@ -14,7 +14,9 @@ import {
   useClubMemberCounts,
   useLocations,
   useMajors,
-  usePolicies
+  usePolicies,
+  useClubOverview,
+  useClubOverviewByMonth
 } from "@/hooks/use-query-hooks"
 import { timeObjectToString } from "@/service/eventApi"
 import { useEffect, useMemo, useRef, useState } from "react"
@@ -34,12 +36,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { BarChart3, List, TrendingUp } from "lucide-react"
 import { ClubApplicationsList } from "./components/ClubApplicationsList"
 import { EventRequestsList } from "./components/EventRequestsList"
-import { AttendanceSummaryCard } from "./components/AttendanceSummaryCard"
 import { AllClubsList } from "./components/AllClubsList"
 import { AnalyticsTab } from "./components/AnalyticsTab"
 import { DashboardCharts } from "./components/DashboardCharts"
 import { StatisticsCards } from "./components/StatisticsCards"
 import { DataSummaryTables } from "./components/DataSummaryTables"
+import ClubRankingDashboard from "./components/ClubRankingDashboard"
 import { getTags, Tag } from "@/service/tagApi"
 import { getFeedbackByClubId } from "@/service/feedbackApi"
 import { usePointRequests } from "@/service/pointRequestsApi"
@@ -128,44 +130,54 @@ export default function UniStaffReportsPage() {
   const { data: universityPointsData, isLoading: pointsLoading } = useUniversityPoints()
   const { data: attendanceSummary, isLoading: summaryLoading } = useAttendanceSummary(new Date().getFullYear())
   const { data: attendanceRanking, isLoading: rankingLoading } = useAttendanceRanking()
+  
+  // State for month filter
+  const [selectedYear, setSelectedYear] = useState<number>(0)
+  const [selectedMonth, setSelectedMonth] = useState<number>(0)
+  
+  // FIX: Always call both hooks unconditionally, then choose which data to use
+  // This prevents "Rendered more hooks" error
+  const { data: clubsOverviewAllTime = [], isLoading: clubOverviewAllTimeLoading } = useClubOverview(true)
+  const { data: clubsOverviewByMonth = [], isLoading: clubOverviewByMonthLoading } = useClubOverviewByMonth(
+    selectedYear || 2025, 
+    selectedMonth || 1,
+    !!(selectedYear && selectedMonth) // Only fetch when both are selected
+  )
+  
+  // Use the appropriate data based on filter
+  const clubsOverview = (selectedYear && selectedMonth) ? clubsOverviewByMonth : clubsOverviewAllTime
+  const clubOverviewLoading = (selectedYear && selectedMonth) ? clubOverviewByMonthLoading : clubOverviewAllTimeLoading
 
   //    OPTIMIZED: Use React Query hook to fetch all member counts in parallel
   const clubIds = useMemo(() => clubs.map((club: any) => club.id), [clubs])
   const { data: memberCountsData, isLoading: memberCountsLoading } = useClubMemberCounts(clubIds)
 
-  //    Merge clubs with member counts and ranking data using useMemo
+  //    OPTIMIZED: Merge clubs with member counts and ranking data using useMemo
   const clubsWithMemberCountUnsorted = useMemo(() => {
     if (!clubs.length || !memberCountsData || !universityPointsData) {
-      console.log(' Waiting for data:', { 
-        clubsLength: clubs.length, 
-        hasMemberCounts: !!memberCountsData, 
-        hasUniversityData: !!universityPointsData 
-      })
       return []
     }
 
-    console.log(' Merging club data...')
-    console.log('  - Clubs:', clubs.length)
-    console.log('  - Member counts:', Object.keys(memberCountsData).length)
-    console.log('  - University points data:', universityPointsData)
+    // Create ranking lookup map for O(1) access
+    const rankingMap = new Map(
+      universityPointsData.clubRankings?.map((r: any) => [r.clubId, r]) || []
+    )
 
+    // Merge data efficiently
     const merged = clubs.map((club: any) => {
       const memberData = memberCountsData[club.id] || { activeMemberCount: 0, approvedEvents: 0 }
-      const rankingData = universityPointsData.clubRankings?.find(
-        (ranking: any) => ranking.clubId === club.id
-      )
+      const rankingData = rankingMap.get(club.id)
             
-            return {
-              ...club,
+      return {
+        ...club,
         clubName: club.name,
         memberCount: memberData.activeMemberCount,
         approvedEvents: memberData.approvedEvents,
-              rank: rankingData?.rank,
-              totalPoints: rankingData?.totalPoints || 0
+        rank: rankingData?.rank,
+        totalPoints: rankingData?.totalPoints || 0
       }
     })
 
-    console.log('   Merged club data:', merged)
     return merged
   }, [clubs, memberCountsData, universityPointsData])
 
@@ -471,6 +483,8 @@ export default function UniStaffReportsPage() {
             </TabsList>
 
             <TabsContent value="overview" className="space-y-4 sm:space-y-6">
+              
+
               {/* First Row: Club Applications and Event Requests side by side */}
               <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
                 <ClubApplicationsList 
@@ -483,11 +497,21 @@ export default function UniStaffReportsPage() {
                   pendingEvents={pendingEvents}
                   showAllEvents={true}
                 />
-              </div>          {/* Attendance Summary Card (full width) */}
-              <AttendanceSummaryCard 
-                attendanceSummary={attendanceSummary}
-                attendanceRanking={attendanceRanking}
+              </div>   
+              
+              {/* Club Ranking Dashboard (full width) - List View */}
+              <ClubRankingDashboard 
+                clubsOverview={clubsOverview}
+                loading={clubOverviewLoading}
+                onMonthChange={(year, month) => {
+                  setSelectedYear(year)
+                  setSelectedMonth(month)
+                }}
+                selectedYear={selectedYear}
+                selectedMonth={selectedMonth}
+                viewMode="list"
               />
+              
 
               {/* All Clubs List (full width) */}
               <AllClubsList 
@@ -498,6 +522,19 @@ export default function UniStaffReportsPage() {
             </TabsContent>
 
             <TabsContent value="analytics" className="space-y-4 sm:space-y-6">
+              {/* Club Ranking Dashboard - Chart View */}
+              <ClubRankingDashboard 
+                clubsOverview={clubsOverview}
+                loading={clubOverviewLoading}
+                onMonthChange={(year, month) => {
+                  setSelectedYear(year)
+                  setSelectedMonth(month)
+                }}
+                selectedYear={selectedYear}
+                selectedMonth={selectedMonth}
+                viewMode="chart"
+              />
+
               {/* Dashboard Charts */}
               <DashboardCharts 
                 events={events}

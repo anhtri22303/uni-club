@@ -113,7 +113,7 @@ export function DashboardCharts({
 
   return (
     <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
-      {/* Event Status Distribution - Pie Chart */}
+      {/* Event Status Distribution - Doughnut Chart */}
       <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
@@ -125,37 +125,89 @@ export function DashboardCharts({
           <CardDescription className="text-xs sm:text-sm">Breakdown of all event requests by status</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3 sm:space-y-4">
-          <div className="flex flex-wrap gap-2">
-            {eventStatusData.map((item, index) => {
-              const percentage = totalEventStatus > 0 ? ((item.value / totalEventStatus) * 100).toFixed(1) : '0'
-              return (
-                <div key={index} className="flex items-center gap-2 text-xs sm:text-sm">
-                  <div className={`w-3 h-3 rounded-full ${item.color}`} />
-                  <span className="text-muted-foreground">{item.name}</span>
-                </div>
-              )
-            })}
-          </div>
-          <div className="space-y-2 sm:space-y-3">
-            {eventStatusData.map((item, index) => {
-              const percentage = totalEventStatus > 0 ? (item.value / totalEventStatus) * 100 : 0
-              return (
-                <div key={index} className="space-y-1">
-                  <div className="flex items-center justify-between text-xs sm:text-sm">
-                    <span className="font-medium">{item.name}</span>
-                    <span className="text-muted-foreground">{item.value} ({percentage.toFixed(1)}%)</span>
+          {eventStatusData.length > 0 ? (
+            <>
+              {/* Doughnut Chart */}
+              <div className="flex items-center justify-center py-4">
+                <div className="relative w-48 h-48 sm:w-56 sm:h-56">
+                  <svg viewBox="0 0 200 200" className="transform -rotate-90">
+                    {eventStatusData.map((item, index) => {
+                      const previousTotal = eventStatusData.slice(0, index).reduce((sum, i) => sum + i.value, 0)
+                      const percentage = (item.value / totalEventStatus) * 100
+                      const startAngle = (previousTotal / totalEventStatus) * 360
+                      const endAngle = startAngle + (percentage * 360 / 100)
+                      
+                      const startRad = (startAngle * Math.PI) / 180
+                      const endRad = (endAngle * Math.PI) / 180
+                      
+                      const outerRadius = 90
+                      const innerRadius = 60
+                      
+                      const x1 = 100 + outerRadius * Math.cos(startRad)
+                      const y1 = 100 + outerRadius * Math.sin(startRad)
+                      const x2 = 100 + outerRadius * Math.cos(endRad)
+                      const y2 = 100 + outerRadius * Math.sin(endRad)
+                      const x3 = 100 + innerRadius * Math.cos(endRad)
+                      const y3 = 100 + innerRadius * Math.sin(endRad)
+                      const x4 = 100 + innerRadius * Math.cos(startRad)
+                      const y4 = 100 + innerRadius * Math.sin(startRad)
+                      
+                      const largeArc = percentage > 50 ? 1 : 0
+                      
+                      const pathData = [
+                        `M ${x1} ${y1}`,
+                        `A ${outerRadius} ${outerRadius} 0 ${largeArc} 1 ${x2} ${y2}`,
+                        `L ${x3} ${y3}`,
+                        `A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${x4} ${y4}`,
+                        'Z'
+                      ].join(' ')
+                      
+                      const colorMap: Record<string, string> = {
+                        'bg-yellow-500': '#eab308',
+                        'bg-orange-500': '#f97316',
+                        'bg-green-500': '#22c55e',
+                        'bg-blue-500': '#3b82f6',
+                        'bg-purple-500': '#a855f7',
+                        'bg-red-500': '#ef4444',
+                        'bg-gray-500': '#6b7280',
+                      }
+                      
+                      return (
+                        <path
+                          key={index}
+                          d={pathData}
+                          fill={colorMap[item.color] || '#gray'}
+                          className="hover:opacity-80 transition-opacity cursor-pointer"
+                          data-tooltip={`${item.name}: ${item.value} (${percentage.toFixed(1)}%)`}
+                        />
+                      )
+                    })}
+                  </svg>
+                  {/* Center text */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <div className="text-2xl sm:text-3xl font-bold">{totalEventStatus}</div>
+                    <div className="text-xs sm:text-sm text-muted-foreground">Total Events</div>
                   </div>
-                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                    <div
-                      className={`h-2 rounded-full ${item.color}`}
-                      style={{ width: `${percentage}%` }}
-                    />
-                  </div>
                 </div>
-              )
-            })}
-          </div>
-          {eventStatusData.length === 0 && (
+              </div>
+              
+              {/* Legend */}
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                {eventStatusData.map((item, index) => {
+                  const percentage = totalEventStatus > 0 ? ((item.value / totalEventStatus) * 100).toFixed(1) : '0'
+                  return (
+                    <div key={index} className="flex items-center justify-between gap-2 p-2 rounded-lg bg-white/50 dark:bg-black/20">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-3 h-3 rounded-full ${item.color}`} />
+                        <span className="text-xs sm:text-sm font-medium truncate">{item.name}</span>
+                      </div>
+                      <span className="text-xs sm:text-sm font-bold whitespace-nowrap">{item.value} ({percentage}%)</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </>
+          ) : (
             <div className="text-center text-muted-foreground py-8 text-sm">No event data available</div>
           )}
         </CardContent>

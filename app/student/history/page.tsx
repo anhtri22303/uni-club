@@ -11,10 +11,11 @@ import { useAuth } from "@/contexts/auth-context"
 import { useData } from "@/contexts/data-context"
 import { useMyMemberApplications, useMyClubApplications, useMyRedeemOrders, useMyEvents, useProfile } from "@/hooks/use-query-hooks"
 import { Skeleton } from "@/components/ui/skeleton"
-import { History, UserPlus, Gift, CheckCircle, Users, Building2, Package, Calendar, MessageSquare, ChevronDown, ChevronUp, Star, Wallet, ArrowUpRight, ArrowDownLeft } from "lucide-react"
+import { History, UserPlus, Gift, CheckCircle, Users, Building2, Package, Calendar, MessageSquare, ChevronDown, ChevronUp, Star, Wallet, ArrowUpRight, ArrowDownLeft, ClipboardCheck } from "lucide-react"
 import { useState, useMemo, useEffect } from "react"
 import { getMyFeedbackByMembershipId, Feedback } from "@/service/feedbackApi"
 import { getWallet, getWalletTransactions, ApiWallet, ApiWalletTransaction } from "@/service/walletApi"
+import { getStaffHistory, StaffHistoryOrder } from "@/service/eventStaffApi"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { timeObjectToString } from "@/service/eventApi"
 import { useRouter } from "next/navigation"
@@ -92,6 +93,12 @@ export default function MemberHistoryPage() {
   const [myFeedbacks, setMyFeedbacks] = useState<Feedback[]>([])
   const [expandedEventKey, setExpandedEventKey] = useState<string | null>(null)
 
+  // === Staff History state (within Order History tab) ===
+  const [showStaffHistory, setShowStaffHistory] = useState(false)
+  const [staffHistoryOrders, setStaffHistoryOrders] = useState<StaffHistoryOrder[]>([])
+  const [staffHistoryLoading, setStaffHistoryLoading] = useState(false)
+  const [staffHistoryError, setStaffHistoryError] = useState<string | null>(null)
+
   // Initialize default membership when available
   useEffect(() => {
     if (!showMyFeedback) return
@@ -117,6 +124,24 @@ export default function MemberHistoryPage() {
     }
     load()
   }, [showMyFeedback, selectedMembershipId])
+
+  // Fetch staff history when toggled on
+  useEffect(() => {
+    const load = async () => {
+      if (!showStaffHistory) return
+      try {
+        setStaffHistoryLoading(true)
+        setStaffHistoryError(null)
+        const data = await getStaffHistory()
+        setStaffHistoryOrders(Array.isArray(data) ? data : [])
+      } catch (err: any) {
+        setStaffHistoryError(err?.response?.data?.error || err?.response?.data?.message || err?.message || "Failed to load staff history")
+      } finally {
+        setStaffHistoryLoading(false)
+      }
+    }
+    load()
+  }, [showStaffHistory])
 
   // Group feedbacks by eventId
   const feedbackGroups = useMemo(() => {
@@ -542,7 +567,7 @@ export default function MemberHistoryPage() {
 
           {/* Filter */}
           <div className="flex flex-col sm:flex-row justify-between gap-2">
-            {/* Left: My Feedback toggle within My Events tab */}
+            {/* Left: My Feedback toggle within My Events tab OR Staff History toggle within Order tab */}
             {activeTab === "event" && (
               <div className="flex items-center gap-2">
                 <button
@@ -568,12 +593,24 @@ export default function MemberHistoryPage() {
                 )}
               </div>
             )}
+            
+            {activeTab === "order" && (
+              <div className="flex items-center gap-2">
+                <button
+                  className={`px-3 py-2 rounded-md border transition-colors flex items-center gap-2 ${showStaffHistory ? "bg-green-50 border-green-300 text-green-700 dark:bg-green-900/20 dark:border-green-700 dark:text-green-300" : "hover:bg-muted"}`}
+                  onClick={() => setShowStaffHistory((v) => !v)}
+                >
+                  <ClipboardCheck className="h-4 w-4" />
+                  Staff Approval History
+                </button>
+              </div>
+            )}
 
-            {/* Right: Status filter (hidden when My Feedback is active or on wallet tab) */}
+            {/* Right: Status filter (hidden when My Feedback/Staff History is active or on wallet tab) */}
             <div className="flex justify-end">
-              {!(activeTab === "event" && showMyFeedback) && activeTab !== "wallet" && (
+              {!(activeTab === "event" && showMyFeedback) && !(activeTab === "order" && showStaffHistory) && activeTab !== "wallet" && (
                 <Select value={filter} onValueChange={setFilter}>
-                  <SelectTrigger className="w-full sm:w-[240px]">
+                  <SelectTrigger className="w-full sm:w-60">
                     <SelectValue placeholder="Filter by status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -588,7 +625,7 @@ export default function MemberHistoryPage() {
             </div>
           </div>
 
-          {/* Loading State (override for My Feedback) */}
+          {/* Loading State (override for My Feedback or Staff History) */}
           {(activeTab === "event" && showMyFeedback) ? (
             myFeedbackLoading ? (
               <div className="text-center text-sm text-muted-foreground py-8">Loading my feedback...</div>
@@ -659,6 +696,109 @@ export default function MemberHistoryPage() {
                             ))}
                           </div>
                         )}
+                      </CardContent>
+                    </Card>
+                  )
+                })}
+              </div>
+            )
+          ) : (activeTab === "order" && showStaffHistory) ? (
+            // Staff History Content
+            staffHistoryLoading ? (
+              <div className="text-center text-sm text-muted-foreground py-8">Loading staff approval history...</div>
+            ) : staffHistoryError ? (
+              <div className="text-center text-sm text-destructive py-8">Error: {staffHistoryError}</div>
+            ) : staffHistoryOrders.length === 0 ? (
+              <EmptyState
+                icon={ClipboardCheck}
+                title="No staff approval history"
+                description="You have not approved any orders as staff."
+              />
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {staffHistoryOrders.map((order) => {
+                  const statusColors = {
+                    PENDING: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300",
+                    COMPLETED: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
+                    REFUNDED: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
+                    PARTIALLY_REFUNDED: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
+                    CANCELLED: "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300",
+                  }
+                  const statusColor = statusColors[order.status as keyof typeof statusColors] || "bg-gray-100 text-gray-800"
+
+                  return (
+                    <Card key={order.orderId} className="border-l-4 border-l-green-500 dark:border-l-green-400 transition-all hover:shadow-md">
+                      <CardContent className="pt-6">
+                        <div className="flex items-start justify-between gap-3 mb-3">
+                          <div className="min-w-0 flex-1">
+                            <h3 className="font-medium truncate" title={order.productName}>
+                              {order.productName}
+                            </h3>
+                            <p className="text-sm text-muted-foreground">
+                              Order: {order.orderCode}
+                            </p>
+                          </div>
+                          <Badge className={statusColor}>
+                            {order.status}
+                          </Badge>
+                        </div>
+
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Member:</span>
+                            <span className="font-medium">{order.memberName}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Club:</span>
+                            <span className="font-medium">{order.clubName}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Type:</span>
+                            <span className="font-medium">{order.productType}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Quantity:</span>
+                            <span className="font-medium">{order.quantity}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Total Points:</span>
+                            <span className="font-bold text-blue-600 dark:text-blue-400">{order.totalPoints} pts</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Created:</span>
+                            <span>{new Date(order.createdAt).toLocaleDateString()}</span>
+                          </div>
+                          {order.completedAt && (
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Completed:</span>
+                              <span>{new Date(order.completedAt).toLocaleDateString()}</span>
+                            </div>
+                          )}
+                          {order.reasonRefund && (
+                            <div className="pt-2 border-t">
+                              <span className="text-muted-foreground">Refund Reason:</span>
+                              <p className="mt-1 text-sm">{order.reasonRefund}</p>
+                            </div>
+                          )}
+                          {order.errorImages && order.errorImages.length > 0 && (
+                            <div className="pt-2 border-t">
+                              <span className="text-muted-foreground">Error Images:</span>
+                              <div className="mt-1 flex flex-wrap gap-2">
+                                {order.errorImages.map((img, idx) => (
+                                  <a
+                                    key={idx}
+                                    href={img}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                                  >
+                                    Image {idx + 1}
+                                  </a>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </CardContent>
                     </Card>
                   )
@@ -1147,8 +1287,8 @@ export default function MemberHistoryPage() {
             </div>
           )}
 
-          {/* Pagination - only show when there's data and not on wallet tab */}
-          {!loading && !error && activitiesToDisplay.length > 0 && activeTab !== "wallet" && (
+          {/* Pagination - only show when there's data and not on wallet tab or staff history */}
+          {!loading && !error && activitiesToDisplay.length > 0 && activeTab !== "wallet" && !(activeTab === "order" && showStaffHistory) && (
             <Pagination
               currentPage={currentPage}
               totalPages={totalPages}

@@ -380,7 +380,7 @@ export const getEventByClubId = async (clubId: string | number): Promise<Event[]
     // API: /api/events/club/{clubId}
     const response = await axiosInstance.get(`/api/events/club/${clubId}`)
     const resData: any = response.data
-    // console.log(`Fetched events for club ${clubId}:`, resData)
+    console.log(`Fetched events for club ${clubId}:`, resData)
 
     // KIỂM TRA CẤU TRÚC {success, message, data: {events: [...]}}
     if (resData?.data?.events && Array.isArray(resData.data.events)) {
