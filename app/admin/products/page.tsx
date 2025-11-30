@@ -186,6 +186,25 @@ export default function AdminGiftPage() {
         // useEffect (THAY ĐỔI 4) sẽ tự động reset page về 0
     }
 
+    // --- Chỉ lấy danh sách các Club có chứa sản phẩm khớp từ khóa ---
+    const expandedGroups = useMemo(() => {
+        // 1. Nếu không có từ khóa tìm kiếm -> Trả về mảng rỗng (Đóng hết)
+        if (!debouncedSearchTerm) return [];
+
+        const lowerTerm = debouncedSearchTerm.toLowerCase();
+
+        // 2. Lọc danh sách
+        return groupedProducts
+            .filter((group: any) =>
+                // Kiểm tra xem trong group này có sản phẩm nào khớp tên hoặc mã không
+                group.products.some((product: AdminProduct) =>
+                    product.name.toLowerCase().includes(lowerTerm) ||
+                    product.productCode.toLowerCase().includes(lowerTerm)
+                )
+            )
+            .map((g: any) => g.clubName); // Chỉ lấy tên Club để làm key mở Accordion
+    }, [groupedProducts, debouncedSearchTerm]);
+
     return (
         <ProtectedRoute allowedRoles={["admin"]}>
             <AppShell>
@@ -272,7 +291,10 @@ export default function AdminGiftPage() {
                                         </div>
                                     </Card>
                                 ) : (
-                                    <Accordion type="multiple" className="space-y-4" defaultValue={groupedProducts.map((g: any) => g.clubName)}>
+                                    <Accordion type="multiple" className="space-y-4"
+                                        key={debouncedSearchTerm}
+                                        defaultValue={expandedGroups}
+                                    >
                                         {groupedProducts.map((group: any) => (
                                             <AccordionItem
                                                 key={group.clubName}
