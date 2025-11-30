@@ -31,6 +31,7 @@ export interface RedeemOrder {
   refundImages?: string[];
   clubId?: number;
   eventId?: number;
+  membershipId?: number; // ID của membership (user trong club)
 }
 
 /**
@@ -346,5 +347,40 @@ export async function deleteRefundImage(
     `/api/redeem/order/${orderId}/refund/image/${imageId}`
   );
   // Trả về message hoặc data string từ server
+  return res.data.data;
+}
+
+// === ORDER LOGS (Lịch sử thay đổi trạng thái đơn hàng) ===
+
+/**
+ * Interface cho Order Log (Lịch sử trạng thái đơn hàng)
+ * (Response từ GET /api/order-logs/membership/{membershipId}/order/{orderId})
+ */
+export interface OrderLog {
+  id: number;
+  action: string; // COMPLETED, REFUND, PARTIAL_REFUND, etc.
+  actorId: number;
+  actorName: string;
+  targetUserId: number;
+  targetUserName: string;
+  orderId: number;
+  quantity: number;
+  pointsChange: number;
+  reason: string | null;
+  createdAt: string;
+}
+
+/**
+ * Lấy lịch sử thay đổi trạng thái của một đơn hàng
+ * (GET /api/order-logs/membership/{membershipId}/order/{orderId})
+ */
+export async function getOrderLogsByMembershipAndOrder(
+  membershipId: number | string,
+  orderId: number | string
+): Promise<OrderLog[]> {
+  const res = await axiosInstance.get<ApiResponse<OrderLog[]>>(
+    `/api/order-logs/membership/${membershipId}/order/${orderId}`
+  );
+  console.log("Order logs:", res.data.data);
   return res.data.data;
 }

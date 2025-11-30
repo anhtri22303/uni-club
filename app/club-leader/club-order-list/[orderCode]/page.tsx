@@ -17,6 +17,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
     getRedeemOrderByOrderCode, RedeemOrder, completeRedeemOrder, refundRedeemOrder,
     refundPartialRedeemOrder, RefundPayload, uploadRefundImages, getRefundImages, RefundImage,
+    getOrderLogsByMembershipAndOrder, OrderLog,
 } from "@/service/redeemApi"
 import {
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger,
@@ -111,6 +112,38 @@ export default function ClubOrderDetailByCodePage({ params }: OrderDetailPagePro
     // [THÊM MỚI] State để xem ảnh phóng to (Preview)
     // const [previewImage, setPreviewImage] = useState<string | null>(null);
     const [previewIndex, setPreviewIndex] = useState<number | null>(null);
+
+    // [MỚI] State cho Order Logs Modal
+    const [selectedAction, setSelectedAction] = useState<string | null>(null);
+    const [isLogModalOpen, setIsLogModalOpen] = useState<boolean>(false);
+
+    // Query lấy order logs
+    const { data: orderLogs = [], error: logsError } = useQuery<OrderLog[]>({
+        queryKey: ["orderLogs", order?.orderId, order?.membershipId],
+        queryFn: async () => {
+            if (!order?.orderId || !order?.membershipId) {
+                console.log("⚠️ Order ID or Membership ID not available yet", { orderId: order?.orderId, membershipId: order?.membershipId });
+                return [];
+            }
+            console.log("🔍 Fetching order logs for:", { membershipId: order.membershipId, orderId: order.orderId });
+            try {
+                const logs = await getOrderLogsByMembershipAndOrder(order.membershipId, order.orderId);
+                console.log("✅ Order logs fetched successfully:", logs);
+                return logs;
+            } catch (error: any) {
+                console.error("❌ Failed to fetch order logs:", {
+                    membershipId: order.membershipId,
+                    orderId: order.orderId,
+                    error: error,
+                    response: error?.response?.data,
+                    status: error?.response?.status
+                });
+                return [];
+            }
+        },
+        enabled: !!order?.orderId && !!order?.membershipId,
+        retry: 1,
+    });
 
     // [MỚI] Hàm xử lý chọn ảnh
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -241,6 +274,26 @@ export default function ClubOrderDetailByCodePage({ params }: OrderDetailPagePro
             setIsProcessing(false)
         }
     }
+
+    // Helper functions để lấy logs theo action
+    const getLogsByAction = (action: string) => {
+        return orderLogs.filter(log => log.action === action).sort((a, b) => 
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+    };
+
+    const getLatestLogDate = (action: string) => {
+        const logs = getLogsByAction(action);
+        return logs.length > 0 ? logs[0].createdAt : null;
+    };
+
+    const handleStepClick = (action: string) => {
+        const logs = getLogsByAction(action);
+        if (logs.length > 0) {
+            setSelectedAction(action);
+            setIsLogModalOpen(true);
+        }
+    };
 
     // Xử lý validate khi nhập số lượng partial
     const handlePartialQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -448,11 +501,14 @@ export default function ClubOrderDetailByCodePage({ params }: OrderDetailPagePro
                                 <div className="relative flex justify-between items-start">
                                     {/* Step 1: PENDING */}
                                     <div className="flex flex-col items-center" style={{ flex: 1 }}>
-                                        <div className={`w-12 h-12 rounded-full flex items-center justify-center border-4 transition-all duration-300 ${
-                                            order.status === 'PENDING' || order.status === 'COMPLETED' || order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
-                                                ? 'bg-gradient-to-br from-yellow-400 to-amber-500 border-yellow-300 shadow-lg shadow-yellow-500/50'
-                                                : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600'
-                                        }`}>
+                                        <div 
+                                            className={`w-12 h-12 rounded-full flex items-center justify-center border-4 transition-all duration-300 cursor-pointer hover:scale-110 ${
+                                                order.status === 'PENDING' || order.status === 'COMPLETED' || order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
+                                                    ? 'bg-gradient-to-br from-yellow-400 to-amber-500 border-yellow-300 shadow-lg shadow-yellow-500/50'
+                                                    : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600'
+                                            }`}
+                                            onClick={() => handleStepClick('PENDING')}
+                                        >
                                             <Clock className={`h-6 w-6 ${
                                                 order.status === 'PENDING' || order.status === 'COMPLETED' || order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
                                                     ? 'text-white'
@@ -470,18 +526,31 @@ export default function ClubOrderDetailByCodePage({ params }: OrderDetailPagePro
                                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                                 Order placed
                                             </p>
+                                            {getLatestLogDate('PENDING') && (
+                                                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 font-medium">
+                                                    {new Date(getLatestLogDate('PENDING')!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                                    <br />
+                                                    {new Date(getLatestLogDate('PENDING')!).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
 
                                     {/* Step 2: DELIVERED */}
                                     <div className="flex flex-col items-center" style={{ flex: 1 }}>
-                                        <div className={`w-12 h-12 rounded-full flex items-center justify-center border-4 transition-all duration-300 ${
-                                            order.status === 'COMPLETED'
-                                                ? 'bg-gradient-to-br from-green-400 to-emerald-500 border-green-300 shadow-lg shadow-green-500/50'
-                                                : (order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED')
-                                                ? 'bg-gradient-to-br from-green-400 to-emerald-500 border-green-300 shadow-lg shadow-green-500/50'
-                                                : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600'
-                                        }`}>
+                                        <div 
+                                            className={`w-12 h-12 rounded-full flex items-center justify-center border-4 transition-all duration-300 ${
+                                                (order.status === 'COMPLETED' || order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED') 
+                                                    ? 'cursor-pointer hover:scale-110' : ''
+                                            } ${
+                                                order.status === 'COMPLETED'
+                                                    ? 'bg-gradient-to-br from-green-400 to-emerald-500 border-green-300 shadow-lg shadow-green-500/50'
+                                                    : (order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED')
+                                                    ? 'bg-gradient-to-br from-green-400 to-emerald-500 border-green-300 shadow-lg shadow-green-500/50'
+                                                    : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600'
+                                            }`}
+                                            onClick={() => (order.status === 'COMPLETED' || order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED') && handleStepClick('COMPLETED')}
+                                        >
                                             <CheckCircle className={`h-6 w-6 ${
                                                 order.status === 'COMPLETED' || order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
                                                     ? 'text-white'
@@ -499,16 +568,29 @@ export default function ClubOrderDetailByCodePage({ params }: OrderDetailPagePro
                                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                                 Order completed
                                             </p>
+                                            {getLatestLogDate('COMPLETED') && (
+                                                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 font-medium">
+                                                    {new Date(getLatestLogDate('COMPLETED')!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                                    <br />
+                                                    {new Date(getLatestLogDate('COMPLETED')!).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
 
                                     {/* Step 3: REFUNDED */}
                                     <div className="flex flex-col items-center" style={{ flex: 1 }}>
-                                        <div className={`w-12 h-12 rounded-full flex items-center justify-center border-4 transition-all duration-300 ${
-                                            order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
-                                                ? 'bg-gradient-to-br from-red-400 to-rose-500 border-red-300 shadow-lg shadow-red-500/50'
-                                                : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600'
-                                        }`}>
+                                        <div 
+                                            className={`w-12 h-12 rounded-full flex items-center justify-center border-4 transition-all duration-300 ${
+                                                (order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED') 
+                                                    ? 'cursor-pointer hover:scale-110' : ''
+                                            } ${
+                                                order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
+                                                    ? 'bg-gradient-to-br from-red-400 to-rose-500 border-red-300 shadow-lg shadow-red-500/50'
+                                                    : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600'
+                                            }`}
+                                            onClick={() => (order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED') && handleStepClick('REFUND')}
+                                        >
                                             <Undo2 className={`h-6 w-6 ${
                                                 order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
                                                     ? 'text-white'
@@ -526,6 +608,13 @@ export default function ClubOrderDetailByCodePage({ params }: OrderDetailPagePro
                                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                                 {order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED' ? 'Refund processed' : 'If needed'}
                                             </p>
+                                            {(getLatestLogDate('REFUND') || getLatestLogDate('PARTIAL_REFUND')) && (
+                                                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 font-medium">
+                                                    {new Date((getLatestLogDate('REFUND') || getLatestLogDate('PARTIAL_REFUND'))!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                                    <br />
+                                                    {new Date((getLatestLogDate('REFUND') || getLatestLogDate('PARTIAL_REFUND'))!).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -1174,6 +1263,100 @@ export default function ClubOrderDetailByCodePage({ params }: OrderDetailPagePro
                             )}
                         </div>
                     </div>
+
+                    {/* Order Logs Modal */}
+                    <Dialog open={isLogModalOpen} onOpenChange={setIsLogModalOpen}>
+                        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto dark:bg-slate-800 dark:border-slate-700">
+                            <DialogHeader>
+                                <DialogTitle className="text-2xl font-bold dark:text-white">
+                                    Order History - {selectedAction}
+                                </DialogTitle>
+                                <DialogDescription className="dark:text-slate-300">
+                                    Detailed logs for this action
+                                </DialogDescription>
+                            </DialogHeader>
+                            
+                            <div className="space-y-4 mt-4">
+                                {selectedAction && getLogsByAction(selectedAction).map((log, index) => (
+                                    <div key={log.id} className="p-4 bg-gradient-to-br from-gray-50 to-white dark:from-slate-700 dark:to-slate-800 rounded-xl border border-gray-200 dark:border-slate-600 shadow-sm">
+                                        <div className="flex items-start justify-between mb-3">
+                                            <div className="flex items-center gap-2">
+                                                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                                                    <Calendar className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                                                        {new Date(log.createdAt).toLocaleDateString('en-US', { 
+                                                            year: 'numeric', month: 'long', day: 'numeric' 
+                                                        })}
+                                                    </p>
+                                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                                        {new Date(log.createdAt).toLocaleTimeString('en-US', { 
+                                                            hour: '2-digit', minute: '2-digit', second: '2-digit' 
+                                                        })}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <Badge className={`${
+                                                log.action === 'PENDING' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' :
+                                                log.action === 'COMPLETED' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
+                                                'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+                                            } border-0`}>
+                                                {log.action}
+                                            </Badge>
+                                        </div>
+                                        
+                                        <Separator className="my-3 dark:bg-slate-600" />
+                                        
+                                        <div className="grid grid-cols-2 gap-4 text-sm">
+                                            <div>
+                                                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Actor</p>
+                                                <p className="font-medium text-gray-900 dark:text-white">{log.actorName}</p>
+                                                <p className="text-xs text-gray-500 dark:text-gray-400">ID: {log.actorId}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Target User</p>
+                                                <p className="font-medium text-gray-900 dark:text-white">{log.targetUserName}</p>
+                                                <p className="text-xs text-gray-500 dark:text-gray-400">ID: {log.targetUserId}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Quantity</p>
+                                                <p className="font-semibold text-lg text-gray-900 dark:text-white">{log.quantity}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Points Change</p>
+                                                <p className={`font-semibold text-lg ${
+                                                    log.pointsChange > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                                                }`}>
+                                                    {log.pointsChange > 0 ? '+' : ''}{log.pointsChange}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        
+                                        {log.reason && (
+                                            <>
+                                                <Separator className="my-3 dark:bg-slate-600" />
+                                                <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                                                    <p className="text-xs font-semibold text-amber-700 dark:text-amber-300 mb-1 flex items-center gap-1">
+                                                        <Info className="h-3 w-3" />
+                                                        Reason
+                                                    </p>
+                                                    <p className="text-sm text-gray-700 dark:text-gray-300 italic">&quot;{log.reason}&quot;</p>
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                ))}
+                                
+                                {selectedAction && getLogsByAction(selectedAction).length === 0 && (
+                                    <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                                        <Info className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                                        <p>No logs found for this action</p>
+                                    </div>
+                                )}
+                            </div>
+                        </DialogContent>
+                    </Dialog>
 
                     {/* --- Image Preview Dialog --- */}
                     <Dialog open={previewIndex !== null} onOpenChange={(open) => !open && setPreviewIndex(null)}>
