@@ -9,9 +9,10 @@ import { useToast } from "@/hooks/use-toast"
 interface GoogleSignInButtonProps {
   mode?: "sign-in" | "sign-up"
   onClick?: () => void
+  onLoginSuccess?: () => void
 }
 
-export function GoogleSignInButton({ mode = "sign-in", onClick }: GoogleSignInButtonProps) {
+export function GoogleSignInButton({ mode = "sign-in", onClick, onLoginSuccess }: GoogleSignInButtonProps) {
   const { loginWithGoogle } = useAuth()
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
@@ -47,6 +48,9 @@ export function GoogleSignInButton({ mode = "sign-in", onClick }: GoogleSignInBu
       const success = await loginWithGoogle(credentialResponse.credential)
       
       if (success) {
+        // Notify parent component about successful login
+        onLoginSuccess?.()
+        
         toast({
           title: "🎉 Google Sign-In Successful",
           description: "Redirecting to your account...",

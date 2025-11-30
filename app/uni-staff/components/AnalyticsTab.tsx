@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Building, Calendar, FileText } from "lucide-react"
 
@@ -34,6 +35,8 @@ export function AnalyticsTab({
   rejectedEventsCount,
   cancelledEventsCount
 }: AnalyticsTabProps) {
+  const [hoveredClub, setHoveredClub] = useState<{ name: string; members: number; x: number; y: number } | null>(null)
+  
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Analytics Dashboard with Charts */}
@@ -146,248 +149,6 @@ export function AnalyticsTab({
             </div>
           </CardContent>
         </Card>
-
-        {/* Event Requests Bar Chart */}
-        <Card className="border-2 dark:border-slate-700">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base sm:text-lg md:text-xl">
-              <div className="p-1 sm:p-1.5 bg-purple-500 rounded-lg flex-shrink-0">
-                <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
-              </div>
-              <span className="truncate">Event Requests Status</span>
-            </CardTitle>
-            <CardDescription className="text-[10px] sm:text-xs">Complete distribution of all event statuses</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4 sm:space-y-6">
-              {/* Total Count Display */}
-              <div className="text-center p-3 sm:p-4 bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-950/30 dark:to-purple-900/30 rounded-lg border border-purple-200 dark:border-purple-800">
-                <div className="text-3xl sm:text-4xl font-bold text-purple-600">{totalEventRequests}</div>
-                <div className="text-xs sm:text-sm text-muted-foreground mt-1">Total Events</div>
-              </div>
-
-              {/* Bar Chart */}
-              <div className="space-y-3 sm:space-y-4">
-                {/* Pending Co-club Bar */}
-                <div className="space-y-1.5 sm:space-y-2">
-                  <div className="flex items-center justify-between p-1.5 sm:p-2 rounded-lg bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800/50">
-                    <div className="flex items-center gap-1.5 sm:gap-2">
-                      <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-orange-400 flex-shrink-0" />
-                      <span className="font-semibold text-xs sm:text-sm text-orange-700 dark:text-orange-400">⏳ Pending Co-club</span>
-                    </div>
-                    <div className="flex items-center gap-1 sm:gap-2">
-                      <span className="text-lg sm:text-xl md:text-2xl font-bold text-orange-600 dark:text-orange-500">{pendingCoClubEvents}</span>
-                      <span className="text-[10px] sm:text-xs text-orange-600 dark:text-orange-500 w-10 sm:w-12 text-right">
-                        {totalEventRequests > 0 ? Math.round((pendingCoClubEvents / totalEventRequests) * 100) : 0}%
-                      </span>
-                    </div>
-                  </div>
-                  <div className="relative h-6 sm:h-8 bg-gray-100 dark:bg-gray-800/50 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                    <div
-                      className="absolute inset-y-0 left-0 transition-all duration-700 ease-out flex items-center justify-center"
-                      style={{
-                        width: `${totalEventRequests > 0 ? (pendingCoClubEvents / totalEventRequests) * 100 : 0}%`,
-                        backgroundColor: '#fb923c',
-                      }}
-                    >
-                      {pendingCoClubEvents > 0 && (
-                        <span className="text-[10px] sm:text-xs font-bold text-white px-1 sm:px-2">
-                          {pendingCoClubEvents}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Pending UniStaff Bar */}
-                <div className="space-y-1.5 sm:space-y-2">
-                  <div className="flex items-center justify-between p-1.5 sm:p-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50">
-                    <div className="flex items-center gap-1.5 sm:gap-2">
-                      <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-amber-400 flex-shrink-0" />
-                      <span className="font-semibold text-xs sm:text-sm text-amber-700 dark:text-amber-400">🕓 Pending UniStaff</span>
-                    </div>
-                    <div className="flex items-center gap-1 sm:gap-2">
-                      <span className="text-lg sm:text-xl md:text-2xl font-bold text-amber-600 dark:text-amber-500">{pendingUniStaffEvents}</span>
-                      <span className="text-[10px] sm:text-xs text-amber-600 dark:text-amber-500 w-10 sm:w-12 text-right">
-                        {totalEventRequests > 0 ? Math.round((pendingUniStaffEvents / totalEventRequests) * 100) : 0}%
-                      </span>
-                    </div>
-                  </div>
-                  <div className="relative h-6 sm:h-8 bg-gray-100 dark:bg-gray-800/50 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                    <div
-                      className="absolute inset-y-0 left-0 transition-all duration-700 ease-out flex items-center justify-center"
-                      style={{
-                        width: `${totalEventRequests > 0 ? (pendingUniStaffEvents / totalEventRequests) * 100 : 0}%`,
-                        backgroundColor: '#fbbf24',
-                      }}
-                    >
-                      {pendingUniStaffEvents > 0 && (
-                        <span className="text-[10px] sm:text-xs font-bold text-white px-1 sm:px-2">
-                          {pendingUniStaffEvents}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Approved Bar */}
-                <div className="space-y-1.5 sm:space-y-2">
-                  <div className="flex items-center justify-between p-1.5 sm:p-2 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800/50">
-                    <div className="flex items-center gap-1.5 sm:gap-2">
-                      <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-green-500 flex-shrink-0" />
-                      <span className="font-semibold text-xs sm:text-sm text-green-700 dark:text-green-400">   Approved</span>
-                    </div>
-                    <div className="flex items-center gap-1 sm:gap-2">
-                      <span className="text-lg sm:text-xl md:text-2xl font-bold text-green-600 dark:text-green-500">{approvedEventsCount}</span>
-                      <span className="text-[10px] sm:text-xs text-green-600 dark:text-green-500 w-10 sm:w-12 text-right">
-                        {totalEventRequests > 0 ? Math.round((approvedEventsCount / totalEventRequests) * 100) : 0}%
-                      </span>
-                    </div>
-                  </div>
-                  <div className="relative h-6 sm:h-8 bg-gray-100 dark:bg-gray-800/50 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                    <div
-                      className="absolute inset-y-0 left-0 transition-all duration-700 ease-out flex items-center justify-center"
-                      style={{
-                        width: `${totalEventRequests > 0 ? (approvedEventsCount / totalEventRequests) * 100 : 0}%`,
-                        backgroundColor: '#22c55e',
-                      }}
-                    >
-                      {approvedEventsCount > 0 && (
-                        <span className="text-[10px] sm:text-xs font-bold text-white px-1 sm:px-2">
-                          {approvedEventsCount}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Ongoing Bar */}
-                <div className="space-y-1.5 sm:space-y-2">
-                  <div className="flex items-center justify-between p-1.5 sm:p-2 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/50">
-                    <div className="flex items-center gap-1.5 sm:gap-2">
-                      <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-blue-500 flex-shrink-0" />
-                      <span className="font-semibold text-xs sm:text-sm text-blue-700 dark:text-blue-400">  Ongoing</span>
-                    </div>
-                    <div className="flex items-center gap-1 sm:gap-2">
-                      <span className="text-lg sm:text-xl md:text-2xl font-bold text-blue-600 dark:text-blue-500">{ongoingEventsCount}</span>
-                      <span className="text-[10px] sm:text-xs text-blue-600 dark:text-blue-500 w-10 sm:w-12 text-right">
-                        {totalEventRequests > 0 ? Math.round((ongoingEventsCount / totalEventRequests) * 100) : 0}%
-                      </span>
-                    </div>
-                  </div>
-                  <div className="relative h-6 sm:h-8 bg-gray-100 dark:bg-gray-800/50 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                    <div
-                      className="absolute inset-y-0 left-0 transition-all duration-700 ease-out flex items-center justify-center"
-                      style={{
-                        width: `${totalEventRequests > 0 ? (ongoingEventsCount / totalEventRequests) * 100 : 0}%`,
-                        backgroundColor: '#3b82f6',
-                      }}
-                    >
-                      {ongoingEventsCount > 0 && (
-                        <span className="text-[10px] sm:text-xs font-bold text-white px-1 sm:px-2">
-                          {ongoingEventsCount}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Completed Bar */}
-                <div className="space-y-1.5 sm:space-y-2">
-                  <div className="flex items-center justify-between p-1.5 sm:p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50">
-                    <div className="flex items-center gap-1.5 sm:gap-2">
-                      <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-emerald-500 flex-shrink-0" />
-                      <span className="font-semibold text-xs sm:text-sm text-emerald-700 dark:text-emerald-400">🏁 Completed</span>
-                    </div>
-                    <div className="flex items-center gap-1 sm:gap-2">
-                      <span className="text-lg sm:text-xl md:text-2xl font-bold text-emerald-600 dark:text-emerald-500">{completedEventsCount}</span>
-                      <span className="text-[10px] sm:text-xs text-emerald-600 dark:text-emerald-500 w-10 sm:w-12 text-right">
-                        {totalEventRequests > 0 ? Math.round((completedEventsCount / totalEventRequests) * 100) : 0}%
-                      </span>
-                    </div>
-                  </div>
-                  <div className="relative h-6 sm:h-8 bg-gray-100 dark:bg-gray-800/50 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                    <div
-                      className="absolute inset-y-0 left-0 transition-all duration-700 ease-out flex items-center justify-center"
-                      style={{
-                        width: `${totalEventRequests > 0 ? (completedEventsCount / totalEventRequests) * 100 : 0}%`,
-                        backgroundColor: '#10b981',
-                      }}
-                    >
-                      {completedEventsCount > 0 && (
-                        <span className="text-[10px] sm:text-xs font-bold text-white px-1 sm:px-2">
-                          {completedEventsCount}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Rejected Bar */}
-                <div className="space-y-1.5 sm:space-y-2">
-                  <div className="flex items-center justify-between p-1.5 sm:p-2 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50">
-                    <div className="flex items-center gap-1.5 sm:gap-2">
-                      <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-red-500 flex-shrink-0" />
-                      <span className="font-semibold text-xs sm:text-sm text-red-700 dark:text-red-400">  Rejected</span>
-                    </div>
-                    <div className="flex items-center gap-1 sm:gap-2">
-                      <span className="text-lg sm:text-xl md:text-2xl font-bold text-red-600 dark:text-red-500">{rejectedEventsCount}</span>
-                      <span className="text-[10px] sm:text-xs text-red-600 dark:text-red-500 w-10 sm:w-12 text-right">
-                        {totalEventRequests > 0 ? Math.round((rejectedEventsCount / totalEventRequests) * 100) : 0}%
-                      </span>
-                    </div>
-                  </div>
-                  <div className="relative h-6 sm:h-8 bg-gray-100 dark:bg-gray-800/50 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                    <div
-                      className="absolute inset-y-0 left-0 transition-all duration-700 ease-out flex items-center justify-center"
-                      style={{
-                        width: `${totalEventRequests > 0 ? (rejectedEventsCount / totalEventRequests) * 100 : 0}%`,
-                        backgroundColor: '#ef4444',
-                      }}
-                    >
-                      {rejectedEventsCount > 0 && (
-                        <span className="text-[10px] sm:text-xs font-bold text-white px-1 sm:px-2">
-                          {rejectedEventsCount}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Cancelled Bar */}
-                <div className="space-y-1.5 sm:space-y-2">
-                  <div className="flex items-center justify-between p-1.5 sm:p-2 rounded-lg bg-gray-50 dark:bg-gray-950/30 border border-gray-200 dark:border-gray-800/50">
-                    <div className="flex items-center gap-1.5 sm:gap-2">
-                      <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-gray-500 flex-shrink-0" />
-                      <span className="font-semibold text-xs sm:text-sm text-gray-700 dark:text-gray-400">🚫 Cancelled</span>
-                    </div>
-                    <div className="flex items-center gap-1 sm:gap-2">
-                      <span className="text-lg sm:text-xl md:text-2xl font-bold text-gray-600 dark:text-gray-500">{cancelledEventsCount}</span>
-                      <span className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-500 w-10 sm:w-12 text-right">
-                        {totalEventRequests > 0 ? Math.round((cancelledEventsCount / totalEventRequests) * 100) : 0}%
-                      </span>
-                    </div>
-                  </div>
-                  <div className="relative h-6 sm:h-8 bg-gray-100 dark:bg-gray-800/50 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                    <div
-                      className="absolute inset-y-0 left-0 transition-all duration-700 ease-out flex items-center justify-center"
-                      style={{
-                        width: `${totalEventRequests > 0 ? (cancelledEventsCount / totalEventRequests) * 100 : 0}%`,
-                        backgroundColor: '#6b7280',
-                      }}
-                    >
-                      {cancelledEventsCount > 0 && (
-                        <span className="text-[10px] sm:text-xs font-bold text-white px-1 sm:px-2">
-                          {cancelledEventsCount}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Top Clubs by Member Count */}
@@ -406,10 +167,10 @@ export function AnalyticsTab({
             const topClubs = clubsWithMemberCount.slice(0, 10)
             const maxMembers = Math.max(...topClubs.map((c: any) => c.memberCount || 0), 1)
             
-            // Chart dimensions
-            const chartHeight = 300
-            const chartWidth = 800
-            const padding = { top: 20, right: 60, bottom: 80, left: 60 }
+            // Chart dimensions - increased height for better spacing
+            const chartHeight = 350
+            const chartWidth = 900
+            const padding = { top: 40, right: 40, bottom: 60, left: 60 }
             const graphHeight = chartHeight - padding.top - padding.bottom
             const graphWidth = chartWidth - padding.left - padding.right
             
@@ -420,21 +181,39 @@ export function AnalyticsTab({
               return { x, y, club, index }
             })
             
-            // Create path for the line
-            const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
+            // Create smooth curve path using quadratic bezier curves
+            const linePath = points.map((p, i) => {
+              if (i === 0) return `M ${p.x} ${p.y}`
+              const prevPoint = points[i - 1]
+              const midX = (prevPoint.x + p.x) / 2
+              return `Q ${prevPoint.x} ${prevPoint.y} ${midX} ${(prevPoint.y + p.y) / 2} Q ${p.x} ${p.y} ${p.x} ${p.y}`
+            }).join(' ')
             
             // Create area path (fill under the line)
             const areaPath = points.length > 0 
-              ? `M ${points[0].x} ${padding.top + graphHeight} ${points.map((p) => `L ${p.x} ${p.y}`).join(' ')} L ${points[points.length - 1].x} ${padding.top + graphHeight} Z`
+              ? `M ${points[0].x} ${padding.top + graphHeight} L ${points[0].x} ${points[0].y} ${points.slice(1).map(p => `L ${p.x} ${p.y}`).join(' ')} L ${points[points.length - 1].x} ${padding.top + graphHeight} Z`
               : ''
               
             return (
-              <div className="w-full overflow-x-auto pb-2">
+              <div className="w-full overflow-x-auto pb-2 relative">
                 <svg 
                   viewBox={`0 0 ${chartWidth} ${chartHeight}`} 
                   className="w-full" 
-                  style={{ minWidth: '400px' }}
+                  style={{ minWidth: '600px' }}
                 >
+                  {/* Gradient definitions */}
+                  <defs>
+                    <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#3b82f6" />
+                      <stop offset="50%" stopColor="#8b5cf6" />
+                      <stop offset="100%" stopColor="#ec4899" />
+                    </linearGradient>
+                    <linearGradient id="areaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.3" />
+                      <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.05" />
+                    </linearGradient>
+                  </defs>
+                  
                   {/* Grid lines */}
                   {[0, 0.25, 0.5, 0.75, 1].map((percent) => {
                     const y = padding.top + graphHeight * (1 - percent)
@@ -446,16 +225,18 @@ export function AnalyticsTab({
                           x2={padding.left + graphWidth}
                           y2={y}
                           stroke="currentColor"
-                          strokeOpacity="0.1"
+                          strokeOpacity="0.08"
                           strokeWidth="1"
+                          strokeDasharray="4 4"
                         />
                         <text
-                          x={padding.left - 10}
-                          y={y + 4}
+                          x={padding.left - 15}
+                          y={y + 5}
                           textAnchor="end"
-                          fontSize="12"
+                          fontSize="11"
                           fill="currentColor"
-                          opacity="0.6"
+                          opacity="0.5"
+                          fontWeight="500"
                         >
                           {Math.round(maxMembers * percent)}
                         </text>
@@ -466,23 +247,14 @@ export function AnalyticsTab({
                   {/* Area fill under the line */}
                   <path
                     d={areaPath}
-                    fill="url(#gradient)"
-                    opacity="0.2"
+                    fill="url(#areaGradient)"
                   />
                   
-                  {/* Gradient definition */}
-                  <defs>
-                    <linearGradient id="gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.8" />
-                      <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.1" />
-                    </linearGradient>
-                  </defs>
-                  
-                  {/* Line */}
+                  {/* Line with gradient */}
                   <path
-                    d={linePath}
+                    d={points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')}
                     fill="none"
-                    stroke="#3b82f6"
+                    stroke="url(#lineGradient)"
                     strokeWidth="3"
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -491,93 +263,121 @@ export function AnalyticsTab({
                   {/* Points and labels */}
                   {points.map((point, i) => (
                     <g key={i}>
-                      {/* Vertical line from point to x-axis */}
-                      <line
-                        x1={point.x}
-                        y1={point.y}
-                        x2={point.x}
-                        y2={padding.top + graphHeight}
-                        stroke="currentColor"
-                        strokeOpacity="0.1"
-                        strokeWidth="1"
-                        strokeDasharray="4 4"
-                      />
+                      {/* Rank label below x-axis */}
+                      <text
+                        x={point.x}
+                        y={padding.top + graphHeight + 20}
+                        textAnchor="middle"
+                        fontSize="13"
+                        fontWeight="bold"
+                        fill="currentColor"
+                        opacity="0.7"
+                      >
+                        #{i + 1}
+                      </text>
                       
-                      {/* Point circle */}
+                      {/* Point circle with glow effect */}
                       <circle
                         cx={point.x}
                         cy={point.y}
-                        r="6"
+                        r="8"
                         fill="#3b82f6"
-                        stroke="white"
-                        strokeWidth="2"
-                        className="cursor-pointer hover:r-8 transition-all"
+                        fillOpacity="0.2"
+                        className="transition-all"
+                      />
+                      <circle
+                        cx={point.x}
+                        cy={point.y}
+                        r="5"
+                        fill="white"
+                        stroke="#3b82f6"
+                        strokeWidth="2.5"
+                        className="cursor-pointer transition-all hover:r-7"
+                        onMouseEnter={(e) => {
+                          const svg = e.currentTarget.ownerSVGElement
+                          if (svg) {
+                            const pt = svg.createSVGPoint()
+                            pt.x = e.clientX
+                            pt.y = e.clientY
+                            const svgP = pt.matrixTransform(svg.getScreenCTM()?.inverse())
+                            setHoveredClub({
+                              name: point.club.clubName || 'Unknown',
+                              members: point.club.memberCount || 0,
+                              x: svgP.x,
+                              y: svgP.y
+                            })
+                          }
+                        }}
+                        onMouseLeave={() => setHoveredClub(null)}
                       />
                       
-                      {/* Member count label above point */}
-                      <text
-                        x={point.x}
-                        y={point.y - 15}
-                        textAnchor="middle"
-                        fontSize="12"
-                        fontWeight="bold"
-                        fill="#3b82f6"
-                      >
-                        {point.club.memberCount || 0}
-                      </text>
-                      
-                      {/* Club name label (rotated) */}
-                      <text
-                        x={point.x}
-                        y={padding.top + graphHeight + 15}
-                        textAnchor="start"
-                        fontSize="11"
-                        fill="currentColor"
-                        opacity="0.8"
-                        transform={`rotate(45 ${point.x} ${padding.top + graphHeight + 15})`}
-                      >
-                        #{i + 1} {point.club.clubName?.length > 15 ? point.club.clubName.substring(0, 15) + '...' : point.club.clubName}
-                      </text>
+                      {/* Member count label above point with background */}
+                      <g>
+                        <rect
+                          x={point.x - 18}
+                          y={point.y - 30}
+                          width="36"
+                          height="18"
+                          rx="9"
+                          fill="#3b82f6"
+                          opacity="0.9"
+                        />
+                        <text
+                          x={point.x}
+                          y={point.y - 18}
+                          textAnchor="middle"
+                          fontSize="11"
+                          fontWeight="bold"
+                          fill="white"
+                        >
+                          {point.club.memberCount || 0}
+                        </text>
+                      </g>
                     </g>
                   ))}
                   
                   {/* Y-axis label */}
                   <text
-                    x={padding.left - 40}
+                    x={15}
                     y={padding.top + graphHeight / 2}
                     textAnchor="middle"
                     fontSize="12"
-                    fontWeight="bold"
+                    fontWeight="600"
                     fill="currentColor"
                     opacity="0.6"
-                    transform={`rotate(-90 ${padding.left - 40} ${padding.top + graphHeight / 2})`}
+                    transform={`rotate(-90 15 ${padding.top + graphHeight / 2})`}
                   >
-                    Members
+                    Number of Members
                   </text>
                   
-                  {/* X-axis label - moved to top of chart */}
-                  <text
-                    x={padding.left + graphWidth / 2}
-                    y={15}
-                    textAnchor="middle"
-                    fontSize="12"
-                    fontWeight="bold"
-                    fill="currentColor"
-                    opacity="0.6"
-                  >
-                    Clubs (Ranked by Member Count)
-                  </text>
+                  {/* Title */}
+
                 </svg>
                 
-                {/* Legend */}
-                <div className="mt-4 sm:mt-6 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6 text-xs sm:text-sm">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-0.5 sm:w-4 sm:h-1 bg-blue-500 rounded flex-shrink-0" />
-                    <span className="text-muted-foreground">Member Count Trend</span>
+                {/* Hover Tooltip */}
+                {hoveredClub && (
+                  <div 
+                    className="absolute bg-gray-900 text-white px-3 py-2 rounded-lg shadow-lg text-sm font-medium z-10 pointer-events-none whitespace-nowrap"
+                    style={{
+                      left: `${(hoveredClub.x / 900) * 100}%`,
+                      top: `${(hoveredClub.y / 350) * 100 - 10}%`,
+                      transform: 'translate(-50%, -100%)'
+                    }}
+                  >
+                    <div className="font-bold text-blue-300">{hoveredClub.name}</div>
+                    <div className="text-xs text-gray-300">{hoveredClub.members} members</div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-blue-500 border-2 border-white flex-shrink-0" />
-                    <span className="text-muted-foreground">Club Position</span>
+                )}
+                
+                {/* Legend */}
+                <div className="mt-4 flex flex-wrap items-center justify-center gap-4 text-xs">
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/30">
+                    <div className="w-3 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded" />
+                    <span className="text-muted-foreground font-medium">Member Trend</span>
+                  </div>
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/30">
+                    <div className="w-2.5 h-2.5 rounded-full bg-white border-2 border-blue-500" />
+                    <span className="text-muted-foreground font-medium">Hover for club details</span>
                   </div>
                 </div>
               </div>

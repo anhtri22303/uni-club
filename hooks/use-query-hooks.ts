@@ -12,7 +12,7 @@ import { fetchPolicies, fetchPolicyById } from "@/service/policyApi"
 import { fetchAttendanceByDate, fetchMemberAttendanceHistory } from "@/service/attendanceApi"
 import { getMemberApplyByClubId, getMyMemApply, fetchAllMemberApplications } from "@/service/memberApplicationApi"
 import { getClubApplications, getClubApplyById, getMyClubApply } from "@/service/clubApplicationAPI"
-import { fetchUniversityPoints, fetchAttendanceSummary, fetchAttendanceRanking } from "@/service/universityApi"
+import { fetchUniversityPoints, fetchAttendanceSummary, fetchAttendanceRanking, fetchClubOverview, fetchClubOverviewByMonth } from "@/service/universityApi"
 import { getWallet, ApiMembershipWallet } from "@/service/walletApi"
 import { getMemberRedeemOrders } from "@/service/redeemApi"
 import { getAllPenaltyRules, PenaltyRule } from "@/service/disciplineApi";
@@ -148,6 +148,8 @@ export const queryKeys = {
     universityPoints: () => [...queryKeys.university, "points"] as const,
     attendanceSummary: (year: number) => [...queryKeys.university, "attendance-summary", year] as const,
     attendanceRanking: () => [...queryKeys.university, "attendance-ranking"] as const,
+    clubOverview: () => [...queryKeys.university, "club-overview"] as const,
+    clubOverviewByMonth: (year: number, month: number) => [...queryKeys.university, "club-overview-month", year, month] as const,
     
     // Discipline
     discipline: ["discipline"] as const,
@@ -170,16 +172,12 @@ export function useClubs(params = { page: 0, size: 70, sort: ["name"] }) {
     return useQuery({
         queryKey: queryKeys.clubsList(params),
         queryFn: async () => {
-            // console.log("    useClubs queryFn - calling fetchClub with params:", params)
             const res: any = await fetchClub(params)
-            // console.log("    useClubs queryFn - raw response:", res)
-            // console.log("    useClubs queryFn - res.data:", res?.data)
-            // console.log("    useClubs queryFn - res.data.content:", res?.data?.content)
             const clubs = res?.data?.content ?? []
-            // console.log("    useClubs queryFn - returning clubs:", clubs.length, "items")
             return clubs
         },
-        staleTime: 5 * 60 * 1000, // 5 minutes
+        staleTime: 10 * 60 * 1000, // 10 minutes - Increased for better caching
+        gcTime: 15 * 60 * 1000, // Keep in cache for 15 minutes
         retry: 1,
     })
 }
@@ -243,8 +241,7 @@ export function useClubMemberCounts(clubIds: number[], enabled = true) {
     return useQuery({
         queryKey: ["clubs", "member-counts", clubIds],
         queryFn: async () => {
-            console.log(" useClubMemberCounts: Fetching counts for", clubIds.length, "clubs")
-            // Fetch all counts in parallel for better performance
+            // OPTIMIZED: Fetch all counts in parallel with error handling
             const counts = await Promise.all(
                 clubIds.map(async (id) => {
                     try {
@@ -255,7 +252,7 @@ export function useClubMemberCounts(clubIds: number[], enabled = true) {
                             approvedEvents: countData.approvedEvents ?? 0
                         }
                     } catch (error) {
-                        console.error(`Failed to fetch member count for club ${id}:`, error)
+                        // Silent fail - return 0 counts instead of logging
                         return {
                             clubId: id,
                             activeMemberCount: 0,
@@ -264,8 +261,7 @@ export function useClubMemberCounts(clubIds: number[], enabled = true) {
                     }
                 })
             )
-            console.log("  useClubMemberCounts: Fetched counts successfully")
-            // Convert array to object for easy lookup
+            // Convert array to object for O(1) lookup
             return counts.reduce((acc, data) => {
                 acc[data.clubId] = {
                     activeMemberCount: data.activeMemberCount,
@@ -275,8 +271,8 @@ export function useClubMemberCounts(clubIds: number[], enabled = true) {
             }, {} as Record<number, { activeMemberCount: number; approvedEvents: number }>)
         },
         enabled: enabled && clubIds.length > 0,
-        staleTime: 5 * 60 * 1000,
-        // Don't show errors for member counts - just use 0 as fallback
+        staleTime: 10 * 60 * 1000, // 10 minutes - Increased caching
+        gcTime: 15 * 60 * 1000, // Keep in cache for 15 minutes
         retry: 1,
     })
 }
@@ -997,6 +993,42 @@ export function useAttendanceRanking(enabled = true) {
         },
         enabled,
         staleTime: 5 * 60 * 1000, // 5 minutes
+        retry: 2,
+    })
+}
+
+/**
+ * Hook to fetch club overview with comprehensive metrics
+ */
+export function useClubOverview(enabled = true) {
+    return useQuery({
+        queryKey: queryKeys.clubOverview(),
+        queryFn: async () => {
+            const data = await fetchClubOverview()
+            return data
+        },
+        enabled,
+        staleTime: 10 * 60 * 1000, // 10 minutes - Increased for better caching
+        gcTime: 15 * 60 * 1000, // Keep in cache for 15 minutes
+        retry: 2,
+    })
+}
+
+/**
+ * Hook to fetch club overview by month with comprehensive metrics
+ * @param year - Year to fetch data for
+ * @param month - Month to fetch data for (1-12)
+ */
+export function useClubOverviewByMonth(year: number, month: number, enabled = true) {
+    return useQuery({
+        queryKey: queryKeys.clubOverviewByMonth(year, month),
+        queryFn: async () => {
+            const data = await fetchClubOverviewByMonth(year, month)
+            return data
+        },
+        enabled: enabled && !!year && !!month,
+        staleTime: 10 * 60 * 1000, // 10 minutes - Increased for better caching
+        gcTime: 15 * 60 * 1000, // Keep in cache for 15 minutes
         retry: 2,
     })
 }

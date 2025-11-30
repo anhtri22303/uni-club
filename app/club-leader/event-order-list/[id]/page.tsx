@@ -414,7 +414,7 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                                'calc(100% - 4rem)',
                                         background: order.status === 'PENDING' ? 'transparent' :
                                                    order.status === 'COMPLETED' ? 'linear-gradient(to right, #10b981, #14b8a6)' :
-                                                   'linear-gradient(to right, #10b981, #14b8a6, #3b82f6)'
+                                                   'linear-gradient(to right, #10b981, #14b8a6, #f87171)'
                                     }}
                                 />
 
@@ -480,7 +480,7 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                     <div className="flex flex-col items-center" style={{ flex: 1 }}>
                                         <div className={`w-12 h-12 rounded-full flex items-center justify-center border-4 transition-all duration-300 ${
                                             order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
-                                                ? 'bg-gradient-to-br from-blue-400 to-cyan-500 border-blue-300 shadow-lg shadow-blue-500/50'
+                                                ? 'bg-gradient-to-br from-red-400 to-rose-500 border-red-300 shadow-lg shadow-red-500/50'
                                                 : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600'
                                         }`}>
                                             <Undo2 className={`h-6 w-6 ${
@@ -492,7 +492,7 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                         <div className="mt-3 text-center">
                                             <p className={`text-sm font-semibold ${
                                                 order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
-                                                    ? 'text-blue-600 dark:text-blue-400'
+                                                    ? 'text-red-600 dark:text-red-400'
                                                     : 'text-gray-400 dark:text-gray-500'
                                             }`}>
                                                 {order.status === 'PARTIALLY_REFUNDED' ? 'Partial Refund' : 'Refunded'}

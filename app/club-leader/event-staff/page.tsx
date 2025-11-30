@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
 import { getClubIdFromToken } from "@/service/clubApi"
-import { getEventByClubId, type Event } from "@/service/eventApi"
+import { getEventByClubId, type Event, getEventDateRange, isEventExpired, formatEventDateRange, getEventStartTime, getEventEndTime } from "@/service/eventApi"
 import { getEventStaff, getEventStaffCompleted, type EventStaff, getEvaluateEventStaff, type StaffEvaluation } from "@/service/eventStaffApi"
 import { Calendar, Clock, MapPin, Users, ChevronLeft, Star, Eye, CheckCircle, AlertCircle, XCircle } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -54,8 +54,10 @@ export default function EventStaffPage() {
     try {
       setLoading(true)
       const data = await getEventByClubId(clubId!)
+      console.log("📊 Loaded events for club:", clubId, data)
       setEvents(data)
     } catch (error: any) {
+      console.error("❌ Error loading events:", error)
       toast({
         title: "Error Loading Events",
         description: error?.message || "Failed to load events",
@@ -133,21 +135,21 @@ export default function EventStaffPage() {
   }
 
   // Filter events based on status and time
-  const now = new Date()
-  
   const activeEvents = events.filter((event) => {
-    const eventDate = new Date(event.date)
-    const isNotExpired = eventDate >= now
     const isApprovedOrOngoing = ["APPROVED", "ONGOING"].includes(event.status)
-    return isNotExpired && isApprovedOrOngoing
+    const expired = isEventExpired(event)
+    return isApprovedOrOngoing && !expired
   })
 
   const completedEvents = events.filter((event) => {
-    const eventDate = new Date(event.date)
-    const isExpired = eventDate < now
     const isCompleted = event.status === "COMPLETED"
-    return isExpired || isCompleted
+    const expired = isEventExpired(event)
+    return isCompleted || expired
   })
+
+  console.log("📋 Total events:", events.length)
+  console.log("✅ Active events:", activeEvents.length, activeEvents)
+  console.log("✅ Completed events:", completedEvents.length, completedEvents)
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr)
@@ -237,11 +239,11 @@ export default function EventStaffPage() {
       <CardContent className="space-y-2">
         <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
           <Calendar className="h-4 w-4" />
-          <span>{formatDate(event.date)}</span>
+          <span>{formatEventDateRange(event)}</span>
         </div>
         <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
           <Clock className="h-4 w-4" />
-          <span>{formatTime(event.startTime as string)} - {formatTime(event.endTime as string)}</span>
+          <span>{getEventStartTime(event)} - {getEventEndTime(event)}</span>
         </div>
         <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
           <MapPin className="h-4 w-4" />

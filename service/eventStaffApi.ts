@@ -166,6 +166,27 @@ export interface MyStaffEvent {
 }
 
 /**
+ * Staff History Order - Lịch sử phê duyệt đơn hàng của staff
+ */
+export interface StaffHistoryOrder {
+  orderId: number;
+  orderCode: string;
+  productName: string;
+  quantity: number;
+  totalPoints: number;
+  status: string;
+  createdAt: string;
+  completedAt: string;
+  productType: string;
+  clubId: number;
+  eventId: number;
+  clubName: string;
+  memberName: string;
+  reasonRefund: string;
+  errorImages: string[];
+}
+
+/**
  * Lấy danh sách event mà user hiện tại là staff
  * GET /api/events/my/staff
  */
@@ -177,6 +198,18 @@ export async function getMyStaff(): Promise<MyStaffEvent[]> {
   return res.data.data;
 }
 
+/**
+ * Lấy lịch sử phê duyệt đơn hàng của staff
+ * GET /api/redeem/my-approvals
+ */
+export async function getStaffHistory(): Promise<StaffHistoryOrder[]> {
+  const res = await axiosInstance.get<ApiResponse<{ content: StaffHistoryOrder[] }>>(
+    "/api/redeem/my-approvals"
+  );
+  console.log("getStaffHistory res:", res);
+  return res.data.data.content;
+}
+
 export default {
   getEventStaff,
   getEventStaffCompleted,
@@ -186,4 +219,5 @@ export default {
   getEvaluateEventStaff,
   getTopEvaluatedStaff,
   getMyStaff,
+  getStaffHistory,
 };
