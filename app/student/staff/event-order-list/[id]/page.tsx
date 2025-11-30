@@ -18,6 +18,7 @@ import { useMyStaffEvents } from "@/hooks/use-query-hooks"
 import {
      RedeemOrder, completeRedeemOrder, refundRedeemOrder, refundPartialRedeemOrder, RefundPayload,
     uploadRefundImages, getRefundImages, RefundImage, getRedeemOrderById,
+    getOrderLogsByMembershipAndOrder, OrderLog,
 } from "@/service/redeemApi"
 import {
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger,
@@ -61,6 +62,10 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
     // [MỚI] State để xem ảnh phóng to (Preview Gallery)
     const [previewIndex, setPreviewIndex] = useState<number | null>(null);
 
+    // [MỚI] State cho Order Logs Modal
+    const [selectedAction, setSelectedAction] = useState<string | null>(null);
+    const [isLogModalOpen, setIsLogModalOpen] = useState<boolean>(false);
+
     // 1. Lấy clubId từ staff event của user
     const { data: staffEvents = [], isLoading: staffEventsLoading } = useMyStaffEvents();
 
@@ -98,6 +103,34 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
         queryKey: ["refundImages", order?.orderId],
         queryFn: () => getRefundImages(order!.orderId),
         enabled: !!order?.orderId && (order.status === "REFUNDED" || order.status === "PARTIALLY_REFUNDED"),
+    });
+
+    // Query lấy order logs
+    const { data: orderLogs = [], error: logsError } = useQuery<OrderLog[]>({
+        queryKey: ["orderLogs", order?.orderId, order?.membershipId],
+        queryFn: async () => {
+            if (!order?.orderId || !order?.membershipId) {
+                console.log("⚠️ Order ID or Membership ID not available yet", { orderId: order?.orderId, membershipId: order?.membershipId });
+                return [];
+            }
+            console.log("🔍 Fetching order logs for:", { membershipId: order.membershipId, orderId: order.orderId });
+            try {
+                const logs = await getOrderLogsByMembershipAndOrder(order.membershipId, order.orderId);
+                console.log("✅ Order logs fetched successfully:", logs);
+                return logs;
+            } catch (error: any) {
+                console.error("❌ Failed to fetch order logs:", {
+                    membershipId: order.membershipId,
+                    orderId: order.orderId,
+                    error: error,
+                    response: error?.response?.data,
+                    status: error?.response?.status
+                });
+                return [];
+            }
+        },
+        enabled: !!order?.orderId && !!order?.membershipId,
+        retry: 1,
     });
 
     // Các hàm xử lý ảnh
@@ -252,6 +285,26 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
     const handlePartialQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
         setPartialQuantity(value);
+    };
+
+    // Helper functions để lấy logs theo action
+    const getLogsByAction = (action: string) => {
+        return orderLogs.filter(log => log.action === action).sort((a, b) => 
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+    };
+
+    const getLatestLogDate = (action: string) => {
+        const logs = getLogsByAction(action);
+        return logs.length > 0 ? logs[0].createdAt : null;
+    };
+
+    const handleStepClick = (action: string) => {
+        const logs = getLogsByAction(action);
+        if (logs.length > 0) {
+            setSelectedAction(action);
+            setIsLogModalOpen(true);
+        }
     };
 
     // Determine status color theme
@@ -429,11 +482,14 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                 <div className="relative flex justify-between items-start">
                                     {/* Step 1: PENDING */}
                                     <div className="flex flex-col items-center" style={{ flex: 1 }}>
-                                        <div className={`w-12 h-12 rounded-full flex items-center justify-center border-4 transition-all duration-300 ${
-                                            order.status === 'PENDING' || order.status === 'COMPLETED' || order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
-                                                ? 'bg-gradient-to-br from-yellow-400 to-amber-500 border-yellow-300 shadow-lg shadow-yellow-500/50'
-                                                : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600'
-                                        }`}>
+                                        <div 
+                                            className={`w-12 h-12 rounded-full flex items-center justify-center border-4 transition-all duration-300 ${
+                                                order.status === 'PENDING' || order.status === 'COMPLETED' || order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
+                                                    ? 'bg-gradient-to-br from-yellow-400 to-amber-500 border-yellow-300 shadow-lg shadow-yellow-500/50 cursor-pointer hover:scale-110'
+                                                    : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600'
+                                            }`}
+                                            onClick={() => handleStepClick('CREATE')}
+                                        >
                                             <Clock className={`h-6 w-6 ${
                                                 order.status === 'PENDING' || order.status === 'COMPLETED' || order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
                                                     ? 'text-white'
@@ -451,18 +507,35 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                                 Order placed
                                             </p>
+                                            {(() => {
+                                                const latestDate = getLatestLogDate('CREATE');
+                                                if (latestDate) {
+                                                    const date = new Date(latestDate);
+                                                    return (
+                                                        <p className="text-xs text-gray-600 dark:text-gray-300 font-medium mt-1">
+                                                            {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                                            <br />
+                                                            {date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                                                        </p>
+                                                    );
+                                                }
+                                                return null;
+                                            })()}
                                         </div>
                                     </div>
 
                                     {/* Step 2: DELIVERED */}
                                     <div className="flex flex-col items-center" style={{ flex: 1 }}>
-                                        <div className={`w-12 h-12 rounded-full flex items-center justify-center border-4 transition-all duration-300 ${
-                                            order.status === 'COMPLETED'
-                                                ? 'bg-gradient-to-br from-green-400 to-emerald-500 border-green-300 shadow-lg shadow-green-500/50'
-                                                : (order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED')
-                                                ? 'bg-gradient-to-br from-green-400 to-emerald-500 border-green-300 shadow-lg shadow-green-500/50'
-                                                : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600'
-                                        }`}>
+                                        <div 
+                                            className={`w-12 h-12 rounded-full flex items-center justify-center border-4 transition-all duration-300 ${
+                                                order.status === 'COMPLETED'
+                                                    ? 'bg-gradient-to-br from-green-400 to-emerald-500 border-green-300 shadow-lg shadow-green-500/50 cursor-pointer hover:scale-110'
+                                                    : (order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED')
+                                                    ? 'bg-gradient-to-br from-green-400 to-emerald-500 border-green-300 shadow-lg shadow-green-500/50 cursor-pointer hover:scale-110'
+                                                    : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600'
+                                            }`}
+                                            onClick={() => handleStepClick('DELIVER')}
+                                        >
                                             <CheckCircle className={`h-6 w-6 ${
                                                 order.status === 'COMPLETED' || order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
                                                     ? 'text-white'
@@ -480,16 +553,33 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                                 Order completed
                                             </p>
+                                            {(() => {
+                                                const latestDate = getLatestLogDate('DELIVER');
+                                                if (latestDate) {
+                                                    const date = new Date(latestDate);
+                                                    return (
+                                                        <p className="text-xs text-gray-600 dark:text-gray-300 font-medium mt-1">
+                                                            {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                                            <br />
+                                                            {date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                                                        </p>
+                                                    );
+                                                }
+                                                return null;
+                                            })()}
                                         </div>
                                     </div>
 
                                     {/* Step 3: REFUNDED */}
                                     <div className="flex flex-col items-center" style={{ flex: 1 }}>
-                                        <div className={`w-12 h-12 rounded-full flex items-center justify-center border-4 transition-all duration-300 ${
-                                            order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
-                                                ? 'bg-gradient-to-br from-red-400 to-rose-500 border-red-300 shadow-lg shadow-red-500/50'
-                                                : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600'
-                                        }`}>
+                                        <div 
+                                            className={`w-12 h-12 rounded-full flex items-center justify-center border-4 transition-all duration-300 ${
+                                                order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
+                                                    ? 'bg-gradient-to-br from-red-400 to-rose-500 border-red-300 shadow-lg shadow-red-500/50 cursor-pointer hover:scale-110'
+                                                    : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600'
+                                            }`}
+                                            onClick={() => handleStepClick('REFUND')}
+                                        >
                                             <Undo2 className={`h-6 w-6 ${
                                                 order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
                                                     ? 'text-white'
@@ -507,6 +597,20 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                                 {order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED' ? 'Refund processed' : 'If needed'}
                                             </p>
+                                            {(() => {
+                                                const latestDate = getLatestLogDate('REFUND');
+                                                if (latestDate) {
+                                                    const date = new Date(latestDate);
+                                                    return (
+                                                        <p className="text-xs text-gray-600 dark:text-gray-300 font-medium mt-1">
+                                                            {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                                            <br />
+                                                            {date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                                                        </p>
+                                                    );
+                                                }
+                                                return null;
+                                            })()}
                                         </div>
                                     </div>
                                 </div>
@@ -1019,6 +1123,107 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                             )}
                         </div>
                     </div>
+
+                    {/* Order Logs Modal */}
+                    <Dialog open={isLogModalOpen} onOpenChange={setIsLogModalOpen}>
+                        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                            <DialogHeader>
+                                <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                                    Order Logs - {selectedAction}
+                                </DialogTitle>
+                                <DialogDescription>
+                                    Detailed history of all {selectedAction} actions for this order
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4 py-4">
+                                {selectedAction && getLogsByAction(selectedAction).length > 0 ? (
+                                    getLogsByAction(selectedAction).map((log, index) => (
+                                        <Card key={log.id} className="border-l-4 border-l-purple-500 shadow-md hover:shadow-lg transition-all">
+                                            <CardHeader className="pb-3">
+                                                <div className="flex items-center justify-between">
+                                                    <Badge className={`px-3 py-1 font-semibold ${
+                                                        log.action === 'CREATE' ? 'bg-yellow-500 hover:bg-yellow-600' :
+                                                        log.action === 'DELIVER' ? 'bg-green-500 hover:bg-green-600' :
+                                                        log.action === 'REFUND' ? 'bg-red-500 hover:bg-red-600' :
+                                                        'bg-blue-500 hover:bg-blue-600'
+                                                    }`}>
+                                                        {log.action}
+                                                    </Badge>
+                                                    <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                                                        <Calendar className="h-4 w-4 mr-1" />
+                                                        {new Date(log.createdAt).toLocaleString('en-US', {
+                                                            month: 'short',
+                                                            day: 'numeric',
+                                                            year: 'numeric',
+                                                            hour: 'numeric',
+                                                            minute: '2-digit',
+                                                            hour12: true
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            </CardHeader>
+                                            <CardContent className="space-y-3">
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="space-y-1">
+                                                        <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Actor</p>
+                                                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                                            {log.actorName}
+                                                        </p>
+                                                        <p className="text-xs text-gray-400">ID: {log.actorId}</p>
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Target User</p>
+                                                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                                            {log.targetUserName}
+                                                        </p>
+                                                        <p className="text-xs text-gray-400">ID: {log.targetUserId}</p>
+                                                    </div>
+                                                </div>
+                                                <Separator />
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="flex items-center space-x-2">
+                                                        <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                                                            <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-xs text-gray-500 dark:text-gray-400">Quantity</p>
+                                                            <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{log.quantity}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center space-x-2">
+                                                        <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                                                            <Info className="h-4 w-4 text-green-600 dark:text-green-400" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-xs text-gray-500 dark:text-gray-400">Points Change</p>
+                                                            <p className={`text-sm font-bold ${
+                                                                log.pointsChange > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                                                            }`}>
+                                                                {log.pointsChange > 0 ? '+' : ''}{log.pointsChange}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                {log.reason && (
+                                                    <>
+                                                        <Separator />
+                                                        <div className="p-3 bg-gray-50 dark:bg-slate-800 rounded-lg">
+                                                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1 font-medium">Reason</p>
+                                                            <p className="text-sm text-gray-700 dark:text-gray-300 italic">{log.reason}</p>
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </CardContent>
+                                        </Card>
+                                    ))
+                                ) : (
+                                    <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                                        No logs found for this action
+                                    </div>
+                                )}
+                            </div>
+                        </DialogContent>
+                    </Dialog>
 
                     {/* Gallery Modal */}
                     <Dialog open={previewIndex !== null} onOpenChange={(open) => !open && setPreviewIndex(null)}>
