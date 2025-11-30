@@ -359,7 +359,7 @@ export default function MemberGiftPage() {
 											setCurrentPage(1) // Reset về trang 1 khi xóa tìm kiếm
 										}}
 										// Style: Tuyệt đối bên phải, hover chuyển màu Primary
-										className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full text-slate-400 hover:bg-primary 
+										className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full text-slate-400 hover:bg-primary 
 										hover:text-primary-foreground transition-colors"
 									>
 										<X className="h-4 w-4" />

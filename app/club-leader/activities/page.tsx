@@ -13,22 +13,22 @@ import {
     getClubMemberActivity,
     getClubMemberActivityLive,
     updateBulkMonthlyActivity,
-    MemberActivityScore,
-    MemberLiveActivityScore,
-    ActivityLevel,
+    MemberActivityFullScore,
+    MemberActivityShortItem,
     UpdateBulkMonthlyActivityBody,
-    MonthlyActivityItem
+    MonthlyActivityItem,
+    ActivityLevel
 } from "@/service/activityApi"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
-import { Users, BarChart2, Star, RotateCw, Calculator, Check, Save, AlertCircle } from "lucide-react"
+import { Users, BarChart2, Star, RotateCw, Calculator, Save, AlertCircle, Calendar, Info } from "lucide-react"
 import { Label } from "@/components/ui/label"
 import { getClubIdFromToken } from "@/service/clubApi"
 import { Input } from "@/components/ui/input"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
-// --- Tiện ích (Helpers) ---
-
+// --- Helper Functions ---
 const generateYearOptions = () => {
     const currentYear = new Date().getFullYear()
     const years = []
@@ -47,8 +47,7 @@ const generateMonthOptions = () => {
     ]
 }
 
-// Định dạng màu cho Activity Level
-const getLevelBadgeColor = (level: ActivityLevel | string) => {
+const getLevelBadgeColor = (level: string) => {
     switch (level) {
         case "HIGH": return "bg-green-100 text-green-700 border-green-300 dark:bg-green-950 dark:text-green-300 dark:border-green-700"
         case "MEDIUM": return "bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-700"
@@ -57,32 +56,39 @@ const getLevelBadgeColor = (level: ActivityLevel | string) => {
     }
 }
 
-// Component hiển thị chi tiết điểm trong Modal
-const ActivityScoreDetail = ({ score }: { score: MemberActivityScore }) => {
-    // Sử dụng ?? 0 để an toàn với dữ liệu null/undefined
-    const attendanceScore = score.attendanceTotalScore ?? 0;
-    const staffTotalScore = score.staffTotalScore ?? 0;
-    const finalScore = score.finalScore ?? 0;
+// Type mở rộng: Kết hợp dữ liệu Short (có sẵn) và Full (có sau khi calculate)
+type DisplayActivityItem = MemberActivityShortItem & Partial<MemberActivityFullScore>;
+
+// Component Modal Chi tiết (Chỉ hiện khi đã có điểm)
+const ActivityScoreDetail = ({ score }: { score: DisplayActivityItem }) => {
+    if (score.finalScore === undefined) {
+        return (
+            <div className="p-6 text-center text-muted-foreground">
+                <Calculator className="h-12 w-12 mx-auto mb-2 opacity-20" />
+                <p>Score details are not available yet.</p>
+                <p className="text-sm">Please run "Calculate Live Preview" to view scores.</p>
+            </div>
+        )
+    }
 
     return (
         <div className="space-y-6">
-            {/* Tổng điểm */}
             <Card className="bg-primary/5 border-primary/50">
                 <CardHeader className="pb-2">
                     <CardDescription className="flex items-center gap-2 text-primary font-semibold">
                         <BarChart2 className="h-5 w-5" /> FINAL SCORE
                     </CardDescription>
                     <CardTitle className="text-5xl text-primary">
-                        {finalScore.toFixed(0)}
+                        {score.finalScore?.toFixed(0) ?? 0}
                     </CardTitle>
                     <CardDescription>
-                        = Attendance ({attendanceScore.toFixed(0)}) + Staff ({staffTotalScore.toFixed(0)})
+                        = Attendance ({(score.attendanceTotalScore ?? 0).toFixed(0)}) + Staff ({(score.staffTotalScore ?? 0).toFixed(0)})
                     </CardDescription>
                 </CardHeader>
             </Card>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Phần Attendance */}
+                {/* Attendance Details */}
                 <Card>
                     <CardHeader className="pb-3 bg-muted/30">
                         <CardTitle className="text-lg flex items-center gap-2">
@@ -100,25 +106,20 @@ const ActivityScoreDetail = ({ score }: { score: MemberActivityScore }) => {
                                 {(score.attendanceMultiplier ?? 0).toFixed(1)}x
                             </Badge>
                         </div>
-                        <div className="border-t pt-2 flex justify-between items-center">
-                            <span className="font-semibold text-sm">Total Attendance:</span>
-                            <span className="text-xl font-bold text-blue-600">{attendanceScore.toFixed(0)}</span>
-                        </div>
-                        
                         <div className="bg-muted p-2 rounded text-xs space-y-1 mt-2">
                             <div className="flex justify-between">
-                                <span>Rate:</span>
-                                <span>{((score.sessionAttendanceRate ?? 0) * 100).toFixed(0)}%</span>
+                                <span>Sessions:</span>
+                                <span>{score.totalClubPresent}/{score.totalClubSessions}</span>
                             </div>
                             <div className="flex justify-between">
-                                <span>Sessions:</span>
-                                <span>{score.totalClubPresent ?? 0}/{score.totalClubSessions ?? 0}</span>
+                                <span>Events:</span>
+                                <span>{score.totalEventAttended}/{score.totalEventRegistered}</span>
                             </div>
                         </div>
                     </CardContent>
                 </Card>
 
-                {/* Phần Staff */}
+                {/* Staff Details */}
                 <Card>
                     <CardHeader className="pb-3 bg-muted/30">
                         <CardTitle className="text-lg flex items-center gap-2">
@@ -132,97 +133,76 @@ const ActivityScoreDetail = ({ score }: { score: MemberActivityScore }) => {
                         </div>
                         <div className="flex justify-between text-sm">
                             <span className="text-muted-foreground">Evaluation:</span>
-                            <Badge variant={(score.staffEvaluation === 'GOOD' || score.staffEvaluation === 'EXCELLENT') ? 'default' : 'secondary'} className="text-[10px]">
+                            <Badge variant="secondary" className="text-[10px]">
                                 {score.staffEvaluation ?? 'NONE'}
                             </Badge>
                         </div>
-                        <div className="border-t pt-2 flex justify-between items-center">
-                            <span className="font-semibold text-sm">Total Staff:</span>
-                            <span className="text-xl font-bold text-yellow-600">{staffTotalScore.toFixed(0)}</span>
-                        </div>
-
                         <div className="bg-muted p-2 rounded text-xs space-y-1 mt-2">
                             <div className="flex justify-between">
-                                <span>Times Participated:</span>
-                                <span>{score.totalStaffCount ?? 0}</span>
+                                <span>Tasks Count:</span>
+                                <span>{score.totalStaffCount}</span>
                             </div>
                             <div className="flex justify-between">
-                                <span>Last Multiplier:</span>
+                                <span>Multiplier:</span>
                                 <span>{(score.staffMultiplier ?? 0).toFixed(1)}x</span>
                             </div>
                         </div>
                     </CardContent>
                 </Card>
             </div>
-
-            {/* Các chỉ số phụ */}
-            <Card>
-                <CardContent className="pt-4">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <AlertCircle className="h-4 w-4" /> Penalty Points
-                        </div>
-                        <span className="text-red-600 font-bold">-{score.totalPenaltyPoints ?? 0}</span>
-                    </div>
-                </CardContent>
-            </Card>
         </div>
     )
 }
 
 export default function ActivityReportPage() {
     const { toast } = useToast()
-    
-    // State quản lý thời gian
+
+    // Time State
     const [yearOptions] = useState(generateYearOptions())
     const [monthOptions] = useState(generateMonthOptions())
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
 
-    // State dữ liệu
-    const [activities, setActivities] = useState<MemberActivityScore[]>([])
+    // Data State
+    const [activities, setActivities] = useState<DisplayActivityItem[]>([])
     const [isLoading, setIsLoading] = useState(true)
-    const [selectedMember, setSelectedMember] = useState<MemberActivityScore | null>(null)
-    
-    // State Base Score & Chế độ
-    // [CẬP NHẬT] Mặc định là "0"
-    const [attendanceBaseInput, setAttendanceBaseInput] = useState<string>("0")
-    const [staffBaseInput, setStaffBaseInput] = useState<string>("0")
+    const [selectedMember, setSelectedMember] = useState<DisplayActivityItem | null>(null)
+
+    // Logic State
+    const [attendanceBaseInput, setAttendanceBaseInput] = useState<string>("")
+    const [staffBaseInput, setStaffBaseInput] = useState<string>("")
     const [isCalculating, setIsCalculating] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
-    const [isPreviewMode, setIsPreviewMode] = useState(false) // Đánh dấu đang xem Live Preview
+
+    // Flag: Đã tính điểm chưa? Nếu true -> Hiện cột điểm. Nếu false -> Ẩn cột điểm.
+    const [showScores, setShowScores] = useState(false)
 
     const [clubId] = useState(() => getClubIdFromToken())
 
-    // Hàm tải dữ liệu lịch sử (ban đầu)
+    // 1. Load Data (Mặc định chỉ tải thông tin hoạt động - Short API)
     const loadActivities = useCallback(async () => {
-        if (!clubId) {
-            toast({ title: "Error", description: "Club information not found.", variant: "destructive" })
-            return
-        }
+        if (!clubId) return
 
-        console.log(`Loading historical data for Club ID: ${clubId}, ${selectedMonth}/${selectedYear}`)
         setIsLoading(true)
-        setIsPreviewMode(false) // Reset preview mode khi load lại trang
-        
-        // [CẬP NHẬT] Reset input về 0 mỗi khi load lại dữ liệu (chuyển tháng/năm)
-        setAttendanceBaseInput("0");
-        setStaffBaseInput("0");
+        setShowScores(false) // Reset về chế độ chỉ xem Stats khi đổi tháng/năm/load lại
+
+        // Reset inputs để người dùng nhập mới nếu muốn tính toán
+        setAttendanceBaseInput("")
+        setStaffBaseInput("")
 
         try {
-            // Vẫn gọi API để lấy dữ liệu hoạt động mới nhất của member trong tháng
+            // Gọi API Short (Chỉ lấy Stats: Event, Session, Penalty...)
             const data = await getClubMemberActivity({
                 clubId: clubId,
                 year: selectedYear,
                 month: selectedMonth,
             })
             setActivities(data)
-            // [QUAN TRỌNG] Đã bỏ đoạn code tự động điền base score cũ vào input
         } catch (error: any) {
             console.error("Error loading activity report:", error)
             toast({
                 title: "Error",
-                description: error.message || "Unable to load report.",
+                description: "Failed to load member activities.",
                 variant: "destructive",
             })
             setActivities([])
@@ -231,7 +211,7 @@ export default function ActivityReportPage() {
         }
     }, [clubId, selectedYear, selectedMonth, toast])
 
-    // Hàm tính toán LIVE
+    // 2. Calculate Live Score (Gọi API Full và Merge)
     const handleLiveCalculation = async () => {
         if (!clubId) return
 
@@ -239,117 +219,80 @@ export default function ActivityReportPage() {
         const stfBase = Number(staffBaseInput)
 
         if (isNaN(attBase) || attBase < 0 || isNaN(stfBase) || stfBase < 0) {
-            toast({ 
-                title: "Invalid Input", 
-                description: "Base scores must be valid positive numbers.", 
-                variant: "destructive" 
-            })
+            toast({ title: "Invalid Input", description: "Base scores must be valid positive numbers.", variant: "destructive" })
             return
         }
 
         setIsCalculating(true)
         try {
-            // 1. Gọi API Live để lấy dữ liệu tính toán real-time
-            const liveData: MemberLiveActivityScore[] = await getClubMemberActivityLive({
+            // Gọi API Live (Trả về Full Info + Scores)
+            const liveData: MemberActivityFullScore[] = await getClubMemberActivityLive({
                 clubId: clubId,
                 attendanceBase: attBase,
                 staffBase: stfBase
             })
-            
-            // 2. MERGE Logic: Kết hợp dữ liệu Live vào dữ liệu hiện tại
-            // Lý do: Live Data chỉ có Score, thiếu Stats (Level, Events...).
-            // Ta cần giữ lại Stats từ `activities` cũ (nếu có) và cập nhật Score từ `liveData`.
-            
-            const mergedActivities: MemberActivityScore[] = liveData.map(liveItem => {
-                // Tìm member tương ứng trong danh sách hiện tại
-                const existingMember = activities.find(a => a.membershipId === liveItem.membershipId);
 
-                if (existingMember) {
-                    // Nếu có dữ liệu cũ, ghi đè Score mới vào, giữ nguyên Stats cũ
-                    return {
-                        ...existingMember,
-                        attendanceBaseScore: liveItem.attendanceBaseScore,
-                        attendanceMultiplier: liveItem.attendanceMultiplier,
-                        attendanceTotalScore: liveItem.attendanceTotalScore,
-                        staffBaseScore: liveItem.staffBaseScore,
-                        staffMultiplier: liveItem.staffMultiplier,
-                        staffTotalScore: liveItem.staffTotalScore,
-                        finalScore: liveItem.finalScore
-                    };
-                } else {
-                    // Nếu là tháng mới tinh chưa có dữ liệu, tạo mới object với default stats
-                    return {
-                        ...liveItem,
-                        // Default stats cho các trường thiếu
-                        clubId: clubId,
-                        clubName: "", // Live không trả về cái này, có thể để trống
-                        year: selectedYear,
-                        month: selectedMonth,
-                        totalEventRegistered: 0,
-                        totalEventAttended: 0,
-                        eventAttendanceRate: 0,
-                        totalPenaltyPoints: 0,
-                        activityLevel: "UNKNOWN",
-                        totalClubSessions: 0,
-                        totalClubPresent: 0,
-                        sessionAttendanceRate: 0,
-                        totalStaffCount: 0,
-                        staffEvaluation: "UNKNOWN",
-                        staffScore: 0
-                    } as MemberActivityScore;
-                }
-            });
+            // Ép kiểu liveData sang DisplayActivityItem và set vào state
+            // Vì Live Data đã bao gồm đầy đủ cả Stats và Score nên ta dùng trực tiếp
+            setActivities(liveData)
+            setShowScores(true) // Bật cờ để hiển thị các cột điểm số
 
-            setActivities(mergedActivities)
-            setIsPreviewMode(true) // Bật chế độ Preview
-            
             toast({
-                title: "Live Preview Ready",
-                description: `Scores recalculated based on Att: ${attBase}, Staff: ${stfBase}. Don't forget to SAVE.`,
-                variant: "default",
+                title: "Calculation Complete",
+                description: "Scores have been calculated based on current data.",
             })
         } catch (error: any) {
             console.error("Error calculating live scores:", error)
-            toast({
-                title: "Calculation Failed",
-                description: error.message || "Failed to fetch live data.",
-                variant: "destructive",
-            })
+            toast({ title: "Calculation Failed", description: error.message, variant: "destructive" })
         } finally {
             setIsCalculating(false)
         }
     }
 
-    // Hàm Lưu Báo Cáo (Bulk Update)
+    // 3. Save Report (Gửi dữ liệu đã tính toán lên server)
     const handleSaveReport = async () => {
         if (!clubId || activities.length === 0) return;
+        // Chỉ cho phép lưu khi đang ở chế độ đã tính điểm
+        if (!showScores) {
+            //  toast({ title: "No Scores", description: "Please calculate scores before saving.", variant: "warning" })
+            toast({
+                title: "No Scores",
+                description: "Please calculate scores before saving.",
+                variant: "destructive" // Dùng màu đỏ để cảnh báo
+            })
+            return;
+        }
 
         setIsSaving(true);
         try {
-            // Map dữ liệu hiện tại sang format Body của API Bulk Update
-            const itemsToUpdate: MonthlyActivityItem[] = activities.map(item => ({
-                membershipId: item.membershipId,
-                year: selectedYear, // Đảm bảo dùng năm đang chọn
-                month: selectedMonth, // Đảm bảo dùng tháng đang chọn
-                totalEventRegistered: item.totalEventRegistered ?? 0,
-                totalEventAttended: item.totalEventAttended ?? 0,
-                eventAttendanceRate: item.eventAttendanceRate ?? 0,
-                totalPenaltyPoints: item.totalPenaltyPoints ?? 0,
-                activityLevel: item.activityLevel || "UNKNOWN",
-                attendanceBaseScore: item.attendanceBaseScore,
-                attendanceMultiplier: item.attendanceMultiplier,
-                attendanceTotalScore: item.attendanceTotalScore,
-                staffBaseScore: item.staffBaseScore,
-                totalStaffCount: item.totalStaffCount ?? 0,
-                staffEvaluation: item.staffEvaluation || "UNKNOWN",
-                staffMultiplier: item.staffMultiplier,
-                staffScore: item.staffScore ?? 0,
-                staffTotalScore: item.staffTotalScore,
-                totalClubSessions: item.totalClubSessions ?? 0,
-                totalClubPresent: item.totalClubPresent ?? 0,
-                sessionAttendanceRate: item.sessionAttendanceRate ?? 0,
-                finalScore: item.finalScore
-            }));
+            const itemsToUpdate: MonthlyActivityItem[] = activities.map(item => {
+                // Ép kiểu an toàn vì khi showScores = true, các trường này chắc chắn tồn tại từ API Live
+                const fullItem = item as MemberActivityFullScore;
+
+                return {
+                    membershipId: fullItem.membershipId,
+                    year: selectedYear,
+                    month: selectedMonth,
+                    totalEventRegistered: fullItem.totalEventRegistered,
+                    totalEventAttended: fullItem.totalEventAttended,
+                    eventAttendanceRate: fullItem.eventAttendanceRate,
+                    totalPenaltyPoints: fullItem.totalPenaltyPoints,
+                    activityLevel: fullItem.activityLevel,
+                    attendanceBaseScore: fullItem.attendanceBaseScore,
+                    attendanceMultiplier: fullItem.attendanceMultiplier,
+                    attendanceTotalScore: fullItem.attendanceTotalScore,
+                    staffBaseScore: fullItem.staffBaseScore,
+                    totalStaffCount: fullItem.totalStaffCount,
+                    staffEvaluation: fullItem.staffEvaluation,
+                    staffMultiplier: fullItem.staffMultiplier,
+                    staffScore: fullItem.staffScore,
+                    staffTotalScore: fullItem.staffTotalScore,
+                    totalClubSessions: fullItem.totalClubSessions,
+                    totalClubPresent: fullItem.totalClubPresent,
+                    sessionAttendanceRate: fullItem.sessionAttendanceRate,
+                    finalScore: fullItem.finalScore
+                }
+            });
 
             const payload: UpdateBulkMonthlyActivityBody = {
                 year: selectedYear,
@@ -357,34 +300,23 @@ export default function ActivityReportPage() {
                 items: itemsToUpdate
             };
 
-            await updateBulkMonthlyActivity({
-                clubId: clubId,
-                body: payload
-            });
+            await updateBulkMonthlyActivity({ clubId, body: payload });
 
             toast({
                 title: "Report Saved",
-                description: "All member scores have been successfully updated.",
+                description: "Monthly activity report has been updated successfully.",
                 variant: "default",
             });
-            
-            // Sau khi save thành công, tắt chế độ Preview và reload lại dữ liệu sạch
-            setIsPreviewMode(false);
-            loadActivities();
 
+            // Sau khi save, giữ nguyên hiển thị
         } catch (error: any) {
             console.error("Error saving report:", error);
-            toast({
-                title: "Save Failed",
-                description: error.message || "Could not save the report.",
-                variant: "destructive",
-            });
+            toast({ title: "Save Failed", description: error.message, variant: "destructive" });
         } finally {
             setIsSaving(false);
         }
     };
 
-    // Tải dữ liệu khi component mount hoặc filter thay đổi
     useEffect(() => {
         loadActivities()
     }, [selectedYear, selectedMonth, clubId, loadActivities])
@@ -393,32 +325,104 @@ export default function ActivityReportPage() {
         <ProtectedRoute allowedRoles={["club_leader", "club_vice_leader"]}>
             <AppShell>
                 <div className="space-y-6">
-                    {/* Header */}
-                    <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
-                        <div className="flex-1">
-                            <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
-                                <Calculator className="h-7 w-7 text-primary" />
-                                <span>Activity Scoring Manager</span>
+                    {/* Header Section */}
+                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                        <div>
+                            <h1 className="text-2xl font-bold flex items-center gap-2">
+                                <Calendar className="h-6 w-6 text-primary" />
+                                Activity & Scoring Manager
                             </h1>
                             <p className="text-muted-foreground mt-1">
-                                Manage attendance and staff points for <strong>{selectedMonth}/{selectedYear}</strong>.
+                                Viewing activity details for <strong>{selectedMonth}/{selectedYear}</strong>.
                             </p>
                         </div>
-                        
-                        {/* Nút Save */}
-                        <Button 
-                            className="gap-2 bg-green-600 hover:bg-green-700" 
-                            disabled={isLoading || isSaving || activities.length === 0}
-                            onClick={handleSaveReport}
-                        >
-                            {isSaving ? <RotateCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                            Confirm & Save Report
-                        </Button>
+                        <div className="flex items-center gap-2">
+                            {/* Nút Save chỉ hiện khi đã tính điểm */}
+                            {showScores && (
+                                <Button
+                                    className="gap-2 bg-green-600 hover:bg-green-700"
+                                    disabled={isSaving}
+                                    onClick={handleSaveReport}
+                                >
+                                    {isSaving ? <RotateCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                                    Confirm & Save Report
+                                </Button>
+                            )}
+                        </div>
                     </div>
-                    
-                    {/* Alert thông báo Preview Mode */}
-                    {isPreviewMode && (
-                        <Alert className="bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-800 dark:text-yellow-200">
+
+                    {/* Configuration Panel */}
+                    <Card className="border-primary/20 shadow-sm">
+                        <CardHeader className="pb-3">
+                            <CardTitle className="text-lg flex items-center gap-2">
+                                <Calculator className="h-5 w-5" /> Configuration & Calculation
+                            </CardTitle>
+                            <CardDescription>
+                                Set base scores and click calculate to preview member points.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 items-end">
+                                {/* Time Selection */}
+                                <div className="space-y-2">
+                                    <Label>Year</Label>
+                                    <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(Number(v))} disabled={isLoading || isCalculating}>
+                                        <SelectTrigger className="border-slate-300"><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            {yearOptions.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Month</Label>
+                                    <Select value={String(selectedMonth)} onValueChange={(v) => setSelectedMonth(Number(v))} disabled={isLoading || isCalculating}>
+                                        <SelectTrigger className="border-slate-300"><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            {monthOptions.map(m => <SelectItem key={m.value} value={String(m.value)}>{m.label}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {/* Scoring Inputs */}
+                                <div className="space-y-2">
+                                    <Label className="text-blue-600">Attendance Base</Label>
+                                    <div className="relative">
+                                        <Input
+                                            type="number" placeholder="e.g. 100"
+                                            value={attendanceBaseInput} onChange={(e) => setAttendanceBaseInput(e.target.value)}
+                                            className="pl-8 border-slate-300"
+                                        />
+                                        <Users className="h-4 w-4 absolute left-2.5 top-3 text-muted-foreground" />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-yellow-600">Staff Base</Label>
+                                    <div className="relative">
+                                        <Input
+                                            type="number" placeholder="e.g. 100"
+                                            value={staffBaseInput} onChange={(e) => setStaffBaseInput(e.target.value)}
+                                            className="pl-8 border-slate-300"
+                                        />
+                                        <Star className="h-4 w-4 absolute left-2.5 top-3 text-muted-foreground" />
+                                    </div>
+                                </div>
+
+                                {/* Calculate Button */}
+                                <Button
+                                    onClick={handleLiveCalculation}
+                                    disabled={isLoading || isCalculating || !attendanceBaseInput || !staffBaseInput}
+                                    className="w-full"
+                                >
+                                    {isCalculating ? <RotateCw className="h-4 w-4 animate-spin" /> : <Calculator className="h-4 w-4 mr-2" />}
+                                    Calculate Live Preview
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Warning Alert if showing recalculated scores */}
+                    {showScores && (
+                        <Alert className="bg-yellow-50 text-yellow-800 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-200 dark:border-yellow-800">
                             <AlertCircle className="h-4 w-4" />
                             <AlertTitle>Preview Mode Active</AlertTitle>
                             <AlertDescription>
@@ -427,161 +431,242 @@ export default function ActivityReportPage() {
                         </Alert>
                     )}
 
-                    {/* Panel Điều khiển: Filter & Inputs */}
-                    <Card className="border-primary/20 shadow-sm">
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-lg">Configuration & Calculation</CardTitle>
-                            <CardDescription>Set parameters to calculate real-time scores for all members.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                                {/* Cột 1: Chọn Năm */}
-                                <div className="space-y-2">
-                                    <Label htmlFor="year-select">Year</Label>
-                                    <Select
-                                        value={String(selectedYear)}
-                                        onValueChange={(value) => setSelectedYear(Number(value))}
-                                        disabled={isLoading || isCalculating || isSaving}
-                                    >
-                                        <SelectTrigger id="year-select"><SelectValue /></SelectTrigger>
-                                        <SelectContent>
-                                            {yearOptions.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                {/* Cột 2: Chọn Tháng */}
-                                <div className="space-y-2">
-                                    <Label htmlFor="month-select">Month</Label>
-                                    <Select
-                                        value={String(selectedMonth)}
-                                        onValueChange={(value) => setSelectedMonth(Number(value))}
-                                        disabled={isLoading || isCalculating || isSaving}
-                                    >
-                                        <SelectTrigger id="month-select"><SelectValue /></SelectTrigger>
-                                        <SelectContent>
-                                            {monthOptions.map(m => <SelectItem key={m.value} value={String(m.value)}>{m.label}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                {/* Cột 3: Attendance Base Score */}
-                                <div className="space-y-2">
-                                    <Label htmlFor="att-base" className="text-blue-600 font-semibold">Attendance Base Score</Label>
-                                    <div className="relative">
-                                        <Input
-                                            id="att-base"
-                                            type="number"
-                                            min="0"
-                                            placeholder="e.g. 30"
-                                            value={attendanceBaseInput}
-                                            onChange={(e) => setAttendanceBaseInput(e.target.value)}
-                                            disabled={isLoading || isCalculating || isSaving}
-                                            className="pl-9"
-                                        />
-                                        <Users className="h-4 w-4 absolute left-3 top-3 text-muted-foreground" />
-                                    </div>
-                                </div>
-
-                                {/* Cột 4: Staff Base Score */}
-                                <div className="space-y-2">
-                                    <Label htmlFor="staff-base" className="text-yellow-600 font-semibold">Staff Base Score</Label>
-                                    <div className="relative">
-                                        <Input
-                                            id="staff-base"
-                                            type="number"
-                                            min="0"
-                                            placeholder="e.g. 20"
-                                            value={staffBaseInput}
-                                            onChange={(e) => setStaffBaseInput(e.target.value)}
-                                            disabled={isLoading || isCalculating || isSaving}
-                                            className="pl-9"
-                                        />
-                                        <Star className="h-4 w-4 absolute left-3 top-3 text-muted-foreground" />
-                                    </div>
-                                </div>
-                            </div>
-                        </CardContent>
-                        <CardFooter className="border-t pt-4 bg-muted/20 flex justify-end">
-                            <Button 
-                                onClick={handleLiveCalculation}
-                                disabled={isLoading || isCalculating || isSaving || !attendanceBaseInput || !staffBaseInput}
-                                className="w-full sm:w-auto min-w-[200px] gap-2"
-                                variant="secondary"
-                            >
-                                {isCalculating ? <RotateCw className="h-4 w-4 animate-spin" /> : <Calculator className="h-4 w-4" />}
-                                Calculate Live Preview
-                            </Button>
-                        </CardFooter>
-                    </Card>
-
-                    {/* Bảng Dữ liệu */}
+                    {/* Data Table */}
                     <Card>
                         <CardHeader>
                             <div className="flex justify-between items-center">
                                 <div className="flex items-center gap-3">
                                     <CardTitle>Member Score Report</CardTitle>
-                                    {isPreviewMode && <Badge variant="destructive" className="animate-pulse">PREVIEW</Badge>}
+                                    {showScores && <Badge variant="destructive" className="animate-pulse">PREVIEW</Badge>}
                                 </div>
                                 <Badge variant="secondary">{activities.length} Members</Badge>
                             </div>
                             <CardDescription>
-                                Click on any row to see detailed score breakdown.
+                                {showScores
+                                    ? "Click on any row to see detailed score breakdown."
+                                    : "Showing activity stats only. Calculate to view scores."}
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="p-0">
                             <Table>
                                 <TableHeader>
                                     <TableRow className="bg-muted/50">
-                                        <TableHead className="w-[250px]">Full Name</TableHead>
-                                        <TableHead>Student ID</TableHead>
-                                        <TableHead>Activity Level</TableHead>
-                                        <TableHead className="text-center text-blue-600">Att. Score</TableHead>
-                                        <TableHead className="text-center text-yellow-600">Staff Score</TableHead>
-                                        <TableHead className="text-right font-bold">Final Score</TableHead>
+                                        <TableHead className="w-[250px] pl-10">Full Name</TableHead>
+                                        <TableHead className="w-[100px] text-center">Student ID</TableHead>
+
+                                        {/* --- NHÓM CHÍNH (Attendance & Staff) --- */}
+                                        {/* <TableHead className="w-[120px] text-center font-semibold text-foreground">Sessions (P/T)</TableHead>
+                                        <TableHead className="w-[100px] text-center font-semibold text-foreground">Staff Count</TableHead> */}
+                                        <TableHead className="w-[120px] text-center font-semibold text-foreground">
+                                            <div className="flex items-center justify-center gap-2">
+                                                <span>Sessions</span>
+                                                <Tooltip>
+                                                    <TooltipTrigger>
+                                                        <Info className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground transition-colors" />
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p>Present / Total Sessions (P/T)</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </div>
+                                        </TableHead>
+                                        <TableHead className="w-[100px] text-center font-semibold text-foreground">
+                                            <div className="flex items-center justify-center gap-2">
+                                                <span>Staff Count</span>
+                                                <Tooltip>
+                                                    <TooltipTrigger>
+                                                        <Info className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground transition-colors" />
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p>Total times assigned as Staff</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </div>
+                                        </TableHead>
+
+                                        {/* --- NHÓM PHỤ (Events & Penalty) --- */}
+                                        {/* <TableHead className="w-[120px] text-center text-muted-foreground">Events (A/R)</TableHead>
+                                        <TableHead className="w-[80px] text-center text-red-500">Penalty</TableHead> */}
+                                        <TableHead className="w-[120px] text-center text-muted-foreground">
+                                            <div className="flex items-center justify-center gap-2">
+                                                <span>Events</span>
+                                                <Tooltip>
+                                                    <TooltipTrigger>
+                                                        <Info className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground transition-colors" />
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p>Attended / Registered Events (A/R)</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </div>
+                                        </TableHead>
+
+                                        <TableHead className="w-[80px] text-center text-red-500">
+                                            <div className="flex items-center justify-center gap-2">
+                                                <span>Penalty</span>
+                                                <Tooltip>
+                                                    <TooltipTrigger>
+                                                        <Info className="h-3.5 w-3.5 text-red-400 hover:text-red-600 transition-colors" />
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p>Accumulated Penalty Points</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </div>
+                                        </TableHead>
+
+                                        {/* --- NHÓM ĐIỂM SỐ (Chỉ hiện khi Calculate) --- */}
+                                        {/* {showScores && (
+                                            <>
+                                                <TableHead className="text-center text-blue-600 bg-blue-50/50">Level</TableHead>
+                                                <TableHead className="text-center text-blue-600 bg-blue-50/50">Att. Score</TableHead>
+                                                <TableHead className="text-center text-yellow-600 bg-yellow-50/50">Staff Score</TableHead>
+                                                <TableHead className="text-center font-bold bg-muted/30">Final Score</TableHead>
+                                            </>
+                                        )} */}
+                                        {showScores && (
+                                            <>
+                                                {/* Cột Level */}
+                                                <TableHead className="text-center text-blue-600 bg-blue-50/50">
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <span>Level</span>
+                                                        <Tooltip>
+                                                            <TooltipTrigger>
+                                                                <Info className="h-3.5 w-3.5 text-blue-400 hover:text-blue-600 transition-colors" />
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>
+                                                                <p>Activity classification based on score</p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    </div>
+                                                </TableHead>
+
+                                                {/* Cột Attendance Score */}
+                                                <TableHead className="text-center text-blue-600 bg-blue-50/50">
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <span>Attendance Score</span>
+                                                        <Tooltip>
+                                                            <TooltipTrigger>
+                                                                <Info className="h-3.5 w-3.5 text-blue-400 hover:text-blue-600 transition-colors" />
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>
+                                                                <p>Total score derived from Sessions in club</p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    </div>
+                                                </TableHead>
+
+                                                {/* Cột Staff Score */}
+                                                <TableHead className="text-center text-yellow-600 bg-yellow-50/50">
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <span>Staff Score</span>
+                                                        <Tooltip>
+                                                            <TooltipTrigger>
+                                                                <Info className="h-3.5 w-3.5 text-yellow-500 hover:text-yellow-700 transition-colors" />
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>
+                                                                <p>Total score derived from Staff contributions</p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    </div>
+                                                </TableHead>
+
+                                                {/* Cột Final Score */}
+                                                <TableHead className="text-right font-bold bg-muted/30">
+                                                    {/* Lưu ý: justify-end vì cột này căn phải */}
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <span>Final Score</span>
+                                                        <Tooltip>
+                                                            <TooltipTrigger>
+                                                                <Info className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground transition-colors" />
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>
+                                                                <p>Total = Attendance Score + Staff Score</p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    </div>
+                                                </TableHead>
+                                            </>
+                                        )}
+
                                     </TableRow>
                                 </TableHeader>
+
                                 <TableBody>
                                     {isLoading ? (
                                         [...Array(5)].map((_, i) => (
                                             <TableRow key={i}>
-                                                <TableCell><Skeleton className="h-5 w-40" /></TableCell>
+                                                <TableCell><Skeleton className="h-5 w-32" /></TableCell>
                                                 <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                                                <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                                                <TableCell><Skeleton className="h-5 w-10 mx-auto" /></TableCell>
-                                                <TableCell><Skeleton className="h-5 w-10 mx-auto" /></TableCell>
-                                                <TableCell><Skeleton className="h-5 w-12 ml-auto" /></TableCell>
+                                                <TableCell><Skeleton className="h-5 w-16 mx-auto" /></TableCell>
+                                                <TableCell><Skeleton className="h-5 w-16 mx-auto" /></TableCell>
+                                                <TableCell><Skeleton className="h-5 w-16 mx-auto" /></TableCell>
+                                                <TableCell><Skeleton className="h-5 w-8 mx-auto" /></TableCell>
+                                                {showScores && (
+                                                    <>
+                                                        <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+                                                        <TableCell><Skeleton className="h-5 w-10" /></TableCell>
+                                                        <TableCell><Skeleton className="h-5 w-10" /></TableCell>
+                                                        <TableCell><Skeleton className="h-5 w-12 ml-auto" /></TableCell>
+                                                    </>
+                                                )}
                                             </TableRow>
                                         ))
                                     ) : activities.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={6} className="text-center h-32 text-muted-foreground">
-                                                No data found for this period. Try calculating live scores.
+                                            <TableCell colSpan={showScores ? 10 : 6} className="text-center h-32 text-muted-foreground">
+                                                No activity data found for this period.
                                             </TableCell>
                                         </TableRow>
                                     ) : (
                                         activities.map((member) => (
-                                            <TableRow 
-                                                key={member.membershipId} 
-                                                onClick={() => setSelectedMember(member)}
-                                                className="cursor-pointer hover:bg-muted/60 transition-colors"
+                                            <TableRow
+                                                key={member.membershipId}
+                                                className={showScores ? "cursor-pointer hover:bg-muted/60" : ""}
+                                                onClick={() => showScores && setSelectedMember(member)}
                                             >
-                                                <TableCell className="font-medium">{member.fullName}</TableCell>
-                                                <TableCell className="text-muted-foreground">{member.studentCode}</TableCell>
-                                                <TableCell>
-                                                    <Badge variant="outline" className={getLevelBadgeColor(member.activityLevel || "UNKNOWN")}>
-                                                        {member.activityLevel || "UNKNOWN"}
-                                                    </Badge>
+                                                <TableCell className="font-medium pl-5">{member.fullName}</TableCell>
+                                                <TableCell className="text-muted-foreground text-sm text-center">{member.studentCode}</TableCell>
+
+                                                {/* 1. Sessions (Attendance) - CHÍNH */}
+                                                <TableCell className="text-center font-medium">
+                                                    {member.totalClubPresent ?? 0}/{member.totalClubSessions ?? 0}
                                                 </TableCell>
-                                                <TableCell className="text-center font-mono text-blue-600">
-                                                    {(member.attendanceTotalScore ?? 0).toFixed(0)}
+
+                                                {/* 2. Staff Count - CHÍNH */}
+                                                <TableCell className="text-center font-medium">
+                                                    {member.totalStaffCount ?? 0}
                                                 </TableCell>
-                                                <TableCell className="text-center font-mono text-yellow-600">
-                                                    {(member.staffTotalScore ?? 0).toFixed(0)}
+
+                                                {/* 3. Events - PHỤ */}
+                                                <TableCell className="text-center text-muted-foreground">
+                                                    {member.totalEventAttended ?? 0}/{member.totalEventRegistered ?? 0}
                                                 </TableCell>
-                                                <TableCell className="text-right font-bold text-lg">
-                                                    {(member.finalScore ?? 0).toFixed(0)}
+
+                                                {/* 4. Penalty - PHỤ */}
+                                                <TableCell className="text-center font-bold text-red-500">
+                                                    {member.totalPenaltyPoints > 0 ? `-${member.totalPenaltyPoints}` : "0"}
                                                 </TableCell>
+
+                                                {/* 5. Score Columns - Hiện khi showScores = true */}
+                                                {showScores && (
+                                                    <>
+                                                        <TableCell className="text-center bg-blue-50/30">
+                                                            <Badge variant="outline" className={getLevelBadgeColor(member.activityLevel as ActivityLevel || "UNKNOWN")}>
+                                                                {member.activityLevel || "UNKNOWN"}
+                                                            </Badge>
+                                                        </TableCell>
+                                                        <TableCell className="text-center font-mono text-blue-600 bg-blue-50/30">
+                                                            {member.attendanceTotalScore?.toFixed(0) ?? 0}
+                                                        </TableCell>
+                                                        <TableCell className="text-center font-mono text-yellow-600 bg-yellow-50/30">
+                                                            {member.staffTotalScore?.toFixed(0) ?? 0}
+                                                        </TableCell>
+                                                        <TableCell className="text-right font-bold text-lg bg-muted/20 pr-10">
+                                                            {member.finalScore?.toFixed(0) ?? 0}
+                                                        </TableCell>
+                                                    </>
+                                                )}
                                             </TableRow>
                                         ))
                                     )}
@@ -589,20 +674,22 @@ export default function ActivityReportPage() {
                             </Table>
                         </CardContent>
                     </Card>
-                </div>
 
-                {/* Modal Chi tiết */}
-                <Dialog open={!!selectedMember} onOpenChange={(open) => !open && setSelectedMember(null)}>
-                    <DialogContent className="sm:max-w-[600px]">
-                        <DialogHeader>
-                            <DialogTitle>Detailed Score Breakdown</DialogTitle>
-                            <DialogDescription>
-                                Score analysis for <span className="font-semibold text-foreground">{selectedMember?.fullName}</span> ({selectedMember?.studentCode})
-                            </DialogDescription>
-                        </DialogHeader>
-                        {selectedMember && <ActivityScoreDetail score={selectedMember} />}
-                    </DialogContent>
-                </Dialog>
+
+
+                    {/* Detail Modal (Chỉ mở được khi showScores = true) */}
+                    <Dialog open={!!selectedMember} onOpenChange={(open) => !open && setSelectedMember(null)}>
+                        <DialogContent className="sm:max-w-[600px]">
+                            <DialogHeader>
+                                <DialogTitle>Member Score Breakdown</DialogTitle>
+                                <DialogDescription>
+                                    Details for {selectedMember?.fullName}
+                                </DialogDescription>
+                            </DialogHeader>
+                            {selectedMember && <ActivityScoreDetail score={selectedMember} />}
+                        </DialogContent>
+                    </Dialog>
+                </div>
             </AppShell>
         </ProtectedRoute>
     )

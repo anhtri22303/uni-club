@@ -10,11 +10,19 @@ export type ActivityLevel = "LOW" | "MEDIUM" | "HIGH" | "UNKNOWN";
  */
 export type StaffEvaluation = "POOR" | "AVERAGE" | "GOOD" | "EXCELLENT" | "UNKNOWN";
 
+// ==========================================
+// 1. DEFINITION CÁC INTERFACE DỮ LIỆU
+// ==========================================
+
 /**
- * Interface cho dữ liệu điểm hoạt động của một thành viên
- * Đã CẬP NHẬT theo schema Attendance/Staff mới nhất từ Swagger
+ * Interface 1: Dữ liệu điểm hoạt động ĐẦY ĐỦ
+ * Dùng cho:
+ * - /api/clubs/{clubId}/members/activity-live (Live)
+ * - /api/clubs/{clubId}/members/me/activity (Của tôi)
+ * - /api/admin/member-activities (Admin)
+ * - memberOfMonth trong Summary
  */
-export interface MemberActivityScore {
+export interface MemberActivityFullScore {
     membershipId: number;
     userId: number;
     fullName: string;
@@ -23,112 +31,64 @@ export interface MemberActivityScore {
     clubName: string;
     year: number;
     month: number;
-    // Dữ liệu thô Attendance & Event
-    totalClubSessions: number;
-    totalClubPresent: number;
-    sessionAttendanceRate: number;
+    
+    // Event Info
     totalEventRegistered: number;
     totalEventAttended: number;
     eventAttendanceRate: number;
     totalPenaltyPoints: number;
-    // Điểm và hệ số Attendance
+    
+    // Attendance Score Info
     activityLevel: ActivityLevel | string;
     attendanceBaseScore: number;
     attendanceMultiplier: number;
-    attendanceTotalScore: number; // Điểm Attendance thực tế (Base * Multiplier)
-    // Điểm và hệ số Staff
+    attendanceTotalScore: number;
+    
+    // Staff Score Info
     staffBaseScore: number;
     totalStaffCount: number;
     staffEvaluation: StaffEvaluation | string;
     staffMultiplier: number;
-    staffScore: number; // Điểm của một đợt Staff
-    staffTotalScore: number; // Tổng điểm Staff thực tế
-    // Total Score
-    finalScore: number; // attendanceTotalScore + staffTotalScore
-
-    // Giữ lại cho khả năng tương thích với code cũ
-    avgStaffPerformance?: number;
-    baseScore?: number;
-    baseScorePercent?: number;
-    appliedMultiplier?: number;
-}
-
-/**
- * Interface cho dữ liệu điểm hoạt động REAL-TIME (gọn hơn bản lịch sử)
- * Dùng cho response của /api/clubs/{clubId}/members/activity-live
- */
-export interface MemberLiveActivityScore {
-    membershipId: number;
-    userId: number;
-    fullName: string;
-    studentCode: string;
-    // Live Score chỉ trả về các trường điểm số sau:
-    attendanceBaseScore: number;
-    attendanceMultiplier: number;
-    attendanceTotalScore: number;
-    staffBaseScore: number;
-    staffMultiplier: number;
+    staffScore: number;
     staffTotalScore: number;
+    
+    // Club Session Info
+    totalClubSessions: number;
+    totalClubPresent: number;
+    sessionAttendanceRate: number;
+    
+    // Final
     finalScore: number;
 }
 
 /**
- *  Interface cho response của API Live Activity
+ * Interface 2: Dữ liệu điểm hoạt động TÓM TẮT (Lịch sử)
+ * Dùng cho: /api/clubs/{clubId}/members/activity
+ * Cập nhật: Khớp chính xác với JSON response (chỉ có counts, không có rates/scores)
  */
-export interface MemberLiveActivityApiResponse {
-    success: boolean;
-    message: string;
-    data: MemberLiveActivityScore[];
+export interface MemberActivityShortItem {
+    membershipId: number;
+    userId: number;
+    fullName: string;
+    studentCode: string;
+    clubId: number;
+    clubName: string;
+    year: number;
+    month: number;
+    // Event Stats
+    totalEventRegistered: number;
+    totalEventAttended: number;
+    totalPenaltyPoints: number;
+    // Staff Stats
+    totalStaffCount: number;
+    // Session Stats
+    totalClubSessions: number;
+    totalClubPresent: number;
 }
 
 /**
- * Interface cho cấu trúc response chung (khi data là một MẢNG)
- */
-export interface MemberActivityApiResponse {
-    success: boolean;
-    message: string;
-    data: MemberActivityScore[];
-}
-/**
- * Interface cho cấu trúc response (khi data là MỘT OBJECT MemberActivityScore)
- * Dùng cho /api/clubs/{clubId}/members/me/activity
- */
-export interface MemberActivityDataApiResponse {
-    success: boolean;
-    message: string;
-    data: MemberActivityScore; // Lưu ý: Đây là 1 object, không phải mảng
-}
-
-/**
- * Interface cho cấu trúc response cho các API không trả về data hoặc trả về data rỗng {}
- */
-export interface StandardApiResponse {
-    success: boolean;
-    message: string;
-    data: Record<string, never> | null; // Có thể là {} hoặc null tùy theo API
-}
-
-/**
- * Interface cho Response khi tính điểm thành công cho 1 member
- * POST /api/clubs/{clubId}/members/{membershipId}/calculate-score
- */
-export interface MemberCalculationApiResponse {
-    success: boolean;
-    message: string;
-    data: {
-        attendanceBaseScore: number;
-        attendanceMultiplier: number;
-        attendanceTotalScore: number;
-        staffBaseScore: number;
-        staffMultiplier: number;
-        staffTotalScore: number;
-        finalScore: number;
-    };
-}
-
-/**
- * Interface cho dữ liệu tổng quan hoạt động CLB
- * Dùng cho /api/clubs/{clubId}/activity/summary
+ * Interface 3: Tổng quan hoạt động CLB
+ * Dùng cho: /api/clubs/{clubId}/activity/summary
  */
 export interface ClubActivitySummary {
     clubId: number;
@@ -136,175 +96,285 @@ export interface ClubActivitySummary {
     year: number;
     month: number;
     totalEventsCompleted: number;
-    memberCount: number; // Thêm lại theo schema summary mới
+    memberCount: number;
     fullMembersCount: number;
-    memberOfMonth: MemberActivityScore; // Lồng object MemberActivityScore (Đã được cập nhật)
+    memberOfMonth: MemberActivityFullScore; // Sử dụng bản Full
     clubMultiplier: number;
 }
 
 /**
- * Interface cho cấu trúc response (khi data là ClubActivitySummary)
+ * Interface 4: Kết quả tính toán điểm (Preview)
+ * Dùng cho: POST calculate-score
  */
+export interface ScoreCalculationResult {
+    attendanceBaseScore: number;
+    attendanceMultiplier: number;
+    attendanceTotalScore: number;
+    staffBaseScore: number;
+    staffMultiplier: number;
+    staffTotalScore: number;
+    finalScore: number;
+}
+
+// ==========================================
+// 2. DEFINITION CÁC API RESPONSE
+// ==========================================
+
+// Response trả về MẢNG FULL (Live, Admin)
+export interface MemberActivityFullListResponse {
+    success: boolean;
+    message: string;
+    data: MemberActivityFullScore[];
+}
+
+// Response trả về 1 OBJECT FULL (Me)
+export interface MemberActivityFullSingleResponse {
+    success: boolean;
+    message: string;
+    data: MemberActivityFullScore;
+}
+
+// Response trả về MẢNG SHORT (History)
+export interface MemberActivityShortListResponse {
+    success: boolean;
+    message: string;
+    data: MemberActivityShortItem[];
+}
+
+// Response trả về Summary
 export interface ClubActivitySummaryApiResponse {
     success: boolean;
     message: string;
     data: ClubActivitySummary;
 }
 
-/**
- * Body cho API tạo báo cáo tháng (Create Monthly Activity)
- * POST /api/clubs/{clubId}/activity/monthly/create
- */
-export interface CreateMonthlyActivityBody {
-    membershipId: number;
-    year: number;
-    month: number;
-    totalEventRegistered: number;
-    totalEventAttended: number;
-    eventAttendanceRate: number;
-    totalPenaltyPoints: number;
-    activityLevel: string;
-    attendanceBaseScore: number;
-    attendanceMultiplier: number;
-    attendanceTotalScore: number;
-    staffBaseScore: number;
-    totalStaffCount: number;
-    staffEvaluation: string;
-    staffMultiplier: number;
-    staffScore: number;
-    staffTotalScore: number;
-    totalClubSessions: number;
-    totalClubPresent: number;
-    sessionAttendanceRate: number;
-    finalScore: number;
+// Response tính toán điểm
+export interface MemberCalculationApiResponse {
+    success: boolean;
+    message: string;
+    data: ScoreCalculationResult;
 }
 
-/**
- * Item con trong Body cập nhật hàng loạt (Update Bulk)
- * Kế thừa các trường dữ liệu từ CreateMonthlyActivityBody
- */
-export type MonthlyActivityItem = CreateMonthlyActivityBody;
-
-/**
- * Body cho API cập nhật báo cáo hàng loạt
- * PUT /api/clubs/{clubId}/activity/monthly/update-bulk
- */
-export interface UpdateBulkMonthlyActivityBody {
-    year: number;
-    month: number;
-    items: MonthlyActivityItem[];
+// Standard Response
+export interface StandardApiResponse {
+    success: boolean;
+    message: string;
+    data: Record<string, never> | null;
 }
 
-/**
- * Interface tham số cho hàm createMonthlyActivity (API MỚI)
- */
-export interface CreateMonthlyActivityParams {
-    clubId: number;
-    body: CreateMonthlyActivityBody;
-}
+// ==========================================
+// 3. PARAMETERS & BODY TYPES
+// ==========================================
 
-/**
- * Interface tham số cho hàm updateBulkMonthlyActivity (API MỚI)
- */
-export interface UpdateBulkMonthlyActivityParams {
-    clubId: number;
-    body: UpdateBulkMonthlyActivityBody;
-}
-
-/**
- * Interface cho các tham số (path và query) của các hàm GET
- */
 export interface GetClubMemberActivityParams {
     clubId: number;
     year: number;
     month: number;
 }
 
-/**
- * Interface cho tham số của hàm GET LIVE Score
- */
 export interface GetLiveActivityParams {
     clubId: number;
-    attendanceBase: number;
-    staffBase: number;
+    attendanceBase?: number; // Optional vì có default value = 100
+    staffBase?: number;      // Optional vì có default value = 100
 }
 
-/**
- * Interface cho tham số (query) của hàm admin
- */
 export interface GetAdminAllMemberActivitiesParams {
     year: number;
     month: number;
 }
 
-/**
- * Interface cho Request body của API PUT/POST baseScore (Base Score Attendance/Staff)
- * Dùng cho POST /api/clubs/{clubId}/members/{membershipId}/calculate-score
- */
+// Body để create/update giống bản Full Score (vì khi lưu là lưu full)
+export type CreateMonthlyActivityBody = Omit<MemberActivityFullScore, 'clubId' | 'clubName' | 'fullName' | 'studentCode' | 'userId'>;
+
+export interface MonthlyActivityItem extends CreateMonthlyActivityBody {
+    // Kế thừa các trường số liệu
+}
+
+export interface UpdateBulkMonthlyActivityBody {
+    year: number;
+    month: number;
+    items: MonthlyActivityItem[];
+}
+
+export interface UpdateBulkMonthlyActivityParams {
+    clubId: number;
+    body: UpdateBulkMonthlyActivityBody;
+}
+
 export interface BaseScoreCalculationBody {
     attendanceBaseScore: number;
     staffBaseScore: number;
 }
 
-/**
- * Interface cho tham số của API tính điểm cho 1 member
- */
 export interface CalculateMemberScoreParams {
     clubId: number;
     membershipId: number;
     body: BaseScoreCalculationBody;
 }
 
-/**
- * Interface cho Request body của API cập nhật baseScore (API CŨ)
- */
-export interface UpdateBaseScoreBody {
-    membershipId: number;
-    baseScore: number;
-}
+// ==========================================
+// 4. API FUNCTIONS
+// ==========================================
 
 /**
- * Interface cho tham số của API cập nhật baseScore (API CŨ)
+ * 1. GET: Leader xem danh sách lịch sử (Bản Tóm Tắt)
+ * /api/clubs/{clubId}/members/activity
+ * Trả về: MemberActivityShortItem[]
  */
-export interface UpdateBaseScoreParams {
-    clubId: number;
-    year: number;
-    month: number;
-    body: UpdateBaseScoreBody;
-}
-
-// --- CÁC HÀM API ---
-
-/**
- * Tạo báo cáo hoạt động tháng cho 1 membership
- * POST /api/clubs/{clubId}/activity/monthly/create
- */
-export const createMonthlyActivity = async ({
+export const getClubMemberActivity = async ({
     clubId,
-    body
-}: CreateMonthlyActivityParams): Promise<MemberActivityScore> => {
+    year,
+    month,
+}: GetClubMemberActivityParams): Promise<MemberActivityShortItem[]> => {
     try {
-        const response = await axiosInstance.post<MemberActivityDataApiResponse>(
-            `/api/clubs/${clubId}/activity/monthly/create`,
-            body
+        const response = await axiosInstance.get<MemberActivityShortListResponse>(
+            `/api/clubs/${clubId}/members/activity`,
+            { params: { year, month } }
         );
 
-        console.log("Create monthly activity response:", response.data);
-
-        if (response.data && response.data.success) {
+        if (response.data && response.data.success && Array.isArray(response.data.data)) {
             return response.data.data;
         }
-
-        throw new Error(response.data?.message || "Failed to create monthly activity");
+        return [];
     } catch (error) {
-        console.error("Error creating monthly activity:", error);
+        console.error("Error fetching club member activity (short):", error);
         throw error;
     }
 };
 
 /**
- * Cập nhật báo cáo hoạt động nhiều thành viên cùng lúc
- * PUT /api/clubs/{clubId}/activity/monthly/update-bulk
+ * 2. GET: Leader xem điểm LIVE real-time (Bản Đầy Đủ)
+ * /api/clubs/{clubId}/members/activity-live
+ * Trả về: MemberActivityFullScore[]
+ */
+export const getClubMemberActivityLive = async ({
+    clubId,
+    attendanceBase,
+    staffBase,
+}: GetLiveActivityParams): Promise<MemberActivityFullScore[]> => {
+    try {
+        const response = await axiosInstance.get<MemberActivityFullListResponse>(
+            `/api/clubs/${clubId}/members/activity-live`,
+            {
+                params: {
+                    attendanceBase,
+                    staffBase
+                },
+            }
+        );
+
+        if (response.data && response.data.success && Array.isArray(response.data.data)) {
+            return response.data.data;
+        }
+        return [];
+    } catch (error) {
+        console.error("Error fetching club member live activity:", error);
+        throw error;
+    }
+};
+
+/**
+ * 3. GET: Member xem điểm của bản thân (Bản Đầy Đủ - 1 Object)
+ * /api/clubs/{clubId}/members/me/activity
+ */
+export const getMyMemberActivity = async ({
+    clubId,
+    year,
+    month,
+}: GetClubMemberActivityParams): Promise<MemberActivityFullScore> => {
+    try {
+        const response = await axiosInstance.get<MemberActivityFullSingleResponse>(
+            `/api/clubs/${clubId}/members/me/activity`,
+            { params: { year, month } }
+        );
+
+        if (response.data && response.data.success) {
+            return response.data.data;
+        }
+        throw new Error(response.data?.message || "Failed to fetch my activity");
+    } catch (error) {
+        console.error("Error fetching my member activity:", error);
+        throw error;
+    }
+};
+
+/**
+ * 4. GET: Admin xem toàn hệ thống (Bản Đầy Đủ - Mảng)
+ * /api/admin/member-activities
+ */
+export const getAdminAllMemberActivities = async ({
+    year,
+    month,
+}: GetAdminAllMemberActivitiesParams): Promise<MemberActivityFullScore[]> => {
+    try {
+        const response = await axiosInstance.get<MemberActivityFullListResponse>(
+            `/api/admin/member-activities`,
+            { params: { year, month } }
+        );
+
+        if (response.data && response.data.success && Array.isArray(response.data.data)) {
+            return response.data.data;
+        }
+        return [];
+    } catch (error) {
+        console.error("Error fetching admin all member activities:", error);
+        throw error;
+    }
+};
+
+/**
+ * 5. GET: Leader xem tổng quan (Bao gồm MemberOfMonth Full)
+ * /api/clubs/{clubId}/activity/summary
+ */
+export const getClubActivitySummary = async ({
+    clubId,
+    year,
+    month,
+}: GetClubMemberActivityParams): Promise<ClubActivitySummary> => {
+    try {
+        const response = await axiosInstance.get<ClubActivitySummaryApiResponse>(
+            `/api/clubs/${clubId}/activity/summary`,
+            { params: { year, month } }
+        );
+
+        if (response.data && response.data.success) {
+            return response.data.data;
+        }
+        throw new Error(response.data?.message || "Failed to fetch club summary");
+    } catch (error) {
+        console.error("Error fetching club activity summary:", error);
+        throw error;
+    }
+};
+
+/**
+ * 6. POST: Tính điểm Preview cho 1 member
+ * /api/clubs/{clubId}/members/{membershipId}/calculate-score
+ */
+export const calculateScoreForMember = async ({
+    clubId,
+    membershipId,
+    body,
+}: CalculateMemberScoreParams): Promise<ScoreCalculationResult> => {
+    try {
+        const response = await axiosInstance.post<MemberCalculationApiResponse>(
+            `/api/clubs/${clubId}/members/${membershipId}/calculate-score`,
+            body
+        );
+
+        if (response.data && response.data.success && response.data.data) {
+            return response.data.data;
+        }
+        throw new Error(response.data?.message || "Failed to calculate score");
+    } catch (error) {
+        console.error(`Error calculating score for member ${membershipId}:`, error);
+        throw error;
+    }
+};
+
+/**
+ * 7. PUT: Cập nhật Bulk Activity
+ * /api/clubs/{clubId}/activity/monthly/update-bulk
  */
 export const updateBulkMonthlyActivity = async ({
     clubId,
@@ -316,282 +386,11 @@ export const updateBulkMonthlyActivity = async ({
             body
         );
 
-        console.log("Update bulk monthly activity response:", response.data);
-
         if (!response.data || !response.data.success) {
             throw new Error(response.data?.message || "Failed to bulk update activities");
         }
     } catch (error) {
         console.error("Error bulk updating activities:", error);
-        throw error;
-    }
-};
-
-/**
- * Lấy danh sách điểm hoạt động của tất cả member trong CLB (cho Leader) - LỊCH SỬ
- * GET /api/clubs/{clubId}/members/activity
- * @param clubId - ID của CLB (path)
- * @param year - Năm (query)
- * @param month - Tháng (query)
- */
-export const getClubMemberActivity = async ({
-    clubId,
-    year,
-    month,
-}: GetClubMemberActivityParams): Promise<MemberActivityScore[]> => {
-    try {
-        const response = await axiosInstance.get<MemberActivityApiResponse>(
-            `/api/clubs/${clubId}/members/activity`,
-            {
-                params: { year, month },
-            }
-        );
-
-        console.log("Fetched club member activity response:", response.data);
-
-        if (response.data && response.data.success && Array.isArray(response.data.data)) {
-            return response.data.data;
-        }
-
-        if (response.data && response.data.message) {
-            throw new Error(response.data.message);
-        }
-
-        return [];
-    } catch (error) {
-        console.error("Error fetching club member activity:", error);
-        throw error;
-    }
-};
-
-/**
- * Lấy danh sách điểm hoạt động REAL-TIME của member
- * GET /api/clubs/{clubId}/members/activity-live
- * @param clubId - ID của CLB (path)
- * @param attendanceBase - Base Score Attendance (query)
- * @param staffBase - Base Score Staff (query)
- */
-export const getClubMemberActivityLive = async ({
-    clubId,
-    attendanceBase,
-    staffBase,
-}: GetLiveActivityParams): Promise<MemberLiveActivityScore[]> => { // <-- Đổi return type
-    try {
-        // Đổi generic type sang MemberLiveActivityApiResponse
-        const response = await axiosInstance.get<MemberLiveActivityApiResponse>(
-            `/api/clubs/${clubId}/members/activity-live`,
-            {
-                params: {
-                    attendanceBase: attendanceBase,
-                    staffBase: staffBase
-                },
-            }
-        );
-
-        console.log("Fetched club member live activity response:", response.data);
-
-        if (response.data && response.data.success && Array.isArray(response.data.data)) {
-            return response.data.data;
-        }
-
-        if (response.data && response.data.message) {
-            throw new Error(response.data.message);
-        }
-
-        return [];
-    } catch (error) {
-        console.error("Error fetching club member live activity:", error);
-        throw error;
-    }
-};
-
-/**
- * Lấy danh sách điểm hoạt động của TẤT CẢ member (cho Admin/UniStaff)
- * GET /api/admin/member-activities
- * @param year - Năm (query)
- * @param month - Tháng (query)
- */
-export const getAdminAllMemberActivities = async ({
-    year,
-    month,
-}: GetAdminAllMemberActivitiesParams): Promise<MemberActivityScore[]> => {
-    try {
-        const response = await axiosInstance.get<MemberActivityApiResponse>(
-            `/api/admin/member-activities`,
-            {
-                params: { year, month }, // Query params khớp với Swagger hình 1
-            }
-        );
-
-        console.log("Fetched admin all member activities response:", response.data);
-
-        if (response.data && response.data.success && Array.isArray(response.data.data)) {
-            return response.data.data;
-        }
-
-        if (response.data && response.data.message) {
-            throw new Error(response.data.message);
-        }
-
-        return [];
-    } catch (error) {
-        console.error("Error fetching admin all member activities:", error);
-        throw error;
-    }
-};
-
-/**
- * Lấy tổng quan hoạt động của CLB (cho Leader/Vice-Leader)
- * GET /api/clubs/{clubId}/activity/summary
- * @param clubId - ID của CLB (path)
- * @param year - Năm (query)
- * @param month - Tháng (query)
- */
-export const getClubActivitySummary = async ({
-    clubId,
-    year,
-    month,
-}: GetClubMemberActivityParams): Promise<ClubActivitySummary> => {
-    try {
-        const response = await axiosInstance.get<ClubActivitySummaryApiResponse>(
-            `/api/clubs/${clubId}/activity/summary`,
-            {
-                params: { year, month }, // Query params khớp với Swagger hình 2
-            }
-        );
-
-        console.log("Fetched club activity summary response:", response.data);
-
-        if (response.data && response.data.success) {
-            return response.data.data;
-        }
-
-        throw new Error(response.data?.message || "Failed to fetch club summary");
-    } catch (error) {
-        console.error("Error fetching club activity summary:", error);
-        throw error;
-    }
-};
-
-/**
- * Lấy điểm hoạt động chi tiết của bản thân (member) trong CLB
- * GET /api/clubs/{clubId}/members/me/activity
- * @param clubId - ID của CLB (path)
- * @param year - Năm (query)
- * @param month - Tháng (query)
- */
-export const getMyMemberActivity = async ({
-    clubId,
-    year,
-    month,
-}: GetClubMemberActivityParams): Promise<MemberActivityScore> => {
-    try {
-        const response = await axiosInstance.get<MemberActivityDataApiResponse>(
-            `/api/clubs/${clubId}/members/me/activity`,
-            {
-                params: { year, month },
-            }
-        );
-
-        console.log("Fetched my member activity response:", response.data);
-
-        if (response.data && response.data.success) {
-            return response.data.data;
-        }
-
-        throw new Error(response.data?.message || "Failed to fetch my activity");
-    } catch (error) {
-        console.error("Error fetching my member activity:", error);
-        throw error;
-    }
-};
-
-/**
- * Tính toán điểm cho một member cụ thể sau khi cập nhật Base Score
- * POST /api/clubs/{clubId}/members/{membershipId}/calculate-score
- * @param clubId - ID của CLB (path)
- * @param membershipId - ID thành viên (path)
- * @param body - Base scores mới (attendanceBaseScore, staffBaseScore)
- */
-export const calculateScoreForMember = async ({
-    clubId,
-    membershipId,
-    body,
-}: CalculateMemberScoreParams): Promise<MemberCalculationApiResponse['data']> => {
-    try {
-        const response = await axiosInstance.post<MemberCalculationApiResponse>(
-            `/api/clubs/${clubId}/members/${membershipId}/calculate-score`,
-            body
-        );
-
-        console.log("Calculated score for member response:", response.data);
-
-        if (response.data && response.data.success && response.data.data) {
-            return response.data.data;
-        }
-
-        throw new Error(response.data?.message || "Failed to calculate score for member");
-    } catch (error) {
-        console.error(`Error calculating score for member ${membershipId}:`, error);
-        throw error;
-    }
-};
-
-/**
- * Leader nhập điểm phát (baseScore) cho member (API CŨ)
- * PUT /api/clubs/{clubId}/members/activity/base-score
- */
-export const updateMemberBaseScore = async ({
-    clubId,
-    year,
-    month,
-    body,
-}: UpdateBaseScoreParams): Promise<void> => {
-    try {
-        const response = await axiosInstance.put<StandardApiResponse>(
-            `/api/clubs/${clubId}/members/activity/base-score`,
-            body,
-            {
-                params: { year, month },
-            }
-        );
-
-        console.log("Updated member base score response:", response.data);
-
-        if (!response.data || !response.data.success) {
-            throw new Error(response.data?.message || "Failed to update member base score (OLD API)");
-        }
-    } catch (error) {
-        console.error("Error updating member base score (OLD API):", error);
-        throw error;
-    }
-};
-
-/**
- * Tính toán finalScore cho toàn bộ member trong tháng (API CŨ)
- * POST /api/clubs/{clubId}/members/activity/calculate
- */
-export const calculateFinalScore = async ({
-    clubId,
-    year,
-    month,
-}: GetClubMemberActivityParams): Promise<void> => {
-    try {
-        const response = await axiosInstance.post<StandardApiResponse>(
-            `/api/clubs/${clubId}/members/activity/calculate`,
-            {},
-            {
-                params: { year, month },
-            }
-        );
-
-        console.log("Calculated final score response (OLD API):", response.data);
-
-        if (!response.data || !response.data.success) {
-            throw new Error(response.data?.message || "Failed to calculate final scores (OLD API)");
-        }
-    } catch (error) {
-        console.error("Error calculating final score (OLD API):", error);
         throw error;
     }
 };

@@ -360,12 +360,17 @@ export default function MemberEventsPage() {
                   setCurrentPage(1) // Reset về trang 1 khi đổi filter
                 }}
               >
-                <SelectTrigger className="w-full sm:w-[240px]">
-                  <div className="flex items-center gap-2">
-                    <Layers className="h-4 w-4 text-muted-foreground" />
-                    <SelectValue placeholder="Select a club" />
+                <SelectTrigger className="w-full sm:w-[250px] border-slate-300 bg-white">
+                  <div className="flex items-center gap-2 flex-1 min-w-0 text-left">
+                    <Layers className="h-4 w-4 text-muted-foreground shrink-0" />
+
+                    <span className="truncate flex-1 text-left">
+                      <SelectValue placeholder="Select a club" />
+                    </span>
+
                   </div>
                 </SelectTrigger>
+
                 <SelectContent>
                   {/* <SelectItem value="all">All My Clubs</SelectItem> */}
                   {userClubsDetails.map((club) => (
@@ -385,7 +390,7 @@ export default function MemberEventsPage() {
                 setCurrentPage(1)
               }}
             >
-              <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectTrigger className="w-full sm:w-[180px] border-slate-300 bg-white">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -410,7 +415,8 @@ export default function MemberEventsPage() {
                 }
                 setCurrentPage(1)
               }}
-              className="whitespace-nowrap"
+              // className="whitespace-nowrap border-slate-300"
+              className={`whitespace-nowrap ${showRegisteredOnly ? "" : "bg-white border-slate-300"}`}
             >
               <Ticket className="h-4 w-4 mr-2" />
               {showRegisteredOnly ? "All Events" : "My Registrations"}
