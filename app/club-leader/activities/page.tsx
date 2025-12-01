@@ -19,7 +19,7 @@ import {
     MonthlyActivityItem,
     ActivityLevel,
     autoGenerateMonthlyReport,
-} from "@/service/activityApi"
+} from "@/service/memberActivityReportApi"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
 import { Users, BarChart2, Star, RotateCw, Calculator, Save, AlertCircle, Calendar, Info, X } from "lucide-react"

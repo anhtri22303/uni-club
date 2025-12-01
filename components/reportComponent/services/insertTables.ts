@@ -6,7 +6,7 @@ import { getMemberApplyByClubId } from "@/service/memberApplicationApi"
 import { getClubRedeemOrders } from "@/service/redeemApi"
 import { getClubWallet, getClubToMemberTransactions } from "@/service/walletApi"
 import { getFeedbackByClubId, type Feedback } from "@/service/feedbackApi"
-import { getClubMemberActivity, getClubActivitySummary, type MemberActivityShortItem, type ClubActivitySummary } from "@/service/activityApi"
+import { getClubMemberActivity, getClubActivitySummary, type MemberActivityShortItem, type ClubActivitySummary } from "@/service/memberActivityReportApi"
 import { fetchClubAttendanceHistory, type FetchClubAttendanceHistoryParams } from "@/service/attendanceApi"
 import { getEventStaff, getEvaluateEventStaff, type EventStaff, type StaffEvaluation } from "@/service/eventStaffApi"
 

@@ -85,7 +85,7 @@ import {
   createClubPenalty,
 } from "@/service/disciplineApi";
 // --- IMPORT MỚI ---
-import { getClubMemberActivity } from "@/service/activityApi";
+import { getClubMemberActivity } from "@/service/memberActivityReportApi";
 
 interface ClubMember {
   id: string;
