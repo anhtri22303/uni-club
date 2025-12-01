@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/use-toast"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { getClubIdFromToken } from "@/service/clubApi"
 import {
-     RedeemOrder, completeRedeemOrder, refundRedeemOrder, refundPartialRedeemOrder, RefundPayload,
+    RedeemOrder, completeRedeemOrder, refundRedeemOrder, refundPartialRedeemOrder, RefundPayload,
     uploadRefundImages, getRefundImages, RefundImage, getRedeemOrderById,
     getOrderLogsByMembershipAndOrder, OrderLog,
 } from "@/service/redeemApi"
@@ -91,14 +91,6 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
         enabled: !!params.id,
     })
 
-    // Log order object để debug
-    useEffect(() => {
-        if (order) {
-            console.log("📦 Order object received:", order);
-            console.log("📦 membershipId:", order.membershipId);
-            console.log("📦 orderId:", order.orderId);
-        }
-    }, [order]);
 
     // === Query lấy danh sách ảnh lỗi từ Server ===
     const { data: serverRefundImages } = useQuery<RefundImage[]>({
@@ -134,6 +126,8 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
         enabled: !!order?.orderId && !!order?.membershipId,
         retry: 1,
     });
+    console.log("Check Order Logs:", orderLogs);
+    console.log("Order Data:", order);
 
     // Các hàm xử lý ảnh
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -282,7 +276,7 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
             setIsProcessing(false)
         }
     }
-    
+
     // Xử lý thay đổi số lượng partial
     const handlePartialQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
@@ -291,7 +285,7 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
 
     // Helper functions để lấy logs theo action
     const getLogsByAction = (action: string) => {
-        return orderLogs.filter(log => log.action === action).sort((a, b) => 
+        return orderLogs.filter(log => log.action === action).sort((a, b) =>
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         );
     };
@@ -401,30 +395,30 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
     }
 
     // Theme colors
-    const statusTheme = 
+    const statusTheme =
         order.status === "PENDING" ? {
             gradient: "from-yellow-50 via-yellow-50/50 to-transparent",
             border: "border-yellow-200",
             icon: "from-yellow-400 to-yellow-500",
             text: "text-yellow-700"
         } :
-        order.status === "COMPLETED" ? {
-            gradient: "from-green-50 via-green-50/50 to-transparent",
-            border: "border-green-200",
-            icon: "from-green-400 to-green-500",
-            text: "text-green-700"
-        } :
-        order.status === "PARTIALLY_REFUNDED" ? {
-            gradient: "from-orange-50 via-orange-50/50 to-transparent",
-            border: "border-orange-200",
-            icon: "from-orange-400 to-orange-500",
-            text: "text-orange-700"
-        } : {
-            gradient: "from-blue-50 via-blue-50/50 to-transparent",
-            border: "border-blue-200",
-            icon: "from-blue-400 to-blue-500",
-            text: "text-blue-700"
-        }
+            order.status === "COMPLETED" ? {
+                gradient: "from-green-50 via-green-50/50 to-transparent",
+                border: "border-green-200",
+                icon: "from-green-400 to-green-500",
+                text: "text-green-700"
+            } :
+                order.status === "PARTIALLY_REFUNDED" ? {
+                    gradient: "from-orange-50 via-orange-50/50 to-transparent",
+                    border: "border-orange-200",
+                    icon: "from-orange-400 to-orange-500",
+                    text: "text-orange-700"
+                } : {
+                    gradient: "from-blue-50 via-blue-50/50 to-transparent",
+                    border: "border-blue-200",
+                    icon: "from-blue-400 to-blue-500",
+                    text: "text-blue-700"
+                }
 
     return (
         <ProtectedRoute allowedRoles={["club_leader"]}>
@@ -453,8 +447,8 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                         Order #{order.orderCode}
                                     </h1>
                                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                        Placed on {new Date(order.createdAt).toLocaleDateString('en-US', { 
-                                            year: 'numeric', month: 'long', day: 'numeric' 
+                                        Placed on {new Date(order.createdAt).toLocaleDateString('en-US', {
+                                            year: 'numeric', month: 'long', day: 'numeric'
                                         })}
                                     </p>
                                 </div>
@@ -467,16 +461,16 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                             <div className="relative">
                                 {/* Progress Line */}
                                 <div className="absolute top-6 left-0 right-0 h-1 bg-gray-200 dark:bg-slate-700" style={{ marginLeft: '2rem', marginRight: '2rem' }} />
-                                <div 
+                                <div
                                     className="absolute top-6 left-0 h-1 transition-all duration-500 ease-in-out"
                                     style={{
                                         marginLeft: '2rem',
-                                        width: order.status === 'PENDING' ? '0%' : 
-                                               order.status === 'COMPLETED' ? 'calc(50% - 2rem)' : 
-                                               'calc(100% - 4rem)',
+                                        width: order.status === 'PENDING' ? '0%' :
+                                            order.status === 'COMPLETED' ? 'calc(50% - 2rem)' :
+                                                'calc(100% - 4rem)',
                                         background: order.status === 'PENDING' ? 'transparent' :
-                                                   order.status === 'COMPLETED' ? 'linear-gradient(to right, #10b981, #14b8a6)' :
-                                                   'linear-gradient(to right, #10b981, #14b8a6, #f87171)'
+                                            order.status === 'COMPLETED' ? 'linear-gradient(to right, #10b981, #14b8a6)' :
+                                                'linear-gradient(to right, #10b981, #14b8a6, #f87171)'
                                     }}
                                 />
 
@@ -484,26 +478,23 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                 <div className="relative flex justify-between items-start">
                                     {/* Step 1: PENDING */}
                                     <div className="flex flex-col items-center" style={{ flex: 1 }}>
-                                        <div 
-                                            className={`w-12 h-12 rounded-full flex items-center justify-center border-4 transition-all duration-300 ${
-                                                order.status === 'PENDING' || order.status === 'COMPLETED' || order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
-                                                    ? 'bg-gradient-to-br from-yellow-400 to-amber-500 border-yellow-300 shadow-lg shadow-yellow-500/50 cursor-pointer hover:scale-110'
-                                                    : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600'
-                                            }`}
+                                        <div
+                                            className={`w-12 h-12 rounded-full flex items-center justify-center border-4 transition-all duration-300 ${order.status === 'PENDING' || order.status === 'COMPLETED' || order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
+                                                ? 'bg-gradient-to-br from-yellow-400 to-amber-500 border-yellow-300 shadow-lg shadow-yellow-500/50 cursor-pointer hover:scale-110'
+                                                : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600'
+                                                }`}
                                             onClick={() => handleStepClick('CREATE')}
                                         >
-                                            <Clock className={`h-6 w-6 ${
-                                                order.status === 'PENDING' || order.status === 'COMPLETED' || order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
-                                                    ? 'text-white'
-                                                    : 'text-gray-400 dark:text-gray-500'
-                                            }`} />
+                                            <Clock className={`h-6 w-6 ${order.status === 'PENDING' || order.status === 'COMPLETED' || order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
+                                                ? 'text-white'
+                                                : 'text-gray-400 dark:text-gray-500'
+                                                }`} />
                                         </div>
                                         <div className="mt-3 text-center">
-                                            <p className={`text-sm font-semibold ${
-                                                order.status === 'PENDING' || order.status === 'COMPLETED' || order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
-                                                    ? 'text-yellow-600 dark:text-yellow-400'
-                                                    : 'text-gray-400 dark:text-gray-500'
-                                            }`}>
+                                            <p className={`text-sm font-semibold ${order.status === 'PENDING' || order.status === 'COMPLETED' || order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
+                                                ? 'text-yellow-600 dark:text-yellow-400'
+                                                : 'text-gray-400 dark:text-gray-500'
+                                                }`}>
                                                 Pending
                                             </p>
                                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -514,11 +505,17 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                                 if (latestDate) {
                                                     const date = new Date(latestDate);
                                                     return (
+                                                        // <p className="text-xs text-gray-600 dark:text-gray-300 font-medium mt-1">
+                                                        //     {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                                        //     <br />
+                                                        //     {date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                                                        // </p>
                                                         <p className="text-xs text-gray-600 dark:text-gray-300 font-medium mt-1">
-                                                            {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                                            {new Date(order.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                                                             <br />
-                                                            {date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                                                            {new Date(order.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
                                                         </p>
+
                                                     );
                                                 }
                                                 return null;
@@ -528,34 +525,31 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
 
                                     {/* Step 2: DELIVERED */}
                                     <div className="flex flex-col items-center" style={{ flex: 1 }}>
-                                        <div 
-                                            className={`w-12 h-12 rounded-full flex items-center justify-center border-4 transition-all duration-300 ${
-                                                order.status === 'COMPLETED'
-                                                    ? 'bg-gradient-to-br from-green-400 to-emerald-500 border-green-300 shadow-lg shadow-green-500/50 cursor-pointer hover:scale-110'
-                                                    : (order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED')
+                                        <div
+                                            className={`w-12 h-12 rounded-full flex items-center justify-center border-4 transition-all duration-300 ${order.status === 'COMPLETED'
+                                                ? 'bg-gradient-to-br from-green-400 to-emerald-500 border-green-300 shadow-lg shadow-green-500/50 cursor-pointer hover:scale-110'
+                                                : (order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED')
                                                     ? 'bg-gradient-to-br from-green-400 to-emerald-500 border-green-300 shadow-lg shadow-green-500/50 cursor-pointer hover:scale-110'
                                                     : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600'
-                                            }`}
-                                            onClick={() => handleStepClick('DELIVER')}
+                                                }`}
+                                            onClick={() => handleStepClick('COMPLETED')}
                                         >
-                                            <CheckCircle className={`h-6 w-6 ${
-                                                order.status === 'COMPLETED' || order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
-                                                    ? 'text-white'
-                                                    : 'text-gray-400 dark:text-gray-500'
-                                            }`} />
+                                            <CheckCircle className={`h-6 w-6 ${order.status === 'COMPLETED' || order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
+                                                ? 'text-white'
+                                                : 'text-gray-400 dark:text-gray-500'
+                                                }`} />
                                         </div>
                                         <div className="mt-3 text-center">
-                                            <p className={`text-sm font-semibold ${
-                                                order.status === 'COMPLETED' || order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
-                                                    ? 'text-green-600 dark:text-green-400'
-                                                    : 'text-gray-400 dark:text-gray-500'
-                                            }`}>
+                                            <p className={`text-sm font-semibold ${order.status === 'COMPLETED' || order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
+                                                ? 'text-green-600 dark:text-green-400'
+                                                : 'text-gray-400 dark:text-gray-500'
+                                                }`}>
                                                 Delivered
                                             </p>
                                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                                 Order completed
                                             </p>
-                                            {(() => {
+                                            {/* {(() => {
                                                 const latestDate = getLatestLogDate('DELIVER');
                                                 if (latestDate) {
                                                     const date = new Date(latestDate);
@@ -568,38 +562,58 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                                     );
                                                 }
                                                 return null;
+                                            })()} */}
+                                            {(() => {
+                                                // 1. Ưu tiên tìm trong Log (nếu API sửa xong sau này)
+                                                // Lưu ý: Backend thường lưu action là "COMPLETED" chứ không phải "DELIVER"
+                                                let timestamp = getLatestLogDate('COMPLETED') || getLatestLogDate('DELIVER');
+
+                                                // 2. Nếu Log rỗng, dùng completedAt từ thông tin đơn hàng
+                                                if (!timestamp && order.status === 'COMPLETED' && order.completedAt) {
+                                                    timestamp = order.completedAt;
+                                                }
+
+                                                if (timestamp) {
+                                                    const date = new Date(timestamp);
+                                                    return (
+                                                        <p className="text-xs text-gray-600 dark:text-gray-300 font-medium mt-1">
+                                                            {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                                            <br />
+                                                            {date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                                                        </p>
+                                                    );
+                                                }
+                                                return null;
                                             })()}
+
                                         </div>
                                     </div>
 
                                     {/* Step 3: REFUNDED */}
                                     <div className="flex flex-col items-center" style={{ flex: 1 }}>
-                                        <div 
-                                            className={`w-12 h-12 rounded-full flex items-center justify-center border-4 transition-all duration-300 ${
-                                                order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
-                                                    ? 'bg-gradient-to-br from-red-400 to-rose-500 border-red-300 shadow-lg shadow-red-500/50 cursor-pointer hover:scale-110'
-                                                    : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600'
-                                            }`}
+                                        <div
+                                            className={`w-12 h-12 rounded-full flex items-center justify-center border-4 transition-all duration-300 ${order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
+                                                ? 'bg-gradient-to-br from-red-400 to-rose-500 border-red-300 shadow-lg shadow-red-500/50 cursor-pointer hover:scale-110'
+                                                : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600'
+                                                }`}
                                             onClick={() => handleStepClick('REFUND')}
                                         >
-                                            <Undo2 className={`h-6 w-6 ${
-                                                order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
-                                                    ? 'text-white'
-                                                    : 'text-gray-400 dark:text-gray-500'
-                                            }`} />
+                                            <Undo2 className={`h-6 w-6 ${order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
+                                                ? 'text-white'
+                                                : 'text-gray-400 dark:text-gray-500'
+                                                }`} />
                                         </div>
                                         <div className="mt-3 text-center">
-                                            <p className={`text-sm font-semibold ${
-                                                order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
-                                                    ? 'text-red-600 dark:text-red-400'
-                                                    : 'text-gray-400 dark:text-gray-500'
-                                            }`}>
+                                            <p className={`text-sm font-semibold ${order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
+                                                ? 'text-red-600 dark:text-red-400'
+                                                : 'text-gray-400 dark:text-gray-500'
+                                                }`}>
                                                 {order.status === 'PARTIALLY_REFUNDED' ? 'Partial Refund' : 'Refunded'}
                                             </p>
                                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                                 {order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED' ? 'Refund processed' : 'If needed'}
                                             </p>
-                                            {(() => {
+                                            {/* {(() => {
                                                 const latestDate = getLatestLogDate('REFUND');
                                                 if (latestDate) {
                                                     const date = new Date(latestDate);
@@ -612,7 +626,30 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                                     );
                                                 }
                                                 return null;
+                                            })()} */}
+                                            {(() => {
+                                                let timestamp = getLatestLogDate('REFUND') || getLatestLogDate('PARTIAL_REFUND');
+
+                                                // Fallback: Nếu trạng thái là Refunded mà không có log, 
+                                                // tạm thời dùng completedAt (vì khi refund xong đơn hàng cũng coi là kết thúc)
+                                                // hoặc bạn có thể yêu cầu BE trả thêm field refundedAt
+                                                if (!timestamp && (order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED') && order.completedAt) {
+                                                    timestamp = order.completedAt;
+                                                }
+
+                                                if (timestamp) {
+                                                    const date = new Date(timestamp);
+                                                    return (
+                                                        <p className="text-xs text-gray-600 dark:text-gray-300 font-medium mt-1">
+                                                            {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                                            <br />
+                                                            {date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                                                        </p>
+                                                    );
+                                                }
+                                                return null;
                                             })()}
+
                                         </div>
                                     </div>
                                 </div>
@@ -633,7 +670,7 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                         Product Information
                                     </CardTitle>
                                 </CardHeader>
-                                
+
                                 <CardContent className="space-y-6 pt-6">
                                     {/* Product Name - Styled like Club Order */}
                                     <div className="p-5 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl border border-purple-100 dark:border-purple-800 shadow-sm">
@@ -655,7 +692,7 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                             <p className="text-3xl font-bold text-indigo-900 dark:text-indigo-200">{order.quantity.toLocaleString('en-US')}</p>
                                             <p className="text-xs text-muted-foreground dark:text-slate-400 mt-1">Item(s) ordered</p>
                                         </div>
-                                        
+
                                         <div className="p-5 bg-gradient-to-br from-cyan-50 to-teal-50 dark:from-cyan-900/20 dark:to-teal-900/20 rounded-xl border border-cyan-100 dark:border-cyan-800 shadow-sm hover:shadow-md transition-shadow">
                                             <div className="flex items-center gap-2 mb-3">
                                                 <div className="p-2 rounded-lg bg-gradient-to-br from-cyan-400 to-teal-500 shadow-md">
@@ -730,14 +767,14 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                                                 </label>
                                                                 <div className="flex flex-wrap gap-3">
                                                                     {serverRefundImages.map((imgItem, index) => (
-                                                                        <div 
+                                                                        <div
                                                                             key={imgItem.id}
                                                                             className="relative group w-20 h-20 rounded-lg overflow-hidden border border-orange-200 dark:border-orange-700 shadow-sm cursor-zoom-in bg-white"
                                                                             onClick={() => setPreviewIndex(index)}
                                                                         >
-                                                                            <img 
-                                                                                src={imgItem.imageUrl} 
-                                                                                alt={`Proof ${imgItem.id}`} 
+                                                                            <img
+                                                                                src={imgItem.imageUrl}
+                                                                                alt={`Proof ${imgItem.id}`}
                                                                                 className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
                                                                             />
                                                                         </div>
@@ -777,14 +814,14 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                                                 </label>
                                                                 <div className="flex flex-wrap gap-3">
                                                                     {serverRefundImages.map((imgItem, index) => (
-                                                                        <div 
+                                                                        <div
                                                                             key={imgItem.id}
                                                                             className="relative group w-20 h-20 rounded-lg overflow-hidden border border-blue-200 dark:border-blue-700 shadow-sm cursor-zoom-in bg-white"
                                                                             onClick={() => setPreviewIndex(index)}
                                                                         >
-                                                                            <img 
-                                                                                src={imgItem.imageUrl} 
-                                                                                alt={`Proof ${imgItem.id}`} 
+                                                                            <img
+                                                                                src={imgItem.imageUrl}
+                                                                                alt={`Proof ${imgItem.id}`}
                                                                                 className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
                                                                             />
                                                                         </div>
@@ -900,9 +937,9 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                         <p className="text-sm text-gray-600 dark:text-slate-300 mb-4">
                                             Mark this order as delivered once the member has received their product.
                                         </p>
-                                        <Button 
+                                        <Button
                                             className="w-full h-12 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 dark:from-green-600 dark:to-emerald-700 dark:hover:from-green-700 dark:hover:to-emerald-800 text-white font-semibold shadow-lg hover:shadow-xl transition-all text-base"
-                                            onClick={handleDeliver} 
+                                            onClick={handleDeliver}
                                             disabled={isProcessing}
                                         >
                                             {isProcessing ? (
@@ -938,7 +975,7 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                         </p>
                                         <Dialog open={isRefundModalOpen} onOpenChange={setIsRefundModalOpen}>
                                             <DialogTrigger asChild>
-                                                <Button 
+                                                <Button
                                                     className="w-full h-12 bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 dark:from-red-600 dark:to-rose-700 dark:hover:from-red-700 dark:hover:to-rose-800 text-white font-semibold shadow-lg hover:shadow-xl transition-all text-base"
                                                     disabled={isProcessing}
                                                 >
@@ -946,7 +983,7 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                                     Process Refund
                                                 </Button>
                                             </DialogTrigger>
-                                            
+
                                             <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col dark:bg-slate-800 dark:border-slate-700">
                                                 <DialogHeader className="space-y-3">
                                                     <div className="flex items-center gap-3">
@@ -991,7 +1028,7 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                                                     </div>
                                                                 </Label>
                                                             </div>
-                                                            
+
                                                             <div>
                                                                 <RadioGroupItem value="partial" id="r-partial" className="peer sr-only" disabled={order.quantity <= 1} />
                                                                 <Label htmlFor="r-partial" className={`flex items-start gap-3 rounded-xl border-2 border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 p-4 transition-all shadow-sm ${order.quantity > 1 ? 'cursor-pointer hover:bg-orange-50 dark:hover:bg-orange-900/20 hover:border-orange-300 dark:hover:border-orange-600 peer-data-[state=checked]:border-orange-500 dark:peer-data-[state=checked]:border-orange-500 peer-data-[state=checked]:bg-orange-50 dark:peer-data-[state=checked]:bg-orange-900/30 [&:has([data-state=checked])]:border-orange-500 hover:shadow-md' : 'cursor-not-allowed opacity-50'}`}>
@@ -1013,14 +1050,14 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                                     {refundType === "partial" && (() => {
                                                         const pointsPerItem = order.totalPoints / order.quantity;
                                                         const partialPoints = (pointsPerItem * (parseInt(partialQuantity) || 0)).toFixed(0);
-                                                        
+
                                                         return (
                                                             <div className="p-4 bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20 rounded-xl border border-orange-200 dark:border-orange-800 space-y-3">
                                                                 <Label htmlFor="partialQuantity" className="text-sm font-semibold flex items-center gap-2 dark:text-orange-300">
                                                                     <ShoppingCart className="h-4 w-4 text-orange-600 dark:text-orange-400" />
                                                                     Quantity to Refund
                                                                 </Label>
-                                                                <Input 
+                                                                <Input
                                                                     id="partialQuantity"
                                                                     type="number"
                                                                     value={partialQuantity}
@@ -1076,21 +1113,21 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                                             <Info className="h-4 w-4 text-gray-600 dark:text-slate-400" />
                                                             Reason for Refund <span className="text-red-500 dark:text-red-400">*</span>
                                                         </Label>
-                                                        <Textarea 
-                                                            id="refundReason" 
-                                                            value={refundReason} 
-                                                            onChange={(e) => setRefundReason(e.target.value)} 
-                                                            placeholder="e.g., Product unavailable, member request, event cancelled..." 
-                                                            className="min-h-[100px] resize-none dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:placeholder:text-slate-400" 
+                                                        <Textarea
+                                                            id="refundReason"
+                                                            value={refundReason}
+                                                            onChange={(e) => setRefundReason(e.target.value)}
+                                                            placeholder="e.g., Product unavailable, member request, event cancelled..."
+                                                            className="min-h-[100px] resize-none dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:placeholder:text-slate-400"
                                                         />
                                                         <p className="text-xs text-gray-500 dark:text-slate-400">Please provide a clear reason for this refund. This will be recorded in the order history.</p>
                                                     </div>
                                                 </div>
 
                                                 <DialogFooter className="gap-3 pt-4">
-                                                    <Button 
-                                                        type="button" 
-                                                        variant="outline" 
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
                                                         onClick={() => setIsRefundModalOpen(false)}
                                                         disabled={isProcessing}
                                                         className="flex-1 h-11 border-2 hover:bg-gray-50 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:hover:bg-slate-600"
@@ -1098,8 +1135,8 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                                         <XCircle className="h-4 w-4 mr-2" />
                                                         Cancel
                                                     </Button>
-                                                    <Button 
-                                                        type="submit" 
+                                                    <Button
+                                                        type="submit"
                                                         onClick={handleRefund}
                                                         disabled={isProcessing || !refundReason.trim() || (refundType === 'partial' && (parseInt(partialQuantity) <= 0 || parseInt(partialQuantity) >= order.quantity))}
                                                         className="flex-1 h-11 bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 dark:from-red-600 dark:to-rose-700 dark:hover:from-red-700 dark:hover:to-rose-800 text-white font-semibold shadow-lg"
@@ -1143,12 +1180,11 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                         <Card key={log.id} className="border-l-4 border-l-purple-500 shadow-md hover:shadow-lg transition-all">
                                             <CardHeader className="pb-3">
                                                 <div className="flex items-center justify-between">
-                                                    <Badge className={`px-3 py-1 font-semibold ${
-                                                        log.action === 'CREATE' ? 'bg-yellow-500 hover:bg-yellow-600' :
-                                                        log.action === 'DELIVER' ? 'bg-green-500 hover:bg-green-600' :
-                                                        log.action === 'REFUND' ? 'bg-red-500 hover:bg-red-600' :
-                                                        'bg-blue-500 hover:bg-blue-600'
-                                                    }`}>
+                                                    <Badge className={`px-3 py-1 font-semibold ${log.action === 'CREATE' ?
+                                                        'bg-yellow-500 hover:bg-yellow-600' : log.action === 'COMPLETED' ?
+                                                            'bg-green-500 hover:bg-green-600' : log.action === 'REFUND' ?
+                                                                'bg-red-500 hover:bg-red-600' : 'bg-blue-500 hover:bg-blue-600'
+                                                        }`}>
                                                         {log.action}
                                                     </Badge>
                                                     <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
@@ -1169,16 +1205,19 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                                     <div className="space-y-1">
                                                         <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Actor</p>
                                                         <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                                                            {log.actorName}
+                                                            {log.actorName
+                                                                ? log.actorName
+                                                                : (log.action === 'CREATE' ? 'Member (Self)' : 'System')
+                                                            }
                                                         </p>
-                                                        <p className="text-xs text-gray-400">ID: {log.actorId}</p>
+                                                        {/* <p className="text-xs text-gray-400">ID: {log.actorId}</p> */}
                                                     </div>
                                                     <div className="space-y-1">
                                                         <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Target User</p>
                                                         <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                                                             {log.targetUserName}
                                                         </p>
-                                                        <p className="text-xs text-gray-400">ID: {log.targetUserId}</p>
+                                                        {/* <p className="text-xs text-gray-400">ID: {log.targetUserId}</p> */}
                                                     </div>
                                                 </div>
                                                 <Separator />
@@ -1198,9 +1237,8 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                                         </div>
                                                         <div>
                                                             <p className="text-xs text-gray-500 dark:text-gray-400">Points Change</p>
-                                                            <p className={`text-sm font-bold ${
-                                                                log.pointsChange > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-                                                            }`}>
+                                                            <p className={`text-sm font-bold ${log.pointsChange > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                                                                }`}>
                                                                 {log.pointsChange > 0 ? '+' : ''}{log.pointsChange}
                                                             </p>
                                                         </div>

@@ -125,7 +125,7 @@ export default function AdminGiftPage() {
         placeholderData: keepPreviousData,
     })
 
-    // 3. THÊM ĐOẠN NÀY: Logic gộp sản phẩm theo ClubName từ dữ liệu API trả về
+    // Logic gộp sản phẩm theo ClubName từ dữ liệu API trả về
     const groupedProducts = useMemo(() => {
         if (!pagedData?.content) return []
 

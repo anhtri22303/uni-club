@@ -277,7 +277,7 @@ export default function ClubOrderDetailByCodePage({ params }: OrderDetailPagePro
 
     // Helper functions để lấy logs theo action
     const getLogsByAction = (action: string) => {
-        return orderLogs.filter(log => log.action === action).sort((a, b) => 
+        return orderLogs.filter(log => log.action === action).sort((a, b) =>
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         );
     };
@@ -484,16 +484,16 @@ export default function ClubOrderDetailByCodePage({ params }: OrderDetailPagePro
                             <div className="relative">
                                 {/* Progress Line */}
                                 <div className="absolute top-6 left-0 right-0 h-1 bg-gray-200 dark:bg-slate-700" style={{ marginLeft: '2rem', marginRight: '2rem' }} />
-                                <div 
+                                <div
                                     className="absolute top-6 left-0 h-1 transition-all duration-500 ease-in-out"
                                     style={{
                                         marginLeft: '2rem',
-                                        width: order.status === 'PENDING' ? '0%' : 
-                                               order.status === 'COMPLETED' ? 'calc(50% - 2rem)' : 
-                                               'calc(100% - 4rem)',
+                                        width: order.status === 'PENDING' ? '0%' :
+                                            order.status === 'COMPLETED' ? 'calc(50% - 2rem)' :
+                                                'calc(100% - 4rem)',
                                         background: order.status === 'PENDING' ? 'transparent' :
-                                                   order.status === 'COMPLETED' ? 'linear-gradient(to right, #10b981, #14b8a6)' :
-                                                   'linear-gradient(to right, #10b981, #14b8a6, #f87171)'
+                                            order.status === 'COMPLETED' ? 'linear-gradient(to right, #10b981, #14b8a6)' :
+                                                'linear-gradient(to right, #10b981, #14b8a6, #f87171)'
                                     }}
                                 />
 
@@ -501,68 +501,63 @@ export default function ClubOrderDetailByCodePage({ params }: OrderDetailPagePro
                                 <div className="relative flex justify-between items-start">
                                     {/* Step 1: PENDING */}
                                     <div className="flex flex-col items-center" style={{ flex: 1 }}>
-                                        <div 
-                                            className={`w-12 h-12 rounded-full flex items-center justify-center border-4 transition-all duration-300 cursor-pointer hover:scale-110 ${
-                                                order.status === 'PENDING' || order.status === 'COMPLETED' || order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
-                                                    ? 'bg-gradient-to-br from-yellow-400 to-amber-500 border-yellow-300 shadow-lg shadow-yellow-500/50'
-                                                    : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600'
-                                            }`}
-                                            onClick={() => handleStepClick('PENDING')}
+                                        <div
+                                            className={`w-12 h-12 rounded-full flex items-center justify-center border-4 transition-all duration-300 cursor-pointer hover:scale-110 ${order.status === 'PENDING' || order.status === 'COMPLETED' || order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
+                                                ? 'bg-gradient-to-br from-yellow-400 to-amber-500 border-yellow-300 shadow-lg shadow-yellow-500/50'
+                                                : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600'
+                                                }`}
+                                            onClick={() => handleStepClick('CREATE')}
                                         >
-                                            <Clock className={`h-6 w-6 ${
-                                                order.status === 'PENDING' || order.status === 'COMPLETED' || order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
-                                                    ? 'text-white'
-                                                    : 'text-gray-400 dark:text-gray-500'
-                                            }`} />
+                                            <Clock className={`h-6 w-6 ${order.status === 'PENDING' || order.status === 'COMPLETED' || order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
+                                                ? 'text-white'
+                                                : 'text-gray-400 dark:text-gray-500'
+                                                }`} />
                                         </div>
                                         <div className="mt-3 text-center">
-                                            <p className={`text-sm font-semibold ${
-                                                order.status === 'PENDING' || order.status === 'COMPLETED' || order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
-                                                    ? 'text-yellow-600 dark:text-yellow-400'
-                                                    : 'text-gray-400 dark:text-gray-500'
-                                            }`}>
+                                            <p className={`text-sm font-semibold ${order.status === 'PENDING' || order.status === 'COMPLETED' || order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
+                                                ? 'text-yellow-600 dark:text-yellow-400'
+                                                : 'text-gray-400 dark:text-gray-500'
+                                                }`}>
                                                 Pending
                                             </p>
                                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                                 Order placed
                                             </p>
-                                            {getLatestLogDate('PENDING') && (
+                                            {getLatestLogDate('CREATE') && (
                                                 <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 font-medium">
-                                                    {new Date(getLatestLogDate('PENDING')!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                                    {new Date(getLatestLogDate('CREATE')!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                                                     <br />
-                                                    {new Date(getLatestLogDate('PENDING')!).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                                                    {new Date(getLatestLogDate('CREATE')!).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                                                 </p>
                                             )}
+
+
                                         </div>
                                     </div>
 
                                     {/* Step 2: DELIVERED */}
                                     <div className="flex flex-col items-center" style={{ flex: 1 }}>
-                                        <div 
-                                            className={`w-12 h-12 rounded-full flex items-center justify-center border-4 transition-all duration-300 ${
-                                                (order.status === 'COMPLETED' || order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED') 
-                                                    ? 'cursor-pointer hover:scale-110' : ''
-                                            } ${
-                                                order.status === 'COMPLETED'
+                                        <div
+                                            className={`w-12 h-12 rounded-full flex items-center justify-center border-4 transition-all duration-300 ${(order.status === 'COMPLETED' || order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED')
+                                                ? 'cursor-pointer hover:scale-110' : ''
+                                                } ${order.status === 'COMPLETED'
                                                     ? 'bg-gradient-to-br from-green-400 to-emerald-500 border-green-300 shadow-lg shadow-green-500/50'
                                                     : (order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED')
-                                                    ? 'bg-gradient-to-br from-green-400 to-emerald-500 border-green-300 shadow-lg shadow-green-500/50'
-                                                    : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600'
-                                            }`}
+                                                        ? 'bg-gradient-to-br from-green-400 to-emerald-500 border-green-300 shadow-lg shadow-green-500/50'
+                                                        : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600'
+                                                }`}
                                             onClick={() => (order.status === 'COMPLETED' || order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED') && handleStepClick('COMPLETED')}
                                         >
-                                            <CheckCircle className={`h-6 w-6 ${
-                                                order.status === 'COMPLETED' || order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
-                                                    ? 'text-white'
-                                                    : 'text-gray-400 dark:text-gray-500'
-                                            }`} />
+                                            <CheckCircle className={`h-6 w-6 ${order.status === 'COMPLETED' || order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
+                                                ? 'text-white'
+                                                : 'text-gray-400 dark:text-gray-500'
+                                                }`} />
                                         </div>
                                         <div className="mt-3 text-center">
-                                            <p className={`text-sm font-semibold ${
-                                                order.status === 'COMPLETED' || order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
-                                                    ? 'text-green-600 dark:text-green-400'
-                                                    : 'text-gray-400 dark:text-gray-500'
-                                            }`}>
+                                            <p className={`text-sm font-semibold ${order.status === 'COMPLETED' || order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
+                                                ? 'text-green-600 dark:text-green-400'
+                                                : 'text-gray-400 dark:text-gray-500'
+                                                }`}>
                                                 Delivered
                                             </p>
                                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -580,29 +575,25 @@ export default function ClubOrderDetailByCodePage({ params }: OrderDetailPagePro
 
                                     {/* Step 3: REFUNDED */}
                                     <div className="flex flex-col items-center" style={{ flex: 1 }}>
-                                        <div 
-                                            className={`w-12 h-12 rounded-full flex items-center justify-center border-4 transition-all duration-300 ${
-                                                (order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED') 
-                                                    ? 'cursor-pointer hover:scale-110' : ''
-                                            } ${
-                                                order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
+                                        <div
+                                            className={`w-12 h-12 rounded-full flex items-center justify-center border-4 transition-all duration-300 ${(order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED')
+                                                ? 'cursor-pointer hover:scale-110' : ''
+                                                } ${order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
                                                     ? 'bg-gradient-to-br from-red-400 to-rose-500 border-red-300 shadow-lg shadow-red-500/50'
                                                     : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600'
-                                            }`}
+                                                }`}
                                             onClick={() => (order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED') && handleStepClick('REFUND')}
                                         >
-                                            <Undo2 className={`h-6 w-6 ${
-                                                order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
-                                                    ? 'text-white'
-                                                    : 'text-gray-400 dark:text-gray-500'
-                                            }`} />
+                                            <Undo2 className={`h-6 w-6 ${order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
+                                                ? 'text-white'
+                                                : 'text-gray-400 dark:text-gray-500'
+                                                }`} />
                                         </div>
                                         <div className="mt-3 text-center">
-                                            <p className={`text-sm font-semibold ${
-                                                order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
-                                                    ? 'text-red-600 dark:text-red-400'
-                                                    : 'text-gray-400 dark:text-gray-500'
-                                            }`}>
+                                            <p className={`text-sm font-semibold ${order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
+                                                ? 'text-red-600 dark:text-red-400'
+                                                : 'text-gray-400 dark:text-gray-500'
+                                                }`}>
                                                 {order.status === 'PARTIALLY_REFUNDED' ? 'Partial Refund' : 'Refunded'}
                                             </p>
                                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -1275,7 +1266,7 @@ export default function ClubOrderDetailByCodePage({ params }: OrderDetailPagePro
                                     Detailed logs for this action
                                 </DialogDescription>
                             </DialogHeader>
-                            
+
                             <div className="space-y-4 mt-4">
                                 {selectedAction && getLogsByAction(selectedAction).map((log, index) => (
                                     <div key={log.id} className="p-4 bg-gradient-to-br from-gray-50 to-white dark:from-slate-700 dark:to-slate-800 rounded-xl border border-gray-200 dark:border-slate-600 shadow-sm">
@@ -1286,38 +1277,44 @@ export default function ClubOrderDetailByCodePage({ params }: OrderDetailPagePro
                                                 </div>
                                                 <div>
                                                     <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                                                        {new Date(log.createdAt).toLocaleDateString('en-US', { 
-                                                            year: 'numeric', month: 'long', day: 'numeric' 
+                                                        {new Date(log.createdAt).toLocaleDateString('en-US', {
+                                                            year: 'numeric', month: 'long', day: 'numeric'
                                                         })}
                                                     </p>
                                                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                                                        {new Date(log.createdAt).toLocaleTimeString('en-US', { 
-                                                            hour: '2-digit', minute: '2-digit', second: '2-digit' 
+                                                        {new Date(log.createdAt).toLocaleTimeString('en-US', {
+                                                            hour: '2-digit', minute: '2-digit', second: '2-digit'
                                                         })}
                                                     </p>
                                                 </div>
                                             </div>
-                                            <Badge className={`${
-                                                log.action === 'PENDING' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' :
-                                                log.action === 'COMPLETED' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
-                                                'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
-                                            } border-0`}>
+                                            <Badge className={`${log.action === 'CREATE' ?
+                                                'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' :
+                                                log.action === 'COMPLETED'
+                                                    ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
+                                                    'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+                                                } border-0`}>
                                                 {log.action}
                                             </Badge>
                                         </div>
-                                        
+
                                         <Separator className="my-3 dark:bg-slate-600" />
-                                        
+
                                         <div className="grid grid-cols-2 gap-4 text-sm">
                                             <div>
                                                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Actor</p>
-                                                <p className="font-medium text-gray-900 dark:text-white">{log.actorName}</p>
-                                                <p className="text-xs text-gray-500 dark:text-gray-400">ID: {log.actorId}</p>
+                                                <p className="font-medium text-gray-900 dark:text-white">
+                                                    {log.actorName
+                                                        ? log.actorName
+                                                        : (log.action === 'CREATE' ? 'Member (Self)' : 'System')
+                                                    }
+                                                </p>
+                                                {/* <p className="text-xs text-gray-500 dark:text-gray-400">ID: {log.actorId}</p> */}
                                             </div>
                                             <div>
                                                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Target User</p>
                                                 <p className="font-medium text-gray-900 dark:text-white">{log.targetUserName}</p>
-                                                <p className="text-xs text-gray-500 dark:text-gray-400">ID: {log.targetUserId}</p>
+                                                {/* <p className="text-xs text-gray-500 dark:text-gray-400">ID: {log.targetUserId}</p> */}
                                             </div>
                                             <div>
                                                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Quantity</p>
@@ -1325,14 +1322,13 @@ export default function ClubOrderDetailByCodePage({ params }: OrderDetailPagePro
                                             </div>
                                             <div>
                                                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Points Change</p>
-                                                <p className={`font-semibold text-lg ${
-                                                    log.pointsChange > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-                                                }`}>
+                                                <p className={`font-semibold text-lg ${log.pointsChange > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                                                    }`}>
                                                     {log.pointsChange > 0 ? '+' : ''}{log.pointsChange}
                                                 </p>
                                             </div>
                                         </div>
-                                        
+
                                         {log.reason && (
                                             <>
                                                 <Separator className="my-3 dark:bg-slate-600" />
@@ -1347,7 +1343,7 @@ export default function ClubOrderDetailByCodePage({ params }: OrderDetailPagePro
                                         )}
                                     </div>
                                 ))}
-                                
+
                                 {selectedAction && getLogsByAction(selectedAction).length === 0 && (
                                     <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                                         <Info className="h-12 w-12 mx-auto mb-3 opacity-50" />
@@ -1361,7 +1357,7 @@ export default function ClubOrderDetailByCodePage({ params }: OrderDetailPagePro
                     {/* --- Image Preview Dialog --- */}
                     <Dialog open={previewIndex !== null} onOpenChange={(open) => !open && setPreviewIndex(null)}>
                         <DialogContent className="max-w-none w-auto h-auto bg-transparent border-none shadow-none p-0 flex items-center justify-center outline-none focus:outline-none [&>button]:hidden">
-                            
+
                             {serverRefundImages && previewIndex !== null && (
                                 /* WRAPPER CARD: 
                                     - w-[90vw] md:w-[800px]: Chiều rộng cố định trên desktop (800px), mobile (90%).
@@ -1370,7 +1366,7 @@ export default function ClubOrderDetailByCodePage({ params }: OrderDetailPagePro
                                 */
                                 <div className="relative bg-white dark:bg-slate-800 rounded-xl shadow-2xl overflow-hidden flex flex-col 
                                                 w-[90vw] h-[60vh] md:w-[900px] md:h-[650px] p-4">
-                                    
+
                                     {/* Header nhỏ chứa nút đóng */}
                                     <div className="absolute top-4 right-4 z-50">
                                         <button
@@ -1384,7 +1380,7 @@ export default function ClubOrderDetailByCodePage({ params }: OrderDetailPagePro
 
                                     {/* Vùng chứa ảnh chính (Chiếm toàn bộ không gian còn lại) */}
                                     <div className="relative flex-1 w-full h-full flex items-center justify-center bg-gray-50 dark:bg-slate-900 rounded-lg overflow-hidden mt-8 md:mt-0">
-                                        
+
                                         {/* Nút Previous */}
                                         {serverRefundImages.length > 1 && (
                                             <button
@@ -1403,9 +1399,9 @@ export default function ClubOrderDetailByCodePage({ params }: OrderDetailPagePro
                                         <img
                                             src={serverRefundImages[previewIndex].imageUrl}
                                             alt="Refund Proof Fullsize"
-                                            className="w-full h-full object-contain" 
+                                            className="w-full h-full object-contain"
                                         />
-                                        
+
                                         {/* Số thứ tự ảnh */}
                                         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/50 text-white text-xs font-medium rounded-full backdrop-blur-md border border-white/10">
                                             {previewIndex + 1} / {serverRefundImages.length}
