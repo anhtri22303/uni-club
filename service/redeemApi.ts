@@ -378,9 +378,38 @@ export async function getOrderLogsByMembershipAndOrder(
   membershipId: number | string,
   orderId: number | string
 ): Promise<OrderLog[]> {
-  const res = await axiosInstance.get<ApiResponse<OrderLog[]>>(
-    `/api/order-logs/membership/${membershipId}/order/${orderId}`
-  );
-  console.log("Order logs:", res.data.data);
-  return res.data.data;
+  try {
+    const url = `/api/order-logs/membership/${membershipId}/order/${orderId}`;
+    console.log("🌐 Calling API:", url);
+    console.log("🔑 Full URL:", `${axiosInstance.defaults.baseURL}${url}`);
+    
+    const res = await axiosInstance.get<OrderLog[] | ApiResponse<OrderLog[]>>(url);
+    
+    console.log("📡 Response status:", res.status);
+    console.log("📡 Response headers:", res.headers);
+    console.log("🔍 Raw response data:", res.data);
+    console.log("🔍 Response data type:", typeof res.data);
+    console.log("🔍 Is array?:", Array.isArray(res.data));
+    
+    // Check if response is wrapped in ApiResponse or direct array
+    if (Array.isArray(res.data)) {
+      // Direct array response
+      console.log("✅ Order logs (direct array):", res.data);
+      console.log("✅ Number of logs:", res.data.length);
+      return res.data as OrderLog[];
+    } else if ('data' in res.data && Array.isArray(res.data.data)) {
+      // Wrapped in ApiResponse
+      console.log("✅ Order logs (wrapped):", res.data.data);
+      console.log("✅ Number of logs:", res.data.data.length);
+      return res.data.data;
+    } else {
+      console.warn("⚠️ Unexpected response format:", res.data);
+      return [];
+    }
+  } catch (error: any) {
+    console.error("❌ Error calling order logs API:", error);
+    console.error("❌ Error response:", error?.response?.data);
+    console.error("❌ Error status:", error?.response?.status);
+    throw error;
+  }
 }

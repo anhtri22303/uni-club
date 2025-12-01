@@ -47,6 +47,12 @@ import {
   insertApplicationsData as insertApplicationsTable,
   insertOrdersData as insertOrdersTable,
   insertWalletData as insertWalletTable,
+  insertFeedbackData as insertFeedbackTable,
+  insertLeaveRequestsData as insertLeaveRequestsTable,
+  insertActivityScoresData as insertActivityScoresTable,
+  insertCoHostEventsData as insertCoHostEventsTable,
+  insertAttendanceData as insertAttendanceTable,
+  insertEventStaffData as insertEventStaffTable,
 } from "@/components/reportComponent/services/insertTables"
 import {
   insertMembersChart as insertMembersChartService,
@@ -76,6 +82,16 @@ import {
   insertStaffAttendanceSummaryChart,
   insertStaffAttendanceRankingChart,
   insertStaffUniToEventTransactionsChart,
+  insertStaffTagsTable,
+  insertStaffMultiplierPoliciesTable,
+  insertStaffPenaltyRulesTable,
+  insertStaffStudentRegistryTable,
+  insertStaffProductsTable,
+  insertStaffFeedbacksTable,
+  insertStaffClubOverviewTable,
+  insertStaffClubOverviewByMonthTable,
+  insertStaffClubOverviewChart,
+  insertStaffClubOverviewByMonthChart,
 } from "@/components/reportComponent/services/insertStaffData"
 import { 
   saveReportToSession, 
@@ -738,6 +754,9 @@ export function ReportPage({ allowedRoles }: ReportPageProps) {
             { label: "University Points Summary", icon: Trophy, onClick: () => insertStaffUniversityPointsSummary(editorRef, afterChange) },
             { label: "Attendance Summary", icon: BarChart3, onClick: () => insertStaffAttendanceSummary(editorRef, afterChange) },
             { label: "Attendance Ranking", icon: Activity, onClick: () => insertStaffAttendanceRankingTable(editorRef, afterChange) },
+            { label: "Feedbacks (All Clubs)", icon: ClipboardList, onClick: () => insertStaffFeedbacksTable(editorRef, afterChange) },
+            { label: "Club Overview (All-Time)", icon: Building, onClick: () => insertStaffClubOverviewTable(editorRef, afterChange) },
+            { label: "Club Overview (This Month)", icon: Calendar, onClick: () => insertStaffClubOverviewByMonthTable(editorRef, afterChange) },
           ],
         },
         {
@@ -746,6 +765,7 @@ export function ReportPage({ allowedRoles }: ReportPageProps) {
             { label: "All Clubs", icon: Building, onClick: () => insertStaffClubsTable(editorRef, afterChange) },
             { label: "Majors Directory", icon: BookOpen, onClick: () => insertStaffMajorsTable(editorRef, afterChange) },
             { label: "Major Policies", icon: Shield, onClick: () => insertStaffPoliciesTable(editorRef, afterChange) },
+            { label: "Student Registry", icon: Users, onClick: () => insertStaffStudentRegistryTable(editorRef, afterChange) },
           ],
         },
         {
@@ -765,6 +785,15 @@ export function ReportPage({ allowedRoles }: ReportPageProps) {
             { label: "Uni → Event Transactions", icon: Calendar, onClick: () => insertStaffUniToEventTransactionsTable(editorRef, afterChange) },
           ],
         },
+        {
+          title: "System Configuration",
+          items: [
+            { label: "Tags", icon: FileText, onClick: () => insertStaffTagsTable(editorRef, afterChange) },
+            { label: "Multiplier Policies", icon: Activity, onClick: () => insertStaffMultiplierPoliciesTable(editorRef, afterChange) },
+            { label: "Penalty Rules", icon: Shield, onClick: () => insertStaffPenaltyRulesTable(editorRef, afterChange) },
+            { label: "Products & Gifts", icon: Gift, onClick: () => insertStaffProductsTable(editorRef, afterChange) },
+          ],
+        },
       ],
       charts: [
         {
@@ -773,6 +802,8 @@ export function ReportPage({ allowedRoles }: ReportPageProps) {
             { label: "University Points Chart", icon: BarChart3, onClick: () => insertStaffUniversityPointsChart(editorRef, afterChange) },
             { label: "Attendance By Month", icon: BarChart3, onClick: () => insertStaffAttendanceSummaryChart(editorRef, afterChange) },
             { label: "Attendance Ranking Chart", icon: Activity, onClick: () => insertStaffAttendanceRankingChart(editorRef, afterChange) },
+            { label: "Club Overview (All-Time)", icon: BarChart3, onClick: () => insertStaffClubOverviewChart(editorRef, afterChange) },
+            { label: "Club Overview (This Month)", icon: BarChart3, onClick: () => insertStaffClubOverviewByMonthChart(editorRef, afterChange) },
           ],
         },
         {
@@ -822,6 +853,36 @@ export function ReportPage({ allowedRoles }: ReportPageProps) {
   const insertWalletData = () => {
     if (!ensureClubContext()) return
     return insertWalletTable(clubData!.id, editorRef, afterChange)
+  }
+
+  const insertFeedbackData = () => {
+    if (!ensureClubContext()) return
+    return insertFeedbackTable(clubData!.id, editorRef, afterChange)
+  }
+
+  const insertLeaveRequestsData = () => {
+    if (!ensureClubContext()) return
+    return insertLeaveRequestsTable(clubData!.id, editorRef, afterChange)
+  }
+
+  const insertActivityScoresData = () => {
+    if (!ensureClubContext()) return
+    return insertActivityScoresTable(clubData!.id, editorRef, afterChange)
+  }
+
+  const insertCoHostEventsData = () => {
+    if (!ensureClubContext()) return
+    return insertCoHostEventsTable(clubData!.id, editorRef, afterChange)
+  }
+
+  const insertAttendanceData = () => {
+    if (!ensureClubContext()) return
+    return insertAttendanceTable(clubData!.id, editorRef, afterChange)
+  }
+
+  const insertEventStaffData = () => {
+    if (!ensureClubContext()) return
+    return insertEventStaffTable(clubData!.id, editorRef, afterChange)
   }
 
   const insertMembersChart = () => {
@@ -1085,6 +1146,12 @@ export function ReportPage({ allowedRoles }: ReportPageProps) {
             onOrders={insertOrdersData}
             onApplications={insertApplicationsData}
             onWallet={insertWalletData}
+            onFeedback={insertFeedbackData}
+            onLeaveRequests={insertLeaveRequestsData}
+            onActivityScores={insertActivityScoresData}
+            onCoHostEvents={insertCoHostEventsData}
+            onAttendance={insertAttendanceData}
+            onEventStaff={insertEventStaffData}
           />
         )}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -1118,6 +1185,12 @@ export function ReportPage({ allowedRoles }: ReportPageProps) {
             onOrdersTable={insertOrdersData}
             onApplicationsTable={insertApplicationsData}
             onWalletTable={insertWalletData}
+            onFeedbackTable={insertFeedbackData}
+            onLeaveRequestsTable={insertLeaveRequestsData}
+            onActivityScoresTable={insertActivityScoresData}
+            onCoHostEventsTable={insertCoHostEventsData}
+            onAttendanceTable={insertAttendanceData}
+            onEventStaffTable={insertEventStaffData}
             onMembersChart={insertMembersChart}
             onEventsChart={insertEventsChart}
             onGiftsChart={insertGiftsChart}

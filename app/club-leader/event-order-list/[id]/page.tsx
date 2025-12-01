@@ -91,6 +91,15 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
         enabled: !!params.id,
     })
 
+    // Log order object để debug
+    useEffect(() => {
+        if (order) {
+            console.log("📦 Order object received:", order);
+            console.log("📦 membershipId:", order.membershipId);
+            console.log("📦 orderId:", order.orderId);
+        }
+    }, [order]);
+
     // === Query lấy danh sách ảnh lỗi từ Server ===
     const { data: serverRefundImages } = useQuery<RefundImage[]>({
         queryKey: ["refundImages", order?.orderId],
