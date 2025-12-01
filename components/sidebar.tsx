@@ -124,7 +124,7 @@ const navigationConfig = {
       icon: MessagesSquare,
     },
     {
-      href: "/club-leader/activities",
+      href: "/club-leader/activities-report",
       label: "Member Activities Report",
       icon: ClipboardPenLine,
     },
@@ -205,7 +205,9 @@ const navigationConfig = {
       ],
     },
     { href: "/uni-staff/points", label: "Points Staff", icon: HandCoins },
+    { href: "/uni-staff/club-activities-report", label: "Club Activities Report", icon: ClipboardPenLine },
     { href: "/uni-staff/report", label: "Report", icon: FileBarChart },
+
     // { href: "/uni-staff/reports", label: "Reports", icon: BarChart3 },
   ],
   admin: [
