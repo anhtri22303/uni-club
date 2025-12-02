@@ -300,6 +300,13 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
         if (logs.length > 0) {
             setSelectedAction(action);
             setIsLogModalOpen(true);
+        } else if (action === 'CREATE') {
+            // Hiển thị toast thông báo khi click vào Pending nhưng không có logs
+            toast({
+                title: "No Logs Available",
+                description: "Order was created and confirmed as Completed at the same time, please check the Completed logs instead.",
+                variant: "default",
+            });
         }
     };
 
@@ -505,20 +512,20 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                                 if (latestDate) {
                                                     const date = new Date(latestDate);
                                                     return (
-                                                        // <p className="text-xs text-gray-600 dark:text-gray-300 font-medium mt-1">
-                                                        //     {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                                        //     <br />
-                                                        //     {date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
-                                                        // </p>
                                                         <p className="text-xs text-gray-600 dark:text-gray-300 font-medium mt-1">
-                                                            {new Date(order.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                                            {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                                                             <br />
-                                                            {new Date(order.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                                                            {date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
                                                         </p>
-
                                                     );
                                                 }
-                                                return null;
+                                                return (
+                                                    <p className="text-xs text-gray-600 dark:text-gray-300 font-medium mt-1">
+                                                        {new Date(order.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                                        <br />
+                                                        {new Date(order.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                                                    </p>
+                                                );
                                             })()}
                                         </div>
                                     </div>
@@ -1210,14 +1217,12 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                                                 : (log.action === 'CREATE' ? 'Member (Self)' : 'System')
                                                             }
                                                         </p>
-                                                        {/* <p className="text-xs text-gray-400">ID: {log.actorId}</p> */}
                                                     </div>
                                                     <div className="space-y-1">
                                                         <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Target User</p>
                                                         <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                                                             {log.targetUserName}
                                                         </p>
-                                                        {/* <p className="text-xs text-gray-400">ID: {log.targetUserId}</p> */}
                                                     </div>
                                                 </div>
                                                 <Separator />

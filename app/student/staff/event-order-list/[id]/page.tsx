@@ -132,6 +132,8 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
         enabled: !!order?.orderId && !!order?.membershipId,
         retry: 1,
     });
+    console.log("Check Order Logs:", orderLogs);
+    console.log("Order Data:", order);
 
     // Các hàm xử lý ảnh
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -304,6 +306,13 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
         if (logs.length > 0) {
             setSelectedAction(action);
             setIsLogModalOpen(true);
+        } else if (action === 'CREATE') {
+            // Hiển thị toast thông báo khi click vào Pending nhưng không có logs
+            toast({
+                title: "No Logs Available",
+                description: "Order was created and confirmed as Completed at the same time, please check the Completed logs instead.",
+                variant: "default",
+            });
         }
     };
 
@@ -519,7 +528,13 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                                         </p>
                                                     );
                                                 }
-                                                return null;
+                                                return (
+                                                    <p className="text-xs text-gray-600 dark:text-gray-300 font-medium mt-1">
+                                                        {new Date(order.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                                        <br />
+                                                        {new Date(order.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                                                    </p>
+                                                );
                                             })()}
                                         </div>
                                     </div>
@@ -534,7 +549,7 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                                     ? 'bg-gradient-to-br from-green-400 to-emerald-500 border-green-300 shadow-lg shadow-green-500/50 cursor-pointer hover:scale-110'
                                                     : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600'
                                             }`}
-                                            onClick={() => handleStepClick('DELIVER')}
+                                            onClick={() => handleStepClick('COMPLETED')}
                                         >
                                             <CheckCircle className={`h-6 w-6 ${
                                                 order.status === 'COMPLETED' || order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED'
@@ -554,9 +569,17 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                                 Order completed
                                             </p>
                                             {(() => {
-                                                const latestDate = getLatestLogDate('DELIVER');
-                                                if (latestDate) {
-                                                    const date = new Date(latestDate);
+                                                // 1. Ưu tiên tìm trong Log (nếu API sửa xong sau này)
+                                                // Lưu ý: Backend thường lưu action là "COMPLETED" chứ không phải "DELIVER"
+                                                let timestamp = getLatestLogDate('COMPLETED') || getLatestLogDate('DELIVER');
+
+                                                // 2. Nếu Log rỗng, dùng completedAt từ thông tin đơn hàng
+                                                if (!timestamp && order.status === 'COMPLETED' && order.completedAt) {
+                                                    timestamp = order.completedAt;
+                                                }
+
+                                                if (timestamp) {
+                                                    const date = new Date(timestamp);
                                                     return (
                                                         <p className="text-xs text-gray-600 dark:text-gray-300 font-medium mt-1">
                                                             {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
@@ -1169,14 +1192,12 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                                         <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                                                             {log.actorName}
                                                         </p>
-                                                        <p className="text-xs text-gray-400">ID: {log.actorId}</p>
                                                     </div>
                                                     <div className="space-y-1">
                                                         <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Target User</p>
                                                         <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                                                             {log.targetUserName}
                                                         </p>
-                                                        <p className="text-xs text-gray-400">ID: {log.targetUserId}</p>
                                                     </div>
                                                 </div>
                                                 <Separator />
