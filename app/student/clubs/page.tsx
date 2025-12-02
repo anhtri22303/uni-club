@@ -398,27 +398,78 @@ export default function MemberClubsPage() {
           // fallback to full reload
           window.location.reload()
         }
+
       } catch (err: any) {
         // Rollback optimistic update
         removeMembershipApplication(tempId)
         // remove pending marker
         setPendingClubIds((p) => p.filter((id) => id !== String(selectedClub.id)))
 
-        // Extract validation errors if present
-        const apiMessage = err?.response?.data?.error || err?.response?.data?.message || err?.message || "Failed to submit application"
+        // Lấy thông báo gốc
+        let apiMessage = err?.response?.data?.error || err?.response?.data?.message || err?.message || "Failed to submit application"
+
+        // --- CẬP NHẬT: Trích xuất số lượng và tùy biến thông báo ---
+        if (typeof apiMessage === 'string' && apiMessage.toLowerCase().includes("maximum number of clubs")) {
+          const match = apiMessage.match(/\((\d+)\)/);
+          const maxLimit = match ? match[1] : "Policy";
+
+          // Kiểm tra xem giới hạn có phải là 1 không
+          const isSingleClubLimit = maxLimit === "1";
+
+          // Hiển thị toast với JSX để xuống dòng
+          toast({
+            title: "Participation limit reached",
+            description: (
+              <div className="flex flex-col gap-1 mt-2">
+                {isSingleClubLimit ? (
+                  // --- TRƯỜNG HỢP GIỚI HẠN LÀ 1 ---
+                  <>
+                    <span>
+                      According to the major policy, you can only join <span className="font-bold">1</span> club.
+                    </span>
+                    <span>
+                      You are already a member of a club. You must leave it before joining a new one.
+                    </span>
+                  </>
+                ) : (
+                  // --- TRƯỜNG HỢP GIỚI HẠN > 1 ---
+                  <>
+                    <span>
+                      According to the major policy, you can join up to <span className="font-bold">{maxLimit}</span> clubs.
+                    </span>
+                    <span>
+                      You have now reached this limit.
+                    </span>
+                  </>
+                )}
+              </div>
+            ),
+            variant: "destructive"
+          })
+
+          // QUAN TRỌNG: return luôn để không chạy xuống dòng toast mặc định ở dưới
+          setIsSubmittingApplication(false)
+          return
+        }        // -----------------------------------------------------------
+
         const validationErrors = err?.response?.data?.errors
 
         if (validationErrors) {
-          // Show first validation error or aggregate
           const firstKey = Object.keys(validationErrors)[0]
           const firstMsg = validationErrors[firstKey]
           toast({ title: "Validation error", description: firstMsg || apiMessage, variant: "destructive" })
         } else {
-          toast({ title: "Error", description: apiMessage, variant: "destructive" })
+          // Hiển thị thông báo với tiêu đề thân thiện hơn
+          toast({
+            title: "Participation limit",
+            description: apiMessage,
+            variant: "destructive"
+          })
         }
 
         setIsSubmittingApplication(false)
       }
+
     })()
   }
 
