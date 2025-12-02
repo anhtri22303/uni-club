@@ -82,7 +82,7 @@ export default function AddStaffModal({
   const [staffToDelete, setStaffToDelete] = useState<EventStaff | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Check if event is completed
+  // Check if event is completed (only COMPLETED status)
   const isEventCompleted = eventStatus === "COMPLETED";
 
   useEffect(() => {

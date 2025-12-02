@@ -374,13 +374,18 @@ export interface OrderLog {
  * Lấy lịch sử thay đổi trạng thái của một đơn hàng
  * (GET /api/order-logs/membership/{membershipId}/order/{orderId})
  */
+
 export async function getOrderLogsByMembershipAndOrder(
   membershipId: number | string,
   orderId: number | string
 ): Promise<OrderLog[]> {
-  const res = await axiosInstance.get<ApiResponse<OrderLog[]>>(
+  // 1. Bỏ <ApiResponse...> vì API này trả về mảng trực tiếp, không bọc trong object
+  const res = await axiosInstance.get<OrderLog[]>(
     `/api/order-logs/membership/${membershipId}/order/${orderId}`
   );
-  console.log("Order logs:", res.data.data);
-  return res.data.data;
+
+  console.log("Order logs raw response:", res.data);
+
+  // 2. Trả về res.data trực tiếp (vì res.data chính là cái mảng [ ])
+  return res.data;
 }

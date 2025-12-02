@@ -15,23 +15,17 @@ import { useRouter } from "next/navigation"
 import { useState, useMemo, useEffect } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
-    Search,
-    Trash,
-    Upload,
-    Users,
-    FileSpreadsheet,
-    AlertTriangle,
-    RefreshCcw,
-    X
+    Search, Trash, Upload, Users, FileSpreadsheet, AlertTriangle, RefreshCcw, X, Filter
 } from "lucide-react"
-
+import {
+    Popover, PopoverContent, PopoverTrigger,
+} from "@/components/ui/popover"
+import {
+    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select"
 // Import API functions
 import {
-    getAllStudentRegistry,
-    searchStudentRegistry,
-    deleteStudentFromRegistry,
-    deleteAllStudentRegistry,
-    uploadStudentRegistry,
+    getAllStudentRegistry, searchStudentRegistry, deleteStudentFromRegistry, deleteAllStudentRegistry, uploadStudentRegistry,
     StudentRegistryItem
 } from "@/service/studentCodeApi" // Đảm bảo đường dẫn đúng tới file API bạn đã tạo
 
@@ -42,10 +36,17 @@ export default function UniStaffStudentRegistryPage() {
     const router = useRouter()
     const queryClient = useQueryClient()
 
-    // --- STATES ---
     // Pagination
     const [page, setPage] = useState(0)
     const [pageSize, setPageSize] = useState(10)
+    // --- STATES FOR FILTER ---
+    const [selectedMajor, setSelectedMajor] = useState<string>("all")
+    const [selectedIntake, setSelectedIntake] = useState<string>("all")
+    // --- STATE FOR SORT ---
+    // 'default': Major A-Z -> MSSV
+    // 'intake_asc': Khóa nhỏ -> lớn
+    // 'intake_desc': Khóa lớn -> nhỏ
+    const [sortOption, setSortOption] = useState<string>("default")
 
     // Delete Single State
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
@@ -85,35 +86,102 @@ export default function UniStaffStudentRegistryPage() {
 
     // --- SORT LOGIC ---
     // Sắp xếp theo majorCode (alphabet) trước, sau đó theo 4 số trong studentCode
-    const sortedStudents = useMemo(() => {
-        return [...students].sort((a, b) => {
-            // So sánh majorCode trước (alphabet)
+    // const sortedStudents = useMemo(() => {
+    //     return [...students].sort((a, b) => {
+    //         // So sánh majorCode trước (alphabet)
+    //         const majorA = (a.majorCode || '').toLowerCase()
+    //         const majorB = (b.majorCode || '').toLowerCase()
+
+    //         if (majorA !== majorB) {
+    //             return majorA.localeCompare(majorB)
+    //         }
+
+    //         // Nếu majorCode giống nhau, so sánh 4 số trong studentCode
+    //         // Giả sử studentCode có format: SE123456 (2 chữ cái + 6 số)
+    //         // Lấy 4 số cuối
+    //         const numA = a.studentCode.slice(-4)
+    //         const numB = b.studentCode.slice(-4)
+
+    //         return numA.localeCompare(numB)
+    //     })
+    // }, [students])
+
+    // // --- PAGINATION LOGIC (Client-side pagination for simplicity) ---
+    // // Lưu ý: Nếu dữ liệu quá lớn, nên chuyển sang Server-side pagination
+    // const paginatedStudents = useMemo(() => {
+    //     const start = page * pageSize
+    //     return sortedStudents.slice(start, start + pageSize)
+    // }, [sortedStudents, page, pageSize])
+
+    // --- EXTRACT FILTER OPTIONS (Lấy danh sách Major và Intake duy nhất) ---
+    const uniqueMajors = useMemo(() => {
+        const majors = new Set(students.map(s => s.majorCode).filter(Boolean))
+        return Array.from(majors).sort()
+    }, [students])
+
+    const uniqueIntakes = useMemo(() => {
+        const intakes = new Set(students.map(s => s.intake).filter(Boolean))
+        return Array.from(intakes).sort((a, b) => (a as number) - (b as number))
+    }, [students])
+
+    // --- FILTER & SORT LOGIC ---
+    const filteredAndSortedStudents = useMemo(() => {
+        let result = [...students]
+
+        // 1. Filter Logic
+        if (selectedMajor !== "all") {
+            result = result.filter(s => s.majorCode === selectedMajor)
+        }
+        if (selectedIntake !== "all") {
+            result = result.filter(s => String(s.intake) === selectedIntake)
+        }
+
+        // 2. Sort Logic (Giữ nguyên logic cũ)
+        // 2. Sort Logic (CẬP NHẬT MỚI)
+        return result.sort((a, b) => {
+            // Sắp xếp theo Khóa (Intake)
+            if (sortOption === 'intake_asc') {
+                return (a.intake || 0) - (b.intake || 0) // Nhỏ -> Lớn
+            }
+            if (sortOption === 'intake_desc') {
+                return (b.intake || 0) - (a.intake || 0) // Lớn -> Nhỏ
+            }
+
+            // Sắp xếp Mặc định (Major alphabet -> MSSV alphabet)
             const majorA = (a.majorCode || '').toLowerCase()
             const majorB = (b.majorCode || '').toLowerCase()
-            
+
             if (majorA !== majorB) {
                 return majorA.localeCompare(majorB)
             }
-            
-            // Nếu majorCode giống nhau, so sánh 4 số trong studentCode
-            // Giả sử studentCode có format: SE123456 (2 chữ cái + 6 số)
-            // Lấy 4 số cuối
+
             const numA = a.studentCode.slice(-4)
             const numB = b.studentCode.slice(-4)
-            
             return numA.localeCompare(numB)
         })
-    }, [students])
+    }, [students, selectedMajor, selectedIntake, sortOption])
 
-    // --- PAGINATION LOGIC (Client-side pagination for simplicity) ---
-    // Lưu ý: Nếu dữ liệu quá lớn, nên chuyển sang Server-side pagination
+    // --- PAGINATION LOGIC ---
+    // Cập nhật để dùng filteredAndSortedStudents thay vì sortedStudents cũ
     const paginatedStudents = useMemo(() => {
         const start = page * pageSize
-        return sortedStudents.slice(start, start + pageSize)
-    }, [sortedStudents, page, pageSize])
+        return filteredAndSortedStudents.slice(start, start + pageSize)
+    }, [filteredAndSortedStudents, page, pageSize])
+
+    // Khi thay đổi filter, reset về trang 1
+    useEffect(() => {
+        setPage(0)
+    }, [selectedMajor, selectedIntake])
+
+    // Helper reset filter
+    const clearFilters = () => {
+        setSelectedMajor("all")
+        setSelectedIntake("all")
+        setSortOption("default")
+        setQuery("")
+    }
 
     // --- HANDLERS ---
-
     const handleRefresh = () => {
         queryClient.invalidateQueries({ queryKey: ["student-registry"] })
         toast({ title: "Refreshed", description: "Student list updated." })
@@ -217,31 +285,121 @@ export default function UniStaffStudentRegistryPage() {
                     {/* --- ACTION BAR --- */}
                     <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
                         <div className="flex items-center gap-2 w-full md:w-auto">
+                            {/* Search Input (Giữ nguyên) */}
                             <div className="relative w-full md:w-[300px]">
                                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                                 <Input
-                                    placeholder="Search by Name or MSSV..."
+                                    placeholder="Search name or student code..."
                                     value={query}
                                     onChange={(e) => setQuery(e.target.value)}
-                                    className="pl-9 pr-12 bg-white dark:bg-slate-950"
+                                    className="pl-9 pr-12 bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700"
                                 />
-                                {/* Logic hiển thị nút Clear */}
                                 {query && (
                                     <Button
                                         variant="ghost"
                                         size="icon"
                                         onClick={() => setQuery("")}
                                         type="button"
-                                        // CẬP NHẬT: Class tạo hiệu ứng tròn, căn giữa chính xác
                                         className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full"
                                     >
                                         <X className="h-4 w-4 text-muted-foreground" />
                                     </Button>
                                 )}
                             </div>
+
+                            {/* --- FILTER & SORT POPOVER --- */}
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button variant="outline" className="gap-2 border-slate-300 dark:border-slate-700 hover:border-slate-400 
+                                    dark:hover:border-slate-600 bg-white dark:bg-slate-950">
+                                        <Filter className="h-4 w-4" />
+                                        Filters & Sort
+                                        {/* Hiển thị số lượng filter/sort đang active */}
+                                        {(selectedMajor !== "all" || selectedIntake !== "all" || sortOption !== "default") && (
+                                            <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">
+                                                {(selectedMajor !== "all" ? 1 : 0) + (selectedIntake !== "all" ? 1 : 0) + (sortOption !== "default" ? 1 : 0)}
+                                            </Badge>
+                                        )}
+                                    </Button>
+                                </PopoverTrigger>
+
+                                {/* UI Bên trong nút Filter: Nằm ngang */}
+                                <PopoverContent className="w-auto p-4" align="start">
+                                    <div className="space-y-4">
+                                        <div className="flex items-center justify-between">
+                                            <h4 className="font-medium leading-none">Filter Registry Information</h4>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-auto p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 px-2 py-1"
+                                                onClick={clearFilters}
+                                            >
+                                                Clear all
+                                            </Button>
+                                        </div>
+
+                                        {/* Grid Layout: 3 cột nằm ngang */}
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 min-w-[600px]">
+
+                                            {/* 1. Major Filter */}
+                                            <div className="space-y-2">
+                                                <Label className="text-xs text-muted-foreground">Major</Label>
+                                                <Select value={selectedMajor} onValueChange={setSelectedMajor}>
+                                                    <SelectTrigger className="border-slate-300">
+                                                        <SelectValue placeholder="All Majors" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="all">All Majors</SelectItem>
+                                                        {uniqueMajors.map((m) => (
+                                                            <SelectItem key={m as string} value={m as string}>
+                                                                {m as string}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+
+                                            {/* 2. Intake Filter */}
+                                            <div className="space-y-2">
+                                                <Label className="text-xs text-muted-foreground">Intake/ Year</Label>
+                                                <Select value={selectedIntake} onValueChange={setSelectedIntake}>
+                                                    <SelectTrigger className="border-slate-300">
+                                                        <SelectValue placeholder="All Intakes" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="all">All Intakes</SelectItem>
+                                                        {uniqueIntakes.map((i) => (
+                                                            <SelectItem key={i as number} value={String(i)}>
+                                                                K{i as number}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+
+                                            {/* 3. Sort Options */}
+                                            <div className="space-y-2">
+                                                <Label className="text-xs text-muted-foreground">Sort Order</Label>
+                                                <Select value={sortOption} onValueChange={setSortOption}>
+                                                    <SelectTrigger className="border-slate-300">
+                                                        <SelectValue placeholder="Default Sort" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="default">Default (A-Z)</SelectItem>
+                                                        <SelectItem value="intake_asc">Intake: Low → High</SelectItem>
+                                                        <SelectItem value="intake_desc">Intake: High → Low</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
+
                             {isFetching && <RefreshCcw className="h-4 w-4 animate-spin text-muted-foreground" />}
                         </div>
 
+                        {/* Right Buttons (Giữ nguyên) */}
                         <div className="flex items-center gap-2 w-full md:w-auto">
                             <Button variant="outline" onClick={handleRefresh} title="Refresh Data">
                                 <RefreshCcw className="h-4 w-4" />
@@ -258,7 +416,7 @@ export default function UniStaffStudentRegistryPage() {
 
                             <Button onClick={() => setUploadOpen(true)}>
                                 <Upload className="h-4 w-4 mr-2" />
-                                Import CSV/Excel
+                                Import CSV
                             </Button>
                         </div>
                     </div>
@@ -268,7 +426,8 @@ export default function UniStaffStudentRegistryPage() {
                         <CardHeader className="pb-3">
                             <CardTitle className="text-base font-medium">Registry List</CardTitle>
                             <CardDescription>
-                                Showing {paginatedStudents.length} of {sortedStudents.length} students
+                                {/* Showing {paginatedStudents.length} of {sortedStudents.length} students */}
+                                Showing {paginatedStudents.length} of {filteredAndSortedStudents.length} students
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -276,11 +435,11 @@ export default function UniStaffStudentRegistryPage() {
                                 <Table>
                                     <TableHeader>
                                         <TableRow className="bg-slate-50 dark:bg-slate-900">
-                                            <TableHead className="w-[170px] text-left pl-12">MSSV</TableHead>
+                                            <TableHead className="w-[180px] text-center pl-12">Student Code</TableHead>
                                             <TableHead className="text-center">Full Name</TableHead>
-                                            <TableHead className="w-[150px] text-center">Major Code</TableHead>
-                                            <TableHead className="w-[150px] text-center">Intake/Year</TableHead>
-                                            <TableHead className="w-[100px] text-center">Actions</TableHead>
+                                            <TableHead className="w-[200px] text-center">Major Code</TableHead>
+                                            <TableHead className="w-[200px] text-center">Intake/Year</TableHead>
+                                            <TableHead className="w-[150px] text-center pr-12">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -303,8 +462,8 @@ export default function UniStaffStudentRegistryPage() {
                                         ) : (
                                             paginatedStudents.map((s) => (
                                                 <TableRow key={s.studentCode}>
-                                                    <TableCell className="font-mono font-medium text-left pl-8">{s.studentCode}</TableCell>
-                                                    <TableCell className="font-medium pl-10">{s.fullName}</TableCell>
+                                                    <TableCell className="font-mono font-medium text-center pl-12">{s.studentCode}</TableCell>
+                                                    <TableCell className="font-medium pl-20">{s.fullName}</TableCell>
                                                     <TableCell className="text-center">
                                                         {s.majorCode ? (
                                                             <Badge variant="outline">{s.majorCode}</Badge>
@@ -315,7 +474,7 @@ export default function UniStaffStudentRegistryPage() {
                                                     <TableCell className="text-center">
                                                         {s.intake ? `K${s.intake}` : "—"}
                                                     </TableCell>
-                                                    <TableCell className="text-center">
+                                                    <TableCell className="text-center pr-12">
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
@@ -336,10 +495,10 @@ export default function UniStaffStudentRegistryPage() {
                             </div>
 
                             {/* Pagination Controls */}
-                            {sortedStudents.length > 0 && (
+                            {filteredAndSortedStudents.length > 0 && (
                                 <div className="flex items-center justify-between space-x-2 py-4">
                                     <div className="text-sm text-muted-foreground">
-                                        Page {page + 1} of {Math.ceil(sortedStudents.length / pageSize)}
+                                        Page {page + 1} of {Math.ceil(filteredAndSortedStudents.length / pageSize)}
                                     </div>
                                     <div className="flex items-center space-x-2">
                                         <Button
@@ -353,8 +512,8 @@ export default function UniStaffStudentRegistryPage() {
                                         <Button
                                             variant="outline"
                                             size="sm"
-                                            onClick={() => setPage(p => Math.min(Math.ceil(sortedStudents.length / pageSize) - 1, p + 1))}
-                                            disabled={page >= Math.ceil(sortedStudents.length / pageSize) - 1}
+                                            onClick={() => setPage(p => Math.min(Math.ceil(filteredAndSortedStudents.length / pageSize) - 1, p + 1))}
+                                            disabled={page >= Math.ceil(filteredAndSortedStudents.length / pageSize) - 1}
                                         >
                                             Next
                                         </Button>
@@ -374,6 +533,7 @@ export default function UniStaffStudentRegistryPage() {
                                     </div>
                                 </div>
                             )}
+
                         </CardContent>
                     </Card>
 
@@ -384,7 +544,7 @@ export default function UniStaffStudentRegistryPage() {
                                 <DialogTitle>Import Student Registry</DialogTitle>
                                 <DialogDescription>
                                     Upload an Excel (.xlsx) or CSV file containing student list.<br />
-                                    Format required: <strong>MSSV, Full Name</strong>
+                                    Format required: <strong>student code (MSSV), Full Name</strong>
                                 </DialogDescription>
                             </DialogHeader>
                             <div className="grid gap-4 py-4">

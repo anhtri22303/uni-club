@@ -4,7 +4,7 @@ import type { ElementType } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ClipboardList, BarChart3, Users, Calendar, Gift, ShoppingCart, UserCheck, Wallet, PieChart as PieChartIcon } from "lucide-react"
+import { ClipboardList, BarChart3, Users, Calendar, Gift, ShoppingCart, UserCheck, Wallet, PieChart as PieChartIcon, CheckCircle } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
 
 type SidebarIcon = ElementType
@@ -36,6 +36,12 @@ type Props = {
   onOrdersTable?: () => void
   onApplicationsTable?: () => void
   onWalletTable?: () => void
+  onFeedbackTable?: () => void
+  onLeaveRequestsTable?: () => void
+  onActivityScoresTable?: () => void
+  onCoHostEventsTable?: () => void
+  onAttendanceTable?: () => void
+  onEventStaffTable?: () => void
   onMembersChart?: () => void
   onEventsChart?: () => void
   onGiftsChart?: () => void
@@ -79,6 +85,12 @@ export function InsertSidebar(props: Props) {
     onOrdersTable,
     onApplicationsTable,
     onWalletTable,
+    onFeedbackTable,
+    onLeaveRequestsTable,
+    onActivityScoresTable,
+    onCoHostEventsTable,
+    onAttendanceTable,
+    onEventStaffTable,
     onMembersChart,
     onEventsChart,
     onGiftsChart,
@@ -214,6 +226,54 @@ export function InsertSidebar(props: Props) {
                   Wallet & Points
                 </Button>
               </div>
+              {(onFeedbackTable || onLeaveRequestsTable || onActivityScoresTable || onCoHostEventsTable || onAttendanceTable || onEventStaffTable) && (
+                <>
+                  <Separator className="my-2" />
+                  <div className="space-y-2 mb-2">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase">Analytics</p>
+                    {onFeedbackTable && (
+                      <Button type="button" variant="outline" className="w-full justify-start text-sm" disabled={disabled} onClick={onFeedbackTable}>
+                        <ClipboardList className="h-4 w-4 mr-2" />
+                        Feedbacks
+                      </Button>
+                    )}
+                    {onActivityScoresTable && (
+                      <Button type="button" variant="outline" className="w-full justify-start text-sm" disabled={disabled} onClick={onActivityScoresTable}>
+                        <BarChart3 className="h-4 w-4 mr-2" />
+                        Activity Scores
+                      </Button>
+                    )}
+                    {onAttendanceTable && (
+                      <Button type="button" variant="outline" className="w-full justify-start text-sm" disabled={disabled} onClick={onAttendanceTable}>
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Attendance
+                      </Button>
+                    )}
+                  </div>
+                  <Separator className="my-2" />
+                  <div className="space-y-2 mb-2">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase">Management</p>
+                    {onLeaveRequestsTable && (
+                      <Button type="button" variant="outline" className="w-full justify-start text-sm" disabled={disabled} onClick={onLeaveRequestsTable}>
+                        <Users className="h-4 w-4 mr-2" />
+                        Leave Requests
+                      </Button>
+                    )}
+                    {onCoHostEventsTable && (
+                      <Button type="button" variant="outline" className="w-full justify-start text-sm" disabled={disabled} onClick={onCoHostEventsTable}>
+                        <Calendar className="h-4 w-4 mr-2" />
+                        Co-Host Events
+                      </Button>
+                    )}
+                    {onEventStaffTable && (
+                      <Button type="button" variant="outline" className="w-full justify-start text-sm" disabled={disabled} onClick={onEventStaffTable}>
+                        <Users className="h-4 w-4 mr-2" />
+                        Event Staff
+                      </Button>
+                    )}
+                  </div>
+                </>
+              )}
             </TabsContent>
             <TabsContent value="charts" className="mt-0">
               <div className="space-y-2 mb-2">

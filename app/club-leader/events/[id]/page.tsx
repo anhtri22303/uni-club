@@ -937,6 +937,33 @@ export default function EventDetailPage() {
     <ProtectedRoute allowedRoles={["club_leader"]}>
       <AppShell>
         <div className="space-y-6">
+          {/* Evaluation Reminder Banner */}
+          {event.status === "COMPLETED" && (
+            <div className="bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 shadow-sm">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0">
+                  <Star className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-sm font-semibold text-amber-900 dark:text-amber-100 mb-1">
+                    Staff Evaluation Required
+                  </h3>
+                  <p className="text-sm text-amber-800 dark:text-amber-200">
+                    This event has been completed. Please evaluate the performance of all staff members who participated in this event.
+                  </p>
+                  <Button
+                    onClick={() => setShowAddStaffModal(true)}
+                    className="mt-3 bg-amber-600 hover:bg-amber-700 text-white text-sm"
+                    size="sm"
+                  >
+                    <Star className="h-4 w-4 mr-2" />
+                    Evaluate Staff
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">

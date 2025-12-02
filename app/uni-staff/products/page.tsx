@@ -79,14 +79,11 @@ const ProductTypeBadge = ({ type }: { type: string }) => {
 
 // --- Main Page Component ---
 export default function AdminGiftPage() {
-    // const [page, setPage] = useState(0) // 0-indexed cho API
-    // const [pageSize, setPageSize] = useState(50) // State cho pageSize
+    const [page, setPage] = useState(0) // 0-indexed cho API
+    const [pageSize, setPageSize] = useState(10) // State cho pageSize
     const [statusFilter, setStatusFilter] = useState<string>("all")
     const [searchTerm, setSearchTerm] = useState<string>("")
     const [debouncedSearchTerm, setDebouncedSearchTerm] = useState<string>("")
-    // 1. Client-side Pagination State
-    const [clientPage, setClientPage] = useState(1);
-    const [groupsPerPage] = useState(5); // Bạn muốn hiển thị 5 nhóm mỗi trang
 
     const { toast } = useToast()
     const queryClient = useQueryClient()
@@ -101,75 +98,69 @@ export default function AdminGiftPage() {
         }
     }, [searchTerm])
 
-    // --- 1. CHỈ GIỮ LẠI QUERY NÀY (Lấy dữ liệu số lượng lớn) ---
-    const { data: allData, isLoading } = useQuery({
-        queryKey: ["adminProducts", "all", statusFilter, debouncedSearchTerm],
+    useEffect(() => {
+        setPage(0)
+    }, [debouncedSearchTerm, statusFilter, pageSize])
+
+    // 6. Fetch dữ liệu bằng React Query, truyền page, filter, search
+    const {
+        data: pagedData,
+        isLoading,
+        isError,
+    } = useQuery({
+        queryKey: [
+            "adminProducts",
+            page,
+            pageSize, // Thêm pageSize
+            statusFilter,
+            debouncedSearchTerm, // Dùng giá trị đã debounce
+        ],
         queryFn: () =>
             fetchAdminProducts({
-                page: 0,
-                size: 1000, // Lấy 1000 item để gom nhóm cho chuẩn
+                page,
+                size: pageSize, // Gửi pageSize
                 status: statusFilter === "all" ? undefined : statusFilter,
-                search: debouncedSearchTerm || undefined,
+                search: debouncedSearchTerm || undefined, // Gửi search
             }),
         placeholderData: keepPreviousData,
-    });
+    })
 
-    // --- 2. Gom nhóm dữ liệu từ allData ---
-    const allGroupedProducts = useMemo(() => {
-        if (!allData?.content) return [];
+    // Logic gộp sản phẩm theo ClubName từ dữ liệu API trả về
+    const groupedProducts = useMemo(() => {
+        if (!pagedData?.content) return []
 
-        const groups = new Map();
-        allData.content.forEach((product: AdminProduct) => {
-            const groupKey = product.clubName || "Unknown Club";
+        const groups = new Map()
+
+        pagedData.content.forEach((product: AdminProduct) => {
+            // Dùng clubName để gom nhóm
+            const groupKey = product.clubName || "Unknown Club"
+
             if (!groups.has(groupKey)) {
                 groups.set(groupKey, {
                     clubName: groupKey,
                     products: [],
                     totalProducts: 0
-                });
+                })
             }
-            groups.get(groupKey).products.push(product);
-            groups.get(groupKey).totalProducts++;
-        });
 
-        return Array.from(groups.values());
-    }, [allData]);
+            const group = groups.get(groupKey)
+            group.products.push(product)
+            group.totalProducts++
+        })
 
-    // --- 3. Lọc client-side (nếu cần xử lý thêm) ---
-    const filteredGroups = useMemo(() => {
-        if (!debouncedSearchTerm) return allGroupedProducts;
-        const lowerTerm = debouncedSearchTerm.toLowerCase();
+        return Array.from(groups.values())
+    }, [pagedData])
 
-        // Mặc dù API đã filter, nhưng filter thêm ở đây để đảm bảo tính nhất quán khi gom nhóm
-        return allGroupedProducts.filter((group: any) =>
-            group.clubName.toLowerCase().includes(lowerTerm) ||
-            group.products.some((p: any) => p.name.toLowerCase().includes(lowerTerm) || p.productCode.toLowerCase().includes(lowerTerm))
-        );
-    }, [allGroupedProducts, debouncedSearchTerm]);
-
-    // --- 4. CẮT DỮ LIỆU (Client-side Pagination Logic) ---
-    const indexOfLastGroup = clientPage * groupsPerPage;
-    const indexOfFirstGroup = indexOfLastGroup - groupsPerPage;
-
-    // Đây là biến quan trọng nhất để render ra màn hình
-    const currentGroups = filteredGroups.slice(indexOfFirstGroup, indexOfLastGroup);
-
-    const totalGroupPages = Math.ceil(filteredGroups.length / groupsPerPage);
-
-    // Reset về trang 1 khi filter thay đổi
-    useEffect(() => {
-        setClientPage(1);
-    }, [statusFilter, debouncedSearchTerm]);
-
-    // --- Mutation Toggle Status (Giữ nguyên) ---
+    // 7. Mutation để bật/tắt status
     const { mutate: toggleStatus, isPending: isToggling } = useMutation({
         mutationFn: toggleProductStatus,
-        onSuccess: () => {
+        onSuccess: (data, variables) => {
             toast({
                 title: "Success",
                 description: `Product status updated.`,
                 variant: "success",
             })
+            // Invalidate query để refresh data
             queryClient.invalidateQueries({ queryKey: ["adminProducts"] })
         },
         onError: (err: any) => {
@@ -181,9 +172,41 @@ export default function AdminGiftPage() {
         },
     })
 
+    // 8. Helper để lấy data từ pagedData
+    const products = pagedData?.content || []
+    const totalPages = pagedData?.totalPages || 0
+    const totalItems = pagedData?.totalElements || 0
+
+    const handlePageChange = (newPage: number) => {
+        setPage(newPage - 1) // Component là 1-indexed, state là 0-indexed
+    }
+
+    const handlePageSizeChange = (newSize: number) => {
+        setPageSize(newSize)
+        // useEffect (THAY ĐỔI 4) sẽ tự động reset page về 0
+    }
+
+    // --- Chỉ lấy danh sách các Club có chứa sản phẩm khớp từ khóa ---
+    const expandedGroups = useMemo(() => {
+        // 1. Nếu không có từ khóa tìm kiếm -> Trả về mảng rỗng (Đóng hết)
+        if (!debouncedSearchTerm) return [];
+
+        const lowerTerm = debouncedSearchTerm.toLowerCase();
+
+        // 2. Lọc danh sách
+        return groupedProducts
+            .filter((group: any) =>
+                // Kiểm tra xem trong group này có sản phẩm nào khớp tên hoặc mã không
+                group.products.some((product: AdminProduct) =>
+                    product.name.toLowerCase().includes(lowerTerm) ||
+                    product.productCode.toLowerCase().includes(lowerTerm)
+                )
+            )
+            .map((g: any) => g.clubName); // Chỉ lấy tên Club để làm key mở Accordion
+    }, [groupedProducts, debouncedSearchTerm]);
 
     return (
-        <ProtectedRoute allowedRoles={["admin"]}>
+        <ProtectedRoute allowedRoles={["uni_staff"]}>
             <AppShell>
                 <div className="space-y-8">
                     {/* Header Section */}
@@ -251,6 +274,7 @@ export default function AdminGiftPage() {
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
+
                             <div className="space-y-4">
                                 {isLoading ? (
                                     <Card className="flex h-40 items-center justify-center">
@@ -259,7 +283,7 @@ export default function AdminGiftPage() {
                                             <p>Loading products...</p>
                                         </div>
                                     </Card>
-                                ) : currentGroups.length === 0 ? ( // SỬA: Dùng currentGroups
+                                ) : groupedProducts.length === 0 ? (
                                     <Card className="flex h-40 items-center justify-center">
                                         <div className="flex flex-col items-center gap-2 text-muted-foreground">
                                             <Package className="h-8 w-8" />
@@ -267,30 +291,33 @@ export default function AdminGiftPage() {
                                         </div>
                                     </Card>
                                 ) : (
-                                    <Accordion
-                                        type="multiple"
-                                        className="space-y-4"
-                                        // Key dùng filteredGroups để reset khi filter
-                                        key={debouncedSearchTerm + statusFilter + clientPage}
-                                        // Mặc định mở tất cả các group đang hiển thị
-                                        // defaultValue={currentGroups.map((g: any) => g.clubName)} // MỞ group khi load trang
-                                        defaultValue={[]} // ĐÓNG group khi load trang
+                                    <Accordion type="multiple" className="space-y-4"
+                                        key={debouncedSearchTerm}
+                                        defaultValue={expandedGroups}
                                     >
-                                        {/* SỬA: Map qua currentGroups thay vì groupedProducts */}
-                                        {currentGroups.map((group: any) => (
+                                        {groupedProducts.map((group: any) => (
                                             <AccordionItem
                                                 key={group.clubName}
                                                 value={group.clubName}
+                                                // className="border rounded-lg bg-white shadow-sm overflow-hidden"
                                                 className="border rounded-lg bg-white shadow-sm overflow-hidden dark:bg-slate-950 dark:border-slate-800"
                                             >
-                                                <AccordionTrigger className="px-6 py-4 hover:bg-slate-50 hover:no-underline dark:hover:bg-slate-900">
+                                                <AccordionTrigger
+                                                    // className="px-6 py-4 hover:bg-slate-50 hover:no-underline"
+                                                    className="px-6 py-4 hover:bg-slate-50 hover:no-underline dark:hover:bg-slate-900"
+                                                >
                                                     <div className="flex items-center gap-4 w-full">
-                                                        <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shrink-0 dark:bg-blue-900/20 dark:text-blue-400">
+                                                        <div
+                                                            // className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shrink-0"
+                                                            className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shrink-0 dark:bg-blue-900/20 dark:text-blue-400"
+                                                        >
                                                             <Building2 size={20} />
                                                         </div>
                                                         <div className="flex flex-col items-start text-left flex-1">
-                                                            <h3 className="font-semibold text-lg text-slate-900 dark:text-slate-100">
-                                                                {group.clubName}
+                                                            <h3
+                                                                // className="font-semibold text-lg text-slate-900"
+                                                                className="font-semibold text-lg text-slate-900 dark:text-slate-100"
+                                                            >{group.clubName}
                                                             </h3>
                                                             <span className="text-sm text-slate-500 font-normal">
                                                                 {group.totalProducts} items listed
@@ -299,19 +326,28 @@ export default function AdminGiftPage() {
                                                     </div>
                                                 </AccordionTrigger>
 
+                                                {/* <AccordionContent className="border-t bg-slate-50/50 p-0"> */}
                                                 <AccordionContent className="border-t bg-slate-50/50 p-0 dark:bg-slate-900/50 dark:border-slate-800">
+                                                    {/* BẢNG SẢN PHẨM CON */}
                                                     <Table>
+                                                        {/* <TableHeader> */}
                                                         <TableHeader>
+                                                            {/* <TableRow className="border-b-slate-200"> */}
                                                             <TableRow className="border-b-slate-200 dark:border-slate-800 hover:bg-transparent">
+                                                                {/* Product: Chiếm phần không gian lớn nhất còn lại */}
                                                                 <TableHead className="pl-6 text-left">
                                                                     Product
                                                                 </TableHead>
+
+                                                                {/* Type & Status: Thu hẹp tối đa theo nội dung (Badge) */}
                                                                 <TableHead className="w-[2%] whitespace-nowrap text-center pr-10">
                                                                     Type
                                                                 </TableHead>
                                                                 <TableHead className="w-[2%] whitespace-nowrap text-center pr-5">
                                                                     Status
                                                                 </TableHead>
+
+                                                                {/* Stock, Cost, Redeemed: Chia đều nhau (ví dụ 10% hoặc 100px mỗi cột) */}
                                                                 <TableHead className="w-[10%] text-right">
                                                                     Stock
                                                                 </TableHead>
@@ -321,6 +357,8 @@ export default function AdminGiftPage() {
                                                                 <TableHead className="w-[10%] text-right">
                                                                     Redeemed
                                                                 </TableHead>
+
+                                                                {/* Actions: Thu hẹp */}
                                                                 <TableHead className="w-[2%] pr-6 text-center">
                                                                     Actions
                                                                 </TableHead>
@@ -329,45 +367,35 @@ export default function AdminGiftPage() {
 
                                                         <TableBody>
                                                             {group.products.map((p: AdminProduct) => (
-                                                                <TableRow
-                                                                    key={p.id}
+                                                                <TableRow key={p.id}
+                                                                    // className="hover:bg-white border-b-slate-100 last:border-0"
                                                                     className="hover:bg-white border-b-slate-100 last:border-0 dark:border-slate-800 dark:hover:bg-slate-800/50"
                                                                 >
                                                                     <TableCell className="pl-6 font-medium">
                                                                         <div>{p.name}</div>
-                                                                        <div className="text-xs text-muted-foreground">
-                                                                            {p.productCode}
-                                                                        </div>
+                                                                        <div className="text-xs text-muted-foreground">{p.productCode}</div>
                                                                     </TableCell>
+                                                                    {/* <TableCell><Badge variant="outline">{p.type}</Badge></TableCell> */}
                                                                     <TableCell className="text-center pr-10">
                                                                         <ProductTypeBadge type={p.type} />
                                                                     </TableCell>
                                                                     <TableCell className="text-center pr-5">
                                                                         <ProductStatusBadge status={p.status} />
                                                                     </TableCell>
-                                                                    <TableCell className="text-right">
-                                                                        {p.stockQuantity}
-                                                                    </TableCell>
+                                                                    <TableCell className="text-right">{p.stockQuantity}</TableCell>
                                                                     <TableCell className="text-right font-semibold text-orange-600">
                                                                         {p.pointCost.toLocaleString()}
                                                                     </TableCell>
-                                                                    <TableCell className="text-right">
-                                                                        {p.redeemCount}
-                                                                    </TableCell>
+                                                                    <TableCell className="text-right">{p.redeemCount}</TableCell>
                                                                     <TableCell className="pr-6 text-center">
                                                                         <DropdownMenu>
                                                                             <DropdownMenuTrigger asChild>
-                                                                                <Button
-                                                                                    variant="ghost"
-                                                                                    className="h-8 w-8 p-0"
-                                                                                >
+                                                                                <Button variant="ghost" className="h-8 w-8 p-0">
                                                                                     <MoreHorizontal className="h-4 w-4" />
                                                                                 </Button>
                                                                             </DropdownMenuTrigger>
                                                                             <DropdownMenuContent align="end">
-                                                                                <DropdownMenuLabel>
-                                                                                    Actions
-                                                                                </DropdownMenuLabel>
+                                                                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                                                                 <DropdownMenuItem
                                                                                     onSelect={(e) => {
                                                                                         e.preventDefault()
@@ -375,13 +403,8 @@ export default function AdminGiftPage() {
                                                                                     }}
                                                                                     disabled={isToggling}
                                                                                 >
-                                                                                    <Switch
-                                                                                        checked={p.status === "ACTIVE"}
-                                                                                        className="mr-2 h-4 w-8"
-                                                                                    />
-                                                                                    {p.status === "ACTIVE"
-                                                                                        ? "Deactivate"
-                                                                                        : "Activate"}
+                                                                                    <Switch checked={p.status === "ACTIVE"} className="mr-2 h-4 w-8" />
+                                                                                    {p.status === "ACTIVE" ? "Deactivate" : "Activate"}
                                                                                 </DropdownMenuItem>
                                                                             </DropdownMenuContent>
                                                                         </DropdownMenu>
@@ -396,41 +419,21 @@ export default function AdminGiftPage() {
                                     </Accordion>
                                 )}
                             </div>
+
                         </CardContent>
                     </Card>
 
-                    {/* Chúng ta dùng nút điều khiển clientPage thay vì component Pagination cũ */}
-                    {filteredGroups.length > 0 && (
-                        <div className="flex items-center justify-end space-x-2 py-4">
-                            <div className="text-sm text-muted-foreground mr-4">
-                                Showing {(clientPage - 1) * groupsPerPage + 1}-
-                                {Math.min(clientPage * groupsPerPage, filteredGroups.length)} of{" "}
-                                {filteredGroups.length} clubs
-                            </div>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setClientPage((prev) => Math.max(prev - 1, 1))}
-                                disabled={clientPage === 1}
-                            >
-                                Previous
-                            </Button>
-                            <div className="text-sm font-medium">
-                                Page {clientPage} of {totalGroupPages}
-                            </div>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() =>
-                                    setClientPage((prev) => Math.min(prev + 1, totalGroupPages))
-                                }
-                                disabled={clientPage === totalGroupPages}
-                            >
-                                Next
-                            </Button>
-                        </div>
-                    )}
-
+                    {/* Sử dụng component Pagination tùy chỉnh */}
+                    <Pagination
+                        currentPage={page + 1} // Chuyển state 0-indexed sang prop 1-indexed
+                        totalPages={totalPages}
+                        pageSize={pageSize}
+                        totalItems={totalItems}
+                        onPageChange={handlePageChange}
+                        onPageSizeChange={handlePageSizeChange}
+                        // Bạn có thể tùy chỉnh các tùy chọn này nếu muốn
+                        pageSizeOptions={[10, 20, 50]}
+                    />
                 </div>
             </AppShell>
         </ProtectedRoute>

@@ -67,7 +67,7 @@ import {
   Truck,
   Scale,
   Bell,
-  BellOff, 
+  BellOff,
   Code,
 
 } from "lucide-react";
@@ -124,7 +124,7 @@ const navigationConfig = {
       icon: MessagesSquare,
     },
     {
-      href: "/club-leader/activities",
+      href: "/club-leader/activities-report",
       label: "Member Activities Report",
       icon: ClipboardPenLine,
     },
@@ -164,6 +164,7 @@ const navigationConfig = {
     { href: "/uni-staff/tags", label: "Tags", icon: Tags },
     { href: "/uni-staff/student-codes", label: "Student Codes", icon: Code },
     { href: "/uni-staff/feedbacks", label: "Feedbacks", icon: MessagesSquare },
+    { href: "/uni-staff/products", label: "Products", icon: Package },
     {
       label: "Policy Management",
       icon: FileText,
@@ -204,7 +205,9 @@ const navigationConfig = {
       ],
     },
     { href: "/uni-staff/points", label: "Points Staff", icon: HandCoins },
+    { href: "/uni-staff/club-activities-report", label: "Club Activities Report", icon: ClipboardPenLine },
     { href: "/uni-staff/report", label: "Report", icon: FileBarChart },
+
     // { href: "/uni-staff/reports", label: "Reports", icon: BarChart3 },
   ],
   admin: [
@@ -702,26 +705,26 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
           const isPending =
             event.status === "PENDING_COCLUB" ||
             event.status === "PENDING_UNISTAFF";
-          
+
           if (!isPending) {
             return false;
           }
 
           // Check if event has multi-day format (days array)
           const isMultiDay = !!(event.days && event.days.length > 0);
-          
+
           // Check if event has single-day format (date and endTime)
           const isSingleDay = !!(event.date || event.endTime);
-          
+
           // Events without date info are NOT counted in badge (excluded from filter)
           // They appear in the main list but don't contribute to pending count
           if (!isMultiDay && !isSingleDay) {
             return false;
           }
-          
+
           // If event has date info, check if expired
           const expired = isEventExpired(event);
-          
+
           return !expired;
         } catch (error) {
           console.error(`Error filtering event "${event.name}":`, error);

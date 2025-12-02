@@ -31,19 +31,19 @@ export interface MemberActivityFullScore {
     clubName: string;
     year: number;
     month: number;
-    
+
     // Event Info
     totalEventRegistered: number;
     totalEventAttended: number;
     eventAttendanceRate: number;
     totalPenaltyPoints: number;
-    
+
     // Attendance Score Info
     activityLevel: ActivityLevel | string;
     attendanceBaseScore: number;
     attendanceMultiplier: number;
     attendanceTotalScore: number;
-    
+
     // Staff Score Info
     staffBaseScore: number;
     totalStaffCount: number;
@@ -51,12 +51,12 @@ export interface MemberActivityFullScore {
     staffMultiplier: number;
     staffScore: number;
     staffTotalScore: number;
-    
+
     // Club Session Info
     totalClubSessions: number;
     totalClubPresent: number;
     sessionAttendanceRate: number;
-    
+
     // Final
     finalScore: number;
 }
@@ -84,6 +84,8 @@ export interface MemberActivityShortItem {
     // Session Stats
     totalClubSessions: number;
     totalClubPresent: number;
+    // Final Result
+    finalScore: number;
 }
 
 /**
@@ -114,6 +116,19 @@ export interface ScoreCalculationResult {
     staffMultiplier: number;
     staffTotalScore: number;
     finalScore: number;
+}
+
+export interface AutoGenerateParams {
+    clubId: number;
+    year: number;
+    month: number;
+}
+
+// Interface riêng cho response này vì data trả về là string
+export interface AutoGenerateResponse {
+    success: boolean;
+    message: string;
+    data: string;
 }
 
 // ==========================================
@@ -391,6 +406,34 @@ export const updateBulkMonthlyActivity = async ({
         }
     } catch (error) {
         console.error("Error bulk updating activities:", error);
+        throw error;
+    }
+};
+
+/**
+ * 8. POST: Tự động tạo báo cáo tháng cho toàn CLB
+ * /api/clubs/{clubId}/activity/monthly/auto-generate?year=...&month=...
+ */
+export const autoGenerateMonthlyReport = async ({
+    clubId,
+    year,
+    month
+}: AutoGenerateParams): Promise<string> => {
+    try {
+        const response = await axiosInstance.post<AutoGenerateResponse>(
+            `/api/clubs/${clubId}/activity/monthly/auto-generate`,
+            null, // Body để null vì tham số nằm ở query
+            {
+                params: { year, month } // Axios sẽ tự chuyển thành ?year=...&month=...
+            }
+        );
+
+        if (response.data && response.data.success) {
+            return response.data.message;
+        }
+        throw new Error(response.data?.message || "Failed to generate monthly report");
+    } catch (error) {
+        console.error("Error auto generating report:", error);
         throw error;
     }
 };

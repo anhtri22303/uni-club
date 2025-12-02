@@ -17,11 +17,12 @@ import {
     MemberActivityShortItem,
     UpdateBulkMonthlyActivityBody,
     MonthlyActivityItem,
-    ActivityLevel
-} from "@/service/activityApi"
+    ActivityLevel,
+    autoGenerateMonthlyReport,
+} from "@/service/memberActivityReportApi"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
-import { Users, BarChart2, Star, RotateCw, Calculator, Save, AlertCircle, Calendar, Info } from "lucide-react"
+import { Users, BarChart2, Star, RotateCw, Calculator, Save, AlertCircle, Calendar, Info, X } from "lucide-react"
 import { Label } from "@/components/ui/label"
 import { getClubIdFromToken } from "@/service/clubApi"
 import { Input } from "@/components/ui/input"
@@ -54,6 +55,19 @@ const getLevelBadgeColor = (level: string) => {
         case "LOW": return "bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-950 dark:text-orange-300 dark:border-orange-700"
         default: return "bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-950 dark:text-gray-300 dark:border-gray-700"
     }
+}
+
+const formatNumberInput = (value: string) => {
+    // 1. Loại bỏ tất cả ký tự KHÔNG phải là số (a-z, ký tự đặc biệt, khoảng trắng...)
+    // Chỉ giữ lại các chữ số từ 0 đến 9
+    const rawValue = value.replace(/[^0-9]/g, '');
+
+    // 2. Nếu rỗng (do xóa hết hoặc chưa nhập) thì trả về rỗng
+    if (rawValue === '') return '';
+
+    // 3. Chuyển thành số và format có dấu phẩy (Ví dụ: 1000 -> 1,000)
+    // Number() sẽ tự động loại bỏ số 0 ở đầu (ví dụ 05 -> 5)
+    return Number(rawValue).toLocaleString('en-US');
 }
 
 // Type mở rộng: Kết hợp dữ liệu Short (có sẵn) và Full (có sau khi calculate)
@@ -173,10 +187,10 @@ export default function ActivityReportPage() {
     const [staffBaseInput, setStaffBaseInput] = useState<string>("")
     const [isCalculating, setIsCalculating] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
+    const [isGenerating, setIsGenerating] = useState(false)
 
     // Flag: Đã tính điểm chưa? Nếu true -> Hiện cột điểm. Nếu false -> Ẩn cột điểm.
     const [showScores, setShowScores] = useState(false)
-
     const [clubId] = useState(() => getClubIdFromToken())
 
     // 1. Load Data (Mặc định chỉ tải thông tin hoạt động - Short API)
@@ -215,8 +229,8 @@ export default function ActivityReportPage() {
     const handleLiveCalculation = async () => {
         if (!clubId) return
 
-        const attBase = Number(attendanceBaseInput)
-        const stfBase = Number(staffBaseInput)
+        const attBase = Number(attendanceBaseInput.replace(/,/g, ''))
+        const stfBase = Number(staffBaseInput.replace(/,/g, ''))
 
         if (isNaN(attBase) || attBase < 0 || isNaN(stfBase) || stfBase < 0) {
             toast({ title: "Invalid Input", description: "Base scores must be valid positive numbers.", variant: "destructive" })
@@ -317,6 +331,40 @@ export default function ActivityReportPage() {
         }
     };
 
+    const handleGenerateReport = async () => {
+        if (!clubId) return;
+
+        setIsGenerating(true);
+        try {
+            const message = await autoGenerateMonthlyReport({
+                clubId,
+                year: selectedYear,
+                month: selectedMonth
+            });
+
+            toast({
+                title: "Report Initialized",
+                description: message || `Successfully generated report for ${selectedMonth}/${selectedYear}.`,
+                variant: "default",
+                className: "bg-blue-600 text-white border-none"
+            });
+
+            // Quan trọng: Load lại danh sách để hiện data vừa tạo (mặc dù điểm có thể = 0)
+            loadActivities();
+
+        } catch (error: any) {
+            console.error("Error generating report:", error);
+            toast({
+                title: "Initialization Failed",
+                description: error.message || "Could not generate monthly report.",
+                variant: "destructive"
+            });
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+
     useEffect(() => {
         loadActivities()
     }, [selectedYear, selectedMonth, clubId, loadActivities])
@@ -385,25 +433,59 @@ export default function ActivityReportPage() {
 
                                 {/* Scoring Inputs */}
                                 <div className="space-y-2">
-                                    <Label className="text-blue-600">Attendance Base</Label>
+                                    <Label className="text-blue-600">Attendance Base Score</Label>
                                     <div className="relative">
                                         <Input
-                                            type="number" placeholder="e.g. 100"
-                                            value={attendanceBaseInput} onChange={(e) => setAttendanceBaseInput(e.target.value)}
-                                            className="pl-8 border-slate-300"
+                                            type="text" // <--- Đổi thành text để hiện dấu phẩy
+                                            placeholder="e.g. 100"
+                                            // Giá trị hiển thị
+                                            value={attendanceBaseInput}
+                                            // Khi nhập: format rồi mới set state
+                                            onChange={(e) => setAttendanceBaseInput(formatNumberInput(e.target.value))}
+                                            className="pl-8 pr-10 border-slate-300"
                                         />
                                         <Users className="h-4 w-4 absolute left-2.5 top-3 text-muted-foreground" />
+
+                                        {/* Nút Clear bên phải - Chỉ hiện khi có dữ liệu */}
+                                        {attendanceBaseInput && (
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => setAttendanceBaseInput("")}
+                                                className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full 
+                                                text-slate-400 hover:bg-primary hover:text-primary-foreground transition-colors"
+                                            >
+                                                <X className="h-4 w-4" />
+                                                <span className="sr-only">Clear</span>
+                                            </Button>
+                                        )}
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-yellow-600">Staff Base</Label>
+                                    <Label className="text-yellow-600">Staff Base Score</Label>
                                     <div className="relative">
                                         <Input
-                                            type="number" placeholder="e.g. 100"
-                                            value={staffBaseInput} onChange={(e) => setStaffBaseInput(e.target.value)}
-                                            className="pl-8 border-slate-300"
+                                            type="text" // <--- Đổi thành text
+                                            placeholder="e.g. 100"
+                                            value={staffBaseInput}
+                                            onChange={(e) => setStaffBaseInput(formatNumberInput(e.target.value))}
+                                            className="pl-8 pr-10 border-slate-300"
                                         />
                                         <Star className="h-4 w-4 absolute left-2.5 top-3 text-muted-foreground" />
+
+                                        {/* Nút Clear bên phải - Chỉ hiện khi có dữ liệu */}
+                                        {staffBaseInput && (
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => setStaffBaseInput("")}
+                                                className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full text-slate-400 hover:bg-primary 
+                                                hover:text-primary-foreground transition-colors"
+                                            >
+                                                <X className="h-4 w-4" />
+                                                <span className="sr-only">Clear</span>
+                                            </Button>
+                                        )}
                                     </div>
                                 </div>
 

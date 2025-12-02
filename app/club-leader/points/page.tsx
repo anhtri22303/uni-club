@@ -31,6 +31,12 @@ import {
   History,
   TriangleAlert,
   PlusCircle,
+  DownloadCloud, // Icon mới
+  RefreshCw,     // Icon mới
+  Trash2,
+  HandCoins,
+  Coins,
+  MessageSquare,        // Icon mới
 } from "lucide-react";
 import { getClubById, getClubIdFromToken } from "@/service/clubApi";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -78,6 +84,8 @@ import {
   PenaltyRule,
   createClubPenalty,
 } from "@/service/disciplineApi";
+// --- IMPORT MỚI ---
+import { getClubMemberActivity } from "@/service/memberActivityReportApi";
 
 interface ClubMember {
   id: string;
@@ -95,43 +103,76 @@ export default function ClubLeaderRewardDistributionPage() {
   const [loading, setLoading] = useState(true);
   const [clubWallet, setClubWallet] = useState<ApiClubWallet | null>(null);
   const [walletLoading, setWalletLoading] = useState(false);
-  // === State và Logic tải dữ liệu thành viên (Tái sử dụng) ===
+
+  // === Data Members ===
   const [apiMembers, setApiMembers] = useState<ApiMembership[] | null>(null);
   const [membersLoading, setMembersLoading] = useState(false);
   const [membersError, setMembersError] = useState<string | null>(null);
-  const [selectedMembers, setSelectedMembers] = useState<
-    Record<string, boolean>
-  >({});
-  const [targetUserIds, setTargetUserIds] = useState<number[]>([]); // ✨ State lưu danh sách userId đã chọn
-  // State filters
+  const [selectedMembers, setSelectedMembers] = useState<Record<string, boolean>>({});
+  const [targetUserIds, setTargetUserIds] = useState<number[]>([]);
+
+  // Filters
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilters, setActiveFilters] = useState<Record<string, any>>({});
   const [showFilters, setShowFilters] = useState(false);
-  // History modal state
+
+  // History Modal
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [transactions, setTransactions] = useState<ApiWalletTransaction[]>([]);
   const [transactionsLoading, setTransactionsLoading] = useState(false);
-  // === State cho modal xin điểm ===
+
+  // Request Modal
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [requestPoints, setRequestPoints] = useState<number | "">("");
   const [requestReason, setRequestReason] = useState("");
   const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
 
-  // === State cho chức năng PHẠT ===
+  // Penalty Modal
   const [showPenaltyModal, setShowPenaltyModal] = useState(false);
   const [penaltyRules, setPenaltyRules] = useState<PenaltyRule[]>([]);
   const [penaltyRulesLoading, setPenaltyRulesLoading] = useState(false);
   const [selectedRuleId, setSelectedRuleId] = useState<number | "">("");
   const [penaltyReason, setPenaltyReason] = useState("");
   const [isSubmittingPenalty, setIsSubmittingPenalty] = useState(false);
-  // Lưu member được chọn để phạt
   const [memberToPenalize, setMemberToPenalize] = useState<any>(null);
+
+  // === NEW STATE FOR SYNCING SCORES ===
+  const [showSyncModal, setShowSyncModal] = useState(false);
+  const [syncYear, setSyncYear] = useState(new Date().getFullYear());
+  const [syncMonth, setSyncMonth] = useState(new Date().getMonth() + 1);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  // Lưu điểm riêng cho từng member: Key là userId (number), Value là score (number)
+  // Nếu null -> Chế độ Manual (nhập chung 1 số). Nếu object -> Chế độ Sync.
+  const [individualScores, setIndividualScores] = useState<Record<number, number> | null>(null);
+
+  // Progress bar khi gửi điểm hàng loạt
+  const [distributionProgress, setDistributionProgress] = useState<{ current: number, total: number } | null>(null);
+
+  // === Reward State (Existing) ===
+  const [rewardAmount, setRewardAmount] = useState<number | "">("");
+  const [rewardReason, setRewardReason] = useState("");
+  const [isDistributing, setIsDistributing] = useState(false);
+
+  // --- LOGIC CHECK BALANCE (MỚI) ---
+  const currentBalance = clubWallet?.balancePoints || 0;
+  const recipientCount = targetUserIds.length;
+  const currentRewardAmount = typeof rewardAmount === 'number' ? rewardAmount : 0;
+  const totalRequired = currentRewardAmount * recipientCount;
+
+  // Kiểm tra xem có vượt quá số dư không
+  const isOverBudget = totalRequired > currentBalance;
+
+  // Tính số điểm tối đa cho mỗi người (nếu chia đều)
+  const maxPerMember = recipientCount > 0
+    ? Math.floor(currentBalance / recipientCount)
+    : 0;
 
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
       setMembersLoading(true);
-      setPenaltyRulesLoading(true); // Bắt đầu tải luật phạt
+      setPenaltyRulesLoading(true);
 
       try {
         const clubId = getClubIdFromToken();
@@ -140,7 +181,6 @@ export default function ClubLeaderRewardDistributionPage() {
         const clubResponse = await getClubById(clubId);
         setManagedClub(clubResponse.data);
 
-        // Load club wallet
         setWalletLoading(true);
         try {
           const walletData = await getClubWallet(clubId);
@@ -151,7 +191,6 @@ export default function ClubLeaderRewardDistributionPage() {
           setWalletLoading(false);
         }
 
-        // Load penalty rules
         try {
           const rules = await getClubPenaltyRules({ clubId });
           setPenaltyRules(rules);
@@ -161,7 +200,6 @@ export default function ClubLeaderRewardDistributionPage() {
           setPenaltyRulesLoading(false);
         }
 
-        // Load members - no need to fetch user data separately as it's included in membership data
         const memberData = await membershipApi.getMembersByClubId(clubId);
         setApiMembers(memberData);
       } catch (err: any) {
@@ -174,17 +212,16 @@ export default function ClubLeaderRewardDistributionPage() {
 
     loadData();
   }, []);
-  // Chon thanh vien cu the de phan diem
+
+  // Init selection state
   useEffect(() => {
     if (apiMembers && apiMembers.length > 0) {
       setSelectedMembers((prevSelected) => {
-        // Only update if we don't have any selections yet or the members have changed
         const currentMemberIds = Object.keys(prevSelected);
         const newMemberIds = apiMembers.map(
           (m: any) => m.membershipId ?? `m-${m.userId}`
         );
 
-        // If we already have selections and the IDs match, don't update
         if (
           currentMemberIds.length === newMemberIds.length &&
           newMemberIds.every((id) => id in prevSelected)
@@ -192,7 +229,6 @@ export default function ClubLeaderRewardDistributionPage() {
           return prevSelected;
         }
 
-        // Otherwise, create new selection state
         const initialSelected: Record<string, boolean> = {};
         apiMembers.forEach((m: any) => {
           const id = m.membershipId ?? `m-${m.userId}`;
@@ -202,32 +238,6 @@ export default function ClubLeaderRewardDistributionPage() {
       });
     }
   }, [apiMembers]);
-
-  const handleToggleSelect = (memberId: string) => {
-    setSelectedMembers((prev) => {
-      const newState = !prev[memberId];
-
-      // Cập nhật targetUserIds ngay lập tức
-      // Tìm member để lấy userId
-      const member = clubMembers.find((m) => m.id === memberId);
-      if (member) {
-        const numericUserId = Number(member.userId);
-        setTargetUserIds((prevIds) => {
-          if (newState) {
-            // Thêm vào nếu chưa có
-            return prevIds.includes(numericUserId)
-              ? prevIds
-              : [...prevIds, numericUserId];
-          } else {
-            // Xóa khỏi danh sách
-            return prevIds.filter((id) => id !== numericUserId);
-          }
-        });
-      }
-
-      return { ...prev, [memberId]: newState };
-    });
-  };
 
   const clubMembers = managedClub
     ? (apiMembers ?? [])
@@ -249,7 +259,6 @@ export default function ClubLeaderRewardDistributionPage() {
     : [];
 
   const filteredMembers = clubMembers.filter((member) => {
-    // Tìm kiếm theo tên hoặc mã sinh viên
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
       const matchName = member.fullName.toLowerCase().includes(searchLower);
@@ -262,8 +271,6 @@ export default function ClubLeaderRewardDistributionPage() {
     if (roleFilter && roleFilter !== "all") {
       if (member.role !== roleFilter) return false;
     }
-
-    //    THÊM MỚI: Lọc theo Staff
     const staffFilter = activeFilters["staff"];
     if (staffFilter && staffFilter !== "all") {
       const isStaff = staffFilter === "true";
@@ -271,6 +278,7 @@ export default function ClubLeaderRewardDistributionPage() {
     }
     return true;
   });
+
   const {
     currentPage: membersPage,
     totalPages: membersPages,
@@ -278,42 +286,43 @@ export default function ClubLeaderRewardDistributionPage() {
     setCurrentPage: setMembersPage,
   } = usePagination({ data: filteredMembers, initialPageSize: 8 });
 
-  // === State và Logic phân phát điểm thưởng (Mới) ===
-  const [rewardAmount, setRewardAmount] = useState<number | "">("");
-  const [rewardReason, setRewardReason] = useState("");
-  const [isDistributing, setIsDistributing] = useState(false);
-  // State filters
   const uniqueRoles = Array.from(new Set(clubMembers.map((m) => m.role)));
+
   const handleFilterChange = (filterKey: string, value: any) => {
     setActiveFilters((prev) => ({ ...prev, [filterKey]: value }));
     setMembersPage(1);
   };
+
   const hasActiveFilters =
     Object.values(activeFilters).some((v) => v && v !== "all") ||
     Boolean(searchTerm);
 
   const allFilteredSelected = useMemo(() => {
-    if (filteredMembers.length === 0) {
-      return false; // Không có gì để chọn
-    }
-    // Kiểm tra xem *mọi* thành viên trong danh sách đã lọc có 'true' trong selectedMembers không
-    return filteredMembers.every(
-      (member) => selectedMembers[member.id] === true
-    );
+    if (filteredMembers.length === 0) return false;
+    return filteredMembers.every((member) => selectedMembers[member.id] === true);
   }, [filteredMembers, selectedMembers]);
 
-  const handleRewardAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    // Chỉ cho phép nhập số nguyên dương
-    if (value === "" || /^\d+$/.test(value)) {
-      setRewardAmount(value === "" ? "" : parseInt(value, 10));
-    }
+  // --- SELECTION LOGIC ---
+  const handleToggleSelect = (memberId: string) => {
+    setSelectedMembers((prev) => {
+      const newState = !prev[memberId];
+      const member = clubMembers.find((m) => m.id === memberId);
+      if (member) {
+        const numericUserId = Number(member.userId);
+        setTargetUserIds((prevIds) => {
+          if (newState) {
+            return prevIds.includes(numericUserId) ? prevIds : [...prevIds, numericUserId];
+          } else {
+            return prevIds.filter((id) => id !== numericUserId);
+          }
+        });
+      }
+      return { ...prev, [memberId]: newState };
+    });
   };
 
   const handleToggleSelectAll = () => {
     const newSelectionState = !allFilteredSelected;
-
-    // Cập nhật trạng thái chọn *chỉ* cho các thành viên trong danh sách đã lọc
     setSelectedMembers((prevSelected) => {
       const newSelected = { ...prevSelected };
       filteredMembers.forEach((member) => {
@@ -322,208 +331,259 @@ export default function ClubLeaderRewardDistributionPage() {
       return newSelected;
     });
 
-    // Cập nhật targetUserIds
     if (newSelectionState) {
-      // Select all: thêm tất cả filteredMembers vào targetUserIds
       setTargetUserIds((prevIds) => {
         const newIds = filteredMembers.map((member) => Number(member.userId));
         const merged = [...prevIds];
         newIds.forEach((id) => {
-          if (!merged.includes(id)) {
-            merged.push(id);
-          }
+          if (!merged.includes(id)) merged.push(id);
         });
         return merged;
       });
     } else {
-      // Deselect all: xóa tất cả filteredMembers khỏi targetUserIds
       setTargetUserIds((prevIds) => {
-        const idsToRemove = filteredMembers.map((member) =>
-          Number(member.userId)
-        );
+        const idsToRemove = filteredMembers.map((member) => Number(member.userId));
         return prevIds.filter((id) => !idsToRemove.includes(id));
       });
     }
   };
 
-  const handleCreatePointRequest = async () => {
-    if (!managedClub?.id) {
-      toast({
-        title: "Error",
-        description: "Club information is not loaded.",
-        variant: "destructive",
+  // --- SYNC SCORE LOGIC (NEW) ---
+  const handleSyncActivityScores = async () => {
+    if (!managedClub?.id) return;
+
+    setIsSyncing(true);
+    try {
+      // Gọi API lịch sử để lấy điểm đã lưu
+      const activities = await getClubMemberActivity({
+        clubId: managedClub.id,
+        year: syncYear,
+        month: syncMonth,
       });
+
+      // Map dữ liệu về dạng: { [userId]: finalScore }
+      const scoreMap: Record<number, number> = {};
+      const userIdsToSelect: number[] = [];
+      let countZero = 0;
+
+      activities.forEach((act) => {
+        if (act.finalScore && act.finalScore > 0) {
+          scoreMap[act.userId] = Math.round(act.finalScore);
+          userIdsToSelect.push(act.userId);
+        } else {
+          countZero++;
+        }
+      });
+
+      if (Object.keys(scoreMap).length === 0) {
+        toast({
+          title: "No Scores Found",
+          description: countZero > 0
+            ? "Members found but all have 0 points. Please 'Save' the report in the Activity page first."
+            : "No activity data found for this period.",
+          variant: "destructive" // Hoặc destructive nếu không có variant warning
+        });
+        setIsSyncing(false);
+        return;
+      }
+
+      setIndividualScores(scoreMap);
+
+      // Auto-select members có điểm trong list hiện tại
+      setSelectedMembers((prev) => {
+        const newSelected = { ...prev };
+        filteredMembers.forEach(m => {
+          const uId = Number(m.userId);
+          if (scoreMap[uId] !== undefined) {
+            newSelected[m.id] = true;
+          }
+        });
+        return newSelected;
+      });
+
+      // Update targetUserIds
+      setTargetUserIds(prev => {
+        const uniqueIds = new Set([...prev, ...userIdsToSelect]);
+        return Array.from(uniqueIds);
+      });
+
+      toast({
+        title: "Scores Imported",
+        description: `Loaded final scores for ${Object.keys(scoreMap).length} members.`,
+      });
+
+      setShowSyncModal(false);
+      setRewardReason(`Activity Bonus ${syncMonth}/${syncYear}`);
+
+    } catch (error: any) {
+      console.error(error);
+      toast({
+        title: "Sync Failed",
+        description: "Could not fetch activity history.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleClearSync = () => {
+    setIndividualScores(null);
+    setRewardAmount("");
+    toast({ title: "Reset", description: "Switched back to manual input mode." });
+  };
+
+  // --- MAIN DISTRIBUTION LOGIC (UPDATED) ---
+  const handleDistributeRewards = async () => {
+    // Validation
+    if (!rewardReason.trim()) {
+      toast({ title: "Reason required", description: "Please enter a reason.", variant: "destructive" });
       return;
     }
-    if (requestPoints === "" || requestPoints <= 0) {
-      toast({
-        title: "Invalid points",
-        description: "Please enter a positive number of points.",
-        variant: "destructive",
-      });
+    if (clubMembers.length === 0) {
+      toast({ title: "Notification", description: "There are no members.", });
       return;
     }
-    if (!requestReason.trim()) {
-      toast({
-        title: "Reason required",
-        description: "Please provide a reason for the request.",
-        variant: "destructive",
-      });
+    if (targetUserIds.length === 0) {
+      toast({ title: "No selection", description: "Please select at least one member.", variant: "destructive" });
       return;
     }
 
+    // === CASE 1: MANUAL MODE (Gửi 1 cục điểm giống nhau) ===
+    if (!individualScores) {
+      if (rewardAmount === "" || rewardAmount <= 0) {
+        toast({ title: "Error", description: "Invalid point amount.", variant: "destructive" });
+        return;
+      }
+
+      setIsDistributing(true);
+      try {
+        const response = await rewardPointsToMembers(
+          targetUserIds,
+          rewardAmount as number,
+          rewardReason.trim()
+        );
+        if (response.success) {
+          toast({ title: "Success", description: response.message });
+          // Reload wallet
+          const walletData = await getClubWallet(managedClub.id);
+          setClubWallet(walletData);
+          // Reset
+          setRewardAmount("");
+          setRewardReason("");
+          setSelectedMembers({});
+          setTargetUserIds([]);
+        }
+      } catch (err: any) {
+        const msg = err?.response?.data?.message || err?.message || "Error distributing points";
+        toast({ title: "Error", description: msg, variant: "destructive" });
+      } finally {
+        setIsDistributing(false);
+      }
+    }
+    // === CASE 2: SYNC MODE (Gửi điểm riêng từng người - Batching Client Side) ===
+    else {
+      setIsDistributing(true);
+      setDistributionProgress({ current: 0, total: targetUserIds.length });
+
+      let successCount = 0;
+      let failCount = 0;
+
+      // Loop qua từng user để gửi đúng điểm của họ
+      for (let i = 0; i < targetUserIds.length; i++) {
+        const userId = targetUserIds[i];
+        const score = individualScores[userId];
+
+        if (score && score > 0) {
+          try {
+            // Gọi API cho 1 người (Mảng chứa 1 userId)
+            await rewardPointsToMembers(
+              [userId],
+              score,
+              rewardReason.trim()
+            );
+            successCount++;
+          } catch (error) {
+            console.error(`Failed to send to user ${userId}`, error);
+            failCount++;
+          }
+        }
+
+        // Cập nhật progress bar
+        setDistributionProgress({ current: i + 1, total: targetUserIds.length });
+      }
+
+      setIsDistributing(false);
+      setDistributionProgress(null);
+
+      toast({
+        title: "Distribution Complete",
+        description: `Sent points to ${successCount} members. Failed: ${failCount}.`,
+        variant: failCount > 0 ? "destructive" : "default"
+      });
+
+      // Reload wallet
+      try {
+        const walletData = await getClubWallet(managedClub.id);
+        setClubWallet(walletData);
+      } catch (e) { }
+
+      // Nếu thành công 100%, reset
+      if (failCount === 0) {
+        handleClearSync(); // Tắt chế độ sync
+        setSelectedMembers({});
+        setTargetUserIds([]);
+        setRewardReason("");
+      }
+    }
+  };
+
+  // --- Other Handlers ---
+  const handleRewardAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // 1. Lấy giá trị từ ô input (vd: "1,1112")
+    const rawValue = e.target.value;
+
+    // 2. Xóa tất cả dấu phẩy đi (thành "11112")
+    const numericString = rawValue.replace(/,/g, "");
+
+    // 3. Kiểm tra xem chuỗi sau khi xóa phẩy có phải là số không
+    if (numericString === "" || /^\d+$/.test(numericString)) {
+      setRewardAmount(numericString === "" ? "" : parseInt(numericString, 10));
+    }
+  };
+
+  const handleCreatePointRequest = async () => {
+    if (!managedClub?.id) return;
+    if (requestPoints === "" || requestPoints <= 0 || !requestReason.trim()) {
+      toast({ title: "Invalid Input", description: "Check points and reason.", variant: "destructive" });
+      return;
+    }
     setIsSubmittingRequest(true);
     try {
-      const payload = {
+      await createPointRequest({
         clubId: managedClub.id,
         requestedPoints: requestPoints as number,
         reason: requestReason,
-      };
-      // Giả sử file pointRequestsApi.ts nằm trong @/service/
-      await createPointRequest(payload);
-
-      toast({
-        title: "Request Submitted",
-        description:
-          "Your request for points has been sent to the university staff for review.",
       });
-
-      // Reset form và đóng modal
+      toast({ title: "Request Submitted", description: "Sent to university staff." });
       setShowRequestModal(false);
       setRequestPoints("");
       setRequestReason("");
     } catch (err: any) {
-      toast({
-        title: "Submission Error",
-        description:
-          err?.response?.data?.error || err?.response?.data?.message || "Failed to submit point request.",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
       setIsSubmittingRequest(false);
     }
   };
 
-  const handleDistributeRewards = async () => {
-    if (rewardAmount === "" || rewardAmount <= 0) {
-      toast({
-        title: "Error",
-        description: "Please enter a bonus point number greater than 0.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!rewardReason.trim()) {
-      toast({
-        title: "Reason required",
-        description: "Please provide a reason for distributing points.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (clubMembers.length === 0) {
-      toast({
-        title: "Notification",
-        description: "There are no members to distribute points to.",
-      });
-      return;
-    }
-    setIsDistributing(true);
-
-    // ✨ Kiểm tra targetUserIds thay vì filter lại
-    if (targetUserIds.length === 0) {
-      toast({
-        title: "No members selected",
-        description: "Please select at least one member to distribute points.",
-        variant: "destructive",
-      });
-      setIsDistributing(false);
-      return;
-    }
-
-    try {
-      // Sử dụng targetUserIds đã được chuẩn bị sẵn
-      const response = await rewardPointsToMembers(
-        targetUserIds,
-        rewardAmount as number,
-        rewardReason.trim()
-      );
-
-      if (response.success) {
-        toast({
-          title: "Success",
-          description:
-            response.message ||
-            `Distributed ${rewardAmount} points to ${targetUserIds.length} member(s) of ${managedClub.name}.`,
-        });
-
-        // Reload club wallet balance
-        try {
-          const walletData = await getClubWallet(managedClub.id);
-          setClubWallet(walletData);
-        } catch (walletErr) {
-          console.error("Failed to reload club wallet:", walletErr);
-        }
-
-        setRewardAmount(""); // Reset số điểm sau khi thành công
-        setRewardReason(""); // Reset reason sau khi thành công
-        // Reset selections
-        setSelectedMembers({});
-        setTargetUserIds([]);
-      } else {
-        throw new Error(response.message || "Failed to distribute points");
-      }
-    } catch (err: any) {
-      const errorMessage =
-        err?.response?.data?.error || err?.response?.data?.message ||
-        err?.message ||
-        "An error occurred while distributing points.";
-      const isTimeout =
-        err?.code === "ECONNABORTED" ||
-        errorMessage.toLowerCase().includes("timeout");
-
-      toast({
-        title: isTimeout ? "Request Timeout" : "Delivery error",
-        description: isTimeout
-          ? `The request took too long (processing 
-          ${targetUserIds.length} members). The points may still be distributed successfully. Please check the transaction history.`
-          : errorMessage,
-        variant: "destructive",
-      });
-    } finally {
-      setIsDistributing(false);
-    }
-  };
-
-  const clearFilters = () => {
-    setSearchTerm("");
-    setActiveFilters({});
-    setMembersPage(1);
-  };
-
   const loadTransactionHistory = async () => {
-    if (!clubWallet?.walletId) {
-      toast({
-        title: "Error",
-        description: "Wallet information not available",
-        variant: "destructive",
-      });
-      return;
-    }
-
+    if (!clubWallet?.walletId) return;
     setTransactionsLoading(true);
     try {
       const data = await getWalletTransactions(clubWallet.walletId);
       setTransactions(data);
     } catch (err: any) {
-      toast({
-        title: "Error",
-        description:
-          err?.response?.data?.error || err?.response?.data?.message || "Failed to load transaction history",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Failed to load history", variant: "destructive" });
     } finally {
       setTransactionsLoading(false);
     }
@@ -535,126 +595,61 @@ export default function ClubLeaderRewardDistributionPage() {
   };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
+    return new Date(dateString).toLocaleString("en-US", {
+      year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
     });
   };
+
   const handleOpenPenaltyModal = (member: any) => {
     setMemberToPenalize(member);
     setSelectedRuleId("");
     setPenaltyReason("");
     setShowPenaltyModal(true);
   };
+
   const handleCreatePenalty = async () => {
-    // if (!managedClub?.id || !memberToPenalize) {
-    //   toast({ title: "Error", description: "Club or member information is missing.", variant: "destructive" })
-    //   return
-    // }
-    if (selectedRuleId === "") {
-      toast({
-        title: "Rule required",
-        description: "Please select a penalty rule.",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (!penaltyReason.trim()) {
-      toast({
-        title: "Reason required",
-        description: "Please provide a reason or note for this penalty.",
-        variant: "destructive",
-      });
+    if (selectedRuleId === "" || !penaltyReason.trim() || !memberToPenalize) {
+      toast({ title: "Invalid Input", description: "Check rule and reason.", variant: "destructive" });
       return;
     }
     const rule = penaltyRules.find((r) => r.id === selectedRuleId);
-    if (!rule) {
-      toast({
-        title: "Rule not found",
-        description: "Selected penalty rule is invalid.",
-        variant: "destructive",
-      });
-      return;
-    }
+    if (!rule) return;
 
     setIsSubmittingPenalty(true);
     try {
-      const payload = {
-        // Lấy membershipId từ memberToPenalize.id (đã được map thành membershipId)
-        // Cần đảm bảo member.id là membershipId thật sự (hoặc chuyển đổi từ `m-${userId}` sang membershipId nếu cần)
-        // Dựa trên mapping: m.membershipId ?? `m-${m.userId}`. Ta dùng membershipId.
-        // Giả sử member.id là Membership ID
-        membershipId: Number(memberToPenalize.id),
-        ruleId: selectedRuleId as number,
-        // reason: penaltyReason.trim() || rule.description, // Dùng mô tả Rule nếu Leader không nhập gì
-        reason: penaltyReason.trim(), // Đảm bảo sử dụng reason đã nhập
-        // eventId: 0, // Dựa trên Swagger đã remove EventId. Giữ lại nếu API backend yêu cầu, hoặc xóa. Tôi sẽ giữ theo API gốc để tránh lỗi.
-      };
-
-      // TẠO PHIẾU PHẠT
-      await createClubPenalty({ clubId: managedClub.id, body: payload });
-
-      toast({
-        title: "Penalty Issued",
-        description: `Issued a penalty of -${rule.penaltyPoints} pts to ${memberToPenalize.fullName}.`,
+      await createClubPenalty({
+        clubId: managedClub.id,
+        body: {
+          membershipId: Number(memberToPenalize.id),
+          ruleId: selectedRuleId as number,
+          reason: penaltyReason.trim(),
+        }
       });
-
-      // Reset form và đóng modal
+      toast({ title: "Penalty Issued", description: `Issued -${rule.penaltyPoints} pts to ${memberToPenalize.fullName}.` });
       setShowPenaltyModal(false);
-      setMemberToPenalize(null);
-      setSelectedRuleId("");
-      setPenaltyReason("");
     } catch (err: any) {
-      toast({
-        title: "Issuing Error",
-        description:
-          err?.response?.data?.error || err?.response?.data?.message || "Failed to create penalty ticket.",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Failed to issue penalty.", variant: "destructive" });
     } finally {
       setIsSubmittingPenalty(false);
     }
   };
 
-  // Component Pager đơn giản
-  const MinimalPager = ({
-    current,
-    total,
-    onPrev,
-    onNext,
-  }: {
-    current: number;
-    total: number;
-    onPrev: () => void;
-    onNext: () => void;
-  }) =>
+  const clearFilters = () => {
+    setSearchTerm("");
+    setActiveFilters({});
+    setMembersPage(1);
+  };
+
+  const MinimalPager = ({ current, total, onPrev, onNext }: any) =>
     total > 1 ? (
       <div className="flex items-center justify-center gap-3 mt-4">
-        <Button
-          aria-label="Previous page"
-          variant="outline"
-          size="sm"
-          className="h-8 w-8 p-0 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
-          onClick={onPrev}
-          disabled={current === 1}
-        >
+        <Button variant="outline" size="sm" onClick={onPrev} disabled={current === 1}>
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <div className="min-w-[2rem] text-center text-sm font-medium dark:text-slate-300">
-          Trang {current} / {total}
+          Page {current} / {total}
         </div>
-        <Button
-          aria-label="Next page"
-          variant="outline"
-          size="sm"
-          className="h-8 w-8 p-0 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
-          onClick={onNext}
-          disabled={current === total}
-        >
+        <Button variant="outline" size="sm" onClick={onNext} disabled={current === total}>
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
@@ -666,15 +661,10 @@ export default function ClubLeaderRewardDistributionPage() {
         <div className="space-y-6">
           <div>
             <h1 className="text-3xl font-bold flex items-center gap-3 dark:text-white">
-              <Award className="h-8 w-8 text-yellow-500 dark:text-yellow-400" />{" "}
-              Reward Point Distribution
+              <Award className="h-8 w-8 text-yellow-500 dark:text-yellow-400" /> Reward Point Distribution
             </h1>
             <p className="text-muted-foreground dark:text-slate-400">
-              Distribute bonus points from club funds to members of "
-              <span className="font-semibold text-primary dark:text-blue-400">
-                {managedClub?.name}
-              </span>
-              "
+              Distribute bonus points from club funds to members of "<span className="font-semibold text-primary dark:text-blue-400">{managedClub?.name}</span>"
             </p>
           </div>
 
@@ -687,798 +677,543 @@ export default function ClubLeaderRewardDistributionPage() {
                     <Wallet className="h-7 w-7 text-white" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground dark:text-slate-400">
-                      Club Balance
-                    </p>
+                    <p className="text-sm font-medium text-muted-foreground dark:text-slate-400">Club Balance</p>
                     {walletLoading ? (
-                      <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                        Loading...
-                      </p>
-                    ) : clubWallet && clubWallet.balancePoints !== undefined ? (
-                      <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                        {clubWallet.balancePoints.toLocaleString()} pts
-                      </p>
+                      <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">Loading...</p>
+                    ) : clubWallet ? (
+                      <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">{clubWallet.balancePoints?.toLocaleString()} pts</p>
                     ) : (
-                      <p className="text-3xl font-bold text-gray-400 dark:text-slate-500">
-                        N/A
-                      </p>
+                      <p className="text-3xl font-bold text-gray-400">N/A</p>
                     )}
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
                   {clubWallet && (
                     <div className="text-right">
-                      <p className="text-xs text-muted-foreground dark:text-slate-400">
-                        Wallet ID
-                      </p>
-                      <p className="text-sm font-medium text-gray-700 dark:text-slate-300">
-                        #{clubWallet.walletId}
-                      </p>
+                      <p className="text-xs text-muted-foreground">Wallet ID</p>
+                      <p className="text-sm font-medium">#{clubWallet.walletId}</p>
                     </div>
                   )}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleOpenHistoryModal}
-                    className="flex items-center gap-2 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
-                  >
-                    <History className="h-4 w-4" />
-                    History
+                  <Button variant="outline" size="sm" onClick={handleOpenHistoryModal} className="gap-2">
+                    <History className="h-4 w-4" /> History
                   </Button>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Transaction History Modal - UPDATED */}
-          <Dialog open={showHistoryModal} onOpenChange={setShowHistoryModal}>
-            <DialogContent className="!max-w-none w-[95vw] sm:w-[90vw] lg:w-[75vw] xl:w-[68vw] max-h-[90vh] overflow-hidden flex flex-col p-0">
-              <DialogHeader className="px-6 pt-6 pb-4 border-b dark:border-slate-700">
-                <DialogTitle className="flex items-center gap-3 text-2xl sm:text-3xl font-bold dark:text-white">
-                  <History className="h-7 w-7 sm:h-9 sm:w-9" />
-                  <span className="truncate">Wallet Transaction History</span>
-                </DialogTitle>
-              </DialogHeader>
-
-              <div className="flex-1 overflow-y-auto px-6 py-4">
-                {transactionsLoading ? (
-                  <div className="flex flex-col items-center justify-center py-12">
-                    <p className="text-muted-foreground dark:text-slate-400">
-                      Loading transaction history...
-                    </p>
-                  </div>
-                ) : transactions.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <History className="h-12 w-12 text-muted-foreground dark:text-slate-400 mb-4" />
-                    <h3 className="text-lg font-semibold mb-2 dark:text-white">
-                      No Transactions Yet
-                    </h3>
-                    <p className="text-muted-foreground dark:text-slate-400">
-                      No wallet transactions found.
-                    </p>
-                  </div>
-                ) : (
-                  <TooltipProvider>
-                    {/* Desktop View */}
-                    <div className="hidden lg:block rounded-md border dark:border-slate-700 overflow-x-auto">
-                      <Table className="min-w-full">
-                        <TableHeader>
-                          <TableRow className="dark:border-slate-700">
-                            <TableHead className="w-[70px] dark:text-slate-300">ID</TableHead>
-                            <TableHead className="w-[140px] dark:text-slate-300">Type</TableHead>
-                            <TableHead className="w-[100px] dark:text-slate-300">Amount</TableHead>
-                            <TableHead className="w-[180px] dark:text-slate-300">Sender</TableHead>
-                            <TableHead className="w-[180px] dark:text-slate-300">Receiver</TableHead>
-                            <TableHead className="dark:text-slate-300">Description</TableHead>
-                            <TableHead className="w-[160px] dark:text-slate-300">Date</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {transactions.map((t) => (
-                            <TableRow key={t.id} className="dark:border-slate-700 dark:hover:bg-slate-800">
-                              <TableCell className="font-medium dark:text-slate-300">#{t.id}</TableCell>
-                              <TableCell>
-                                <Badge variant="secondary" className="dark:bg-slate-700 dark:text-slate-300 whitespace-nowrap text-xs">
-                                  {t.type}
-                                </Badge>
-                              </TableCell>
-                              <TableCell className={`font-semibold whitespace-nowrap 
-                              ${t.amount >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-                                }`}>
-                                {t.signedAmount} pts
-                              </TableCell>
-                              <TableCell className="font-medium text-purple-600 dark:text-purple-400 truncate max-w-[180px]" title={t.senderName}>
-                                {t.senderName || "—"}
-                              </TableCell>
-                              <TableCell className="font-medium text-blue-600 dark:text-blue-400 truncate max-w-[180px]" title={t.receiverName}>
-                                {t.receiverName || "—"}
-                              </TableCell>
-                              <TableCell className="dark:text-slate-300 max-w-[300px]">
-                                {t.description && t.description.length > 60 ? (
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <div className="truncate cursor-help">{t.description}</div>
-                                    </TooltipTrigger>
-                                    <TooltipContent className="max-w-[400px] break-words" side="top">
-                                      <p className="whitespace-normal">{t.description}</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                ) : (
-                                  <div className="truncate">{t.description || "—"}</div>
-                                )}
-                              </TableCell>
-                              <TableCell className="text-sm text-muted-foreground dark:text-slate-400 whitespace-nowrap">
-                                {formatDate(t.createdAt)}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-
-                    {/* Mobile/Tablet View */}
-                    <div className="lg:hidden space-y-3">
-                      {transactions.map((t) => (
-                        <Card key={t.id} className="dark:bg-slate-800 dark:border-slate-700">
-                          <CardContent className="p-4 space-y-3">
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="flex items-center gap-2 min-w-0 flex-1">
-                                <span className="text-sm font-medium text-muted-foreground dark:text-slate-400 whitespace-nowrap">
-                                  #{t.id}
-                                </span>
-                                <Badge variant="secondary" className="dark:bg-slate-700 dark:text-slate-300 text-xs shrink-0">
-                                  {t.type}
-                                </Badge>
-                              </div>
-                              <span className={`text-lg font-bold whitespace-nowrap 
-                              ${t.amount >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-                                }`}>
-                                {t.signedAmount} pts
-                              </span>
-                            </div>
-
-                            <div className="space-y-2 text-sm">
-                              <div className="flex items-start gap-2">
-                                <span className="text-muted-foreground dark:text-slate-400 shrink-0 min-w-[70px]">From:</span>
-                                <span className="font-medium text-purple-600 dark:text-purple-400 break-words">
-                                  {t.senderName || "—"}
-                                </span>
-                              </div>
-                              <div className="flex items-start gap-2">
-                                <span className="text-muted-foreground dark:text-slate-400 shrink-0 min-w-[70px]">To:</span>
-                                <span className="font-medium text-blue-600 dark:text-blue-400 break-words">
-                                  {t.receiverName || "—"}
-                                </span>
-                              </div>
-                              <div className="flex items-start gap-2">
-                                <span className="text-muted-foreground dark:text-slate-400 shrink-0 min-w-[70px]">Note:</span>
-                                <span className="dark:text-slate-300 break-words flex-1">
-                                  {t.description || "—"}
-                                </span>
-                              </div>
-                              <div className="flex items-start gap-2">
-                                <span className="text-muted-foreground dark:text-slate-400 shrink-0 min-w-[70px]">Date:</span>
-                                <span className="text-muted-foreground dark:text-slate-400">
-                                  {formatDate(t.createdAt)}
-                                </span>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  </TooltipProvider>
-                )}
-              </div>
-            </DialogContent>
-          </Dialog>
-
-          {/* === Modal Xin Thêm Điểm === */}
-          <Dialog open={showRequestModal} onOpenChange={setShowRequestModal}>
-            <DialogContent className="sm:max-w-[480px]">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2 dark:text-white">
-                  <PlusCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
-                  Request Additional Club Points
-                </DialogTitle>
-                <DialogDescription className="dark:text-slate-400">
-                  Submit a request to the university staff to add more points to
-                  your club's wallet.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="req-points" className="text-right">
-                    Points
-                  </Label>
-
-                  <Input
-                    id="req-points"
-                    type="text" // <-- 1. Chuyển từ "number" sang "text"
-                    inputMode="numeric" // <-- 2. Thêm để hiển thị bàn phím số trên di động
-                    placeholder="e.g., 1,000,000"
-                    // 3. Hiển thị giá trị đã được định dạng
-                    value={
-                      requestPoints === ""
-                        ? ""
-                        : new Intl.NumberFormat("en-US").format(requestPoints)
-                    }
-                    // 4. Khi thay đổi, lọc bỏ dấu phẩy để cập nhật state
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      const unformattedValue = value.replace(/[^0-9]/g, ""); // Bỏ mọi thứ không phải số
-
-                      if (unformattedValue === "") {
-                        setRequestPoints("");
-                      } else {
-                        setRequestPoints(parseInt(unformattedValue, 10));
-                      }
-                    }}
-                    className="col-span-3"
-                    disabled={isSubmittingRequest}
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="req-reason" className="text-right">
-                    Reason
-                  </Label>
-                  <Textarea
-                    id="req-reason"
-                    placeholder="e.g., Funding for 'TechSponk 2025' event prizes..."
-                    value={requestReason}
-                    onChange={(e) => setRequestReason(e.target.value)}
-                    className="col-span-3 min-h-[100px]"
-                    disabled={isSubmittingRequest}
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => setShowRequestModal(false)}
-                  disabled={isSubmittingRequest}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleCreatePointRequest}
-                  disabled={
-                    isSubmittingRequest ||
-                    requestPoints === "" ||
-                    requestPoints <= 0 ||
-                    !requestReason.trim()
-                  }
-                >
-                  {isSubmittingRequest ? "Submitting..." : "Submit Request"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-
-          {/* === Modal Tạo Phiếu Phạt === */}
-          <Dialog open={showPenaltyModal} onOpenChange={setShowPenaltyModal}>
-            <DialogContent className="sm:max-w-[500px]">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2 text-2xl font-bold text-red-600 dark:text-red-500">
-                  <TriangleAlert className="h-6 w-6" />
-                  Issue Penalty Ticket
-                </DialogTitle>
-                <DialogDescription className="dark:text-slate-400">
-                  Create a penalty ticket for:{" "}
-                  <span className="font-semibold text-primary dark:text-blue-400">
-                    {memberToPenalize?.fullName}
-                  </span>
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                {/* Rule Selection */}
-                <div className="space-y-2">
-                  <Label htmlFor="penalty-rule" className="text-sm font-medium">
-                    Select Violation Rule
-                  </Label>
-                  <Select
-                    value={selectedRuleId === "" ? "" : String(selectedRuleId)}
-                    onValueChange={(v) => setSelectedRuleId(Number(v))}
-                    disabled={penaltyRulesLoading || isSubmittingPenalty}
-                  >
-                    <SelectTrigger id="penalty-rule" className="w-full">
-                      <SelectValue
-                        placeholder={
-                          penaltyRulesLoading
-                            ? "Loading rules..."
-                            : "Choose a violation rule"
-                        }
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {penaltyRules.length === 0 ? (
-                        <div className="py-2 text-center text-sm text-muted-foreground">
-                          No penalty rules configured.
-                        </div>
-                      ) : (
-                        penaltyRules.map((rule) => (
-                          <SelectItem key={rule.id} value={String(rule.id)}>
-                            <div className="flex justify-between items-center w-full">
-                              <span>
-                                {rule.name}
-                                <Badge
-                                  variant="destructive"
-                                  className="ml-2 text-xs h-auto py-0.5"
-                                >
-                                  -{rule.penaltyPoints} pts
-                                </Badge>
-                              </span>
-                            </div>
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                  {selectedRuleId !== "" && (
-                    <p className="text-xs text-muted-foreground dark:text-slate-500 mt-1">
-                      Penalty Points: -
-                      {penaltyRules.find((r) => r.id === selectedRuleId)
-                        ?.penaltyPoints || 0}{" "}
-                      pts | Severity:{" "}
-                      {penaltyRules.find((r) => r.id === selectedRuleId)?.level}
-                    </p>
-                  )}
-                </div>
-
-                {/* Custom Reason */}
-                <div className="space-y-2">
-                  <Label
-                    htmlFor="penalty-reason"
-                    className="text-sm font-medium"
-                  >
-                    Reason/Notes<span className="text-red-500">*</span>
-                  </Label>
-                  <Textarea
-                    id="penalty-reason"
-                    placeholder="Add a specific note for this violation (e.g., absent from event A on date B)..."
-                    value={penaltyReason}
-                    onChange={(e) => setPenaltyReason(e.target.value)}
-                    className="min-h-[80px]"
-                    disabled={isSubmittingPenalty}
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => setShowPenaltyModal(false)}
-                  disabled={isSubmittingPenalty}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleCreatePenalty}
-                  variant="destructive"
-                  // disabled={isSubmittingPenalty || selectedRuleId === ''}
-                  disabled={
-                    isSubmittingPenalty ||
-                    selectedRuleId === "" ||
-                    !penaltyReason.trim()
-                  }
-                >
-                  {isSubmittingPenalty ? "Issuing..." : "Confirm Penalty"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-
+          {/* === SETUP DISTRIBUTION CARD (UPDATED) === */}
           <Card className="dark:bg-slate-800 dark:border-slate-700">
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="dark:text-white">
                 Set up the Point Distribution Index
               </CardTitle>
+              {/* Nút bật/tắt Sync Mode */}
+              {!individualScores ? (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setShowSyncModal(true)}
+                  className="gap-2 text-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-300"
+                >
+                  <DownloadCloud className="h-4 w-4" />
+                  Sync from Activity Report
+                </Button>
+              ) : (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleClearSync}
+                  className="gap-2"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Clear Activity Scores
+                </Button>
+              )}
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="reward-amount">
-                  Number of Bonus Points (per member)
-                </Label>
+              {/* UI thay đổi dựa trên Sync Mode */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
 
-                {/* dùng flex (responsive) */}
-                <div className="flex flex-col sm:flex-row sm:items-end sm:gap-3">
-                  {/* 1. Input ) */}
-                  <div className="flex-1 min-w-[200px] mb-2 sm:mb-0">
-                    <Input
-                      id="reward-amount"
-                      type="text" // <-- 1. Chuyển sang "text"
-                      inputMode="numeric" // <-- 2. Thêm inputMode
-                      placeholder="Enter bonus points..."
-                      // 3. Hiển thị giá trị đã định dạng
-                      value={
-                        rewardAmount === ""
-                          ? ""
-                          : new Intl.NumberFormat("en-US").format(rewardAmount)
-                      }
-                      // 4. Cập nhật hàm onChange
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        const unformattedValue = value.replace(/[^0-9]/g, ""); // Bỏ mọi thứ không phải số
+                {/* CỘT 1: NHẬP ĐIỂM HOẶC HIỂN THỊ SYNC MODE */}
+                <div className="md:col-span-1 space-y-2">
+                  {individualScores ? (
+                    // Giao diện khi đang Sync Mode (Thu gọn lại một chút padding)
+                    <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md flex items-center gap-3 h-[74px]">
+                      <RefreshCw className="h-5 w-5 text-blue-600 animate-pulse shrink-0" />
+                      <div className="flex-1 overflow-hidden">
+                        <p className="text-sm font-medium text-blue-700 dark:text-blue-300 truncate">
+                          Individual Scores
+                        </p>
+                        <p className="text-xs text-blue-600 dark:text-blue-400 truncate">
+                          Based on Activity Report
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    // Giao diện nhập điểm thủ công
+                    <div className="space-y-2">
+                      <Label htmlFor="reward-amount">Bonus Points (per member)</Label>
+                      <Input
+                        id="reward-amount"
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="0"
+                        value={rewardAmount === "" ? "" : new Intl.NumberFormat("en-US").format(rewardAmount)}
+                        onChange={handleRewardAmountChange}
+                        disabled={isDistributing}
+                        className={`h-[38px] transition-colors ${isOverBudget
+                          ? "border-red-500 focus-visible:ring-red-500 bg-red-50 text-red-900"
+                          : "border-slate-300"
+                          }`}
+                      />
 
-                        if (unformattedValue === "") {
-                          setRewardAmount("");
-                        } else {
-                          setRewardAmount(parseInt(unformattedValue, 10));
-                        }
-                      }}
-                      disabled={isDistributing}
-                      className="border-slate-300"
-                    />
-                  </div>
+                      {/* THÔNG BÁO LỖI VÀ GỢI Ý (MỚI) */}
+                      {isOverBudget && recipientCount > 0 && (
+                        <div className="text-xs font-medium text-red-600 animate-in slide-in-from-top-1 fade-in duration-200">
+                          <div className="flex items-center gap-1 mb-1">
+                            <TriangleAlert className="h-3 w-3" />
+                            <span>Exceeds wallet balance!</span>
+                          </div>
+                          <p className="text-red-500/80">
+                            Max possible: <span className="font-bold underline decoration-dotted cursor-pointer hover:text-red-700"
+                              onClick={() => setRewardAmount(maxPerMember)}
+                              title="Click to apply max amount"
+                            >
+                              {maxPerMember.toLocaleString()}
+                            </span> pts/member
+                          </p>
+                        </div>
+                      )}
 
-                  {/* 2. Nút Phân phát (ĐÃ CẬP NHẬT TEXT) */}
-                  <Button
-                    onClick={handleDistributeRewards}
-                    disabled={
-                      isDistributing ||
-                      rewardAmount === "" ||
-                      rewardAmount <= 0 ||
-                      !rewardReason.trim()
-                    }
-                    className="sm:w-auto"
-                  >
-                    {isDistributing ? (
-                      "In the process..."
-                    ) : (
-                      <>
-                        <Send className="mr-2 h-4 w-4" />
-                        Distribution points
-                      </>
-                    )}
-                  </Button>
+                      {/* Hiển thị tổng tiền dự kiến nếu chưa vượt hạn mức (Optional - để người dùng dễ ước lượng) */}
+                      {!isOverBudget && currentRewardAmount > 0 && recipientCount > 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          Total: <span className="font-medium text-foreground">{totalRequired.toLocaleString()}</span> / {currentBalance.toLocaleString()} pts
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
 
-                  {/* 3. Nút Xin điểm */}
-                  <Button
-                    variant="outline"
-                    className="sm:w-auto mt-2 sm:mt-0" // Tự co giãn, thêm margin top trên mobile
-                    onClick={() => setShowRequestModal(true)}
-                    disabled={isDistributing} // Vô hiệu hóa khi đang phân phát
-                  >
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Request more points
-                  </Button>
+                {/* CỘT 2 & 3: NHẬP LÝ DO (REASON) */}
+                <div className="md:col-span-2 space-y-2">
+                  <Label htmlFor="reward-reason">Reason for Distribution</Label>
+                  <Textarea
+                    id="reward-reason"
+                    placeholder="e.g., Event giving, Monthly bonus..."
+                    value={rewardReason}
+                    onChange={(e) => setRewardReason(e.target.value)}
+                    disabled={isDistributing}
+                    // THAY ĐỔI QUAN TRỌNG: Giảm min-h từ 100px xuống thấp hơn
+                    className="min-h-[38px] border-slate-300 resize-none overflow-hidden focus:min-h-[80px] transition-all duration-200"
+                    rows={1} // Mặc định chỉ hiện 1 dòng
+                    // Script nhỏ để tự động giãn chiều cao khi nhập liệu (tuỳ chọn)
+                    onInput={(e) => {
+                      e.currentTarget.style.height = "auto";
+                      e.currentTarget.style.height = e.currentTarget.scrollHeight + "px";
+                    }}
+                  />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="reward-reason">Reason for Distribution</Label>
-                <Textarea
-                  id="reward-reason"
-                  placeholder="e.g., Event giving, Monthly bonus, Achievement reward..."
-                  value={rewardReason}
-                  onChange={(e) => setRewardReason(e.target.value)}
-                  className="min-h-[100px] border-slate-300"
+
+              {/* Progress Bar khi sync */}
+              {distributionProgress && (
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>Processing transactions...</span>
+                    <span>{distributionProgress.current} / {distributionProgress.total}</span>
+                  </div>
+                  <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-blue-600 transition-all duration-300 ease-out"
+                      style={{ width: `${(distributionProgress.current / distributionProgress.total) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <Button
+                  onClick={handleDistributeRewards}
+                  disabled={
+                    isDistributing ||
+                    (!individualScores && (rewardAmount === "" || rewardAmount <= 0)) ||
+                    !rewardReason.trim()
+                  }
+                  className="w-full sm:w-auto"
+                >
+                  {isDistributing ? (
+                    individualScores ? "Distributing Batch..." : "Processing..."
+                  ) : (
+                    <>
+                      <Send className="mr-2 h-4 w-4" />
+                      {individualScores ? "Distribute Activity Points" : "Distribute Points"}
+                    </>
+                  )}
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="sm:w-auto mt-2 sm:mt-0"
+                  onClick={() => setShowRequestModal(true)}
                   disabled={isDistributing}
-                />
+                >
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Request more points
+                </Button>
               </div>
               <p className="text-sm text-muted-foreground dark:text-slate-400">
-                Total number of members who will receive the bonus points:{" "}
-                {clubMembers.length}
+                Total recipients: {targetUserIds.length} members
               </p>
             </CardContent>
           </Card>
+
           <Separator className="dark:bg-slate-700" />
-          {/* === Tìm kiếm Thành viên === */}
+
+          {/* === Filter & List (Giữ nguyên logic cũ) === */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              {/* Thanh tìm kiếm (từ lần trước) */}
               <div className="flex-1 relative w-full max-w-sm">
                 <Input
                   placeholder="Search by name or student code..."
                   value={searchTerm}
-                  onChange={(e) => {
-                    setSearchTerm(e.target.value);
-                    setMembersPage(1);
-                  }}
-                  // Cập nhật: Thêm pr-10 để tránh chữ bị nút X che
-                  className="pl-4 pr-10 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm 
-                  dark:text-slate-200 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all"
+                  onChange={(e) => { setSearchTerm(e.target.value); setMembersPage(1); }}
+                  className="pl-4 pr-10 border-slate-300 bg-white"
                 />
-
-                {/* Nút Clear Search */}
                 {searchTerm && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    type="button"
-                    onClick={() => {
-                      setSearchTerm("");
-                      setMembersPage(1); // Reset về trang 1
-                    }}
-                    // Style: Tuyệt đối bên phải, hover chuyển màu Primary
-                    className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full text-slate-400 hover:bg-primary 
-                    hover:text-primary-foreground transition-colors"
+                  <Button variant="ghost" size="icon" onClick={() => { setSearchTerm(""); setMembersPage(1); }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full text-slate-400 hover:bg-primary 
+                      hover:text-primary-foreground transition-colors"
                   >
                     <X className="h-4 w-4" />
-                    <span className="sr-only">Clear search</span>
                   </Button>
-                )}              </div>
-
-              {/* Nút Filter */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center gap-2 rounded-lg border-slate-200 dark:border-slate-600 hover:bg-slate-50
-                dark:hover:bg-slate-700 dark:text-slate-300 transition-colors hover:text-dark"
-              >
-                <Filter className="h-4 w-4" />
-                Filters
-                {hasActiveFilters && (
-                  <Badge className="ml-1 h-5 w-5 p-0 text-xs bg-blue-500 hover:bg-blue-600 text-white rounded-full flex items-center justify-center">
-                    {Object.values(activeFilters).filter(
-                      (v) => v && v !== "all"
-                    ).length + (searchTerm ? 1 : 0)}
-                  </Badge>
                 )}
+              </div>
+              <Button variant="outline" size="sm" onClick={() => setShowFilters(!showFilters)}
+                className="gap-2 bg-white"
+              >
+                <Filter className="h-4 w-4" /> Filters {hasActiveFilters && <Badge className="ml-1 h-5 w-5 bg-blue-500">!</Badge>}
               </Button>
             </div>
 
-            {/* Bảng điều khiển Filter */}
             {showFilters && (
-              <div className="space-y-4 p-6 border border-slate-200 dark:border-slate-600 rounded-xl bg-gradient-to-br from-slate-50 to-white 
-              dark:from-slate-800 dark:to-slate-700">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                    Advanced Filters
-                  </h4>
-                  {hasActiveFilters && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={clearFilters}
-                      className="h-auto p-1 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 
-                      hover:bg-slate-200/50 dark:hover:bg-slate-600 transition-colors"
-                    >
-                      <X className="h-3 w-3 mr-1" />
-                      Clear all
-                    </Button>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Role Filter */}
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide">
-                      Role
-                    </label>
-                    <Select
-                      value={activeFilters["role"] || "all"}
-                      onValueChange={(v) => handleFilterChange("role", v)}
-                    >
-                      <SelectTrigger className="h-9 text-sm rounded-lg border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 
-                      hover:border-slate-300 dark:hover:border-slate-500 transition-colors">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Roles</SelectItem>
-                        {uniqueRoles.map((role) => (
-                          <SelectItem key={role} value={role}>
-                            {role}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Staff Filter */}
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide">
-                      Staff
-                    </label>
-                    <Select
-                      value={activeFilters["staff"] || "all"}
-                      onValueChange={(v) => handleFilterChange("staff", v)}
-                    >
-                      <SelectTrigger className="h-9 text-sm rounded-lg border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 
-                      hover:border-slate-300 dark:hover:border-slate-500 transition-colors">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All</SelectItem>
-                        <SelectItem value="true">Staff Only</SelectItem>
-                        <SelectItem value="false">Non-Staff</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+              <div className="p-4 border rounded-md bg-slate-50 dark:bg-slate-800 grid grid-cols-2 gap-4">
+                {/* Filters UI */}
+                <Select value={activeFilters["role"] || "all"} onValueChange={(v) => handleFilterChange("role", v)}>
+                  <SelectTrigger className="border-slate-300 bg-white"><SelectValue placeholder="Role" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Roles</SelectItem>
+                    {uniqueRoles.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Select value={activeFilters["staff"] || "all"} onValueChange={(v) => handleFilterChange("staff", v)}>
+                  <SelectTrigger className="border-slate-300 bg-white"><SelectValue placeholder="Staff" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="true">Staff Only</SelectItem>
+                    <SelectItem value="false">Non-Staff</SelectItem>
+                  </SelectContent>
+                </Select>
+                {hasActiveFilters && <Button variant="ghost" size="sm" onClick={clearFilters} className="col-span-2">Clear Filters</Button>}
               </div>
             )}
           </div>
 
-          {/* === Danh sách Thành viên === */}
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-semibold dark:text-white">
-              List of Members ({filteredMembers.length})
-            </h2>
-
-            {/* Nút "Select All" */}
+            <h2 className="text-2xl font-semibold dark:text-white">List of Members ({filteredMembers.length})</h2>
             {filteredMembers.length > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleToggleSelectAll}
-                className="rounded-lg dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
-              >
+              <Button variant="outline" size="sm" onClick={handleToggleSelectAll}>
                 {allFilteredSelected ? "Deselect All" : "Select All"}
               </Button>
             )}
           </div>
+
           <div className="space-y-4">
             {membersLoading ? (
-              <Card className="dark:bg-slate-800 dark:border-slate-700">
-                <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                  <Users className="h-12 w-12 text-muted-foreground dark:text-slate-400 mb-4" />
-                  <h3 className="text-lg font-semibold mb-2 dark:text-white">
-                    Loading member list...
-                  </h3>
-                  <p className="text-muted-foreground dark:text-slate-400">
-                    Please wait for the system to fetch the list.
-                  </p>
-                </CardContent>
-              </Card>
-            ) : membersError ? (
-              <Card className="dark:bg-slate-800 dark:border-slate-700">
-                <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                  <Users className="h-12 w-12 text-muted-foreground dark:text-slate-400 mb-4" />
-                  <h3 className="text-lg font-semibold mb-2 dark:text-white">
-                    Error loading member list
-                  </h3>
-                  <p className="text-muted-foreground dark:text-slate-400">
-                    {membersError}
-                  </p>
-                </CardContent>
-              </Card>
-            ) : clubMembers.length === 0 ? (
-              <Card className="dark:bg-slate-800 dark:border-slate-700">
-                <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                  <Users className="h-12 w-12 text-muted-foreground dark:text-slate-400 mb-4" />
-                  <h3 className="text-lg font-semibold mb-2 dark:text-white">
-                    No members yet
-                  </h3>
-                  <p className="text-muted-foreground dark:text-slate-400">
-                    Please review the application to add members.
-                  </p>
-                </CardContent>
-              </Card>
-            ) : filteredMembers.length === 0 ? (
-              <Card className="dark:bg-slate-800 dark:border-slate-700">
-                <CardContent className="flex flex-col items-center justify-center py-20 text-center">
-                  <div className="h-20 w-20 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center mb-4">
-                    <Filter className="h-10 w-10 text-slate-400 dark:text-slate-500" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
-                    No Members Found
-                  </h3>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-                    No members match your search term.
-                  </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={clearFilters}
-                    className="rounded-lg border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 
-                    bg-transparent dark:text-slate-300"
-                  >
-                    <X className="h-4 w-4 mr-2" />
-                    Clear Search
-                  </Button>
-                </CardContent>
-              </Card>
+              <div className="text-center py-10">Loading members...</div>
             ) : (
               <>
                 {paginatedMembers.map((member) => {
                   const isSelected = selectedMembers[member.id] || false;
+                  // Lấy điểm activity nếu đang ở chế độ Sync
+                  const activityScore = individualScores ? individualScores[Number(member.userId)] : null;
 
                   return (
                     <Card
                       key={member.id}
                       className={`transition-all duration-200 border-2 dark:bg-slate-800 dark:border-slate-700 ${isSelected
-                          ? "border-primary/70 bg-primary/5 dark:bg-primary/10 dark:border-primary/50 shadow-sm"
-                          : "border-transparent hover:border-muted dark:hover:border-slate-600"
+                        ? "border-primary/70 bg-primary/5 shadow-sm"
+                        : "border-transparent hover:border-muted"
                         }`}
                     >
                       <CardContent className="py-3 flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <Avatar className="w-10 h-10">
-                            <AvatarImage
-                              src={member.avatarUrl || ""}
-                              alt={member.fullName}
-                            />
-                            <AvatarFallback>
-                              {member.fullName.charAt(0).toUpperCase()}
-                            </AvatarFallback>
+                          <Avatar>
+                            <AvatarImage src={member.avatarUrl || ""} />
+                            <AvatarFallback>{member.fullName.charAt(0)}</AvatarFallback>
                           </Avatar>
                           <div>
-                            <p className="font-medium dark:text-white">
-                              {member.fullName}
-                              <span className="text-muted-foreground dark:text-slate-400 text-sm ml-2">
-                                ({member.studentCode})
-                              </span>
-                            </p>
-                            <div className="flex items-center gap-2 mt-1">
-                              <Badge
-                                variant="secondary"
-                                className={`text-xs ${member.role === "LEADER"
-                                    ? "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/40 dark:text-red-300 dark:border-red-700/50"
-                                    : member.role === "VICE_LEADER"
-                                      ? "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/40 dark:text-orange-300 dark:border-orange-700/50"
-                                      : "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/40 dark:text-green-300 dark:border-green-700/50"
-                                  }`}
-                              >
-                                {member.role}
-                              </Badge>
-                              {member.isStaff && (
-                                <Badge
-                                  variant="outline"
-                                  className="text-xs bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700/50"
-                                >
-                                  Staff
-                                </Badge>
-                              )}
+                            <p className="font-medium">{member.fullName} <span className="text-muted-foreground text-sm">({member.studentCode})</span></p>
+                            <div className="flex gap-2 mt-1">
+                              <Badge variant="secondary" className="text-xs">{member.role}</Badge>
+                              {member.isStaff && <Badge variant="outline" className="text-xs text-blue-600 border-blue-200">Staff</Badge>}
                             </div>
                           </div>
                         </div>
 
                         <div className="flex items-center gap-3">
-                          {/* Nút tạo Phiếu Phạt */}
-                          <TooltipProvider>
-                            <Tooltip delayDuration={300}>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="destructive"
-                                  size="icon"
-                                  className="h-8 w-8 text-white hover:bg-red-700 transition-colors"
-                                  onClick={() => handleOpenPenaltyModal(member)}
-                                >
-                                  <TriangleAlert className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent side="top">
-                                Issue Penalty Ticket
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-
+                          <Button variant="destructive" size="icon" className="h-8 w-8" onClick={() => handleOpenPenaltyModal(member)}>
+                            <TriangleAlert className="h-4 w-4" />
+                          </Button>
                           <input
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => handleToggleSelect(member.id)}
-                            className="w-5 h-5 accent-primary cursor-pointer transition-all duration-150"
-                            style={{ transform: "scale(1.2)" }}
-                            aria-label={`Select ${member.fullName} for reward distribution`}
+                            className="w-5 h-5 accent-primary cursor-pointer"
                           />
+
+                          {/* NÚT HIỂN THỊ ĐIỂM (CẬP NHẬT LOGIC HIỂN THỊ) */}
                           <Button
                             variant="outline"
                             size="sm"
-                            className={`dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700 ${isSelected
-                                ? "border-primary text-primary dark:border-primary dark:text-primary"
-                                : ""
-                              }`}
+                            className={`min-w-[80px] ${isSelected ? "border-primary text-primary" : "text-muted-foreground"}`}
                           >
-                            + {rewardAmount || 0} pts
-                          </Button>
-                        </div>
+                            + {
+                              (individualScores
+                                ? (activityScore || 0)
+                                : (typeof rewardAmount === 'number' ? rewardAmount : 0)
+                              ).toLocaleString("en-US")
+                            } pts
+                          </Button>                        </div>
                       </CardContent>
                     </Card>
                   );
                 })}
-
                 <MinimalPager
                   current={membersPage}
                   total={membersPages}
                   onPrev={() => setMembersPage(Math.max(1, membersPage - 1))}
-                  onNext={() =>
-                    setMembersPage(Math.min(membersPages, membersPage + 1))
-                  }
+                  onNext={() => setMembersPage(Math.min(membersPages, membersPage + 1))}
                 />
               </>
             )}
           </div>
         </div>
+
+        {/* === MODAL CONFIG SYNC ACTIVITY (NEW) === */}
+        <Dialog open={showSyncModal} onOpenChange={setShowSyncModal}>
+          <DialogContent className="sm:max-w-[400px]">
+            <DialogHeader>
+              <DialogTitle>Import Saved Scores</DialogTitle>
+              <DialogDescription>
+                Use <strong>Final Scores</strong> currently saved in the Activity Report.
+                <br />
+                <span className="text-xs text-yellow-600 dark:text-yellow-400">
+                  If scores are 0, please go to Activity Report and click "Save".
+                </span>
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Year</Label>
+                  <Select value={String(syncYear)} onValueChange={(v) => setSyncYear(Number(v))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {[2023, 2024, 2025, 2026].map(y => (
+                        <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Month</Label>
+                  <Select value={String(syncMonth)} onValueChange={(v) => setSyncMonth(Number(v))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {[...Array(12)].map((_, i) => (
+                        <SelectItem key={i} value={String(i + 1)}>Month {i + 1}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowSyncModal(false)}>Cancel</Button>
+              <Button onClick={handleSyncActivityScores} disabled={isSyncing}>
+                {isSyncing ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <DownloadCloud className="mr-2 h-4 w-4" />}
+                {isSyncing ? "Loading..." : "Import Scores"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Other Modals (History, Penalty, Request) */}
+        {/* Transaction History Modal */}
+        <Dialog open={showHistoryModal} onOpenChange={setShowHistoryModal}>
+          <DialogContent className="max-w-4xl">
+            <DialogHeader><DialogTitle>History</DialogTitle></DialogHeader>
+            <div className="max-h-[60vh] overflow-y-auto">
+              {transactionsLoading ? <p>Loading...</p> : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>ID</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>To</TableHead>
+                      <TableHead>Desc</TableHead>
+                      <TableHead>Date</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {transactions.map(t => (
+                      <TableRow key={t.id}>
+                        <TableCell>#{t.id}</TableCell>
+                        <TableCell className={t.amount > 0 ? "text-green-600" : "text-red-600"}>{t.signedAmount}</TableCell>
+                        <TableCell>{t.receiverName}</TableCell>
+                        <TableCell>{t.description}</TableCell>
+                        <TableCell>{formatDate(t.createdAt)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Request Points Modal */}
+        <Dialog open={showRequestModal} onOpenChange={setShowRequestModal}>
+          <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden gap-0">
+            {/* HEADER: Thêm màu nền nhẹ để tách biệt tiêu đề */}
+            <DialogHeader className="p-6 pb-4 bg-slate-50 dark:bg-slate-900 border-b dark:border-slate-800">
+              <DialogTitle className="flex items-center gap-2 text-xl text-primary">
+                <HandCoins className="h-6 w-6" />
+                Request Additional Funding
+              </DialogTitle>
+              <DialogDescription>
+                Submit a request to University Staff for more club points.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="p-6 space-y-5">
+              {/* INFO BANNER: Hiển thị số dư hiện tại để tham khảo */}
+              <div className="flex items-center justify-between p-3 rounded-md bg-blue-50 border border-blue-100 dark:bg-blue-900/20 dark:border-blue-800">
+                <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                  Current Wallet Balance
+                </span>
+                <span className="text-lg font-bold text-blue-700 dark:text-blue-300">
+                  {clubWallet?.balancePoints?.toLocaleString() ?? 0} pts
+                </span>
+              </div>
+
+              <div className="space-y-4">
+                {/* INPUT POINTS: Làm to và rõ ràng */}
+                <div className="space-y-2">
+                  <Label htmlFor="req-points" className="text-sm font-semibold flex items-center gap-2">
+                    <Coins className="h-4 w-4 text-yellow-500" />
+                    Amount to Request
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="req-points"
+                      type="text"                  // Đổi thành text để hiển thị được dấu ","
+                      inputMode="numeric"          // Giúp hiển thị bàn phím số trên điện thoại
+                      placeholder="e.g. 5,000"
+
+                      // LOGIC HIỂN THỊ: Nếu có giá trị, format thêm dấu phẩy
+                      value={
+                        requestPoints === ""
+                          ? ""
+                          : new Intl.NumberFormat("en-US").format(Number(requestPoints))
+                      }
+
+                      // LOGIC CẬP NHẬT: Xóa dấu phẩy trước khi lưu vào state
+                      onChange={(e) => {
+                        // Lấy giá trị thô từ input (vd: "5,000")
+                        const rawValue = e.target.value;
+
+                        // Xóa tất cả dấu phẩy để lấy số (vd: "5000")
+                        const numericString = rawValue.replace(/,/g, "");
+
+                        // Kiểm tra xem chuỗi còn lại có phải là số không (chỉ chứa ký tự 0-9)
+                        if (/^\d*$/.test(numericString)) {
+                          setRequestPoints(numericString === "" ? "" : Number(numericString));
+                        }
+                      }}
+
+                      className="pl-4 pr-12 h-11 text-lg font-medium border-slate-300 focus-visible:ring-primary"
+                    />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
+                      pts
+                    </div>
+                  </div>
+                </div>
+
+                {/* TEXTAREA REASON */}
+                <div className="space-y-2">
+                  <Label htmlFor="req-reason" className="text-sm font-semibold flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4 text-blue-500" />
+                    Justification
+                  </Label>
+                  <Textarea
+                    id="req-reason"
+                    placeholder="Explain why the club needs these points (e.g., Budget for upcoming Hackathon event, Rewards for excellent members...)"
+                    value={requestReason}
+                    onChange={(e) => setRequestReason(e.target.value)}
+                    className="min-h-[100px] border-slate-300 resize-none focus-visible:ring-primary"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* FOOTER: Tách biệt và thêm nút Cancel */}
+            <DialogFooter className="p-6 pt-2 bg-slate-50/50 dark:bg-slate-900/50 sm:justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowRequestModal(false)}
+                disabled={isSubmittingRequest}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleCreatePointRequest}
+                disabled={isSubmittingRequest || !requestPoints || !requestReason}
+                className="min-w-[120px]"
+              >
+                {isSubmittingRequest ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Sending...
+                  </>
+                ) : (
+                  <>
+                    <Send className="mr-2 h-4 w-4" /> Submit Request
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Penalty Modal */}
+        <Dialog open={showPenaltyModal} onOpenChange={setShowPenaltyModal}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Issue Penalty</DialogTitle></DialogHeader>
+            <Select value={String(selectedRuleId)} onValueChange={v => setSelectedRuleId(Number(v))}>
+              <SelectTrigger><SelectValue placeholder="Select Rule" /></SelectTrigger>
+              <SelectContent>
+                {penaltyRules.map(r => <SelectItem key={r.id} value={String(r.id)}>{r.name} (-{r.penaltyPoints})</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Textarea placeholder="Reason" value={penaltyReason} onChange={e => setPenaltyReason(e.target.value)} />
+            <DialogFooter>
+              <Button variant="destructive" onClick={handleCreatePenalty} disabled={isSubmittingPenalty}>Confirm</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
       </AppShell>
     </ProtectedRoute>
   );
