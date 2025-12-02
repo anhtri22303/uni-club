@@ -66,12 +66,19 @@ export default function UniStaffPoliciesPage() {
   }
 
   const filtered = useMemo(() => {
-    if (!query) return policies
-    const q = query.toLowerCase()
-    return policies.filter((p) =>
-      (p.policyName || "").toLowerCase().includes(q) ||
-      (p.description || "").toLowerCase().includes(q) ||
-      (p.majorName || "").toLowerCase().includes(q))
+    // 1. Lọc dữ liệu nếu có query tìm kiếm
+    let result = policies;
+    if (query) {
+      const q = query.toLowerCase()
+      result = policies.filter((p) =>
+        (p.policyName || "").toLowerCase().includes(q) ||
+        (p.description || "").toLowerCase().includes(q) ||
+        (p.majorName || "").toLowerCase().includes(q))
+    }
+
+    // 2. Sắp xếp kết quả theo ID tăng dần (thấp -> cao)
+    // Sử dụng [...result] để tạo mảng mới, tránh mutate mảng gốc
+    return [...result].sort((a, b) => (a.id ?? 0) - (b.id ?? 0))
   }, [policies, query])
 
   // Minimal pagination state
@@ -313,12 +320,12 @@ export default function UniStaffPoliciesPage() {
                     <Button size="sm" variant="outline" onClick={() => setPage(0)} disabled={page === 0}>First</Button>
                     <Button size="sm" variant="outline" onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}>Prev</Button>
                     <div className="px-2 text-sm">Page {filtered.length === 0 ? 0 : page + 1} / {Math.max(1, Math.ceil(filtered.length / pageSize))}</div>
-                    <Button size="sm" variant="outline" onClick={() => setPage(p => Math.min(p + 1, Math.max(0, Math.ceil(filtered.length / pageSize) - 1)))} 
-                    disabled={(page + 1) * pageSize >= filtered.length}>Next</Button>
-                    <Button size="sm" variant="outline" onClick={() => setPage(Math.max(0, Math.ceil(filtered.length / pageSize) - 1))} 
-                    disabled={(page + 1) * pageSize >= filtered.length}>Last</Button>
-                    <select aria-label="Items per page" className="ml-2 rounded border px-2 py-1 text-sm" value={pageSize} 
-                    onChange={(e) => { setPageSize(Number((e.target as HTMLSelectElement).value)); setPage(0) }}>
+                    <Button size="sm" variant="outline" onClick={() => setPage(p => Math.min(p + 1, Math.max(0, Math.ceil(filtered.length / pageSize) - 1)))}
+                      disabled={(page + 1) * pageSize >= filtered.length}>Next</Button>
+                    <Button size="sm" variant="outline" onClick={() => setPage(Math.max(0, Math.ceil(filtered.length / pageSize) - 1))}
+                      disabled={(page + 1) * pageSize >= filtered.length}>Last</Button>
+                    <select aria-label="Items per page" className="ml-2 rounded border px-2 py-1 text-sm" value={pageSize}
+                      onChange={(e) => { setPageSize(Number((e.target as HTMLSelectElement).value)); setPage(0) }}>
                       <option value={5}>5</option>
                       <option value={10}>10</option>
                       <option value={20}>20</option>
@@ -339,8 +346,8 @@ export default function UniStaffPoliciesPage() {
               <div className="mt-2 space-y-3">
                 <div>
                   <Label htmlFor="policy-name">Policy Name</Label>
-                  <Input id="policy-name" className="mt-2 border-slate-300" value={editPolicyName} 
-                  onChange={(e) => setEditPolicyName((e.target as HTMLInputElement).value)} />
+                  <Input id="policy-name" className="mt-2 border-slate-300" value={editPolicyName}
+                    onChange={(e) => setEditPolicyName((e.target as HTMLInputElement).value)} />
                 </div>
 
                 <div>
@@ -373,22 +380,22 @@ export default function UniStaffPoliciesPage() {
 
                 <div>
                   <Label htmlFor="policy-desc">Description</Label>
-                  <Textarea id="policy-desc" className="mt-2 border-slate-300" value={editDescription} 
-                  onChange={(e) => setEditDescription((e.target as HTMLTextAreaElement).value)} />
+                  <Textarea id="policy-desc" className="mt-2 border-slate-300" value={editDescription}
+                    onChange={(e) => setEditDescription((e.target as HTMLTextAreaElement).value)} />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="policy-max">Max Club Join</Label>
-                    <Input id="policy-max" className="mt-2 border-slate-300" type="number" value={editMaxClubJoin ?? ''} 
-                    onChange={(e) => setEditMaxClubJoin(e.target.value === '' ? undefined : Number(e.target.value))} />
+                    <Input id="policy-max" className="mt-2 border-slate-300" type="number" value={editMaxClubJoin ?? ''}
+                      onChange={(e) => setEditMaxClubJoin(e.target.value === '' ? undefined : Number(e.target.value))} />
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2">
                   <Label htmlFor="policy-active">Change status: </Label>
-                  <input id="policy-active" title="Active" type="checkbox" checked={editActive} 
-                  onChange={(e) => setEditActive(e.target.checked)} className="h-4 w-4" />
+                  <input id="policy-active" title="Active" type="checkbox" checked={editActive}
+                    onChange={(e) => setEditActive(e.target.checked)} className="h-4 w-4" />
                   <Label htmlFor="policy-active">Active</Label>
                 </div>
 
