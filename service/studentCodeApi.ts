@@ -4,15 +4,32 @@ import axiosInstance from "@/lib/axiosInstance";
 
 /**
  * Interface đại diện cho thông tin sinh viên trong Registry
- * (Dựa trên context quản lý sinh viên)
  */
 export interface StudentRegistryItem {
-  id?: number;            // Thêm id (có trong response)
+  id?: number;            
   studentCode: string;
   fullName: string;
   majorCode?: string;
-  intake?: number;        // <--- SỬA: Đổi từ enrollmentYear thành intake
-  orderNumber?: string;   // Thêm orderNumber nếu cần dùng
+  intake?: number;        
+  orderNumber?: string;   
+}
+
+/**
+ * Params cho API tạo thủ công
+ */
+export interface CreateStudentParams {
+  studentCode: string;
+  fullName: string;
+}
+
+/**
+ * Params cho API cập nhật thông tin
+ * CẬP NHẬT: Thêm trường studentCode
+ */
+export interface UpdateStudentParams {
+  id: number;
+  studentCode: string; // Thêm trường này
+  fullName: string;
 }
 
 /**
@@ -60,9 +77,10 @@ export interface StudentCodeParams {
  * Interface dữ liệu trả về sau khi upload thành công
  */
 export interface UploadRegistryResult {
-  imported: number;
-  skipped: number;
-  total: number;
+  newRecords: StudentRegistryItem[];
+  imported?: number;
+  skipped?: number;
+  total?: number;
 }
 
 /**
@@ -77,9 +95,63 @@ export interface UploadRegistryApiResponse {
 // --- API FUNCTIONS ---
 
 /**
+ * Thêm một sinh viên thủ công
+ * POST /api/university/student-registry/manual
+ */
+export const createStudentManual = async (
+  data: CreateStudentParams
+): Promise<StudentRegistryItem> => {
+  try {
+    const response = await axiosInstance.post<StudentRegistryDetailApiResponse>(
+      `/api/university/student-registry/manual`,
+      data
+    );
+
+    if (response.data && response.data.success && response.data.data) {
+      return response.data.data;
+    }
+
+    throw new Error(response.data?.message || "Thêm sinh viên thất bại.");
+  } catch (error) {
+    console.error("Error creating manual student:", error);
+    throw error;
+  }
+};
+
+/**
+ * Cập nhật thông tin sinh viên (Tên và MSSV) theo ID
+ * PUT /api/university/student-registry/{id}
+ */
+export const updateStudentRegistry = async ({
+  id,
+  studentCode,
+  fullName,
+}: UpdateStudentParams): Promise<StudentRegistryItem> => {
+  try {
+    const response = await axiosInstance.put<StudentRegistryDetailApiResponse>(
+      `/api/university/student-registry/${id}`,
+      { 
+        studentCode, // Gửi thêm studentCode
+        fullName 
+      } 
+    );
+
+    console.log(`Update student ${id} response:`, response.data);
+
+    if (response.data && response.data.success && response.data.data) {
+      return response.data.data;
+    }
+
+    throw new Error(response.data?.message || "Cập nhật thông tin thất bại.");
+  } catch (error) {
+    console.error(`Error updating student ${id}:`, error);
+    throw error;
+  }
+};
+
+/**
  * Upload danh sách sinh viên từ file Excel/CSV
  * POST /api/university/student-registry/upload
- * @param file - File được chọn từ input (CSV hoặc XLSX)
  */
 export const uploadStudentRegistry = async (file: File): Promise<UploadRegistryResult> => {
   try {
@@ -91,12 +163,10 @@ export const uploadStudentRegistry = async (file: File): Promise<UploadRegistryR
       formData,
       {
         headers: {
-          "Content-Type": "multipart/form-data", // Quan trọng để gửi file
+          "Content-Type": "multipart/form-data",
         },
       }
     );
-
-    console.log("Upload student registry response:", response.data);
 
     if (response.data && response.data.success && response.data.data) {
       return response.data.data;
@@ -112,15 +182,12 @@ export const uploadStudentRegistry = async (file: File): Promise<UploadRegistryR
 /**
  * Lấy toàn bộ danh sách sinh viên trong Registry
  * GET /api/university/student-registry/all
- * Dùng cho: Kiểm tra dữ liệu import, Debug, UI Admin
  */
 export const getAllStudentRegistry = async (): Promise<StudentRegistryItem[]> => {
   try {
     const response = await axiosInstance.get<StudentRegistryListApiResponse>(
       `/api/university/student-registry/all`
     );
-
-    console.log("Fetched all student registry response:", response.data);
 
     if (response.data && response.data.success && Array.isArray(response.data.data)) {
       return response.data.data;
@@ -140,7 +207,6 @@ export const getAllStudentRegistry = async (): Promise<StudentRegistryItem[]> =>
 /**
  * Tìm kiếm sinh viên theo tên hoặc MSSV
  * GET /api/university/student-registry/search
- * @param keyword - Từ khóa tìm kiếm (MSSV hoặc tên)
  */
 export const searchStudentRegistry = async ({
   keyword,
@@ -153,13 +219,10 @@ export const searchStudentRegistry = async ({
       }
     );
 
-    console.log("Search student registry response:", response.data);
-
     if (response.data && response.data.success && Array.isArray(response.data.data)) {
       return response.data.data;
     }
     
-    // Nếu không tìm thấy hoặc lỗi, trả về mảng rỗng hoặc throw tùy logic
     return [];
   } catch (error) {
     console.error("Error searching student registry:", error);
@@ -168,10 +231,8 @@ export const searchStudentRegistry = async ({
 };
 
 /**
- * Kiểm tra tính hợp lệ của MSSV (Dùng khi đăng ký tài khoản mới)
+ * Kiểm tra tính hợp lệ của MSSV
  * GET /api/university/student-registry/check/{code}
- * @param code - Mã số sinh viên cần kiểm tra
- * Logic BE: Trim, uppercase, check định dạng, check tồn tại trong registry
  */
 export const checkStudentCodeValidity = async ({
   code,
@@ -181,8 +242,6 @@ export const checkStudentCodeValidity = async ({
       `/api/university/student-registry/check/${code}`
     );
 
-    console.log(`Checked validity for student code ${code}:`, response.data);
-
     if (response.data && response.data.success && response.data.data) {
       return response.data.data;
     }
@@ -190,7 +249,6 @@ export const checkStudentCodeValidity = async ({
     throw new Error(response.data?.message || "Mã số sinh viên không hợp lệ hoặc không tồn tại.");
   } catch (error: any) {
     console.error(`Error checking student code ${code}:`, error);
-    // Re-throw error để UI component (Form đăng ký) có thể bắt được message lỗi (ví dụ: "MSSV không tồn tại")
     throw error;
   }
 };
@@ -198,7 +256,6 @@ export const checkStudentCodeValidity = async ({
 /**
  * Xóa thủ công một sinh viên khỏi Registry
  * DELETE /api/university/student-registry/{code}
- * @param code - Mã số sinh viên cần xóa
  */
 export const deleteStudentFromRegistry = async ({
   code,
@@ -207,8 +264,6 @@ export const deleteStudentFromRegistry = async ({
     const response = await axiosInstance.delete<StandardApiResponse>(
       `/api/university/student-registry/${code}`
     );
-
-    console.log(`Deleted student ${code} response:`, response.data);
 
     if (!response.data || !response.data.success) {
       throw new Error(response.data?.message || `Failed to delete student ${code}`);
@@ -222,15 +277,12 @@ export const deleteStudentFromRegistry = async ({
 /**
  * Xóa sạch toàn bộ Student Registry (ADMIN ONLY)
  * DELETE /api/university/student-registry/all
- * Dùng khi: Import dữ liệu năm học mới, dọn dẹp data lỗi
  */
 export const deleteAllStudentRegistry = async (): Promise<void> => {
   try {
     const response = await axiosInstance.delete<StandardApiResponse>(
       `/api/university/student-registry/all`
     );
-
-    console.log("Deleted ALL student registry response:", response.data);
 
     if (!response.data || !response.data.success) {
       throw new Error(response.data?.message || "Failed to delete all student registry");
