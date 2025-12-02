@@ -70,6 +70,8 @@ const COLOR_OPTIONS = [
 export default function UniStaffMajorsPage() {
     const [query, setQuery] = useState("")
     const [selected, setSelected] = useState<Major | null>(null)
+    // State để quản lý việc hiển thị full description
+    const [viewDescription, setViewDescription] = useState<string | null>(null)
     const [dialogOpen, setDialogOpen] = useState(false)
     const { toast } = useToast()
     const router = useRouter()
@@ -360,10 +362,10 @@ export default function UniStaffMajorsPage() {
                                                 <TableHead className="w-[4rem] text-center">ID</TableHead>
                                                 <TableHead>Major Name</TableHead>
                                                 <TableHead className="w-[7rem] text-center">Major Code</TableHead>
-                                                <TableHead>Description</TableHead>
+                                                <TableHead className="pl-20">Descriptions</TableHead>
                                                 <TableHead className="w-[6rem]">Major Color</TableHead>
                                                 <TableHead className="w-[6rem] text-center">Status</TableHead>
-                                                <TableHead className="w-[6rem] text-center">Action</TableHead>
+                                                <TableHead className="w-[6rem] text-center">Actions</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
@@ -388,7 +390,15 @@ export default function UniStaffMajorsPage() {
                                                         <TableCell className="text-sm text-muted-foreground text-center">{m.id}</TableCell>
                                                         <TableCell className="font-medium text-primary/90">{m.name}</TableCell>
                                                         <TableCell className="text-sm text-muted-foreground text-center">{m.majorCode || "—"}</TableCell>
-                                                        <TableCell className="text-sm text-muted-foreground truncate max-w-xs">
+                                                        {/* <TableCell className="text-sm text-muted-foreground truncate max-w-xs pl-5">
+                                                            {m.description || "—"}
+                                                        </TableCell> */}
+                                                        <TableCell
+                                                            className="text-sm text-muted-foreground truncate max-w-xs pl-5 cursor-pointer hover:text-primary 
+                                                            hover:underline transition-colors"
+                                                            onClick={() => setViewDescription(m.description || "No description")}
+                                                            title="Click to view full description"
+                                                        >
                                                             {m.description || "—"}
                                                         </TableCell>
                                                         {/* Cell cho Color */}
@@ -763,7 +773,8 @@ export default function UniStaffMajorsPage() {
                                 <DialogDescription>
                                     Are you sure you want to delete the major:
                                     <br />
-                                    <span className="font-bold">{majorToDelete?.name} - {majorToDelete?.majorCode}</span> (ID: {majorToDelete?.id})?
+                                    <span className="font-bold">{majorToDelete?.name} - {majorToDelete?.majorCode}</span>
+                                    (ID: {majorToDelete?.id})?
                                     <br />
                                     This action cannot be undone.
                                 </DialogDescription>
@@ -823,6 +834,30 @@ export default function UniStaffMajorsPage() {
                                     disabled={isDeleting}
                                 >
                                     {isDeleting ? "Deleting..." : "Confirm Delete"}
+                                </Button>
+                            </div>
+                        </DialogContent>
+                    </Dialog>
+
+                    {/* View Description Dialog */}
+                    <Dialog open={!!viewDescription} onOpenChange={(open) => !open && setViewDescription(null)}>
+                        <DialogContent className="sm:max-w-[600px]">
+                            <DialogHeader>
+                                <DialogTitle>Major Description Details</DialogTitle>
+                                {/* <DialogDescription>
+                                    Full content of the description.
+                                </DialogDescription> */}
+                            </DialogHeader>
+
+                            <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-900 rounded-md max-h-[60vh] overflow-y-auto">
+                                <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+                                    {viewDescription}
+                                </p>
+                            </div>
+
+                            <div className="flex justify-end mt-4">
+                                <Button onClick={() => setViewDescription(null)} className="border-slate-300">
+                                    Close
                                 </Button>
                             </div>
                         </DialogContent>
