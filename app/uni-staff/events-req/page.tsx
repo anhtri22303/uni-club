@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { CalendarModal } from "@/components/calendar-modal"
-import { Calendar, Users, MapPin, Search, CheckCircle, XCircle, Clock, Building, Eye, Filter, DollarSign, Gift, X } from "lucide-react"
+import { Calendar, Users, MapPin, Search, CheckCircle, XCircle, Clock, Building, Eye, Filter, DollarSign, Gift, X, History, HistoryIcon } from "lucide-react"
 import { renderTypeBadge } from "@/lib/eventUtils"
 import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
@@ -23,7 +23,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip"
 import { getUniToEventTransactions, ApiUniToEventTransaction } from "@/service/walletApi"
-import { History } from "lucide-react"
 
 // Bảng màu theo ngành học (giống như trong clubs page)
 const majorColors: Record<string, string> = {
@@ -70,6 +69,8 @@ export default function UniStaffEventRequestsPage() {
 	const [dateFilter, setDateFilter] = useState<string>("")
 	const [activeTab, setActiveTab] = useState<"PENDING_UNISTAFF" | "APPROVED" | "ONGOING" | "REJECTED" | "COMPLETED">("PENDING_UNISTAFF")
 	const [showWaitingCoClub, setShowWaitingCoClub] = useState<boolean>(false)
+	const [showAllEvents, setShowAllEvents] = useState<boolean>(false) // Toggle to show all events including invalid dates
+	const [showInvalidDateEvents, setShowInvalidDateEvents] = useState<boolean>(true) // Toggle to show events with invalid/past dates
 
 	const [events, setEvents] = useState<any[]>([])
 	const [allEvents, setAllEvents] = useState<any[]>([])
@@ -230,25 +231,70 @@ export default function UniStaffEventRequestsPage() {
 		return isMultiDay || isSingleDay
 	}
 
+	// Helper function to check if event has invalid/past date
+	const hasInvalidDate = (event: any): boolean => {
+		const now = new Date()
+		
+		// Check if event has date fields
+		if (event.startDate) {
+			const startDate = new Date(event.startDate)
+			// If start date is more than 30 days in the past, consider it invalid
+			const daysDiff = (now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+			return daysDiff > 30
+		}
+		
+		if (event.date) {
+			const eventDate = new Date(event.date)
+			const daysDiff = (now.getTime() - eventDate.getTime()) / (1000 * 60 * 60 * 24)
+			return daysDiff > 30
+		}
+		
+		return false
+	}
+
 	// Filter events based on active tab and search/filters
 	const filteredRequests = events
 		.filter((evt) => {
+			// If showAllEvents is enabled, show ALL events from ALL tabs (ignore status filter)
+			if (showAllEvents) {
+				// Only apply search and type filters
+				const q = searchTerm.trim().toLowerCase()
+				const matchSearch =
+					q === "" ||
+					evt.name?.toLowerCase().includes(q) ||
+					String(evt.clubId || "").includes(q)
+
+				// Apply type filter
+				const matchType = typeFilter === "all" ? true : (evt.type || "") === typeFilter
+
+				return matchSearch && matchType
+			}
+
+			// Normal filtering mode (showAllEvents = false)
+			// Filter by active tab status
+			const eventStatus = (evt.status ?? "").toUpperCase()
+			const matchTab = eventStatus === activeTab ||
+				(activeTab === "PENDING_UNISTAFF" && eventStatus === "PENDING_COCLUB")
+			
+			if (!matchTab) return false
+
+			// Normal filtering mode (showAllEvents = false)
+			
 			// Filter out events without valid date/time (draft events)
 			// These events are not ready for review and should not appear in the list
 			if (!hasValidDateTime(evt)) {
 				return false
 			}
 
-			// Hide PENDING_COCLUB events by default unless toggle is enabled
-			if (!showWaitingCoClub && (evt.status ?? "").toUpperCase() === "PENDING_COCLUB") {
+			// Filter out events with invalid dates unless toggle is enabled
+			if (!showInvalidDateEvents && hasInvalidDate(evt)) {
 				return false
 			}
 
-			// First filter by active tab status
-			// PENDING_COCLUB events should appear in the PENDING_UNISTAFF tab
-			const eventStatus = (evt.status ?? "").toUpperCase()
-			const matchTab = eventStatus === activeTab ||
-				(activeTab === "PENDING_UNISTAFF" && eventStatus === "PENDING_COCLUB")
+			// Hide PENDING_COCLUB events by default unless toggle is enabled
+			if (!showWaitingCoClub && eventStatus === "PENDING_COCLUB") {
+				return false
+			}
 
 			const q = searchTerm.trim().toLowerCase()
 			const matchSearch =
@@ -278,7 +324,7 @@ export default function UniStaffEventRequestsPage() {
 			}
 			// "show" means show all - no filtering needed
 
-			return matchTab && matchSearch && matchType && matchDate && matchExpired
+			return matchSearch && matchType && matchDate && matchExpired
 		})
 		// Sort by latest date (newest first)
 		.sort((a, b) => {
@@ -390,6 +436,12 @@ export default function UniStaffEventRequestsPage() {
 	const formatDate = (event: any) => {
 		const date = getEventDate(event)
 		if (!date) return 'Invalid Date'
+		
+		// If event has invalid date, don't show date
+		if (hasInvalidDate(event)) {
+			return '—' // Em dash to indicate no date
+		}
+		
 		return date.toLocaleString('en-US', {
 			year: 'numeric',
 			month: 'short',
@@ -479,12 +531,23 @@ export default function UniStaffEventRequestsPage() {
 						</div>
 						<div className="flex gap-2">
 							<Button
+								variant={showAllEvents ? "default" : "outline"}
+								onClick={() => setShowAllEvents(!showAllEvents)}
+								className={showAllEvents 
+									? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:from-emerald-700 hover:to-teal-700 font-semibold shadow-md" 
+									: "bg-emerald-50 border-emerald-400 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-600 font-semibold shadow-sm dark:bg-emerald-900/30 dark:border-emerald-300 dark:text-emerald-200 dark:hover:bg-emerald-800/60 dark:hover:border-emerald-100"
+								}
+							>
+								<Eye className="h-4 w-4 mr-2" />
+								{showAllEvents ? "Showing All" : "Show All Events"}
+							</Button>
+							<Button
 								variant="outline"
 								onClick={handleOpenEventPointsModal}
 								className="bg-blue-50 border-blue-400 text-blue-700 hover:bg-blue-100 hover:border-blue-600 font-semibold shadow-sm 
 								dark:bg-blue-900/30 dark:border-blue-300 dark:text-blue-200 dark:hover:bg-blue-800/60 dark:hover:border-blue-100"
 							>
-								<History className="h-4 w-4 mr-2" /> Event Points
+								<HistoryIcon className="h-4 w-4 mr-2" /> Event Points
 							</Button>
 							<Button
 								variant="outline"
