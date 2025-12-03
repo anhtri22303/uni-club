@@ -727,15 +727,6 @@ export default function LoginPage() {
               </form>
 
               {/* Google Sign-In Button */}
-              {/* <GoogleSignInButton
-                mode={isSignUpMode ? "sign-up" : "sign-in"}
-              /> */}
-              {/* <div className="flex justify-center">
-                <GoogleSignInButton
-                  mode={isSignUpMode ? "sign-up" : "sign-in"}
-                  onLoginSuccess={() => setIsRedirecting(true)}
-                />
-              </div> */}
               <div className="mt-4 flex w-full items-center justify-center">
                 <GoogleSignInButton
                   mode={isSignUpMode ? "sign-up" : "sign-in"}
