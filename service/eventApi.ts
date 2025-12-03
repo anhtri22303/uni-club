@@ -237,7 +237,7 @@ export const fetchEvent = async ({ page = 0, size = 70, sort = "name" } = {}): P
       },
     });
     const data: any = response.data;
-    // console.log(`fetchEvent at ${new Date().toISOString()}:`, data);
+    console.log(`fetchEvent:`, data);
 
     // Log first event to check structure
     // if (data?.content?.[0]) {

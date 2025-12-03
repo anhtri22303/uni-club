@@ -1308,6 +1308,7 @@ export default function EditProductPage() {
                           onValueChange={(value) =>
                             setForm({ ...form, eventId: Number(value) })
                           }
+                          disabled
                         >
                           <SelectTrigger
                             className="h-11 w-full border-2 border-slate-200 focus:border-orange-500 

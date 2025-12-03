@@ -1029,7 +1029,7 @@ export default function ClubLeaderEventsPage() {
               Hosted Events
               {viewMode === "hosted" && (
                 <Badge variant="secondary" className="ml-1">
-                  {rawEvents.length}
+                  {/* {rawEvents.length} */}
                 </Badge>
               )}
             </Button>
@@ -1042,7 +1042,7 @@ export default function ClubLeaderEventsPage() {
               Co-Host Events
               {viewMode === "cohost" && (
                 <Badge variant="secondary" className="ml-1">
-                  {rawCoHostEvents.length}
+                  {/* {rawCoHostEvents.length} */}
                 </Badge>
               )}
             </Button>
