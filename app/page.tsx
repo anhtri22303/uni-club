@@ -743,7 +743,6 @@ export default function LoginPage() {
                 />
               </div>
 
-
               {/* Toggle mode section with gradient border */}
               <div className="relative text-center pt-4 sm:pt-6 mt-4 sm:mt-6">
                 {/* Gradient border line */}
