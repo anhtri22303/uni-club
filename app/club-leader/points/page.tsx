@@ -838,7 +838,11 @@ export default function ClubLeaderRewardDistributionPage() {
                   onClick={handleDistributeRewards}
                   disabled={
                     isDistributing ||
-                    (!individualScores && (rewardAmount === "" || rewardAmount <= 0)) ||
+                    (!individualScores && (
+                      rewardAmount === "" ||
+                      rewardAmount <= 0 ||
+                      isOverBudget
+                    )) ||
                     !rewardReason.trim()
                   }
                   className="w-full sm:w-auto"
