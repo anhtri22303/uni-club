@@ -215,9 +215,10 @@ export default function UniStaffPoliciesPage() {
                     <TableHeader>
                       <TableRow>
                         <TableHead className="w-[3rem] text-center">ID</TableHead>
-                        <TableHead>Policy Name</TableHead>
-                        <TableHead>Major</TableHead>
-                        <TableHead className="w-[9rem] text-center">Max Club Join</TableHead>
+                        <TableHead className="min-w-[150px] text-left pl-10">Policy Name</TableHead>
+                        <TableHead className="text-left pl-10">Major</TableHead>
+                        <TableHead className="max-w-[250px] text-left pl-20">Descriptions</TableHead>
+                        <TableHead className="w-[8rem] text-center">Max Club Join</TableHead>
                         <TableHead className="w-[8rem] text-center">Status</TableHead>
                         <TableHead className="w-[6rem] text-center">Action</TableHead>
                       </TableRow>
@@ -225,21 +226,25 @@ export default function UniStaffPoliciesPage() {
                     <TableBody>
                       {loading ? (
                         <TableRow>
-                          <TableCell colSpan={6} className="p-6 text-center">Loading...</TableCell>
+                          <TableCell colSpan={7} className="p-6 text-center">Loading...</TableCell>
                         </TableRow>
                       ) : filtered.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={6} className="p-6 text-center">No policies found</TableCell>
+                          <TableCell colSpan={7} className="p-6 text-center">No policies found</TableCell>
                         </TableRow>
                       ) : (
                         paginated.map((p, idx) => (
                           <TableRow
                             key={p.id}
-                            className={`${idx % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-slate-50 dark:bg-slate-800'} hover:bg-slate-100 dark:hover:bg-slate-700`}
+                            className={`${idx % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-slate-50 dark:bg-slate-800'} hover:bg-slate-100 
+                            dark:hover:bg-slate-700`}
                           >
                             <TableCell className="text-sm text-muted-foreground text-center">{p.id}</TableCell>
                             <TableCell className="font-medium text-primary/90">{p.policyName}</TableCell>
                             <TableCell className="text-sm text-muted-foreground">{p.majorName || "—"}</TableCell>
+                            <TableCell className="text-sm text-muted-foreground max-w-[250px] truncate" title={p.description}>
+                              {p.description || "—"}
+                            </TableCell>
                             <TableCell className="text-sm text-center">{p.maxClubJoin ?? "—"}</TableCell>
                             <TableCell className="text-center">
                               <Badge variant={p.active ? "default" : "destructive"}>{p.active ? "Active" : "Inactive"}</Badge>
