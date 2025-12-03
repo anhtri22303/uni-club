@@ -257,25 +257,6 @@ export default function PublicEventsPage() {
                             <span>{event.hostClub?.name || "Unknown Club"}</span>
                           </div>
                         </div>
-                        {/* Status Badge (Soon/Now/Future) at top right */}
-                        <Badge
-                          variant={
-                            status === "Now"
-                              ? "default"
-                              : status === "Soon"
-                              ? "secondary"
-                              : "outline"
-                          }
-                          className={
-                            status === "Now"
-                              ? "bg-green-500"
-                              : status === "Soon"
-                              ? "bg-yellow-500"
-                              : ""
-                          }
-                        >
-                          {status}
-                        </Badge>
                       </div>
                     </CardHeader>
                     <CardContent>
@@ -291,9 +272,35 @@ export default function PublicEventsPage() {
                           <Badge variant={event.type === "PUBLIC" ? "default" : "secondary"}>
                             {event.type}
                           </Badge>
-                          <Badge variant="outline">
-                            {event.status}
-                          </Badge>
+                          {event.status === "COMPLETED" ? (
+                            <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-300 shrink-0">
+                              {event.status}
+                            </Badge>
+                          ) : event.status === "ONGOING" ? (
+                            <Badge variant="outline" className="bg-purple-100 text-purple-700 border-purple-300 shrink-0">
+                              {event.status}
+                            </Badge>
+                          ) : event.status === "APPROVED" ? (
+                            <Badge variant="outline" className="bg-green-100 text-green-700 border-green-300 shrink-0">
+                              {event.status}
+                            </Badge>
+                          ) : event.status === "PENDING_COCLUB" ? (
+                            <Badge variant="outline" className="bg-orange-100 text-orange-700 border-orange-300 shrink-0">
+                              {event.status}
+                            </Badge>
+                          ) : event.status === "PENDING_UNISTAFF" ? (
+                            <Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-300 shrink-0">
+                              {event.status}
+                            </Badge>
+                          ) : event.status === "REJECTED" ? (
+                            <Badge variant="outline" className="bg-red-100 text-red-700 border-red-300 shrink-0">
+                              {event.status}
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline">
+                              {event.status}
+                            </Badge>
+                          )}
                           <Badge variant="default" className="flex items-center gap-1 shrink-0 bg-emerald-600 hover:bg-emerald-700">
                             <Gift className="h-3 w-3" />
                             {(() => {
