@@ -22,6 +22,13 @@ import { safeSessionStorage } from "@/lib/browser-utils"
 import { fetchMajors, Major } from "@/service/majorApi"
 import { useClubs, useClubMemberCounts, useMyMemberApplications, queryKeys } from "@/hooks/use-query-hooks"
 import { useQueryClient } from "@tanstack/react-query"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 // We'll fetch clubs from the backend and only use the `content` array.
 type ClubApiItem = {
   id: number
@@ -741,7 +748,7 @@ export default function MemberClubsPage() {
               </div>
 
               {/* Major Selection */}
-              <div className="space-y-2">
+              {/* <div className="space-y-2">
                 <Label htmlFor="major">Major</Label>
                 <select
                   id="major"
@@ -759,6 +766,35 @@ export default function MemberClubsPage() {
                       </option>
                     ))}
                 </select>
+              </div> */}
+              {/* Major Selection - Đã thay đổi sang Shadcn UI */}
+              <div className="space-y-2">
+                <Label htmlFor="major">Major</Label>
+                <Select
+                  value={selectedMajorId ? selectedMajorId.toString() : ""}
+                  onValueChange={(value) => setSelectedMajorId(Number(value))}
+                >
+                  <SelectTrigger
+                    id="major"
+                    className="w-full border-slate-400 focus:ring-offset-0 focus:ring-1 focus:ring-slate-400 rounded-lg w-2/3" // rounded-lg để bo tròn input
+                  >
+                    <SelectValue placeholder="Select a major" />
+                  </SelectTrigger>
+
+                  <SelectContent className="rounded-xl border-slate-200 shadow-lg bg-white dark:bg-slate-950">
+                    {majors
+                      .filter((m) => m.active)
+                      .map((m) => (
+                        <SelectItem
+                          key={m.id}
+                          value={m.id.toString()}
+                          className="cursor-pointer rounded-md my-1 focus:bg-slate-100 focus:text-slate-900 dark:focus:bg-slate-800 dark:focus:text-slate-100"
+                        >
+                          {m.name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Proposer Reason */}
@@ -782,7 +818,7 @@ export default function MemberClubsPage() {
 
 
               {/* OTP Input */}
-              <div className="space-y-2">
+              <div className="space-y-2 w-1/4">
                 <Label htmlFor="otpCode">OTP Code (6 digits)</Label>
                 <Input
                   id="otpCode"

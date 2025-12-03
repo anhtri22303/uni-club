@@ -270,7 +270,7 @@ export default function UniStaffPointRequestsPage() {
                         <Button
                             variant={activeTab === "PENDING" ? "default" : "ghost"}
                             size="lg"
-                            className={`flex-1 rounded-b-none py-6 text-base font-semibold transition-all ${activeTab === "PENDING"
+                            className={`flex-1 rounded-b-none py-6 text-base font-semibold transition-all dark:bg-gray-800 bg-white ${activeTab === "PENDING"
                                 ? "border-b-4 border-yellow-500 bg-yellow-50 text-yellow-700 hover:bg-yellow-100 dark:bg-yellow-950 dark:text-yellow-300"
                                 : "border-b-4 border-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
                                 }`}
@@ -282,7 +282,7 @@ export default function UniStaffPointRequestsPage() {
                         <Button
                             variant={activeTab === "APPROVED" ? "default" : "ghost"}
                             size="lg"
-                            className={`flex-1 rounded-b-none py-6 text-base font-semibold transition-all ${activeTab === "APPROVED"
+                            className={`flex-1 rounded-b-none py-6 text-base font-semibold transition-all dark:bg-gray-800 bg-white ${activeTab === "APPROVED"
                                 ? "border-b-4 border-green-500 bg-green-50 text-green-700 hover:bg-green-100 dark:bg-green-950 dark:text-green-300"
                                 : "border-b-4 border-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
                                 }`}
@@ -294,7 +294,7 @@ export default function UniStaffPointRequestsPage() {
                         <Button
                             variant={activeTab === "REJECTED" ? "default" : "ghost"}
                             size="lg"
-                            className={`flex-1 rounded-b-none py-6 text-base font-semibold transition-all ${activeTab === "REJECTED"
+                            className={`flex-1 rounded-b-none py-6 text-base font-semibold transition-all dark:bg-gray-800 bg-white ${activeTab === "REJECTED"
                                 ? "border-b-4 border-red-500 bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-950 dark:text-red-300"
                                 : "border-b-4 border-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
                                 }`}
@@ -316,7 +316,7 @@ export default function UniStaffPointRequestsPage() {
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 // Add padding-right to prevent text overlapping the button
-                                className="pr-12"
+                                className="pr-12 border-slate-300 bg-white dark:bg-gray-800"
                             />
 
                             {/* Render Clear button only when there is text */}
