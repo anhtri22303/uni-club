@@ -789,7 +789,7 @@ export default function ClubLeaderRewardDistributionPage() {
                       {/* Hiển thị tổng tiền dự kiến nếu chưa vượt hạn mức (Optional - để người dùng dễ ước lượng) */}
                       {!isOverBudget && currentRewardAmount > 0 && recipientCount > 0 && (
                         <p className="text-xs text-muted-foreground">
-                          Total: <span className="font-medium text-foreground">{totalRequired.toLocaleString()}</span> / {currentBalance.toLocaleString()} pts
+                          Total estimated amount: <span className="font-medium text-foreground">{totalRequired.toLocaleString()}</span> / {currentBalance.toLocaleString()} pts
                         </p>
                       )}
                     </div>

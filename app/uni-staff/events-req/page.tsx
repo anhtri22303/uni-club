@@ -222,10 +222,10 @@ export default function UniStaffEventRequestsPage() {
 	const hasValidDateTime = (event: any): boolean => {
 		// Check if event has multi-day format (days array)
 		const isMultiDay = !!(event.days && event.days.length > 0)
-		
+
 		// Check if event has single-day format (date and endTime)
 		const isSingleDay = !!(event.date || event.endTime)
-		
+
 		// Event must have either multi-day or single-day date/time
 		return isMultiDay || isSingleDay
 	}
@@ -439,32 +439,32 @@ export default function UniStaffEventRequestsPage() {
 	// Compute counts by status (prefer `status` field). Fallback to type-based heuristics when missing
 	// Only count events with valid date/time
 	const totalCount = events.length
-	const waitingUniStaffCount = events.filter((e) => 
-		(e.status ?? "").toUpperCase() === "PENDING_UNISTAFF" && 
-		hasValidDateTime(e) && 
+	const waitingUniStaffCount = events.filter((e) =>
+		(e.status ?? "").toUpperCase() === "PENDING_UNISTAFF" &&
+		hasValidDateTime(e) &&
 		!isEventExpired(e)
 	).length
-	const approvedCount = events.filter((e) => 
-		(e.status ?? "").toUpperCase() === "APPROVED" && 
-		hasValidDateTime(e) && 
+	const approvedCount = events.filter((e) =>
+		(e.status ?? "").toUpperCase() === "APPROVED" &&
+		hasValidDateTime(e) &&
 		!isEventExpired(e)
 	).length
-	const ongoingCount = events.filter((e) => 
-		(e.status ?? "").toUpperCase() === "ONGOING" && 
-		hasValidDateTime(e) && 
+	const ongoingCount = events.filter((e) =>
+		(e.status ?? "").toUpperCase() === "ONGOING" &&
+		hasValidDateTime(e) &&
 		!isEventExpired(e)
 	).length
-	const rejectedCount = events.filter((e) => 
-		(e.status ?? "").toUpperCase() === "REJECTED" && 
+	const rejectedCount = events.filter((e) =>
+		(e.status ?? "").toUpperCase() === "REJECTED" &&
 		hasValidDateTime(e)
 	).length
-	const completedCount = events.filter((e) => 
-		(e.status ?? "").toUpperCase() === "COMPLETED" && 
+	const completedCount = events.filter((e) =>
+		(e.status ?? "").toUpperCase() === "COMPLETED" &&
 		hasValidDateTime(e)
 	).length
-	const waitingCoClubCount = events.filter((e) => 
-		(e.status ?? "").toUpperCase() === "PENDING_COCLUB" && 
-		hasValidDateTime(e) && 
+	const waitingCoClubCount = events.filter((e) =>
+		(e.status ?? "").toUpperCase() === "PENDING_COCLUB" &&
+		hasValidDateTime(e) &&
 		!isEventExpired(e)
 	).length
 
@@ -587,7 +587,7 @@ export default function UniStaffEventRequestsPage() {
 						<Button
 							variant={activeTab === "PENDING_UNISTAFF" ? "default" : "ghost"}
 							size="lg"
-							className={`flex-1 rounded-b-none py-6 text-base font-semibold transition-all ${activeTab === "PENDING_UNISTAFF"
+							className={`flex-1 rounded-b-none py-6 text-base font-semibold transition-all dark:bg-gray-800 bg-white ${activeTab === "PENDING_UNISTAFF"
 								? "border-b-4 border-yellow-500 bg-yellow-50 text-yellow-700 hover:bg-yellow-100 dark:bg-yellow-950 dark:text-yellow-300"
 								: "border-b-4 border-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
 								}`}
@@ -599,7 +599,7 @@ export default function UniStaffEventRequestsPage() {
 						<Button
 							variant={activeTab === "APPROVED" ? "default" : "ghost"}
 							size="lg"
-							className={`flex-1 rounded-b-none py-6 text-base font-semibold transition-all ${activeTab === "APPROVED"
+							className={`flex-1 rounded-b-none py-6 text-base font-semibold transition-all dark:bg-gray-800 bg-white ${activeTab === "APPROVED"
 								? "border-b-4 border-green-500 bg-green-50 text-green-700 hover:bg-green-100 dark:bg-green-950 dark:text-green-300"
 								: "border-b-4 border-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
 								}`}
@@ -611,7 +611,7 @@ export default function UniStaffEventRequestsPage() {
 						<Button
 							variant={activeTab === "ONGOING" ? "default" : "ghost"}
 							size="lg"
-							className={`flex-1 rounded-b-none py-6 text-base font-semibold transition-all ${activeTab === "ONGOING"
+							className={`flex-1 rounded-b-none py-6 text-base font-semibold transition-all dark:bg-gray-800 bg-white ${activeTab === "ONGOING"
 								? "border-b-4 border-purple-500 bg-purple-50 text-purple-700 hover:bg-purple-100 dark:bg-purple-950 dark:text-purple-300"
 								: "border-b-4 border-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
 								}`}
@@ -623,7 +623,7 @@ export default function UniStaffEventRequestsPage() {
 						<Button
 							variant={activeTab === "COMPLETED" ? "default" : "ghost"}
 							size="lg"
-							className={`flex-1 rounded-b-none py-6 text-base font-semibold transition-all ${activeTab === "COMPLETED"
+							className={`flex-1 rounded-b-none py-6 text-base font-semibold transition-all dark:bg-gray-800 bg-white ${activeTab === "COMPLETED"
 								? "border-b-4 border-blue-500 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-950 dark:text-blue-300"
 								: "border-b-4 border-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
 								}`}
@@ -635,7 +635,7 @@ export default function UniStaffEventRequestsPage() {
 						<Button
 							variant={activeTab === "REJECTED" ? "default" : "ghost"}
 							size="lg"
-							className={`flex-1 rounded-b-none py-6 text-base font-semibold transition-all ${activeTab === "REJECTED"
+							className={`flex-1 rounded-b-none py-6 text-base font-semibold transition-all dark:bg-gray-800 bg-white ${activeTab === "REJECTED"
 								? "border-b-4 border-red-500 bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-950 dark:text-red-300"
 								: "border-b-4 border-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
 								}`}
@@ -665,7 +665,7 @@ export default function UniStaffEventRequestsPage() {
 									value={searchTerm}
 									onChange={(e) => setSearchTerm(e.target.value)}
 									// Add padding-right so text doesn't hit the button
-									className="pr-12"
+									className="pr-12 border-slate-300 bg-white dark:bg-slate-800 dark:border-slate-700"
 								/>
 								{/* Render Clear Button only when there is text */}
 								{searchTerm && (
@@ -684,7 +684,7 @@ export default function UniStaffEventRequestsPage() {
 
 						<div className="flex items-center gap-3">
 							<Select value={typeFilter} onValueChange={setTypeFilter}>
-								<SelectTrigger className="w-32">
+								<SelectTrigger className="w-32 border-slate-300 bg-white dark:bg-slate-800 dark:border-slate-700">
 									<SelectValue placeholder="Type" />
 								</SelectTrigger>
 								<SelectContent>
@@ -699,12 +699,12 @@ export default function UniStaffEventRequestsPage() {
 								type="date"
 								value={dateFilter}
 								onChange={(e) => setDateFilter(e.target.value)}
-								className="w-40"
+								className="w-40 border-slate-300 bg-white dark:bg-slate-800 dark:border-slate-700"
 								placeholder="Filter by date"
 							/>
 
 							<Select value={expiredFilter} onValueChange={setExpiredFilter}>
-								<SelectTrigger className="w-40">
+								<SelectTrigger className="w-40 border-slate-300 bg-white dark:bg-slate-800 dark:border-slate-700">
 									<SelectValue placeholder="Expired" />
 								</SelectTrigger>
 								<SelectContent>
@@ -720,7 +720,11 @@ export default function UniStaffEventRequestsPage() {
 								variant={showWaitingCoClub ? "default" : "outline"}
 								size="sm"
 								onClick={() => setShowWaitingCoClub(!showWaitingCoClub)}
-								className="flex items-center gap-2"
+								className={`flex items-center gap-2 border-slate-300 dark:border-slate-700
+    									${showWaitingCoClub
+										? "bg-teal-600 text-white bg-primary" // Khi nút là Hide (Active): Nền màu, chữ trắng
+										: "bg-white text-slate-900 hover:bg-slate-100 hover:text-black dark:bg-slate-800 dark:text-slate-100" // Khi nút là Show (Inactive): Nền trắng, chữ đen
+									}`}
 							>
 								<Filter className="h-4 w-4" />
 								{showWaitingCoClub ? "Hide" : "Show"} Pending Co-Club
@@ -888,8 +892,8 @@ export default function UniStaffEventRequestsPage() {
 							<Button size="sm" variant="outline"
 								onClick={() => setPage(Math.max(0, Math.ceil(filteredRequests.length / pageSize) - 1))}
 								disabled={(page + 1) * pageSize >= filteredRequests.length}>Last</Button>
-							<select aria-label="Items per page" className="ml-2 rounded border px-2 py-1 text-sm" value={pageSize} 
-							onChange={(e) => { setPageSize(Number((e.target as HTMLSelectElement).value)); setPage(0) }}>
+							<select aria-label="Items per page" className="ml-2 rounded border px-2 py-1 text-sm" value={pageSize}
+								onChange={(e) => { setPageSize(Number((e.target as HTMLSelectElement).value)); setPage(0) }}>
 								<option value={10}>10</option>
 								<option value={20}>20</option>
 								<option value={50}>50</option>
