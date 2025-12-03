@@ -10,15 +10,15 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useData } from "@/contexts/data-context"
-import { type ApiMembership, deleteMember, getLeaveReq, putLeaveReq, type LeaveRequest } from "@/service/membershipApi"
+import { type ApiMembership, deleteMember, getLeaveReq, putLeaveReq, type LeaveRequest, removeMember } from "@/service/membershipApi"
 import { getClubById, getClubIdFromToken } from "@/service/clubApi"
 import { useToast } from "@/hooks/use-toast"
 import { usePagination } from "@/hooks/use-pagination"
 import { useClub, useClubMembers } from "@/hooks/use-query-hooks"
 import { useQueryClient } from "@tanstack/react-query"
 import {
-  Users, Trash2, ChevronLeft, ChevronRight, Mail, GraduationCap, Calendar, UserCircle, Filter, X, LogOut, Check, XCircle, ClipboardList
-
+  Users, Trash2, ChevronLeft, ChevronRight, Mail, GraduationCap, Calendar, UserCircle, Filter, X, LogOut, Check, XCircle, ClipboardList,
+  AlertTriangle,
 } from "lucide-react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { useRouter } from "next/navigation"
@@ -28,7 +28,9 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogFooter
 } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
 
 // Define a type for the club (có thể đặt trong một file dùng chung)
 interface Club {
@@ -52,6 +54,11 @@ export default function ClubLeaderMembersPage() {
   const queryClient = useQueryClient()
   const router = useRouter()
   const [clubId] = useState(() => getClubIdFromToken())
+  // --- STATE CHO REMOVE MEMBER ---
+  const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false)
+  const [memberToRemove, setMemberToRemove] = useState<any>(null)
+  const [removeReason, setRemoveReason] = useState("")
+  const [isRemoving, setIsRemoving] = useState(false)
 
   // Leave requests state
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([])
@@ -59,7 +66,7 @@ export default function ClubLeaderMembersPage() {
   const [loadingLeaveRequests, setLoadingLeaveRequests] = useState(false)
   const [processingRequestId, setProcessingRequestId] = useState<number | null>(null)
 
-  //    USE REACT QUERY for club and members
+  // USE REACT QUERY for club and members
   const { data: managedClub, isLoading: loading } = useClub(clubId || 0, !!clubId)
   const { data: apiMembers = [], isLoading: membersLoading, error: membersQueryError } = useClubMembers(
     clubId || 0,
@@ -147,7 +154,7 @@ export default function ClubLeaderMembersPage() {
     totalPages: membersPages,
     paginatedData: paginatedMembers,
     setCurrentPage: setMembersPage,
-  } = usePagination({ data: filteredMembers, initialPageSize: 6 })
+  } = usePagination({ data: filteredMembers, initialPageSize: 10 })
 
   // Get unique values for filters
   const uniqueRoles = Array.from(new Set(allClubMembers.map((m) => m.role)))
@@ -165,6 +172,55 @@ export default function ClubLeaderMembersPage() {
   }
 
   const hasActiveFilters = Object.values(activeFilters).some((v) => v && v !== "all") || Boolean(searchTerm)
+
+  // --- HÀM MỞ MODAL XÓA ---
+  const handleInitiateRemove = (member: any) => {
+    setMemberToRemove(member)
+    setRemoveReason("") // Reset lý do
+    setIsRemoveDialogOpen(true)
+  }
+
+  // --- HÀM XỬ LÝ API XÓA ---
+  const handleConfirmRemove = async () => {
+    if (!memberToRemove) return
+    if (!removeReason.trim()) {
+      toast({
+        title: "Reason Required",
+        description: "Please enter a reason for removing this member.",
+        variant: "destructive"
+      })
+      return
+    }
+
+    setIsRemoving(true)
+    try {
+      const membershipIdNum = typeof memberToRemove.id === 'string' ? parseInt(memberToRemove.id, 10) : memberToRemove.id
+
+      // Gọi API removeMember mới (có body reason)
+      await removeMember(membershipIdNum, removeReason)
+
+      // Invalidate query để load lại list
+      queryClient.invalidateQueries({ queryKey: ['clubs', clubId, 'members'] })
+
+      toast({
+        title: "Member Removed",
+        description: `${memberToRemove.fullName} has been removed successfully.`
+      })
+
+      setIsRemoveDialogOpen(false)
+      setMembersPage(1)
+    } catch (error: any) {
+      console.error("Remove error:", error)
+      toast({
+        title: "Failed to Remove Member",
+        description: error?.message || "An error occurred while removing the member",
+        variant: "destructive"
+      })
+    } finally {
+      setIsRemoving(false)
+    }
+  }
+
 
   const handleDeleteMember = async (membershipId: string) => {
     const member = allClubMembers.find((m: any) => m.id === membershipId)
@@ -632,9 +688,11 @@ export default function ClubLeaderMembersPage() {
                             {member.role !== "LEADER" && member.role !== "VICE_LEADER" && (
                               <Button
                                 size="sm"
-                                className="rounded-lg bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 dark:bg-red-900/30 
-                                dark:text-red-400 dark:hover:bg-red-900/50 dark:hover:text-red-300 transition-all duration-200 border border-red-200 dark:border-red-800/50"
-                                onClick={() => handleDeleteMember(member.id)}
+                                // className="rounded-lg bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 dark:bg-red-900/30 
+                                // dark:text-red-400 dark:hover:bg-red-900/50 dark:hover:text-red-300 transition-all duration-200 border border-red-200 dark:border-red-800/50"
+                                // onClick={() => handleDeleteMember(member.id)}
+                                className="rounded-lg bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 border border-red-200"
+                                onClick={() => handleInitiateRemove(member)} // <-- Gọi hàm mở modal
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -646,7 +704,7 @@ export default function ClubLeaderMembersPage() {
                   )
                 })}
 
-                {membersPages > 1 && (
+                {/* {membersPages > 1 && (
                   <div className="flex items-center justify-center gap-2 mt-8 pt-4">
                     <button
                       onClick={goPrev}
@@ -684,11 +742,73 @@ export default function ClubLeaderMembersPage() {
                       <ChevronRight className="h-4 w-4" />
                     </button>
                   </div>
+                )} */}
+                {membersPages > 1 && (
+                  <div className="flex items-center justify-center gap-2 mt-8 pt-4">
+                    <button onClick={goPrev} disabled={membersPage === 1} className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-cyan-500 disabled:text-gray-400">
+                      <ChevronLeft className="h-4 w-4" /> Previous
+                    </button>
+                    <span className="text-sm font-medium text-cyan-500">{membersPage}/{membersPages}</span>
+                    <button onClick={goNext} disabled={membersPage === membersPages} className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-cyan-500 disabled:text-gray-400">
+                      Next <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
                 )}
               </>
             )}
           </div>
         </div>
+
+        {/* --- MODAL XOÁ THÀNH VIÊN (MỚI) --- */}
+        <Dialog open={isRemoveDialogOpen} onOpenChange={setIsRemoveDialogOpen}>
+          <DialogContent className="sm:max-w-[500px] dark:bg-slate-900 dark:border-slate-700">
+            <DialogHeader>
+              <DialogTitle className="text-red-600 flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5" />
+                Confirm Removal
+              </DialogTitle>
+              <DialogDescription className="text-slate-600 dark:text-slate-300">
+                Are you sure you want to remove <span className="font-bold text-slate-900 dark:text-white">{memberToRemove?.fullName}</span> from the club?
+                <br />
+                This action requires a reason.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="py-4 space-y-3">
+              <div className="space-y-2">
+                <Label htmlFor="remove-reason" className="text-sm font-medium">
+                  Reason for removal <span className="text-red-500">*</span>
+                </Label>
+                {/* Sử dụng textarea để nhập lý do dài hơn */}
+                <textarea
+                  id="remove-reason"
+                  placeholder="Enter reason (e.g., Violated club rules, Inactive for too long...)"
+                  className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-slate-800 dark:border-slate-700"
+                  value={removeReason}
+                  onChange={(e) => setRemoveReason(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button
+                variant="outline"
+                onClick={() => setIsRemoveDialogOpen(false)}
+                disabled={isRemoving}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleConfirmRemove}
+                disabled={isRemoving || !removeReason.trim()}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                {isRemoving ? "Removing..." : "Remove Member"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Leave Requests Modal */}
         <Dialog open={showLeaveRequestModal} onOpenChange={setShowLeaveRequestModal}>

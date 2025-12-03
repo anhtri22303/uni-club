@@ -42,6 +42,8 @@ export default function UniStaffClubsPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [clubToDelete, setClubToDelete] = useState<{ id: string, name: string } | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  // State để lưu description đang cần xem chi tiết
+  const [selectedDescription, setSelectedDescription] = useState<string | null>(null)
 
   // Fetch club list
   useEffect(() => {
@@ -124,6 +126,7 @@ export default function UniStaffClubsPage() {
         major: majorName, // Giữ nguyên tên major để lọc và hiển thị
         majorColor: majorColor, // Thêm majorColor vào enhancedClubs
         leaderName: club.leaderName ?? "-",
+        description: club.description,
         members: club.memberCount ?? 0,
         events: club.approvedEvents ?? 0,
       }
@@ -241,6 +244,21 @@ export default function UniStaffClubsPage() {
         </div>
       ),
     },
+
+    {
+      key: "description" as const,
+      label: "Description",
+      render: (value: string) => (
+        <div
+          className="text-sm text-muted-foreground max-w-[200px] truncate cursor-pointer hover:text-primary hover:underline"
+          title="Click to view full description" // Tooltip gợi ý
+          onClick={() => setSelectedDescription(value)} // Mở modal khi click
+        >
+          {value || "-"}
+        </div>
+      ),
+    },
+
     {
       key: "members" as const,
       label: "Members",
@@ -256,7 +274,11 @@ export default function UniStaffClubsPage() {
       label: "Events",
       render: (value: number) => (
         <div className="flex items-center gap-1">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" 
+          className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
           {value}
         </div>
       ),
@@ -271,7 +293,11 @@ export default function UniStaffClubsPage() {
           // SỬA: Gọi hàm handleDelete mới
           onClick={() => handleDelete(club.id, club.name)}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" 
+          className="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
         </button>
       ),
     },
@@ -417,7 +443,8 @@ export default function UniStaffClubsPage() {
           open={showDeleteModal}
           onOpenChange={setShowDeleteModal}
           title={`Delete Club: ${clubToDelete?.name ?? '...'}`}
-          description="Are you absolutely sure you want to delete this club? This action cannot be undone and will permanently remove all associated data."
+          description="Are you absolutely sure you want to delete this club? This action cannot 
+          be undone and will permanently remove all associated data."
         >
           <div className="space-y-4">
             <p className="text-sm text-red-500 font-medium">
@@ -459,6 +486,27 @@ export default function UniStaffClubsPage() {
                 ) : (
                   "Confirm Delete"
                 )}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+
+        {/* --- MODAL XEM DESCRIPTION --- */}
+        <Modal
+          open={!!selectedDescription}
+          onOpenChange={(open) => !open && setSelectedDescription(null)}
+          title="Club Description"
+          // description="Full details about the club."
+        >
+          <div className="mt-4">
+            <div className="p-4 bg-slate-50 rounded-md border text-sm text-slate-700 max-h-[60vh] 
+            overflow-y-auto whitespace-pre-wrap leading-relaxed border-slate-300">
+              {selectedDescription || "No description available."}
+            </div>
+
+            <div className="flex justify-end pt-4">
+              <Button onClick={() => setSelectedDescription(null)}>
+                Close
               </Button>
             </div>
           </div>

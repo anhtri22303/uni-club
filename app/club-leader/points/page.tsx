@@ -971,6 +971,7 @@ export default function ClubLeaderRewardDistributionPage() {
                             checked={isSelected}
                             onChange={() => handleToggleSelect(member.id)}
                             className="w-5 h-5 accent-primary cursor-pointer"
+                            aria-label={`Select ${member.fullName}`}
                           />
 
                           {/* NÚT HIỂN THỊ ĐIỂM (CẬP NHẬT LOGIC HIỂN THỊ) */}
