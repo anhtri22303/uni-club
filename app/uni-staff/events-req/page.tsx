@@ -488,36 +488,26 @@ export default function UniStaffEventRequestsPage() {
 		loadEventTransactionHistory()
 	}
 
-	// Compute counts by status (prefer `status` field). Fallback to type-based heuristics when missing
-	// Only count events with valid date/time
+	// Compute counts by status from ALL events (including those with invalid dates)
+	// Stats cards show total counts regardless of date validity
 	const totalCount = events.length
 	const waitingUniStaffCount = events.filter((e) => 
-		(e.status ?? "").toUpperCase() === "PENDING_UNISTAFF" && 
-		hasValidDateTime(e) && 
-		!isEventExpired(e)
+		(e.status ?? "").toUpperCase() === "PENDING_UNISTAFF"
 	).length
 	const approvedCount = events.filter((e) => 
-		(e.status ?? "").toUpperCase() === "APPROVED" && 
-		hasValidDateTime(e) && 
-		!isEventExpired(e)
+		(e.status ?? "").toUpperCase() === "APPROVED"
 	).length
 	const ongoingCount = events.filter((e) => 
-		(e.status ?? "").toUpperCase() === "ONGOING" && 
-		hasValidDateTime(e) && 
-		!isEventExpired(e)
+		(e.status ?? "").toUpperCase() === "ONGOING"
 	).length
 	const rejectedCount = events.filter((e) => 
-		(e.status ?? "").toUpperCase() === "REJECTED" && 
-		hasValidDateTime(e)
+		(e.status ?? "").toUpperCase() === "REJECTED"
 	).length
 	const completedCount = events.filter((e) => 
-		(e.status ?? "").toUpperCase() === "COMPLETED" && 
-		hasValidDateTime(e)
+		(e.status ?? "").toUpperCase() === "COMPLETED"
 	).length
 	const waitingCoClubCount = events.filter((e) => 
-		(e.status ?? "").toUpperCase() === "PENDING_COCLUB" && 
-		hasValidDateTime(e) && 
-		!isEventExpired(e)
+		(e.status ?? "").toUpperCase() === "PENDING_COCLUB"
 	).length
 
 	return (
