@@ -104,7 +104,7 @@ export function GoogleSignInButton({ mode = "sign-in", onClick, onLoginSuccess }
   }
 
   return (
-    <div className="w-full">
+    <div className="w-full flex justify-center">
       {isLoading ? (
         <Button 
           disabled 
