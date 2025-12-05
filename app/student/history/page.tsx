@@ -11,7 +11,7 @@ import { useAuth } from "@/contexts/auth-context"
 import { useData } from "@/contexts/data-context"
 import { useMyMemberApplications, useMyClubApplications, useMyRedeemOrders, useMyEvents, useProfile } from "@/hooks/use-query-hooks"
 import { Skeleton } from "@/components/ui/skeleton"
-import { History, UserPlus, Gift, CheckCircle, Users, Building2, Package, Calendar, MessageSquare, ChevronDown, ChevronUp, Star, Wallet, ArrowUpRight, ArrowDownLeft, ClipboardCheck } from "lucide-react"
+import { History, UserPlus, Gift, CheckCircle, Users, Building2, Package, Calendar, MessageSquare, ChevronDown, ChevronUp, Star, Wallet, ArrowUpRight, ArrowDownLeft, ClipboardCheck, LayoutGrid, Table2 } from "lucide-react"
 import { useState, useMemo, useEffect } from "react"
 import { getMyFeedbackByMembershipId, Feedback } from "@/service/feedbackApi"
 import { getWallet, getWalletTransactions, ApiWallet, ApiWalletTransaction } from "@/service/walletApi"
@@ -35,6 +35,9 @@ export default function MemberHistoryPage() {
   const [walletTransactions, setWalletTransactions] = useState<ApiWalletTransaction[]>([])
   const [walletLoading, setWalletLoading] = useState(false)
   const [walletError, setWalletError] = useState<string | null>(null)
+  const [walletViewMode, setWalletViewMode] = useState<"card" | "table">("card")
+  const [walletTypeFilter, setWalletTypeFilter] = useState<string>("all")
+  const [walletDateFilter, setWalletDateFilter] = useState<string>("all")
   // USE REACT QUERY for applications
   const { data: remoteApps, isLoading: memberLoading, error: memberError } = useMyMemberApplications()
   const { data: clubApps, isLoading: clubLoading, error: clubError } = useMyClubApplications()
@@ -448,6 +451,47 @@ export default function MemberHistoryPage() {
   const getOfferTitle = (offerId: string) => {
     return offers.find((o) => o.id === offerId)?.title || "Unknown Offer"
   }
+
+  // Filter wallet transactions
+  const filteredWalletTransactions = useMemo(() => {
+    let filtered = [...walletTransactions]
+    
+    // Filter by type
+    if (walletTypeFilter !== "all") {
+      filtered = filtered.filter(t => t.type === walletTypeFilter)
+    }
+    
+    // Filter by date
+    if (walletDateFilter !== "all") {
+      const now = new Date()
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+      
+      filtered = filtered.filter(t => {
+        const transactionDate = new Date(t.createdAt)
+        
+        switch (walletDateFilter) {
+          case "today":
+            return transactionDate >= today
+          case "week":
+            const weekAgo = new Date(today)
+            weekAgo.setDate(weekAgo.getDate() - 7)
+            return transactionDate >= weekAgo
+          case "month":
+            const monthAgo = new Date(today)
+            monthAgo.setMonth(monthAgo.getMonth() - 1)
+            return transactionDate >= monthAgo
+          case "year":
+            const yearAgo = new Date(today)
+            yearAgo.setFullYear(yearAgo.getFullYear() - 1)
+            return transactionDate >= yearAgo
+          default:
+            return true
+        }
+      })
+    }
+    
+    return filtered
+  }, [walletTransactions, walletTypeFilter, walletDateFilter])
 
   return (
     <ProtectedRoute allowedRoles={["student", "member"]}>
@@ -869,20 +913,165 @@ export default function MemberHistoryPage() {
 
                 {/* Transaction History */}
                 <div>
-                  <h3 className="font-medium text-lg mb-3">Transaction History</h3>
-                  {walletTransactions.length === 0 ? (
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-medium text-lg">Transaction History</h3>
+                    {walletTransactions.length > 0 && (
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setWalletViewMode("card")}
+                          className={`p-2 rounded-md transition-colors ${
+                            walletViewMode === "card"
+                              ? "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
+                              : "hover:bg-muted"
+                          }`}
+                          title="Card View"
+                        >
+                          <LayoutGrid className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => setWalletViewMode("table")}
+                          className={`p-2 rounded-md transition-colors ${
+                            walletViewMode === "table"
+                              ? "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
+                              : "hover:bg-muted"
+                          }`}
+                          title="Table View"
+                        >
+                          <Table2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Filters */}
+                  {walletTransactions.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      <Select value={walletTypeFilter} onValueChange={setWalletTypeFilter}>
+                        <SelectTrigger className="w-[200px]">
+                          <SelectValue placeholder="Filter by type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Types</SelectItem>
+                          {Array.from(new Set(walletTransactions.map(t => t.type))).sort().map((type) => (
+                            <SelectItem key={type} value={type}>
+                              {type.replace(/_/g, " ")}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      
+                      <Select value={walletDateFilter} onValueChange={setWalletDateFilter}>
+                        <SelectTrigger className="w-[200px]">
+                          <SelectValue placeholder="Filter by date" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Time</SelectItem>
+                          <SelectItem value="today">Today</SelectItem>
+                          <SelectItem value="week">This Week</SelectItem>
+                          <SelectItem value="month">This Month</SelectItem>
+                          <SelectItem value="year">This Year</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      
+                      {(walletTypeFilter !== "all" || walletDateFilter !== "all") && (
+                        <button
+                          onClick={() => {
+                            setWalletTypeFilter("all")
+                            setWalletDateFilter("all")
+                          }}
+                          className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          Clear Filters
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  {filteredWalletTransactions.length === 0 && walletTransactions.length === 0 ? (
                     <Card>
                       <CardContent className="pt-6">
                         <EmptyState
                           icon={History}
-                          title="No transactions yet"
-                          description="Your transaction history will appear here."
+                          title={filteredWalletTransactions.length === 0 && walletTransactions.length > 0 ? "No matching transactions" : "No transactions yet"}
+                          description={filteredWalletTransactions.length === 0 && walletTransactions.length > 0 ? "Try adjusting your filters to see more transactions." : "Your transaction history will appear here."}
                         />
                       </CardContent>
                     </Card>
+                  ) : walletViewMode === "table" ? (
+                    <div className="border rounded-lg overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead className="bg-muted/50">
+                            <tr>
+                              <th className="text-left p-3 text-sm font-semibold">Type</th>
+                              <th className="text-left p-3 text-sm font-semibold">Description</th>
+                              <th className="text-left p-3 text-sm font-semibold">From/To</th>
+                              <th className="text-right p-3 text-sm font-semibold">Amount</th>
+                              <th className="text-left p-3 text-sm font-semibold">Date</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {filteredWalletTransactions.map((transaction, index) => {
+                              const isIncoming = transaction.signedAmount.startsWith("+")
+                              return (
+                                <tr
+                                  key={transaction.id}
+                                  className={`border-t hover:bg-muted/30 transition-colors ${
+                                    index % 2 === 0 ? "bg-background" : "bg-muted/10"
+                                  }`}
+                                >
+                                  <td className="p-3">
+                                    <div className="flex items-center gap-2">
+                                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isIncoming ? "bg-green-100 dark:bg-green-900" : "bg-red-100 dark:bg-red-900"}`}>
+                                        {isIncoming ? (
+                                          <ArrowDownLeft className={`h-4 w-4 ${isIncoming ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`} />
+                                        ) : (
+                                          <ArrowUpRight className={`h-4 w-4 ${isIncoming ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`} />
+                                        )}
+                                      </div>
+                                      <Badge variant="outline" className="text-xs whitespace-nowrap">
+                                        {transaction.type.replace(/_/g, " ")}
+                                      </Badge>
+                                    </div>
+                                  </td>
+                                  <td className="p-3">
+                                    <p className="text-sm">{transaction.description}</p>
+                                  </td>
+                                  <td className="p-3">
+                                    <div className="text-xs text-muted-foreground">
+                                      {transaction.senderName && (
+                                        <div>From: <span className="font-medium">{transaction.senderName}</span></div>
+                                      )}
+                                      {transaction.receiverName && (
+                                        <div>To: <span className="font-medium">{transaction.receiverName}</span></div>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="p-3 text-right">
+                                    <span className={`text-base font-bold whitespace-nowrap ${isIncoming ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                                      {transaction.signedAmount} pts
+                                    </span>
+                                  </td>
+                                  <td className="p-3">
+                                    <p className="text-xs text-muted-foreground whitespace-nowrap">
+                                      {new Date(transaction.createdAt).toLocaleString("en-US", {
+                                        year: "numeric",
+                                        month: "short",
+                                        day: "numeric",
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                      })}
+                                    </p>
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
                   ) : (
                     <div className="space-y-3">
-                      {walletTransactions.map((transaction) => {
+                      {filteredWalletTransactions.map((transaction) => {
                         const isIncoming = transaction.signedAmount.startsWith("+")
                         return (
                           <Card key={transaction.id} className={`border-l-4 ${isIncoming ? "border-l-green-500 dark:border-l-green-400" : "border-l-red-500 dark:border-l-red-400"} transition-all hover:shadow-md`}>

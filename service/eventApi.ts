@@ -923,3 +923,88 @@ export const getEventByDate = async (date: string): Promise<Event[]> => {
     throw error
   }
 }
+
+/**
+ * Event attendee check-in information
+ */
+export interface EventAttendee {
+  userId: number
+  fullName: string
+  email: string
+  attendanceLevel: string
+  checkinAt: string | null
+  checkMidAt: string | null
+  checkoutAt: string | null
+}
+
+/**
+ * GET /api/events/{eventId}/attendees
+ * Lấy danh sách sinh viên đã check-in vào sự kiện
+ * @param eventId - ID của sự kiện
+ * @returns Array of EventAttendee objects
+ */
+export const getEventCheckin = async (eventId: string | number): Promise<EventAttendee[]> => {
+  try {
+    const response = await axiosInstance.get(`/api/events/${eventId}/attendees`)
+    const resData: any = response.data
+    console.log(`Fetched attendees for event ${eventId}:`, resData)
+    
+    // Response structure: Direct array of attendees
+    if (Array.isArray(resData)) {
+      return resData
+    }
+    
+    // If response has wrapper structure like { success, data, message }
+    if (resData?.data && Array.isArray(resData.data)) {
+      return resData.data
+    }
+    
+    // Fallback: empty array
+    return []
+  } catch (error) {
+    console.error(`Error fetching attendees for event ${eventId}:`, error)
+    throw error
+  }
+}
+
+/**
+ * Event registration information
+ */
+export interface EventRegistrationDetail {
+  userId: number
+  fullName: string
+  email: string
+  status: string
+  registeredAt: string | null
+  committedPoints: number
+}
+
+/**
+ * GET /api/events/{eventId}/registrations
+ * Lấy danh sách sinh viên đã đăng ký sự kiện
+ * @param eventId - ID của sự kiện
+ * @returns Array of EventRegistrationDetail objects
+ */
+export const getEventRegistrations = async (eventId: string | number): Promise<EventRegistrationDetail[]> => {
+  try {
+    const response = await axiosInstance.get(`/api/events/${eventId}/registrations`)
+    const resData: any = response.data
+    console.log(`Fetched registrations for event ${eventId}:`, resData)
+    
+    // Response structure: Direct array of registrations
+    if (Array.isArray(resData)) {
+      return resData
+    }
+    
+    // If response has wrapper structure like { success, data, message }
+    if (resData?.data && Array.isArray(resData.data)) {
+      return resData.data
+    }
+    
+    // Fallback: empty array
+    return []
+  } catch (error) {
+    console.error(`Error fetching registrations for event ${eventId}:`, error)
+    throw error
+  }
+}

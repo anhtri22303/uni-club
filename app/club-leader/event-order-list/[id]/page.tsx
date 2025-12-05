@@ -618,7 +618,7 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                                 {order.status === 'PARTIALLY_REFUNDED' ? 'Partial Refund' : 'Refunded'}
                                             </p>
                                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                                {order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED' ? 'Refund processed' : 'If needed'}
+                                                {order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED' ? 'Refund processed' : ''}
                                             </p>
                                             {/* {(() => {
                                                 const latestDate = getLatestLogDate('REFUND');
@@ -653,6 +653,25 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                                             {date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
                                                         </p>
                                                     );
+                                                }
+                                                return null;
+                                            })()}
+
+                                            {/* Hiển thị thông báo khi quá 24h */}
+                                            {(() => {
+                                                // Chỉ hiển thị thông báo khi đơn hàng đã Completed nhưng chưa Refund
+                                                if (order.status === 'COMPLETED' && order.completedAt) {
+                                                    const completedTime = new Date(order.completedAt).getTime();
+                                                    const currentTime = new Date().getTime();
+                                                    const hoursPassed = (currentTime - completedTime) / (1000 * 60 * 60);
+                                                    
+                                                    if (hoursPassed > 24) {
+                                                        return (
+                                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 italic">
+                                                                Cannot refund after 24h Delivered
+                                                            </p>
+                                                        );
+                                                    }
                                                 }
                                                 return null;
                                             })()}
@@ -742,6 +761,9 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                                             <Calendar className="h-3.5 w-3.5" />
                                                             <span>{new Date(order.completedAt).toLocaleString('en-US')}</span>
                                                         </div>
+                                                        <p className="mt-3 text-xs text-green-600 dark:text-green-400 italic">
+                                                            This order can only be refunded within 24 hours from delivery.
+                                                        </p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -965,22 +987,53 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
                                 </Card>
                             )}
 
-                            {(order.status === "COMPLETED" || order.status === "PARTIALLY_REFUNDED") && (
-                                <Card className="border-0 shadow-xl overflow-hidden bg-gradient-to-br from-red-50 via-rose-50/50 to-white dark:from-red-900/20 dark:via-rose-900/20 dark:to-slate-800 dark:border-slate-700">
-                                    <div className="h-2 bg-gradient-to-r from-red-400 via-rose-500 to-pink-500" />
-                                    <CardHeader className="pb-3">
-                                        <CardTitle className="flex items-center gap-3 text-lg dark:text-white">
-                                            <div className="p-2 rounded-lg bg-gradient-to-br from-red-500 to-rose-600 shadow-lg">
-                                                <Undo2 className="h-5 w-5 text-white" />
+                            {(order.status === "COMPLETED" || order.status === "PARTIALLY_REFUNDED") && (() => {
+                                // Kiểm tra xem đã quá 24h kể từ completedAt chưa
+                                const completedTime = new Date(order.completedAt).getTime();
+                                const currentTime = new Date().getTime();
+                                const hoursPassed = (currentTime - completedTime) / (1000 * 60 * 60);
+                                const isWithin24Hours = hoursPassed <= 24;
+                                const hoursRemaining = Math.max(0, 24 - hoursPassed);
+
+                                // Nếu đã quá 24h, không hiển thị khung Refund Options
+                                if (!isWithin24Hours) {
+                                    return null;
+                                }
+
+                                return (
+                                    <Card className="border-0 shadow-xl overflow-hidden bg-gradient-to-br from-red-50 via-rose-50/50 to-white dark:from-red-900/20 dark:via-rose-900/20 dark:to-slate-800 dark:border-slate-700">
+                                        <div className="h-2 bg-gradient-to-r from-red-400 via-rose-500 to-pink-500" />
+                                        <CardHeader className="pb-3">
+                                            <CardTitle className="flex items-center gap-3 text-lg dark:text-white">
+                                                <div className="p-2 rounded-lg bg-gradient-to-br from-red-500 to-rose-600 shadow-lg">
+                                                    <Undo2 className="h-5 w-5 text-white" />
+                                                </div>
+                                                Refund Options
+                                            </CardTitle>
+                                        </CardHeader>
+                                        <CardContent>
+                                            {/* Thông báo cảnh báo 24h */}
+                                            <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg">
+                                                <div className="flex items-start gap-2">
+                                                    <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                                                    <div className="flex-1">
+                                                        <p className="text-xs font-semibold text-amber-800 dark:text-amber-300 mb-1">Refund Time Limit</p>
+                                                        <p className="text-xs text-amber-700 dark:text-amber-400">
+                                                            Refunds can only be processed within 24 hours from delivery completion.
+                                                            {hoursRemaining > 0 && (
+                                                                <span className="block mt-1 font-semibold">
+                                                                    Time remaining: {hoursRemaining.toFixed(1)} hours
+                                                                </span>
+                                                            )}
+                                                        </p>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            Refund Options
-                                        </CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <p className="text-sm text-gray-600 dark:text-slate-300 mb-4">
-                                            Process a refund for this order if needed. You can refund the entire order or just a portion.
-                                        </p>
-                                        <Dialog open={isRefundModalOpen} onOpenChange={setIsRefundModalOpen}>
+
+                                            <p className="text-sm text-gray-600 dark:text-slate-300 mb-4">
+                                                Process a refund for this order if needed. You can refund the entire order or just a portion.
+                                            </p>
+                                            <Dialog open={isRefundModalOpen} onOpenChange={setIsRefundModalOpen}>
                                             <DialogTrigger asChild>
                                                 <Button
                                                     className="w-full h-12 bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 dark:from-red-600 dark:to-rose-700 dark:hover:from-red-700 dark:hover:to-rose-800 text-white font-semibold shadow-lg hover:shadow-xl transition-all text-base"
@@ -1166,7 +1219,8 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
 
                                     </CardContent>
                                 </Card>
-                            )}
+                                );
+                            })()}
                         </div>
                     </div>
 
