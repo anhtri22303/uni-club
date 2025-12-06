@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Pagination } from "@/components/pagination"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { CalendarModal } from "@/components/calendar-modal"
+import { EventDateTimeDisplay } from "@/components/event-date-time-display"
 import { usePagination } from "@/hooks/use-pagination"
 import { useState } from "react"
 import { Calendar, Users, Ticket, Layers, History, X, Gift } from "lucide-react"
@@ -113,13 +114,49 @@ export default function MemberEventsPage() {
   // Store all events for calendar (without filter)
   const allClubEvents = selectedClubEvents
 
+  // Helper function to sort events by date and time (newest to oldest)
+  const sortEventsByDateTime = (eventList: any[]) => {
+    return eventList.sort((a: any, b: any) => {
+      // Parse dates for comparison - support both multi-day and single-day events
+      // For multi-day, use first day's date (startDate)
+      let dateAStr = a.startDate || a.date || "1970-01-01"
+      let dateBStr = b.startDate || b.date || "1970-01-01"
+      
+      // If event has days array, use first day's date
+      if (a.days && a.days.length > 0) dateAStr = a.days[0].date
+      if (b.days && b.days.length > 0) dateBStr = b.days[0].date
+
+      const dateA = new Date(dateAStr)
+      const dateB = new Date(dateBStr)
+
+      // Compare dates first (newest first)
+      if (dateA.getTime() !== dateB.getTime()) {
+        return dateB.getTime() - dateA.getTime()
+      }
+
+      // If dates are equal, compare times (latest startTime first)
+      const timeAStr = timeObjectToString(a.startTime) || a.time || "00:00"
+      const timeBStr = timeObjectToString(b.startTime) || b.time || "00:00"
+
+      // Convert time strings to comparable format (HH:MM to minutes)
+      const parseTime = (timeStr: string) => {
+        const [hours, minutes] = timeStr.split(":").map(Number)
+        return hours * 60 + minutes
+      }
+
+      return parseTime(timeBStr) - parseTime(timeAStr)
+    })
+  }
+
   // Use selectedClubEvents instead of eventsData for filtering
-  const filteredEvents = selectedClubEvents.filter(
-    (event: any) =>
-      (event.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (event.hostClub?.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      clubsData.find((c: any) => c.id === event.hostClub?.id)?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      clubs.find((c) => c.id === event.hostClub?.id)?.name.toLowerCase().includes(searchTerm.toLowerCase()),
+  const filteredEvents = sortEventsByDateTime(
+    selectedClubEvents.filter(
+      (event: any) =>
+        (event.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (event.hostClub?.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        clubsData.find((c: any) => c.id === event.hostClub?.id)?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        clubs.find((c) => c.id === event.hostClub?.id)?.name.toLowerCase().includes(searchTerm.toLowerCase()),
+    )
   )
 
   // Helper function to check if event is registered
@@ -148,8 +185,18 @@ export default function MemberEventsPage() {
 
     // Default: Show future PENDING and APPROVED events (hide expired/completed and rejected)
     const isExpired = isEventExpired(event)
-    const eventDate = event.startDate || event.date
-    const isFutureEvent = eventDate && new Date(eventDate) >= new Date(new Date().toDateString())
+    // For multi-day events, check if last day is today or future
+    // For single-day events, check if event date is today or future
+    let isFutureEvent = false
+    if (event.days && event.days.length > 0) {
+      // Multi-day: check if last day is today or future
+      const lastDay = event.days[event.days.length - 1]
+      isFutureEvent = lastDay.date && new Date(lastDay.date) >= new Date(new Date().toDateString())
+    } else {
+      // Single-day: check if event date is today or future
+      const eventDate = event.startDate || event.date
+      isFutureEvent = eventDate && new Date(eventDate) >= new Date(new Date().toDateString())
+    }
 
     // By default, only show future events that are APPROVED, ONGOING, or COMPLETED
     const expiredFilter = activeFilters["expired"]
@@ -550,37 +597,7 @@ export default function MemberEventsPage() {
                       <div className="space-y-3">
                         <p className="text-sm text-muted-foreground line-clamp-2">{event.description}</p>
 
-                        {isMultiDayEvent(event) ? (
-                          <>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <Calendar className="h-4 w-4" />
-                              <span className="font-medium">{formatEventDateRange(event, "en-US")}</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <Ticket className="h-4 w-4" />
-                              <span>{getEventDurationDays(event)} day{getEventDurationDays(event) > 1 ? 's' : ''} event</span>
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <Calendar className="h-4 w-4" />
-                              {event.date && new Date(event.date).toLocaleDateString("en-US", {
-                                weekday: "long",
-                                year: "numeric",
-                                month: "long",
-                                day: "numeric",
-                              })}
-                            </div>
-
-                            {(event.startTime && event.endTime) && (
-                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <Ticket className="h-4 w-4" />
-                                {timeObjectToString(event.startTime)} - {timeObjectToString(event.endTime)}
-                              </div>
-                            )}
-                          </>
-                        )}
+                        <EventDateTimeDisplay event={event} variant="compact" />
 
                         <div className="flex flex-col sm:flex-row gap-2">
                           <Button
