@@ -21,8 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 const getBudgetCalculationPolicies = (
   commitPointCost: number,
   maxCheckInCount: number,
-  minBudget: number,
-  maxBudget: number,
+  suggestedBudget: number,
   isPublicOrDefault: boolean
 ) => [
   {
@@ -30,7 +29,7 @@ const getBudgetCalculationPolicies = (
     title: "Budget Calculation Formula",
     items: [
       {
-        label: "Commit Point Cost",
+        label: isPublicOrDefault ? "Reward Point for Each Check-in" : "Commit Point Cost",
         points: isPublicOrDefault
           ? `${commitPointCost} pts (default for PUBLIC events)`
           : `${commitPointCost} pts`,
@@ -40,12 +39,14 @@ const getBudgetCalculationPolicies = (
         points: `${maxCheckInCount} attendees`,
       },
       {
-        label: "Min Budget Formula",
-        points: "Commit Point Cost × Max Check-in Count × 2",
+        label: "Budget Formula",
+        points: isPublicOrDefault
+          ? "Reward Point for Each Check-in × Max Check-in Count"
+          : "Commit Point Cost × Max Check-in Count × 2",
       },
       {
-        label: "Max Budget Formula",
-        points: "Commit Point Cost × Max Check-in Count × 5",
+        label: "Suggested Budget",
+        points: `${suggestedBudget.toLocaleString()} pts`,
       },
     ],
   },
@@ -93,15 +94,16 @@ export function ApproveBudgetModal(props: ApproveBudgetModalProps) {
     return commitPointCost;
   }, [eventType, commitPointCost]);
 
-  // Tính min và max budget với effectiveCommitPointCost
-  const minBudget = useMemo(
-    () => effectiveCommitPointCost * maxCheckInCount * 2,
-    [effectiveCommitPointCost, maxCheckInCount]
-  );
-  const maxBudget = useMemo(
-    () => effectiveCommitPointCost * maxCheckInCount * 5,
-    [effectiveCommitPointCost, maxCheckInCount]
-  );
+  // Tính suggested budget: PUBLIC events không nhân x2, các event khác nhân x2
+  const suggestedBudget = useMemo(() => {
+    const isPublicEvent = eventType?.toUpperCase() === "PUBLIC" || commitPointCost === 0;
+    if (isPublicEvent) {
+      // PUBLIC: Commit Point × Max Check-in Count (không x2)
+      return effectiveCommitPointCost * maxCheckInCount;
+    }
+    // PRIVATE/SPECIAL: Commit Point × Max Check-in Count × 2
+    return effectiveCommitPointCost * maxCheckInCount * 2;
+  }, [effectiveCommitPointCost, maxCheckInCount, eventType, commitPointCost]);
 
   // Tạo policies động dựa trên dữ liệu thực tế
   const budgetPolicies = useMemo(
@@ -109,24 +111,28 @@ export function ApproveBudgetModal(props: ApproveBudgetModalProps) {
       getBudgetCalculationPolicies(
         effectiveCommitPointCost,
         maxCheckInCount,
-        minBudget,
-        maxBudget,
+        suggestedBudget,
         eventType?.toUpperCase() === "PUBLIC" || commitPointCost === 0
       ),
-    [effectiveCommitPointCost, maxCheckInCount, minBudget, maxBudget, eventType, commitPointCost]
+    [effectiveCommitPointCost, maxCheckInCount, suggestedBudget, eventType, commitPointCost]
   );
 
   useEffect(() => {
     if (!open) return;
     setApprovedPointsInput(defaultRequestPoints ? String(defaultRequestPoints) : "");
     // Debug: Kiểm tra dữ liệu nhận được
+    const isPublic = eventType?.toUpperCase() === "PUBLIC" || commitPointCost === 0;
+    const effectiveCommit = isPublic ? 100 : commitPointCost;
+    const calculatedBudget = isPublic 
+      ? effectiveCommit * maxCheckInCount 
+      : effectiveCommit * maxCheckInCount * 2;
     console.log("  Modal Debug:", {
       eventType,
       originalCommitPointCost: commitPointCost,
-      effectiveCommitPointCost: eventType?.toUpperCase() === "PUBLIC" || commitPointCost === 0 ? 100 : commitPointCost,
+      effectiveCommitPointCost: effectiveCommit,
       maxCheckInCount,
-      minBudget: (eventType?.toUpperCase() === "PUBLIC" || commitPointCost === 0 ? 100 : commitPointCost) * maxCheckInCount * 2,
-      maxBudget: (eventType?.toUpperCase() === "PUBLIC" || commitPointCost === 0 ? 100 : commitPointCost) * maxCheckInCount * 5,
+      isPublicEvent: isPublic,
+      suggestedBudget: calculatedBudget,
     });
   }, [open, defaultRequestPoints, commitPointCost, maxCheckInCount, eventType]);
 
@@ -135,12 +141,11 @@ export function ApproveBudgetModal(props: ApproveBudgetModalProps) {
     return Number.isFinite(n) && n >= 0 ? n : 0;
   }, [approvedPointsInput]);
 
-  // Kiểm tra validation
+  // Kiểm tra validation - chỉ cần không để trống và là số dương
   const isValidBudget = useMemo(() => {
     if (approvedPointsInput === "") return false; // Không được để trống
-    if (minBudget === 0 || maxBudget === 0) return true; // Không validate nếu không có dữ liệu
-    return approvedPoints >= minBudget && approvedPoints <= maxBudget;
-  }, [approvedPoints, approvedPointsInput, minBudget, maxBudget]);
+    return approvedPoints > 0; // Chỉ cần là số dương
+  }, [approvedPoints, approvedPointsInput]);
 
   const handleApprove = async () => {
     setSubmitting(true);
@@ -189,22 +194,14 @@ export function ApproveBudgetModal(props: ApproveBudgetModalProps) {
               >
                 Approved Budget Points
               </Label>
-              {/* Hiển thị Min và Max */}
+              {/* Hiển thị Suggested Budget */}
               <div className="flex gap-4 mb-2">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-muted-foreground">
-                    Min:
+                    Suggested Budget:
                   </span>
                   <span className="text-sm font-semibold text-blue-600">
-                    {minBudget > 0 ? `${minBudget.toLocaleString()} pts` : "N/A"}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-muted-foreground">
-                    Max:
-                  </span>
-                  <span className="text-sm font-semibold text-blue-600">
-                    {maxBudget > 0 ? `${maxBudget.toLocaleString()} pts` : "N/A"}
+                    {suggestedBudget > 0 ? `${suggestedBudget.toLocaleString()} pts` : "N/A"}
                   </span>
                 </div>
               </div>
@@ -223,9 +220,9 @@ export function ApproveBudgetModal(props: ApproveBudgetModalProps) {
                 }}
                 inputMode="numeric"
                 placeholder={
-                  minBudget > 0 && maxBudget > 0
-                    ? `${minBudget} - ${maxBudget}`
-                    : "0"
+                  suggestedBudget > 0
+                    ? `Suggested: ${suggestedBudget}`
+                    : "Enter budget points"
                 }
                 className={`text-lg h-12 ${
                   !isValidBudget && approvedPointsInput
@@ -238,9 +235,7 @@ export function ApproveBudgetModal(props: ApproveBudgetModalProps) {
               />
               {!isValidBudget && approvedPointsInput && (
                 <p className="text-sm text-red-600">
-                  {minBudget === 0 || maxBudget === 0
-                    ? "Please check event data (commitPointCost and maxCheckInCount are required)"
-                    : `Budget must be between ${minBudget.toLocaleString()} and ${maxBudget.toLocaleString()} points`}
+                  Budget must be a positive number
                 </p>
               )}
               <p className="text-sm text-muted-foreground">

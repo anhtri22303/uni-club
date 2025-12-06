@@ -409,11 +409,7 @@ export default function ClubLeaderEventsPage() {
     date: string;
     startTime: string; // HH:MM format
     endTime: string;   // HH:MM format
-  }>>([{
-    date: "",
-    startTime: "09:00",
-    endTime: "11:00"
-  }]);
+  }>>([]);
 
   // Update formData clubId when userClubId changes
   useEffect(() => {
@@ -421,6 +417,41 @@ export default function ClubLeaderEventsPage() {
       setFormData((prev) => ({ ...prev, clubId: userClubId }));
     }
   }, [userClubId]);
+
+  // Reset registration deadline when event days change if current deadline is invalid
+  useEffect(() => {
+    if (eventDays.length === 0) {
+      // If no event days, clear registration deadline
+      if (formData.registrationDeadline) {
+        setFormData((prev) => ({ ...prev, registrationDeadline: "" }));
+      }
+      return;
+    }
+
+    // Check if current registration deadline is still valid
+    if (formData.registrationDeadline) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const deadlineDate = new Date(formData.registrationDeadline);
+      deadlineDate.setHours(0, 0, 0, 0);
+
+      // Find the earliest event day
+      const earliestDay = eventDays.reduce((earliest, day) => {
+        const dayDate = new Date(day.date);
+        const earliestDate = new Date(earliest);
+        return dayDate < earliestDate ? day.date : earliest;
+      }, eventDays[0].date);
+
+      const earliestDate = new Date(earliestDay);
+      earliestDate.setHours(0, 0, 0, 0);
+
+      // Reset if deadline is before today or after earliest event day
+      if (deadlineDate < today || deadlineDate > earliestDate) {
+        setFormData((prev) => ({ ...prev, registrationDeadline: "" }));
+      }
+    }
+  }, [eventDays]);
 
   // Events are already filtered by clubId in the load effect, so use them directly
   const effectiveEvents = events;
@@ -668,7 +699,8 @@ export default function ClubLeaderEventsPage() {
       validationErrors.push("Event Type is required");
     }
 
-    if (!formData.registrationDeadline) {
+    // Registration Deadline is only required for non-PUBLIC events
+    if (formData.type !== "PUBLIC" && !formData.registrationDeadline) {
       validationErrors.push("Registration Deadline is required");
     }
 
@@ -1648,52 +1680,30 @@ export default function ClubLeaderEventsPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="type" className="text-sm">
-                    Type<span className="text-red-500">*</span>
-                  </Label>
-                  <Select
-                    value={formData.type}
-                    onValueChange={(value) => {
-                      setFormData({ ...formData, type: value });
-                      // Clear co-host clubs when switching to PRIVATE
-                      if (value === "PRIVATE") {
-                        setSelectedCoHostClubIds([]);
-                      }
-                    }}
-                    required
-                  >
-                    <SelectTrigger id="type" className="h-9 border-slate-300">
-                      <SelectValue placeholder="Select type" />
-                    </SelectTrigger>
-                    <SelectContent className="z-[70]">
-                      <SelectItem value="PUBLIC">Public</SelectItem>
-                      <SelectItem value="PRIVATE">Private</SelectItem>
-                      <SelectItem value="SPECIAL">Special</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="registrationDeadline" className="text-sm">
-                    Registration Deadline<span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="registrationDeadline"
-                    type="date"
-                    value={formData.registrationDeadline}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        registrationDeadline: e.target.value,
-                      })
+              <div className="space-y-1.5">
+                <Label htmlFor="type" className="text-sm">
+                  Type<span className="text-red-500">*</span>
+                </Label>
+                <Select
+                  value={formData.type}
+                  onValueChange={(value) => {
+                    setFormData({ ...formData, type: value });
+                    // Clear co-host clubs when switching to PRIVATE
+                    if (value === "PRIVATE") {
+                      setSelectedCoHostClubIds([]);
                     }
-                    min={new Date().toLocaleDateString("en-CA")}
-                    className="h-9 border-slate-300"
-                    required
-                  />
-                </div>
+                  }}
+                  required
+                >
+                  <SelectTrigger id="type" className="h-9 border-slate-300">
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent className="z-[70]">
+                    <SelectItem value="PUBLIC">Public</SelectItem>
+                    <SelectItem value="PRIVATE">Private</SelectItem>
+                    <SelectItem value="SPECIAL">Special</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-1.5">
@@ -1823,11 +1833,86 @@ export default function ClubLeaderEventsPage() {
                 </div>
 
                 <div className="space-y-1.5">
+                  <Label htmlFor="registrationDeadline" className="text-sm">
+                    Registration Deadline<span className="text-red-500">*</span>
+                  </Label>
+                  <Select
+                    value={formData.registrationDeadline}
+                    onValueChange={(value) =>
+                      setFormData({
+                        ...formData,
+                        registrationDeadline: value,
+                      })
+                    }
+                    disabled={formData.type === "PUBLIC" || eventDays.length === 0}
+                    required
+                  >
+                    <SelectTrigger id="registrationDeadline" className="h-9 border-slate-300">
+                      <SelectValue placeholder={eventDays.length === 0 ? "Select event days first" : "Select deadline"} />
+                    </SelectTrigger>
+                    <SelectContent className="z-[70]">
+                      {(() => {
+                        // Get all valid dates from today to the earliest event day
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        
+                        if (eventDays.length === 0) {
+                          return <SelectItem value="no-days" disabled>No event days selected</SelectItem>;
+                        }
+
+                        // Find the earliest event day
+                        const earliestDay = eventDays.reduce((earliest, day) => {
+                          const dayDate = new Date(day.date);
+                          const earliestDate = new Date(earliest);
+                          return dayDate < earliestDate ? day.date : earliest;
+                        }, eventDays[0].date);
+
+                        const earliestDate = new Date(earliestDay);
+                        earliestDate.setHours(0, 0, 0, 0);
+
+                        // Generate all dates from today to earliest event day
+                        const dates: Date[] = [];
+                        const currentDate = new Date(today);
+                        
+                        while (currentDate <= earliestDate) {
+                          dates.push(new Date(currentDate));
+                          currentDate.setDate(currentDate.getDate() + 1);
+                        }
+
+                        if (dates.length === 0) {
+                          return <SelectItem value="past-date" disabled>Event days are in the past</SelectItem>;
+                        }
+
+                        return dates.map(date => {
+                          const dateString = date.toISOString().split('T')[0];
+                          const formattedDate = date.toLocaleDateString("en-US", {
+                            weekday: "short",
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                          });
+                          return (
+                            <SelectItem key={dateString} value={dateString}>
+                              {formattedDate}
+                            </SelectItem>
+                          );
+                        });
+                      })()}
+                    </SelectContent>
+                  </Select>
+                  {eventDays.length === 0 && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                      Please select event days first
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
                   <Label
                     htmlFor="commitPointCost"
                     className="text-sm flex items-center gap-1.5"
                   >
-                    Commit Point
+                    {formData.type === "PUBLIC" ? "Reward Point" : "Commit Point"}
                     <span className="text-red-500">*</span>
                     <button
                       type="button"
@@ -1857,8 +1942,12 @@ export default function ClubLeaderEventsPage() {
                     placeholder="0"
                     required
                   />
-                  {/* Sub text */}
-                  <p className="text-xs text-slate-400 -mt-1">(ticket price)</p>
+                  {/* Sub text - conditional based on event type */}
+                  {formData.type === "PUBLIC" ? (
+                    <p className="text-xs text-slate-400 -mt-1">(Reward Points for each person checking in)</p>
+                  ) : formData.type !== "PUBLIC" && (
+                    <p className="text-xs text-slate-400 -mt-1">(ticket price)</p>
+                  )}
                 </div>
               </div>
 

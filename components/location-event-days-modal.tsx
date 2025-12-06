@@ -263,7 +263,14 @@ export function LocationEventDaysModal({
       return
     }
 
-    onSave(locationId, days)
+    // Sort days by date in ascending order (earliest date first)
+    const sortedDays = [...days].sort((a, b) => {
+      const dateA = new Date(a.date)
+      const dateB = new Date(b.date)
+      return dateA.getTime() - dateB.getTime()
+    })
+
+    onSave(locationId, sortedDays)
     onOpenChange(false)
   }
 
@@ -382,7 +389,14 @@ export function LocationEventDaysModal({
           {/* Selected Days List - Show first */}
           {days.length > 0 && !showTimeSelection && (
             <div className="space-y-3">
-              {days.map((day, index) => (
+              {[...days].sort((a, b) => {
+                const dateA = new Date(a.date)
+                const dateB = new Date(b.date)
+                return dateA.getTime() - dateB.getTime()
+              }).map((day, index) => {
+                // Find original index for removal
+                const originalIndex = days.findIndex(d => d.date === day.date && d.startTime === day.startTime && d.endTime === day.endTime)
+                return (
                 <div
                   key={index}
                   className="border-2 border-blue-200 dark:border-blue-800 rounded-lg p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30"
@@ -398,7 +412,7 @@ export function LocationEventDaysModal({
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleEditTime(index)}
+                        onClick={() => handleEditTime(originalIndex)}
                         className="h-8 px-2"
                       >
                         <Clock className="h-4 w-4 mr-1" />
@@ -407,7 +421,7 @@ export function LocationEventDaysModal({
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleRemoveDay(index)}
+                        onClick={() => handleRemoveDay(originalIndex)}
                         className="h-8 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
                       >
                         <X className="h-4 w-4" />
@@ -429,7 +443,7 @@ export function LocationEventDaysModal({
                     </div>
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
           )}
 

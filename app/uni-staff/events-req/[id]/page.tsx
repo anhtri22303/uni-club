@@ -63,6 +63,8 @@ import {
 } from "@/components/ui/select";
 import { ApproveBudgetModal } from "@/components/approve-budget-modal";
 import { CancelEventModal } from "@/components/cancel-event-modal";
+import AttendeeListModal from "@/components/attendee-list-modal";
+import RegistrationListModal from "@/components/registration-list-modal";
 
 // Bảng màu theo ngành học (giống như trong clubs page)
 const majorColors: Record<string, string> = {
@@ -169,6 +171,12 @@ export default function EventRequestDetailPage({
   const [rejectReason, setRejectReason] = useState("");
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
+
+  // Attendee List modal state
+  const [showAttendeeListModal, setShowAttendeeListModal] = useState(false);
+
+  // Registration List modal state
+  const [showRegistrationListModal, setShowRegistrationListModal] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   // Feedback states
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
@@ -942,9 +950,31 @@ export default function EventRequestDetailPage({
                           eventSummary && (
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                               <div className="p-3 bg-linear-to-br from-blue-50 to-sky-50 rounded-lg border border-blue-200">
-                                <label className="text-sm text-blue-700 font-medium">
-                                  {request.type === "PUBLIC" ? "Total Check-ins" : "Total Registrations"}
-                                </label>
+                                <div className="flex items-center justify-between mb-1">
+                                  <label className="text-sm text-blue-700 font-medium">
+                                    {request.type === "PUBLIC" ? "Total Check-ins" : "Total Registrations"}
+                                  </label>
+                                  <div className="flex gap-1">
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-6 px-2 text-xs bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 font-medium shadow-sm hover:shadow transition-all"
+                                      onClick={() => setShowAttendeeListModal(true)}
+                                    >
+                                      Lists
+                                    </Button>
+                                    {request.type !== "PUBLIC" && (
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-6 px-2 text-xs bg-purple-600 text-white hover:bg-purple-700 dark:bg-purple-500 dark:hover:bg-purple-600 font-medium shadow-sm hover:shadow transition-all"
+                                        onClick={() => setShowRegistrationListModal(true)}
+                                      >
+                                        Register Lists
+                                      </Button>
+                                    )}
+                                  </div>
+                                </div>
                                 <div className="font-semibold text-blue-800 mt-1">
                                   {summaryLoading ? (
                                     <span className="text-muted-foreground">
@@ -1588,6 +1618,26 @@ export default function EventRequestDetailPage({
               onConfirm={handleCancelEvent}
               eventName={request.name || request.eventName || ""}
               isLoading={cancelling}
+            />
+          )}
+
+          {/* Attendee List Modal */}
+          {request && (
+            <AttendeeListModal
+              isOpen={showAttendeeListModal}
+              onClose={() => setShowAttendeeListModal(false)}
+              eventId={request.id}
+              eventName={request.name || request.eventName}
+            />
+          )}
+
+          {/* Registration List Modal */}
+          {request && (
+            <RegistrationListModal
+              isOpen={showRegistrationListModal}
+              onClose={() => setShowRegistrationListModal(false)}
+              eventId={request.id}
+              eventName={request.name || request.eventName}
             />
           )}
         </div>

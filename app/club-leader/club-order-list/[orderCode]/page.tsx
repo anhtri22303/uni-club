@@ -606,6 +606,26 @@ export default function ClubOrderDetailByCodePage({ params }: OrderDetailPagePro
                                                     {new Date((getLatestLogDate('REFUND') || getLatestLogDate('PARTIAL_REFUND'))!).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                                                 </p>
                                             )}
+
+                                            {/* Hiển thị thông báo khi quá 3 ngày */}
+                                            {(() => {
+                                                // Chỉ hiển thị thông báo khi đơn hàng đã Completed nhưng chưa Refund
+                                                if (order.status === 'COMPLETED' && order.completedAt) {
+                                                    const completedTime = new Date(order.completedAt).getTime();
+                                                    const currentTime = new Date().getTime();
+                                                    const hoursPassed = (currentTime - completedTime) / (1000 * 60 * 60);
+                                                    
+                                                    if (hoursPassed > 72) {
+                                                        return (
+                                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 italic">
+                                                                Cannot refund after 3 days Delivered
+                                                            </p>
+                                                        );
+                                                    }
+                                                }
+                                                return null;
+                                            })()}
+
                                         </div>
                                     </div>
                                 </div>
@@ -701,6 +721,9 @@ export default function ClubOrderDetailByCodePage({ params }: OrderDetailPagePro
                                                                 timeStyle: 'short'
                                                             })}</span>
                                                         </div>
+                                                        <p className="mt-3 text-xs text-green-600 dark:text-green-400 italic">
+                                                            This order can only be refunded within 3 days from delivery.
+                                                        </p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -961,23 +984,55 @@ export default function ClubOrderDetailByCodePage({ params }: OrderDetailPagePro
                             )}
 
                             {/* Refund Action - For COMPLETED or PARTIALLY_REFUNDED orders */}
-                            {(order.status === "COMPLETED" || order.status === "PARTIALLY_REFUNDED") && (
-                                <Card className="border-0 shadow-xl overflow-hidden bg-gradient-to-br from-red-50 via-rose-50/50 to-white 
-                                dark:from-red-900/20 dark:via-rose-900/20 dark:to-slate-800 dark:border-slate-700">
-                                    <div className="h-2 bg-gradient-to-r from-red-400 via-rose-500 to-pink-500" />
-                                    <CardHeader className="pb-3">
-                                        <CardTitle className="flex items-center gap-3 text-lg dark:text-white">
-                                            <div className="p-2 rounded-lg bg-gradient-to-br from-red-500 to-rose-600 shadow-lg">
-                                                <Undo2 className="h-5 w-5 text-white" />
+                            {(order.status === "COMPLETED" || order.status === "PARTIALLY_REFUNDED") && (() => {
+                                // Kiểm tra xem đã quá 3 ngày (72 giờ) kể từ completedAt chưa
+                                const completedTime = new Date(order.completedAt).getTime();
+                                const currentTime = new Date().getTime();
+                                const hoursPassed = (currentTime - completedTime) / (1000 * 60 * 60);
+                                const isWithin3Days = hoursPassed <= 72;
+                                const hoursRemaining = Math.max(0, 72 - hoursPassed);
+                                const daysRemaining = (hoursRemaining / 24).toFixed(1);
+
+                                // Nếu đã quá 3 ngày, không hiển thị khung Refund Options
+                                if (!isWithin3Days) {
+                                    return null;
+                                }
+
+                                return (
+                                    <Card className="border-0 shadow-xl overflow-hidden bg-gradient-to-br from-red-50 via-rose-50/50 to-white 
+                                    dark:from-red-900/20 dark:via-rose-900/20 dark:to-slate-800 dark:border-slate-700">
+                                        <div className="h-2 bg-gradient-to-r from-red-400 via-rose-500 to-pink-500" />
+                                        <CardHeader className="pb-3">
+                                            <CardTitle className="flex items-center gap-3 text-lg dark:text-white">
+                                                <div className="p-2 rounded-lg bg-gradient-to-br from-red-500 to-rose-600 shadow-lg">
+                                                    <Undo2 className="h-5 w-5 text-white" />
+                                                </div>
+                                                Refund Options
+                                            </CardTitle>
+                                        </CardHeader>
+                                        <CardContent>
+                                            {/* Thông báo cảnh báo 3 ngày */}
+                                            <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg">
+                                                <div className="flex items-start gap-2">
+                                                    <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                                                    <div className="flex-1">
+                                                        <p className="text-xs font-semibold text-amber-800 dark:text-amber-300 mb-1">Refund Time Limit</p>
+                                                        <p className="text-xs text-amber-700 dark:text-amber-400">
+                                                            Refunds can only be processed within 3 days from delivery completion.
+                                                            {hoursRemaining > 0 && (
+                                                                <span className="block mt-1 font-semibold">
+                                                                    Time remaining: {daysRemaining} days ({hoursRemaining.toFixed(1)} hours)
+                                                                </span>
+                                                            )}
+                                                        </p>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            Refund Options
-                                        </CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <p className="text-sm text-gray-600 dark:text-slate-300 mb-4">
-                                            Process a refund for this order if needed. You can refund the entire order or just a portion.
-                                        </p>
-                                        <Dialog open={isRefundModalOpen} onOpenChange={setIsRefundModalOpen}>
+
+                                            <p className="text-sm text-gray-600 dark:text-slate-300 mb-4">
+                                                Process a refund for this order if needed. You can refund the entire order or just a portion.
+                                            </p>
+                                            <Dialog open={isRefundModalOpen} onOpenChange={setIsRefundModalOpen}>
                                             <DialogTrigger asChild>
                                                 <Button
                                                     className="w-full h-12 bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 
@@ -1251,7 +1306,8 @@ export default function ClubOrderDetailByCodePage({ params }: OrderDetailPagePro
 
                                     </CardContent>
                                 </Card>
-                            )}
+                                );
+                            })()}
                         </div>
                     </div>
 

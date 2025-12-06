@@ -52,8 +52,7 @@ import {
   eventQR,
   eventTimeExtend,
   eventSettle,
-  getEventSettle,
-} from "@/service/eventApi"; // 👈 Thêm submitForUniversityApproval, eventQR, eventTimeExtend, eventSettle, getEventSettle
+} from "@/service/eventApi"; // 👈 Thêm submitForUniversityApproval, eventQR, eventTimeExtend, eventSettle
 import { EventWalletHistoryModal } from "@/components/event-wallet-history-modal";
 import { getClubIdFromToken } from "@/service/clubApi";
 import { Loader2, Star, Filter, ClockIcon, DollarSign } from "lucide-react"; // 👈 Thêm Loader2, Star, Filter, ClockIcon, DollarSign
@@ -69,6 +68,8 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { TimeExtensionModal } from "@/components/time-extension-modal";
 import AddStaffModal from "@/components/add-staff-modal";
 import { PublicEventQRButton } from "@/components/public-event-qr-button";
+import AttendeeListModal from "@/components/attendee-list-modal";
+import RegistrationListModal from "@/components/registration-list-modal";
 interface EventDetail {
   id: number;
   name: string;
@@ -121,8 +122,6 @@ export default function EventDetailPage() {
   const [userClubId, setUserClubId] = useState<number | null>(null);
   const [myCoHostStatus, setMyCoHostStatus] = useState<string | null>(null);
   const [settling, setSettling] = useState(false); // State for settling event
-  const [isEventSettled, setIsEventSettled] = useState(false); // State to check if event is settled
-  const [checkingSettled, setCheckingSettled] = useState(false); // State for checking settled status
 
   // Feedback states
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
@@ -141,6 +140,12 @@ export default function EventDetailPage() {
 
   // Add Staff modal state
   const [showAddStaffModal, setShowAddStaffModal] = useState(false);
+
+  // Attendee List modal state
+  const [showAttendeeListModal, setShowAttendeeListModal] = useState(false);
+
+  // Registration List modal state
+  const [showRegistrationListModal, setShowRegistrationListModal] = useState(false);
 
   // QR Code states
   const [showQrModal, setShowQrModal] = useState(false);
@@ -230,21 +235,6 @@ export default function EventDetailPage() {
             // Don't show error toast for feedback, it's not critical
           } finally {
             setFeedbackLoading(false);
-          }
-        }
-
-        // Check if event is settled (if COMPLETED status)
-        if (data.status === "COMPLETED") {
-          try {
-            setCheckingSettled(true);
-            const settledEvents = await getEventSettle();
-            const isSettled = settledEvents.some((e: any) => e.id === data.id);
-            setIsEventSettled(isSettled);
-          } catch (settledError) {
-            console.error("Failed to check settled events:", settledError);
-            // Don't show error toast, it's not critical
-          } finally {
-            setCheckingSettled(false);
           }
         }
       } catch (error) {
@@ -726,8 +716,7 @@ export default function EventDetailPage() {
           response.message ||
           `Event ${event.name || event.id} has been settled successfully.`,
       });
-      // Mark as settled and refetch the event data
-      setIsEventSettled(true);
+      // Refetch the event data
       const updatedData = await getEventById(params.id as string);
       setEvent(updatedData);
     } catch (err: any) {
@@ -1360,8 +1349,30 @@ export default function EventDetailPage() {
                   eventSummary && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                       <div className="p-4 bg-gradient-to-br from-blue-50 to-sky-50 rounded-lg border border-blue-200">
-                        <div className="text-sm text-blue-700 font-medium">
-                          {event.type === "PUBLIC" ? "Total Check-ins" : "Total Registrations"}
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="text-sm text-blue-700 font-medium">
+                            {event.type === "PUBLIC" ? "Total Check-ins" : "Total Registrations"}
+                          </div>
+                          <div className="flex gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 px-2 text-xs bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 font-medium shadow-sm hover:shadow transition-all"
+                              onClick={() => setShowAttendeeListModal(true)}
+                            >
+                              Lists
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              disabled={event.type === "PUBLIC"}
+                              className="h-6 px-2 text-xs bg-purple-600 text-white hover:bg-purple-700 dark:bg-purple-500 dark:hover:bg-purple-600 font-medium shadow-sm hover:shadow transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                              onClick={() => event.type !== "PUBLIC" && setShowRegistrationListModal(true)}
+                              title={event.type === "PUBLIC" ? "Public events do not have registrations" : ""}
+                            >
+                              Register Lists
+                            </Button>
+                          </div>
                         </div>
                         <div className="font-semibold text-lg text-blue-800">
                           {summaryLoading ? (
@@ -1520,46 +1531,6 @@ export default function EventDetailPage() {
                 </>
               )}
               {/*    KẾT THÚC KHU VỰC MỚI */}
-
-              {/* Event Settlement Section - Show for COMPLETED events */}
-              {event.status === "COMPLETED" && (
-                <>
-                  <Separator />
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Event Settlement</h3>
-                    {checkingSettled ? (
-                      <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                        <Loader2 className="h-4 w-4 animate-spin text-gray-600" />
-                        <div className="text-sm text-gray-600">
-                          Checking settlement status...
-                        </div>
-                      </div>
-                    ) : isEventSettled ? (
-                      <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                        <p className="text-sm text-green-700 font-medium flex items-center gap-2">
-                          <CheckCircle className="h-4 w-4" />
-                          This event has already been settled.
-                        </p>
-                      </div>
-                    ) : (
-                      <>
-                        <p className="text-sm text-muted-foreground">
-                          This event has been completed. Click the button below to process the final settlement.
-                        </p>
-                        <Button
-                          className="w-full bg-blue-600 hover:bg-blue-700"
-                          variant="default"
-                          onClick={handleSettle}
-                          disabled={settling}
-                        >
-                          <DollarSign className="h-4 w-4 mr-2" />
-                          {settling ? "Processing Settlement..." : "Settle Event"}
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </>
-              )}
             </CardContent>
           </Card>
 
@@ -1839,6 +1810,26 @@ export default function EventDetailPage() {
             eventId={event.id}
             clubId={event.hostClub.id}
             eventStatus={event.status}
+          />
+        )}
+
+        {/* Attendee List Modal */}
+        {event && (
+          <AttendeeListModal
+            isOpen={showAttendeeListModal}
+            onClose={() => setShowAttendeeListModal(false)}
+            eventId={event.id}
+            eventName={event.name}
+          />
+        )}
+
+        {/* Registration List Modal */}
+        {event && (
+          <RegistrationListModal
+            isOpen={showRegistrationListModal}
+            onClose={() => setShowRegistrationListModal(false)}
+            eventId={event.id}
+            eventName={event.name}
           />
         )}
       </AppShell>

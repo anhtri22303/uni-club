@@ -927,7 +927,7 @@ export default function ClubLeaderRewardDistributionPage() {
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-semibold dark:text-white">List of Members ({filteredMembers.length})</h2>
             {filteredMembers.length > 0 && (
-              <Button variant="outline" size="sm" onClick={handleToggleSelectAll}>
+              <Button variant="outline" size="sm" onClick={handleToggleSelectAll} className="bg-white border-slate-300">
                 {allFilteredSelected ? "Deselect All" : "Select All"}
               </Button>
             )}
@@ -1203,7 +1203,7 @@ export default function ClubLeaderRewardDistributionPage() {
         </Dialog>
 
         {/* Penalty Modal */}
-        <Dialog open={showPenaltyModal} onOpenChange={setShowPenaltyModal}>
+        {/* <Dialog open={showPenaltyModal} onOpenChange={setShowPenaltyModal}>
           <DialogContent>
             <DialogHeader><DialogTitle>Issue Penalty</DialogTitle></DialogHeader>
             <Select value={String(selectedRuleId)} onValueChange={v => setSelectedRuleId(Number(v))}>
@@ -1217,7 +1217,138 @@ export default function ClubLeaderRewardDistributionPage() {
               <Button variant="destructive" onClick={handleCreatePenalty} disabled={isSubmittingPenalty}>Confirm</Button>
             </DialogFooter>
           </DialogContent>
+        </Dialog> */}
+        {/* Penalty Modal - Redesigned */}
+        <Dialog open={showPenaltyModal} onOpenChange={setShowPenaltyModal}>
+          <DialogContent className="sm:max-w-[500px] gap-0 p-0 overflow-hidden border-red-200 dark:border-red-900">
+
+            {/* HEADER: Tông màu đỏ cảnh báo */}
+            <div className="bg-red-50 dark:bg-red-900/20 p-6 border-b border-red-100 dark:border-red-900/50 flex flex-col items-center text-center space-y-3">
+              <div className="h-14 w-14 rounded-full bg-red-100 dark:bg-red-900/50 flex items-center justify-center mb-1">
+                <div className="bg-white dark:bg-red-950 p-2 rounded-full shadow-sm">
+                  {/* Import icon Gavel từ lucide-react nếu chưa có, hoặc dùng TriangleAlert */}
+                  <TriangleAlert className="h-6 w-6 text-red-600 dark:text-red-400" />
+                </div>
+              </div>
+
+              <div>
+                <DialogTitle className="text-xl font-bold text-red-700 dark:text-red-400">
+                  Issue Violation Penalty
+                </DialogTitle>
+                <DialogDescription className="mt-1">
+                  Apply a disciplinary action and deduct points.
+                </DialogDescription>
+              </div>
+
+              {/* Hiển thị Target Member - Tránh phạt nhầm người */}
+              {memberToPenalize && (
+                <div className="flex items-center gap-3 bg-white dark:bg-slate-800 px-4 py-2 rounded-full border border-red-100 dark:border-red-900 shadow-sm mt-2 animate-in fade-in zoom-in duration-300">
+                  <Avatar className="h-8 w-8 border border-slate-200">
+                    <AvatarImage src={memberToPenalize.avatarUrl || ""} />
+                    <AvatarFallback>{memberToPenalize.fullName.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  <div className="text-left">
+                    <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                      {memberToPenalize.fullName}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {memberToPenalize.studentCode}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* BODY: Form nhập liệu */}
+            <div className="p-6 space-y-5">
+
+              {/* 1. Chọn Quy Tắc Phạt */}
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                  Violation Type
+                </Label>
+                <Select
+                  value={String(selectedRuleId)}
+                  onValueChange={(v) => setSelectedRuleId(Number(v))}
+                >
+                  <SelectTrigger className="h-11 border-slate-300 focus:ring-red-500">
+                    <SelectValue placeholder="Select a violation rule..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {penaltyRules.map((r) => (
+                      <SelectItem key={r.id} value={String(r.id)} className="py-3">
+                        <div className="flex items-center justify-between w-full gap-4">
+                          <span className="font-medium">{r.name}</span>
+                          <Badge variant="outline" className="text-red-600 border-red-200 bg-red-50">
+                            -{r.penaltyPoints} pts
+                          </Badge>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {/* Hiển thị preview số điểm bị trừ khi chọn rule */}
+                {selectedRuleId && penaltyRules.find(r => r.id === selectedRuleId) && (
+                  <div className="flex items-start gap-3 p-3 bg-red-50 dark:bg-red-900/10 rounded-md border border-red-100 dark:border-red-900/30">
+                    <div className="mt-0.5 text-red-600">
+                      <AlertCircle className="h-4 w-4" /> {/* Cần import AlertCircle */}
+                    </div>
+                    <div className="text-sm">
+                      <span className="font-semibold text-red-700 dark:text-red-400">
+                        Point Deduction: -{penaltyRules.find(r => r.id === selectedRuleId)?.penaltyPoints} points
+                      </span>
+                      <p className="text-red-600/80 text-xs mt-1">
+                        {penaltyRules.find(r => r.id === selectedRuleId)?.description || "This action will be recorded in the member's history."}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 2. Lý do chi tiết */}
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                  Incident Details
+                </Label>
+                <Textarea
+                  placeholder="Describe specifically what happened (e.g., Late for meeting by 30 mins, Rude behavior...)"
+                  value={penaltyReason}
+                  onChange={(e) => setPenaltyReason(e.target.value)}
+                  className="min-h-[100px] border-slate-300 focus-visible:ring-red-500 resize-none"
+                />
+              </div>
+            </div>
+
+            {/* FOOTER */}
+            <DialogFooter className="p-6 pt-2 bg-slate-50 dark:bg-slate-900/50 sm:justify-between items-center">
+              <Button
+                variant="ghost"
+                onClick={() => setShowPenaltyModal(false)}
+                className="text-slate-500 hover:text-slate-700 hover:bg-slate-100"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleCreatePenalty}
+                disabled={isSubmittingPenalty || !selectedRuleId || !penaltyReason.trim()}
+                className="min-w-[140px] shadow-md shadow-red-200 dark:shadow-none"
+              >
+                {isSubmittingPenalty ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Processing...
+                  </>
+                ) : (
+                  <>
+                    Confirm Penalty
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
         </Dialog>
+
 
       </AppShell>
     </ProtectedRoute>

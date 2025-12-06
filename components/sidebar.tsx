@@ -794,12 +794,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
     // Add staff-specific navigation items for students
     const staffItems = [
       // { href: "/student/staff/validate", label: "Validate", icon: CheckCircle, isStaff: true },
-      {
-        href: "/student/staff/history",
-        label: "Staff History",
-        icon: History,
-        isStaff: true,
-      },
+
       { href: "/student/staff/gift", label: "Staff Gift", icon: Gift, isStaff: true },
       {
         href: "/student/staff/event-order-list",
