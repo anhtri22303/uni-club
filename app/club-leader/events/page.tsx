@@ -1914,17 +1914,6 @@ export default function ClubLeaderEventsPage() {
                   >
                     {formData.type === "PUBLIC" ? "Reward Point" : "Commit Point"}
                     <span className="text-red-500">*</span>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowPolicyModal(!showPolicyModal);
-                      }}
-                      className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-                      title="View policy guidelines"
-                    >
-                      <AlertCircle className="h-3.5 w-3.5" />
-                    </button>
                   </Label>
 
                   <Input
