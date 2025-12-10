@@ -11,6 +11,7 @@ import { CheckCircle, Clock, Calendar, MapPin, Users, Loader2 } from "lucide-rea
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { getEventByCode, eventCheckinPublic } from '@/service/eventApi'
+import { EventDateTimeDisplay } from "@/components/event-date-time-display"
 
 export default function StudentPublicCheckinPage() {
   const { toast } = useToast()
@@ -191,27 +192,9 @@ export default function StudentPublicCheckinPage() {
 
               {/* Event Details Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Date */}
-                <div className="flex items-start gap-3 p-4 bg-muted/50 rounded-lg">
-                  <Calendar className="h-5 w-5 text-primary mt-1" />
-                  <div>
-                    <div className="text-sm text-muted-foreground">Date</div>
-                    <div className="font-medium">{formatDate(event.date)}</div>
-                    <div className="text-xs text-muted-foreground">{event.date}</div>
-                  </div>
-                </div>
-
-                {/* Time */}
-                <div className="flex items-start gap-3 p-4 bg-muted/50 rounded-lg">
-                  <Clock className="h-5 w-5 text-primary mt-1" />
-                  <div>
-                    <div className="text-sm text-muted-foreground">Time</div>
-                    <div className="font-medium">
-                      {event.startTime && event.endTime 
-                        ? `${event.startTime} - ${event.endTime}`
-                        : "Time not specified"}
-                    </div>
-                  </div>
+                {/* Date and Time - using EventDateTimeDisplay */}
+                <div className="col-span-1 md:col-span-2 p-4 bg-muted/50 rounded-lg">
+                  <EventDateTimeDisplay event={event} variant="detailed" />
                 </div>
 
                 {/* Location */}
