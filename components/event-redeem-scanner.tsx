@@ -245,6 +245,7 @@ export function EventRedeemScanner({
       open={open} 
       onOpenChange={onOpenChange}
       title="Scan Event Order QR"
+      className="max-w-2xl"
     >
       <div className="space-y-6">
         {!scannedData ? (
@@ -327,16 +328,16 @@ export function EventRedeemScanner({
                 </div>
 
                 <div className="grid gap-3">
-                  <div className="flex items-center justify-between p-3 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 rounded-lg">
+                  <div className="flex flex-col gap-2 p-3 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 rounded-lg">
                     <div className="flex items-center gap-2">
                       <Package className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                       <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                         Product Name
                       </span>
                     </div>
-                    <Badge variant="secondary" className="font-semibold">
+                    <div className="font-semibold text-purple-900 dark:text-purple-100 break-words pl-6">
                       {scannedData.productName || `#${scannedData.productId}`}
-                    </Badge>
+                    </div>
                   </div>
 
                   <div className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/30 dark:to-cyan-950/30 rounded-lg">
@@ -351,28 +352,28 @@ export function EventRedeemScanner({
                     </Badge>
                   </div>
 
-                  <div className="flex items-center justify-between p-3 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 rounded-lg">
+                  <div className="flex flex-col gap-2 p-3 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 rounded-lg">
                     <div className="flex items-center gap-2">
                       <User className="h-4 w-4 text-green-600 dark:text-green-400" />
                       <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                         Member Name
                       </span>
                     </div>
-                    <Badge variant="secondary" className="font-semibold">
+                    <div className="font-semibold text-green-900 dark:text-green-100 break-words pl-6">
                       {scannedData.memberName || `#${scannedData.membershipId}`}
-                    </Badge>
+                    </div>
                   </div>
 
-                  <div className="flex items-center justify-between p-3 bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-950/30 dark:to-red-950/30 rounded-lg">
+                  <div className="flex flex-col gap-2 p-3 bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-950/30 dark:to-red-950/30 rounded-lg">
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-orange-600 dark:text-orange-400" />
                       <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                         Event Name
                       </span>
                     </div>
-                    <Badge variant="secondary" className="font-semibold">
+                    <div className="font-semibold text-orange-900 dark:text-orange-100 break-words pl-6">
                       {scannedData.eventName || `#${scannedData.eventId}`}
-                    </Badge>
+                    </div>
                   </div>
                 </div>
               </CardContent>

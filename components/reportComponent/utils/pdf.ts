@@ -52,7 +52,11 @@ function fixOklchColors(clonedDoc: Document) {
   }
 }
 
-export async function downloadPagesAsPdf(pagesContainer: HTMLElement, fileName: string) {
+export async function downloadPagesAsPdf(
+  pagesContainer: HTMLElement,
+  fileName: string,
+  onProgress?: (progress: number) => void
+) {
   const pdf = new jsPDF({
     orientation: "portrait",
     unit: "mm",
@@ -60,7 +64,14 @@ export async function downloadPagesAsPdf(pagesContainer: HTMLElement, fileName: 
   })
 
   const pages = pagesContainer.querySelectorAll(".a4-page")
+  const totalPages = pages.length
+
   for (let i = 0; i < pages.length; i++) {
+    // Update progress: each page contributes equally to the total progress
+    // Progress from 0 to 100
+    const currentProgress = Math.round(((i + 1) / totalPages) * 100)
+    onProgress?.(currentProgress)
+
     if (i > 0) pdf.addPage()
     const page = pages[i] as HTMLElement
     const canvas = await html2canvas(page, {

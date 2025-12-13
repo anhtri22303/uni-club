@@ -922,7 +922,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
       <aside
         className={cn(
           // Thêm 'h-full' và 'flex flex-col'
-          "fixed z-40 inset-y-0 left-0 w-64 border-r bg-sidebar border-sidebar-border transition-transform h-full flex flex-col",
+          "fixed z-40 inset-y-0 left-0 w-64 bg-sidebar transition-transform h-full flex flex-col",
           // Thêm 'h-full' vào md:static
           "md:static md:h-full md:translate-x-0",
           open ? "translate-x-0" : "-translate-x-full"
@@ -960,7 +960,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
         </div>
         {/* <div className="flex-1 overflow-auto py-4 pb-72"> */}
         {/* <div className="flex-1 overflow-auto py-4"> */}
-        <div className="flex-1 overflow-auto py-4 min-h-0">
+        <div className="flex-1 overflow-auto py-4 min-h-0 scrollbar-hide">
           <nav className="grid gap-1 px-2">
             {navigation.map((item, index) => {
               const Icon = item.icon;
@@ -1030,6 +1030,12 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                       dropdownBadgeCount += pendingUniStaffEventRequestsCount;
                     } else {
                       dropdownBadgeCount += eventRequestsCount;
+                    }
+                  }
+                  if (child.label === "Club orders list") {
+                    // For club_leader, add pendingClubOrdersCount for Club orders list
+                    if (auth.role === "club_leader") {
+                      dropdownBadgeCount += pendingClubOrdersCount;
                     }
                   }
                 });
@@ -1226,6 +1232,7 @@ export function Sidebar({ onNavigate, open = true }: SidebarProps) {
                     {/* Show red badge for dropdown groups (exclude Gifts, Others, and Requests which have their own badges) */}
                     {showBadges &&
                       hasChildren &&
+                      !isDropdownOpen &&
                       dropdownBadgeCount > 0 &&
                       !isGiftsDropdown &&
                       !isOthersDropdown &&

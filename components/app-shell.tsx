@@ -286,12 +286,12 @@ export function AppShell({ children }: AppShellProps) {
           {/* ===================== MAIN CONTENT ===================== */}
           <main
             className={cn(
-              "flex-1 overflow-hidden transition-[padding-left] duration-300 ease-out",
+              "flex-1 transition-[padding-left] duration-300 ease-out",
               sidebarCollapsed ? "md:pl-20" : "md:pl-72" // Padding được giữ nguyên để có khoảng trống hợp lý
             )}
           >
             {/* Giữ pt-16 cho mobile để nội dung không bị nút toggle che, bỏ pt cho desktop */}
-            <div className="h-full p-3 sm:p-4 md:p-6 pt-16 md:pt-6">
+            <div className="p-3 sm:p-4 md:p-6 pt-16 md:pt-6">
               {/* Password Reset Banner - Shows on all pages */}
               {showPasswordResetBanner && (
                 <Alert
