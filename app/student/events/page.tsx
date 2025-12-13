@@ -61,18 +61,14 @@ export default function MemberEventsPage() {
   useEffect(() => {
     try {
       const saved = safeSessionStorage.getItem("uniclub-auth")
-      console.log("Events page - Raw sessionStorage data:", saved)
       if (saved) {
         const parsed = JSON.parse(saved)
-        console.log("Events page - Parsed sessionStorage data:", parsed)
 
         if (parsed.clubIds && Array.isArray(parsed.clubIds)) {
           const clubIdNumbers = parsed.clubIds.map((id: any) => Number(id)).filter((id: number) => !isNaN(id))
-          console.log("Events page - Setting userClubIds to:", clubIdNumbers)
           setUserClubIds(clubIdNumbers)
         } else if (parsed.clubId) {
           const clubIdNumber = Number(parsed.clubId)
-          console.log("Events page - Setting userClubIds from single clubId to:", [clubIdNumber])
           setUserClubIds([clubIdNumber])
         }
       }
@@ -269,8 +265,6 @@ export default function MemberEventsPage() {
   }
 
   const handleRegisterClick = (event: any) => {
-    console.log("Selected event for registration:", event)
-    console.log("commitPointCost:", event.commitPointCost)
     setSelectedEventForRegistration(event)
     setShowConfirmModal(true)
   }
@@ -304,7 +298,6 @@ export default function MemberEventsPage() {
   }
 
   const handleCancelClick = (event: any) => {
-    console.log("Selected event for cancellation:", event)
     setSelectedEventForCancellation(event)
     setShowCancelModal(true)
   }

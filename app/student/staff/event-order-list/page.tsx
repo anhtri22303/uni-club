@@ -56,7 +56,6 @@ export default function StaffEventOrdersPage() {
       const activeEvents = staffEvents.filter(e => e.state === "ACTIVE");
       if (activeEvents.length > 0) {
         const firstEvent = activeEvents[0];
-        console.log("🔍 [Staff Event Order] Active staff events:", activeEvents);
         setClubId(firstEvent.clubId);
         // Nếu có nhiều events, dùng selectedEventId từ tab
         // Nếu chỉ có 1 event, dùng eventId đó

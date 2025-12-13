@@ -59,16 +59,14 @@ export function ProtectedRoute({
     
     if (isCheckinCodePage) {
       // Lưu đường dẫn với safe storage
-      console.log(`ProtectedRoute: Đang lưu intendedPath cho checkin page: ${pathname}`);
       safeSessionStorage.setItem('intendedPath', pathname);
     } else {
-      console.log(`ProtectedRoute: Không lưu intendedPath cho trang: ${pathname}`);
     }
 
 
     // Đặt hẹn giờ chuyển hướng
     const timer = setTimeout(() => {
-      console.log("ProtectedRoute: Hết giờ, chuyển hướng tới /");
+
       router.push("/");
     }, 5000);
 

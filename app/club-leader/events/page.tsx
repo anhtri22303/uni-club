@@ -319,7 +319,6 @@ export default function ClubLeaderEventsPage() {
           selectedPhase
         );
         const { token } = await eventQR(selectedEvent.id, selectedPhase);
-        console.log("New token generated:", token);
 
         // Create URLs with new token and phase
         const prodUrl = `https://uniclub.id.vn/student/checkin/${selectedPhase}/${token}`;
@@ -782,12 +781,7 @@ export default function ClubLeaderEventsPage() {
         endTime: day.endTime       // Send as string "HH:MM"
       }));
 
-      console.log("📊 Form data before sending:", {
-        commitPointCost: formData.commitPointCost,
-        convertedCommitPointCost: commitPointCost,
-        eventDays,
-        daysPayload
-      });
+
 
       const payload: any = {
         hostClubId,
@@ -801,7 +795,6 @@ export default function ClubLeaderEventsPage() {
         commitPointCost: commitPointCost,
       };
 
-      console.log("📤 Payload being sent to API:", payload);
 
       // Add coHostClubIds if any are selected
       if (selectedCoHostClubIds.length > 0) {
@@ -905,14 +898,8 @@ export default function ClubLeaderEventsPage() {
       setIsGeneratingQR(true);
 
       // Call new eventQR API with selected phase
-      console.log(
-        "Generating check-in token for event:",
-        selectedEvent.id,
-        "with phase:",
-        phase
-      );
+
       const { token, expiresIn } = await eventQR(selectedEvent.id, phase);
-      console.log("Generated token:", token, "expires in:", expiresIn);
 
       // Create URLs with token and phase (path parameter format)
       const prodUrl = `https://uniclub.id.vn/student/checkin/${phase}/${token}`;

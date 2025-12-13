@@ -207,17 +207,12 @@ export default function ClubRequestDetailPage({ params }: ClubRequestDetailPageP
 
       // 4. Nếu tìm thấy, sử dụng clubId chính xác
       const correctClubId = foundClub.id;
-      console.log(`Found a match! Using clubId: ${correctClubId} for application: ${request.applicationId}`);
 
       const body: CreateClubAccountBody = {
         applicationId: request.applicationId,
         clubId: correctClubId,
         ...accountForm
       };
-      //    LOG TOÀN BỘ DỮ LIỆU SẮP GỬI ĐI
-      console.log("--- Sending Request to create-club-accounts ---");
-      console.log("Payload:", body);
-      console.log("-------------------------------------------------");
 
       // 5. Gọi API tạo tài khoản như cũ
       await createClubAccount(body);

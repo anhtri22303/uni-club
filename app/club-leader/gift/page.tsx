@@ -191,10 +191,7 @@ export default function ClubLeaderGiftPage() {
     // Cần queryKey duy nhất, thêm 'clubId' để nó fetch lại khi clubId thay đổi
     queryKey: ['clubEvents_host', clubId],
     queryFn: async () => {
-      // console.log("🚀 [Gift] Fetching events for clubId:", clubId)
       const result = await getEventByClubId(clubId as number)
-      // console.log("✅ [Gift] Received events:", result?.length || 0, "items")
-      // console.log("📦 [Gift] Events data:", result)
 
       // Debug: Log chi tiết từng event
       if (result && result.length > 0) {
@@ -227,7 +224,6 @@ export default function ClubLeaderGiftPage() {
         return Number(hostId) === numericClubId;
       }) || [];
 
-    // console.log("📋 [Gift] Events after club filter:", events.length)
 
     if (!events) return [];
 
@@ -241,7 +237,6 @@ export default function ClubLeaderGiftPage() {
       const dateToUse = event.startDate || event.date;
 
       if (!dateToUse) {
-        console.log("❌ [Gift] Event has no startDate or date:", event.name)
         return false;
       }
 
@@ -255,21 +250,17 @@ export default function ClubLeaderGiftPage() {
 
       // Điều kiện 1: Event đang diễn ra (ONGOING) thì luôn hiển thị
       if (normalizedStatus === "ONGOING") {
-        // console.log("✅ [Gift] Event ONGOING:", event.name)
         return true;
       }
       // Điều kiện 2: Event APPROVED và chưa qua ngày
       if (normalizedStatus === "APPROVED" && eventDate >= today) {
-        // console.log("✅ [Gift] Event APPROVED and upcoming:", event.name)
         return true;
       }
 
-      // console.log("❌ [Gift] Event filtered out:", event.name, "- Status:", normalizedStatus)
       // Tất cả các trường hợp khác (PENDING, REJECTED, PENDINGCOCLUB, APPROVED nhưng đã qua ngày)
       return false;
     });
 
-    // console.log("✅ [Gift] Final availableEvents:", filtered.length, filtered.map(e => e.name))
     return filtered;
   }, [clubEvents, clubId]);
 

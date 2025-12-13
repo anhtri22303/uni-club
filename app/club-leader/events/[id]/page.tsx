@@ -551,7 +551,6 @@ export default function EventDetailPage() {
   // Helper function to reload event data
   const reloadEventData = async () => {
     try {
-      console.log(" Reloading event data...");
       const updatedEvent = await getEventById(params.id as string);
       setEvent(updatedEvent);
 
@@ -562,13 +561,11 @@ export default function EventDetailPage() {
         );
         if (myCoHost) {
           setMyCoHostStatus(myCoHost.coHostStatus);
-          console.log("   Co-host status updated:", myCoHost.coHostStatus);
         } else {
           setMyCoHostStatus(null);
         }
       }
 
-      console.log("   Event data reloaded successfully");
     } catch (error) {
       console.error("  Failed to reload event data:", error);
       toast({
@@ -753,16 +750,11 @@ export default function EventDetailPage() {
         phase
       );
       const { token, expiresIn } = await eventQR(event.id, phase);
-      console.log("Generated token:", token, "expires in:", expiresIn);
 
       // Create URLs with token and phase (path parameter format)
       const prodUrl = `https://uniclub.id.vn/student/checkin/${phase}/${token}`;
       const localUrl = `http://localhost:3000/student/checkin/${phase}/${token}`;
       const mobileLink = `exp://192.168.1.50:8081/--/student/checkin/${phase}/${token}`;
-
-      console.log("Production URL:", prodUrl);
-      console.log("Development URL:", localUrl);
-      console.log("Mobile URL:", mobileLink);
 
       // Generate QR code variants
       const styleVariants = [

@@ -483,7 +483,6 @@ export default function UniStaffPoliciesPage() {
                         active: true, // Mặc định là active khi tạo mới (theo Swagger)
                       }
                       // Đây là dòng bạn yêu cầu
-                      console.log("Data to be sent:", payload)
                       // createPolicy giờ trả về Policy
                       const res: Policy = await createPolicy(payload)
 

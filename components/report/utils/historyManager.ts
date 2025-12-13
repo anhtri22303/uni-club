@@ -337,9 +337,7 @@ function getStateAtIndex(index: number): HistoryState | null {
  */
 export function debugHistory(): void {
   const meta = getHistoryMeta()
-  console.log('=== HISTORY DEBUG ===')
-  console.log('Meta:', meta)
-  console.log('States:')
+
   
   for (let i = 0; i < MAX_HISTORY_SIZE; i++) {
     const state = getStateAtIndex(i)
@@ -352,6 +350,6 @@ export function debugHistory(): void {
       console.log(`  [${i}]: empty`)
     }
   }
-  console.log('===================')
+
 }
 

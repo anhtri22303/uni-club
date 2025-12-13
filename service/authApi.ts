@@ -21,7 +21,6 @@ export interface LoginCredentials {
 // POST /auth/login -> returns token + user info
 export const login = async (credentials: LoginCredentials): Promise<LoginResponse> => {
   // const res = await axiosInstance.post<LoginResponse>("/auth/login", credentials)
-  // console.log("Login response:", res.data)
   // return res.data
   try {
     const res = await axiosInstance.post<LoginResponse>("/auth/login", credentials)
@@ -99,10 +98,6 @@ export const loginWithGoogleToken = async (credentials: { token: string }): Prom
       tokenPreview: credentials.token?.substring(0, 30) + "..."
     }
   }
-
-  // Log request details
-  console.log("🚀 [Google Login API] Request Details:", requestDetails)
-
   try {
     const response = await axiosInstance.post<GoogleAuthResponse>("/auth/google", credentials)
     
@@ -129,7 +124,6 @@ export const loginWithGoogleToken = async (credentials: { token: string }): Prom
     }
 
     // Log response details
-    console.log("   [Google Login API] Response Details:", responseDetails)
 
     // Check if response is successful
     if (!response.data.success || !response.data.data) {
@@ -153,7 +147,7 @@ export const loginWithGoogleToken = async (credentials: { token: string }): Prom
     if (userData.requirePasswordChange !== undefined) result.requirePasswordChange = userData.requirePasswordChange
     
     // Log the response structure for debugging
-    console.log("📊 [Google Login] Response structure:", {
+    console.log(" [Google Login] Response structure:", {
       role: result.role,
       hasClubId: result.clubId !== undefined,
       hasClubIds: result.clubIds !== undefined,

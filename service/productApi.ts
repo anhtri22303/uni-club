@@ -173,7 +173,6 @@ export async function getEventProductsOnTime(
     `/api/events/clubs/${clubId}/event-items/active`
   );
   const data = res.data.data;
-  console.log("Event Product On Time:", data);
   return Array.isArray(data) ? data : [];
 }
 
@@ -188,7 +187,6 @@ export async function getEventProductsCompleted(
     `/api/events/clubs/${clubId}/event-items/completed`
   );
   const data = res.data.data;
-  console.log("Event Product Completed:", data);
   return Array.isArray(data) ? data : [];
 }
 

@@ -215,15 +215,12 @@ export const CardPreview = forwardRef<HTMLDivElement, CardPreviewProps>(
             const screenOrientation = (window.screen as any).orientation
             if (screenOrientation && typeof screenOrientation.lock === 'function') {
               await screenOrientation.lock('landscape').catch((err: any) => {
-                console.log('Screen orientation lock not supported or denied:', err)
               })
             }
           } catch (err) {
-            console.log('Could not lock screen orientation:', err)
           }
         }
       } catch (err) {
-        console.log('Fullscreen request failed:', err)
         // If fullscreen fails, still show the modal
       }
     }
@@ -250,11 +247,9 @@ export const CardPreview = forwardRef<HTMLDivElement, CardPreviewProps>(
               screenOrientation.unlock()
             }
           } catch (err) {
-            console.log('Could not unlock screen orientation:', err)
           }
         }
       } catch (err) {
-        console.log('Exit fullscreen failed:', err)
       }
 
       setIsFullScreen(false)
@@ -293,7 +288,6 @@ export const CardPreview = forwardRef<HTMLDivElement, CardPreviewProps>(
     const gradientStyle = getGradientStyle(gradient, cardColorClass)
     
     // Debug: Log card data being rendered
-    console.log('CardPreview rendering with data:', cardData)
 
     const cardElement = (
       <div className="flex justify-center w-full relative">

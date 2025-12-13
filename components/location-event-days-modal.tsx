@@ -60,7 +60,6 @@ export function LocationEventDaysModal({
 
   useEffect(() => {
     if (open) {
-      console.log('Modal opened - locations:', locations.length, 'selectedLocationId:', selectedLocationId, 'eventDays:', eventDays)
       setLocationId(selectedLocationId || 0)
       // Load existing event days if available
       setDays(eventDays && eventDays.length > 0 ? [...eventDays] : [])
@@ -73,7 +72,6 @@ export function LocationEventDaysModal({
   // Auto-fetch events when location changes and we have a selected date
   useEffect(() => {
     if (locationId > 0 && selectedDateForTime) {
-      console.log('🔄 Location or date changed, fetching events...', { locationId, selectedDateForTime })
       fetchExistingEvents(selectedDateForTime, locationId)
     }
   }, [locationId, selectedDateForTime, locations])
@@ -95,37 +93,29 @@ export function LocationEventDaysModal({
   // Fetch existing events for selected date and location
   const fetchExistingEvents = async (date: string, locationId: number) => {
     if (!date || !locationId) {
-      console.log('❌ Missing date or locationId:', { date, locationId })
       return
     }
     
-    console.log('🚀 Starting fetchExistingEvents...', { date, locationId })
     
     try {
       setLoadingEvents(true)
-      console.log('📡 Calling getEventByDate API...')
       const events = await getEventByDate(date)
-      console.log('✅ API response received:', events)
       
       // Filter events by selected location
       const selectedLocation = locations.find(loc => loc.id === locationId)
-      console.log('🏢 Selected location:', selectedLocation)
       
       // First filter by approved/ongoing/completed status
       const approvedEvents = events.filter(event => {
         const allowedStatuses = ['APPROVED', 'ONGOING', 'COMPLETED']
         return allowedStatuses.includes(event.status)
       })
-      console.log(`📋 Filtered to ${approvedEvents.length} approved/ongoing/completed events from ${events.length} total`)
       
       // Then filter by location
       const eventsAtLocation = approvedEvents.filter(event => {
-        console.log('  Comparing event location:', event.locationName, 'with selected:', selectedLocation?.name)
         return event.locationName === selectedLocation?.name
       })
       
       setExistingEvents(eventsAtLocation)
-      console.log(`✅ Found ${eventsAtLocation.length} existing events at ${selectedLocation?.name} on ${date}:`, eventsAtLocation)
     } catch (error) {
       console.error('Error fetching existing events:', error)
       setExistingEvents([])
@@ -168,16 +158,13 @@ export function LocationEventDaysModal({
     const selectedDate = new Date(year, month, day)
     if (selectedDate < today) return
 
-    console.log('📅 Date selected:', dateStr, 'with locationId:', locationId)
     setSelectedDateForTime(dateStr)
     setShowTimeSelection(true)
     
     // Fetch existing events for this date and location
     if (locationId > 0) {
-      console.log('🔥 Calling fetchExistingEvents from handleDateClick')
       fetchExistingEvents(dateStr, locationId)
     } else {
-      console.log('⚠️ No locationId, skipping API call')
     }
   }
 
@@ -339,7 +326,6 @@ export function LocationEventDaysModal({
           <Select
             value={locationId > 0 ? locationId.toString() : undefined}
             onValueChange={(value) => {
-              console.log('Location selected:', value)
               setLocationId(Number(value))
             }}
             disabled={locations.length === 0}

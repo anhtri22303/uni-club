@@ -80,17 +80,12 @@ export default function AdminUsersPage() {
     select: (data) => data.sort((a, b) => a.name.localeCompare(b.name)),
   })
 
-
-  console.log("AdminUsersPage - isLoading:", loading)
-  console.log("AdminUsersPage - error:", queryError)
-
   const getRoleName = (roleId: string) => formatRoleName(roleId)
 
   // Map API data to UserRecord shape
   const users: UserRecord[] = (pagedData?.content || []).map((u: AdminUser) => {
     // Log first user to verify mapping
     if (pagedData?.content.indexOf(u) === 0) {
-      console.log("First user object from API:", u)
     }
     return {
       id: u.id,
@@ -115,7 +110,6 @@ export default function AdminUsersPage() {
     return 0
   })
 
-  console.log("Mapped users (total:", users.length, "):", users.slice(0, 2))
 
   const error = queryError ? String(queryError) : null
 

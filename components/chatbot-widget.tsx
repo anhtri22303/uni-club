@@ -106,7 +106,6 @@ export function ChatbotWidget() {
         // Set userId for conversation history
         const userIdValue = authData.userId || authData.id
         setUserId(userIdValue)
-        console.log("Loaded userId for chatbot:", userIdValue)
 
         // Collect clubIds from multiple possible sources
         let extractedClubIds: number[] = []
@@ -131,7 +130,6 @@ export function ChatbotWidget() {
         }
 
         setClubIds(extractedClubIds)
-        console.log("Loaded clubIds:", extractedClubIds)
 
         // Set prompts based on role
         if (role === "CLUB_LEADER") {
@@ -174,7 +172,6 @@ export function ChatbotWidget() {
               },
               ...convertedMessages
             ])
-            console.log(`Loaded ${historyMessages.length} messages from history`)
           }
           setHistoryLoaded(true)
         } catch (error) {
@@ -4250,7 +4247,6 @@ For university administration review and strategic planning
               { role: 'assistant', content: botText }
             ]
           })
-          console.log('Conversation history saved')
         } catch (historyError) {
           console.error('Error saving conversation history:', historyError)
           // Don't throw error, just log it
@@ -4301,7 +4297,6 @@ For university administration review and strategic planning
           timestamp: new Date(),
         },
       ])
-      console.log('Conversation history cleared')
     } catch (error) {
       console.error('Error clearing conversation history:', error)
     }

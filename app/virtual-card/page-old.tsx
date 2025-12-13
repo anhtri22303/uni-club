@@ -42,12 +42,6 @@ export default function VirtualCardPage() {
       try {
         setLoading(true)
         
-        // Fetch profile data
-        const profile = await fetchProfile()
-        console.log('Virtual card profile data:', profile)
-        console.log('Profile type:', typeof profile)
-        console.log('Profile keys:', profile ? Object.keys(profile) : 'null')
-        
         if (profile && typeof profile === 'object') {
           // Ensure all required fields exist and are strings
           const profileAny = profile as any
@@ -65,7 +59,6 @@ export default function VirtualCardPage() {
             wallet: profileAny.wallet || null,
             memberships: profileAny.memberships || []
           }
-          console.log('Safe profile:', safeProfile)
           setProfileData(safeProfile)
         } else {
           throw new Error('Invalid profile data received')

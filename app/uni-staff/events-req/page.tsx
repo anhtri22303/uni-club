@@ -166,7 +166,6 @@ export default function UniStaffEventRequestsPage() {
 		const load = async () => {
 			setLoading(true)
 			try {
-				console.log(" Starting to fetch data for events-req page...")
 				// fetch events, locations, clubs, and settled events in parallel
 				const [eventsRes, locationsRes, clubsRes, settledEventsRes] = await Promise.all([
 					fetchEvent(),
@@ -178,7 +177,6 @@ export default function UniStaffEventRequestsPage() {
 					})
 				])
 
-				console.log("   Received API responses:", { eventsRes, locationsRes, clubsRes, settledEventsRes })
 
 				const eventsContent = (eventsRes as any) && Array.isArray((eventsRes as any).content)
 					? (eventsRes as any).content
@@ -198,7 +196,6 @@ export default function UniStaffEventRequestsPage() {
 				)
 
 				if (mounted) {
-					console.log(" Setting state with data:", { eventsContent, locationsContent, clubsContent, settledIds })
 					setEvents(eventsContent)
 					setAllEvents(eventsContent) // Store all events for CalendarModal
 					setLocations(locationsContent)

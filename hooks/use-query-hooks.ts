@@ -418,9 +418,7 @@ export function useUsers() {
     return useQuery({
         queryKey: queryKeys.usersList(),
         queryFn: async () => {
-            console.log(" useUsers: Starting to fetch users...")
             const users = await fetchUser()
-            console.log("  useUsers: Received users:", users)
             return users
         },
         staleTime: 5 * 60 * 1000,

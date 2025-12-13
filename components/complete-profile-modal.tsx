@@ -140,7 +140,6 @@ export function CompleteProfileModal({
       // Note: avatarUrl and backgroundUrl are handled by separate upload endpoints
       // so we don't include them in the editProfile payload
 
-      console.log("Submitting complete profile payload:", payload)
 
       const response = await editProfile(payload)
 

@@ -73,8 +73,6 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
         if (staffEvents.length > 0 && staffEvents[0].state === "ACTIVE") {
             const activeEvent = staffEvents[0];
             const id = activeEvent.clubId;
-            console.log("🔍 [Staff Event Order Detail] Active staff event:", activeEvent);
-            console.log("🔍 [Staff Event Order Detail] Using clubId:", id);
             
             setClubId(id);
         } else if (staffEvents.length === 0 && !staffEventsLoading) {
@@ -110,16 +108,13 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
         queryKey: ["orderLogs", order?.orderId, order?.membershipId],
         queryFn: async () => {
             if (!order?.orderId || !order?.membershipId) {
-                console.log("⚠️ Order ID or Membership ID not available yet", { orderId: order?.orderId, membershipId: order?.membershipId });
                 return [];
             }
-            console.log("🔍 Fetching order logs for:", { membershipId: order.membershipId, orderId: order.orderId });
             try {
                 const logs = await getOrderLogsByMembershipAndOrder(order.membershipId, order.orderId);
-                console.log("✅ Order logs fetched successfully:", logs);
                 return logs;
             } catch (error: any) {
-                console.error("❌ Failed to fetch order logs:", {
+                console.error(" Failed to fetch order logs:", {
                     membershipId: order.membershipId,
                     orderId: order.orderId,
                     error: error,
@@ -132,8 +127,6 @@ export default function EventOrderDetailPage({ params }: OrderDetailPageProps) {
         enabled: !!order?.orderId && !!order?.membershipId,
         retry: 1,
     });
-    console.log("Check Order Logs:", orderLogs);
-    console.log("Order Data:", order);
 
     // Các hàm xử lý ảnh
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {

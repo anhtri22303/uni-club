@@ -160,15 +160,8 @@ export default function StudentProductViewPage() {
   const currentMembership = useMemo(() => {
     // Chờ product VÀ profile (profile là MẢNG)
     if (!product || !profile) {
-      console.log("Đang chờ dữ liệu sản phẩm hoặc profile...");
       return null;
     }
-
-    console.log("ĐANG KIỂM TRA MEMBERSHIP:");
-    console.log("Sản phẩm này thuộc clubId:", product.clubId);
-    // : profile chính là mảng memberships (từ getMyClubs)
-    console.log("Tất cả memberships của bạn (từ profile):", profile);
-
     //  Tìm trực tiếp trên mảng `profile`
     const foundMembership = profile.find(
       (membership: any) => membership.clubId === product.clubId
@@ -176,20 +169,6 @@ export default function StudentProductViewPage() {
 
     if (!foundMembership) {
       return null; // Trả về null -> sẽ hiển thị thông báo "You must be a member..."
-    }
-
-    // (Logic kiểm tra membershipId đã đúng)
-    if (!foundMembership.membershipId) {
-      console.error(
-        `%c[LỖI API] Dữ liệu 'profile' BỊ THIẾU 'membershipId' cho club ${product.clubId}!`,
-        "color: orange; font-weight: bold;"
-      );
-    } else {
-      console.log(
-        `%c[THÀNH CÔNG] Đã tìm thấy membership:`,
-        "color: green;",
-        foundMembership
-      );
     }
 
     return foundMembership;

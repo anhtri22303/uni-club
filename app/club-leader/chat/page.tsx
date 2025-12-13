@@ -96,7 +96,6 @@ const getAvatarUrl = (avatarUrl: string | null | undefined, baseUrl?: string): s
   if (baseUrl) {
     const base = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl
     const fullUrl = `${base}/${avatarUrl}`
-    console.log("Avatar URL constructed:", { raw: avatarUrl, base: baseUrl, full: fullUrl })
     return fullUrl
   }
   
@@ -338,13 +337,7 @@ export default function ClubLeaderChatPage() {
     const userName = profileObj?.fullName || auth.user?.fullName || "Unknown User"
     const baseUrl = axiosInstance.defaults.baseURL || ""
     const rawAvatarUrl = profileObj?.avatarUrl
-    console.log("Profile data when sending message:", { 
-      profile: profile, 
-      profileObj: profileObj,
-      profileAvatarUrl: profileObj?.avatarUrl,
-      rawAvatarUrl,
-      baseUrl 
-    })
+  
     const userAvatar = getAvatarUrl(rawAvatarUrl, baseUrl)
 
     setSending(true)

@@ -193,9 +193,6 @@ export default function EventRequestDetailPage({
       try {
         const data: any = await getEventById(params.id);
         if (!mounted) return;
-        console.log("📊 Event Data:", data);
-        console.log("📊 commitPointCost:", data.commitPointCost);
-        console.log("📊 maxCheckInCount:", data.maxCheckInCount);
         setRequest(data);
 
         // Fetch event summary if APPROVED, ONGOING or COMPLETED

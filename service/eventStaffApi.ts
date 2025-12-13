@@ -57,7 +57,6 @@ export async function getEventStaff(
   const res = await axiosInstance.get<ApiResponse<EventStaff[]>>(
     `/api/events/${eventId}/staffs`
   );
-  console.log("getEventStaff res:", res);
   return res.data.data;
 }
 
@@ -194,7 +193,6 @@ export async function getMyStaff(): Promise<MyStaffEvent[]> {
   const res = await axiosInstance.get<ApiResponse<MyStaffEvent[]>>(
     "/api/events/my/staff"
   );
-  console.log("getMyStaff res:", res);
   return res.data.data;
 }
 
@@ -206,7 +204,6 @@ export async function getStaffHistory(): Promise<StaffHistoryOrder[]> {
   const res = await axiosInstance.get<ApiResponse<{ content: StaffHistoryOrder[] }>>(
     "/api/redeem/my-approvals"
   );
-  console.log("getStaffHistory res:", res);
   return res.data.data.content;
 }
 

@@ -144,7 +144,6 @@ export default function ProfilePage() {
         totalEvents,
       })
       
-      console.log('Admin stats loaded:', { totalUsers, totalClubs, totalEvents })
     } catch (error) {
       console.error('Error loading admin stats:', error)
       // Keep default values on error
@@ -251,7 +250,6 @@ export default function ProfilePage() {
           }
         }
 
-        console.log("Wallets from profile:", walletsList)
         setMemberships(walletsList)
       }
 
@@ -403,7 +401,6 @@ export default function ProfilePage() {
         // KHÔNG GỬI: avatarUrl, backgroundUrl (chúng được xử lý bằng endpoint upload file riêng)
       }
 
-      console.log("Đang gửi payload để cập nhật profile:", payload)
 
       const res = (await editProfile(payload)) as any
 

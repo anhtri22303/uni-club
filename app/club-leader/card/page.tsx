@@ -284,12 +284,10 @@ export default function CardEditorPage() {
         logoUrl,
       };
 
-      console.log("Saving design for clubId:", clubId, cardDesignData);
 
       // Call the API
       const savedCard = await createCard(clubId, cardDesignData);
 
-      console.log("Card saved successfully:", savedCard);
 
       toast({
         title: "   Design Saved!",

@@ -12,7 +12,6 @@ export function GoogleAuthProvider({ children }: GoogleAuthProviderProps) {
   // Default fallback is the official client ID provided by backend team
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "772231604776-mrl2ick1aess5a4f2npfm7qctvksprd7.apps.googleusercontent.com"
   
-  // console.log("🔑 Google OAuth Client ID:", clientId.substring(0, 20) + "...")
   
   return (
     <GoogleOAuthProvider clientId={clientId}>

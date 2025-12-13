@@ -42,7 +42,6 @@ export default function VirtualCardPage() {
         
         // Fetch profile data
         const profile = await fetchProfile()
-        console.log('Raw profile data:', profile)
         
         if (!profile) {
           throw new Error('No profile data received')
@@ -63,7 +62,6 @@ export default function VirtualCardPage() {
           role: String(profileAny.role || ''),
         }
         
-        console.log('Safe profile created:', safeProfile)
         setProfileData(safeProfile)
         
         // Generate QR code with safe data

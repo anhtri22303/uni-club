@@ -78,10 +78,8 @@ export default function MyClubPage() {
     const loadUserClubs = async () => {
       try {
         const saved = safeSessionStorage.getItem("uniclub-auth")
-        console.log("MyClub - Raw sessionStorage data:", saved)
         if (saved) {
           const parsed = JSON.parse(saved)
-          console.log("MyClub - Parsed sessionStorage data:", parsed)
 
           let clubIdNumbers: number[] = []
 
@@ -91,7 +89,6 @@ export default function MyClubPage() {
             clubIdNumbers = [Number(parsed.clubId)]
           }
 
-          console.log("MyClub - Setting userClubIds to:", clubIdNumbers)
           setUserClubIds(clubIdNumbers)
 
           // Set first club as default selected
@@ -123,7 +120,6 @@ export default function MyClubPage() {
           .filter((res: any) => res?.success && res?.data)
           .map((res: any) => res.data)
 
-        console.log("Loaded clubs details for dropdown:", validClubs)
         setUserClubsDetails(validClubs)
       } catch (err) {
         console.error("Failed to load clubs details:", err)

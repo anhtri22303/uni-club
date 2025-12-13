@@ -173,7 +173,6 @@ export default function UniStaffDisciplinePage() {
         penaltyPoints: createPenaltyPoints,
       }
 
-      console.log("Data to be sent:", payload)
 
       await createPenaltyRule(payload)
 

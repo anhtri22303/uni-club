@@ -54,10 +54,9 @@ export default function EventStaffPage() {
     try {
       setLoading(true)
       const data = await getEventByClubId(clubId!)
-      console.log("📊 Loaded events for club:", clubId, data)
       setEvents(data)
     } catch (error: any) {
-      console.error("❌ Error loading events:", error)
+      console.error(" Error loading events:", error)
       toast({
         title: "Error Loading Events",
         description: error?.message || "Failed to load events",
@@ -147,9 +146,6 @@ export default function EventStaffPage() {
     return isCompleted || expired
   })
 
-  console.log("📋 Total events:", events.length)
-  console.log("✅ Active events:", activeEvents.length, activeEvents)
-  console.log("✅ Completed events:", completedEvents.length, completedEvents)
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr)
