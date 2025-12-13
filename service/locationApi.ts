@@ -103,7 +103,6 @@ export const fetchLocation = async (params: FetchLocationsParams = { page: 0, si
       params: params, // Sẽ tự động chuyển đổi thành ?page=0&size=20
     });
 
-    console.log("Fetched locations:", response.data);
     return response.data;
   } catch (error) {
     console.error("Error fetching locations:", error);
@@ -120,7 +119,6 @@ export const getLocationById = async (id: string | number) => {
   try {
     // Thêm "/" ở đầu path
     const response = await axiosInstance.get<Location>(`/api/locations/${id}`);
-    console.log("Fetched location by id:", response.data);
     return response.data;
   } catch (error) {
     console.error(`Error fetching location ${id}:`, error);
@@ -137,7 +135,6 @@ export const postLocation = async (data: CreateLocationRequest): Promise<Locatio
   try {
     // Thêm "/" ở đầu path
     const response = await axiosInstance.post<Location>("/api/locations", data);
-    console.log("Created location response:", response.data);
     return response.data;
   } catch (error) {
     console.error("Error creating location:", error);
@@ -157,7 +154,6 @@ export const deleteLocation = async (locationId: number): Promise<void> => {
     const response = await axiosInstance.delete(`/api/locations/${locationId}`);
 
     // Log status (ví dụ: 204) thay vì data
-    console.log("Deleted location status:", response.status);
 
     // Không trả về gì cả (Promise<void>)
     return;
@@ -182,7 +178,6 @@ export const updateLocation = async (
       `/api/locations/${id}`,
       data
     );
-    console.log("Updated location response:", response.data);
     return response.data;
   } catch (error) {
     console.error(`Error updating location ${id}:`, error);

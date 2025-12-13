@@ -101,7 +101,6 @@ export function clearReportFromSession(): void {
   try {
     localStorage.removeItem(REPORT_STORAGE_KEY)
     localStorage.removeItem(REPORT_SETTINGS_KEY)
-    console.log('Report local storage cleared')
   } catch (error) {
     console.error('Failed to clear report from local storage:', error)
   }

@@ -75,11 +75,9 @@ export default function ScanOrderQRPage() {
   const handleQRCodeScanned = async (decodedText: string) => {
     // Prevent multiple scans
     if (isProcessingRef.current) {
-      console.log("⏸️ Already processing, skipping scan")
       return
     }
     
-    console.log("  Scanned QR data:", decodedText)
     
     // Loại bỏ khoảng trắng và chuyển về uppercase để check
     const trimmedText = decodedText.trim()
@@ -90,12 +88,10 @@ export default function ScanOrderQRPage() {
     
     if (orderCodeMatch) {
       const orderCode = orderCodeMatch[1].toUpperCase() // Lấy "UC-2C"
-      console.log("✅ Valid order code found:", orderCode)
       
       // Kiểm tra 2 ký tự đầu phải là "UC"
       if (orderCode.substring(0, 2).toUpperCase() === "UC") {
         const orderId = orderCode.split("-")[1] // Lấy phần sau dấu gạch "2C"
-        console.log("📦 Order ID extracted:", orderId)
         
         // Set processing flag immediately
         isProcessingRef.current = true
@@ -137,12 +133,10 @@ export default function ScanOrderQRPage() {
           setLoading(false)
         }
       } else {
-        console.log("❌ Invalid prefix:", orderCode.substring(0, 2))
         setScannedCode(decodedText)
         setIsValidOrder(false)
       }
     } else {
-      console.log("❌ No UC pattern found in:", trimmedText)
       setScannedCode(decodedText)
       setIsValidOrder(false)
     }

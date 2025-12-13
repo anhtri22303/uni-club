@@ -52,7 +52,6 @@ export const fetchClub = async (
         pageable: JSON.stringify(pageable),
       },
     })
-    console.log("Fetched clubs response:", response.data)
     // Handle the nested response structure: response.data.data.content
     return response.data
   } catch (error) {
@@ -138,7 +137,6 @@ export const getClubIdFromToken = (): number | null => {
 
     // Cách 1: Ưu tiên lấy clubId trực tiếp từ đối tượng đã lưu
     if (authData.clubId) {
-      // console.log("Đã lấy clubId trực tiếp từ sessionStorage:", authData.clubId);
       return authData.clubId;
     }
 
@@ -146,7 +144,6 @@ export const getClubIdFromToken = (): number | null => {
     const token = authData?.token;
     if (token) {
       const decoded: JwtPayload = jwtDecode(token);
-      // console.log("Đã giải mã JWT. Payload:", decoded);
       return decoded.clubId ?? null;
     }
 
@@ -164,7 +161,6 @@ export const getClubStats = async () => {
   try {
     const response = await axiosInstance.get("api/clubs/stats")
     const body = response.data
-    console.log("Fetched club stats response:", body)
 
     // If backend uses { success, message, data }
     if (body && typeof body === "object" && "data" in body && "success" in body && (body as any).success) {
@@ -186,7 +182,6 @@ export const getClubMemberCount = async (id: string | number) => {
   try {
     const response = await axiosInstance.get<MemberCountApiResponse>(`/api/clubs/${id}/member-count`);
     // Trả về cả activeMemberCount và approvedEvents
-    // console.log(`Fetched member count for club ${id}:`, response.data);
     return {
       activeMemberCount: response.data?.data?.activeMemberCount ?? 0,
       approvedEvents: response.data?.data?.approvedEvents ?? 0

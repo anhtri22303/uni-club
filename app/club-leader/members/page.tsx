@@ -74,8 +74,6 @@ export default function ClubLeaderMembersPage() {
   )
   const membersError = membersQueryError ? String(membersQueryError) : null
 
-  console.log("CLUB ĐỂ LỌC (managedClub):", managedClub)
-  console.log("DANH SÁCH MEMBER TỪ API (apiMembers):", apiMembers)
 
   // Filters state
   const [searchTerm, setSearchTerm] = useState("")

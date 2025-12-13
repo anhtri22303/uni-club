@@ -108,7 +108,6 @@ const getAvatarUrl = (avatarUrl: string | null | undefined, baseUrl?: string): s
   if (baseUrl) {
     const base = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl
     const fullUrl = `${base}/${avatarUrl}`
-    console.log("Avatar URL constructed:", { raw: avatarUrl, base: baseUrl, full: fullUrl })
     return fullUrl
   }
   
@@ -162,7 +161,6 @@ export default function StudentChatPage() {
           }
         }
         
-        console.log("Student Chat - Available club IDs:", clubIdNumbers)
         setAvailableClubIds(clubIdNumbers)
         
         // Auto-select first club if available
@@ -185,7 +183,6 @@ export default function StudentChatPage() {
         })
         .filter((club): club is ClubDetails => club !== null)
       
-      console.log("Student Chat - Loaded club details:", clubDetails)
       setAvailableClubs(clubDetails)
     }
   }, [availableClubIds, allClubsData])

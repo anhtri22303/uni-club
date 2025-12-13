@@ -15,7 +15,6 @@ import { timeObjectToString } from "@/service/eventApi"
 import { getProducts } from "@/service/productApi"
 import { getClubRedeemOrders } from "@/service/redeemApi"
 import { getClubWallet, getClubToMemberTransactions } from "@/service/walletApi"
-// ...existing code...
 import { fetchMajorById } from "@/service/majorApi"
 
 // Import dashboard components
@@ -126,7 +125,6 @@ export default function ClubLeaderDashboardPage() {
       
       try {
         const majorData = await fetchMajorById(managedClub.majorId)
-        console.log('Major data received:', majorData)
         
         // Check for policies array (proper typing)
         if (majorData?.policies && Array.isArray(majorData.policies) && majorData.policies.length > 0) {
@@ -134,9 +132,7 @@ export default function ClubLeaderDashboardPage() {
           const activePolicy = majorData.policies.find(p => p.active)
           const policyToUse = activePolicy || majorData.policies[0]
           setPolicyName(policyToUse.policyName)
-          console.log('Policy name set:', policyToUse.policyName)
         } else {
-          console.log('No policies found for major')
           setPolicyName(null)
         }
       } catch (error) {
@@ -155,7 +151,6 @@ export default function ClubLeaderDashboardPage() {
     // Only update if the count has changed
     if (pendingApplications.length !== clubLeaderApplications.length) {
       updateClubLeaderApplications(pendingApplications)
-      console.log('📊 Club Leader Dashboard: Updated pending applications count:', pendingApplications.length)
     }
   }, [applications, clubLeaderApplications.length])
 
@@ -182,12 +177,6 @@ export default function ClubLeaderDashboardPage() {
       coHostPendingCount !== clubLeaderEventCounts.coHostPending
     ) {
       updateClubLeaderEventCounts({
-        pendingCoClub: pendingCoClubCount,
-        pendingUniStaff: pendingUniStaffCount,
-        coHostPending: coHostPendingCount
-      })
-
-      console.log('📊 Club Leader Dashboard: Updated event counts:', {
         pendingCoClub: pendingCoClubCount,
         pendingUniStaff: pendingUniStaffCount,
         coHostPending: coHostPendingCount

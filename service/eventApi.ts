@@ -225,8 +225,6 @@ export const isEventExpired = (event: Event): boolean => {
 export const fetchEvent = async ({ page = 0, size = 70, sort = "name" } = {}): Promise<Event[]> => {
   const timestamp = new Date().toISOString();
   const stack = new Error().stack;
-  // console.log(`🚀 fetchEvent called at ${timestamp}`);
-  // console.log(`📍 Call stack:`, stack?.split('\n').slice(1, 4).join('\n'));
 
   try {
     const response = await axiosInstance.get("api/events", {
@@ -237,12 +235,9 @@ export const fetchEvent = async ({ page = 0, size = 70, sort = "name" } = {}): P
       },
     });
     const data: any = response.data;
-    console.log(`fetchEvent:`, data);
 
     // Log first event to check structure
     // if (data?.content?.[0]) {
-    //   // console.log("First event in response:", data.content[0]);
-    //   // console.log("commitPointCost in first event:", data.content[0].commitPointCost);
     // }
 
     // Response structure: { content: [...], pageable: {...}, ... }
@@ -267,7 +262,6 @@ export const createEvent = async (payload: CreateEventPayload): Promise<Event> =
   try {
     const response = await axiosInstance.post("api/events", payload)
     const data: any = response.data
-    console.log("Create event response:", data)
     // Response structure: { success: true, message: "success", data: {...event} }
     if (data?.data) return data.data
     return data
@@ -281,7 +275,6 @@ export const getEventById = async (id: string | number): Promise<Event> => {
   try {
     const response = await axiosInstance.get(`api/events/${id}`)
     const resData: any = response.data
-    console.log(`Fetched event ${id}:`, resData)
     // Response structure: { success: true, message: "success", data: { id, name, description, type, date, startTime, endTime, status, locationName, checkInCode, maxCheckInCount, currentCheckInCount, hostClub: { id, name } } }
     // Always return the data object when present
     if (resData && resData.data) return resData.data
@@ -301,7 +294,6 @@ export const putEventStatus = async (id: string | number, approvedBudgetPoints: 
     )
 
     const data: any = response.data
-    console.log(`Approved budget for event ${id} with points: ${approvedBudgetPoints}:`, data)
 
     // Response structure: { success: true, message: "success", data: {...event} }
     if (data && data.data) return data.data
@@ -317,7 +309,6 @@ export const getEventByCode = async (code: string): Promise<Event> => {
   try {
     const response = await axiosInstance.get(`/api/events/code/${encodeURIComponent(code)}`)
     const resData: any = response.data
-    console.log(`Fetched event by code ${code}:`, resData)
     // console.debug(`Fetched event by code ${code}:`, resData)
     // Expected response shape: { success: true, message: null, data: {...event} }
     if (resData?.success && resData?.data) return resData.data
@@ -356,7 +347,6 @@ export const getEventByCode = async (code: string): Promise<Event> => {
 //   try {
 //     const response = await axiosInstance.get(`/api/events/club/${clubId}/cohost`)
 //     const resData: any = response.data
-//     console.log(`Fetched co-host events for club ${clubId}:`, resData)
 
 //     // If response is direct array of events
 //     if (Array.isArray(resData)) return resData
@@ -380,11 +370,9 @@ export const getEventByClubId = async (clubId: string | number): Promise<Event[]
     // API: /api/events/club/{clubId}
     const response = await axiosInstance.get(`/api/events/club/${clubId}`)
     const resData: any = response.data
-    console.log(`Fetched events for club ${clubId}:`, resData)
 
     // KIỂM TRA CẤU TRÚC {success, message, data: {events: [...]}}
     if (resData?.data?.events && Array.isArray(resData.data.events)) {
-      console.log(`✅ Found events in data.events:`, resData.data.events.length)
       return resData.data.events
     }
 
@@ -397,7 +385,7 @@ export const getEventByClubId = async (clubId: string | number): Promise<Event[]
     if (resData?.data && Array.isArray(resData.data)) return resData.data
     if (resData?.content && Array.isArray(resData.content)) return resData.content
 
-    console.warn(`⚠️ Unexpected response structure for club ${clubId}:`, resData)
+    console.warn(` Unexpected response structure for club ${clubId}:`, resData)
     return []
   } catch (error) {
     console.error(`Error fetching events for club ${clubId}:`, error)
@@ -410,7 +398,6 @@ export const getEventCoHost = async (clubId: string | number): Promise<Event[]> 
     // API: /api/events/club/{clubId}/cohost
     const response = await axiosInstance.get(`/api/events/club/${clubId}/cohost`)
     const resData: any = response.data
-    console.log(`Fetched co-host events for club ${clubId}:`, resData)
 
     // Theo Swagger, response trả về trực tiếp mảng: [...]
     if (Array.isArray(resData)) {
@@ -432,7 +419,6 @@ export const updateEvent = async (id: string | number, payload: Partial<CreateEv
   try {
     const response = await axiosInstance.put(`api/events/${id}`, payload)
     const data: any = response.data
-    console.log(`Updated event ${id}:`, data)
     // Response structure: { success: true, message: "success", data: {...event} }
     if (data?.data) return data.data
     return data
@@ -445,7 +431,6 @@ export const updateEvent = async (id: string | number, payload: Partial<CreateEv
 export const deleteEvent = async (id: string | number): Promise<void> => {
   try {
     await axiosInstance.delete(`api/events/${id}`)
-    console.log(`Deleted event ${id}`)
   } catch (error) {
     console.error(`Error deleting event ${id}:`, error)
     throw error
@@ -474,7 +459,6 @@ export const coHostRespond = async (eventId: string | number, accept: boolean) =
       params: { accept }
     })
     const data: any = response.data
-    console.log(`${accept ? 'Accepted' : 'Rejected'} co-host invitation for event ${eventId}:`, data)
     // Response structure: { success: true, message: "string", data: "string" }
     return data
   } catch (error) {
@@ -506,7 +490,6 @@ export const getEventWallet = async (eventId: string | number): Promise<EventWal
   try {
     const response = await axiosInstance.get(`/api/events/${eventId}/wallet/detail`)
     const data: any = response.data
-    console.log(`Fetched wallet for event ${eventId}:`, data)
     // Response structure: { success: true, message: "success", data: {...wallet} }
     if (data?.data) return data.data
     return data
@@ -520,7 +503,6 @@ export const registerForEvent = async (eventId: string | number) => {
   try {
     const response = await axiosInstance.post(`/api/events/register`, { eventId })
     const data: any = response.data
-    console.log(`Registered for event ${eventId}:`, data)
     // Response structure: { success: true, message: "string", data: "string" }
     return data
   } catch (error) {
@@ -544,7 +526,6 @@ export const getMyEventRegistrations = async (): Promise<EventRegistration[]> =>
   try {
     const response = await axiosInstance.get(`/api/events/my-registrations`)
     const data: any = response.data
-    console.log(`Fetched my event registrations:`, data)
     // Response structure: { success: true, message: "success", data: [...] }
     if (data?.data && Array.isArray(data.data)) return data.data
     if (Array.isArray(data)) return data
@@ -564,7 +545,6 @@ export const getMyEvents = async (): Promise<Event[]> => {
   try {
     const response = await axiosInstance.get("api/events/my")
     const data: any = response.data
-    console.log("Fetched my events:", data)
 
     // Response structure: { success: true, message: "success", data: [...events] }
     if (data?.data && Array.isArray(data.data)) return data.data
@@ -590,7 +570,6 @@ export const eventCheckin = async (eventJwtToken: string, level: string = "NONE"
     }
     const response = await axiosInstance.post(`/api/events/checkin`, payload)
     const data: any = response.data
-    console.log(`Event check-in response:`, data)
     // Response structure: { success: true, message: "Check-in success for event co club", data: null }
     return data
   } catch (error) {
@@ -607,7 +586,6 @@ export const eventCheckinPublic = async (code: string) => {
       { params: { code } }
     )
     const data: any = response.data
-    console.log(`Public event check-in response:`, data)
     // Response structure: { success: true, message: "string", data: "string" }
     return data
   } catch (error) {
@@ -628,7 +606,6 @@ export const getEventSummary = async (eventId: string | number): Promise<EventSu
   try {
     const response = await axiosInstance.get(`/api/events/${eventId}/summary`)
     const data: any = response.data
-    console.log(`Fetched event summary for event ${eventId}:`, data)
     // Response structure: { success: true, message: "success", data: {...summary} }
     if (data?.data) return data.data
     return data
@@ -642,7 +619,6 @@ export const endEvent = async (eventId: string | number) => {
   try {
     const response = await axiosInstance.put(`/api/events/end`, { eventId })
     const data: any = response.data
-    console.log(`Ended event ${eventId}:`, data)
     // Response structure: { success: true, message: "Event completed. Total reward 0 pts: leftover returned", data: "null" }
     return data
   } catch (error) {
@@ -655,7 +631,6 @@ export const completeEvent = async (eventId: string | number) => {
   try {
     const response = await axiosInstance.post(`/api/events/${eventId}/complete`)
     const data: any = response.data
-    console.log(`Completed event ${eventId}:`, data)
     // Response structure: { success: true, message: "string", data: "string" }
     return data
   } catch (error) {
@@ -677,7 +652,6 @@ export const eventQR = async (eventId: string | number, phase: string) => {
       params: { phase }
     })
     const data: any = response.data
-    console.log(`Generated QR for event ${eventId} with phase ${phase}:`, data)
     // Response structure: { success: true, message: "success", data: { phase: "START", token: "string", expiresIn: 120 } }
     return data.data as { phase: string; token: string; expiresIn: number }
   } catch (error) {
@@ -696,7 +670,6 @@ export const eventSettle = async (eventId: string | number) => {
   try {
     const response = await axiosInstance.post(`/api/events/${eventId}/settle`)
     const data: any = response.data
-    console.log(`Settled event ${eventId}:`, data)
     // Response structure: { success: true, message: "string", data: "string" }
     return data
   } catch (error) {
@@ -714,7 +687,6 @@ export const getEventSettle = async () => {
   try {
     const response = await axiosInstance.get(`/api/events/settled`)
     const data: any = response.data
-    console.log(`Fetched settled events:`, data)
     // Response structure: { success: true, message: "success", data: [...] }
     return data.data as Array<{
       id: number
@@ -765,7 +737,6 @@ export const eventTimeExtend = async (eventId: string | number, payload: EventTi
   try {
     const response = await axiosInstance.put(`/api/events/${eventId}/extend`, payload)
     const data: any = response.data
-    console.log(`Extended time for event ${eventId}:`, data)
     // Response structure: { success: true, message: "success", data: {...event} }
     if (data?.data) return data.data
     return data
@@ -789,7 +760,6 @@ export const rejectEvent = async (eventId: string | number, reason: string) => {
       params: { reason }
     });
     const data: any = response.data;
-    console.log(`Rejected event ${eventId} with reason: ${reason}`, data);
     // Response: { success: true, message: "string", data: "string" }
     return data;
   } catch (error) {
@@ -808,7 +778,6 @@ export const cancelEvent = async (eventId: string | number) => {
   try {
     const response = await axiosInstance.put(`/api/events/${eventId}/cancel`);
     const data: any = response.data;
-    console.log(`Cancelled event ${eventId}:`, data);
     // Response: { success: true, message: "string", data: "string" }
     return data;
   } catch (error) {
@@ -827,7 +796,6 @@ export const cancelEventRegistration = async (eventId: string | number) => {
   try {
     const response = await axiosInstance.put(`/api/events/${eventId}/registration/cancel`);
     const data: any = response.data;
-    console.log(`Cancelled event registration ${eventId}:`, data);
     // Response: { success: true, message: "string", data: "string" }
     return data;
   } catch (error) {
@@ -857,7 +825,6 @@ export const refundEventProduct = async (
       }
     );
     const data: any = response.data;
-    console.log(`Refunded product ${productId} for user ${userId} from event ${eventId}:`, data);
     // Response: 200 OK with empty body {}
     return data; // Thường trả về data rỗng
   } catch (error) {
@@ -882,7 +849,6 @@ export const getEventFeedbackSummary = async (eventId: string | number): Promise
   try {
     const response = await axiosInstance.get(`/api/events/${eventId}/feedback/summary`);
     const data: any = response.data;
-    console.log(`Fetched feedback summary for event ${eventId}:`, data);
 
     // Response: { success: true, message: "string", data: {...} }
     if (data?.data) return data.data;
@@ -904,7 +870,6 @@ export const getEventByDate = async (date: string): Promise<Event[]> => {
   try {
     const response = await axiosInstance.get(`/api/events/by-date?date=${date}`)
     const resData: any = response.data
-    console.log(`Fetched events for date ${date}:`, resData)
     
     // Response structure: { success: true, message: "success", data: [...] }
     if (resData?.success && Array.isArray(resData.data)) {
@@ -947,7 +912,6 @@ export const getEventCheckin = async (eventId: string | number): Promise<EventAt
   try {
     const response = await axiosInstance.get(`/api/events/${eventId}/attendees`)
     const resData: any = response.data
-    console.log(`Fetched attendees for event ${eventId}:`, resData)
     
     // Response structure: Direct array of attendees
     if (Array.isArray(resData)) {
@@ -989,7 +953,6 @@ export const getEventRegistrations = async (eventId: string | number): Promise<E
   try {
     const response = await axiosInstance.get(`/api/events/${eventId}/registrations`)
     const resData: any = response.data
-    console.log(`Fetched registrations for event ${eventId}:`, resData)
     
     // Response structure: Direct array of registrations
     if (Array.isArray(resData)) {

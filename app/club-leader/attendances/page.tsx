@@ -107,7 +107,6 @@ export default function ClubAttendancePage() {
       try {
         const profile = (await fetchProfile()) as any // Thêm (as any)
         // THÊM DÒNG DEBUG NÀY ĐỂ KIỂM TRA
-        console.log("DEBUG: Cấu trúc PROFILE THỰC SỰ:", JSON.stringify(profile, null, 2));
         // Lấy userId chính xác từ profile.id
         const currentUserId = profile?.id;
 
@@ -203,7 +202,6 @@ export default function ClubAttendancePage() {
           // --- LOGIC MỚI CHO NGÀY HÔM NAY ---
           try {
             // Bước 1: Thử fetch /today
-            console.log("Attempting to fetch /today session...");
             apiResponse = (await fetchTodayClubAttendance(managedClub.id)) as any;
             attendanceData = apiResponse.data; // <-- SỬA LỖI: Mở gói .data
 
@@ -247,7 +245,6 @@ export default function ClubAttendancePage() {
                   })) as any;
                   attendanceData = apiResponse.data; // <-- SỬA LỖI: Mở gói .data
 
-                  console.log("Fetch via /history successful.", attendanceData);
 
                 } else {
                   throw createErr;

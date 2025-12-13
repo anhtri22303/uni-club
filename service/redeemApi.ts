@@ -142,7 +142,6 @@ export async function redeemClubProduct(
     `/api/redeem/club/${clubId}/order`,
     payload
   );
-  console.log("Redeem club product response:", res.data);
   return res.data.data;
 }
 
@@ -204,7 +203,6 @@ export async function getEventRedeemOrders(
   const res = await axiosInstance.get<ApiResponse<RedeemOrder[]>>(
     `/api/redeem/event/club/${clubId}`
   );
-  console.log("Event redeem orders for club:", res.data.data);
   return res.data.data;
 }
 
@@ -216,7 +214,6 @@ export async function getMemberRedeemOrders(): Promise<RedeemOrder[]> {
   const res = await axiosInstance.get<ApiResponse<RedeemOrder[]>>(
     `/api/redeem/orders/member`
   );
-  console.log("Member redeem orders:", res.data.data);
   return res.data.data;
 }
 
@@ -232,7 +229,6 @@ export async function getRedeemOrderById(
   const res = await axiosInstance.get<ApiResponse<RedeemOrder>>(
     `/api/redeem/order/id/${orderId}`
   );
-  console.log("Redeem order by ID:", res.data.data);
   return res.data.data;
 }
 
@@ -384,7 +380,6 @@ export async function getOrderLogsByMembershipAndOrder(
     `/api/order-logs/membership/${membershipId}/order/${orderId}`
   );
 
-  console.log("Order logs raw response:", res.data);
 
   // 2. Trả về res.data trực tiếp (vì res.data chính là cái mảng [ ])
   return res.data;

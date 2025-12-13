@@ -64,11 +64,9 @@ export default function VirtualCardPage() {
     const loadData = async () => {
       try {
         setLoading(true)
-        console.log('Starting profile load...')
         
         // Fetch profile data
         const profile = await fetchProfile()
-        console.log('Raw profile data:', profile)
         
         if (!profile) {
           throw new Error('No profile data received')
@@ -125,8 +123,6 @@ export default function VirtualCardPage() {
           memberships,
         }
         
-        console.log('Safe profile created:', safeProfile)
-        console.log('Memberships:', memberships)
         setProfileData(safeProfile)
         
         // Load clubIds from sessionStorage (priority) or use profile memberships
@@ -137,11 +133,9 @@ export default function VirtualCardPage() {
             const authData = JSON.parse(authDataString)
             if (authData.clubIds && Array.isArray(authData.clubIds) && authData.clubIds.length > 0) {
               clubIds = authData.clubIds
-              console.log('Loaded clubIds from sessionStorage:', clubIds)
             } else if (authData.clubId) {
               // Single clubId in sessionStorage
               clubIds = [authData.clubId]
-              console.log('Loaded single clubId from sessionStorage:', clubIds)
             }
           }
         } catch (error) {
@@ -151,7 +145,6 @@ export default function VirtualCardPage() {
         // Fallback to profile memberships if no clubIds in sessionStorage
         if (clubIds.length === 0) {
           clubIds = clubIdsFromProfile
-          console.log('Using clubIds from profile memberships:', clubIds)
         }
         
         setAvailableClubIds(clubIds)
@@ -170,7 +163,6 @@ export default function VirtualCardPage() {
           : []
         
         setAllClubsData(clubsData)
-        console.log('Stored clubs data:', clubsData)
       } catch (err) {
         console.error("Error loading data:", err)
         setError(err instanceof Error ? err.message : "Failed to load card data")
@@ -200,7 +192,6 @@ export default function VirtualCardPage() {
           clubName: selectedClub?.clubName,
         })
         
-        console.log('Generating QR code for selected club:', qrData)
         
         const qrUrl = await QRCode.toDataURL(qrData, {
           width: 300,
@@ -211,7 +202,6 @@ export default function VirtualCardPage() {
           },
         })
         
-        console.log('QR code generated successfully for club:', selectedClubId)
         setQrCodeUrl(qrUrl)
       } catch (err) {
         console.error('Error generating QR code:', err)
@@ -231,9 +221,7 @@ export default function VirtualCardPage() {
 
       try {
         setLoadingCard(true)
-        console.log('Fetching card design for clubId:', selectedClubId)
         const design = await getCardByClubId(selectedClubId)
-        console.log('Card design fetched:', design)
         setCardDesign(design)
         
         toast({
@@ -380,10 +368,6 @@ export default function VirtualCardPage() {
 
   // Find current club membership info
   const currentMembership = profileData.memberships?.find(m => m.clubId === selectedClubId)
-  
-  // Debug: Log membership and role info
-  console.log('Current membership:', currentMembership)
-  console.log('Role being used:', currentMembership?.level || profileData.role || "Member")
   
   // Map profile data to CardData format
   const cardData: CardData = {

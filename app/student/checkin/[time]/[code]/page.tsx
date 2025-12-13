@@ -96,7 +96,6 @@ export default function MemberCheckinByTimeAndCodePage() {
         checkInTime.toUpperCase()
       );
 
-      console.log("Event check-in response:", response);
 
       // Response structure: { success: true, message: "Check-in success for event co club", data: null }
       toast({

@@ -238,7 +238,6 @@ export const getClubPenaltyRules = async ({
       `/api/clubs/${clubId}/discipline/penalty-rules`
     );
 
-    console.log(`Fetched club ${clubId} penalty rules response:`, response.data);
 
     if (response.data && response.data.success && Array.isArray(response.data.data)) {
       return response.data.data;
@@ -271,7 +270,6 @@ export const createClubPenalty = async ({
       body
     );
 
-    console.log(`Created club ${clubId} penalty response:`, response.data);
 
     if (!response.data || !response.data.success) {
       throw new Error(response.data?.message || `Failed to create penalty for club ${clubId}`);
@@ -298,7 +296,6 @@ export const createStaffPerformance = async ({
       body
     );
 
-    console.log(`Created club ${clubId} staff performance response:`, response.data);
 
     if (!response.data || !response.data.success) {
       throw new Error(response.data?.message || `Failed to create staff performance for club ${clubId}`);

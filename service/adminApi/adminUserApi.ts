@@ -70,7 +70,6 @@ export const fetchAdminUsers = async (params: FetchAdminUsersParams) => {
     `/api/admin/users`,
     { params } // Gửi keyword, page, size qua query params
   );
-  console.log("Fetched admin users:", response.data);
   return response.data;
 };
 

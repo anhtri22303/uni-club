@@ -139,7 +139,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Log response structure for debugging
-    console.log("📊 [Auth] Processing login response:", {
+    console.log(" [Auth] Processing login response:", {
       role: normalizedRole,
       hasClubId: res.clubId !== undefined,
       hasClubIds: res.clubIds !== undefined,
@@ -269,13 +269,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const parsed = JSON.parse(saved);
         const userId = parsed.userId || parsed.id;
         if (userId) {
-          console.log("Logout: Clearing chatbot conversation history for userId:", userId);
           await axios.delete(`/api/chatbot/history?userId=${userId}`);
-          console.log("✅ Logout: Chatbot history cleared successfully");
         }
       }
     } catch (error) {
-      console.error("⚠️ Logout: Error clearing chatbot history:", error);
+      console.error(" Logout: Error clearing chatbot history:", error);
       // Continue with logout even if this fails
     }
 
@@ -311,7 +309,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       "resetEmail",
     ];
 
-    console.log("Logout: Bắt đầu quá trình dọn dẹp storage...");
 
     try {
       // --- Bước 2: Thực hiện xóa ---
@@ -331,19 +328,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const googleKeys = allSessionKeys.filter((key) => key.startsWith("google_"));
           
           if (googleKeys.length > 0) {
-            console.log(`🧹 [Logout] Xóa ${googleKeys.length} Google OAuth keys từ sessionStorage:`, googleKeys);
             googleKeys.forEach((key) => {
               safeSessionStorage.removeItem(key);
               sessionStorage.removeItem(key);
             });
-            console.log("   [Logout] Đã xóa tất cả Google OAuth data từ sessionStorage.");
           }
         } catch (err) {
-          console.error("  [Logout] Lỗi khi xóa Google OAuth data:", err);
         }
       }
 
-      console.log("Logout: Đã thực hiện xong các lệnh xóa.");
 
       // --- Bước 3: Kiểm tra lại storage ---
       const remainingKeys = keysToRemove.filter((key) => {
@@ -372,13 +365,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       );
     } finally {
       // --- Bước 4: Clear React Query cache ---
-      console.log("Logout: Clearing React Query cache...");
       queryClient.clear(); // Clear all cached queries
       
       // --- Bước 5: Luôn luôn chuyển trang ---
       // Khối `finally` đảm bảo rằng việc chuyển trang sẽ luôn xảy ra,
       // kể cả khi có lỗi trong khối `try`.
-      console.log("Logout: Chuyển hướng về trang chủ.");
       setAuth({ userId: null, role: null, staff: false, user: null }); // Cập nhật state
       router.replace("/"); // Dùng replace để không quay lại được trang cũ
     }

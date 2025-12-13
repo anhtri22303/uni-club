@@ -136,7 +136,6 @@ export const updateStudentRegistry = async ({
       } 
     );
 
-    console.log(`Update student ${id} response:`, response.data);
 
     if (response.data && response.data.success && response.data.data) {
       return response.data.data;

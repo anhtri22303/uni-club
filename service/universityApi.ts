@@ -56,7 +56,6 @@ interface ApiResponse<T> {
 export const fetchUniversityPoints = async (): Promise<UniversityPointsResponse> => {
   try {
     const response = await axiosInstance.get("/api/university/points")
-    console.log("University points:", response.data)
     
     // If backend wraps the response with { success, message, data }
     if (response.data && typeof response.data === "object" && "data" in response.data) {
@@ -80,7 +79,6 @@ export const fetchAttendanceSummary = async (year: number): Promise<AttendanceSu
     const response = await axiosInstance.get("/api/university/attendance-summary", {
       params: { year }
     })
-    console.log("Fetched attendance summary response:", response.data)
     
     // If backend wraps the response with { success, message, data }
     if (response.data && typeof response.data === "object" && "data" in response.data) {
@@ -102,7 +100,6 @@ export const fetchAttendanceSummary = async (year: number): Promise<AttendanceSu
 export const fetchAttendanceRanking = async (): Promise<AttendanceRankingResponse> => {
   try {
     const response = await axiosInstance.get("/api/university/attendance-ranking")
-    console.log("Fetched attendance ranking response:", response.data)
     
     // If backend wraps the response with { success, message, data }
     if (response.data && typeof response.data === "object" && "data" in response.data) {
@@ -139,7 +136,6 @@ interface ClubOverview {
 export const fetchClubOverview = async (): Promise<ClubOverview[]> => {
   try {
     const response = await axiosInstance.get("/api/university/overview/clubs")
-    console.log("Fetched club overview response:", response.data)
     
     // If backend wraps the response with { success, message, data }
     if (response.data && typeof response.data === "object" && "data" in response.data) {
@@ -165,7 +161,6 @@ export const fetchClubOverviewByMonth = async (year: number, month: number): Pro
     const response = await axiosInstance.get("/api/university/overview/clubs/month", {
       params: { year, month }
     })
-    console.log("Fetched club overview by month response:", response.data)
     
     // If backend wraps the response with { success, message, data }
     if (response.data && typeof response.data === "object" && "data" in response.data) {

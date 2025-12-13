@@ -249,7 +249,6 @@ export function ReportPage({ allowedRoles }: ReportPageProps) {
         savePageSettingsToSession(pageSettings, clubData.id)
         const saveTime = new Date()
         setLastAutoSave(saveTime)
-        console.log(`[Auto-save] Report saved at ${saveTime.toLocaleTimeString()}`)
       }
     }, 60000)
     return () => {
@@ -919,7 +918,6 @@ export function ReportPage({ allowedRoles }: ReportPageProps) {
       const saveTime = new Date()
       setLastAutoSave(saveTime)
       toast.success("Report saved successfully")
-      console.log(`[Manual save] Report saved at ${saveTime.toLocaleTimeString()}`)
     }
   }
 

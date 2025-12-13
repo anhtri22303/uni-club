@@ -67,7 +67,6 @@ export default function MemberAttendancePage() {
       const saved = safeSessionStorage.getItem("uniclub-auth")
       if (saved) {
         const parsed = JSON.parse(saved)
-        console.log("Attendance page - Parsed sessionStorage data:", parsed)
 
         // Lấy clubIds
         let clubIdNumbers: number[] = []

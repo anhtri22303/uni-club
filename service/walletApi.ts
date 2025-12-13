@@ -114,7 +114,6 @@ export const getWallet = async (): Promise<ApiResponse<ApiWallet>> => {
   try {
     const res = await axiosInstance.get<ApiResponse<ApiWallet>>("/api/wallets/me")
 
-    console.log("getWallet:", res.data)
 
     return res.data
   } catch (err) {
@@ -164,7 +163,6 @@ export const transferPoints = async (body: TransferPointsBody) => {
       `/api/wallets/transfer`,
       body
     );
-    console.log("transferPoints:", res.data)
     return res.data;
   } catch (err) {
     console.error("Failed to transfer points", err)
@@ -182,7 +180,6 @@ export const adminAddPoints = async ({ id, amount, description }: AdminAdjustPoi
       `/api/wallets/${id}/add`,
       { amount, description }
     );
-    console.log(`adminAddPoints (walletId: ${id}):`, res.data)
     return res.data;
   } catch (err) {
     console.error(`Failed to add points to wallet ${id}`, err)
@@ -200,7 +197,6 @@ export const adminReducePoints = async ({ id, amount, description }: AdminAdjust
       `/api/wallets/${id}/reduce`,
       { amount, description }
     );
-    console.log(`adminReducePoints (walletId: ${id}):`, res.data)
     return res.data;
   } catch (err) {
     console.error(`Failed to reduce points from wallet ${id}`, err)
@@ -219,7 +215,6 @@ export const rewardPointsToUser = async ({ userId, points, reason }: RewardPoint
       null, // Không có body
       { params: { points, reason } }
     );
-    console.log(`rewardPointsToUser (userId: ${userId}):`, res.data)
     return res.data;
   } catch (err) {
     console.error(`Failed to reward points to user ${userId}`, err)
@@ -238,7 +233,6 @@ export const rewardPointsToClub = async ({ clubId, points, reason }: RewardPoint
       null, // Không có body
       { params: { points, reason } }
     );
-    console.log(`rewardPointsToClub (clubId: ${clubId}):`, res.data)
     return res.data;
   } catch (err) {
     console.error(`Failed to reward points to club ${clubId}`, err)
@@ -275,7 +269,6 @@ export const rewardPointsToMembers = async (
         reason: reason || "",
       }
     )
-    console.log(`rewardPointsToMembers (targetIds: ${targetIds.length} members):`, res.data)
     return res.data as ApiRewardMembersResponse
   } catch (err) {
     console.error(`Failed to reward points to members`, err)
@@ -301,7 +294,6 @@ export const rewardPointsToMembers = async (
 //         },
 //       }
 //     )
-//     console.log(`rewardPointsToMember (membershipId: ${membershipId}):`, res.data)
 //     return res.data as ApiRewardResponse
 //   } catch (err) {
 //     console.error(`Failed to reward points to membership ${membershipId}`, err)
@@ -312,7 +304,6 @@ export const rewardPointsToMembers = async (
 export const getClubWallet = async (clubId: string | number): Promise<ApiClubWallet> => {
   try {
     const res = await axiosInstance.get(`/api/wallets/club/${clubId}`)
-    console.log("getClubWallet:", res.data)
     // If response has a 'data' wrapper, extract it
     if (res.data && typeof res.data === 'object' && 'data' in res.data) {
       return (res.data as any).data as ApiClubWallet
@@ -353,7 +344,6 @@ export const pointsToClubs = async (
         reason: reason || "",
       }
     )
-    console.log(`pointsToClubs (targetIds: ${targetIds.length} clubs):`, res.data)
     return res.data as ApiRewardClubsResponse
   } catch (err) {
     console.error(`Failed to reward points to clubs`, err)
@@ -371,7 +361,6 @@ export const getTransactionsByWalletId = async (walletId: number) => {
     const res = await axiosInstance.get<ApiResponse<Transaction[]>>(
       `/api/wallets/${walletId}/transactions`
     );
-    console.log(`getTransactionsByWalletId (walletId: ${walletId}):`, res.data);
     return res.data;
   } catch (err) {
     console.error(`Failed to get transactions for wallet ${walletId}`, err);
@@ -397,7 +386,6 @@ export const getTransactionsByWalletId = async (walletId: number) => {
 //         },
 //       }
 //     )
-//     console.log("postClubWalletByClubId:", res.data)
 //     return res.data as ApiClubWallet
 //   } catch (err) {
 //     console.error(`Failed to topup club wallet for clubId ${clubId}`, err)
@@ -418,7 +406,6 @@ export type ApiClubToMemberTransaction = {
 export const getClubToMemberTransactions = async (): Promise<ApiClubToMemberTransaction[]> => {
   try {
     const res = await axiosInstance.get("/api/wallets/transactions/club-to-member")
-    console.log("getClubToMemberTransactions:", res.data)
     // If response has a 'data' wrapper, extract it
     if (res.data && typeof res.data === 'object' && 'data' in res.data) {
       const nestedData = (res.data as any).data
@@ -444,7 +431,6 @@ export type ApiUniToClubTransaction = {
 export const getUniToClubTransactions = async (): Promise<ApiUniToClubTransaction[]> => {
   try {
     const res = await axiosInstance.get("/api/wallets/transactions/uni-to-club")
-    console.log("getUniToClubTransactions:", res.data)
     // If response has a 'data' wrapper, extract it
     if (res.data && typeof res.data === 'object' && 'data' in res.data) {
       const nestedData = (res.data as any).data
@@ -471,7 +457,6 @@ export type ApiUniToEventTransaction = {
 export const getUniToEventTransactions = async (): Promise<ApiUniToEventTransaction[]> => {
   try {
     const res = await axiosInstance.get("/api/wallets/transactions/uni-to-event")
-    console.log("getUniToEventTransactions:", res.data)
     // If response has a 'data' wrapper, extract it
     if (res.data && typeof res.data === 'object' && 'data' in res.data) {
       const nestedData = (res.data as any).data

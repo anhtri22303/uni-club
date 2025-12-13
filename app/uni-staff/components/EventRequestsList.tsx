@@ -108,16 +108,6 @@ export function EventRequestsList({ events, eventsLoading, pendingEvents, showAl
   const endIndex = startIndex + pageSize
   const paginatedEvents = filteredEvents.slice(startIndex, endIndex)
 
-  console.log('📊 Manual Pagination Debug:', {
-    totalEvents,
-    totalPages,
-    currentPage,
-    startIndex,
-    endIndex,
-    pageSize,
-    paginatedEventsLength: paginatedEvents.length
-  })
-
   // Reset pagination when filters change
   useEffect(() => {
     setCurrentPage(1)
@@ -131,12 +121,10 @@ export function EventRequestsList({ events, eventsLoading, pendingEvents, showAl
 
   const goEventsPrev = () => {
     const newPage = Math.max(1, currentPage - 1)
-    console.log('🔙 Previous clicked:', { current: currentPage, total: totalPages, newPage })
     setCurrentPage(newPage)
   }
   const goEventsNext = () => {
     const newPage = Math.min(totalPages, currentPage + 1)
-    console.log('▶️ Next clicked:', { current: currentPage, total: totalPages, newPage })
     setCurrentPage(newPage)
   }
 
@@ -282,7 +270,6 @@ export function EventRequestsList({ events, eventsLoading, pendingEvents, showAl
               onClick={(e) => {
                 e.preventDefault()
                 e.stopPropagation()
-                console.log('🔙 Previous button clicked')
                 goEventsPrev()
               }}
               disabled={currentPage === 1}
@@ -307,7 +294,6 @@ export function EventRequestsList({ events, eventsLoading, pendingEvents, showAl
               onClick={(e) => {
                 e.preventDefault()
                 e.stopPropagation()
-                console.log('▶️ Next button clicked')
                 goEventsNext()
               }}
               disabled={currentPage === totalPages}

@@ -47,7 +47,6 @@ export async function getClubApplications(): Promise<ClubApplication[]> {
   const resp = await axiosInstance.get("/api/club-applications/all")
   // The backend returns { success, message, data: [...] }
   const result = resp.data as { success: boolean; message: string; data: ClubApplication[] }
-  console.log("Fetched club applications:", result)
   return result.data
 }
 
@@ -60,7 +59,6 @@ export async function getClubApplyById(id: number): Promise<ClubApplication> {
   try {
     const resp = await axiosInstance.get(`/api/club-applications/${id}`)
     const result = resp.data as { success: boolean; message: string; data: ClubApplication }
-    console.log(`Fetched club application ${id}:`, result)
     
     if (!result.success || !result.data) {
       throw new Error(result.message || "Failed to fetch club application")

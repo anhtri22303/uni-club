@@ -141,7 +141,6 @@ export const getClubActivitiesMonthly = async ({
       }
     );
 
-    console.log("Fetched club activities monthly response:", response.data);
 
     if (response.data && response.data.success) {
       return response.data.data;
@@ -172,7 +171,6 @@ export const getMemberActivityByMembershipId = async ({
       }
     );
 
-    console.log("Fetched member activity by membership ID response:", response.data);
 
     if (response.data && response.data.success) {
       return response.data.data;
@@ -205,7 +203,6 @@ export const recalculateClubActivities = async ({
       }
     );
 
-    console.log("Recalculate club activities response:", response.data);
 
     if (!response.data || !response.data.success) {
       throw new Error(response.data?.message || "Failed to recalculate club activities");
@@ -234,7 +231,6 @@ export const getClubEventActivityMonthly = async ({
       }
     );
 
-    console.log("Fetched club event activity monthly response:", response.data);
 
     if (response.data && response.data.success) {
       return response.data.data;

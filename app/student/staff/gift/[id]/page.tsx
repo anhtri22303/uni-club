@@ -316,8 +316,6 @@ export default function EditProductPage() {
     if (staffEvents.length > 0 && staffEvents[0].state === "ACTIVE") {
       const activeEvent = staffEvents[0];
       const id = activeEvent.clubId;
-      console.log("🔍 [Staff Gift Detail] Active staff event:", activeEvent);
-      console.log("🔍 [Staff Gift Detail] Using clubId:", id);
       
       setClubId(id);
       // Fetch events list

@@ -35,7 +35,6 @@ export const generateCode = async (eventId: number): Promise<{ token: string; qr
     const response = await axiosInstance.get(
       `/api/attendance/qr-token/${eventId}`
     )
-    console.log("Generate code response:", response.data)
     
     // Backend returns { token: string, qrUrl: string }
     const data = response.data as { token: string; qrUrl: string }
@@ -64,7 +63,6 @@ export const checkin = async (token: string): Promise<string> => {
     const response = await axiosInstance.post("/api/attendance/checkin", null, {
       params: { token }
     })
-    console.log("Checkin response:", response.data)
     
     // Handle both string and object responses
     if (typeof response.data === 'string') {

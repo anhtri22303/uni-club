@@ -54,27 +54,21 @@ export interface UserProfile {
 
 export const fetchUser = async () => {
   try {
-    // console.log(" fetchUser: Starting API call to api/users")
     const response = await axiosInstance.get("api/users")
     const body = response.data as ApiResponse<PaginatedResponse<any>> | PaginatedResponse<any> | any[]
-    // console.log("   fetchUser: Received response:", body)
-    // console.log("   fetchUser: Response status:", response.status)
 
     //    NEW API STRUCTURE: { success, message, data: { content: [...] } }
     if (body && typeof body === "object" && "success" in body && body.success && "data" in body && body.data && Array.isArray(body.data.content)) {
-      console.log("   fetchUser: Returning body.data.content (array of", body.data.content.length, "users)")
       return body.data.content
     }
 
     // LEGACY: If backend returns a paginated wrapper directly, return the `content` array.
     if (body && typeof body === "object" && "content" in body && Array.isArray(body.content)) {
-      console.log(" fetchUser: Using legacy format - returning body.content")
       return body.content
     }
 
     // If the API already returns an array of users, return it directly.
     if (Array.isArray(body)) {
-      console.log(" fetchUser: Returning direct array")
       return body
     }
 
@@ -92,7 +86,6 @@ export const fetchProfile = async (): Promise<UserProfile | null> => {
   try {
     const response = await axiosInstance.get("api/users/profile")
     const body = response.data
-    // console.log("Fetched profile response:", body)
 
     // If backend uses { success, message, data }
     if (body && typeof body === "object" && "data" in body && "success" in body && (body as any).success) {
@@ -165,12 +158,9 @@ export const fetchUserById = async (id: string | number) => {
     // If the backend wraps payload in { success, message, data }, unwrap it.
     const body = response.data
     // Always log the raw response body for easier debugging
-    console.log("fetchUserById:", body)
     if (body && typeof body === "object" && "data" in body) {
-      console.log("fetchUserById unwrapped data:", body.data)
       return body.data
     }
-    console.log("fetchUserById returned raw body:", body)
     return body
   } catch (error) {
     console.error(`Error fetching user ${id}:`, error)
@@ -199,11 +189,9 @@ export const editProfile = async (data: {
   // KHÔNG CẦN: email, avatarUrl, backgroundUrl
 }) => {
   try {
-    console.log("Editing profile with data:", data)
     // Endpoint của bạn là 'api/users/profile' đã chính xác
     const response = await axiosInstance.put(`api/users/profile`, data)
     const body = response.data
-    console.log("Edit profile response:", body)
 
     // Return the full response for consistent handling
     return body as any
@@ -216,7 +204,6 @@ export const editProfile = async (data: {
 // New: uploadAvatar - upload avatar file directly to backend
 export const uploadAvatar = async (file: File) => {
   try {
-    console.log("Uploading avatar file:", file.name)
 
     const formData = new FormData()
     formData.append('file', file)
@@ -229,7 +216,6 @@ export const uploadAvatar = async (file: File) => {
     })
 
     const body = response.data
-    console.log("Upload avatar response:", body)
 
     return body as any
   } catch (error) {
@@ -241,7 +227,6 @@ export const uploadAvatar = async (file: File) => {
 // New: uploadBackground - upload background image file directly to backend
 export const uploadBackground = async (file: File) => {
   try {
-    console.log("Uploading background file:", file.name)
 
     const formData = new FormData()
     formData.append('file', file)
@@ -254,7 +239,6 @@ export const uploadBackground = async (file: File) => {
     })
 
     const body = response.data
-    console.log("Upload background response:", body)
 
     return body as any
   } catch (error) {
@@ -279,7 +263,6 @@ export const getUserStats = async () => {
   try {
     const response = await axiosInstance.get("api/users/stats")
     const body = response.data
-    console.log("Fetched user stats response:", body)
 
     // If backend uses { success, message, data }
     if (body && typeof body === "object" && "data" in body && "success" in body && (body as any).success) {
@@ -311,7 +294,6 @@ export const getProfileStats = async (): Promise<ProfileStats | null> => {
   try {
     const response = await axiosInstance.get("api/users/profile/stats")
     const body = response.data
-    console.log("Fetched profile stats response:", body)
 
     // If backend uses { success, message, data }
     if (body && typeof body === "object" && "data" in body && "success" in body && (body as any).success) {
@@ -359,7 +341,6 @@ export const forceResetPassword = async (
         },
       }
     )
-    console.log("Force reset password response:", res.data)
 
     // Handle both wrapped and direct response formats
     if (res.data && typeof res.data === 'object') {

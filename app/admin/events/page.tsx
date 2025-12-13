@@ -156,9 +156,7 @@ export default function AdminEventsPage() {
       if (!selectedEvent?.id || !selectedPhase) return
 
       try {
-        console.log('Regenerating QR code for event:', selectedEvent.id, 'with phase:', selectedPhase)
         const { token } = await eventQR(selectedEvent.id, selectedPhase)
-        console.log('New token generated:', token)
 
         const prodUrl = `https://uniclub.id.vn/student/checkin/${selectedPhase}/${token}`
         const localUrl = `http://localhost:3000/student/checkin/${selectedPhase}/${token}`
@@ -325,9 +323,7 @@ export default function AdminEventsPage() {
     try {
       setIsGeneratingQR(true)
 
-      console.log('Generating check-in token for event:', selectedEvent.id, 'with phase:', phase)
       const { token, expiresIn } = await eventQR(selectedEvent.id, phase)
-      console.log('Generated token:', token, 'expires in:', expiresIn)
 
       const prodUrl = `https://uniclub.id.vn/student/checkin/${phase}/${token}`
       const localUrl = `http://localhost:3000/student/checkin/${phase}/${token}`

@@ -64,7 +64,6 @@ export default function ClubOrderDetailByCodePage({ params }: OrderDetailPagePro
     } = useQuery<UiOrder, Error>({
         queryKey: queryKeys.orderDetailByCode(params.orderCode),
         queryFn: () => {
-            console.log("🔍 Fetching order by OrderCode:", params.orderCode)
             return getRedeemOrderByOrderCode(params.orderCode)
         },
         enabled: !!params.orderCode,
@@ -122,16 +121,13 @@ export default function ClubOrderDetailByCodePage({ params }: OrderDetailPagePro
         queryKey: ["orderLogs", order?.orderId, order?.membershipId],
         queryFn: async () => {
             if (!order?.orderId || !order?.membershipId) {
-                console.log("⚠️ Order ID or Membership ID not available yet", { orderId: order?.orderId, membershipId: order?.membershipId });
                 return [];
             }
-            console.log("🔍 Fetching order logs for:", { membershipId: order.membershipId, orderId: order.orderId });
             try {
                 const logs = await getOrderLogsByMembershipAndOrder(order.membershipId, order.orderId);
-                console.log("✅ Order logs fetched successfully:", logs);
                 return logs;
             } catch (error: any) {
-                console.error("❌ Failed to fetch order logs:", {
+                console.error(" Failed to fetch order logs:", {
                     membershipId: order.membershipId,
                     orderId: order.orderId,
                     error: error,

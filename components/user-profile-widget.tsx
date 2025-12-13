@@ -170,8 +170,6 @@ export function UserProfileWidget() {
       const shouldShowModal = profile.needCompleteProfile === true && profile.roleName === "CLUB_LEADER"
 
       if (shouldShowModal) {
-        console.log("Club Leader profile incomplete (needCompleteProfile=true), showing modal")
-        console.log("Profile data:", { needCompleteProfile: profile.needCompleteProfile, roleName: profile.roleName })
         setShowCompleteProfileModal(true)
       }
     }
@@ -446,7 +444,6 @@ export function UserProfileWidget() {
             backgroundUrl: profile?.backgroundUrl || undefined
           }}
           onComplete={async () => {
-            console.log("   Profile completed, refreshing data...")
             // Invalidate and refetch profile data
             await queryClient.invalidateQueries({ queryKey: ['fullProfile'] })
             setShowCompleteProfileModal(false)

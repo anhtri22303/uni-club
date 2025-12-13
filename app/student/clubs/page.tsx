@@ -75,7 +75,6 @@ export default function MemberClubsPage() {
     // nó sẽ đánh dấu dữ liệu "clubs" và "myApplications" trong cache là "cũ".
     // Điều này buộc React Query phải tự động fetch lại dữ liệu mới,
     // giống như khi bạn nhấn F5.
-    console.log("Điều hướng đến trang Clubs, vô hiệu hóa cache để fetch dữ liệu mới...");
     queryClient.invalidateQueries({ queryKey: queryKeys.clubs });
     queryClient.invalidateQueries({ queryKey: queryKeys.myMemberApplications() });
 
@@ -84,22 +83,14 @@ export default function MemberClubsPage() {
 
   // Debug: Log clubs data when it loads
   useEffect(() => {
-    console.log(" Clubs data state:", {
-      clubsCount: clubs.length,
-      loading,
-      error: queryError,
-      clubIds: clubIds.length > 0 ? clubIds.slice(0, 5) : [],
-    })
+
     if (clubs.length > 0) {
-      console.log(" Loaded clubs:", clubs.slice(0, 3).map((c: any) => ({ id: c.id, name: c.name })))
     }
   }, [clubs, loading, queryError, clubIds])
 
   // Debug: Log applications when they load
   useEffect(() => {
     if (myApplications.length > 0) {
-      console.log(" Loaded user applications:", myApplications)
-      console.log(" Pending applications:", myApplications.filter((app: any) => app.status === "PENDING"))
     }
   }, [myApplications])
 
@@ -192,7 +183,6 @@ export default function MemberClubsPage() {
       const appClubId = String(app.clubId)
       const matches = appClubId === clubId && app.status === "PENDING"
       if (matches) {
-        console.log(`Found pending application for club ${clubId}:`, app)
       }
       return matches
     })
@@ -204,26 +194,21 @@ export default function MemberClubsPage() {
   // Map API items to table rows and filter out user's current clubs
   // Use useMemo to ensure proper dependency tracking and avoid race conditions
   const enhancedClubs = useMemo(() => {
-    // console.log(" Computing enhancedClubs - clubsWithData:", clubsWithData.length, "userClubIds:", userClubIds)
 
     if (clubsWithData.length === 0) {
-      console.log(" No clubs data available yet")
       return []
     }
 
-    console.log(" userClubIds loaded:", userClubIds, "filtering clubs now...")
 
     const filtered = clubsWithData.filter((club: ClubApiItem) => {
       // Hide clubs that user is already a member of
       const clubIdNumber = Number(club.id)
       if (userClubIds.length > 0 && userClubIds.includes(clubIdNumber)) {
-        console.log(` Hiding club ${club.name} (ID: ${club.id}) - user is member of this club`)
         return false
       }
       return true
     })
 
-    // console.log(`Filtered clubs: ${filtered.length} out of ${clubsWithData.length} (hidden: ${clubsWithData.length - filtered.length})`)
 
     return filtered.map((club: ClubApiItem) => {
       // 1. Thử lấy tên major trực tiếp (logic cũ)
@@ -259,7 +244,6 @@ export default function MemberClubsPage() {
     })
   }, [clubsWithData, userClubIds, majors, getClubStatus, myApplications, userMemberships, userApplications, pendingClubIds])
 
-  // console.log(" Final enhancedClubs count:", enhancedClubs.length)
 
   const getMajorVariant = (major?: string) => {
     if (!major) return "outline"
@@ -877,9 +861,7 @@ export default function MemberClubsPage() {
                         proposerReason: newProposerReason.trim(),
                       }
 
-                      console.log("Submitting club application:", payload)
                       const created = await postClubApplication(payload, otpCode.trim())
-                      console.log("API response:", created)
 
                       toast({
                         title: "Application Sent",

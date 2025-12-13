@@ -126,14 +126,7 @@ export function ApproveBudgetModal(props: ApproveBudgetModalProps) {
     const calculatedBudget = isPublic 
       ? effectiveCommit * maxCheckInCount 
       : effectiveCommit * maxCheckInCount * 2;
-    console.log("  Modal Debug:", {
-      eventType,
-      originalCommitPointCost: commitPointCost,
-      effectiveCommitPointCost: effectiveCommit,
-      maxCheckInCount,
-      isPublicEvent: isPublic,
-      suggestedBudget: calculatedBudget,
-    });
+
   }, [open, defaultRequestPoints, commitPointCost, maxCheckInCount, eventType]);
 
   const approvedPoints = useMemo(() => {

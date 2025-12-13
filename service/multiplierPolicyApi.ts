@@ -40,8 +40,6 @@ export const getMutiplierPolicy = async (): Promise<MultiplierPolicy[]> => {
 
         const responseData = response.data;
 
-        console.log("Fetched multiplier policies response:", responseData)
-
         if (Array.isArray(responseData)) {
             return responseData
         }
@@ -72,7 +70,6 @@ export const getMutiplierPolicyById = async (
         const response = await axiosInstance.get<MultiplierPolicy>(
             `/api/university/multiplier-policies/${id}`
         )
-        console.log("Fetched multiplier policy by ID response:", response.data)
         return response.data
     } catch (error) {
         console.error("Error fetching multiplier policy by ID:", error)
@@ -95,7 +92,6 @@ export const getMutiplierPolicyByType = async (
 
         const responseData = response.data;
 
-        console.log("Fetched multiplier policies by type response:", responseData)
 
         if (Array.isArray(responseData)) {
             return responseData
@@ -134,7 +130,6 @@ export const createMultiplierPolicy = async (
             `/api/university/multiplier-policies`,
             payload
         )
-        console.log("Created multiplier policy response:", response.data)
         return response.data
     } catch (error) {
         console.error("Error creating multiplier policy:", error)
@@ -172,7 +167,6 @@ export const updateMultiplierPolicy = async (
             `/api/university/multiplier-policies/${id}`,
             payload
         )
-        console.log("Updated multiplier policy response:", response.data)
         return response.data
     } catch (error) {
         console.error("Error updating multiplier policy:", error)
@@ -197,7 +191,6 @@ export const deleteMutiplierPolicy = async (id: number): Promise<string> => {
         const response = await axiosInstance.delete<DeleteMultiplierPolicyApiResponse>(
             `/api/university/multiplier-policies/${id}`
         )
-        console.log("Deleted multiplier policy response:", response.data)
 
         if (response.data && response.data.success) {
             return response.data.data

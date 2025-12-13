@@ -203,7 +203,6 @@ export default function AdminEventDetailPage() {
           selectedPhase
         );
         const { token } = await eventQR(event.id, selectedPhase);
-        console.log("New token generated:", token);
 
         // Create URLs with new token and phase
         const prodUrl = `https://uniclub.id.vn/student/checkin/${selectedPhase}/${token}`;
@@ -439,16 +438,11 @@ export default function AdminEventDetailPage() {
         phase
       );
       const { token, expiresIn } = await eventQR(event.id, phase);
-      console.log("Generated token:", token, "expires in:", expiresIn);
 
       // Create URLs with token and phase (path parameter format)
       const prodUrl = `https://uniclub.id.vn/student/checkin/${phase}/${token}`;
       const localUrl = `http://localhost:3000/student/checkin/${phase}/${token}`;
       const mobileLink = `exp://192.168.1.50:8081/--/student/checkin/${phase}/${token}`;
-
-      console.log("Production URL:", prodUrl);
-      console.log("Development URL:", localUrl);
-      console.log("Mobile URL:", mobileLink);
 
       // Generate QR code variants
       const styleVariants = [

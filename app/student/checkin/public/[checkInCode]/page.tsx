@@ -71,10 +71,8 @@ export default function StudentPublicCheckinPage() {
     setIsCheckinLoading(true)
     
     try {
-      console.log('Starting public event check-in with code:', checkInCode)
       const response = await eventCheckinPublic(checkInCode)
       
-      console.log('Public event check-in response:', response)
       
       toast({ 
         title: "Check-in Successful! 🎉", 
