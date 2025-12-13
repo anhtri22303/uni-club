@@ -783,6 +783,26 @@ export default function ProfilePage() {
 
   // --- Thêm logic trả về lớp animation ---
   const getPointsCardStyle = (points: number) => {
+    if (points >= 10000) {
+      return {
+        cardClassName: "bg-gradient-to-r from-yellow-400 via-pink-500 to-purple-600",
+        textColorClassName: "text-white",
+        subtitleColorClassName: "text-white/90",
+        iconBgClassName: "bg-white/30",
+        iconColorClassName: "text-white",
+        animationClassName: "animate-pulse-strong",
+      }
+    }
+    if (points >= 7000) {
+      return {
+        cardClassName: "bg-gradient-to-r from-rose-500 to-orange-500",
+        textColorClassName: "text-white",
+        subtitleColorClassName: "text-white/85",
+        iconBgClassName: "bg-white/25",
+        iconColorClassName: "text-white",
+        animationClassName: "animate-pulse-strong [animation-duration:2s]",
+      }
+    }
     if (points >= 5000) {
       return {
         cardClassName: "bg-gradient-to-r from-purple-600 to-pink-600",
@@ -790,7 +810,7 @@ export default function ProfilePage() {
         subtitleColorClassName: "text-white/80",
         iconBgClassName: "bg-white/20",
         iconColorClassName: "text-white",
-        animationClassName: "animate-pulse-strong", // Animation tỏa sáng mạnh
+        animationClassName: "animate-flicker",
       }
     }
     if (points >= 3000) {
@@ -800,7 +820,27 @@ export default function ProfilePage() {
         subtitleColorClassName: "text-white/80",
         iconBgClassName: "bg-white/20",
         iconColorClassName: "text-white",
-        animationClassName: "animate-flicker", // Animation cháy vừa
+        animationClassName: "animate-flicker [animation-duration:2s]",
+      }
+    }
+    if (points >= 2000) {
+      return {
+        cardClassName: "bg-gradient-to-r from-emerald-500 to-teal-500",
+        textColorClassName: "text-white",
+        subtitleColorClassName: "text-white/80",
+        iconBgClassName: "bg-white/20",
+        iconColorClassName: "text-white",
+        animationClassName: "animate-flicker [animation-duration:2.5s]",
+      }
+    }
+    if (points >= 1500) {
+      return {
+        cardClassName: "bg-gradient-to-r from-cyan-400 to-blue-500",
+        textColorClassName: "text-white",
+        subtitleColorClassName: "text-white/75",
+        iconBgClassName: "bg-white/20",
+        iconColorClassName: "text-white",
+        animationClassName: "animate-flicker [animation-duration:3s]",
       }
     }
     if (points >= 1000) {
@@ -810,18 +850,46 @@ export default function ProfilePage() {
         subtitleColorClassName: "text-amber-700 dark:text-amber-400",
         iconBgClassName: "bg-amber-200 dark:bg-amber-800/50",
         iconColorClassName: "text-amber-600 dark:text-amber-400",
-        // Dùng class của Tailwind để làm animation chậm lại
-        animationClassName: "animate-flicker [animation-duration:3s]", // Animation cháy nhẹ
+        animationClassName: "animate-flicker [animation-duration:3s]",
       }
     }
-    // Mặc định cho 0-999 điểm
+    if (points >= 500) {
+      return {
+        cardClassName: "bg-gradient-to-r from-lime-400 to-green-500",
+        textColorClassName: "text-white",
+        subtitleColorClassName: "text-white/75",
+        iconBgClassName: "bg-white/20",
+        iconColorClassName: "text-white",
+        animationClassName: "animate-flicker [animation-duration:3.5s]",
+      }
+    }
+    if (points >= 200) {
+      return {
+        cardClassName: "bg-blue-50 dark:bg-blue-900/20",
+        textColorClassName: "text-blue-900 dark:text-blue-200",
+        subtitleColorClassName: "text-blue-700 dark:text-blue-300",
+        iconBgClassName: "bg-blue-200 dark:bg-blue-800/50",
+        iconColorClassName: "text-blue-600 dark:text-blue-400",
+        animationClassName: "",
+      }
+    }
+    if (points >= 50) {
+      return {
+        cardClassName: "bg-green-50 dark:bg-green-900/20",
+        textColorClassName: "text-green-900 dark:text-green-200",
+        subtitleColorClassName: "text-green-700 dark:text-green-300",
+        iconBgClassName: "bg-green-200 dark:bg-green-800/50",
+        iconColorClassName: "text-green-600 dark:text-green-400",
+        animationClassName: "",
+      }
+    }
     return {
       cardClassName: "!bg-slate-100 dark:!bg-slate-800",
       textColorClassName: "text-slate-800 dark:text-slate-200",
       subtitleColorClassName: "text-slate-500 dark:text-slate-400",
       iconBgClassName: "bg-slate-200 dark:bg-slate-700",
       iconColorClassName: "text-slate-600 dark:text-slate-300",
-      animationClassName: "", // Không có animation
+      animationClassName: "",
     }
   }
 

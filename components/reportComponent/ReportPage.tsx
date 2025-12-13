@@ -121,6 +121,7 @@ export function ReportPage({ allowedRoles }: ReportPageProps) {
   const [clubData, setClubData] = useState<ClubData | null>(null)
   const [loading, setLoading] = useState(true)
   const [isDownloading, setIsDownloading] = useState(false)
+  const [downloadProgress, setDownloadProgress] = useState(0)
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false)
   const editorRef = useRef<HTMLDivElement>(null)
   const pagesContainerRef = useRef<HTMLDivElement>(null)
@@ -985,17 +986,18 @@ export function ReportPage({ allowedRoles }: ReportPageProps) {
     if (!pagesContainerRef.current) return
     try {
       setIsDownloading(true)
-      toast.loading("Generating PDF...")
+      setDownloadProgress(0)
       const fileName = `${clubData?.name || "Club"}_Report_${new Date().toISOString().split("T")[0]}.pdf`
-      await downloadPagesAsPdf(pagesContainerRef.current, fileName)
-      toast.dismiss()
+      await downloadPagesAsPdf(pagesContainerRef.current, fileName, (progress) => {
+        setDownloadProgress(progress)
+      })
       toast.success("PDF downloaded successfully")
     } catch (error) {
       console.error("Error generating PDF:", error)
-      toast.dismiss()
       toast.error(`Failed to generate PDF: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setIsDownloading(false)
+      setDownloadProgress(0)
     }
   }
 
@@ -1202,10 +1204,37 @@ export function ReportPage({ allowedRoles }: ReportPageProps) {
       </div>
       {isDownloading && (
         <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-[9999] flex items-center justify-center">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 flex flex-col items-center gap-4">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-            <p className="text-lg font-semibold text-foreground">Downloading PDF...</p>
-            <p className="text-sm text-muted-foreground">Please wait while we generate your report</p>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+            <div className="flex flex-col items-center gap-4">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+              <div className="w-full text-center">
+                <p className="text-lg font-semibold text-foreground mb-2">Generating PDF...</p>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Processing page {Math.ceil(downloadProgress * pageCount / 100)} of {pageCount}
+                </p>
+                
+                {/* Progress Bar */}
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4 overflow-hidden mb-2">
+                  <div 
+                    className="bg-primary h-full transition-all duration-300 ease-out rounded-full flex items-center justify-center"
+                    style={{ width: `${downloadProgress}%` }}
+                  >
+                    {downloadProgress > 15 && (
+                      <span className="text-xs font-semibold text-white">
+                        {downloadProgress}%
+                      </span>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Percentage Display */}
+                <div className="flex justify-between items-center text-xs text-muted-foreground">
+                  <span>0%</span>
+                  <span className="font-semibold text-foreground text-sm">{downloadProgress}%</span>
+                  <span>100%</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

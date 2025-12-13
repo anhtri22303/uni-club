@@ -84,17 +84,17 @@ export default function ScanOrderQRPage() {
     // Loại bỏ khoảng trắng và chuyển về uppercase để check
     const trimmedText = decodedText.trim()
     
-    // Tìm pattern UC-số (có thể có "Order Code:" phía trước hoặc không)
-    // Pattern này sẽ tìm UC theo sau là dấu - và số
-    const orderCodeMatch = trimmedText.match(/(?:Order Code:\s*)?(UC-\d+)/i)
+    // Tìm pattern UC-số/chữ (có thể có "Order Code:" phía trước hoặc không)
+    // Pattern này sẽ tìm UC theo sau là dấu - và chữ/số (alphanumeric)
+    const orderCodeMatch = trimmedText.match(/(?:Order Code:\s*)?(UC-[A-Z0-9]+)/i)
     
     if (orderCodeMatch) {
-      const orderCode = orderCodeMatch[1].toUpperCase() // Lấy "UC-5"
+      const orderCode = orderCodeMatch[1].toUpperCase() // Lấy "UC-2C"
       console.log("✅ Valid order code found:", orderCode)
       
       // Kiểm tra 2 ký tự đầu phải là "UC"
       if (orderCode.substring(0, 2).toUpperCase() === "UC") {
-        const orderId = orderCode.split("-")[1] // Lấy số "5"
+        const orderId = orderCode.split("-")[1] // Lấy phần sau dấu gạch "2C"
         console.log("📦 Order ID extracted:", orderId)
         
         // Set processing flag immediately
