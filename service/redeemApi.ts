@@ -214,6 +214,7 @@ export async function getMemberRedeemOrders(): Promise<RedeemOrder[]> {
   const res = await axiosInstance.get<ApiResponse<RedeemOrder[]>>(
     `/api/redeem/orders/member`
   );
+  console.log("getMemberRedeemOrders:", res.data);
   return res.data.data;
 }
 
@@ -380,7 +381,7 @@ export async function getOrderLogsByMembershipAndOrder(
     `/api/order-logs/membership/${membershipId}/order/${orderId}`
   );
 
-
+  console.log("getOrderLogsByMembershipAndOrder:", res.data);
   // 2. Trả về res.data trực tiếp (vì res.data chính là cái mảng [ ])
   return res.data;
 }

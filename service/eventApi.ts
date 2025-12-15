@@ -546,10 +546,12 @@ export const getMyEvents = async (): Promise<Event[]> => {
     const response = await axiosInstance.get("api/events/my")
     const data: any = response.data
 
+    console.log("getMyEvents:", data)
     // Response structure: { success: true, message: "success", data: [...events] }
     if (data?.data && Array.isArray(data.data)) return data.data
     if (Array.isArray(data)) return data
 
+    
     return []
   } catch (error) {
     console.error("Error fetching my events:", error)
