@@ -11,14 +11,17 @@ import { useAuth } from "@/contexts/auth-context"
 import { useData } from "@/contexts/data-context"
 import { useMyMemberApplications, useMyClubApplications, useMyRedeemOrders, useMyEvents, useProfile } from "@/hooks/use-query-hooks"
 import { Skeleton } from "@/components/ui/skeleton"
-import { History, UserPlus, Gift, CheckCircle, Users, Building2, Package, Calendar, MessageSquare, ChevronDown, ChevronUp, Star, Wallet, ArrowUpRight, ArrowDownLeft, ClipboardCheck, LayoutGrid, Table2 } from "lucide-react"
+import { History, UserPlus, Gift, CheckCircle, Users, Building2, Package, Calendar, MessageSquare, ChevronDown, ChevronUp, Star, Wallet, ArrowUpRight, ArrowDownLeft, ClipboardCheck } from "lucide-react"
 import { useState, useMemo, useEffect } from "react"
 import { getMyFeedbackByMembershipId, Feedback } from "@/service/feedbackApi"
 import { getWallet, getWalletTransactions, ApiWallet, ApiWalletTransaction } from "@/service/walletApi"
 import { getStaffHistory, StaffHistoryOrder } from "@/service/eventStaffApi"
+import { getOrderLogsByMembershipAndOrder, OrderLog } from "@/service/redeemApi"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { timeObjectToString } from "@/service/eventApi"
 import { useRouter } from "next/navigation"
+import { useQuery } from "@tanstack/react-query"
 
 // Removed static `src/data` imports — use empty fallbacks. Prefer remote `clubName` from activity data when available.
 const clubs: any[] = []
@@ -35,9 +38,14 @@ export default function MemberHistoryPage() {
   const [walletTransactions, setWalletTransactions] = useState<ApiWalletTransaction[]>([])
   const [walletLoading, setWalletLoading] = useState(false)
   const [walletError, setWalletError] = useState<string | null>(null)
-  const [walletViewMode, setWalletViewMode] = useState<"card" | "table">("card")
   const [walletTypeFilter, setWalletTypeFilter] = useState<string>("all")
   const [walletDateFilter, setWalletDateFilter] = useState<string>("all")
+  const [walletCurrentPage, setWalletCurrentPage] = useState(1)
+  const [walletPageSize, setWalletPageSize] = useState(6)
+  
+  // Order filter state
+  const [orderProductTypeFilter, setOrderProductTypeFilter] = useState<string>("all")
+  
   // USE REACT QUERY for applications
   const { data: remoteApps, isLoading: memberLoading, error: memberError } = useMyMemberApplications()
   const { data: clubApps, isLoading: clubLoading, error: clubError } = useMyClubApplications()
@@ -52,6 +60,7 @@ export default function MemberHistoryPage() {
   const handleTabChange = (tab: "member" | "club" | "order" | "event" | "wallet") => {
     setActiveTab(tab)
     setFilter("all") // Reset filter khi đổi tab
+    setOrderProductTypeFilter("all") // Reset order product type filter
     
     // Load wallet data when switching to wallet tab
     if (tab === "wallet" && !myWallet) {
@@ -95,12 +104,20 @@ export default function MemberHistoryPage() {
   const [myFeedbackError, setMyFeedbackError] = useState<string | null>(null)
   const [myFeedbacks, setMyFeedbacks] = useState<Feedback[]>([])
   const [expandedEventKey, setExpandedEventKey] = useState<string | null>(null)
+  const [feedbackCurrentPage, setFeedbackCurrentPage] = useState(1)
+  const [feedbackPageSize, setFeedbackPageSize] = useState(6)
 
   // === Staff History state (within Order History tab) ===
   const [showStaffHistory, setShowStaffHistory] = useState(false)
   const [staffHistoryOrders, setStaffHistoryOrders] = useState<StaffHistoryOrder[]>([])
   const [staffHistoryLoading, setStaffHistoryLoading] = useState(false)
   const [staffHistoryError, setStaffHistoryError] = useState<string | null>(null)
+  const [staffHistoryCurrentPage, setStaffHistoryCurrentPage] = useState(1)
+  const [staffHistoryPageSize, setStaffHistoryPageSize] = useState(6)
+
+  // === Order Logs Modal state ===
+  const [selectedOrderForLogs, setSelectedOrderForLogs] = useState<any | null>(null)
+  const [isOrderLogsModalOpen, setIsOrderLogsModalOpen] = useState(false)
 
   // Initialize default membership when available
   useEffect(() => {
@@ -117,6 +134,7 @@ export default function MemberHistoryPage() {
       try {
         setMyFeedbackLoading(true)
         setMyFeedbackError(null)
+        setFeedbackCurrentPage(1) // Reset to page 1
         const data = await getMyFeedbackByMembershipId(selectedMembershipId)
         setMyFeedbacks(Array.isArray(data) ? data : [])
       } catch (err: any) {
@@ -135,6 +153,7 @@ export default function MemberHistoryPage() {
       try {
         setStaffHistoryLoading(true)
         setStaffHistoryError(null)
+        setStaffHistoryCurrentPage(1) // Reset to page 1
         const data = await getStaffHistory()
         setStaffHistoryOrders(Array.isArray(data) ? data : [])
       } catch (err: any) {
@@ -145,6 +164,28 @@ export default function MemberHistoryPage() {
     }
     load()
   }, [showStaffHistory])
+
+  // Query for order logs when modal is open
+  const { data: orderLogs = [], isLoading: orderLogsLoading, error: orderLogsError } = useQuery<OrderLog[]>({
+    queryKey: ["orderLogs", selectedOrderForLogs?.orderId, selectedOrderForLogs?.membershipId],
+    queryFn: async () => {
+      if (!selectedOrderForLogs?.orderId || !selectedOrderForLogs?.membershipId) {
+        return []
+      }
+      try {
+        const logs = await getOrderLogsByMembershipAndOrder(
+          selectedOrderForLogs.membershipId,
+          selectedOrderForLogs.orderId
+        )
+        return logs
+      } catch (error: any) {
+        console.error("Failed to fetch order logs:", error)
+        return []
+      }
+    },
+    enabled: !!selectedOrderForLogs?.orderId && !!selectedOrderForLogs?.membershipId && isOrderLogsModalOpen,
+    retry: 1,
+  })
 
   // Group feedbacks by eventId
   const feedbackGroups = useMemo(() => {
@@ -224,6 +265,23 @@ export default function MemberHistoryPage() {
     }
   }, [activeTab])
 
+  // Helper function to get status priority for sorting
+  const getStatusPriority = (status: string): number => {
+    const statusMap: Record<string, number> = {
+      'PENDING': 1,
+      'PENDING_UNISTAFF': 1,
+      'APPROVED': 2,
+      'COMPLETED': 3,
+      'REJECTED': 4,
+      'CANCELLED': 5,
+      'REFUNDED': 5,
+      'PARTIALLY_REFUNDED': 5,
+      'ONGOING': 2,
+      'COMPLETE': 3,
+    }
+    return statusMap[status] || 99
+  }
+
   // Get user's activity history
   const userApplications = membershipApplications.filter((a) => a.userId === auth.userId)
   const userVouchers = vouchers.filter((v) => v.userId === auth.userId)
@@ -256,7 +314,35 @@ export default function MemberHistoryPage() {
       date: voucher.redeemedAt || new Date().toISOString(),
       data: voucher,
     })),
-  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+  ].sort((a, b) => {
+    const statusA = a.data.status || 'UNKNOWN'
+    const statusB = b.data.status || 'UNKNOWN'
+    
+    // PENDING always comes first
+    if (statusA === "PENDING" && statusB !== "PENDING") return -1
+    if (statusB === "PENDING" && statusA !== "PENDING") return 1
+    
+    // Both are PENDING - sort by date (newest first)
+    if (statusA === "PENDING" && statusB === "PENDING") {
+      return new Date(b.date).getTime() - new Date(a.date).getTime()
+    }
+    
+    // Neither is PENDING - sort by date first
+    const dateA = new Date(a.date).getTime()
+    const dateB = new Date(b.date).getTime()
+    
+    if (dateA !== dateB) {
+      return dateB - dateA // Newest first
+    }
+    
+    // Same date - prioritize APPROVED over REJECTED
+    if (statusA === "APPROVED" && statusB !== "APPROVED") return -1
+    if (statusB === "APPROVED" && statusA !== "APPROVED") return 1
+    if (statusA === "REJECTED" && statusB !== "REJECTED") return 1
+    if (statusB === "REJECTED" && statusA !== "REJECTED") return -1
+    
+    return 0
+  })
 
   // Club applications activities
   const clubActivitiesData = (clubApplications || []).map((app: any) => ({
@@ -273,7 +359,35 @@ export default function MemberHistoryPage() {
       submittedAt: app.submittedAt,
       reviewedAt: app.reviewedAt,
     },
-  })).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+  })).sort((a, b) => {
+    const statusA = a.data.status
+    const statusB = b.data.status
+    
+    // PENDING always comes first
+    if (statusA === "PENDING" && statusB !== "PENDING") return -1
+    if (statusB === "PENDING" && statusA !== "PENDING") return 1
+    
+    // Both are PENDING - sort by date (newest first)
+    if (statusA === "PENDING" && statusB === "PENDING") {
+      return new Date(b.date).getTime() - new Date(a.date).getTime()
+    }
+    
+    // Neither is PENDING - sort by date first
+    const dateA = new Date(a.date).getTime()
+    const dateB = new Date(b.date).getTime()
+    
+    if (dateA !== dateB) {
+      return dateB - dateA // Newest first
+    }
+    
+    // Same date - prioritize APPROVED over REJECTED
+    if (statusA === "APPROVED" && statusB !== "APPROVED") return -1
+    if (statusB === "APPROVED" && statusA !== "APPROVED") return 1
+    if (statusA === "REJECTED" && statusB !== "REJECTED") return 1
+    if (statusB === "REJECTED" && statusA !== "REJECTED") return -1
+    
+    return 0
+  })
 
   // ORDER HISTORY
   const orderActivities = (remoteOrders || [])
@@ -295,9 +409,38 @@ export default function MemberHistoryPage() {
         reasonRefund: order.reasonRefund,
         clubId: order.clubId,
         eventId: order.eventId,
+        membershipId: order.membershipId,
       },
     }))
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .sort((a, b) => {
+      const statusA = a.data.status
+      const statusB = b.data.status
+      
+      // PENDING always comes first
+      if (statusA === "PENDING" && statusB !== "PENDING") return -1
+      if (statusB === "PENDING" && statusA !== "PENDING") return 1
+      
+      // Both are PENDING - sort by date (newest first)
+      if (statusA === "PENDING" && statusB === "PENDING") {
+        return new Date(b.date).getTime() - new Date(a.date).getTime()
+      }
+      
+      // Neither is PENDING - sort by date first
+      const dateA = new Date(a.date).getTime()
+      const dateB = new Date(b.date).getTime()
+      
+      if (dateA !== dateB) {
+        return dateB - dateA // Newest first
+      }
+      
+      // Same date - prioritize APPROVED over REJECTED
+      if (statusA === "APPROVED" && statusB !== "APPROVED") return -1
+      if (statusB === "APPROVED" && statusA !== "APPROVED") return 1
+      if (statusA === "REJECTED" && statusB !== "REJECTED") return 1
+      if (statusB === "REJECTED" && statusA !== "REJECTED") return -1
+      
+      return 0
+    })
 
   // Helper functions for event date handling
   const getEventDate = (event: any): Date | null => {
@@ -364,7 +507,41 @@ export default function MemberHistoryPage() {
         },
       }
     })
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .sort((a, b) => {
+      const statusA = a.data.status
+      const statusB = b.data.status
+      
+      // PENDING (or PENDING_UNISTAFF) always comes first
+      const isPendingA = statusA === "PENDING" || statusA === "PENDING_UNISTAFF"
+      const isPendingB = statusB === "PENDING" || statusB === "PENDING_UNISTAFF"
+      
+      if (isPendingA && !isPendingB) return -1
+      if (isPendingB && !isPendingA) return 1
+      
+      // Both are PENDING - sort by date (newest first)
+      if (isPendingA && isPendingB) {
+        return new Date(b.date).getTime() - new Date(a.date).getTime()
+      }
+      
+      // Neither is PENDING - sort by date first
+      const dateA = new Date(a.date).getTime()
+      const dateB = new Date(b.date).getTime()
+      
+      if (dateA !== dateB) {
+        return dateB - dateA // Newest first
+      }
+      
+      // Same date - prioritize APPROVED/COMPLETED over REJECTED
+      const isApprovedA = statusA === "APPROVED" || statusA === "COMPLETED"
+      const isApprovedB = statusB === "APPROVED" || statusB === "COMPLETED"
+      
+      if (isApprovedA && !isApprovedB) return -1
+      if (isApprovedB && !isApprovedA) return 1
+      if (statusA === "REJECTED" && statusB !== "REJECTED") return 1
+      if (statusB === "REJECTED" && statusA !== "REJECTED") return -1
+      
+      return 0
+    })
 
   // Switch activities based on active tab
   //const activities = activeTab === "member" ? memberActivities : clubActivitiesData 
@@ -392,18 +569,32 @@ export default function MemberHistoryPage() {
 
   // LOGIC LỌC
   const filteredActivities = useMemo(() => {
-    if (filter === "all") {
-      return activities
+    let result = activities as typeof activities
+    
+    // Filter by status
+    if (filter !== "all") {
+      result = result.filter((activity) => {
+        // 'redemption' (voucher cũ) không có status, luôn hiển thị
+        if (activity.type === "redemption") {
+          return true
+        }
+        // Lọc các loại khác theo status
+        return activity.data.status === filter
+      }) as typeof activities
     }
-    return activities.filter((activity) => {
-      // 'redemption' (voucher cũ) không có status, luôn hiển thị
-      if (activity.type === "redemption") {
+    
+    // Filter by productType (only for order tab)
+    if (activeTab === "order" && orderProductTypeFilter !== "all") {
+      result = result.filter((activity) => {
+        if (activity.type === "redeemOrder") {
+          return activity.data.productType === orderProductTypeFilter
+        }
         return true
-      }
-      // Lọc các loại khác theo status
-      return activity.data.status === filter
-    })
-  }, [activities, filter])
+      }) as typeof activities
+    }
+    
+    return result
+  }, [activities, filter, activeTab, orderProductTypeFilter])
 
   // dedupe by applicationId (when available), otherwise by clubId+userId+date
   const activitiesToDisplay = (() => {
@@ -437,7 +628,7 @@ export default function MemberHistoryPage() {
     setPageSize,
   } = usePagination({
     data: activitiesToDisplay,
-    initialPageSize: 10, // ↓ để hiện phân trang khi > 4 activity
+    initialPageSize: 6, // 6 items per page
   })
 
   const getClubName = (clubId: string) => {
@@ -492,6 +683,54 @@ export default function MemberHistoryPage() {
     
     return filtered
   }, [walletTransactions, walletTypeFilter, walletDateFilter])
+
+  // Calculate wallet statistics from filtered transactions
+  const walletStats = useMemo(() => {
+    let totalIncoming = 0
+    let totalOutgoing = 0
+    
+    filteredWalletTransactions.forEach(t => {
+      const amount = parseInt(t.signedAmount.replace(/[^0-9-]/g, ''))
+      if (amount > 0) {
+        totalIncoming += amount
+      } else {
+        totalOutgoing += Math.abs(amount)
+      }
+    })
+    
+    return {
+      totalIncoming,
+      totalOutgoing,
+      transactionCount: filteredWalletTransactions.length
+    }
+  }, [filteredWalletTransactions])
+
+  // Paginated wallet transactions
+  const paginatedWalletTransactions = useMemo(() => {
+    const startIndex = (walletCurrentPage - 1) * walletPageSize
+    const endIndex = startIndex + walletPageSize
+    return filteredWalletTransactions.slice(startIndex, endIndex)
+  }, [filteredWalletTransactions, walletCurrentPage, walletPageSize])
+
+  const walletTotalPages = Math.ceil(filteredWalletTransactions.length / walletPageSize)
+
+  // Paginated feedback groups
+  const paginatedFeedbackGroups = useMemo(() => {
+    const startIndex = (feedbackCurrentPage - 1) * feedbackPageSize
+    const endIndex = startIndex + feedbackPageSize
+    return feedbackGroups.slice(startIndex, endIndex)
+  }, [feedbackGroups, feedbackCurrentPage, feedbackPageSize])
+
+  const feedbackTotalPages = Math.ceil(feedbackGroups.length / feedbackPageSize)
+
+  // Paginated staff history orders
+  const paginatedStaffHistoryOrders = useMemo(() => {
+    const startIndex = (staffHistoryCurrentPage - 1) * staffHistoryPageSize
+    const endIndex = startIndex + staffHistoryPageSize
+    return staffHistoryOrders.slice(startIndex, endIndex)
+  }, [staffHistoryOrders, staffHistoryCurrentPage, staffHistoryPageSize])
+
+  const staffHistoryTotalPages = Math.ceil(staffHistoryOrders.length / staffHistoryPageSize)
 
   return (
     <ProtectedRoute allowedRoles={["student", "member"]}>
@@ -647,6 +886,18 @@ export default function MemberHistoryPage() {
                   <ClipboardCheck className="h-4 w-4" />
                   Staff Approval History
                 </button>
+                {!showStaffHistory && (
+                  <Select value={orderProductTypeFilter} onValueChange={setOrderProductTypeFilter}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Product Type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Types</SelectItem>
+                      <SelectItem value="CLUB_ITEM">Club Item</SelectItem>
+                      <SelectItem value="EVENT_ITEM">Event Item</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             )}
 
@@ -682,69 +933,87 @@ export default function MemberHistoryPage() {
                 description="You have not submitted any feedback for your events."
               />
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {feedbackGroups.map((group, idx) => {
-                  const cardKey = `${group.eventId}-${idx}`
-                  const expanded = expandedEventKey === cardKey
-                  return (
-                    <Card key={cardKey} className="border-l-4 border-l-blue-500 dark:border-l-blue-400 transition-all hover:shadow-md">
-                      <CardContent className="pt-6">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <h3
-                              className="font-medium hover:underline cursor-pointer truncate"
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {paginatedFeedbackGroups.map((group, idx) => {
+                    const cardKey = `${group.eventId}-${idx}`
+                    const expanded = expandedEventKey === cardKey
+                    return (
+                      <Card key={cardKey} className="border-l-4 border-l-blue-500 dark:border-l-blue-400 transition-all hover:shadow-md">
+                        <CardContent className="pt-6">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <h3
+                                className="font-medium hover:underline cursor-pointer truncate"
+                                onClick={() => setExpandedEventKey((prev) => (prev === cardKey ? null : cardKey))}
+                                title={group.eventName}
+                              >
+                                {group.eventName}
+                              </h3>
+                              <p className="text-sm text-muted-foreground truncate">
+                                {group.clubName}
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {group.items.length} feedback{group.items.length > 1 ? "s" : ""}
+                              </p>
+                            </div>
+                            <button
+                              className="px-2 py-1 rounded-md border hover:bg-muted"
                               onClick={() => setExpandedEventKey((prev) => (prev === cardKey ? null : cardKey))}
-                              title={group.eventName}
+                              aria-label="Toggle feedback list"
                             >
-                              {group.eventName}
-                            </h3>
-                            <p className="text-sm text-muted-foreground truncate">
-                              {group.clubName}
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {group.items.length} feedback{group.items.length > 1 ? "s" : ""}
-                            </p>
+                              {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            </button>
                           </div>
-                          <button
-                            className="px-2 py-1 rounded-md border hover:bg-muted"
-                            onClick={() => setExpandedEventKey((prev) => (prev === cardKey ? null : cardKey))}
-                            aria-label="Toggle feedback list"
-                          >
-                            {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                          </button>
-                        </div>
 
-                        {expanded && (
-                          <div className="mt-4 space-y-3">
-                            {group.items.map((fb) => (
-                              <div key={fb.feedbackId} className="p-3 rounded-md border bg-muted/30">
-                                <div className="flex items-center justify-between gap-3">
-                                  <div className="text-sm font-medium truncate">
-                                    {fb.memberName || "You"}
+                          {expanded && (
+                            <div className="mt-4 space-y-3">
+                              {group.items.map((fb) => (
+                                <div key={fb.feedbackId} className="p-3 rounded-md border bg-muted/30">
+                                  <div className="flex items-center justify-between gap-3">
+                                    <div className="text-sm font-medium truncate">
+                                      {fb.memberName || "You"}
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                      {[1,2,3,4,5].map((i) => (
+                                        <Star
+                                          key={i}
+                                          className={`h-3.5 w-3.5 ${i <= fb.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`}
+                                        />
+                                      ))}
+                                    </div>
                                   </div>
-                                  <div className="flex items-center gap-1">
-                                    {[1,2,3,4,5].map((i) => (
-                                      <Star
-                                        key={i}
-                                        className={`h-3.5 w-3.5 ${i <= fb.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`}
-                                      />
-                                    ))}
-                                  </div>
+                                  <p className="text-sm mt-1">{fb.comment}</p>
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    {new Date(fb.createdAt).toLocaleString()}
+                                    {fb.updatedAt ? ` • Updated: ${new Date(fb.updatedAt).toLocaleDateString()}` : ""}
+                                  </p>
                                 </div>
-                                <p className="text-sm mt-1">{fb.comment}</p>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  {new Date(fb.createdAt).toLocaleString()}
-                                  {fb.updatedAt ? ` • Updated: ${new Date(fb.updatedAt).toLocaleDateString()}` : ""}
-                                </p>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  )
-                })}
-              </div>
+                              ))}
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    )
+                  })}
+                </div>
+                
+                {/* Feedback Pagination */}
+                {feedbackGroups.length > feedbackPageSize && (
+                  <Pagination
+                    currentPage={feedbackCurrentPage}
+                    totalPages={feedbackTotalPages}
+                    pageSize={feedbackPageSize}
+                    totalItems={feedbackGroups.length}
+                    onPageChange={setFeedbackCurrentPage}
+                    onPageSizeChange={(size) => {
+                      setFeedbackPageSize(size)
+                      setFeedbackCurrentPage(1)
+                    }}
+                    pageSizeOptions={[6, 12, 24]}
+                  />
+                )}
+              </>
             )
           ) : (activeTab === "order" && showStaffHistory) ? (
             // Staff History Content
@@ -759,8 +1028,9 @@ export default function MemberHistoryPage() {
                 description="You have not approved any orders as staff."
               />
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {staffHistoryOrders.map((order) => {
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {paginatedStaffHistoryOrders.map((order) => {
                   const statusColors = {
                     PENDING: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300",
                     COMPLETED: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
@@ -847,7 +1117,24 @@ export default function MemberHistoryPage() {
                     </Card>
                   )
                 })}
-              </div>
+                </div>
+                
+                {/* Staff History Pagination */}
+                {staffHistoryOrders.length > staffHistoryPageSize && (
+                  <Pagination
+                    currentPage={staffHistoryCurrentPage}
+                    totalPages={staffHistoryTotalPages}
+                    pageSize={staffHistoryPageSize}
+                    totalItems={staffHistoryOrders.length}
+                    onPageChange={setStaffHistoryCurrentPage}
+                    onPageSizeChange={(size) => {
+                      setStaffHistoryPageSize(size)
+                      setStaffHistoryCurrentPage(1)
+                    }}
+                    pageSizeOptions={[6, 12, 24]}
+                  />
+                )}
+              </>
             )
           ) : activeTab === "wallet" ? (
             // Wallet Tab Content
@@ -866,46 +1153,119 @@ export default function MemberHistoryPage() {
                 {/* Wallet Summary Card */}
                 <Card className="border-l-4 border-l-green-500 dark:border-l-green-400">
                   <CardContent className="pt-6">
-                    <div className="flex items-start gap-4">
-                      <div className="shrink-0">
-                        <div className="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center">
-                          <Wallet className="h-6 w-6 text-green-600 dark:text-green-400" />
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                      {/* Left: Wallet Info */}
+                      <div className="lg:col-span-1">
+                        <div className="flex items-start gap-4">
+                          <div className="shrink-0">
+                            <div className="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center">
+                              <Wallet className="h-6 w-6 text-green-600 dark:text-green-400" />
+                            </div>
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-medium text-lg">My Wallet</h3>
+                            <p className="text-sm text-muted-foreground mb-3">
+                              {myWallet.clubName || "Personal Wallet"}
+                            </p>
+                            <div className="space-y-2">
+                              <div className="flex justify-between items-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                                <span className="text-sm text-muted-foreground">Balance:</span>
+                                <span className="text-2xl font-bold text-green-600 dark:text-green-400">
+                                  {myWallet.balancePoints} pts
+                                </span>
+                              </div>
+                              <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
+                                <span className="text-sm text-muted-foreground">Owner Type:</span>
+                                <Badge
+                                  variant="outline"
+                                  className={myWallet.ownerType === 'USER' ? 'bg-blue-600 text-white border-blue-600' : ''}
+                                >
+                                  {myWallet.ownerType}
+                                </Badge>
+                              </div>
+                              {myWallet.userFullName && (
+                                <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
+                                  <span className="text-sm text-muted-foreground">Owner:</span>
+                                  <span className="text-sm font-medium">{myWallet.userFullName}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </div>
-                      <div className="flex-1">
-                        <h3 className="font-medium text-lg">My Wallet</h3>
-                        <p className="text-sm text-muted-foreground mb-3">
-                          {myWallet.clubName || "Personal Wallet"}
-                        </p>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div className="flex justify-between items-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                            <span className="text-sm text-muted-foreground">Balance:</span>
-                            <span className="text-2xl font-bold text-green-600 dark:text-green-400">
-                              {myWallet.balancePoints} pts
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
-                            <span className="text-sm text-muted-foreground">Owner Type:</span>
-                            <Badge
-                              variant="outline"
-                              className={myWallet.ownerType === 'USER' ? 'bg-blue-600 text-white border-blue-600' : ''}
-                            >
-                              {myWallet.ownerType}
-                            </Badge>
-                          </div>
-                          {myWallet.clubId && (
-                            <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
-                              <span className="text-sm text-muted-foreground">Club ID:</span>
-                              <span className="text-sm font-medium">#{myWallet.clubId}</span>
+                      
+                      {/* Right: Statistics */}
+                      <div className="lg:col-span-2">
+                        <div>
+                          <h4 className="font-medium mb-3 text-muted-foreground">Transaction Overview</h4>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              {/* Total Incoming */}
+                              <div className="relative overflow-hidden rounded-xl bg-linear-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900 p-5 border border-green-200 dark:border-green-800 shadow-sm hover:shadow-md transition-shadow">
+                                <div className="flex items-start justify-between mb-3">
+                                  <div className="flex items-center gap-2">
+                                    <div className="p-2 bg-green-500/10 dark:bg-green-400/20 rounded-lg">
+                                      <ArrowDownLeft className="h-5 w-5 text-green-600 dark:text-green-400" />
+                                    </div>
+                                  </div>
+                                  <div className="text-xs font-medium text-green-700 dark:text-green-300 bg-green-200 dark:bg-green-900 px-2 py-1 rounded-full">
+                                    Income
+                                  </div>
+                                </div>
+                                <div>
+                                  <p className="text-sm text-green-700 dark:text-green-300 font-medium mb-1">Total Incoming</p>
+                                  <p className="text-3xl font-bold text-green-600 dark:text-green-400">
+                                    +{walletStats.totalIncoming}
+                                  </p>
+                                  <p className="text-xs text-green-600/70 dark:text-green-400/70 mt-1">points received</p>
+                                </div>
+                                <div className="absolute -bottom-2 -right-2 w-20 h-20 bg-green-500/5 dark:bg-green-400/5 rounded-full"></div>
+                              </div>
+                              
+                              {/* Total Outgoing */}
+                              <div className="relative overflow-hidden rounded-xl bg-linear-to-br from-red-50 to-red-100 dark:from-red-950 dark:to-red-900 p-5 border border-red-200 dark:border-red-800 shadow-sm hover:shadow-md transition-shadow">
+                                <div className="flex items-start justify-between mb-3">
+                                  <div className="flex items-center gap-2">
+                                    <div className="p-2 bg-red-500/10 dark:bg-red-400/20 rounded-lg">
+                                      <ArrowUpRight className="h-5 w-5 text-red-600 dark:text-red-400" />
+                                    </div>
+                                  </div>
+                                  <div className="text-xs font-medium text-red-700 dark:text-red-300 bg-red-200 dark:bg-red-900 px-2 py-1 rounded-full">
+                                    Expense
+                                  </div>
+                                </div>
+                                <div>
+                                  <p className="text-sm text-red-700 dark:text-red-300 font-medium mb-1">Total Outgoing</p>
+                                  <p className="text-3xl font-bold text-red-600 dark:text-red-400">
+                                    -{walletStats.totalOutgoing}
+                                  </p>
+                                  <p className="text-xs text-red-600/70 dark:text-red-400/70 mt-1">points spent</p>
+                                </div>
+                                <div className="absolute -bottom-2 -right-2 w-20 h-20 bg-red-500/5 dark:bg-red-400/5 rounded-full"></div>
+                              </div>
+                              
+                              {/* Total Transactions */}
+                              <div className="relative overflow-hidden rounded-xl bg-linear-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 p-5 border border-blue-200 dark:border-blue-800 shadow-sm hover:shadow-md transition-shadow">
+                                <div className="flex items-start justify-between mb-3">
+                                  <div className="flex items-center gap-2">
+                                    <div className="p-2 bg-blue-500/10 dark:bg-blue-400/20 rounded-lg">
+                                      <History className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                                    </div>
+                                  </div>
+                                  <div className="text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-200 dark:bg-blue-900 px-2 py-1 rounded-full">
+                                    Activity
+                                  </div>
+                                </div>
+                                <div>
+                                  <p className="text-sm text-blue-700 dark:text-blue-300 font-medium mb-1">Total Transactions</p>
+                                  <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+                                    {walletStats.transactionCount}
+                                  </p>
+                                  <p className="text-xs text-blue-600/70 dark:text-blue-400/70 mt-1">completed</p>
+                                </div>
+                                <div className="absolute -bottom-2 -right-2 w-20 h-20 bg-blue-500/5 dark:bg-blue-400/5 rounded-full"></div>
+                              </div>
                             </div>
-                          )}
-                          {myWallet.userFullName && (
-                            <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
-                              <span className="text-sm text-muted-foreground">Owner:</span>
-                              <span className="text-sm font-medium">{myWallet.userFullName}</span>
-                            </div>
-                          )}
-                        </div>
+                          </div>
                       </div>
                     </div>
                   </CardContent>
@@ -915,38 +1275,15 @@ export default function MemberHistoryPage() {
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="font-medium text-lg">Transaction History</h3>
-                    {walletTransactions.length > 0 && (
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => setWalletViewMode("card")}
-                          className={`p-2 rounded-md transition-colors ${
-                            walletViewMode === "card"
-                              ? "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
-                              : "hover:bg-muted"
-                          }`}
-                          title="Card View"
-                        >
-                          <LayoutGrid className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => setWalletViewMode("table")}
-                          className={`p-2 rounded-md transition-colors ${
-                            walletViewMode === "table"
-                              ? "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
-                              : "hover:bg-muted"
-                          }`}
-                          title="Table View"
-                        >
-                          <Table2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    )}
                   </div>
                   
                   {/* Filters */}
                   {walletTransactions.length > 0 && (
                     <div className="flex flex-wrap gap-2 mb-3">
-                      <Select value={walletTypeFilter} onValueChange={setWalletTypeFilter}>
+                      <Select value={walletTypeFilter} onValueChange={(value) => {
+                        setWalletTypeFilter(value)
+                        setWalletCurrentPage(1)
+                      }}>
                         <SelectTrigger className="w-[200px]">
                           <SelectValue placeholder="Filter by type" />
                         </SelectTrigger>
@@ -960,7 +1297,10 @@ export default function MemberHistoryPage() {
                         </SelectContent>
                       </Select>
                       
-                      <Select value={walletDateFilter} onValueChange={setWalletDateFilter}>
+                      <Select value={walletDateFilter} onValueChange={(value) => {
+                        setWalletDateFilter(value)
+                        setWalletCurrentPage(1)
+                      }}>
                         <SelectTrigger className="w-[200px]">
                           <SelectValue placeholder="Filter by date" />
                         </SelectTrigger>
@@ -978,6 +1318,7 @@ export default function MemberHistoryPage() {
                           onClick={() => {
                             setWalletTypeFilter("all")
                             setWalletDateFilter("all")
+                            setWalletCurrentPage(1)
                           }}
                           className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
                         >
@@ -996,7 +1337,7 @@ export default function MemberHistoryPage() {
                         />
                       </CardContent>
                     </Card>
-                  ) : walletViewMode === "table" ? (
+                  ) : (
                     <div className="border rounded-lg overflow-hidden">
                       <div className="overflow-x-auto">
                         <table className="w-full">
@@ -1010,7 +1351,7 @@ export default function MemberHistoryPage() {
                             </tr>
                           </thead>
                           <tbody>
-                            {filteredWalletTransactions.map((transaction, index) => {
+                            {paginatedWalletTransactions.map((transaction, index) => {
                               const isIncoming = transaction.signedAmount.startsWith("+")
                               return (
                                 <tr
@@ -1069,63 +1410,22 @@ export default function MemberHistoryPage() {
                         </table>
                       </div>
                     </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {filteredWalletTransactions.map((transaction) => {
-                        const isIncoming = transaction.signedAmount.startsWith("+")
-                        return (
-                          <Card key={transaction.id} className={`border-l-4 ${isIncoming ? "border-l-green-500 dark:border-l-green-400" : "border-l-red-500 dark:border-l-red-400"} transition-all hover:shadow-md`}>
-                            <CardContent className="pt-6">
-                              <div className="flex items-start gap-4">
-                                <div className="shrink-0">
-                                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isIncoming ? "bg-green-100 dark:bg-green-900" : "bg-red-100 dark:bg-red-900"}`}>
-                                    {isIncoming ? (
-                                      <ArrowDownLeft className={`h-5 w-5 ${isIncoming ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`} />
-                                    ) : (
-                                      <ArrowUpRight className={`h-5 w-5 ${isIncoming ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`} />
-                                    )}
-                                  </div>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-start justify-between gap-3">
-                                    <div className="flex-1 min-w-0">
-                                      <div className="flex items-center gap-2 mb-1">
-                                        <Badge variant="outline" className="text-xs">
-                                          {transaction.type.replace(/_/g, " ")}
-                                        </Badge>
-                                        <span className={`text-lg font-bold ${isIncoming ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
-                                          {transaction.signedAmount} pts
-                                        </span>
-                                      </div>
-                                      <p className="text-sm text-muted-foreground mb-2">
-                                        {transaction.description}
-                                      </p>
-                                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                        {transaction.senderName && (
-                                          <span>From: <span className="font-medium">{transaction.senderName}</span></span>
-                                        )}
-                                        {transaction.receiverName && (
-                                          <span>To: <span className="font-medium">{transaction.receiverName}</span></span>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-                                  <p className="text-xs text-muted-foreground mt-2">
-                                    {new Date(transaction.createdAt).toLocaleString("en-US", {
-                                      year: "numeric",
-                                      month: "long",
-                                      day: "numeric",
-                                      hour: "2-digit",
-                                      minute: "2-digit",
-                                    })}
-                                  </p>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        )
-                      })}
-                    </div>
+                  )}
+                  
+                  {/* Wallet Pagination */}
+                  {filteredWalletTransactions.length > walletPageSize && (
+                    <Pagination
+                      currentPage={walletCurrentPage}
+                      totalPages={walletTotalPages}
+                      pageSize={walletPageSize}
+                      totalItems={filteredWalletTransactions.length}
+                      onPageChange={setWalletCurrentPage}
+                      onPageSizeChange={(size) => {
+                        setWalletPageSize(size)
+                        setWalletCurrentPage(1)
+                      }}
+                      pageSizeOptions={[6, 12, 24]}
+                    />
                   )}
                 </div>
               </div>
@@ -1208,7 +1508,19 @@ export default function MemberHistoryPage() {
                 }
 
                 return (
-                  <Card key={index} className={`border-l-4 ${getBorderColor()} transition-all hover:shadow-md`}>
+                  <Card 
+                    key={index} 
+                    className={`border-l-4 ${getBorderColor()} transition-all hover:shadow-md ${
+                      activity.type === "redeemOrder" ? "cursor-pointer hover:border-l-8" : ""
+                    }`}
+                    title={activity.type === "redeemOrder" ? "Click to see detail order" : undefined}
+                    onClick={() => {
+                      if (activity.type === "redeemOrder") {
+                        setSelectedOrderForLogs(activity.data)
+                        setIsOrderLogsModalOpen(true)
+                      }
+                    }}
+                  >
                     <CardContent className="pt-6">
                       <div className="flex items-start gap-4">
                         <div className="shrink-0">
@@ -1311,7 +1623,7 @@ export default function MemberHistoryPage() {
                                     variant={
                                       activity.data.status === "APPROVED"
                                         ? "default"
-                                        : activity.data.status === "COMPLETE"
+                                        : activity.data.status === "COMPLETE" || activity.data.status === "COMPLETED"
                                           ? "default"
                                           : activity.data.status === "PENDING"
                                             ? "secondary"
@@ -1320,8 +1632,8 @@ export default function MemberHistoryPage() {
                                     className={
                                       activity.data.status === "APPROVED"
                                         ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-green-300 dark:border-green-700 hover:bg-green-100 dark:hover:bg-green-900/40"
-                                        : activity.data.status === "COMPLETE"
-                                          ? "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/40"
+                                        : activity.data.status === "COMPLETE" || activity.data.status === "COMPLETED"
+                                          ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-green-300 dark:border-green-700 hover:bg-green-100 dark:hover:bg-green-900/40"
                                           : activity.data.status === "PENDING"
                                             ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700 hover:bg-yellow-100 dark:hover:bg-yellow-900/40"
                                             : "bg-red-100 dark:bg-red-900/70 text-red-800 dark:text-red-100 border-red-300 dark:border-red-600 hover:bg-red-100 dark:hover:bg-red-900/80"
@@ -1476,8 +1788,8 @@ export default function MemberHistoryPage() {
             </div>
           )}
 
-          {/* Pagination - only show when there's data and not on wallet tab or staff history */}
-          {!loading && !error && activitiesToDisplay.length > 0 && activeTab !== "wallet" && !(activeTab === "order" && showStaffHistory) && (
+          {/* Pagination - only show when there's data and not on wallet tab, staff history, or my feedback */}
+          {!loading && !error && activitiesToDisplay.length > 0 && activeTab !== "wallet" && !(activeTab === "order" && showStaffHistory) && !(activeTab === "event" && showMyFeedback) && (
             <Pagination
               currentPage={currentPage}
               totalPages={totalPages}
@@ -1488,11 +1800,112 @@ export default function MemberHistoryPage() {
                 setPageSize(size)
                 setCurrentPage(1) // reset về trang 1 khi đổi số dòng/trang
               }}
-              pageSizeOptions={[10, 30, 50]}
+              pageSizeOptions={[6, 12, 24]}
             />
           )}
         </div>
       </AppShell>
+
+      {/* Order Logs Modal */}
+      <Dialog open={isOrderLogsModalOpen} onOpenChange={setIsOrderLogsModalOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Order Logs</DialogTitle>
+            <DialogDescription>
+              View all logs for this order
+            </DialogDescription>
+          </DialogHeader>
+
+          {orderLogsLoading ? (
+            <div className="flex flex-col gap-2 py-8">
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-20 w-full" />
+            </div>
+          ) : orderLogsError ? (
+            <div className="text-center py-8 text-red-500">
+              Error loading order logs
+            </div>
+          ) : orderLogs && orderLogs.length > 0 ? (
+            <div className="space-y-4">
+              {orderLogs.map((log) => (
+                <Card key={log.id}>
+                  <CardContent className="pt-6">
+                    <div className="space-y-3">
+                      {/* Action and Date */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge
+                          variant={
+                            log.action === "CREATE" || log.action === "COMPLETED"
+                              ? "default"
+                              : log.action === "REFUND" || log.action === "PARTIAL_REFUND"
+                              ? "destructive"
+                              : "outline"
+                          }
+                          className={
+                            log.action === "COMPLETED"
+                              ? "bg-green-500 hover:bg-green-600"
+                              : ""
+                          }
+                        >
+                          {log.action}
+                        </Badge>
+                        <span className="text-sm text-muted-foreground">
+                          {new Date(log.createdAt).toLocaleString("en-US", {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      </div>
+
+                      {/* Actor Information */}
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div>
+                          <span className="text-muted-foreground">Actor:</span>
+                          <p className="font-medium">{log.actorName}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Target User:</span>
+                          <p className="font-medium">{log.targetUserName}</p>
+                        </div>
+                      </div>
+
+                      {/* Order Details */}
+                      <div className="grid grid-cols-2 gap-2 text-sm border-t pt-2">
+                        <div>
+                          <span className="text-muted-foreground text-xs">Quantity</span>
+                          <p className="font-medium">{log.quantity}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground text-xs">Points Change</span>
+                          <p className={`font-medium ${log.pointsChange > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {log.pointsChange > 0 ? '+' : ''}{log.pointsChange}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Reason (if exists) */}
+                      {log.reason && (
+                        <div className="text-sm border-t pt-2">
+                          <span className="text-muted-foreground">Reason:</span>
+                          <p className="mt-1">{log.reason}</p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              No logs found for this order
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </ProtectedRoute>
   )
 }
