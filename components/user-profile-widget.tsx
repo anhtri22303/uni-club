@@ -238,7 +238,7 @@ export function UserProfileWidget() {
 
     // Fallback về 0 nếu không tìm thấy
     return 0;
-  }, [selectedWalletId, memberships, profileLoading]); // 👈 Tính lại khi 1 trong 3 thay đổi
+  }, [selectedWalletId, memberships, profileLoading]); //  Tính lại khi 1 trong 3 thay đổi
 
   // 11. LẤY DATA TRỰC TIẾP TỪ `profile`
   const avatarUrl = profile?.avatarUrl || ""

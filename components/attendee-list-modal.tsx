@@ -59,17 +59,21 @@ export default function AttendeeListModal({
 
   const getAttendanceBadge = (level: string) => {
     const badges: Record<string, { label: string; className: string }> = {
-      FULL: {
-        label: "Full",
-        className: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
+      NONE: {
+        label: "Not Attended",
+        className: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300",
       },
-      PARTIAL: {
-        label: "Partial",
+      HALF: {
+        label: "50% Attended",
         className: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300",
       },
-      NONE: {
-        label: "None",
-        className: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300",
+      FULL: {
+        label: "100% Attended",
+        className: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
+      },
+      SUSPICIOUS: {
+        label: "Suspicious",
+        className: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300",
       },
     }
 
@@ -94,7 +98,7 @@ export default function AttendeeListModal({
             <Users className="w-6 h-6 text-blue-600" />
             <div>
               <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                Attendee List
+                Checked In List
               </h2>
               {eventName && (
                 <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -175,9 +179,6 @@ export default function AttendeeListModal({
                         </td>
                         <td className="py-4 px-4">
                           <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-medium">
-                              {attendee.fullName.charAt(0).toUpperCase()}
-                            </div>
                             <span className="font-medium text-gray-900 dark:text-white">
                               {attendee.fullName}
                             </span>
@@ -193,8 +194,8 @@ export default function AttendeeListModal({
                           <div className="flex items-center gap-2">
                             {attendee.checkinAt ? (
                               <>
-                                <CheckCircle2 className="w-4 h-4 text-green-600" />
-                                {formatDateTime(attendee.checkinAt)}
+                                <CheckCircle2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                                <span className="text-blue-700 dark:text-blue-300">{formatDateTime(attendee.checkinAt)}</span>
                               </>
                             ) : (
                               <>
@@ -208,8 +209,8 @@ export default function AttendeeListModal({
                           <div className="flex items-center gap-2">
                             {attendee.checkMidAt ? (
                               <>
-                                <CheckCircle2 className="w-4 h-4 text-green-600" />
-                                {formatDateTime(attendee.checkMidAt)}
+                                <CheckCircle2 className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+                                <span className="text-orange-700 dark:text-orange-300">{formatDateTime(attendee.checkMidAt)}</span>
                               </>
                             ) : (
                               <>
@@ -223,8 +224,8 @@ export default function AttendeeListModal({
                           <div className="flex items-center gap-2">
                             {attendee.checkoutAt ? (
                               <>
-                                <CheckCircle2 className="w-4 h-4 text-green-600" />
-                                {formatDateTime(attendee.checkoutAt)}
+                                <CheckCircle2 className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                                <span className="text-purple-700 dark:text-purple-300">{formatDateTime(attendee.checkoutAt)}</span>
                               </>
                             ) : (
                               <>

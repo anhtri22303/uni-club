@@ -491,6 +491,7 @@ export const getEventWallet = async (eventId: string | number): Promise<EventWal
   try {
     const response = await axiosInstance.get(`/api/events/${eventId}/wallet/detail`)
     const data: any = response.data
+    console.log(`Event wallet for event ${eventId}:`, data)
     // Response structure: { success: true, message: "success", data: {...wallet} }
     if (data?.data) return data.data
     return data

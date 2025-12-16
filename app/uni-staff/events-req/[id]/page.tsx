@@ -43,7 +43,7 @@ import { useToast } from "@/hooks/use-toast";
 import { renderTypeBadge } from "@/lib/eventUtils";
 import { getLocationById } from "@/service/locationApi";
 import { getClubById } from "@/service/clubApi";
-import { EventWalletHistoryModal } from "@/components/event-wallet-history-modal";
+import { EventWalletHistoryFullscreenModal } from "@/components/event-wallet-history-fullscreen-modal";
 import {
   Dialog,
   DialogContent,
@@ -1528,7 +1528,7 @@ export default function EventRequestDetailPage({
           </div>
 
           {/* Wallet History Modal */}
-          <EventWalletHistoryModal
+          <EventWalletHistoryFullscreenModal
             open={showWalletHistoryModal}
             onOpenChange={setShowWalletHistoryModal}
             eventId={params.id}

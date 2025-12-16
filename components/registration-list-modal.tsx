@@ -59,25 +59,29 @@ export default function RegistrationListModal({
 
   const getStatusBadge = (status: string) => {
     const badges: Record<string, { label: string; className: string }> = {
-      CHECKED_IN: {
-        label: "Checked In",
-        className: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
+      PENDING: {
+        label: "Pending",
+        className: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300",
       },
       CONFIRMED: {
         label: "Confirmed",
         className: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
       },
-      REGISTERED: {
-        label: "Registered",
+      CHECKED_IN: {
+        label: "Checked In",
         className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
       },
-      CANCELLED: {
-        label: "Cancelled",
-        className: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300",
+      REWARDED: {
+        label: "Rewarded",
+        className: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300",
       },
-      REFUNDED: {
-        label: "Refunded",
-        className: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300",
+      NO_SHOW: {
+        label: "No Show",
+        className: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300",
+      },
+      CANCELED: {
+        label: "Canceled",
+        className: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300",
       },
     }
 
@@ -93,6 +97,16 @@ export default function RegistrationListModal({
         {badge.label}
       </span>
     )
+  }
+
+  // Calculate status counts
+  const statusCounts = {
+    PENDING: registrations.filter(r => r.status === "PENDING").length,
+    CONFIRMED: registrations.filter(r => r.status === "CONFIRMED").length,
+    CHECKED_IN: registrations.filter(r => r.status === "CHECKED_IN").length,
+    REWARDED: registrations.filter(r => r.status === "REWARDED").length,
+    NO_SHOW: registrations.filter(r => r.status === "NO_SHOW").length,
+    CANCELED: registrations.filter(r => r.status === "CANCELED").length,
   }
 
   if (!isOpen) return null
@@ -140,11 +154,63 @@ export default function RegistrationListModal({
             <div className="space-y-4">
               {/* Summary */}
               <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4 mb-6">
-                <div className="flex items-center gap-2 text-purple-900 dark:text-purple-100">
+                <div className="flex items-center gap-2 text-purple-900 dark:text-purple-100 mb-4">
                   <CheckCircle2 className="w-5 h-5" />
                   <span className="font-semibold">
                     Total Registrations: {registrations.length}
                   </span>
+                </div>
+                
+                {/* Status breakdown */}
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3">
+                  {statusCounts.PENDING > 0 && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="w-3 h-3 rounded-full bg-yellow-500"></span>
+                      <span className="text-gray-700 dark:text-gray-300">
+                        Pending: <span className="font-semibold">{statusCounts.PENDING}</span>
+                      </span>
+                    </div>
+                  )}
+                  {statusCounts.CONFIRMED > 0 && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="w-3 h-3 rounded-full bg-green-500"></span>
+                      <span className="text-gray-700 dark:text-gray-300">
+                        Confirmed: <span className="font-semibold">{statusCounts.CONFIRMED}</span>
+                      </span>
+                    </div>
+                  )}
+                  {statusCounts.CHECKED_IN > 0 && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="w-3 h-3 rounded-full bg-blue-500"></span>
+                      <span className="text-gray-700 dark:text-gray-300">
+                        Checked In: <span className="font-semibold">{statusCounts.CHECKED_IN}</span>
+                      </span>
+                    </div>
+                  )}
+                  {statusCounts.REWARDED > 0 && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="w-3 h-3 rounded-full bg-purple-500"></span>
+                      <span className="text-gray-700 dark:text-gray-300">
+                        Rewarded: <span className="font-semibold">{statusCounts.REWARDED}</span>
+                      </span>
+                    </div>
+                  )}
+                  {statusCounts.NO_SHOW > 0 && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="w-3 h-3 rounded-full bg-orange-500"></span>
+                      <span className="text-gray-700 dark:text-gray-300">
+                        No Show: <span className="font-semibold">{statusCounts.NO_SHOW}</span>
+                      </span>
+                    </div>
+                  )}
+                  {statusCounts.CANCELED > 0 && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="w-3 h-3 rounded-full bg-red-500"></span>
+                      <span className="text-gray-700 dark:text-gray-300">
+                        Canceled: <span className="font-semibold">{statusCounts.CANCELED}</span>
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -184,9 +250,6 @@ export default function RegistrationListModal({
                         </td>
                         <td className="py-4 px-4">
                           <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center text-white text-sm font-medium">
-                              {registration.fullName.charAt(0).toUpperCase()}
-                            </div>
                             <span className="font-medium text-gray-900 dark:text-white">
                               {registration.fullName}
                             </span>
