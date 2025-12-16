@@ -184,7 +184,7 @@ export function QRModal({
 
       {/* Fullscreen QR Modal */}
       {isFullscreen && (
-        <div className="fixed inset-0 bg-black/95 backdrop-blur-sm z-50 flex items-center justify-center">
+        <div className="fixed inset-0 bg-black/95 backdrop-blur-sm z-[100] flex items-center justify-center">
           <div className="w-full h-full flex flex-col items-center justify-center p-8 text-white">
             {/* Fullscreen Header */}
             <div className="absolute top-6 left-6 right-6 flex items-center justify-between">
@@ -206,45 +206,6 @@ export function QRModal({
                 <Minimize2 className="h-5 w-5 mr-2" />
                 Exit Fullscreen
               </Button>
-            </div>
-
-            {/* Environment Tabs */}
-            <div className="absolute top-24 left-1/2 transform -translate-x-1/2">
-              <div className="flex bg-white/10 dark:bg-gray-800/50 rounded-lg p-1 backdrop-blur-sm">
-                <button
-                  onClick={() => setActiveEnvironment('prod')}
-                  className={`flex items-center gap-2 px-6 py-3 rounded-md font-medium transition-all ${
-                    activeEnvironment === 'prod' 
-                      ? 'bg-white dark:bg-gray-700 text-black dark:text-white shadow-sm' 
-                      : 'text-white/70 hover:text-white hover:bg-white/10 dark:hover:bg-gray-700/50'
-                  }`}
-                >
-                  <Monitor className="h-5 w-5" />
-                  Production Environment
-                </button>
-                <button
-                  onClick={() => setActiveEnvironment('local')}
-                  className={`flex items-center gap-2 px-6 py-3 rounded-md font-medium transition-all ${
-                    activeEnvironment === 'local' 
-                      ? 'bg-white dark:bg-gray-700 text-black dark:text-white shadow-sm' 
-                      : 'text-white/70 hover:text-white hover:bg-white/10 dark:hover:bg-gray-700/50'
-                  }`}
-                >
-                  <Smartphone className="h-5 w-5" />
-                  Development Environment
-                </button>
-                <button
-                  onClick={() => setActiveEnvironment('mobile')}
-                  className={`flex items-center gap-2 px-6 py-3 rounded-md font-medium transition-all ${
-                    activeEnvironment === 'mobile' 
-                      ? 'bg-white dark:bg-gray-700 text-black dark:text-white shadow-sm' 
-                      : 'text-white/70 hover:text-white hover:bg-white/10 dark:hover:bg-gray-700/50'
-                  }`}
-                >
-                  <Smartphone className="h-5 w-5" />
-                  Mobile Environment
-                </button>
-              </div>
             </div>
 
             {/* Fullscreen QR Code */}
@@ -312,16 +273,6 @@ export function QRModal({
                     Download QR
                   </Button>
                 )}
-              </div>
-            </div>
-
-            {/* Fullscreen URL */}
-            <div className="absolute bottom-6 left-6 right-6">
-              <div className="p-6 bg-white/10 rounded-xl backdrop-blur-sm">
-                <div className="text-white/70 mb-2 text-sm uppercase tracking-wide">Check-in URL:</div>
-                <div className="font-mono text-lg break-all">
-                  {activeEnvironment === 'prod' ? qrLinks.prod : activeEnvironment === 'local' ? qrLinks.local : (qrLinks.mobile || 'Generating mobile link...')}
-                </div>
               </div>
             </div>
           </div>

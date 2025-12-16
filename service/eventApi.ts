@@ -609,6 +609,7 @@ export const getEventSummary = async (eventId: string | number): Promise<EventSu
   try {
     const response = await axiosInstance.get(`/api/events/${eventId}/summary`)
     const data: any = response.data
+    console.log(`Event summary for event ${eventId}:`, data)
     // Response structure: { success: true, message: "success", data: {...summary} }
     if (data?.data) return data.data
     return data

@@ -33,7 +33,7 @@ import {
   getEventSummary,
   EventSummary,
   EventDay,
-  eventSettle,
+  completeEvent,
   getEventSettle,
   rejectEvent,
   cancelEvent,
@@ -591,25 +591,25 @@ export default function EventRequestDetailPage({
     if (!request) return;
     setSettling(true);
     try {
-      const response = await eventSettle(request.id);
+      const response = await completeEvent(request.id);
       toast({
-        title: "Event Settled",
+        title: "Event Completed",
         description:
           response.message ||
-          `Event ${request.name || request.id} has been settled successfully.`,
+          `Event ${request.name || request.id} has been completed successfully.`,
       });
       // Mark as settled and refetch the event data
       setIsEventSettled(true);
       const updatedData = await getEventById(params.id);
       setRequest(updatedData);
     } catch (err: any) {
-      console.error("Settle failed", err);
+      console.error("Complete event failed", err);
       toast({
         title: "Error",
         description:
           err?.response?.data?.message ||
           err?.message ||
-          "Failed to settle event",
+          "Failed to complete event",
         variant: "destructive",
       });
     } finally {

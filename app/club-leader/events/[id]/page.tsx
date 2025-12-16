@@ -51,8 +51,7 @@ import {
   completeEvent,
   eventQR,
   eventTimeExtend,
-  eventSettle,
-} from "@/service/eventApi"; // 👈 Thêm submitForUniversityApproval, eventQR, eventTimeExtend, eventSettle
+} from "@/service/eventApi"; // 👈 Thêm submitForUniversityApproval, eventQR, eventTimeExtend
 import { EventWalletHistoryModal } from "@/components/event-wallet-history-modal";
 import { getClubIdFromToken } from "@/service/clubApi";
 import { Loader2, Star, Filter, ClockIcon, DollarSign } from "lucide-react"; // 👈 Thêm Loader2, Star, Filter, ClockIcon, DollarSign
@@ -706,24 +705,24 @@ export default function EventDetailPage() {
     if (!event) return;
     setSettling(true);
     try {
-      const response = await eventSettle(event.id);
+      const response = await completeEvent(event.id);
       toast({
-        title: "Event Settled",
+        title: "Event Completed",
         description:
           response.message ||
-          `Event ${event.name || event.id} has been settled successfully.`,
+          `Event ${event.name || event.id} has been completed successfully.`,
       });
       // Refetch the event data
       const updatedData = await getEventById(params.id as string);
       setEvent(updatedData);
     } catch (err: any) {
-      console.error("Settle failed", err);
+      console.error("Complete event failed", err);
       toast({
         title: "Error",
         description:
           err?.response?.data?.message ||
           err?.message ||
-          "Failed to settle event",
+          "Failed to complete event",
         variant: "destructive",
       });
     } finally {
