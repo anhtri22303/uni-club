@@ -15,6 +15,13 @@ import { GoogleSignInButton } from "@/components/GoogleSignInButton"
 import Image from "next/image"
 import { fetchMajors, Major } from "@/service/majorApi"
 import { useQuery } from "@tanstack/react-query"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -364,13 +371,15 @@ export default function LoginPage() {
 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-emerald-50 dark:from-slate-900 dark:via-blue-950 dark:to-slate-900 flex items-center justify-center p-3 sm:p-4 overflow-hidden relative">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-emerald-50 dark:from-slate-900 dark:via-blue-950 dark:to-slate-900 
+    flex items-center justify-center p-3 sm:p-4 overflow-hidden relative"
+    >
       {/* Loading overlay when redirecting */}
       {isRedirecting && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
           <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-2xl flex flex-col items-center gap-4 animate-fade-in-up">
             <div className="relative">
-              <div className="w-16 h-16 border-4 border-blue-200 dark:border-blue-900 rounded-full"></div>
+              <div className="w-16 h-16 border-4 border-blue-300 dark:border-blue-900 rounded-full"></div>
               <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
             </div>
             <div className="text-center space-y-2">
@@ -407,14 +416,19 @@ export default function LoginPage() {
       {/* Animated gradient orbs */}
       <div className="absolute top-20 left-20 w-96 h-96 bg-gradient-to-br from-blue-400/20 to-cyan-500/20 rounded-full blur-3xl animate-pulse-uni"></div>
       <div className="absolute bottom-20 right-20 w-[500px] h-[500px] bg-gradient-to-br from-emerald-400/15 to-cyan-500/15 rounded-full blur-3xl animate-pulse-uni-slow"></div>
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-gradient-to-br from-blue-500/10 to-emerald-500/10 rounded-full blur-3xl animate-rotate-uni"></div>
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-gradient-to-br from-blue-500/10 to-emerald-500/10 
+      rounded-full blur-3xl animate-rotate-uni">
+      </div>
 
       <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-4 sm:gap-8 relative z-10">
         {/* LEFT: 3D Animated Logo Panel */}
         <div
-          className={`swap-smooth ${isAnimating ? (isSignUpMode ? "slide-out-left" : "slide-in-left") : ""} ${isSignUpMode ? "lg:order-2" : "lg:order-1"}`}
+          // className={`swap-smooth ${isAnimating ? (isSignUpMode ? "slide-out-left" : "slide-in-left") : ""} ${isSignUpMode ? "lg:order-2" : "lg:order-1"}`}
+          className={`swap-smooth h-full ${isAnimating ? (isSignUpMode ? "slide-out-left" : "slide-in-left") : ""} ${isSignUpMode ? "lg:order-2" : "lg:order-1"}`}
         >
-          <Card className="w-full h-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-2 border-blue-200/50 dark:border-blue-500/30 shadow-2xl flex items-center justify-center overflow-hidden relative">
+          <Card className="w-full h-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-2 border-blue-300/50 dark:border-blue-500/30 shadow-2xl flex 
+          items-center justify-center overflow-hidden relative"
+          >
             {/* Decorative corner elements */}
             <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-blue-500/20 to-transparent rounded-br-full"></div>
             <div className="absolute bottom-0 right-0 w-32 h-32 bg-gradient-to-tl from-cyan-500/20 to-transparent rounded-tl-full"></div>
@@ -431,7 +445,9 @@ export default function LoginPage() {
                 }}
               >
                 {/* Glow effect behind logo */}
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-500 via-cyan-500 to-emerald-500 rounded-3xl blur-2xl opacity-30 group-hover:opacity-50 transition-opacity duration-300 scale-110"></div>
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-500 via-cyan-500 to-emerald-500 rounded-3xl blur-2xl opacity-30 group-hover:opacity-50 
+                transition-opacity duration-300 scale-110">
+                </div>
 
                 <div className="relative p-6 sm:p-8 lg:p-10 bg-white dark:bg-slate-800 rounded-3xl border-4 border-white dark:border-slate-700 shadow-2xl">
                   <Image
@@ -465,7 +481,7 @@ export default function LoginPage() {
                 </p>
               </div>
 
-              <Button
+              {/* <Button
                 variant="secondary"
                 size="sm"
                 onClick={handleDownloadApp}
@@ -473,16 +489,18 @@ export default function LoginPage() {
               >
                 <Smartphone className="h-4 w-4 mr-2" />
                 Download Mobile App
-              </Button>
+              </Button> */}
             </CardContent>
           </Card>
         </div>
 
         {/* RIGHT: Enhanced Form Panel with 3D Effects */}
         <div
-          className={`swap-smooth ${isAnimating ? (isSignUpMode ? "slide-out-right" : "slide-in-right") : ""} ${isSignUpMode ? "lg:order-1" : "lg:order-2"}`}
+          // className={`swap-smooth ${isAnimating ? (isSignUpMode ? "slide-out-right" : "slide-in-right") : ""} ${isSignUpMode ? "lg:order-1" : "lg:order-2"}`}
+          className={`swap-smooth h-full ${isAnimating ? (isSignUpMode ? "slide-out-right" : "slide-in-right") : ""} ${isSignUpMode ? "lg:order-1" : "lg:order-2"}`}
         >
-          <Card className="w-full shadow-2xl border-2 border-blue-200/50 dark:border-blue-500/30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl relative overflow-hidden">
+          <Card className="w-full h-full flex flex-col justify-center shadow-2xl border-2 border-blue-300/50 dark:border-blue-500/30 bg-white/90 dark:bg-slate-900/90 
+          backdrop-blur-xl relative overflow-hidden">
             {/* Animated gradient border effect */}
             <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-cyan-500/10 to-emerald-500/10 pointer-events-none"></div>
 
@@ -491,7 +509,11 @@ export default function LoginPage() {
             <div className="absolute bottom-0 left-0 w-40 h-40 bg-gradient-to-tr from-blue-500/10 to-transparent rounded-tr-full"></div>
 
             {/* Theme toggle button */}
-            <div className="absolute left-3 top-3 z-10">
+            {/* <div className="absolute left-3 top-3 z-10"> */}
+            {/* @ts-ignore-next-line */}
+            {/* {require("@/components/theme-toggle").ThemeToggle()}
+            </div> */}
+            <div className="absolute right-5 top-5 z-50">
               {/* @ts-ignore-next-line */}
               {require("@/components/theme-toggle").ThemeToggle()}
             </div>
@@ -538,7 +560,8 @@ export default function LoginPage() {
                       onChange={(e) => setFullName(e.target.value)}
                       onBlur={(e) => validateFullName(e.target.value)}
                       placeholder="Enter your full name"
-                      className="h-10 sm:h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+                      className="h-10 sm:h-11 w-full dark:bg-slate-950 border border-slate-400 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 
+                      transition-all duration-300 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white dark:focus:bg-slate-900"
                     />
                     {fullNameError && <div className="text-xs text-red-500 mt-1">{fullNameError}</div>}
                   </div>
@@ -556,41 +579,58 @@ export default function LoginPage() {
                       onChange={(e) => setStudentCode(e.target.value.toUpperCase())}
                       onBlur={(e) => validateStudentCode(e.target.value)}
                       placeholder="Enter your student ID (e.g. SE123456)"
-                      className="h-10 sm:h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+                      className="h-10 sm:h-11 w-full dark:bg-slate-950 border border-slate-400 dark:border-slate-700 text-slate-900 dark:text-slate-100 
+                      placeholder:text-slate-400 transition-all duration-300 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white dark:focus:bg-slate-900"
                       maxLength={8}
                     />
                     {studentCodeError && <div className="text-xs text-red-500 mt-1">{studentCodeError}</div>}
                   </div>
                 )}
 
+                {/* --- ĐOẠN CODE MỚI CHO MAJOR NAME --- */}
                 {isSignUpMode && (
                   <div className="space-y-2">
                     <Label htmlFor="majorName" className="text-sm font-medium">
                       Major Name
                     </Label>
-                    <select
-                      id="majorName"
-                      aria-label="Select your major"
+
+                    <Select
                       value={majorName}
-                      onChange={e => setMajorName(e.target.value)}
-                      onBlur={e => validateMajorName(e.target.value)}
-                      className="h-10 sm:h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                      required
-                      disabled={majorsLoading} // Vô hiệu hóa khi đang tải
+                      onValueChange={(value) => {
+                        setMajorName(value)
+                        validateMajorName(value)
+                      }}
+                      disabled={majorsLoading}
                     >
-                      <option value="" disabled>
-                        {majorsLoading ? "Loading majors..." : "Select your major"}
-                      </option>
-                      {/* Tự động tạo danh sách từ API */}
-                      {(majorsData || []).map((major) => (
-                        <option key={major.id} value={major.name}>
-                          {major.name}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger
+                        id="majorName"
+                        // Class này đảm bảo ô chọn có kích thước và màu sắc y hệt các ô Input khác
+                        className="h-10 sm:h-11 w-full px-3 py-2 bg-white dark:bg-slate-950/50 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 
+                        focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-300 rounded-md"
+                      >
+                        <SelectValue
+                          placeholder={majorsLoading ? "Loading majors..." : "Select your major"}
+                        />
+                      </SelectTrigger>
+
+                      <SelectContent className="max-h-[300px] bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800">
+                        {(majorsData || []).map((major) => (
+                          <SelectItem
+                            key={major.id}
+                            value={major.name}
+                            // className="cursor-pointer focus:bg-slate-100 dark:focus:bg-slate-800"
+                            className="cursor-pointer focus:bg-slate-100 focus:text-slate-900 dark:focus:bg-slate-800 dark:focus:text-slate-100 py-2.5 pl-8 pr-2"
+                          >
+                            {major.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
                     {majorNameError && <div className="text-xs text-red-500 mt-1">{majorNameError}</div>}
                   </div>
                 )}
+
 
                 {isSignUpMode && (
                   <div className="space-y-2">
@@ -604,7 +644,8 @@ export default function LoginPage() {
                       onChange={(e) => setPhone(e.target.value)}
                       onBlur={(e) => validatePhone(e.target.value)}
                       placeholder="Enter your phone number"
-                      className="h-10 sm:h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+                      className="h-10 sm:h-11 w-full dark:bg-slate-950 border border-slate-400 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 
+                      transition-all duration-300 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white dark:focus:bg-slate-900"
                     />
                     {phoneError && <div className="text-xs text-red-500 mt-1">{phoneError}</div>}
                   </div>
@@ -621,7 +662,8 @@ export default function LoginPage() {
                     onChange={(e) => setEmail(e.target.value)}
                     onBlur={(e) => validateEmail(e.target.value)}
                     placeholder="Enter yours email"
-                    className="h-10 sm:h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+                    className="h-10 sm:h-11 w-full dark:bg-slate-950 border border-slate-400 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 
+                    transition-all duration-300 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white dark:focus:bg-slate-900"
                   />
                   {emailError && <div className="text-xs text-red-500 mt-1">{emailError}</div>}
                 </div>
@@ -638,7 +680,8 @@ export default function LoginPage() {
                       onChange={(e) => setPassword(e.target.value)}
                       onBlur={(e) => validatePassword(e.target.value)}
                       placeholder="Enter your password"
-                      className="h-10 sm:h-11 pr-10 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+                      className="h-10 sm:h-11 dark:bg-slate-950/50 border-slate-400 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 
+                      transition-all duration-300 focus:ring-2 focus:ring-primary/20 focus:border-primary !focus:bg-white dark:!focus:bg-slate-950"
                     />
                     <button
                       type="button"
@@ -665,7 +708,8 @@ export default function LoginPage() {
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         onBlur={(e) => validateConfirmPassword(e.target.value)}
                         placeholder="Confirm your password"
-                        className="h-10 sm:h-11 pr-10 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+                        className="h-10 sm:h-11 dark:bg-slate-950/50 border-slate-400 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 
+                        transition-all duration-300 focus:ring-2 focus:ring-primary/20 focus:border-primary !focus:bg-white dark:!focus:bg-slate-900"
                       />
                       <button
                         type="button"
@@ -682,12 +726,16 @@ export default function LoginPage() {
 
                 <Button
                   type="submit"
-                  className={`w-full h-11 sm:h-12 font-bold text-base transition-all duration-300 hover:shadow-2xl bg-gradient-to-r from-blue-600 via-cyan-500 to-emerald-500 hover:from-blue-700 hover:via-cyan-600 hover:to-emerald-600 text-white border-0 hover:scale-105 relative overflow-hidden group ${btnPosition}`}
+                  className={`w-full h-11 sm:h-12 font-bold text-base transition-all duration-300 hover:shadow-2xl bg-gradient-to-r from-blue-600 via-cyan-500 to-emerald-500 
+                    hover:from-blue-700 hover:via-cyan-600 hover:to-emerald-600 text-white border-0 hover:scale-105 relative overflow-hidden group ${btnPosition}`
+                  }
                   id="login-btn"
                   disabled={!!emailError || !!passwordError || (isSignUpMode && (!!fullNameError || !!studentCodeError || !!majorNameError || !!phoneError || !!confirmPasswordError))}
                 >
                   {/* Animated shimmer effect */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000"></div>
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-300%] group-hover:translate-x-[300%] transition-transform 
+                  duration-1000">
+                  </div>
 
                   <span className="relative flex items-center justify-center">
                     {isSignUpMode ? (
@@ -712,7 +760,7 @@ export default function LoginPage() {
                     size="sm"
                     onClick={handleForgotPassword}
                     disabled={isLoadingForgotPassword}
-                    className="w-full h-9 text-sm transition-all duration-200 border-primary/20 hover:bg-primary/5"
+                    className="w-full h-9 text-sm transition-all duration-300 border-primary/20 hover:bg-primary/5"
                   >
                     {isLoadingForgotPassword ? (
                       <>
@@ -741,7 +789,9 @@ export default function LoginPage() {
 
                 <button
                   onClick={toggleMode}
-                  className="group relative inline-flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-blue-50 via-cyan-50 to-emerald-50 dark:from-blue-950/50 dark:via-cyan-950/50 dark:to-emerald-950/50 hover:shadow-lg transition-all duration-300 hover:scale-105 border-2 border-transparent hover:border-blue-200 dark:hover:border-blue-500/50"
+                  className="group relative inline-flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-blue-50 via-cyan-50 to-emerald-50 dark:from-blue-950/50 
+                  dark:via-cyan-950/50 dark:to-emerald-950/50 hover:shadow-lg transition-all duration-300 hover:scale-105 border-2 border-transparent hover:border-blue-300 
+                  dark:hover:border-blue-500/50"
                 >
                   <span className="text-sm sm:text-base font-bold bg-gradient-to-r from-blue-600 via-cyan-500 to-emerald-500 bg-clip-text text-transparent">
                     {isSignUpMode ? "Already have an account? Sign In" : "Don't have an account? Sign Up"}
@@ -752,9 +802,10 @@ export default function LoginPage() {
             </CardContent>
           </Card>
         </div>
-      </div>
+      </div >
 
       {/* Custom CSS Animations */}
+      {/* <style style jsx > {` */}
       <style jsx>{`
         @keyframes float-uni {
           0%, 100% { 
@@ -886,7 +937,7 @@ export default function LoginPage() {
           opacity: 0;
           transform: translateX(-100px) scale(0.9);
         }
-      `}</style>
-    </div>
+      `}</style >
+    </div >
   )
 }
