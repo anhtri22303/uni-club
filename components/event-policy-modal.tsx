@@ -96,9 +96,16 @@ export function EventPolicyModal({
           ))}
 
           {/* Footer Notice */}
-          {eventPolicies.footer && (
+          {/* {eventPolicies.footer && (
             <div className="rounded-lg border border-slate-300 bg-slate-100 p-4 text-center shadow-sm">
               <p className="text-xs text-slate-600 italic">
+                {eventPolicies.footer.text}
+              </p>
+            </div>
+          )} */}
+          {eventPolicies.footer && (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-center shadow-sm">
+              <p className="text-sm font-semibold text-rose-700">
                 {eventPolicies.footer.text}
               </p>
             </div>

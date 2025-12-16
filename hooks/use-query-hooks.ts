@@ -17,6 +17,7 @@ import { getWallet, ApiMembershipWallet } from "@/service/walletApi"
 import { getMemberRedeemOrders } from "@/service/redeemApi"
 import { getAllPenaltyRules, PenaltyRule } from "@/service/disciplineApi";
 import { getMyStaff, MyStaffEvent } from "@/service/eventStaffApi";
+import { getClubWallet, ApiClubWallet } from "@/service/walletApi" // Đảm bảo đã import
 
 // ============================================
 // INTERFACES
@@ -57,21 +58,21 @@ interface Profile {
 }
 
 interface AttendanceRecord {
-  date: string;
-  note: string | null;
-  clubName: string;
-  status: string;
-  // (Thêm các thuộc tính khác nếu có)
+    date: string;
+    note: string | null;
+    clubName: string;
+    status: string;
+    // (Thêm các thuộc tính khác nếu có)
 }
 
 interface MemberHistoryResponse {
-  success: boolean;
-  message: string;
-  data: {
-    clubName: string;
-    membershipId: number;
-    attendanceHistory: AttendanceRecord[];
-  };
+    success: boolean;
+    message: string;
+    data: {
+        clubName: string;
+        membershipId: number;
+        attendanceHistory: AttendanceRecord[];
+    };
 }
 // ============================================
 // QUERY KEYS - Centralized for consistency
@@ -110,11 +111,12 @@ export const queryKeys = {
     productsByClubId: (clubId: number) => [...queryKeys.products, "club", clubId] as const,
     eventProductsOnTime: (clubId: number) => [...queryKeys.products, "event-ontime", clubId] as const,
     eventProductsCompleted: (clubId: number) => [...queryKeys.products, "event-completed", clubId] as const,
-    tags: () => ["tags"] as const, 
+    tags: () => ["tags"] as const,
 
     // Wallet
     wallet: ["wallet"] as const,
     walletDetail: (userId?: string | number) => [...queryKeys.wallet, "detail", userId] as const,
+    clubWallet: (clubId: number | string) => ["club-wallet", clubId] as const,
 
     // Policies
     policies: ["policies"] as const,
@@ -136,6 +138,7 @@ export const queryKeys = {
     // Redeem Orders
     redeemOrders: ["redeem-orders"] as const,
     myRedeemOrders: () => [...queryKeys.redeemOrders, "my"] as const,
+
     // Attendances
     attendances: ["attendances"] as const,
     attendancesByDate: (date: string) => [...queryKeys.attendances, "date", date] as const,
@@ -150,11 +153,11 @@ export const queryKeys = {
     attendanceRanking: () => [...queryKeys.university, "attendance-ranking"] as const,
     clubOverview: () => [...queryKeys.university, "club-overview"] as const,
     clubOverviewByMonth: (year: number, month: number) => [...queryKeys.university, "club-overview-month", year, month] as const,
-    
+
     // Discipline
     discipline: ["discipline"] as const,
     penaltyRulesList: () => [...queryKeys.discipline, "penalty-rules"] as const,
-    
+
     // My Staff Events
     myStaffEvents: () => ["my-staff-events"] as const,
 }
@@ -616,6 +619,22 @@ export function useWallet() {
     })
 }
 
+/**
+ *  Hook để lấy ví của Club (Dùng chung cho cả Widget và Page)
+ */
+export function useClubWallet(clubId: number | null, enabled: boolean = true) {
+    return useQuery<ApiClubWallet, Error>({
+        queryKey: queryKeys.clubWallet(clubId ?? 0),
+        queryFn: async () => {
+            if (!clubId) throw new Error("Club ID is missing");
+            const wallet = await getClubWallet(clubId);
+            return wallet;
+        },
+        enabled: !!clubId && enabled, // Chỉ chạy khi có clubId
+        staleTime: 5 * 60 * 1000,     // Cache trong 5 phút
+    });
+}
+
 // ============================================
 // POLICIES QUERIES
 // ============================================
@@ -673,18 +692,18 @@ export function useAttendancesByDate(date: string, enabled = true) {
  * @param clubId - The club ID to fetch attendance history for
  */
 export function useMemberAttendanceHistory(clubId: number | null, enabled = true) {
-  return useQuery<MemberHistoryResponse | null, Error>({
-    queryKey: queryKeys.memberAttendanceHistory(clubId),
-    queryFn: async () => {
-      if (!clubId) return null 
+    return useQuery<MemberHistoryResponse | null, Error>({
+        queryKey: queryKeys.memberAttendanceHistory(clubId),
+        queryFn: async () => {
+            if (!clubId) return null
 
-      const responseBody = await fetchMemberAttendanceHistory(clubId)
-      
-      return responseBody as MemberHistoryResponse // Trả về toàn bộ object
-    },
-    enabled: !!clubId && enabled,
-    staleTime: 2 * 60 * 1000,
-  })
+            const responseBody = await fetchMemberAttendanceHistory(clubId)
+
+            return responseBody as MemberHistoryResponse // Trả về toàn bộ object
+        },
+        enabled: !!clubId && enabled,
+        staleTime: 2 * 60 * 1000,
+    })
 }
 
 // ============================================

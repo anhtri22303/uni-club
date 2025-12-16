@@ -20,7 +20,8 @@ import { getOrderLogsByMembershipAndOrder, OrderLog } from "@/service/redeemApi"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { timeObjectToString } from "@/service/eventApi"
-import { useRouter, useSearchParams } from "next/navigation"
+// import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 
 // Removed static `src/data` imports — use empty fallbacks. Prefer remote `clubName` from activity data when available.
@@ -31,9 +32,16 @@ export default function MemberHistoryPage() {
   const { auth } = useAuth()
   const { membershipApplications, vouchers } = useData()
   const router = useRouter()
+
   const searchParams = useSearchParams()
-  const [activeTab, setActiveTab] = useState<"member" | "club" | "order" | "event" | "wallet">("member")
-  
+  const pathname = usePathname()
+
+  // const [activeTab, setActiveTab] = useState<"member" | "club" | "order" | "event" | "wallet">("member")
+  // 2. Lấy giá trị từ URL trước, nếu không có thì mới dùng "member"
+  const [activeTab, setActiveTab] = useState<"member" | "club" | "order" | "event" | "wallet">(
+    (searchParams.get("tab") as "member" | "club" | "order" | "event" | "wallet") || "member"
+  )
+
   // Check for tab query parameter on mount
   useEffect(() => {
     const tabParam = searchParams.get('tab')
@@ -45,7 +53,7 @@ export default function MemberHistoryPage() {
       }
     }
   }, [searchParams])
-  
+
   // Wallet state
   const [myWallet, setMyWallet] = useState<ApiWallet | null>(null)
   const [walletTransactions, setWalletTransactions] = useState<ApiWalletTransaction[]>([])
@@ -54,11 +62,11 @@ export default function MemberHistoryPage() {
   const [walletTypeFilter, setWalletTypeFilter] = useState<string>("all")
   const [walletDateFilter, setWalletDateFilter] = useState<string>("all")
   const [walletCurrentPage, setWalletCurrentPage] = useState(1)
-  const [walletPageSize, setWalletPageSize] = useState(6)
-  
+  const [walletPageSize, setWalletPageSize] = useState(10)
+
   // Order filter state
   const [orderProductTypeFilter, setOrderProductTypeFilter] = useState<string>("all")
-  
+
   // USE REACT QUERY for applications
   const { data: remoteApps, isLoading: memberLoading, error: memberError } = useMyMemberApplications()
   const { data: clubApps, isLoading: clubLoading, error: clubError } = useMyClubApplications()
@@ -74,13 +82,18 @@ export default function MemberHistoryPage() {
     setActiveTab(tab)
     setFilter("all") // Reset filter khi đổi tab
     setOrderProductTypeFilter("all") // Reset order product type filter
-    
+
+    // Cập nhật URL mà không reload trang
+    const params = new URLSearchParams(searchParams.toString())
+    params.set("tab", tab)
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+
     // Load wallet data when switching to wallet tab
     if (tab === "wallet" && !myWallet) {
       loadWalletData()
     }
   }
-  
+
   // Load wallet data
   const loadWalletData = async () => {
     try {
@@ -89,7 +102,7 @@ export default function MemberHistoryPage() {
       // First get wallet to obtain walletId
       const walletResponse = await getWallet()
       setMyWallet(walletResponse.data)
-      
+
       // Then fetch transactions using the walletId
       if (walletResponse.data?.walletId) {
         const transactions = await getWalletTransactions(walletResponse.data.walletId)
@@ -101,6 +114,13 @@ export default function MemberHistoryPage() {
       setWalletLoading(false)
     }
   }
+
+  // Tự động load dữ liệu ví nếu tab hiện tại là wallet (xử lý trường hợp F5 refresh trang)
+  useEffect(() => {
+    if (activeTab === "wallet" && !myWallet) {
+      loadWalletData()
+    }
+  }, [activeTab]) // Chạy lại mỗi khi activeTab thay đổi
 
   const remoteOrders: any[] = Array.isArray(remoteOrdersData)
     ? remoteOrdersData
@@ -118,7 +138,7 @@ export default function MemberHistoryPage() {
   const [myFeedbacks, setMyFeedbacks] = useState<Feedback[]>([])
   const [expandedEventKey, setExpandedEventKey] = useState<string | null>(null)
   const [feedbackCurrentPage, setFeedbackCurrentPage] = useState(1)
-  const [feedbackPageSize, setFeedbackPageSize] = useState(6)
+  const [feedbackPageSize, setFeedbackPageSize] = useState(10)
 
   // === Staff History state (within Order History tab) ===
   const [showStaffHistory, setShowStaffHistory] = useState(false)
@@ -126,7 +146,7 @@ export default function MemberHistoryPage() {
   const [staffHistoryLoading, setStaffHistoryLoading] = useState(false)
   const [staffHistoryError, setStaffHistoryError] = useState<string | null>(null)
   const [staffHistoryCurrentPage, setStaffHistoryCurrentPage] = useState(1)
-  const [staffHistoryPageSize, setStaffHistoryPageSize] = useState(6)
+  const [staffHistoryPageSize, setStaffHistoryPageSize] = useState(10)
 
   // === Order Logs Modal state ===
   const [selectedOrderForLogs, setSelectedOrderForLogs] = useState<any | null>(null)
@@ -330,30 +350,30 @@ export default function MemberHistoryPage() {
   ].sort((a, b) => {
     const statusA = a.data.status || 'UNKNOWN'
     const statusB = b.data.status || 'UNKNOWN'
-    
+
     // PENDING always comes first
     if (statusA === "PENDING" && statusB !== "PENDING") return -1
     if (statusB === "PENDING" && statusA !== "PENDING") return 1
-    
+
     // Both are PENDING - sort by date (newest first)
     if (statusA === "PENDING" && statusB === "PENDING") {
       return new Date(b.date).getTime() - new Date(a.date).getTime()
     }
-    
+
     // Neither is PENDING - sort by date first
     const dateA = new Date(a.date).getTime()
     const dateB = new Date(b.date).getTime()
-    
+
     if (dateA !== dateB) {
       return dateB - dateA // Newest first
     }
-    
+
     // Same date - prioritize APPROVED over REJECTED
     if (statusA === "APPROVED" && statusB !== "APPROVED") return -1
     if (statusB === "APPROVED" && statusA !== "APPROVED") return 1
     if (statusA === "REJECTED" && statusB !== "REJECTED") return 1
     if (statusB === "REJECTED" && statusA !== "REJECTED") return -1
-    
+
     return 0
   })
 
@@ -375,30 +395,30 @@ export default function MemberHistoryPage() {
   })).sort((a, b) => {
     const statusA = a.data.status
     const statusB = b.data.status
-    
+
     // PENDING always comes first
     if (statusA === "PENDING" && statusB !== "PENDING") return -1
     if (statusB === "PENDING" && statusA !== "PENDING") return 1
-    
+
     // Both are PENDING - sort by date (newest first)
     if (statusA === "PENDING" && statusB === "PENDING") {
       return new Date(b.date).getTime() - new Date(a.date).getTime()
     }
-    
+
     // Neither is PENDING - sort by date first
     const dateA = new Date(a.date).getTime()
     const dateB = new Date(b.date).getTime()
-    
+
     if (dateA !== dateB) {
       return dateB - dateA // Newest first
     }
-    
+
     // Same date - prioritize APPROVED over REJECTED
     if (statusA === "APPROVED" && statusB !== "APPROVED") return -1
     if (statusB === "APPROVED" && statusA !== "APPROVED") return 1
     if (statusA === "REJECTED" && statusB !== "REJECTED") return 1
     if (statusB === "REJECTED" && statusA !== "REJECTED") return -1
-    
+
     return 0
   })
 
@@ -428,30 +448,30 @@ export default function MemberHistoryPage() {
     .sort((a, b) => {
       const statusA = a.data.status
       const statusB = b.data.status
-      
+
       // PENDING always comes first
       if (statusA === "PENDING" && statusB !== "PENDING") return -1
       if (statusB === "PENDING" && statusA !== "PENDING") return 1
-      
+
       // Both are PENDING - sort by date (newest first)
       if (statusA === "PENDING" && statusB === "PENDING") {
         return new Date(b.date).getTime() - new Date(a.date).getTime()
       }
-      
+
       // Neither is PENDING - sort by date first
       const dateA = new Date(a.date).getTime()
       const dateB = new Date(b.date).getTime()
-      
+
       if (dateA !== dateB) {
         return dateB - dateA // Newest first
       }
-      
+
       // Same date - prioritize APPROVED over REJECTED
       if (statusA === "APPROVED" && statusB !== "APPROVED") return -1
       if (statusB === "APPROVED" && statusA !== "APPROVED") return 1
       if (statusA === "REJECTED" && statusB !== "REJECTED") return 1
       if (statusB === "REJECTED" && statusA !== "REJECTED") return -1
-      
+
       return 0
     })
 
@@ -523,36 +543,36 @@ export default function MemberHistoryPage() {
     .sort((a, b) => {
       const statusA = a.data.status
       const statusB = b.data.status
-      
+
       // PENDING (or PENDING_UNISTAFF) always comes first
       const isPendingA = statusA === "PENDING" || statusA === "PENDING_UNISTAFF"
       const isPendingB = statusB === "PENDING" || statusB === "PENDING_UNISTAFF"
-      
+
       if (isPendingA && !isPendingB) return -1
       if (isPendingB && !isPendingA) return 1
-      
+
       // Both are PENDING - sort by date (newest first)
       if (isPendingA && isPendingB) {
         return new Date(b.date).getTime() - new Date(a.date).getTime()
       }
-      
+
       // Neither is PENDING - sort by date first
       const dateA = new Date(a.date).getTime()
       const dateB = new Date(b.date).getTime()
-      
+
       if (dateA !== dateB) {
         return dateB - dateA // Newest first
       }
-      
+
       // Same date - prioritize APPROVED/COMPLETED over REJECTED
       const isApprovedA = statusA === "APPROVED" || statusA === "COMPLETED"
       const isApprovedB = statusB === "APPROVED" || statusB === "COMPLETED"
-      
+
       if (isApprovedA && !isApprovedB) return -1
       if (isApprovedB && !isApprovedA) return 1
       if (statusA === "REJECTED" && statusB !== "REJECTED") return 1
       if (statusB === "REJECTED" && statusA !== "REJECTED") return -1
-      
+
       return 0
     })
 
@@ -583,7 +603,7 @@ export default function MemberHistoryPage() {
   // LOGIC LỌC
   const filteredActivities = useMemo(() => {
     let result = activities as typeof activities
-    
+
     // Filter by status
     if (filter !== "all") {
       result = result.filter((activity) => {
@@ -595,7 +615,7 @@ export default function MemberHistoryPage() {
         return activity.data.status === filter
       }) as typeof activities
     }
-    
+
     // Filter by productType (only for order tab)
     if (activeTab === "order" && orderProductTypeFilter !== "all") {
       result = result.filter((activity) => {
@@ -605,7 +625,7 @@ export default function MemberHistoryPage() {
         return true
       }) as typeof activities
     }
-    
+
     return result
   }, [activities, filter, activeTab, orderProductTypeFilter])
 
@@ -659,20 +679,20 @@ export default function MemberHistoryPage() {
   // Filter wallet transactions
   const filteredWalletTransactions = useMemo(() => {
     let filtered = [...walletTransactions]
-    
+
     // Filter by type
     if (walletTypeFilter !== "all") {
       filtered = filtered.filter(t => t.type === walletTypeFilter)
     }
-    
+
     // Filter by date
     if (walletDateFilter !== "all") {
       const now = new Date()
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-      
+
       filtered = filtered.filter(t => {
         const transactionDate = new Date(t.createdAt)
-        
+
         switch (walletDateFilter) {
           case "today":
             return transactionDate >= today
@@ -693,7 +713,7 @@ export default function MemberHistoryPage() {
         }
       })
     }
-    
+
     return filtered
   }, [walletTransactions, walletTypeFilter, walletDateFilter])
 
@@ -701,7 +721,7 @@ export default function MemberHistoryPage() {
   const walletStats = useMemo(() => {
     let totalIncoming = 0
     let totalOutgoing = 0
-    
+
     filteredWalletTransactions.forEach(t => {
       const amount = parseInt(t.signedAmount.replace(/[^0-9-]/g, ''))
       if (amount > 0) {
@@ -710,7 +730,7 @@ export default function MemberHistoryPage() {
         totalOutgoing += Math.abs(amount)
       }
     })
-    
+
     return {
       totalIncoming,
       totalOutgoing,
@@ -889,7 +909,7 @@ export default function MemberHistoryPage() {
                 )}
               </div>
             )}
-            
+
             {activeTab === "order" && (
               <div className="flex items-center gap-2">
                 <button
@@ -988,7 +1008,7 @@ export default function MemberHistoryPage() {
                                       {fb.memberName || "You"}
                                     </div>
                                     <div className="flex items-center gap-1">
-                                      {[1,2,3,4,5].map((i) => (
+                                      {[1, 2, 3, 4, 5].map((i) => (
                                         <Star
                                           key={i}
                                           className={`h-3.5 w-3.5 ${i <= fb.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`}
@@ -1010,7 +1030,7 @@ export default function MemberHistoryPage() {
                     )
                   })}
                 </div>
-                
+
                 {/* Feedback Pagination */}
                 {feedbackGroups.length > feedbackPageSize && (
                   <Pagination
@@ -1023,7 +1043,7 @@ export default function MemberHistoryPage() {
                       setFeedbackPageSize(size)
                       setFeedbackCurrentPage(1)
                     }}
-                    pageSizeOptions={[6, 12, 24]}
+                    pageSizeOptions={[10, 20, 30]}
                   />
                 )}
               </>
@@ -1044,94 +1064,94 @@ export default function MemberHistoryPage() {
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {paginatedStaffHistoryOrders.map((order) => {
-                  const statusColors = {
-                    PENDING: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300",
-                    COMPLETED: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
-                    REFUNDED: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
-                    PARTIALLY_REFUNDED: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
-                    CANCELLED: "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300",
-                  }
-                  const statusColor = statusColors[order.status as keyof typeof statusColors] || "bg-gray-100 text-gray-800"
+                    const statusColors = {
+                      PENDING: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300",
+                      COMPLETED: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
+                      REFUNDED: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
+                      PARTIALLY_REFUNDED: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
+                      CANCELLED: "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300",
+                    }
+                    const statusColor = statusColors[order.status as keyof typeof statusColors] || "bg-gray-100 text-gray-800"
 
-                  return (
-                    <Card key={order.orderId} className="border-l-4 border-l-green-500 dark:border-l-green-400 transition-all hover:shadow-md">
-                      <CardContent className="pt-6">
-                        <div className="flex items-start justify-between gap-3 mb-3">
-                          <div className="min-w-0 flex-1">
-                            <h3 className="font-medium truncate" title={order.productName}>
-                              {order.productName}
-                            </h3>
-                            <p className="text-sm text-muted-foreground">
-                              Order: {order.orderCode}
-                            </p>
+                    return (
+                      <Card key={order.orderId} className="border-l-4 border-l-green-500 dark:border-l-green-400 transition-all hover:shadow-md">
+                        <CardContent className="pt-6">
+                          <div className="flex items-start justify-between gap-3 mb-3">
+                            <div className="min-w-0 flex-1">
+                              <h3 className="font-medium truncate" title={order.productName}>
+                                {order.productName}
+                              </h3>
+                              <p className="text-sm text-muted-foreground">
+                                Order: {order.orderCode}
+                              </p>
+                            </div>
+                            <Badge className={statusColor}>
+                              {order.status}
+                            </Badge>
                           </div>
-                          <Badge className={statusColor}>
-                            {order.status}
-                          </Badge>
-                        </div>
 
-                        <div className="space-y-2 text-sm">
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Member:</span>
-                            <span className="font-medium">{order.memberName}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Club:</span>
-                            <span className="font-medium">{order.clubName}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Type:</span>
-                            <span className="font-medium">{order.productType}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Quantity:</span>
-                            <span className="font-medium">{order.quantity}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Total Points:</span>
-                            <span className="font-bold text-blue-600 dark:text-blue-400">{order.totalPoints} pts</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Created:</span>
-                            <span>{new Date(order.createdAt).toLocaleDateString()}</span>
-                          </div>
-                          {order.completedAt && (
+                          <div className="space-y-2 text-sm">
                             <div className="flex justify-between">
-                              <span className="text-muted-foreground">Completed:</span>
-                              <span>{new Date(order.completedAt).toLocaleDateString()}</span>
+                              <span className="text-muted-foreground">Member:</span>
+                              <span className="font-medium">{order.memberName}</span>
                             </div>
-                          )}
-                          {order.reasonRefund && (
-                            <div className="pt-2 border-t">
-                              <span className="text-muted-foreground">Refund Reason:</span>
-                              <p className="mt-1 text-sm">{order.reasonRefund}</p>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Club:</span>
+                              <span className="font-medium">{order.clubName}</span>
                             </div>
-                          )}
-                          {order.errorImages && order.errorImages.length > 0 && (
-                            <div className="pt-2 border-t">
-                              <span className="text-muted-foreground">Error Images:</span>
-                              <div className="mt-1 flex flex-wrap gap-2">
-                                {order.errorImages.map((img, idx) => (
-                                  <a
-                                    key={idx}
-                                    href={img}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-                                  >
-                                    Image {idx + 1}
-                                  </a>
-                                ))}
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Type:</span>
+                              <span className="font-medium">{order.productType}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Quantity:</span>
+                              <span className="font-medium">{order.quantity}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Total Points:</span>
+                              <span className="font-bold text-blue-600 dark:text-blue-400">{order.totalPoints} pts</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Created:</span>
+                              <span>{new Date(order.createdAt).toLocaleDateString()}</span>
+                            </div>
+                            {order.completedAt && (
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Completed:</span>
+                                <span>{new Date(order.completedAt).toLocaleDateString()}</span>
                               </div>
-                            </div>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )
-                })}
+                            )}
+                            {order.reasonRefund && (
+                              <div className="pt-2 border-t">
+                                <span className="text-muted-foreground">Refund Reason:</span>
+                                <p className="mt-1 text-sm">{order.reasonRefund}</p>
+                              </div>
+                            )}
+                            {order.errorImages && order.errorImages.length > 0 && (
+                              <div className="pt-2 border-t">
+                                <span className="text-muted-foreground">Error Images:</span>
+                                <div className="mt-1 flex flex-wrap gap-2">
+                                  {order.errorImages.map((img, idx) => (
+                                    <a
+                                      key={idx}
+                                      href={img}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                                    >
+                                      Image {idx + 1}
+                                    </a>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )
+                  })}
                 </div>
-                
+
                 {/* Staff History Pagination */}
                 {staffHistoryOrders.length > staffHistoryPageSize && (
                   <Pagination
@@ -1144,7 +1164,7 @@ export default function MemberHistoryPage() {
                       setStaffHistoryPageSize(size)
                       setStaffHistoryCurrentPage(1)
                     }}
-                    pageSizeOptions={[6, 12, 24]}
+                    pageSizeOptions={[10, 20, 30]}
                   />
                 )}
               </>
@@ -1206,79 +1226,79 @@ export default function MemberHistoryPage() {
                           </div>
                         </div>
                       </div>
-                      
+
                       {/* Right: Statistics */}
                       <div className="lg:col-span-2">
                         <div>
                           <h4 className="font-medium mb-3 text-muted-foreground">Transaction Overview</h4>
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                              {/* Total Incoming */}
-                              <div className="relative overflow-hidden rounded-xl bg-linear-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900 p-5 border border-green-200 dark:border-green-800 shadow-sm hover:shadow-md transition-shadow">
-                                <div className="flex items-start justify-between mb-3">
-                                  <div className="flex items-center gap-2">
-                                    <div className="p-2 bg-green-500/10 dark:bg-green-400/20 rounded-lg">
-                                      <ArrowDownLeft className="h-5 w-5 text-green-600 dark:text-green-400" />
-                                    </div>
-                                  </div>
-                                  <div className="text-xs font-medium text-green-700 dark:text-green-300 bg-green-200 dark:bg-green-900 px-2 py-1 rounded-full">
-                                    Income
+                            {/* Total Incoming */}
+                            <div className="relative overflow-hidden rounded-xl bg-linear-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900 p-5 border border-green-200 dark:border-green-800 shadow-sm hover:shadow-md transition-shadow">
+                              <div className="flex items-start justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                  <div className="p-2 bg-green-500/10 dark:bg-green-400/20 rounded-lg">
+                                    <ArrowDownLeft className="h-5 w-5 text-green-600 dark:text-green-400" />
                                   </div>
                                 </div>
-                                <div>
-                                  <p className="text-sm text-green-700 dark:text-green-300 font-medium mb-1">Total Incoming</p>
-                                  <p className="text-3xl font-bold text-green-600 dark:text-green-400">
-                                    +{walletStats.totalIncoming}
-                                  </p>
-                                  <p className="text-xs text-green-600/70 dark:text-green-400/70 mt-1">points received</p>
+                                <div className="text-xs font-medium text-green-700 dark:text-green-300 bg-green-200 dark:bg-green-900 px-2 py-1 rounded-full">
+                                  Income
                                 </div>
-                                <div className="absolute -bottom-2 -right-2 w-20 h-20 bg-green-500/5 dark:bg-green-400/5 rounded-full"></div>
                               </div>
-                              
-                              {/* Total Outgoing */}
-                              <div className="relative overflow-hidden rounded-xl bg-linear-to-br from-red-50 to-red-100 dark:from-red-950 dark:to-red-900 p-5 border border-red-200 dark:border-red-800 shadow-sm hover:shadow-md transition-shadow">
-                                <div className="flex items-start justify-between mb-3">
-                                  <div className="flex items-center gap-2">
-                                    <div className="p-2 bg-red-500/10 dark:bg-red-400/20 rounded-lg">
-                                      <ArrowUpRight className="h-5 w-5 text-red-600 dark:text-red-400" />
-                                    </div>
-                                  </div>
-                                  <div className="text-xs font-medium text-red-700 dark:text-red-300 bg-red-200 dark:bg-red-900 px-2 py-1 rounded-full">
-                                    Expense
-                                  </div>
-                                </div>
-                                <div>
-                                  <p className="text-sm text-red-700 dark:text-red-300 font-medium mb-1">Total Outgoing</p>
-                                  <p className="text-3xl font-bold text-red-600 dark:text-red-400">
-                                    -{walletStats.totalOutgoing}
-                                  </p>
-                                  <p className="text-xs text-red-600/70 dark:text-red-400/70 mt-1">points spent</p>
-                                </div>
-                                <div className="absolute -bottom-2 -right-2 w-20 h-20 bg-red-500/5 dark:bg-red-400/5 rounded-full"></div>
+                              <div>
+                                <p className="text-sm text-green-700 dark:text-green-300 font-medium mb-1">Total Incoming</p>
+                                <p className="text-3xl font-bold text-green-600 dark:text-green-400">
+                                  +{walletStats.totalIncoming}
+                                </p>
+                                <p className="text-xs text-green-600/70 dark:text-green-400/70 mt-1">points received</p>
                               </div>
-                              
-                              {/* Total Transactions */}
-                              <div className="relative overflow-hidden rounded-xl bg-linear-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 p-5 border border-blue-200 dark:border-blue-800 shadow-sm hover:shadow-md transition-shadow">
-                                <div className="flex items-start justify-between mb-3">
-                                  <div className="flex items-center gap-2">
-                                    <div className="p-2 bg-blue-500/10 dark:bg-blue-400/20 rounded-lg">
-                                      <History className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                                    </div>
-                                  </div>
-                                  <div className="text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-200 dark:bg-blue-900 px-2 py-1 rounded-full">
-                                    Activity
+                              <div className="absolute -bottom-2 -right-2 w-20 h-20 bg-green-500/5 dark:bg-green-400/5 rounded-full"></div>
+                            </div>
+
+                            {/* Total Outgoing */}
+                            <div className="relative overflow-hidden rounded-xl bg-linear-to-br from-red-50 to-red-100 dark:from-red-950 dark:to-red-900 p-5 border border-red-200 dark:border-red-800 shadow-sm hover:shadow-md transition-shadow">
+                              <div className="flex items-start justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                  <div className="p-2 bg-red-500/10 dark:bg-red-400/20 rounded-lg">
+                                    <ArrowUpRight className="h-5 w-5 text-red-600 dark:text-red-400" />
                                   </div>
                                 </div>
-                                <div>
-                                  <p className="text-sm text-blue-700 dark:text-blue-300 font-medium mb-1">Total Transactions</p>
-                                  <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                                    {walletStats.transactionCount}
-                                  </p>
-                                  <p className="text-xs text-blue-600/70 dark:text-blue-400/70 mt-1">completed</p>
+                                <div className="text-xs font-medium text-red-700 dark:text-red-300 bg-red-200 dark:bg-red-900 px-2 py-1 rounded-full">
+                                  Expense
                                 </div>
-                                <div className="absolute -bottom-2 -right-2 w-20 h-20 bg-blue-500/5 dark:bg-blue-400/5 rounded-full"></div>
                               </div>
+                              <div>
+                                <p className="text-sm text-red-700 dark:text-red-300 font-medium mb-1">Total Outgoing</p>
+                                <p className="text-3xl font-bold text-red-600 dark:text-red-400">
+                                  -{walletStats.totalOutgoing}
+                                </p>
+                                <p className="text-xs text-red-600/70 dark:text-red-400/70 mt-1">points spent</p>
+                              </div>
+                              <div className="absolute -bottom-2 -right-2 w-20 h-20 bg-red-500/5 dark:bg-red-400/5 rounded-full"></div>
+                            </div>
+
+                            {/* Total Transactions */}
+                            <div className="relative overflow-hidden rounded-xl bg-linear-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 p-5 border border-blue-200 dark:border-blue-800 shadow-sm hover:shadow-md transition-shadow">
+                              <div className="flex items-start justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                  <div className="p-2 bg-blue-500/10 dark:bg-blue-400/20 rounded-lg">
+                                    <History className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                                  </div>
+                                </div>
+                                <div className="text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-200 dark:bg-blue-900 px-2 py-1 rounded-full">
+                                  Activity
+                                </div>
+                              </div>
+                              <div>
+                                <p className="text-sm text-blue-700 dark:text-blue-300 font-medium mb-1">Total Transactions</p>
+                                <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+                                  {walletStats.transactionCount}
+                                </p>
+                                <p className="text-xs text-blue-600/70 dark:text-blue-400/70 mt-1">completed</p>
+                              </div>
+                              <div className="absolute -bottom-2 -right-2 w-20 h-20 bg-blue-500/5 dark:bg-blue-400/5 rounded-full"></div>
                             </div>
                           </div>
+                        </div>
                       </div>
                     </div>
                   </CardContent>
@@ -1289,7 +1309,7 @@ export default function MemberHistoryPage() {
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="font-medium text-lg">Transaction History</h3>
                   </div>
-                  
+
                   {/* Filters */}
                   {walletTransactions.length > 0 && (
                     <div className="flex flex-wrap gap-2 mb-3">
@@ -1297,7 +1317,7 @@ export default function MemberHistoryPage() {
                         setWalletTypeFilter(value)
                         setWalletCurrentPage(1)
                       }}>
-                        <SelectTrigger className="w-[200px]">
+                        <SelectTrigger className="w-[200px] border-black-300 bg-white">
                           <SelectValue placeholder="Filter by type" />
                         </SelectTrigger>
                         <SelectContent>
@@ -1309,12 +1329,12 @@ export default function MemberHistoryPage() {
                           ))}
                         </SelectContent>
                       </Select>
-                      
+
                       <Select value={walletDateFilter} onValueChange={(value) => {
                         setWalletDateFilter(value)
                         setWalletCurrentPage(1)
                       }}>
-                        <SelectTrigger className="w-[200px]">
+                        <SelectTrigger className="w-[200px] border-black-300 bg-white">
                           <SelectValue placeholder="Filter by date" />
                         </SelectTrigger>
                         <SelectContent>
@@ -1325,7 +1345,7 @@ export default function MemberHistoryPage() {
                           <SelectItem value="year">This Year</SelectItem>
                         </SelectContent>
                       </Select>
-                      
+
                       {(walletTypeFilter !== "all" || walletDateFilter !== "all") && (
                         <button
                           onClick={() => {
@@ -1351,16 +1371,18 @@ export default function MemberHistoryPage() {
                       </CardContent>
                     </Card>
                   ) : (
-                    <div className="border rounded-lg overflow-hidden">
+                    // <div className="border rounded-lg overflow-hidden ">
+                    <div className="border rounded-lg overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
                       <div className="overflow-x-auto">
                         <table className="w-full">
-                          <thead className="bg-muted/50">
+                          {/* <thead className="bg-muted/50"> */}
+                          <thead className="bg-slate-100 dark:bg-slate-800">
                             <tr>
-                              <th className="text-left p-3 text-sm font-semibold">Type</th>
-                              <th className="text-left p-3 text-sm font-semibold">Description</th>
-                              <th className="text-left p-3 text-sm font-semibold">From/To</th>
-                              <th className="text-right p-3 text-sm font-semibold">Amount</th>
-                              <th className="text-left p-3 text-sm font-semibold">Date</th>
+                              <th className="text-center p-3 text-sm font-semibold ">Type</th>
+                              <th className="text-left p-3 text-sm font-semibold pl-30">Description</th>
+                              <th className="text-left p-3 text-sm font-semibold pl-20">From/To</th>
+                              <th className="text-center p-3 text-sm font-semibold">Amount</th>
+                              <th className="text-left p-3 text-sm font-semibold pl-10">Date</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -1369,9 +1391,12 @@ export default function MemberHistoryPage() {
                               return (
                                 <tr
                                   key={transaction.id}
-                                  className={`border-t hover:bg-muted/30 transition-colors ${
-                                    index % 2 === 0 ? "bg-background" : "bg-muted/10"
-                                  }`}
+                                  // className={`border-t hover:bg-muted/30 transition-colors ${index % 2 === 0 ? "bg-background" : "bg-muted/10"
+                                  //   }`}
+                                  className={`border-t transition-colors hover:bg-slate-50 dark:hover:bg-slate-800${index % 2 === 0
+                                    ? "bg-white dark:bg-slate-900"
+                                    : "bg-slate-50 dark:bg-slate-800/50"
+                                    }`}
                                 >
                                   <td className="p-3">
                                     <div className="flex items-center gap-2">
@@ -1424,7 +1449,7 @@ export default function MemberHistoryPage() {
                       </div>
                     </div>
                   )}
-                  
+
                   {/* Wallet Pagination */}
                   {filteredWalletTransactions.length > walletPageSize && (
                     <Pagination
@@ -1437,7 +1462,7 @@ export default function MemberHistoryPage() {
                         setWalletPageSize(size)
                         setWalletCurrentPage(1)
                       }}
-                      pageSizeOptions={[6, 12, 24]}
+                      pageSizeOptions={[10, 20, 30]}
                     />
                   )}
                 </div>
@@ -1447,40 +1472,40 @@ export default function MemberHistoryPage() {
             <div className="text-center text-sm text-muted-foreground py-8">Loading applications...</div>
           ) : error ? (
             <div className="text-center text-sm text-destructive py-8">Error: {String(error)}</div>
-            ) : activitiesToDisplay.length === 0 ? (
+          ) : activitiesToDisplay.length === 0 ? (
             <EmptyState
               icon={History}
               title="No activity yet"
               description={
-              activeTab === "member"
-                ? "Your member applications and voucher redemptions will appear here"
-                : activeTab === "club"
-                ? "Your club creation applications will appear here"
-                : activeTab === "order"
-                  ? "Your product order history will appear here"
-                  : "Your registered events will appear here"
+                activeTab === "member"
+                  ? "Your member applications and voucher redemptions will appear here"
+                  : activeTab === "club"
+                    ? "Your club creation applications will appear here"
+                    : activeTab === "order"
+                      ? "Your product order history will appear here"
+                      : "Your registered events will appear here"
               }
               action={{
-              label:
-                activeTab === "member"
-                ? "Browse Clubs"
-                : activeTab === "club"
-                  ? "Create Club"
-                  : activeTab === "order"
-                  ? "Browse Gift"
-                  : "Browse Events",
-              onClick: () =>
-              (window.location.href =
-                activeTab === "member"
-                ? "/student/clubs"
-                : activeTab === "club"
-                  ? "/student/clubs"
-                  : activeTab === "order"
-                  ? "/student/gift"
-                  : "/student/events"),
+                label:
+                  activeTab === "member"
+                    ? "Browse Clubs"
+                    : activeTab === "club"
+                      ? "Create Club"
+                      : activeTab === "order"
+                        ? "Browse Gift"
+                        : "Browse Events",
+                onClick: () =>
+                (window.location.href =
+                  activeTab === "member"
+                    ? "/student/clubs"
+                    : activeTab === "club"
+                      ? "/student/clubs"
+                      : activeTab === "order"
+                        ? "/student/gift"
+                        : "/student/events"),
               }}
             />
-            ) : (
+          ) : (
             // <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {paginatedActivities.map((activity, index) => {
@@ -1521,16 +1546,38 @@ export default function MemberHistoryPage() {
                 }
 
                 return (
-                  <Card 
-                    key={index} 
-                    className={`border-l-4 ${getBorderColor()} transition-all hover:shadow-md ${
-                      activity.type === "redeemOrder" ? "cursor-pointer hover:border-l-8" : ""
-                    }`}
-                    title={activity.type === "redeemOrder" ? "Click to see detail order" : undefined}
+                  // <Card 
+                  //   key={index} 
+                  //   className={`border-l-4 ${getBorderColor()} transition-all hover:shadow-md ${
+                  //     activity.type === "redeemOrder" ? "cursor-pointer hover:border-l-8" : ""
+                  //   }`}
+                  //   title={activity.type === "redeemOrder" ? "Click to see detail order" : undefined}
+                  //   onClick={() => {
+                  //     if (activity.type === "redeemOrder") {
+                  //       setSelectedOrderForLogs(activity.data)
+                  //       setIsOrderLogsModalOpen(true)
+                  //     }
+                  //   }}
+                  // >
+                  <Card
+                    key={index}
+                    // 1. CẬP NHẬT CLASSNAME: Thêm activity.type === "event" để hiện con trỏ tay
+                    className={`border-l-4 ${getBorderColor()} transition-all hover:shadow-md ${activity.type === "redeemOrder" || activity.type === "event" ? "cursor-pointer hover:border-l-8" : ""
+                      }`}
+                    title={
+                      activity.type === "redeemOrder"
+                        ? "Click to see detail order"
+                        : activity.type === "event"
+                          ? "Click to view event details"
+                          : undefined
+                    }
+                    // 2. CẬP NHẬT ONCLICK: Thêm logic router.push cho event
                     onClick={() => {
                       if (activity.type === "redeemOrder") {
                         setSelectedOrderForLogs(activity.data)
                         setIsOrderLogsModalOpen(true)
+                      } else if (activity.type === "event") {
+                        router.push(`/student/events/${activity.data.id}`)
                       }
                     }}
                   >
@@ -1599,10 +1646,8 @@ export default function MemberHistoryPage() {
                                 </>
                               ) : activity.type === "event" ? (
                                 <>
-                                  <h3 
-                                    className="font-medium hover:underline cursor-pointer"
-                                    onClick={() => router.push(`/student/events/${activity.data.id}`)}
-                                  >
+                                  {/* 3. CẬP NHẬT TÊN EVENT: Bỏ onClick và cursor style cũ đi */}
+                                  <h3 className="font-medium">
                                     {activity.data.name}
                                   </h3>
                                   <p className="text-sm text-muted-foreground">
@@ -1813,7 +1858,7 @@ export default function MemberHistoryPage() {
                 setPageSize(size)
                 setCurrentPage(1) // reset về trang 1 khi đổi số dòng/trang
               }}
-              pageSizeOptions={[6, 12, 24]}
+              pageSizeOptions={[10, 20, 30]}
             />
           )}
         </div>
@@ -1852,8 +1897,8 @@ export default function MemberHistoryPage() {
                             log.action === "CREATE" || log.action === "COMPLETED"
                               ? "default"
                               : log.action === "REFUND" || log.action === "PARTIAL_REFUND"
-                              ? "destructive"
-                              : "outline"
+                                ? "destructive"
+                                : "outline"
                           }
                           className={
                             log.action === "COMPLETED"
