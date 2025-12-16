@@ -51,10 +51,10 @@ import {
   completeEvent,
   eventQR,
   eventTimeExtend,
-} from "@/service/eventApi"; // 👈 Thêm submitForUniversityApproval, eventQR, eventTimeExtend
-import { EventWalletHistoryModal } from "@/components/event-wallet-history-modal";
+} from "@/service/eventApi"; 
+import { EventWalletHistoryFullscreenModal } from "@/components/event-wallet-history-fullscreen-modal";
 import { getClubIdFromToken } from "@/service/clubApi";
-import { Loader2, Star, Filter, ClockIcon, DollarSign } from "lucide-react"; // 👈 Thêm Loader2, Star, Filter, ClockIcon, DollarSign
+import { Loader2, Star, Filter, ClockIcon, DollarSign } from "lucide-react"; //  Thêm Loader2, Star, Filter, ClockIcon, DollarSign
 import { getFeedbackByEventId, Feedback } from "@/service/feedbackApi";
 import {
   Select,
@@ -63,6 +63,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { TimeExtensionModal } from "@/components/time-extension-modal";
 import AddStaffModal from "@/components/add-staff-modal";
@@ -114,7 +122,7 @@ export default function EventDetailPage() {
   const [showWalletHistoryModal, setShowWalletHistoryModal] = useState(false);
   const [eventSummary, setEventSummary] = useState<EventSummary | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false); // 👈 THÊM STATE NÀY
+  const [isSubmitting, setIsSubmitting] = useState(false); //  THÊM STATE NÀY
   const [isAcceptingCoHost, setIsAcceptingCoHost] = useState(false); // State for accepting co-host
   const [isRejectingCoHost, setIsRejectingCoHost] = useState(false); // State for rejecting co-host
   const [isEndingEvent, setIsEndingEvent] = useState(false); // State for ending event
@@ -145,6 +153,9 @@ export default function EventDetailPage() {
 
   // Registration List modal state
   const [showRegistrationListModal, setShowRegistrationListModal] = useState(false);
+
+  // End Event confirmation modal state
+  const [showEndEventModal, setShowEndEventModal] = useState(false);
 
   // QR Code states
   const [showQrModal, setShowQrModal] = useState(false);
@@ -633,7 +644,13 @@ export default function EventDetailPage() {
     }
   };
 
-  const handleEndEvent = async () => {
+  const handleEndEvent = () => {
+    if (!event) return;
+    // Mở modal xác nhận thay vì gọi API trực tiếp
+    setShowEndEventModal(true);
+  };
+
+  const handleConfirmEndEvent = async () => {
     if (!event) return;
 
     try {
@@ -647,7 +664,8 @@ export default function EventDetailPage() {
           response.message || "Event has been completed successfully",
       });
 
-      // Reload the page to get updated event status
+      // Close modal and reload page
+      setShowEndEventModal(false);
       window.location.reload();
     } catch (err: any) {
       console.error("Failed to complete event", err);
@@ -1772,7 +1790,7 @@ export default function EventDetailPage() {
 
         {/* Wallet History Modal */}
         {event && (
-          <EventWalletHistoryModal
+          <EventWalletHistoryFullscreenModal
             open={showWalletHistoryModal}
             onOpenChange={setShowWalletHistoryModal}
             eventId={String(event.id)}
@@ -1823,6 +1841,72 @@ export default function EventDetailPage() {
             eventName={event.name}
           />
         )}
+
+        {/* End Event Confirmation Modal */}
+        <Dialog open={showEndEventModal} onOpenChange={setShowEndEventModal}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
+                  <AlertCircle className="h-6 w-6 text-red-600" />
+                </div>
+                <div>
+                  <DialogTitle className="text-xl">End Event</DialogTitle>
+                  <DialogDescription className="text-sm mt-1">
+                    This action will complete the event
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-2">
+                <p className="text-sm font-semibold text-amber-900">
+                  You are about to end the event:
+                </p>
+                <p className="text-base font-bold text-gray-900 bg-white p-3 rounded-md border border-gray-200">
+                  "{event?.name || ""}"
+                </p>
+                <p className="text-sm text-amber-800">
+                  This will mark the event as completed and process all final operations.
+                </p>
+              </div>
+
+              <p className="text-sm text-gray-600 font-medium">
+                Are you sure you want to proceed?
+              </p>
+            </div>
+
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button
+                variant="outline"
+                onClick={() => setShowEndEventModal(false)}
+                disabled={isEndingEvent}
+                className="w-full sm:w-auto"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleConfirmEndEvent}
+                disabled={isEndingEvent}
+                className="w-full sm:w-auto bg-red-600 hover:bg-red-700"
+              >
+                {isEndingEvent ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Ending Event...
+                  </>
+                ) : (
+                  <>
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Yes, End Event
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </AppShell>
     </ProtectedRoute>
   );

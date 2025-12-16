@@ -890,3 +890,37 @@
 .a4-page [style*="border"] {
   border-color: #000000 !important;
 }
+
+/* --- Dán vào cuối cùng của file global.css --- */
+
+/* Xóa hết code cũ và chỉ dùng đoạn này */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active,
+select:-webkit-autofill,
+select:-webkit-autofill:hover, 
+select:-webkit-autofill:focus, 
+select:-webkit-autofill:active {
+    /* Đổ bóng màu TRẮNG (white) cực mạnh vào bên trong để che màu xanh của trình duyệt */
+    -webkit-box-shadow: 0 0 0 1000px white inset !important;
+    
+    /* Chỉnh màu chữ thành màu đen */
+    -webkit-text-fill-color: #0f172a !important;
+    
+    /* Đảm bảo nền là màu trắng */
+    background-color: white !important;
+    
+    /* Giữ trạng thái ổn định */
+    transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Dark mode: Nếu bật chế độ tối thì dùng màu này */
+.dark input:-webkit-autofill,
+.dark input:-webkit-autofill:hover, 
+.dark input:-webkit-autofill:focus, 
+.dark input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px #020617 inset !important;
+    -webkit-text-fill-color: #f1f5f9 !important;
+    background-color: #020617 !important;
+}

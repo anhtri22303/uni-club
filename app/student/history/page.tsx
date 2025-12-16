@@ -1364,9 +1364,9 @@ export default function MemberHistoryPage() {
                                     <div className="flex items-center gap-2">
                                       <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isIncoming ? "bg-green-100 dark:bg-green-900" : "bg-red-100 dark:bg-red-900"}`}>
                                         {isIncoming ? (
-                                          <ArrowDownLeft className={`h-4 w-4 ${isIncoming ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`} />
-                                        ) : (
                                           <ArrowUpRight className={`h-4 w-4 ${isIncoming ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`} />
+                                        ) : (
+                                          <ArrowDownLeft className={`h-4 w-4 ${isIncoming ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`} />
                                         )}
                                       </div>
                                       <Badge variant="outline" className="text-xs whitespace-nowrap">

@@ -21,8 +21,18 @@ import {
   Calendar,
   DollarSign,
   FileText,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface EventWalletHistoryModalProps {
   open: boolean;
@@ -37,6 +47,8 @@ export function EventWalletHistoryModal({
 }: EventWalletHistoryModalProps) {
   const [wallet, setWallet] = useState<EventWallet | null>(null);
   const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -94,14 +106,55 @@ export function EventWalletHistoryModal({
   };
 
   const getTransactionBadge = (type: string) => {
-    switch (type.toUpperCase()) {
+    const typeUpper = type.toUpperCase();
+    switch (typeUpper) {
+      case "BONUS_REWARD":
+      case "BONUS REWARD":
+        return (
+          <Badge
+            variant="outline"
+            className="bg-green-50 dark:bg-green-950/50 text-green-700 dark:text-green-400 border-green-300 dark:border-green-700"
+          >
+            BONUS REWARD
+          </Badge>
+        );
+      case "COMMIT_LOCK":
+      case "COMMIT LOCK":
+        return (
+          <Badge
+            variant="outline"
+            className="bg-red-50 dark:bg-red-950/50 text-red-700 dark:text-red-400 border-red-300 dark:border-red-700"
+          >
+            COMMIT LOCK
+          </Badge>
+        );
+      case "CLUB_TO_MEMBER":
+      case "CLUB TO MEMBER":
+        return (
+          <Badge
+            variant="outline"
+            className="bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border-blue-300 dark:border-blue-700"
+          >
+            CLUB TO MEMBER
+          </Badge>
+        );
+      case "REFUND_PRODUCT":
+      case "REFUND PRODUCT":
+        return (
+          <Badge
+            variant="outline"
+            className="bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-400 border-purple-300 dark:border-purple-700"
+          >
+            REFUND PRODUCT
+          </Badge>
+        );
       case "TRANSFER":
         return (
           <Badge
             variant="outline"
             className="bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border-blue-300 dark:border-blue-700"
           >
-            Transfer
+            TRANSFER
           </Badge>
         );
       case "DEPOSIT":
@@ -110,29 +163,41 @@ export function EventWalletHistoryModal({
             variant="outline"
             className="bg-green-50 dark:bg-green-950/50 text-green-700 dark:text-green-400 border-green-300 dark:border-green-700"
           >
-            Deposit
+            DEPOSIT
           </Badge>
         );
       case "WITHDRAWAL":
         return (
           <Badge
             variant="outline"
-            className="bg-red-50 dark:bg-red-950/50 text-red-700 dark:text-red-400 border-red-300 dark:border-red-700"
+            className="bg-orange-50 dark:bg-orange-950/50 text-orange-700 dark:text-orange-400 border-orange-300 dark:border-orange-700"
           >
-            Withdrawal
+            WITHDRAWAL
           </Badge>
         );
       default:
-        return <Badge variant="outline">{type}</Badge>;
+        return <Badge variant="outline">{typeUpper}</Badge>;
     }
   };
 
+  // Pagination logic
+  const sortedTransactions = wallet?.transactions
+    ? [...wallet.transactions].sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      )
+    : [];
+  const totalTransactions = sortedTransactions.length;
+  const totalPages = Math.ceil(totalTransactions / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedTransactions = sortedTransactions.slice(startIndex, endIndex);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-[95vw] w-[95vw] max-h-[95vh] h-[95vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold flex items-center gap-2">
-            <DollarSign className="h-6 w-6" />
             Wallet Transaction History
           </DialogTitle>
         </DialogHeader>
@@ -209,78 +274,164 @@ export function EventWalletHistoryModal({
                   Transaction History
                 </h3>
                 <Badge variant="secondary" className="text-sm">
-                  {wallet.transactions.length}{" "}
-                  {wallet.transactions.length === 1
-                    ? "transaction"
-                    : "transactions"}
+                  {totalTransactions}{" "}
+                  {totalTransactions === 1 ? "transaction" : "transactions"}
                 </Badge>
               </div>
 
-              {wallet.transactions.length === 0 ? (
+              {totalTransactions === 0 ? (
                 <Card>
                   <CardContent className="py-8 text-center text-muted-foreground">
                     No transactions found
                   </CardContent>
                 </Card>
               ) : (
-                <div className="space-y-3">
-                  {wallet.transactions
-                    .sort(
-                      (a, b) =>
-                        new Date(b.createdAt).getTime() -
-                        new Date(a.createdAt).getTime()
-                    )
-                    .map((transaction) => (
-                      <Card
-                        key={transaction.id}
-                        className={`transition-all hover:shadow-md ${
-                          transaction.amount > 0
-                            ? "border-l-4 border-l-green-500 bg-green-50/30 dark:bg-green-950/20"
-                            : "border-l-4 border-l-red-500 bg-red-50/30 dark:bg-red-950/20"
-                        }`}
-                      >
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex items-start gap-3 flex-1">
-                              <div className="mt-1">
-                                {getTransactionIcon(transaction.amount)}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
+                <>
+                  <div className="border rounded-lg overflow-hidden">
+                    <table className="w-full">
+                      <thead className="bg-gray-50 dark:bg-gray-800/50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                            Type
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                            Description
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                            From/To
+                          </th>
+                          <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                            Amount
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                            Date
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
+                        {paginatedTransactions.map((transaction) => {
+                          const isIncoming = transaction.amount > 0;
+                          const fromTo = isIncoming
+                            ? `From: ${transaction.type.includes("SYSTEM") || transaction.type.includes("BONUS") ? "System" : wallet.hostClubName}\nTo: ${wallet.eventName}`
+                            : `From: ${wallet.eventName}\nTo: System`;
+                          
+                          return (
+                            <tr
+                              key={transaction.id}
+                              className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                            >
+                              <td className="px-4 py-4 whitespace-nowrap">
+                                <div className="flex items-center gap-2">
+                                  {getTransactionIcon(transaction.amount)}
                                   {getTransactionBadge(transaction.type)}
-                                  <span className="text-xs text-muted-foreground">
-                                    #{transaction.id}
-                                  </span>
                                 </div>
-                                <p className="text-sm font-medium text-gray-900 dark:text-gray-100 break-words">
+                              </td>
+                              <td className="px-4 py-4">
+                                <p className="text-sm text-gray-900 dark:text-gray-100">
                                   {transaction.description}
                                 </p>
-                                <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
-                                  <Calendar className="h-3 w-3" />
-                                  {formatDate(transaction.createdAt)}
+                              </td>
+                              <td className="px-4 py-4">
+                                <div className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-line">
+                                  {fromTo.split("\n").map((line, i) => (
+                                    <div key={i}>
+                                      {line.startsWith("From:") ? (
+                                        <span>
+                                          <span className="text-gray-500 dark:text-gray-500">From: </span>
+                                          <span className="text-gray-900 dark:text-gray-100">
+                                            {line.replace("From: ", "")}
+                                          </span>
+                                        </span>
+                                      ) : (
+                                        <span>
+                                          <span className="text-gray-500 dark:text-gray-500">To: </span>
+                                          <span className="text-gray-900 dark:text-gray-100">
+                                            {line.replace("To: ", "")}
+                                          </span>
+                                        </span>
+                                      )}
+                                    </div>
+                                  ))}
                                 </div>
-                              </div>
-                            </div>
-                            <div className="text-right flex-shrink-0">
-                              <p
-                                className={`text-xl font-bold ${
-                                  transaction.amount > 0
-                                    ? "text-green-700 dark:text-green-400"
-                                    : "text-red-700 dark:text-red-400"
-                                }`}
-                              >
-                                {transaction.amount > 0 ? "+" : ""}
-                                {transaction.amount}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                points
-                              </p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                </div>
+                              </td>
+                              <td className="px-4 py-4 text-right whitespace-nowrap">
+                                <span
+                                  className={`text-lg font-bold ${
+                                    isIncoming
+                                      ? "text-green-700 dark:text-green-400"
+                                      : "text-red-700 dark:text-red-400"
+                                  }`}
+                                >
+                                  {isIncoming ? "+" : ""}
+                                  {transaction.amount} pts
+                                </span>
+                              </td>
+                              <td className="px-4 py-4 whitespace-nowrap">
+                                <span className="text-sm text-gray-600 dark:text-gray-400">
+                                  {formatDate(transaction.createdAt)}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Pagination Controls */}
+                  {totalPages > 1 && (
+                    <div className="mt-4 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-600 dark:text-gray-400">
+                          Rows per page:
+                        </span>
+                        <Select
+                          value={pageSize.toString()}
+                          onValueChange={(value) => {
+                            setPageSize(Number(value));
+                            setCurrentPage(1);
+                          }}
+                        >
+                          <SelectTrigger className="w-20">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="5">5</SelectItem>
+                            <SelectItem value="10">10</SelectItem>
+                            <SelectItem value="20">20</SelectItem>
+                            <SelectItem value="50">50</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-600 dark:text-gray-400">
+                          Page {currentPage} of {totalPages}
+                        </span>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                            disabled={currentPage === 1}
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              setCurrentPage((p) => Math.min(totalPages, p + 1))
+                            }
+                            disabled={currentPage === totalPages}
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>

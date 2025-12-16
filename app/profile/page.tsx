@@ -1371,7 +1371,7 @@ export default function ProfilePage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-1">
                         <Label htmlFor="user-email">Email Address</Label>
-                        <Input id="user-email" value={auth.user?.email || ""} disabled className="bg-slate-100 border-slate-300" />
+                        <Input id="user-email" value={auth.user?.email || ""} disabled className="mt-2 bg-slate-100 border-slate-300" />
                       </div>
                       <div className="space-y-1">
                         <Label htmlFor="user-fullName">Full Name</Label>
@@ -1379,7 +1379,7 @@ export default function ProfilePage() {
                           id="user-fullName"
                           value={fullName}
                           onChange={(e) => updateProfileData('fullName', e.target.value)}
-                          className="border-slate-300"
+                          className="mt-2 border-slate-300"
                         />
                       </div>
                       <div className="space-y-1">
@@ -1388,7 +1388,7 @@ export default function ProfilePage() {
                           id="user-phone"
                           value={phone}
                           onChange={(e) => updateProfileData('phone', e.target.value)}
-                          className="border-slate-300"
+                          className="mt-2 border-slate-300"
                         />
                       </div>
                       <div className="space-y-1">
@@ -1397,7 +1397,7 @@ export default function ProfilePage() {
                           id="user-studentCode"
                           value={studentCode}
                           onChange={(e) => updateProfileData('studentCode', e.target.value.toUpperCase())}
-                          className={studentCodeError ? "border-red-500 focus-visible:ring-red-500" : "border-slate-300"}
+                          className={studentCodeError ? "mt-2 border-red-500 focus-visible:ring-red-500" : "mt-2 border-slate-300"}
                           placeholder="SE000001"
                           maxLength={8}
                         />
@@ -1418,7 +1418,7 @@ export default function ProfilePage() {
                           value={majorName}
                           onValueChange={(value) => updateProfileData('majorName', value)}
                         >
-                          <SelectTrigger id="user-majorName" className="w-full border-slate-300">
+                          <SelectTrigger id="user-majorName" className="w-full mt-2  border-slate-300">
                             <SelectValue placeholder="Select a major" className="truncate" />
                           </SelectTrigger>
                           <SelectContent>
@@ -1439,7 +1439,7 @@ export default function ProfilePage() {
                         id="user-bio"
                         value={bio}
                         onChange={(e) => updateProfileData('bio', e.target.value)}
-                        className="min-h-[80px] border-slate-300"
+                        className="min-h-[80px] border-slate-300 mt-2"
                       />
                     </div>
 

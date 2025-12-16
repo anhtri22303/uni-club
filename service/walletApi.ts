@@ -136,6 +136,7 @@ export interface ApiWalletTransaction {
 export const getWalletTransactions = async (walletId: number): Promise<ApiWalletTransaction[]> => {
   try {
     const response = await axiosInstance.get<ApiResponse<ApiWalletTransaction[]>>(`/api/wallets/${walletId}/transactions`);
+    console.log("Club wallet transactions:", response.data);
     return response.data.data;
   } catch (error) {
     console.error("Error fetching wallet transactions:", error);

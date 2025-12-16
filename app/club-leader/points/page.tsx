@@ -121,6 +121,11 @@ export default function ClubLeaderRewardDistributionPage() {
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [transactions, setTransactions] = useState<ApiWalletTransaction[]>([]);
   const [transactionsLoading, setTransactionsLoading] = useState(false);
+  const [historyTypeFilter, setHistoryTypeFilter] = useState<string>("all");
+  const [historyDateFilter, setHistoryDateFilter] = useState<string>("all");
+  const [historyTransactionTypeFilter, setHistoryTransactionTypeFilter] = useState<string>("all");
+  const [historyCurrentPage, setHistoryCurrentPage] = useState(1);
+  const [historyPageSize] = useState(8);
 
   // Request Modal
   const [showRequestModal, setShowRequestModal] = useState(false);
@@ -592,6 +597,10 @@ export default function ClubLeaderRewardDistributionPage() {
 
   const handleOpenHistoryModal = () => {
     setShowHistoryModal(true);
+    setHistoryTypeFilter("all");
+    setHistoryDateFilter("all");
+    setHistoryTransactionTypeFilter("all");
+    setHistoryCurrentPage(1);
     loadTransactionHistory();
   };
 
@@ -600,6 +609,102 @@ export default function ClubLeaderRewardDistributionPage() {
       year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
     });
   };
+
+  // Get badge color for transaction type
+  const getTransactionTypeBadgeColor = (type: string) => {
+    const colorMap: Record<string, string> = {
+      ADD: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+      REDUCE: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+      TRANSFER: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+      UNI_TO_CLUB: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
+      CLUB_TO_MEMBER: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400",
+      EVENT_BUDGET_GRANT: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400",
+      EVENT_REFUND_REMAINING: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400",
+      COMMIT_LOCK: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+      REFUND_COMMIT: "bg-lime-100 text-lime-700 dark:bg-lime-900/30 dark:text-lime-400",
+      BONUS_REWARD: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
+      RETURN_SURPLUS: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
+      REDEEM_PRODUCT: "bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400",
+      REFUND_PRODUCT: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400",
+      EVENT_REDEEM_PRODUCT: "bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-900/30 dark:text-fuchsia-400",
+      EVENT_REFUND_PRODUCT: "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400",
+      CLUB_RECEIVE_REDEEM: "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400",
+      CLUB_REFUND: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
+      ADMIN_ADJUST: "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400",
+      MEMBER_PENALTY: "bg-red-200 text-red-800 dark:bg-red-900/40 dark:text-red-300",
+      CLUB_FROM_PENALTY: "bg-green-200 text-green-800 dark:bg-green-900/40 dark:text-green-300",
+      EVENT_BUDGET_FORFEIT: "bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-400",
+      MEMBER_REWARD: "bg-emerald-200 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300",
+      CLUB_REWARD_DISTRIBUTE: "bg-teal-200 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300",
+      PRODUCT_CREATION_COST: "bg-amber-200 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300",
+    };
+    return colorMap[type] || "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400";
+  };
+
+  // Get unique transaction types from data
+  const uniqueTransactionTypes = useMemo(() => {
+    const types = new Set(transactions.map(t => t.type));
+    return Array.from(types).sort();
+  }, [transactions]);
+
+  // Filter transactions based on type and date
+  const filteredTransactions = useMemo(() => {
+    let filtered = [...transactions];
+    
+    // Filter by incoming/outgoing
+    if (historyTypeFilter !== "all") {
+      if (historyTypeFilter === "incoming") {
+        filtered = filtered.filter(t => t.amount > 0);
+      } else if (historyTypeFilter === "outgoing") {
+        filtered = filtered.filter(t => t.amount < 0);
+      }
+    }
+    
+    // Filter by transaction type
+    if (historyTransactionTypeFilter !== "all") {
+      filtered = filtered.filter(t => t.type === historyTransactionTypeFilter);
+    }
+    
+    // Filter by date
+    if (historyDateFilter !== "all") {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      
+      filtered = filtered.filter(t => {
+        const transactionDate = new Date(t.createdAt);
+        
+        switch (historyDateFilter) {
+          case "today":
+            return transactionDate >= today;
+          case "week":
+            const weekAgo = new Date(today);
+            weekAgo.setDate(weekAgo.getDate() - 7);
+            return transactionDate >= weekAgo;
+          case "month":
+            const monthAgo = new Date(today);
+            monthAgo.setMonth(monthAgo.getMonth() - 1);
+            return transactionDate >= monthAgo;
+          case "year":
+            const yearAgo = new Date(today);
+            yearAgo.setFullYear(yearAgo.getFullYear() - 1);
+            return transactionDate >= yearAgo;
+          default:
+            return true;
+        }
+      });
+    }
+    
+    return filtered;
+  }, [transactions, historyTypeFilter, historyDateFilter, historyTransactionTypeFilter]);
+
+  // Paginate filtered transactions
+  const paginatedTransactions = useMemo(() => {
+    const startIndex = (historyCurrentPage - 1) * historyPageSize;
+    const endIndex = startIndex + historyPageSize;
+    return filteredTransactions.slice(startIndex, endIndex);
+  }, [filteredTransactions, historyCurrentPage, historyPageSize]);
+
+  const historyTotalPages = Math.ceil(filteredTransactions.length / historyPageSize);
 
   const handleOpenPenaltyModal = (member: any) => {
     setMemberToPenalize(member);
@@ -1059,32 +1164,168 @@ export default function ClubLeaderRewardDistributionPage() {
         {/* Other Modals (History, Penalty, Request) */}
         {/* Transaction History Modal */}
         <Dialog open={showHistoryModal} onOpenChange={setShowHistoryModal}>
-          <DialogContent className="max-w-4xl">
-            <DialogHeader><DialogTitle>History</DialogTitle></DialogHeader>
-            <div className="max-h-[60vh] overflow-y-auto">
-              {transactionsLoading ? <p>Loading...</p> : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>ID</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>To</TableHead>
-                      <TableHead>Desc</TableHead>
-                      <TableHead>Date</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {transactions.map(t => (
-                      <TableRow key={t.id}>
-                        <TableCell>#{t.id}</TableCell>
-                        <TableCell className={t.amount > 0 ? "text-green-600" : "text-red-600"}>{t.signedAmount}</TableCell>
-                        <TableCell>{t.receiverName}</TableCell>
-                        <TableCell>{t.description}</TableCell>
-                        <TableCell>{formatDate(t.createdAt)}</TableCell>
-                      </TableRow>
+          <DialogContent className="!w-[70vw] !max-w-[70vw] sm:!max-w-[70vw] max-h-[85vh] flex flex-col">
+            <DialogHeader>
+              <DialogTitle>History</DialogTitle>
+            </DialogHeader>
+            
+            <div className="flex-1 overflow-y-auto space-y-4">
+              {/* Filters */}
+              <div className="flex gap-3 flex-wrap">
+                <Select value={historyTypeFilter} onValueChange={(value) => {
+                  setHistoryTypeFilter(value);
+                  setHistoryCurrentPage(1);
+                }}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Filter by type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="incoming">Incoming Only</SelectItem>
+                    <SelectItem value="outgoing">Outgoing Only</SelectItem>
+                  </SelectContent>
+                </Select>
+                
+                <Select value={historyTransactionTypeFilter} onValueChange={(value) => {
+                  setHistoryTransactionTypeFilter(value);
+                  setHistoryCurrentPage(1);
+                }}>
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="Transaction type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Transaction Types</SelectItem>
+                    {uniqueTransactionTypes.map(type => (
+                      <SelectItem key={type} value={type}>
+                        {type.replace(/_/g, " ")}
+                      </SelectItem>
                     ))}
-                  </TableBody>
-                </Table>
+                  </SelectContent>
+                </Select>
+                
+                <Select value={historyDateFilter} onValueChange={(value) => {
+                  setHistoryDateFilter(value);
+                  setHistoryCurrentPage(1);
+                }}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Filter by date" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Time</SelectItem>
+                    <SelectItem value="today">Today</SelectItem>
+                    <SelectItem value="week">This Week</SelectItem>
+                    <SelectItem value="month">This Month</SelectItem>
+                    <SelectItem value="year">This Year</SelectItem>
+                  </SelectContent>
+                </Select>
+                
+                {(historyTypeFilter !== "all" || historyDateFilter !== "all" || historyTransactionTypeFilter !== "all") && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setHistoryTypeFilter("all");
+                      setHistoryDateFilter("all");
+                      setHistoryTransactionTypeFilter("all");
+                      setHistoryCurrentPage(1);
+                    }}
+                  >
+                    <X className="h-4 w-4 mr-1" />
+                    Clear
+                  </Button>
+                )}
+              </div>
+              
+              {/* Statistics */}
+              {!transactionsLoading && filteredTransactions.length > 0 && (
+                <div className="flex gap-3">
+                  <div className="flex-1 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                    <div className="text-xs text-green-600 dark:text-green-400 font-medium mb-1">Total Incoming</div>
+                    <div className="text-xl font-bold text-green-700 dark:text-green-300">
+                      +{filteredTransactions.filter(t => t.amount > 0).reduce((sum, t) => sum + t.amount, 0).toLocaleString()} pts
+                    </div>
+                    <div className="text-xs text-green-600/70 dark:text-green-400/70 mt-0.5">
+                      {filteredTransactions.filter(t => t.amount > 0).length} transactions
+                    </div>
+                  </div>
+                  <div className="flex-1 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                    <div className="text-xs text-red-600 dark:text-red-400 font-medium mb-1">Total Outgoing</div>
+                    <div className="text-xl font-bold text-red-700 dark:text-red-300">
+                      {filteredTransactions.filter(t => t.amount < 0).reduce((sum, t) => sum + t.amount, 0).toLocaleString()} pts
+                    </div>
+                    <div className="text-xs text-red-600/70 dark:text-red-400/70 mt-0.5">
+                      {filteredTransactions.filter(t => t.amount < 0).length} transactions
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Table */}
+              {transactionsLoading ? <p>Loading...</p> : filteredTransactions.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  {transactions.length === 0 ? "No transactions found" : "No transactions match the selected filters"}
+                </div>
+              ) : (
+                <>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>ID</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>To</TableHead>
+                        <TableHead>Desc</TableHead>
+                        <TableHead>Date</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedTransactions.map(t => (
+                        <TableRow key={t.id}>
+                          <TableCell>#{t.id}</TableCell>
+                          <TableCell className={t.amount > 0 ? "text-green-600" : "text-red-600"}>{t.signedAmount}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className={`text-xs font-medium ${getTransactionTypeBadgeColor(t.type)}`}>
+                              {t.type.replace(/_/g, " ")}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{t.receiverName}</TableCell>
+                          <TableCell>{t.description}</TableCell>
+                          <TableCell>{formatDate(t.createdAt)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  
+                  {/* Pagination */}
+                  {historyTotalPages > 1 && (
+                    <div className="flex items-center justify-between pt-4 border-t">
+                      <div className="text-sm text-muted-foreground">
+                        Showing {((historyCurrentPage - 1) * historyPageSize) + 1} to {Math.min(historyCurrentPage * historyPageSize, filteredTransactions.length)} of {filteredTransactions.length} transactions
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setHistoryCurrentPage(prev => Math.max(1, prev - 1))}
+                          disabled={historyCurrentPage === 1}
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <div className="text-sm font-medium">
+                          Page {historyCurrentPage} of {historyTotalPages}
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setHistoryCurrentPage(prev => Math.min(historyTotalPages, prev + 1))}
+                          disabled={historyCurrentPage === historyTotalPages}
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </DialogContent>
