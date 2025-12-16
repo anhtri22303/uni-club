@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { AppShell } from "@/components/app-shell"
 import { ProtectedRoute } from "@/contexts/protected-route"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -24,6 +24,7 @@ import { useRouter } from "next/navigation"
 import EvaluateStaffModal from "@/components/evaluate-staff-modal"
 import EvaluationDetailModal from "@/components/evaluation-detail-modal"
 import { renderTypeBadge } from "@/lib/eventUtils"
+import { EventDateTimeDisplay } from "@/components/event-date-time-display"
 
 export default function EventStaffPage() {
   const { toast } = useToast()
@@ -55,6 +56,7 @@ export default function EventStaffPage() {
       setLoading(true)
       const data = await getEventByClubId(clubId!)
       setEvents(data)
+      console.log(" getEventByClubId:", data)
     } catch (error: any) {
       console.error(" Error loading events:", error)
       toast({
@@ -146,25 +148,6 @@ export default function EventStaffPage() {
     return isCompleted || expired
   })
 
-
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr)
-    return date.toLocaleDateString("en-US", { 
-      year: "numeric", 
-      month: "short", 
-      day: "numeric" 
-    })
-  }
-
-  const formatTime = (timeStr: string | null) => {
-    if (!timeStr) return "N/A"
-    if (typeof timeStr === "string") {
-      const parts = timeStr.split(":")
-      return `${parts[0]}:${parts[1]}`
-    }
-    return "N/A"
-  }
-
   const getStatusBadge = (status: string) => {
     switch (status.toUpperCase()) {
       case "COMPLETED":
@@ -216,42 +199,112 @@ export default function EventStaffPage() {
 
   const getTypeBadge = (type: string) => renderTypeBadge(type)
 
-  const EventCard = ({ event }: { event: Event }) => (
-    <Card 
-      className="cursor-pointer hover:shadow-lg transition-all duration-300 border-0 shadow-sm"
-      onClick={() => handleEventClick(event)}
-    >
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <CardTitle className="text-lg font-semibold text-slate-900 dark:text-white">
-            {event.name}
-          </CardTitle>
-          <div className="flex flex-wrap items-center gap-2 mt-2 min-w-0">
-            {getStatusBadge(event.status)}
-            {getTypeBadge(event.type)}
+  const EventCard = ({ event }: { event: Event }) => {
+    const isCompleted = event.status === "COMPLETED"
+    const expired = isCompleted || isEventExpired(event)
+
+    // Border color logic based on status
+    let borderColor = ""
+    if (isCompleted) {
+      borderColor = "border-l-4 border-l-blue-900"
+    } else if (expired) {
+      borderColor = "border-l-4 border-l-gray-400"
+    } else if (event.status === "APPROVED") {
+      borderColor = "border-l-4 border-l-green-500"
+    } else if (event.status === "ONGOING") {
+      borderColor = "border-l-4 border-l-purple-600"
+    } else if (event.status === "PENDING_COCLUB") {
+      borderColor = "border-l-4 border-l-orange-500"
+    } else if (event.status === "PENDING_UNISTAFF") {
+      borderColor = "border-l-4 border-l-yellow-500"
+    } else if (event.status === "REJECTED") {
+      borderColor = "border-l-4 border-l-red-500"
+    }
+
+    return (
+      <Card 
+        className={`cursor-pointer hover:shadow-md transition-shadow ${borderColor} ${expired || isCompleted ? "opacity-60" : ""} h-full flex flex-col`}
+        onClick={() => handleEventClick(event)}
+      >
+        <CardHeader>
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <CardTitle className="text-lg line-clamp-2" title={event.name}>
+                {event.name}
+              </CardTitle>
+              {event.description && (
+                <CardDescription
+                  className="mt-1 text-sm leading-5 max-h-[3.75rem] overflow-hidden"
+                  style={{
+                    display: "-webkit-box",
+                    WebkitLineClamp: 3,
+                    WebkitBoxOrient: "vertical" as const,
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {event.description}
+                </CardDescription>
+              )}
+            </div>
+            <div className="flex flex-col items-end gap-1 shrink-0 min-w-20">
+              {/* Type badge */}
+              <Badge
+                variant="outline"
+                className={
+                  event.type === "PRIVATE"
+                    ? "bg-purple-100 text-purple-700 border-purple-300 shrink-0 text-xs font-semibold"
+                    : event.type === "SPECIAL"
+                    ? "bg-pink-100 text-pink-700 border-pink-300 shrink-0 text-xs font-semibold"
+                    : "bg-blue-100 text-blue-700 border-blue-300 shrink-0 text-xs font-semibold"
+                }
+              >
+                {event.type || "UNKNOWN"}
+              </Badge>
+            </div>
           </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-2">
-        <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-          <Calendar className="h-4 w-4" />
-          <span>{formatEventDateRange(event)}</span>
-        </div>
-        <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-          <Clock className="h-4 w-4" />
-          <span>{getEventStartTime(event)} - {getEventEndTime(event)}</span>
-        </div>
-        <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-          <MapPin className="h-4 w-4" />
-          <span>{event.locationName}</span>
-        </div>
-        <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-          <Users className="h-4 w-4" />
-          <span>{event.hostClub.name}</span>
-        </div>
-      </CardContent>
-    </Card>
-  )
+          {/* Status badge */}
+          <div className="mt-2 flex gap-2 flex-wrap">
+            {isCompleted ? (
+              <Badge
+                variant="secondary"
+                className="bg-blue-900 text-white border-blue-900 font-semibold"
+              >
+                <span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
+                Completed
+              </Badge>
+            ) : expired ? (
+              <Badge
+                variant="secondary"
+                className="bg-gray-400 text-white font-semibold"
+              >
+                <span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
+                Expired
+              </Badge>
+            ) : (
+              getStatusBadge(event.status)
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="flex-1 flex flex-col">
+          <div className="space-y-3 flex-1">
+            <EventDateTimeDisplay event={event} variant="compact" />
+
+            {event.locationName && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <MapPin className="h-4 w-4" />
+                {event.locationName}
+              </div>
+            )}
+
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Users className="h-4 w-4" />
+              {event.hostClub.name}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
 
   if (loading) {
     return (

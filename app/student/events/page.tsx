@@ -160,6 +160,13 @@ export default function MemberEventsPage() {
     return myRegistrations.some((reg) => reg.eventId === eventId)
   }
 
+  // Helper function to check if event is full (reached maxCheckInCount)
+  const isEventFull = (event: any) => {
+    const maxCheckInCount = event.maxCheckInCount ?? 0
+    const currentCheckInCount = event.currentCheckInCount ?? 0
+    return maxCheckInCount > 0 && currentCheckInCount >= maxCheckInCount
+  }
+
   // Use isEventExpired from eventApi.ts which supports both single-day and multi-day events
   const isEventExpired = isEventExpiredUtil
 
@@ -339,11 +346,7 @@ export default function MemberEventsPage() {
               <h1 className="text-3xl font-bold">Events</h1>
               <p className="text-muted-foreground">
                 Discover upcoming events from your clubs
-                {userClubIds.length > 0 && (
-                  <span className="text-xs text-muted-foreground/70 ml-2">
-                    (Showing events from club{userClubIds.length > 1 ? 's' : ''} {userClubIds.join(', ')})
-                  </span>
-                )}
+
               </p>
             </div>
             <div className="flex gap-2">
@@ -605,16 +608,18 @@ export default function MemberEventsPage() {
                               <Button
                                 className="flex-1 w-full text-xs sm:text-sm"
                                 variant="default"
-                                disabled={registeringEventId === event.id || event.status === "COMPLETED" || isExpired || isEventRegistered(event.id)}
+                                disabled={registeringEventId === event.id || event.status === "COMPLETED" || isExpired || isEventRegistered(event.id) || isEventFull(event)}
                                 onClick={() => handleRegisterClick(event)}
                               >
                                 {registeringEventId === event.id
                                   ? "Registering..."
                                   : isEventRegistered(event.id)
                                     ? "Registered"
-                                    : event.status === "COMPLETED" || isExpired
-                                      ? "Ended"
-                                      : "Register"}
+                                    : isEventFull(event)
+                                      ? "Full"
+                                      : event.status === "COMPLETED" || isExpired
+                                        ? "Ended"
+                                        : "Register"}
                               </Button>
                               {isEventRegistered(event.id) && (
                                 <Button

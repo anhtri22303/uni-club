@@ -867,64 +867,62 @@ export default function EventRequestDetailPage({
                   {request.maxCheckInCount !== undefined &&
                     request.currentCheckInCount !== undefined && (
                       <>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-                          <div>
-                            <label className="text-sm font-medium text-muted-foreground">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+                          <div className="p-4 bg-muted/50 rounded-lg">
+                            <div className="text-sm text-muted-foreground">
                               Max Capacity
-                            </label>
-                            <div className="flex items-center gap-2 mt-1">
-                              <Users className="h-4 w-4 text-muted-foreground" />
-                              <span className="font-semibold">
-                                {request.maxCheckInCount} people
-                              </span>
+                            </div>
+                            <div className="font-semibold text-lg">
+                              {request.maxCheckInCount} people
                             </div>
                           </div>
-                          <div>
-                            <label className="text-sm font-medium text-muted-foreground">
+                          <div className="p-4 bg-muted/50 rounded-lg">
+                            <div className="text-sm text-muted-foreground">
                               Current Check-ins
-                            </label>
-                            <div className="flex items-center gap-2 mt-1">
-                              <Users className="h-4 w-4 text-muted-foreground" />
-                              <span className="font-semibold">
-                                {request.status === "APPROVED" ||
-                                request.status === "ONGOING" ||
-                                request.status === "COMPLETED"
-                                  ? summaryLoading
-                                    ? "Loading..."
-                                    : eventSummary
-                                    ? `${eventSummary.totalRegistered} / ${request.maxCheckInCount}`
-                                    : `${request.currentCheckInCount} / ${request.maxCheckInCount}`
-                                  : `${request.currentCheckInCount} / ${request.maxCheckInCount}`}
-                              </span>
+                            </div>
+                            <div className="font-semibold text-lg">
+                              {request.status === "APPROVED" ||
+                              request.status === "ONGOING" ||
+                              request.status === "COMPLETED"
+                                ? summaryLoading
+                                  ? "Loading..."
+                                  : eventSummary
+                                  ? request.type === "PUBLIC"
+                                    ? `${eventSummary.checkedInCount} / ${request.maxCheckInCount}`
+                                    : `${eventSummary.checkedInCount} / ${eventSummary.totalRegistered}`
+                                  : `${request.currentCheckInCount} / ${request.maxCheckInCount}`
+                                : `${request.currentCheckInCount} / ${request.maxCheckInCount}`}
                             </div>
                           </div>
-                          <div>
-                            <label className="text-sm font-medium text-muted-foreground">
+                          <div className="p-4 bg-muted/50 rounded-lg">
+                            <div className="text-sm text-muted-foreground">
                               Available Spots
-                            </label>
-                            <div className="flex items-center gap-2 mt-1">
-                              <Users className="h-4 w-4 text-muted-foreground" />
-                              <span className="font-semibold">
-                                {(request.status === "APPROVED" ||
-                                  request.status === "ONGOING" ||
-                                  request.status === "COMPLETED") &&
-                                eventSummary
+                            </div>
+                            <div className="font-semibold text-lg">
+                              {(request.status === "APPROVED" ||
+                                request.status === "ONGOING" ||
+                                request.status === "COMPLETED") &&
+                              eventSummary
+                                ? request.type === "PUBLIC"
                                   ? `${
                                       request.maxCheckInCount -
-                                      eventSummary.totalRegistered
+                                      eventSummary.checkedInCount
                                     } remaining`
                                   : `${
                                       request.maxCheckInCount -
-                                      request.currentCheckInCount
-                                    } remaining`}
-                              </span>
+                                      eventSummary.totalRegistered
+                                    } remaining`
+                                : `${
+                                    request.maxCheckInCount -
+                                    request.currentCheckInCount
+                                  } remaining`}
                             </div>
                           </div>
-                          <div className="p-3 bg-linear-to-br from-green-50 to-emerald-50 rounded-lg border border-green-200">
+                          <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-200">
                             <div className="flex items-center justify-between mb-1">
-                              <label className="text-sm text-green-700 font-medium">
+                              <div className="text-sm text-green-700 font-medium">
                                 Budget Points
-                              </label>
+                              </div>
                               <Button
                                 size="sm"
                                 variant="ghost"
@@ -934,7 +932,7 @@ export default function EventRequestDetailPage({
                                 History
                               </Button>
                             </div>
-                            <div className="font-semibold text-green-800 mt-1">
+                            <div className="font-semibold text-lg text-green-800">
                               {request.budgetPoints || 0} points
                             </div>
                           </div>
@@ -946,11 +944,11 @@ export default function EventRequestDetailPage({
                           request.status === "COMPLETED") &&
                           eventSummary && (
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                              <div className="p-3 bg-linear-to-br from-blue-50 to-sky-50 rounded-lg border border-blue-200">
+                              <div className="p-4 bg-gradient-to-br from-blue-50 to-sky-50 rounded-lg border border-blue-200">
                                 <div className="flex items-center justify-between mb-1">
-                                  <label className="text-sm text-blue-700 font-medium">
+                                  <div className="text-sm text-blue-700 font-medium">
                                     {request.type === "PUBLIC" ? "Total Check-ins" : "Total Registrations"}
-                                  </label>
+                                  </div>
                                   <div className="flex gap-1">
                                     <Button
                                       size="sm"
@@ -960,33 +958,35 @@ export default function EventRequestDetailPage({
                                     >
                                       Lists
                                     </Button>
-                                    {request.type !== "PUBLIC" && (
-                                      <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        className="h-6 px-2 text-xs bg-purple-600 text-white hover:bg-purple-700 dark:bg-purple-500 dark:hover:bg-purple-600 font-medium shadow-sm hover:shadow transition-all"
-                                        onClick={() => setShowRegistrationListModal(true)}
-                                      >
-                                        Register Lists
-                                      </Button>
-                                    )}
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      disabled={request.type === "PUBLIC"}
+                                      className="h-6 px-2 text-xs bg-purple-600 text-white hover:bg-purple-700 dark:bg-purple-500 dark:hover:bg-purple-600 font-medium shadow-sm hover:shadow transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                      onClick={() => request.type !== "PUBLIC" && setShowRegistrationListModal(true)}
+                                      title={request.type === "PUBLIC" ? "Public events do not have registrations" : ""}
+                                    >
+                                      Register Lists
+                                    </Button>
                                   </div>
                                 </div>
-                                <div className="font-semibold text-blue-800 mt-1">
+                                <div className="font-semibold text-lg text-blue-800">
                                   {summaryLoading ? (
                                     <span className="text-muted-foreground">
                                       Loading...
                                     </span>
+                                  ) : request.type === "PUBLIC" ? (
+                                    `${request.maxCheckInCount} ${request.type === "PUBLIC" ? "checked in" : "registered"}`
                                   ) : (
-                                    `${eventSummary.totalRegistered} ${request.type === "PUBLIC" ? "checked in" : "registered"}`
+                                    `${eventSummary.totalRegistered} registered`
                                   )}
                                 </div>
                               </div>
-                              <div className="p-3 bg-linear-to-br from-amber-50 to-orange-50 rounded-lg border border-amber-200">
-                                <label className="text-sm text-amber-700 font-medium">
+                              <div className="p-4 bg-gradient-to-br from-amber-50 to-orange-50 rounded-lg border border-amber-200">
+                                <div className="text-sm text-amber-700 font-medium">
                                   Refunded
-                                </label>
-                                <div className="font-semibold text-amber-800 mt-1">
+                                </div>
+                                <div className="font-semibold text-lg text-amber-800">
                                   {summaryLoading ? (
                                     <span className="text-muted-foreground">
                                       Loading...
@@ -996,11 +996,11 @@ export default function EventRequestDetailPage({
                                   )}
                                 </div>
                               </div>
-                              <div className="p-3 bg-linear-to-br from-purple-50 to-violet-50 rounded-lg border border-purple-200">
-                                <label className="text-sm text-purple-700 font-medium">
+                              <div className="p-4 bg-gradient-to-br from-purple-50 to-violet-50 rounded-lg border border-purple-200">
+                                <div className="text-sm text-purple-700 font-medium">
                                   Total Commit Points
-                                </label>
-                                <div className="font-semibold text-purple-800 mt-1">
+                                </div>
+                                <div className="font-semibold text-lg text-purple-800">
                                   {summaryLoading ? (
                                     <span className="text-muted-foreground">
                                       Loading...
@@ -1221,10 +1221,7 @@ export default function EventRequestDetailPage({
                         ? "Already Settled"
                         : "Settle Event"}
                     </Button>
-                    <Button className="w-full bg-transparent" variant="outline">
-                      <Mail className="h-4 w-4 mr-2" />
-                      Contact Organizer
-                    </Button>
+                    
                   </CardContent>
                 </Card>
               )}
@@ -1243,10 +1240,7 @@ export default function EventRequestDetailPage({
                       <XCircle className="h-4 w-4 mr-2" />
                       Cancel Event
                     </Button>
-                    <Button className="w-full bg-transparent" variant="outline">
-                      <Mail className="h-4 w-4 mr-2" />
-                      Contact Organizer
-                    </Button>
+                    
                   </CardContent>
                 </Card>
               )}
@@ -1269,10 +1263,7 @@ export default function EventRequestDetailPage({
                         ? "Already Settled"
                         : "Settle Event"}
                     </Button>
-                    <Button className="w-full bg-transparent" variant="outline">
-                      <Mail className="h-4 w-4 mr-2" />
-                      Contact Organizer
-                    </Button>
+                    
                   </CardContent>
                 </Card>
               )}
@@ -1300,10 +1291,7 @@ export default function EventRequestDetailPage({
                       <XCircle className="h-4 w-4 mr-2" />
                       {processing ? "Processing..." : "Reject Request"}
                     </Button>
-                    <Button className="w-full bg-transparent" variant="outline">
-                      <Mail className="h-4 w-4 mr-2" />
-                      Contact Organizer
-                    </Button>
+                    
                   </CardContent>
                 </Card>
               )}
