@@ -397,6 +397,7 @@ export default function MemberGiftPage() {
 
 					{/* Products Grid */}
 					<div className="grid gap-4 grid-cols-4">
+						{/* 1. Logic Loading ban đầu (chỉ chạy khi chưa có dữ liệu) */}
 						{(isLoading || profileLoading) ? (
 							<div className="col-span-full">
 								<div className="bg-white rounded-lg border border-gray-200 p-16 text-center dark:bg-slate-900 dark:border-slate-800">
@@ -407,17 +408,8 @@ export default function MemberGiftPage() {
 									<p className="text-gray-600 dark:text-slate-400">Please wait while we fetch the best rewards for you</p>
 								</div>
 							</div>
-						) : isFetching ? (
-							<div className="col-span-full">
-								<div className="bg-white rounded-lg border border-gray-200 p-16 text-center dark:bg-slate-900 dark:border-slate-800">
-									<div className="w-20 h-20 mx-auto mb-6 rounded-full bg-purple-100 flex items-center justify-center dark:bg-purple-900/40">
-										<Loader2 className="h-10 w-10 text-purple-600 animate-spin" />
-									</div>
-									<h3 className="text-xl font-semibold mb-2 text-gray-900 dark:text-slate-100">Loading Products...</h3>
-									<p className="text-gray-600 dark:text-slate-400">Fetching gifts from this club</p>
-								</div>
-							</div>
 						) : userClubIds.length === 0 ? (
+							// 2. Logic chưa tham gia Club (Giữ nguyên)
 							<div className="col-span-full">
 								<div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-lg border border-orange-200 p-16 text-center">
 									<div className="w-20 h-20 mx-auto mb-6 rounded-full bg-white flex items-center justify-center shadow-md">
@@ -427,8 +419,7 @@ export default function MemberGiftPage() {
 									<p className="text-orange-700 mb-6">Join a club to start redeeming amazing rewards!</p>
 									<button
 										onClick={() => router.push('/student/club')}
-										className="px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white 
-										font-semibold rounded-lg transition-colors inline-flex items-center gap-2"
+										className="px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-semibold rounded-lg transition-colors inline-flex items-center gap-2"
 									>
 										<Layers className="h-4 w-4" />
 										Browse Clubs
@@ -436,6 +427,7 @@ export default function MemberGiftPage() {
 								</div>
 							</div>
 						) : paginatedProducts.length === 0 ? (
+							// 3. Logic không tìm thấy sản phẩm (Giữ nguyên)
 							<div className="col-span-full">
 								<div className="bg-white rounded-lg border border-gray-200 p-16 text-center dark:bg-slate-900 dark:border-slate-800">
 									<div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gray-100 flex items-center justify-center dark:bg-slate-800">
@@ -448,8 +440,7 @@ export default function MemberGiftPage() {
 									{searchTerm && (
 										<button
 											onClick={() => setSearchTerm("")}
-											className="px-6 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium rounded-lg transition-colors 
-											dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-100"
+											className="px-6 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium rounded-lg transition-colors dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-100"
 										>
 											Clear Search
 										</button>
@@ -457,17 +448,22 @@ export default function MemberGiftPage() {
 								</div>
 							</div>
 						) : (
+							// 4. HIỂN THỊ SẢN PHẨM (Đoạn bạn hỏi nằm ở đây)
+							// Chúng ta đã XÓA điều kiện chặn `isFetching ? (...)` ở phía trên
 							paginatedProducts.map((p) => {
 								const thumbnail = p.media?.find((m) => m.thumbnail)?.url || "/placeholder.svg";
 								const isRedeeming = redeemingProductId === p.id;
 								const isOutOfStock = p.stockQuantity === 0;
 								const detailUrl = `/student/gift/${p.id}?clubId=${selectedClubId}`;
 
+								// THÊM: Tạo hiệu ứng mờ nhẹ khi đang cập nhật dữ liệu ngầm (Optional UX)
+								const opacityClass = isFetching ? "opacity-70 transition-opacity duration-300" : "opacity-100 transition-opacity duration-300";
+
 								return (
 									<div
 										key={p.id}
-										className="group bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300 
-										hover:-translate-y-1 flex flex-col dark:bg-slate-900 dark:border-slate-800"
+										// THÊM: Chèn biến opacityClass vào className
+										className={`group bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-1 flex flex-col dark:bg-slate-900 dark:border-slate-800 ${opacityClass}`}
 									>
 										{/* Image Section */}
 										<div
@@ -480,7 +476,6 @@ export default function MemberGiftPage() {
 												className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
 												onError={(e) => (e.currentTarget.src = "/placeholder.svg")}
 											/>
-
 											{/* Stock Badge */}
 											{isOutOfStock && (
 												<div className="absolute top-2 left-2 bg-red-500 text-white text-xs font-semibold px-2 py-1 rounded-full">
@@ -492,8 +487,7 @@ export default function MemberGiftPage() {
 										<div className="p-3 flex flex-col gap-2 grow">
 											{/* Title */}
 											<h3
-												className="text-sm font-bold line-clamp-2 cursor-pointer hover:text-blue-600 transition-colors min-h-10 
-												dark:text-slate-100 dark:hover:text-blue-400"
+												className="text-sm font-bold line-clamp-2 cursor-pointer hover:text-blue-600 transition-colors min-h-10 dark:text-slate-100 dark:hover:text-blue-400"
 												title={p.name}
 												onClick={() => router.push(detailUrl)}
 											>
@@ -511,15 +505,13 @@ export default function MemberGiftPage() {
 													{p.tags.slice(0, 4).map((tag) => (
 														<span
 															key={tag}
-															className="text-xs font-medium px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200 
-															dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800"
+															className="text-xs font-medium px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800"
 														>
 															{tag}
 														</span>
 													))}
 													{p.tags.length > 4 && (
-														<span className="text-xs font-medium px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded dark:bg-slate-800 
-														dark:text-slate-200">
+														<span className="text-xs font-medium px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded dark:bg-slate-800 dark:text-slate-200">
 															+{p.tags.length - 4}
 														</span>
 													)}
@@ -537,6 +529,7 @@ export default function MemberGiftPage() {
 													</div>
 													<div className="text-right">
 														<p className="text-xs text-gray-500 dark:text-slate-400">Stock</p>
+														{/* Số lượng sẽ tự động nhảy số khi API trả về mà không reload trang */}
 														<p className={`text-sm font-bold ${isOutOfStock ? 'text-red-500' : 'text-green-600'}`}>
 															{p.stockQuantity.toLocaleString('en-US')}
 														</p>
@@ -547,8 +540,7 @@ export default function MemberGiftPage() {
 												<button
 													onClick={() => router.push(detailUrl)}
 													disabled={isRedeeming}
-													className="w-full py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg 
-													transition-colors duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+													className="w-full py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
 												>
 													{isRedeeming ? (
 														<>

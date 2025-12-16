@@ -9,7 +9,15 @@
           "important": true
         },
         {
-          "text": "Participants who fully attend the event will receive a reward of 2x to 5x the commit points paid.",
+          "text": "Check-in at the start of the event is required to be eligible for any rewards.",
+          "important": true
+        },
+        {
+          "text": "Participants who successfully check in at both the start and mid-point of the event will receive a full refund of their commit points.",
+          "important": true
+        },
+        {
+          "text": "Participants who complete all three check-ins (start, mid, and end) will receive a full refund of their commit points, plus a bonus equal to the ticket cost.",
           "important": true
         },
         {
@@ -36,4 +44,3 @@
     "important": false
   }
 }
-
