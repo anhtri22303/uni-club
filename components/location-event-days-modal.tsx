@@ -228,6 +228,14 @@ export function LocationEventDaysModal({
   }
 
   const handleEditTime = (index: number) => {
+    // Reset startTime and endTime for the day being edited
+    const newDays = [...days]
+    newDays[index] = {
+      ...newDays[index],
+      startTime: "",
+      endTime: ""
+    }
+    setDays(newDays)
     setEditingDayIndex(index)
     setSelectedDateForTime(days[index].date)
     setShowTimeSelection(true)
