@@ -775,11 +775,12 @@ export const rejectEvent = async (eventId: string | number, reason: string) => {
  * PUT /api/events/{eventId}/cancel
  * Admin/Staff hủy sự kiện đã được duyệt
  * @param eventId - ID của sự kiện
+ * @param reason - Lý do hủy sự kiện
  * @returns { success: boolean, message: string, data: string }
  */
-export const cancelEvent = async (eventId: string | number) => {
+export const cancelEvent = async (eventId: string | number, reason: string) => {
   try {
-    const response = await axiosInstance.put(`/api/events/${eventId}/cancel`);
+    const response = await axiosInstance.put(`/api/events/${eventId}/cancel`, { reason });
     const data: any = response.data;
     // Response: { success: true, message: "string", data: "string" }
     return data;

@@ -548,11 +548,19 @@ export default function EventRequestDetailPage({
     }).format(amount);
   };
 
-  const handleCancelEvent = async () => {
+  const handleCancelEvent = () => {
     if (!request) return;
+    // Open modal for reason input
+    setShowCancelModal(true);
+  };
+
+  const handleConfirmCancel = async (reason: string) => {
+    if (!request) return;
+
     setCancelling(true);
     try {
-      await cancelEvent(request.id);
+      // Call API with reason parameter
+      await cancelEvent(request.id, reason);
       
       // Refresh event data
       const updatedData = await getEventById(params.id);
@@ -564,14 +572,16 @@ export default function EventRequestDetailPage({
       });
     } catch (err: any) {
       console.error("Cancel event failed", err);
+      const apiError =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Failed to cancel event";
       toast({
         title: "Error",
-        description:
-          err?.response?.data?.message ||
-          err?.message ||
-          "Failed to cancel event",
+        description: apiError,
         variant: "destructive",
       });
+      throw err; // Re-throw to let modal handle the error state
     } finally {
       setCancelling(false);
     }
@@ -1600,7 +1610,7 @@ export default function EventRequestDetailPage({
             <CancelEventModal
               open={showCancelModal}
               onOpenChange={setShowCancelModal}
-              onConfirm={handleCancelEvent}
+              onConfirm={handleConfirmCancel}
               eventName={request.name || request.eventName || ""}
               isLoading={cancelling}
             />

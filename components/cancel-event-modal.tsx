@@ -10,13 +10,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { AlertTriangle, XCircle, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface CancelEventModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirm: () => Promise<void>;
+  onConfirm: (reason: string) => Promise<void>;
   eventName: string;
   isLoading?: boolean;
 }
@@ -29,12 +31,18 @@ export function CancelEventModal({
   isLoading = false,
 }: CancelEventModalProps) {
   const [processing, setProcessing] = useState(false);
+  const [reason, setReason] = useState("");
 
   const handleConfirm = async () => {
+    if (!reason.trim()) {
+      return; // Don't proceed if reason is empty
+    }
+    
     setProcessing(true);
     try {
-      await onConfirm();
+      await onConfirm(reason);
       onOpenChange(false);
+      setReason(""); // Clear reason after successful cancel
     } catch (error) {
       // Error handling is done in parent component
     } finally {
@@ -42,8 +50,15 @@ export function CancelEventModal({
     }
   };
 
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      setReason(""); // Clear reason when closing modal
+    }
+    onOpenChange(open);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <div className="flex items-center gap-3">
@@ -74,6 +89,22 @@ export function CancelEventModal({
             <p className="text-base font-bold text-gray-900 bg-gray-100 p-3 rounded-md border border-gray-200">
               "{eventName}"
             </p>
+
+            {/* Reason textarea */}
+            <div className="space-y-2">
+              <Label htmlFor="cancelReason" className="text-sm font-semibold text-gray-900">
+                Reason for Cancellation <span className="text-red-500">*</span>
+              </Label>
+              <Textarea
+                id="cancelReason"
+                placeholder="Please provide a reason for cancelling this event..."
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                rows={3}
+                className="border-slate-300 resize-none"
+                disabled={processing || isLoading}
+              />
+            </div>
 
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-2">
               <p className="text-sm font-semibold text-amber-900">
@@ -116,7 +147,7 @@ export function CancelEventModal({
         <DialogFooter className="gap-2 sm:gap-0">
           <Button
             variant="outline"
-            onClick={() => onOpenChange(false)}
+            onClick={() => handleOpenChange(false)}
             disabled={processing || isLoading}
             className="w-full sm:w-auto"
           >
@@ -125,7 +156,7 @@ export function CancelEventModal({
           <Button
             variant="destructive"
             onClick={handleConfirm}
-            disabled={processing || isLoading}
+            disabled={processing || isLoading || !reason.trim()}
             className="w-full sm:w-auto bg-red-600 hover:bg-red-700"
           >
             {processing || isLoading ? (
