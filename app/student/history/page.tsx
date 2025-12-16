@@ -20,7 +20,7 @@ import { getOrderLogsByMembershipAndOrder, OrderLog } from "@/service/redeemApi"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { timeObjectToString } from "@/service/eventApi"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 
 // Removed static `src/data` imports — use empty fallbacks. Prefer remote `clubName` from activity data when available.
@@ -31,7 +31,20 @@ export default function MemberHistoryPage() {
   const { auth } = useAuth()
   const { membershipApplications, vouchers } = useData()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [activeTab, setActiveTab] = useState<"member" | "club" | "order" | "event" | "wallet">("member")
+  
+  // Check for tab query parameter on mount
+  useEffect(() => {
+    const tabParam = searchParams.get('tab')
+    if (tabParam === 'wallet') {
+      setActiveTab('wallet')
+      // Load wallet data immediately
+      if (!myWallet) {
+        loadWalletData()
+      }
+    }
+  }, [searchParams])
   
   // Wallet state
   const [myWallet, setMyWallet] = useState<ApiWallet | null>(null)

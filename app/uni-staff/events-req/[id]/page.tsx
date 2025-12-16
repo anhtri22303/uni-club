@@ -793,7 +793,7 @@ export default function EventRequestDetailPage({
                   </div>
 
                   {/* Commit Point Cost */}
-                  {request.commitPointCost !== undefined && (
+                  {request.commitPointCost !== undefined && request.type !== "PUBLIC" && (
                     <div>
                       <label className="text-sm font-medium text-muted-foreground">
                         Commit Point
@@ -986,7 +986,7 @@ export default function EventRequestDetailPage({
                                       Loading...
                                     </span>
                                   ) : request.type === "PUBLIC" ? (
-                                    `${request.maxCheckInCount} ${request.type === "PUBLIC" ? "checked in" : "registered"}`
+                                    `${request.currentCheckInCount} ${request.type === "PUBLIC" ? "checked in" : "registered"}`
                                   ) : (
                                     `${eventSummary.totalRegistered} registered`
                                   )}
@@ -1006,20 +1006,22 @@ export default function EventRequestDetailPage({
                                   )}
                                 </div>
                               </div>
-                              <div className="p-4 bg-gradient-to-br from-purple-50 to-violet-50 rounded-lg border border-purple-200">
-                                <div className="text-sm text-purple-700 font-medium">
-                                  Total Commit Points
+                              {request.type !== "PUBLIC" && (
+                                <div className="p-4 bg-gradient-to-br from-purple-50 to-violet-50 rounded-lg border border-purple-200">
+                                  <div className="text-sm text-purple-700 font-medium">
+                                    Total Commit Points
+                                  </div>
+                                  <div className="font-semibold text-lg text-purple-800">
+                                    {summaryLoading ? (
+                                      <span className="text-muted-foreground">
+                                        Loading...
+                                      </span>
+                                    ) : (
+                                      `${eventSummary.totalCommitPoints} points`
+                                    )}
+                                  </div>
                                 </div>
-                                <div className="font-semibold text-lg text-purple-800">
-                                  {summaryLoading ? (
-                                    <span className="text-muted-foreground">
-                                      Loading...
-                                    </span>
-                                  ) : (
-                                    `${eventSummary.totalCommitPoints} points`
-                                  )}
-                                </div>
-                              </div>
+                              )}
                             </div>
                           )}
                       </>

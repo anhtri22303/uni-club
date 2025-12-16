@@ -7,9 +7,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useRouter } from "next/navigation"
 import { User, LogOut, Award, Trophy, Gem, Star, Flame, Check, ChevronDown, ChevronUp } from "lucide-react"
 import { useSidebarContext } from "@/components/app-shell"
-import { ApiMembershipWallet } from "@/service/walletApi"
+import { ApiMembershipWallet, getClubWallet, ApiClubWallet } from "@/service/walletApi"
+import { getClubIdFromToken } from "@/service/clubApi"
 // import { fetchProfile } from "@/service/userApi"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
 
 import { useFullProfile } from "@/hooks/use-query-hooks"
 import { LoadingSpinner } from "@/components/loading-spinner"
@@ -36,6 +38,31 @@ function getTierInfo(points: number, role: string) {
   return { tier: "Member", color: "from-blue-400 to-blue-600", textColor: "text-blue-100", icon: Star }
 }
 
+// Point levels configuration for tooltip
+const pointLevels = [
+  { min: 10000, label: "10,000+", gradient: "from-yellow-400 via-pink-500 to-purple-600", name: "🏆 Legendary", desc: "Rainbow flame" },
+  { min: 7000, label: "7,000+", gradient: "from-rose-500 via-red-500 to-rose-600", name: "💎 Epic", desc: "Crimson flame" },
+  { min: 5000, label: "5,000+", gradient: "from-orange-500 via-red-500 to-pink-500", name: "👑 Master", desc: "Hot flame" },
+  { min: 3000, label: "3,000+", gradient: "from-orange-400 to-orange-600", name: "⭐ Expert", desc: "Orange flame" },
+  { min: 2000, label: "2,000+", gradient: "from-yellow-400 to-orange-500", name: "🌟 Advanced", desc: "Yellow flame" },
+  { min: 1500, label: "1,500+", gradient: "from-yellow-300 to-yellow-500", name: "✨ Skilled", desc: "Bright flame" },
+  { min: 1000, label: "1,000+", gradient: "from-lime-400 to-yellow-500", name: "📈 Intermediate", desc: "Warming up" },
+  { min: 500, label: "500+", gradient: "from-green-400 to-lime-500", name: "🌱 Beginner", desc: "Green flame" },
+  { min: 200, label: "200+", gradient: "from-cyan-400 to-green-500", name: "🔰 Novice", desc: "Cool flame" },
+  { min: 50, label: "50+", gradient: "from-blue-400 to-cyan-500", name: "🌿 Starter", desc: "Blue flame" },
+  { min: 0, label: "0-49", gradient: "from-slate-300 to-slate-400", name: "💤 Inactive", desc: "No flame" },
+]
+
+// Fixed style for Club Wallet (blue gradient)
+const clubWalletStyle = {
+  cardClassName: "bg-gradient-to-r from-blue-500 to-cyan-500",
+  textColorClassName: "text-white",
+  subtitleColorClassName: "text-white/90",
+  iconBgClassName: "bg-white/20",
+  iconColorClassName: "text-white",
+  animationClassName: "",
+}
+
 // Points card style helper (copied/adapted from profile page)
 function getPointsCardStyle(points: number) {
   if (points >= 10000) {
@@ -50,7 +77,7 @@ function getPointsCardStyle(points: number) {
   }
   if (points >= 7000) {
     return {
-      cardClassName: "bg-gradient-to-r from-rose-500 to-orange-500",
+      cardClassName: "bg-gradient-to-r from-rose-500 via-red-500 to-rose-600",
       textColorClassName: "text-white",
       subtitleColorClassName: "text-white/85",
       iconBgClassName: "bg-white/25",
@@ -60,7 +87,7 @@ function getPointsCardStyle(points: number) {
   }
   if (points >= 5000) {
     return {
-      cardClassName: "bg-gradient-to-r from-purple-600 to-pink-600",
+      cardClassName: "bg-gradient-to-r from-orange-500 via-red-500 to-pink-500",
       textColorClassName: "text-white",
       subtitleColorClassName: "text-white/80",
       iconBgClassName: "bg-white/20",
@@ -70,7 +97,7 @@ function getPointsCardStyle(points: number) {
   }
   if (points >= 3000) {
     return {
-      cardClassName: "bg-gradient-to-r from-sky-500 to-indigo-500",
+      cardClassName: "bg-gradient-to-r from-orange-400 to-orange-600",
       textColorClassName: "text-white",
       subtitleColorClassName: "text-white/80",
       iconBgClassName: "bg-white/20",
@@ -80,7 +107,7 @@ function getPointsCardStyle(points: number) {
   }
   if (points >= 2000) {
     return {
-      cardClassName: "bg-gradient-to-r from-emerald-500 to-teal-500",
+      cardClassName: "bg-gradient-to-r from-yellow-400 to-orange-500",
       textColorClassName: "text-white",
       subtitleColorClassName: "text-white/80",
       iconBgClassName: "bg-white/20",
@@ -90,7 +117,7 @@ function getPointsCardStyle(points: number) {
   }
   if (points >= 1500) {
     return {
-      cardClassName: "bg-gradient-to-r from-cyan-400 to-blue-500",
+      cardClassName: "bg-gradient-to-r from-yellow-300 to-yellow-500",
       textColorClassName: "text-white",
       subtitleColorClassName: "text-white/75",
       iconBgClassName: "bg-white/20",
@@ -100,17 +127,17 @@ function getPointsCardStyle(points: number) {
   }
   if (points >= 1000) {
     return {
-      cardClassName: "bg-amber-50 dark:bg-amber-900/20",
-      textColorClassName: "text-amber-900 dark:text-amber-200",
-      subtitleColorClassName: "text-amber-700 dark:text-amber-300",
-      iconBgClassName: "bg-amber-200 dark:bg-amber-800/50",
-      iconColorClassName: "text-amber-600 dark:text-amber-400",
+      cardClassName: "bg-gradient-to-r from-lime-400 to-yellow-500",
+      textColorClassName: "text-white",
+      subtitleColorClassName: "text-white/80",
+      iconBgClassName: "bg-white/20",
+      iconColorClassName: "text-white",
       animationClassName: "animate-flicker [animation-duration:3s]",
     }
   }
   if (points >= 500) {
     return {
-      cardClassName: "bg-gradient-to-r from-lime-400 to-green-500",
+      cardClassName: "bg-gradient-to-r from-green-400 to-lime-500",
       textColorClassName: "text-white",
       subtitleColorClassName: "text-white/75",
       iconBgClassName: "bg-white/20",
@@ -120,21 +147,21 @@ function getPointsCardStyle(points: number) {
   }
   if (points >= 200) {
     return {
-      cardClassName: "bg-blue-50 dark:bg-blue-900/20",
-      textColorClassName: "text-blue-900 dark:text-blue-200",
-      subtitleColorClassName: "text-blue-700 dark:text-blue-300",
-      iconBgClassName: "bg-blue-200 dark:bg-blue-800/50",
-      iconColorClassName: "text-blue-600 dark:text-blue-400",
+      cardClassName: "bg-gradient-to-r from-cyan-400 to-green-500",
+      textColorClassName: "text-white",
+      subtitleColorClassName: "text-white/80",
+      iconBgClassName: "bg-white/20",
+      iconColorClassName: "text-white",
       animationClassName: "",
     }
   }
   if (points >= 50) {
     return {
-      cardClassName: "bg-green-50 dark:bg-green-900/20",
-      textColorClassName: "text-green-900 dark:text-green-200",
-      subtitleColorClassName: "text-green-700 dark:text-green-300",
-      iconBgClassName: "bg-green-200 dark:bg-green-800/50",
-      iconColorClassName: "text-green-600 dark:text-green-400",
+      cardClassName: "bg-gradient-to-r from-blue-400 to-cyan-500",
+      textColorClassName: "text-white",
+      subtitleColorClassName: "text-white/80",
+      iconBgClassName: "bg-white/20",
+      iconColorClassName: "text-white",
       animationClassName: "",
     }
   }
@@ -157,6 +184,8 @@ export function UserProfileWidget() {
   // GỌI HOOK `useFullProfile`
   const { data: profile, isLoading: profileLoading } = useFullProfile(true);
   const [selectedWalletId, setSelectedWalletId] = useState<string>("")
+  const [clubWallet, setClubWallet] = useState<ApiClubWallet | null>(null)
+  const [clubWalletLoading, setClubWalletLoading] = useState(false)
   const widgetCollapsed = false; // Luôn hiển thị
   // const [widgetCollapsed, setWidgetCollapsed] = useState<boolean>(true)
 
@@ -175,6 +204,27 @@ export function UserProfileWidget() {
     }
   }, [profile, profileLoading])
 
+  // Load club wallet for club leaders
+  useEffect(() => {
+    const loadClubWallet = async () => {
+      if (auth.role === "club_leader" && !profileLoading) {
+        setClubWalletLoading(true)
+        try {
+          const clubId = getClubIdFromToken()
+          if (clubId) {
+            const wallet = await getClubWallet(clubId)
+            setClubWallet(wallet)
+          }
+        } catch (error) {
+          console.error("Failed to load club wallet:", error)
+        } finally {
+          setClubWalletLoading(false)
+        }
+      }
+    }
+    loadClubWallet()
+  }, [auth.role, profileLoading])
+
   if (!auth.role || !auth.user) return null
   // DÙNG useMemo ĐỂ LẤY DỮ LIỆU TỪ `profile` (thay thế cho useEffect)
   const memberships = useMemo((): ApiMembershipWallet[] => {
@@ -185,46 +235,70 @@ export function UserProfileWidget() {
 
     if (!walletsList || walletsList.length === 0) {
       if (profile?.wallet) {
-        // Lấy tên club từ mảng `clubs` (nếu có)
-        const clubName = profile?.clubs?.[0]?.clubName || "My Wallet";
-        const clubId = profile?.clubs?.[0]?.clubId || 0;
-
-        // Tạo một mảng chứa 1 wallet
+        // Tạo một mảng chứa 1 wallet - ví cá nhân của user
         walletsList = [{
           walletId: profile.wallet.walletId,
           balancePoints: profile.wallet.balancePoints,
           ownerType: profile.wallet.ownerType,
-          clubId: clubId,
-          clubName: clubName,
+          clubId: 0,
+          clubName: "My Point",
           userId: profile.wallet.userId,
           userFullName: profile.wallet.userFullName
         }];
       }
     }
 
-    // Map data (y hệt code cũ của bạn)
+    // For club leaders, add club wallet at the beginning
+    if (auth.role === "club_leader" && clubWallet) {
+      const clubWalletEntry: ApiMembershipWallet = {
+        walletId: clubWallet.walletId,
+        balancePoints: clubWallet.balancePoints,
+        ownerType: clubWallet.ownerType,
+        clubId: clubWallet.clubId,
+        clubName: clubWallet.clubName || "Club Wallet",
+        userId: clubWallet.userId || 0,
+        userFullName: clubWallet.userFullName || ""
+      };
+      
+      // Add club wallet at the beginning
+      walletsList = [clubWalletEntry, ...walletsList];
+    }
+
+    // Map data - đổi tên wallet cá nhân thành "My Point"
     return walletsList.map((w: any) => ({
       walletId: w.walletId,
       balancePoints: w.balancePoints,
-      ownerType: w.ownerType,
+      ownerType: w.ownerType === "USER" ? "USER" : w.ownerType,
       clubId: w.clubId,
-      clubName: w.clubName,
+      clubName: w.ownerType === "USER" ? "My Point" : w.clubName,
       userId: w.userId,
       userFullName: w.userFullName
     }));
-  }, [profile]); // Chỉ tính toán lại khi `profile` thay đổi
+  }, [profile, auth.role, clubWallet]); // Chỉ tính toán lại khi `profile`, `auth.role`, hoặc `clubWallet` thay đổi
 
   // Update displayed points when wallet selection changes
   //  DÙNG useEffect ĐỂ CHỌN WALLET MẶC ĐỊNH KHI `memberships` THAY ĐỔI
   useEffect(() => {
-    // Nếu chưa chọn wallet NÀO, VÀ memberships đã tải xong (có ít nhất 1)
-    if (!selectedWalletId && memberships.length > 0) {
-      setSelectedWalletId(memberships[0].walletId.toString())
-    } else if (memberships.length === 0) {
+    if (memberships.length === 0) {
       // Nếu profile update và không còn wallet nào, reset
       setSelectedWalletId("")
+      return;
     }
-  }, [memberships, selectedWalletId]) // Chạy khi `memberships` thay đổi
+
+    // Ưu tiên chọn Club Wallet (ownerType = "CLUB") làm mặc định cho club leader
+    if (auth.role === "club_leader" && clubWallet) {
+      const clubWalletInList = memberships.find(m => m.ownerType === "CLUB");
+      if (clubWalletInList) {
+        setSelectedWalletId(clubWalletInList.walletId.toString());
+        return;
+      }
+    }
+
+    // Nếu chưa chọn wallet NÀO, chọn wallet đầu tiên
+    if (!selectedWalletId && memberships.length > 0) {
+      setSelectedWalletId(memberships[0].walletId.toString())
+    }
+  }, [memberships, selectedWalletId, auth.role, clubWallet]) // Chạy khi `memberships` thay đổi
 
   // 10. DÙNG useMemo ĐỂ TÍNH ĐIỂM (thay thế cho useEffect)
   const userPoints = useMemo(() => {
@@ -257,7 +331,11 @@ export function UserProfileWidget() {
   const shouldShowPoints = auth.role === "student" || auth.role === "club_leader"
   const tierInfo = getTierInfo(userPoints, auth.role)
   const TierIcon = tierInfo.icon
-  const pointsStyle = getPointsCardStyle(userPoints)
+  
+  // Use fixed blue color for Club Wallet, otherwise use points-based color
+  const selectedMembership = memberships.find(m => m.walletId.toString() === selectedWalletId)
+  const isClubWallet = selectedMembership?.ownerType === "CLUB"
+  const pointsStyle = isClubWallet ? clubWalletStyle : getPointsCardStyle(userPoints)
 
   return (
     <div
@@ -297,7 +375,16 @@ export function UserProfileWidget() {
               memberships.length >= 2 ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <div className={`rounded-lg p-0 overflow-hidden shadow-md cursor-pointer hover:shadow-lg hover:scale-[1.02] transition-all duration-200 mt-4 ${pointsStyle.cardClassName} ring-2 ring-transparent hover:ring-white/20`}>
+                    <div 
+                      className={`rounded-lg p-0 overflow-hidden shadow-md cursor-pointer hover:shadow-lg hover:scale-[1.02] transition-all duration-200 mt-4 ${pointsStyle.cardClassName} ring-2 ring-transparent hover:ring-white/20`}
+                      onClick={() => {
+                        if (auth.role === "club_leader") {
+                          router.push("/club-leader/points")
+                        } else if (auth.role === "student") {
+                          router.push("/student/history?tab=wallet")
+                        }
+                      }}
+                    >
                       <div className="p-3 flex items-center justify-between gap-2">
                         <div className="flex-1 min-w-0 overflow-hidden">
                           <div className={`text-xs font-medium transition-colors duration-300 ${pointsStyle.subtitleColorClassName} flex items-center gap-1`}>
@@ -356,19 +443,87 @@ export function UserProfileWidget() {
                 </DropdownMenu>
               ) : (
                 // Static points card when 0 or 1 membership
-                <div className={`rounded-lg p-0 overflow-hidden shadow-sm mt-4 ${pointsStyle.cardClassName}`}>
-                  <div className="p-3 flex items-center justify-between gap-2">
-                    <div className="flex-1 min-w-0 overflow-hidden">
-                      <p className={`text-xs font-medium transition-colors duration-300 ${pointsStyle.subtitleColorClassName} truncate`}>
-                        {memberships.length > 0 ? "Points" : "No Wallet"}
+                <HoverCard openDelay={300} closeDelay={100}>
+                  <HoverCardTrigger asChild>
+                    <div 
+                      className="cursor-pointer"
+                      onClick={() => {
+                        if (auth.role === "club_leader") {
+                          router.push("/club-leader/points")
+                        } else if (auth.role === "student") {
+                          router.push("/student/history?tab=wallet")
+                        }
+                      }}
+                    >
+                      <div className={`rounded-lg p-0 overflow-hidden shadow-sm mt-4 ${pointsStyle.cardClassName}`}>
+                        <div className="p-3 flex items-center justify-between gap-2">
+                          <div className="flex-1 min-w-0 overflow-hidden">
+                            <p className={`text-xs font-medium transition-colors duration-300 ${pointsStyle.subtitleColorClassName} truncate`}>
+                              {memberships.length > 0 ? "Points" : "No Wallet"}
+                            </p>
+                            <p className={`text-2xl font-bold transition-colors duration-300 ${pointsStyle.textColorClassName} truncate`}>{userPoints.toLocaleString()}</p>
+                          </div>
+                          <div className={`p-2 rounded-full transition-colors duration-300 flex-shrink-0 ${pointsStyle.iconBgClassName}`}>
+                            <Flame className={`h-5 w-5 transition-colors duration-300 ${pointsStyle.iconColorClassName} ${pointsStyle.animationClassName}`} />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </HoverCardTrigger>
+                  <HoverCardContent className="w-80 p-0 z-[100]" align="start" side="right" sideOffset={10}>
+                    <div className="p-4 border-b bg-gradient-to-r from-blue-50 to-purple-50 dark:from-slate-800 dark:to-slate-900">
+                      <h4 className="font-semibold text-base flex items-center gap-2">
+                        <Flame className="h-5 w-5 text-orange-500" />
+                        Point Levels Guide
+                      </h4>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Earn points to unlock colorful flame effects
                       </p>
-                      <p className={`text-2xl font-bold transition-colors duration-300 ${pointsStyle.textColorClassName} truncate`}>{userPoints.toLocaleString()}</p>
                     </div>
-                    <div className={`p-2 rounded-full transition-colors duration-300 flex-shrink-0 ${pointsStyle.iconBgClassName}`}>
-                      <Flame className={`h-5 w-5 transition-colors duration-300 ${pointsStyle.iconColorClassName} ${pointsStyle.animationClassName}`} />
+                    <div className="max-h-[400px] overflow-y-auto">
+                      {pointLevels.map((level, index) => {
+                        const isCurrentLevel = userPoints >= level.min && (index === 0 || userPoints < pointLevels[index - 1].min)
+                        return (
+                          <div
+                            key={level.min}
+                            className={`p-3 border-b last:border-0 transition-all ${
+                              isCurrentLevel
+                                ? "bg-blue-50 dark:bg-blue-900/20 border-l-4 border-l-blue-500"
+                                : "hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-3 flex-1">
+                                <div className={`w-10 h-10 rounded-lg bg-gradient-to-r ${level.gradient} flex items-center justify-center shadow-md`}>
+                                  <Flame className="h-5 w-5 text-white" />
+                                </div>
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-semibold text-sm">{level.name}</span>
+                                    {isCurrentLevel && (
+                                      <span className="text-xs px-2 py-0.5 bg-blue-500 text-white rounded-full font-medium">
+                                        Current
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className="text-xs font-medium text-muted-foreground">{level.label} points</span>
+                                    <span className="text-xs text-muted-foreground/80 italic">{level.desc}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
                     </div>
-                  </div>
-                </div>
+                    <div className="p-3 bg-slate-50 dark:bg-slate-900 border-t">
+                      <p className="text-xs text-center text-muted-foreground">
+                        🔥 Keep earning points to reach higher levels!
+                      </p>
+                    </div>
+                  </HoverCardContent>
+                </HoverCard>
               )
             )
           )}

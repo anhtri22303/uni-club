@@ -21,12 +21,13 @@ import { editProfile, fetchProfile, uploadAvatar, uploadBackground, getProfileSt
 import { AvatarCropModal } from "@/components/avatar-crop-modal"
 import { ChangePasswordModal } from "@/components/change-password"
 import { CompleteProfileModal } from "@/components/complete-profile-modal"
-import { ApiMembershipWallet } from "@/service/walletApi"
+import { ApiMembershipWallet, getClubWallet, ApiClubWallet } from "@/service/walletApi"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from "@/components/ui/select"
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
 import { Major, fetchMajors } from "@/service/majorApi" // Import từ majorApi
 import { fetchUser } from "@/service/userApi"
 import { fetchEvent } from "@/service/eventApi"
-import { fetchClub } from "@/service/clubApi"
+import { fetchClub, getClubIdFromToken } from "@/service/clubApi"
 
 // Types for profile data
 interface ProfileData {
@@ -83,6 +84,10 @@ export default function ProfilePage() {
 
   // States for wallet memberships
   const [memberships, setMemberships] = useState<ApiMembershipWallet[]>([])
+
+  // State for club wallet (club leaders only)
+  const [clubWallet, setClubWallet] = useState<ApiClubWallet | null>(null)
+  const [clubWalletLoading, setClubWalletLoading] = useState(false)
 
   //--- THÊM STATE CHO MAJORS ---
   const [allMajors, setAllMajors] = useState<Major[]>([])
@@ -234,16 +239,20 @@ export default function ProfilePage() {
         // If API returns singular wallet, convert to array
         if (!walletsList || walletsList.length === 0) {
           if (profile?.wallet) {
-            // For singular wallet, create entry with club name from clubs array
-            const clubName = profile?.clubs?.[0]?.clubName || "My Wallet"
-            const clubId = profile?.clubs?.[0]?.clubId || null
+            // Check ownerType to determine wallet name
+            const isPersonalWallet = profile.wallet.ownerType === "USER"
+            const walletName = isPersonalWallet 
+              ? "My Points" // Personal wallet
+              : profile?.clubs?.[0]?.clubName || "Club Wallet" // Club wallet
+            
+            const clubId = isPersonalWallet ? null : (profile?.clubs?.[0]?.clubId || null)
 
             walletsList = [{
               walletId: profile.wallet.walletId,
               balancePoints: profile.wallet.balancePoints,
               ownerType: profile.wallet.ownerType,
               clubId: clubId,
-              clubName: clubName,
+              clubName: walletName,
               userId: profile.wallet.userId,
               userFullName: profile.wallet.userFullName
             }]
@@ -256,6 +265,22 @@ export default function ProfilePage() {
       // Clear file selection when profile loads
       setSelectedFile(null)
       setPreviewAvatarUrl("")
+
+      // Load club wallet for club leaders
+      if (auth.role === "club_leader") {
+        setClubWalletLoading(true)
+        try {
+          const clubId = getClubIdFromToken()
+          if (clubId) {
+            const wallet = await getClubWallet(clubId)
+            setClubWallet(wallet)
+          }
+        } catch (error) {
+          console.error("Failed to load club wallet:", error)
+        } finally {
+          setClubWalletLoading(false)
+        }
+      }
 
       // Load profile statistics for students and club leaders
       if (auth.role === "student" || auth.role === "club_leader") {
@@ -712,74 +737,50 @@ export default function ProfilePage() {
       .slice(0, 2)
   }
 
-  // Show loading state
-  if (profileState.loading) {
-    return (
-      <ProtectedRoute allowedRoles={["student", "club_leader", "uni_staff", "admin", "staff"]}>
-        <AppShell>
-          <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
-            <Card className="w-full max-w-md">
-              <CardContent className="flex flex-col items-center space-y-4 p-8">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="text-lg font-medium">Loading Profile...</p>
-                <p className="text-sm text-muted-foreground text-center">
-                  Please wait a moment
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </AppShell>
-      </ProtectedRoute>
-    )
+  // Destructure profile data for easier access (with fallback for loading state)
+  const { fullName, email, phone, majorName, studentCode, bio, avatarUrl, backgroundUrl, userPoints } = profileState.data || {
+    fullName: "",
+    email: "",
+    phone: "",
+    majorName: "",
+    studentCode: "",
+    bio: "",
+    avatarUrl: "",
+    backgroundUrl: "",
+    userPoints: 0
   }
 
-  // Show error state
-  if (profileState.error) {
-    return (
-      <ProtectedRoute allowedRoles={["student", "club_leader", "uni_staff", "admin", "staff"]}>
-        <AppShell>
-          <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
-            <Card className="w-full max-w-md">
-              <CardContent className="flex flex-col items-center space-y-4 p-8">
-                <AlertCircle className="h-12 w-12 text-red-500" />
-                <div className="text-center space-y-2">
-                  <h3 className="text-lg font-semibold">Unable to Load Profile</h3>
-                  <p className="text-sm text-muted-foreground">{profileState.error}</p>
-                </div>
-                <Button onClick={loadProfile} className="w-full">
-                  Try Again
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        </AppShell>
-      </ProtectedRoute>
-    )
+  // --- Fixed style for Club Wallet (blue gradient) ---
+  const clubWalletStyle = {
+    cardClassName: "bg-gradient-to-r from-blue-500 to-cyan-500",
+    textColorClassName: "text-white",
+    subtitleColorClassName: "text-white/90",
+    iconBgClassName: "bg-white/20",
+    iconColorClassName: "text-white",
+    animationClassName: "",
   }
 
-  // Return early if no profile data
-  if (!profileState.data) {
-    return (
-      <ProtectedRoute allowedRoles={["student", "club_leader", "uni_staff", "admin", "staff"]}>
-        <AppShell>
-          <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
-            <Card className="w-full max-w-md">
-              <CardContent className="flex flex-col items-center space-y-4 p-8">
-                <AlertCircle className="h-8 w-8 text-yellow-500" />
-                <p className="text-lg font-medium">No profile information found</p>
-              </CardContent>
-            </Card>
-          </div>
-        </AppShell>
-      </ProtectedRoute>
-    )
-  }
-
-  // Destructure profile data for easier access
-  const { fullName, email, phone, majorName, studentCode, bio, avatarUrl, backgroundUrl, userPoints } = profileState.data
+  // --- Point levels configuration for tooltip ---
+  const pointLevels = [
+    { min: 10000, label: "10,000+", gradient: "from-yellow-400 via-pink-500 to-purple-600", name: "🏆 Legendary", desc: "Rainbow flame" },
+    { min: 7000, label: "7,000+", gradient: "from-rose-500 via-red-500 to-rose-600", name: "💎 Epic", desc: "Crimson flame" },
+    { min: 5000, label: "5,000+", gradient: "from-orange-500 via-red-500 to-pink-500", name: "👑 Master", desc: "Hot flame" },
+    { min: 3000, label: "3,000+", gradient: "from-orange-400 to-orange-600", name: "⭐ Expert", desc: "Orange flame" },
+    { min: 2000, label: "2,000+", gradient: "from-yellow-400 to-orange-500", name: "🌟 Advanced", desc: "Yellow flame" },
+    { min: 1500, label: "1,500+", gradient: "from-yellow-300 to-yellow-500", name: "✨ Skilled", desc: "Bright flame" },
+    { min: 1000, label: "1,000+", gradient: "from-lime-400 to-yellow-500", name: "📈 Intermediate", desc: "Warming up" },
+    { min: 500, label: "500+", gradient: "from-green-400 to-lime-500", name: "🌱 Beginner", desc: "Green flame" },
+    { min: 200, label: "200+", gradient: "from-cyan-400 to-green-500", name: "🔰 Novice", desc: "Cool flame" },
+    { min: 50, label: "50+", gradient: "from-blue-400 to-cyan-500", name: "🌿 Starter", desc: "Blue flame" },
+    { min: 0, label: "0-49", gradient: "from-slate-300 to-slate-400", name: "💤 Inactive", desc: "No flame" },
+  ]
 
   // --- Thêm logic trả về lớp animation ---
-  const getPointsCardStyle = (points: number) => {
+  const getPointsCardStyle = (points: number, isClubWallet: boolean = false) => {
+    // If it's club wallet, return fixed blue style
+    if (isClubWallet) {
+      return clubWalletStyle
+    }
     if (points >= 10000) {
       return {
         cardClassName: "bg-gradient-to-r from-yellow-400 via-pink-500 to-purple-600",
@@ -792,7 +793,7 @@ export default function ProfilePage() {
     }
     if (points >= 7000) {
       return {
-        cardClassName: "bg-gradient-to-r from-rose-500 to-orange-500",
+        cardClassName: "bg-gradient-to-r from-rose-500 via-red-500 to-rose-600",
         textColorClassName: "text-white",
         subtitleColorClassName: "text-white/85",
         iconBgClassName: "bg-white/25",
@@ -802,7 +803,7 @@ export default function ProfilePage() {
     }
     if (points >= 5000) {
       return {
-        cardClassName: "bg-gradient-to-r from-purple-600 to-pink-600",
+        cardClassName: "bg-gradient-to-r from-orange-500 via-red-500 to-pink-500",
         textColorClassName: "text-white",
         subtitleColorClassName: "text-white/80",
         iconBgClassName: "bg-white/20",
@@ -812,7 +813,7 @@ export default function ProfilePage() {
     }
     if (points >= 3000) {
       return {
-        cardClassName: "bg-gradient-to-r from-sky-500 to-indigo-500",
+        cardClassName: "bg-gradient-to-r from-orange-400 to-orange-600",
         textColorClassName: "text-white",
         subtitleColorClassName: "text-white/80",
         iconBgClassName: "bg-white/20",
@@ -822,7 +823,7 @@ export default function ProfilePage() {
     }
     if (points >= 2000) {
       return {
-        cardClassName: "bg-gradient-to-r from-emerald-500 to-teal-500",
+        cardClassName: "bg-gradient-to-r from-yellow-400 to-orange-500",
         textColorClassName: "text-white",
         subtitleColorClassName: "text-white/80",
         iconBgClassName: "bg-white/20",
@@ -832,7 +833,7 @@ export default function ProfilePage() {
     }
     if (points >= 1500) {
       return {
-        cardClassName: "bg-gradient-to-r from-cyan-400 to-blue-500",
+        cardClassName: "bg-gradient-to-r from-yellow-300 to-yellow-500",
         textColorClassName: "text-white",
         subtitleColorClassName: "text-white/75",
         iconBgClassName: "bg-white/20",
@@ -842,17 +843,17 @@ export default function ProfilePage() {
     }
     if (points >= 1000) {
       return {
-        cardClassName: "bg-amber-50 dark:bg-amber-900/20",
-        textColorClassName: "text-amber-900 dark:text-amber-300",
-        subtitleColorClassName: "text-amber-700 dark:text-amber-400",
-        iconBgClassName: "bg-amber-200 dark:bg-amber-800/50",
-        iconColorClassName: "text-amber-600 dark:text-amber-400",
+        cardClassName: "bg-gradient-to-r from-lime-400 to-yellow-500",
+        textColorClassName: "text-white",
+        subtitleColorClassName: "text-white/80",
+        iconBgClassName: "bg-white/20",
+        iconColorClassName: "text-white",
         animationClassName: "animate-flicker [animation-duration:3s]",
       }
     }
     if (points >= 500) {
       return {
-        cardClassName: "bg-gradient-to-r from-lime-400 to-green-500",
+        cardClassName: "bg-gradient-to-r from-green-400 to-lime-500",
         textColorClassName: "text-white",
         subtitleColorClassName: "text-white/75",
         iconBgClassName: "bg-white/20",
@@ -862,29 +863,29 @@ export default function ProfilePage() {
     }
     if (points >= 200) {
       return {
-        cardClassName: "bg-blue-50 dark:bg-blue-900/20",
-        textColorClassName: "text-blue-900 dark:text-blue-200",
-        subtitleColorClassName: "text-blue-700 dark:text-blue-300",
-        iconBgClassName: "bg-blue-200 dark:bg-blue-800/50",
-        iconColorClassName: "text-blue-600 dark:text-blue-400",
+        cardClassName: "bg-gradient-to-r from-cyan-400 to-green-500",
+        textColorClassName: "text-white",
+        subtitleColorClassName: "text-white/80",
+        iconBgClassName: "bg-white/20",
+        iconColorClassName: "text-white",
         animationClassName: "",
       }
     }
     if (points >= 50) {
       return {
-        cardClassName: "bg-green-50 dark:bg-green-900/20",
-        textColorClassName: "text-green-900 dark:text-green-200",
-        subtitleColorClassName: "text-green-700 dark:text-green-300",
-        iconBgClassName: "bg-green-200 dark:bg-green-800/50",
-        iconColorClassName: "text-green-600 dark:text-green-400",
+        cardClassName: "bg-gradient-to-r from-blue-400 to-cyan-500",
+        textColorClassName: "text-white",
+        subtitleColorClassName: "text-white/80",
+        iconBgClassName: "bg-white/20",
+        iconColorClassName: "text-white",
         animationClassName: "",
       }
     }
     return {
-      cardClassName: "!bg-slate-100 dark:!bg-slate-800",
-      textColorClassName: "text-slate-800 dark:text-slate-200",
-      subtitleColorClassName: "text-slate-500 dark:text-slate-400",
-      iconBgClassName: "bg-slate-200 dark:bg-slate-700",
+      cardClassName: "bg-gradient-to-r from-slate-300 to-slate-400",
+      textColorClassName: "text-slate-700 dark:text-slate-200",
+      subtitleColorClassName: "text-slate-600 dark:text-slate-300",
+      iconBgClassName: "bg-slate-500/20",
       iconColorClassName: "text-slate-600 dark:text-slate-300",
       animationClassName: "",
     }
@@ -1345,10 +1346,12 @@ export default function ProfilePage() {
                 />
               </div>
               <h1 className="mt-4 text-3xl font-bold text-white tracking-tight 
-              drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)] [-webkit-text-stroke:1px_black]">
+              drop-shadow-[0_4px_12px_rgba(0,0,0,0.9)] 
+              [text-shadow:_0_2px_8px_rgb(0_0_0_/_90%),_0_4px_12px_rgb(0_0_0_/_70%)]">
                 {fullName}
               </h1>
-              <p className="mt-1 text-lg text-white/85 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] [-webkit-text-stroke:0.4px_black]">
+              <p className="mt-1 text-lg text-white drop-shadow-[0_3px_8px_rgba(0,0,0,0.8)]
+              [text-shadow:_0_2px_6px_rgb(0_0_0_/_80%),_0_3px_8px_rgb(0_0_0_/_60%)]">
                 {auth.user?.email}
               </p>
             </div>
@@ -1368,29 +1371,51 @@ export default function ProfilePage() {
                     <CardDescription>Update your profile and related information.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-1">
-                        <Label htmlFor="user-email">Email Address</Label>
-                        <Input id="user-email" value={auth.user?.email || ""} disabled className="mt-2 bg-slate-100 border-slate-300" />
+                    {profileState.loading ? (
+                      // Skeleton loading for form fields
+                      <div className="space-y-6 animate-pulse">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          {[1, 2, 3, 4, 5].map((i) => (
+                            <div key={i} className="space-y-2">
+                              <div className="h-4 w-24 bg-slate-200 dark:bg-slate-700 rounded" />
+                              <div className="h-10 bg-slate-100 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700" />
+                            </div>
+                          ))}
+                        </div>
+                        <div className="space-y-2">
+                          <div className="h-4 w-32 bg-slate-200 dark:bg-slate-700 rounded" />
+                          <div className="h-20 bg-slate-100 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700" />
+                        </div>
+                        <div className="flex gap-3">
+                          <div className="h-10 w-32 bg-slate-200 dark:bg-slate-700 rounded" />
+                          <div className="h-10 w-40 bg-slate-200 dark:bg-slate-700 rounded" />
+                        </div>
                       </div>
-                      <div className="space-y-1">
-                        <Label htmlFor="user-fullName">Full Name</Label>
-                        <Input
-                          id="user-fullName"
-                          value={fullName}
-                          onChange={(e) => updateProfileData('fullName', e.target.value)}
-                          className="mt-2 border-slate-300"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label htmlFor="user-phone">Phone Number</Label>
-                        <Input
-                          id="user-phone"
-                          value={phone}
-                          onChange={(e) => updateProfileData('phone', e.target.value)}
-                          className="mt-2 border-slate-300"
-                        />
-                      </div>
+                    ) : (
+                      <>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="space-y-1">
+                            <Label htmlFor="user-email">Email Address</Label>
+                            <Input id="user-email" value={auth.user?.email || ""} disabled className="mt-2 bg-slate-100 border-slate-300" />
+                          </div>
+                          <div className="space-y-1">
+                            <Label htmlFor="user-fullName">Full Name</Label>
+                            <Input
+                              id="user-fullName"
+                              value={fullName}
+                              onChange={(e) => updateProfileData('fullName', e.target.value)}
+                              className="mt-2 border-slate-300"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label htmlFor="user-phone">Phone Number</Label>
+                            <Input
+                              id="user-phone"
+                              value={phone}
+                              onChange={(e) => updateProfileData('phone', e.target.value)}
+                              className="mt-2 border-slate-300"
+                            />
+                          </div>
                       <div className="space-y-1">
                         <Label htmlFor="user-studentCode">Student Code</Label>
                         <Input
@@ -1465,6 +1490,8 @@ export default function ProfilePage() {
                         Change Password
                       </Button>
                     </div>
+                      </>
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -1472,37 +1499,159 @@ export default function ProfilePage() {
               {/* Right Column - Points and Statistics */}
               <div className="space-y-6">
                 {/* --- WALLET CARDS - Display all wallets as separate cards --- */}
-                {memberships.length > 0 ? (
-                  memberships.map((membership) => {
-                    const pointsCardStyle = getPointsCardStyle(membership.balancePoints)
-                    return (
+                {profileState.loading ? (
+                  // Skeleton loading for wallet card
+                  <Card className="shadow-lg border-0 animate-pulse">
+                    <CardContent className="p-4 flex items-center justify-between">
+                      <div className="flex-1 min-w-0 space-y-2">
+                        <div className="h-4 w-20 bg-slate-200 dark:bg-slate-700 rounded" />
+                        <div className="h-8 w-24 bg-slate-200 dark:bg-slate-700 rounded" />
+                      </div>
+                      <div className="p-3 rounded-full bg-slate-200 dark:bg-slate-700">
+                        <div className="h-6 w-6" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : memberships.length > 0 ? (
+                  <>
+                    {memberships.map((membership) => {
+                      const pointsCardStyle = getPointsCardStyle(membership.balancePoints)
+                      return (
+                        <HoverCard key={membership.walletId} openDelay={300} closeDelay={100}>
+                          <HoverCardTrigger asChild>
+                            <div 
+                              className="cursor-pointer"
+                              onClick={() => {
+                                if (auth.role === "club_leader") {
+                                  router.push("/club-leader/points")
+                                } else if (auth.role === "student") {
+                                  router.push("/student/history?tab=wallet")
+                                }
+                              }}
+                            >
+                              <Card
+                                className={`shadow-lg border-0 transition-all duration-300 ${pointsCardStyle.cardClassName}`}
+                              >
+                                <CardContent className="p-4 flex items-center justify-between">
+                                  <div className="flex-1 min-w-0">
+                                    <p className={`text-sm font-medium transition-colors duration-300 ${pointsCardStyle.subtitleColorClassName} truncate`}>
+                                      {membership.clubName}
+                                    </p>
+                                    <p className={`text-3xl font-bold transition-colors duration-300 ${pointsCardStyle.textColorClassName}`}>
+                                      {membership.balancePoints.toLocaleString()}
+                                    </p>
+                                  </div>
+                                  <div className={`p-3 rounded-full transition-colors duration-300 ${pointsCardStyle.iconBgClassName}`}>
+                                    <Flame className={
+                                      `h-6 w-6 transition-colors duration-300 
+                                      ${pointsCardStyle.iconColorClassName} 
+                                      ${pointsCardStyle.animationClassName}`
+                                    } />
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            </div>
+                          </HoverCardTrigger>
+                          <HoverCardContent className="w-80 p-0 z-[100]" align="start" side="left" sideOffset={10}>
+                          <div className="p-4 border-b bg-gradient-to-r from-blue-50 to-purple-50 dark:from-slate-800 dark:to-slate-900">
+                            <h4 className="font-semibold text-base flex items-center gap-2">
+                              <Flame className="h-5 w-5 text-orange-500" />
+                              Point Levels Guide
+                            </h4>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Earn points to unlock colorful flame effects
+                            </p>
+                          </div>
+                          <div className="max-h-[400px] overflow-y-auto">
+                            {pointLevels.map((level, index) => {
+                              const isCurrentLevel = membership.balancePoints >= level.min && (index === 0 || membership.balancePoints < pointLevels[index - 1].min)
+                              return (
+                                <div
+                                  key={level.min}
+                                  className={`p-3 border-b last:border-0 transition-all ${
+                                    isCurrentLevel
+                                      ? "bg-blue-50 dark:bg-blue-900/20 border-l-4 border-l-blue-500"
+                                      : "hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between gap-3">
+                                    <div className="flex items-center gap-3 flex-1">
+                                      <div className={`w-10 h-10 rounded-lg bg-gradient-to-r ${level.gradient} flex items-center justify-center shadow-md`}>
+                                        <Flame className="h-5 w-5 text-white" />
+                                      </div>
+                                      <div>
+                                        <div className="flex items-center gap-2">
+                                          <span className="font-semibold text-sm">{level.name}</span>
+                                          {isCurrentLevel && (
+                                            <span className="text-xs px-2 py-0.5 bg-blue-500 text-white rounded-full font-medium">
+                                              Current
+                                            </span>
+                                          )}
+                                        </div>
+                                        <div className="flex flex-col gap-0.5">
+                                          <span className="text-xs font-medium text-muted-foreground">{level.label} points</span>
+                                          <span className="text-xs text-muted-foreground/80 italic">{level.desc}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                          <div className="p-3 bg-slate-50 dark:bg-slate-900 border-t">
+                            <p className="text-xs text-center text-muted-foreground">
+                              🔥 Keep earning points to reach higher levels!
+                            </p>
+                          </div>
+                        </HoverCardContent>
+                      </HoverCard>
+                    )
+                  })}
+
+                  {/* Club Wallet Card for Club Leaders */}
+                  {auth.role === "club_leader" && (
+                    clubWalletLoading ? (
+                      <Card className="shadow-lg border-0 animate-pulse">
+                        <CardContent className="p-4 flex items-center justify-between">
+                          <div className="flex-1 min-w-0 space-y-2">
+                            <div className="h-4 w-24 bg-slate-200 dark:bg-slate-700 rounded" />
+                            <div className="h-8 w-28 bg-slate-200 dark:bg-slate-700 rounded" />
+                          </div>
+                          <div className="p-3 rounded-full bg-slate-200 dark:bg-slate-700">
+                            <div className="h-6 w-6" />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ) : clubWallet ? (
                       <Card
-                        key={membership.walletId}
-                        className={`shadow-lg border-0 transition-all duration-300 ${pointsCardStyle.cardClassName}`}
+                        className={`shadow-lg border-0 transition-all duration-300 cursor-pointer hover:shadow-xl ${getPointsCardStyle(clubWallet.balancePoints, true).cardClassName}`}
+                        onClick={() => router.push("/club-leader/points")}
                       >
                         <CardContent className="p-4 flex items-center justify-between">
                           <div className="flex-1 min-w-0">
-                            <p className={`text-sm font-medium transition-colors duration-300 ${pointsCardStyle.subtitleColorClassName} truncate`}>
-                              {membership.clubName}
+                            <p className={`text-sm font-medium transition-colors duration-300 ${getPointsCardStyle(clubWallet.balancePoints, true).subtitleColorClassName} truncate`}>
+                              Club Points
                             </p>
-                            <p className={`text-3xl font-bold transition-colors duration-300 ${pointsCardStyle.textColorClassName}`}>
-                              {membership.balancePoints.toLocaleString()}
+                            <p className={`text-3xl font-bold transition-colors duration-300 ${getPointsCardStyle(clubWallet.balancePoints, true).textColorClassName}`}>
+                              {clubWallet.balancePoints.toLocaleString()}
                             </p>
                           </div>
-                          <div className={`p-3 rounded-full transition-colors duration-300 ${pointsCardStyle.iconBgClassName}`}>
+                          <div className={`p-3 rounded-full transition-colors duration-300 ${getPointsCardStyle(clubWallet.balancePoints, true).iconBgClassName}`}>
                             <Flame className={
                               `h-6 w-6 transition-colors duration-300 
-                              ${pointsCardStyle.iconColorClassName} 
-                              ${pointsCardStyle.animationClassName}`
+                              ${getPointsCardStyle(clubWallet.balancePoints, true).iconColorClassName} 
+                              ${getPointsCardStyle(clubWallet.balancePoints, true).animationClassName}`
                             } />
                           </div>
                         </CardContent>
                       </Card>
-                    )
-                  })
-                ) : (
-                  // Show empty state when no wallets
-                  <Card className="shadow-lg border-0 bg-slate-100 dark:bg-slate-800">
+                    ) : null
+                  )}
+                </>
+              ) : (
+                // Show empty state when no wallets
+                <Card className="shadow-lg border-0 bg-slate-100 dark:bg-slate-800">
                     <CardContent className="p-4 flex items-center justify-between">
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-slate-500 dark:text-slate-400 truncate">

@@ -8,9 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { CalendarModal } from "@/components/calendar-modal"
-import { Calendar, Users, MapPin, Search, CheckCircle, XCircle, Clock, Building, Eye, Filter, DollarSign, Gift, X, History, HistoryIcon } from "lucide-react"
+import { Calendar, Users, MapPin, Search, CheckCircle, XCircle, Clock, Building, Eye, Filter, DollarSign, Gift, X, History, HistoryIcon, ChevronLeft, ChevronRight } from "lucide-react"
 import { renderTypeBadge } from "@/lib/eventUtils"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { putEventStatus, getEventSettle, isEventExpired as isEventExpiredUtil } from "@/service/eventApi"
 import { fetchLocation } from "@/service/locationApi"
@@ -85,6 +85,10 @@ export default function UniStaffEventRequestsPage() {
 	const [showEventPointsModal, setShowEventPointsModal] = useState(false)
 	const [eventTransactions, setEventTransactions] = useState<ApiUniToEventTransaction[]>([])
 	const [eventTransactionsLoading, setEventTransactionsLoading] = useState(false)
+	const [eventTransactionTypeFilter, setEventTransactionTypeFilter] = useState<string>("all")
+	const [eventDateFilter, setEventDateFilter] = useState<string>("all")
+	const [eventCurrentPage, setEventCurrentPage] = useState(1)
+	const [eventPageSize] = useState(8)
 
 	const { toast } = useToast()
 	const [processingId, setProcessingId] = useState<number | string | null>(null)
@@ -464,6 +468,88 @@ export default function UniStaffEventRequestsPage() {
 		}
 	}
 
+	// Get badge color for transaction type
+	const getTransactionTypeBadgeColor = (type: string) => {
+		const colorMap: Record<string, string> = {
+			ADD: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+			REDUCE: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+			TRANSFER: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+			UNI_TO_CLUB: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
+			CLUB_TO_MEMBER: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400",
+			EVENT_BUDGET_GRANT: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400",
+			EVENT_REFUND_REMAINING: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400",
+			COMMIT_LOCK: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+			REFUND_COMMIT: "bg-lime-100 text-lime-700 dark:bg-lime-900/30 dark:text-lime-400",
+			BONUS_REWARD: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
+			RETURN_SURPLUS: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
+			REDEEM_PRODUCT: "bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400",
+			REFUND_PRODUCT: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400",
+			EVENT_REDEEM_PRODUCT: "bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-900/30 dark:text-fuchsia-400",
+			EVENT_REFUND_PRODUCT: "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400",
+			CLUB_RECEIVE_REDEEM: "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400",
+			CLUB_REFUND: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
+			ADMIN_ADJUST: "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400",
+			MEMBER_PENALTY: "bg-red-200 text-red-800 dark:bg-red-900/40 dark:text-red-300",
+			CLUB_FROM_PENALTY: "bg-green-200 text-green-800 dark:bg-green-900/40 dark:text-green-300",
+			EVENT_BUDGET_FORFEIT: "bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-400",
+			MEMBER_REWARD: "bg-emerald-200 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300",
+			CLUB_REWARD_DISTRIBUTE: "bg-teal-200 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300",
+			PRODUCT_CREATION_COST: "bg-amber-200 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300",
+		};
+		return colorMap[type] || "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400";
+	};
+
+	// Get unique transaction types from Event transactions
+	const uniqueEventTransactionTypes = useMemo(() => {
+		const types = new Set(eventTransactions.map(t => t.type));
+		return Array.from(types).sort();
+	}, [eventTransactions]);
+
+	// Filter Event transactions
+	const filteredEventTransactions = useMemo(() => {
+		let filtered = [...eventTransactions];
+		
+		if (eventTransactionTypeFilter !== "all") {
+			filtered = filtered.filter(t => t.type === eventTransactionTypeFilter);
+		}
+		
+		if (eventDateFilter !== "all") {
+			const now = new Date();
+			const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+			
+			filtered = filtered.filter(t => {
+				const transactionDate = new Date(t.createdAt);
+				const transactionDay = new Date(transactionDate.getFullYear(), transactionDate.getMonth(), transactionDate.getDate());
+				
+				switch (eventDateFilter) {
+					case "today":
+						return transactionDay.getTime() === today.getTime();
+					case "week":
+						const weekAgo = new Date(today);
+						weekAgo.setDate(weekAgo.getDate() - 7);
+						return transactionDay >= weekAgo;
+					case "month":
+						return transactionDate.getMonth() === now.getMonth() && transactionDate.getFullYear() === now.getFullYear();
+					case "year":
+						return transactionDate.getFullYear() === now.getFullYear();
+					default:
+						return true;
+				}
+			});
+		}
+		
+		return filtered;
+	}, [eventTransactions, eventDateFilter, eventTransactionTypeFilter]);
+
+	// Paginate filtered Event transactions
+	const paginatedEventTransactions = useMemo(() => {
+		const startIndex = (eventCurrentPage - 1) * eventPageSize;
+		const endIndex = startIndex + eventPageSize;
+		return filteredEventTransactions.slice(startIndex, endIndex);
+	}, [filteredEventTransactions, eventCurrentPage, eventPageSize]);
+
+	const eventTotalPages = Math.ceil(filteredEventTransactions.length / eventPageSize);
+
 	const loadEventTransactionHistory = async () => {
 		setEventTransactionsLoading(true)
 		try {
@@ -482,6 +568,9 @@ export default function UniStaffEventRequestsPage() {
 
 	const handleOpenEventPointsModal = () => {
 		setShowEventPointsModal(true)
+		setEventTransactionTypeFilter("all")
+		setEventDateFilter("all")
+		setEventCurrentPage(1)
 		loadEventTransactionHistory()
 	}
 
@@ -974,87 +1063,181 @@ export default function UniStaffEventRequestsPage() {
 
 					{/* Event Points Transaction History Modal */}
 					<Dialog open={showEventPointsModal} onOpenChange={setShowEventPointsModal}>
-						<DialogContent
-							className="
-								!max-w-none
-								w-[72vw]
-								lg:w-[68vw]
-								md:w-[78vw]
-								sm:w-[92vw]
-								h-[85vh]
-								overflow-y-auto p-8 rounded-xl shadow-2xl
-							"
-						>
+						<DialogContent className="!w-[70vw] !max-w-[70vw] sm:!max-w-[70vw] max-h-[85vh] flex flex-col">
 							<DialogHeader>
-								<DialogTitle className="flex items-center gap-3 text-3xl font-bold">
-									<History className="h-8 w-8" />
+								<DialogTitle className="flex items-center gap-3">
+									<History className="h-6 w-6" />
 									University to Event Transaction History
 								</DialogTitle>
 							</DialogHeader>
-
-							<div className="mt-4">
+							
+							<div className="flex-1 overflow-y-auto space-y-4">
+								{/* Filters */}
+								<div className="flex gap-3 flex-wrap">
+									<Select value={eventTransactionTypeFilter} onValueChange={(value) => {
+										setEventTransactionTypeFilter(value);
+										setEventCurrentPage(1);
+									}}>
+										<SelectTrigger className="w-[200px]">
+											<SelectValue placeholder="Transaction type" />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value="all">All Transaction Types</SelectItem>
+											{uniqueEventTransactionTypes.map(type => (
+												<SelectItem key={type} value={type}>
+													{type.replace(/_/g, " ")}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+									
+									<Select value={eventDateFilter} onValueChange={(value) => {
+										setEventDateFilter(value);
+										setEventCurrentPage(1);
+									}}>
+										<SelectTrigger className="w-[180px]">
+											<SelectValue placeholder="Filter by date" />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value="all">All Time</SelectItem>
+											<SelectItem value="today">Today</SelectItem>
+											<SelectItem value="week">This Week</SelectItem>
+											<SelectItem value="month">This Month</SelectItem>
+											<SelectItem value="year">This Year</SelectItem>
+										</SelectContent>
+									</Select>
+									
+									{(eventDateFilter !== "all" || eventTransactionTypeFilter !== "all") && (
+										<Button
+											variant="outline"
+											size="sm"
+											onClick={() => {
+												setEventDateFilter("all");
+												setEventTransactionTypeFilter("all");
+												setEventCurrentPage(1);
+											}}
+										>
+											<X className="h-4 w-4 mr-1" />
+											Clear
+										</Button>
+									)}
+								</div>
+								
+								{/* Statistics */}
+								{!eventTransactionsLoading && filteredEventTransactions.length > 0 && (
+									<div className="flex gap-3">
+										<div className="flex-1 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+											<div className="text-xs text-green-600 dark:text-green-400 font-medium mb-1">Total Distributed</div>
+											<div className="text-xl font-bold text-green-700 dark:text-green-300">
+												+{filteredEventTransactions.reduce((sum, t) => sum + t.amount, 0).toLocaleString()} pts
+											</div>
+											<div className="text-xs text-green-600/70 dark:text-green-400/70 mt-0.5">
+												{filteredEventTransactions.length} transactions
+											</div>
+										</div>
+									</div>
+								)}
+								
+								{/* Table */}
 								{eventTransactionsLoading ? (
 									<div className="flex flex-col items-center justify-center py-12">
 										<p className="text-muted-foreground">Loading event transaction history...</p>
 									</div>
-								) : eventTransactions.length === 0 ? (
-									<div className="flex flex-col items-center justify-center py-12 text-center">
-										<History className="h-12 w-12 text-muted-foreground mb-4" />
-										<h3 className="text-lg font-semibold mb-2">No Event Transactions Yet</h3>
-										<p className="text-muted-foreground">No university-to-event transactions found.</p>
+								) : filteredEventTransactions.length === 0 ? (
+									<div className="text-center py-8 text-muted-foreground">
+										{eventTransactions.length === 0 ? "No transactions found" : "No transactions match the selected filters"}
 									</div>
 								) : (
-									<TooltipProvider>
-										<div className="rounded-md border overflow-x-auto">
-											<Table className="min-w-full">
-												<TableHeader>
-													<TableRow>
-														<TableHead className="w-[80px]">ID</TableHead>
-														<TableHead>Type</TableHead>
-														<TableHead>Amount</TableHead>
-														<TableHead className="w-[20%]">Sender</TableHead>
-														<TableHead className="w-[20%]">Receiver Event</TableHead>
-														<TableHead className="w-[15%] pr-2">Description</TableHead>
-														<TableHead className="w-[180px] pl-2">Date</TableHead>
-													</TableRow>
-												</TableHeader>
-												<TableBody>
-													{eventTransactions.map((t) => (
-														<TableRow key={t.id}>
-															<TableCell className="font-medium">#{t.id}</TableCell>
-															<TableCell><Badge variant="secondary">{t.type}</Badge></TableCell>
-															<TableCell className="font-semibold text-green-600">{t.signedAmount} pts</TableCell>
-															<TableCell className="font-medium text-slate-800 dark:text-blue-300">
-																{t.senderName || "—"}
-															</TableCell>
-															<TableCell className="font-medium text-slate-800 dark:text-purple-300">
-																{t.receiverName || "—"}
-															</TableCell>
-															<TableCell className="max-w-[200px] pr-2">
-																{t.description && t.description.length > 50 ? (
-																	<Tooltip>
-																		<TooltipTrigger asChild>
-																			<div className="truncate cursor-help">
-																				{t.description}
-																			</div>
-																		</TooltipTrigger>
-																		<TooltipContent className="max-w-[400px] break-words" side="top">
-																			<p className="whitespace-normal">{t.description}</p>
-																		</TooltipContent>
-																	</Tooltip>
-																) : (
-																	<div className="truncate">{t.description || "—"}</div>
-																)}
-															</TableCell>
-															<TableCell className="text-sm text-muted-foreground whitespace-nowrap pl-2">
-																{formatTransactionDate(t.createdAt)}
-															</TableCell>
+									<>
+										<TooltipProvider>
+											<div className="rounded-md border overflow-x-auto">
+												<Table>
+													<TableHeader>
+														<TableRow>
+															<TableHead className="w-[80px]">#</TableHead>
+															<TableHead>Amount</TableHead>
+															<TableHead>Type</TableHead>
+															<TableHead className="w-[20%]">Sender</TableHead>
+															<TableHead className="w-[20%]">Receiver Event</TableHead>
+															<TableHead className="w-[15%]">Description</TableHead>
+															<TableHead className="w-[180px]">Date</TableHead>
 														</TableRow>
-													))}
-												</TableBody>
-											</Table>
-										</div>
-									</TooltipProvider>
+													</TableHeader>
+													<TableBody>
+														{paginatedEventTransactions.map((t, idx) => {
+															const displayIndex = ((eventCurrentPage - 1) * eventPageSize) + idx + 1;
+															return (
+																<TableRow key={t.id}>
+																	<TableCell className="font-medium">#{displayIndex}</TableCell>
+																	<TableCell className="font-semibold text-green-600">+{t.amount.toLocaleString()} pts</TableCell>
+																	<TableCell>
+																		<Badge variant="outline" className={`text-xs font-medium ${getTransactionTypeBadgeColor(t.type)}`}>
+																			{t.type.replace(/_/g, " ")}
+																		</Badge>
+																	</TableCell>
+																	<TableCell className="font-medium text-slate-800 dark:text-blue-300">
+																		{t.senderName || "—"}
+																	</TableCell>
+																	<TableCell className="font-medium text-slate-800 dark:text-purple-300">
+																		{t.receiverName || "—"}
+																	</TableCell>
+																	<TableCell className="max-w-[200px]">
+																		{t.description && t.description.length > 50 ? (
+																			<Tooltip>
+																				<TooltipTrigger asChild>
+																					<div className="truncate cursor-help">
+																						{t.description}
+																					</div>
+																				</TooltipTrigger>
+																				<TooltipContent className="max-w-[400px] break-words" side="top">
+																					<p className="whitespace-normal">{t.description}</p>
+																				</TooltipContent>
+																			</Tooltip>
+																		) : (
+																			<div className="truncate">{t.description || "—"}</div>
+																		)}
+																	</TableCell>
+																	<TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+																		{formatTransactionDate(t.createdAt)}
+																	</TableCell>
+																</TableRow>
+															);
+														})}
+													</TableBody>
+												</Table>
+											</div>
+										</TooltipProvider>
+										
+										{/* Pagination */}
+										{eventTotalPages > 1 && (
+											<div className="flex items-center justify-between pt-4 border-t">
+												<div className="text-sm text-muted-foreground">
+													Showing {((eventCurrentPage - 1) * eventPageSize) + 1} to {Math.min(eventCurrentPage * eventPageSize, filteredEventTransactions.length)} of {filteredEventTransactions.length} transactions
+												</div>
+												<div className="flex items-center gap-2">
+													<Button
+														variant="outline"
+														size="sm"
+														onClick={() => setEventCurrentPage(prev => Math.max(1, prev - 1))}
+														disabled={eventCurrentPage === 1}
+													>
+														<ChevronLeft className="h-4 w-4" />
+													</Button>
+													<div className="text-sm font-medium">
+														Page {eventCurrentPage} of {eventTotalPages}
+													</div>
+													<Button
+														variant="outline"
+														size="sm"
+														onClick={() => setEventCurrentPage(prev => Math.min(eventTotalPages, prev + 1))}
+														disabled={eventCurrentPage === eventTotalPages}
+													>
+														<ChevronRight className="h-4 w-4" />
+													</Button>
+												</div>
+											</div>
+										)}
+									</>
 								)}
 							</div>
 						</DialogContent>
