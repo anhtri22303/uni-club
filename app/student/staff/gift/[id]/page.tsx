@@ -50,6 +50,7 @@ import {
   HandCoins,
   Search,
   AlertCircle,
+  WalletCards,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -95,7 +96,7 @@ import {
 } from "@/components/ui/table";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
-import { queryKeys, useMyStaffEvents } from "@/hooks/use-query-hooks";
+import { queryKeys, useMyStaffEvents, useClubWallet } from "@/hooks/use-query-hooks";
 
 type ProductEditForm = UpdateProductPayload;
 interface FixedTagIds {
@@ -163,6 +164,8 @@ export default function EditProductPage() {
   const imgRef = useRef<HTMLImageElement>(null);
   const [croppedImageBlob, setCroppedImageBlob] = useState<Blob | null>(null);
   const [originalFileName, setOriginalFileName] = useState<string>("");
+  // --- Lấy thông tin ví ---
+  const { data: clubWallet } = useClubWallet(clubId);
   // --- Hàm Helper (Hàm hỗ trợ) ---
   const formatNumber = (num: number | string): string => {
     return Number(num).toLocaleString("en-US");
@@ -803,6 +806,23 @@ export default function EditProductPage() {
       setIsDeleting(false);
     }
   };
+
+  // --- NEW: LOGIC TÍNH TOÁN NGÂN SÁCH KHI UPDATE STOCK ---
+  // 1. Parse số lượng thay đổi
+  const deltaStock = parseFormattedNumber(stockChange);
+
+  // 2. Kiểm tra xem đang thêm hàng (+) hay bớt hàng (-)
+  const isAddingStock = deltaStock > 0;
+
+  // 3. Tính tổng chi phí (chỉ tính khi thêm hàng)
+  const estimatedCost = isAddingStock ? (product?.pointCost || 0) * deltaStock : 0;
+
+  // 4. Lấy số dư hiện tại
+  const currentBalance = clubWallet?.balancePoints ?? 0;
+
+  // 5. Kiểm tra đủ tiền (Nếu bớt hàng hoặc không đổi thì luôn true)
+  const isBalanceSufficient = !isAddingStock || (estimatedCost <= currentBalance);
+  // --- NEW END ---
 
   if (loading && !product) {
     // Chỉ hiển thị skeleton khi tải lần đầu
@@ -1817,6 +1837,49 @@ export default function EditProductPage() {
                   rows={4}
                 />
               </div>
+
+              {/* --- CHÈN CODE HIỂN THỊ TÍNH TOÁN VÀO ĐÂY (SAU TEXTAREA NOTE) --- */}
+              {product && (
+                <div className={`p-3 rounded-md border text-sm transition-colors animate-in fade-in zoom-in duration-300 ${isBalanceSufficient
+                    ? "bg-slate-50 border-slate-200 dark:bg-slate-800 dark:border-slate-700"
+                    : "bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800"
+                  }`}>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-muted-foreground dark:text-slate-400">Estimated Cost:</span>
+                    <span className="font-medium">
+                      {isAddingStock ? (
+                        /* Trường hợp nhập kho (+) */
+                        <>
+                          {product.pointCost.toLocaleString('en-US')} pts × {deltaStock.toLocaleString('en-US')} = {" "}
+                          <span className={isBalanceSufficient ? "text-slate-900 dark:text-white" : "text-red-600 dark:text-red-400 font-bold"}>
+                            {estimatedCost.toLocaleString('en-US')} pts
+                          </span>
+                        </>
+                      ) : (
+                        /* Trường hợp xuất kho (-) hoặc chưa nhập (0) */
+                        <span className="text-slate-900 dark:text-white">0 pts (No cost)</span>
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground dark:text-slate-400 flex items-center gap-1">
+                      <WalletCards className="w-3 h-3" /> Club Balance:
+                    </span>
+                    <span className={`font-medium ${isBalanceSufficient ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                      {currentBalance.toLocaleString('en-US')} pts
+                    </span>
+                  </div>
+
+                  {/* Chỉ hiện cảnh báo lỗi khi KHÔNG đủ tiền */}
+                  {!isBalanceSufficient && (
+                    <div className="mt-2 flex items-center text-red-600 dark:text-red-400 text-xs font-semibold">
+                      <XCircle className="h-3 w-3 mr-1" />
+                      Insufficient balance to add this amount of stock.
+                    </div>
+                  )}
+                </div>
+              )}
+              {/* --- HẾT PHẦN CHÈN --- */}
             </div>
             <DialogFooter className="flex gap-2">
               <Button
@@ -1836,7 +1899,8 @@ export default function EditProductPage() {
                 disabled={
                   isStockLoading ||
                   parseFormattedNumber(stockChange) === 0 ||
-                  !stockNote.trim()
+                  !stockNote.trim() ||
+                  !isBalanceSufficient // Chặn nếu không đủ tiền
                 }
                 className="flex-1 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-700 text-white"
               >

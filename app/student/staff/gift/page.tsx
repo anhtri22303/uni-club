@@ -13,7 +13,7 @@ import { addProduct, Product, AddProductPayload, getEventProductsOnTime } from "
 // --- Hooks ---
 import { usePagination } from "@/hooks/use-pagination"
 import { useToast } from "@/hooks/use-toast" // Đảm bảo import useToast đúng cách
-import { useProductTags, queryKeys, useMyStaffEvents } from "@/hooks/use-query-hooks"
+import { useProductTags, queryKeys, useMyStaffEvents, useClubWallet } from "@/hooks/use-query-hooks"
 // --- Components ---
 import { AppShell } from "@/components/app-shell"
 import { ProtectedRoute } from "@/contexts/protected-route"
@@ -166,6 +166,9 @@ export default function StaffGiftPage() {
 
   // Kiểm tra description có vượt quá giới hạn
   const isDescriptionTooLong = form.description.length > MAX_DESCRIPTION_LENGTH;
+
+  // --- LẤY THÔNG TIN VÍ CLB ---
+  const { data: clubWallet, isLoading: walletLoading } = useClubWallet(clubId);
 
   // 1. Lấy thông tin staff events của user
   const { data: staffEvents = [], isLoading: staffEventsLoading } = useMyStaffEvents()
@@ -405,6 +408,13 @@ export default function StaffGiftPage() {
       setSubmitting(false)
     }
   }
+
+  // --- LOGIC TÍNH TOÁN NGÂN SÁCH ---
+  const currentBalance = clubWallet?.balancePoints ?? 0;
+  const totalCost = form.pointCost * form.stockQuantity;
+  // Kiểm tra đủ tiền: Nếu totalCost = 0 thì luôn đúng, ngược lại so sánh với số dư
+  const isBalanceSufficient = totalCost <= currentBalance;
+
   const filteredAndSortedProducts = useMemo(() => {
     let filtered: Product[] = [...products] // 1. Bắt đầu với TẤT CẢ (gồm cả Archived)
 
@@ -478,9 +488,21 @@ export default function StaffGiftPage() {
               <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
                 Gift Products
               </h1>
-              <p className="text-muted-foreground dark:text-slate-400 mt-2 text-lg">
-                Manage your club items and event products efficiently
-              </p>
+              {/* HIỂN THỊ SỐ DƯ VÍ */}
+              <div className="flex items-center gap-2 mt-2">
+                <p className="text-muted-foreground dark:text-slate-400 text-lg">
+                  Manage your club items and event products efficiently
+                </p>
+                {/* Badge hiển thị điểm */}
+                {clubWallet && (
+                  <div className="ml-4 inline-flex items-center px-4 py-1.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700 shadow-sm animate-in fade-in zoom-in duration-300">
+                    <WalletCards className="w-4 h-4 mr-2" />
+                    <span className="font-bold text-sm">
+                      {clubWallet.balancePoints.toLocaleString('en-US')} pts
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
             <Button
               size="lg"
@@ -749,6 +771,34 @@ export default function StaffGiftPage() {
                     </div>
                   </div>
 
+                  {/* --- KHUNG TÍNH TOÁN NGÂN SÁCH --- */}
+                  <div className={`p-3 rounded-md border text-sm transition-colors ${isBalanceSufficient
+                      ? "bg-slate-50 border-slate-200 dark:bg-slate-800 dark:border-slate-700"
+                      : "bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800"
+                    }`}>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-muted-foreground dark:text-slate-400">Total Cost required:</span>
+                      <span className="font-medium">
+                        {form.pointCost.toLocaleString('en-US')} pts × {form.stockQuantity.toLocaleString('en-US')} = {" "}
+                        <span className={isBalanceSufficient ? "text-slate-900 dark:text-white" : "text-red-600 dark:text-red-400 font-bold"}>
+                          {totalCost.toLocaleString('en-US')} pts
+                        </span>
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground dark:text-slate-400">Club Balance:</span>
+                      <span className={`font-medium ${isBalanceSufficient ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                        {currentBalance.toLocaleString('en-US')} pts
+                      </span>
+                    </div>
+                    {!isBalanceSufficient && (
+                      <div className="mt-2 flex items-center text-red-600 dark:text-red-400 text-xs font-semibold">
+                        <XCircle className="h-3 w-3 mr-1" />
+                        Insufficient balance to create this stock quantity.
+                      </div>
+                    )}
+                  </div>
+
                   <div className="space-y-2">
                     <Label className="dark:text-white">Tags</Label>
                     <Input
@@ -789,7 +839,7 @@ export default function StaffGiftPage() {
                                     htmlFor={`tag-${tag.tagId}`}
                                     className={`font-normal dark:text-white ${isDisabled ? 'text-muted-foreground dark:text-slate-400 cursor-not-allowed' : ''}`} // Style cho tag bị disable
                                   >
-                                    {tag.name}
+                                    {tag.name} || !isBalanceSufficient
                                     {isDisabled && " (Auto)"}
                                   </Label>
                                 </div>

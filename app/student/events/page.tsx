@@ -81,8 +81,10 @@ export default function MemberEventsPage() {
   const { data: clubsData = [] } = useClubs()
   const { data: myRegistrations = [] } = useMyEventRegistrations()
   // Counts for legend summary
-  const confirmedCount = (myRegistrations || []).filter((r: any) => r.status === "CONFIRMED").length
-  const checkedInCount = (myRegistrations || []).filter((r: any) => r.status === "CHECKED_IN").length
+  const confirmedCount = (myRegistrations || []).filter((r: any) => r.status === "CONFIRMED" || r.status === "REGISTERED").length
+  const checkedInCount = (myRegistrations || []).filter((r: any) => r.status === "CHECKED_IN" || r.status === "ATTENDED").length
+  const rewardedCount = (myRegistrations || []).filter((r: any) => r.status === "REWARDED").length
+  const noShowCount = (myRegistrations || []).filter((r: any) => r.status === "NO_SHOW").length
 
   //    CẬP NHẬT: useEffect để lấy chi tiết club VÀ set default
   useEffect(() => {
@@ -518,7 +520,7 @@ export default function MemberEventsPage() {
                           <div className="flex-1 min-w-0">
                             <CardTitle className="text-lg line-clamp-2" title={event.name}>{event.name}</CardTitle>
                             <CardDescription className="flex items-center gap-1 mt-1">
-                              <Users className="h-3 w-3 flex-shrink-0" />
+                              <Users className="h-3 w-3 shrink-0" />
                               <span className="truncate">{event.hostClub?.name || "Unknown Club"}</span>
                             </CardDescription>
                           </div>
@@ -702,6 +704,30 @@ export default function MemberEventsPage() {
                       </Badge>
                       <span>Checked in fully (attendance recorded).</span>
                     </div>
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        variant="outline"
+                        className="bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border-emerald-500 dark:border-emerald-700"
+                      >
+                        REWARDED
+                      </Badge>
+                      <Badge variant="secondary" className="px-2 py-0.5 text-[10px]">
+                        {rewardedCount}
+                      </Badge>
+                      <span>Completed & rewarded with points.</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        variant="outline"
+                        className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-400 dark:border-gray-600"
+                      >
+                        NO_SHOW
+                      </Badge>
+                      <Badge variant="secondary" className="px-2 py-0.5 text-[10px]">
+                        {noShowCount}
+                      </Badge>
+                      <span>Did not attend.</span>
+                    </div>
                   </div>
                 </div>
                 {myRegistrations.length === 0 ? (
@@ -720,24 +746,26 @@ export default function MemberEventsPage() {
                               <CardTitle className="text-base mb-1">{registration.eventName}</CardTitle>
                               <CardDescription className="flex items-center gap-1">
                                 <Users className="h-3 w-3" />
-                                {registration.clubName}
+                                {registration.hostClubName}
                               </CardDescription>
                             </div>
                             <div className="flex flex-col items-end gap-2">
                               <Badge
                                 variant="outline"
                                 className={
-                                  registration.status === "ATTENDED"
-                                    ? "bg-green-100 dark:bg-green-950/50 text-green-700 dark:text-green-400 border-green-500 dark:border-green-700"
-                                    : registration.status === "CHECKED_IN"
+                                  registration.status === "REWARDED"
+                                    ? "bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border-emerald-500 dark:border-emerald-700"
+                                    : registration.status === "ATTENDED"
                                       ? "bg-green-100 dark:bg-green-950/50 text-green-700 dark:text-green-400 border-green-500 dark:border-green-700"
-                                      : registration.status === "REGISTERED"
-                                        ? "bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border-blue-500 dark:border-blue-700"
-                                        : registration.status === "CONFIRMED"
+                                      : registration.status === "CHECKED_IN"
+                                        ? "bg-green-100 dark:bg-green-950/50 text-green-700 dark:text-green-400 border-green-500 dark:border-green-700"
+                                        : registration.status === "REGISTERED"
                                           ? "bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border-blue-500 dark:border-blue-700"
-                                          : registration.status === "ABSENT"
-                                            ? "bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-400 border-red-500 dark:border-red-700"
-                                            : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-400 dark:border-gray-600"
+                                          : registration.status === "CONFIRMED"
+                                            ? "bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border-blue-500 dark:border-blue-700"
+                                            : registration.status === "ABSENT" || registration.status === "NO_SHOW"
+                                              ? "bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-400 border-red-500 dark:border-red-700"
+                                              : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-400 dark:border-gray-600"
                                 }
                               >
                                 {registration.status}
@@ -754,15 +782,28 @@ export default function MemberEventsPage() {
                           <div className="grid grid-cols-2 gap-4 text-sm">
                             <div className="flex items-center gap-2 text-muted-foreground">
                               <Calendar className="h-4 w-4" />
-                              {new Date(registration.date).toLocaleDateString("en-US", {
-                                year: "numeric",
-                                month: "short",
-                                day: "numeric",
-                              })}
+                              {registration.startDate && registration.endDate ? (
+                                registration.startDate === registration.endDate ? (
+                                  new Date(registration.startDate).toLocaleDateString("en-US", {
+                                    year: "numeric",
+                                    month: "short",
+                                    day: "numeric",
+                                  })
+                                ) : (
+                                  `${new Date(registration.startDate).toLocaleDateString("en-US", {
+                                    month: "short",
+                                    day: "numeric",
+                                  })} - ${new Date(registration.endDate).toLocaleDateString("en-US", {
+                                    month: "short",
+                                    day: "numeric",
+                                    year: "numeric",
+                                  })}`
+                                )
+                              ) : "Invalid Date"}
                             </div>
                             <div className="flex items-center gap-2 text-muted-foreground">
                               <Ticket className="h-4 w-4" />
-                              {registration.committedPoints} points committed
+                              {registration.committedPoints || 0} points committed
                             </div>
                             {/* Extra note for key statuses */}
                             {(registration.status === "CONFIRMED" || registration.status === "CHECKED_IN") && (

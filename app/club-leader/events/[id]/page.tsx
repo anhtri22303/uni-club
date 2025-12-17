@@ -448,6 +448,16 @@ export default function EventDetailPage() {
             Rejected
           </Badge>
         );
+      case "CANCELLED":
+        return (
+          <Badge
+            variant="outline"
+            className="bg-orange-100 text-orange-800 border-orange-400 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-600"
+          >
+            <XCircle className="h-3 w-3 mr-1" />
+            Cancelled
+          </Badge>
+        );
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }
@@ -1209,9 +1219,7 @@ export default function EventDetailPage() {
                           <Users className="h-5 w-5 text-primary" />
                           <div>
                             <div className="font-medium">{club.name}</div>
-                            <div className="text-sm text-muted-foreground">
-                              Club ID: {club.id}
-                            </div>
+
                           </div>
                         </div>
                         <Badge
@@ -1829,6 +1837,7 @@ export default function EventDetailPage() {
             onClose={() => setShowAttendeeListModal(false)}
             eventId={event.id}
             eventName={event.name}
+            eventType={event.type}
           />
         )}
 
