@@ -193,6 +193,7 @@ export async function getMyStaff(): Promise<MyStaffEvent[]> {
   const res = await axiosInstance.get<ApiResponse<MyStaffEvent[]>>(
     "/api/events/my/staff"
   );
+  console.log("My Staff Events:", res.data.data);
   return res.data.data;
 }
 

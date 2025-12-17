@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { X, Users, Clock, CheckCircle2, XCircle, UserCheck } from "lucide-react"
+import { X, Users, Clock, CheckCircle2, XCircle, UserCheck, Search } from "lucide-react"
 import { getEventRegistrations, EventRegistrationDetail } from "@/service/eventApi"
 import { useToast } from "@/hooks/use-toast"
 
@@ -20,6 +20,7 @@ export default function RegistrationListModal({
 }: RegistrationListModalProps) {
   const [registrations, setRegistrations] = useState<EventRegistrationDetail[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [searchTerm, setSearchTerm] = useState("")
   const { toast } = useToast()
 
   useEffect(() => {
@@ -99,14 +100,23 @@ export default function RegistrationListModal({
     )
   }
 
-  // Calculate status counts
+  // Filter registrations based on search term
+  const filteredRegistrations = registrations.filter((registration) => {
+    const searchLower = searchTerm.toLowerCase()
+    return (
+      registration.fullName.toLowerCase().includes(searchLower) ||
+      registration.email.toLowerCase().includes(searchLower)
+    )
+  })
+
+  // Calculate status counts from filtered registrations
   const statusCounts = {
-    PENDING: registrations.filter(r => r.status === "PENDING").length,
-    CONFIRMED: registrations.filter(r => r.status === "CONFIRMED").length,
-    CHECKED_IN: registrations.filter(r => r.status === "CHECKED_IN").length,
-    REWARDED: registrations.filter(r => r.status === "REWARDED").length,
-    NO_SHOW: registrations.filter(r => r.status === "NO_SHOW").length,
-    CANCELED: registrations.filter(r => r.status === "CANCELED").length,
+    PENDING: filteredRegistrations.filter(r => r.status === "PENDING").length,
+    CONFIRMED: filteredRegistrations.filter(r => r.status === "CONFIRMED").length,
+    CHECKED_IN: filteredRegistrations.filter(r => r.status === "CHECKED_IN").length,
+    REWARDED: filteredRegistrations.filter(r => r.status === "REWARDED").length,
+    NO_SHOW: filteredRegistrations.filter(r => r.status === "NO_SHOW").length,
+    CANCELED: filteredRegistrations.filter(r => r.status === "CANCELED").length,
   }
 
   if (!isOpen) return null
@@ -152,12 +162,24 @@ export default function RegistrationListModal({
             </div>
           ) : (
             <div className="space-y-4">
+              {/* Search Box */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search by name or email..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400"
+                />
+              </div>
+
               {/* Summary */}
-              <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4 mb-6">
+              <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4">
                 <div className="flex items-center gap-2 text-purple-900 dark:text-purple-100 mb-4">
                   <CheckCircle2 className="w-5 h-5" />
                   <span className="font-semibold">
-                    Total Registrations: {registrations.length}
+                    Total Registrations: {filteredRegistrations.length} {filteredRegistrations.length !== registrations.length && `(filtered from ${registrations.length})`}
                   </span>
                 </div>
                 
@@ -240,7 +262,14 @@ export default function RegistrationListModal({
                     </tr>
                   </thead>
                   <tbody>
-                    {registrations.map((registration, index) => (
+                    {filteredRegistrations.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-12 text-center text-gray-500 dark:text-gray-400">
+                          <p className="text-sm">No registrations found matching your search</p>
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredRegistrations.map((registration, index) => (
                       <tr
                         key={registration.userId}
                         className="border-b dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
@@ -271,7 +300,8 @@ export default function RegistrationListModal({
                           </div>
                         </td>
                       </tr>
-                    ))}
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>

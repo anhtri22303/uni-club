@@ -571,6 +571,7 @@ export default function ClubLeaderEventsPage() {
     if (isDefaultState) {
       // Default: Only show future PENDING_UNISTAFF and APPROVED events
       if (item.status === "REJECTED") return false;
+      if (item.status === "CANCELLED") return false;
       if (item.status === "COMPLETED") return false;
       if (isExpired) return false;
       if (!isFutureEvent) return false;
@@ -1198,6 +1199,7 @@ export default function ClubLeaderEventsPage() {
                           Pending Uni-Staff
                         </SelectItem>
                         <SelectItem value="REJECTED">Rejected</SelectItem>
+                        <SelectItem value="CANCELLED">Cancelled</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -1282,6 +1284,8 @@ export default function ClubLeaderEventsPage() {
                       borderColor = "border-l-4 border-l-yellow-500";
                     } else if (event.status === "REJECTED") {
                       borderColor = "border-l-4 border-l-red-500";
+                    } else if (event.status === "CANCELLED") {
+                      borderColor = "border-l-4 border-l-orange-500";
                     }
                   }
 
@@ -1436,6 +1440,15 @@ export default function ClubLeaderEventsPage() {
                                 >
                                   <span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
                                   Rejected
+                                </Badge>
+                              )}
+                              {event.status === "CANCELLED" && (
+                                <Badge
+                                  variant="outline"
+                                  className="bg-orange-100 text-orange-800 border-orange-400 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-600 font-semibold"
+                                >
+                                  <span className="inline-block w-2 h-2 rounded-full bg-orange-500 mr-1.5"></span>
+                                  Cancelled
                                 </Badge>
                               )}
                             </>

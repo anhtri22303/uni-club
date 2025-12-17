@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { X, Users, Clock, CheckCircle2, XCircle } from "lucide-react"
+import { X, Users, Clock, CheckCircle2, XCircle, Search } from "lucide-react"
 import { getEventCheckin, EventAttendee } from "@/service/eventApi"
 import { useToast } from "@/hooks/use-toast"
 
@@ -10,6 +10,7 @@ interface AttendeeListModalProps {
   onClose: () => void
   eventId: number
   eventName?: string
+  eventType?: string
 }
 
 export default function AttendeeListModal({
@@ -17,9 +18,11 @@ export default function AttendeeListModal({
   onClose,
   eventId,
   eventName,
+  eventType,
 }: AttendeeListModalProps) {
   const [attendees, setAttendees] = useState<EventAttendee[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [searchTerm, setSearchTerm] = useState("")
   const { toast } = useToast()
 
   useEffect(() => {
@@ -87,6 +90,15 @@ export default function AttendeeListModal({
     )
   }
 
+  // Filter attendees based on search term
+  const filteredAttendees = attendees.filter((attendee) => {
+    const searchLower = searchTerm.toLowerCase()
+    return (
+      attendee.fullName.toLowerCase().includes(searchLower) ||
+      attendee.email.toLowerCase().includes(searchLower)
+    )
+  })
+
   if (!isOpen) return null
 
   return (
@@ -130,12 +142,24 @@ export default function AttendeeListModal({
             </div>
           ) : (
             <div className="space-y-4">
+              {/* Search Box */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search by name or email..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                />
+              </div>
+
               {/* Summary */}
-              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 mb-6">
+              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
                 <div className="flex items-center gap-2 text-blue-900 dark:text-blue-100">
                   <CheckCircle2 className="w-5 h-5" />
                   <span className="font-semibold">
-                    Total Check-ins: {attendees.length}
+                    Total Check-ins: {filteredAttendees.length} {filteredAttendees.length !== attendees.length && `(filtered from ${attendees.length})`}
                   </span>
                 </div>
               </div>
@@ -154,23 +178,36 @@ export default function AttendeeListModal({
                       <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
                         Email
                       </th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
-                        Attendance
-                      </th>
+                      {eventType !== "PUBLIC" && (
+                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                          Attendance
+                        </th>
+                      )}
                       <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
                         Check-in
                       </th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
-                        Check-mid
-                      </th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
-                        Check-out
-                      </th>
+                      {eventType !== "PUBLIC" && (
+                        <>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                            Check-mid
+                          </th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                            Check-out
+                          </th>
+                        </>
+                      )}
                     </tr>
                   </thead>
                   <tbody>
-                    {attendees.map((attendee, index) => (
-                      <tr
+                    {filteredAttendees.length === 0 ? (
+                      <tr>
+                        <td colSpan={eventType === "PUBLIC" ? 4 : 7} className="py-12 text-center text-gray-500 dark:text-gray-400">
+                          <p className="text-sm">No attendees found matching your search</p>
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredAttendees.map((attendee, index) => (
+                        <tr
                         key={attendee.userId}
                         className="border-b dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
                       >
@@ -187,15 +224,17 @@ export default function AttendeeListModal({
                         <td className="py-4 px-4 text-sm text-gray-600 dark:text-gray-400">
                           {attendee.email}
                         </td>
-                        <td className="py-4 px-4">
-                          {getAttendanceBadge(attendee.attendanceLevel)}
-                        </td>
+                        {eventType !== "PUBLIC" && (
+                          <td className="py-4 px-4">
+                            {getAttendanceBadge(attendee.attendanceLevel)}
+                          </td>
+                        )}
                         <td className="py-4 px-4 text-sm text-gray-600 dark:text-gray-400">
                           <div className="flex items-center gap-2">
                             {attendee.checkinAt ? (
                               <>
-                                <CheckCircle2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                                <span className="text-blue-700 dark:text-blue-300">{formatDateTime(attendee.checkinAt)}</span>
+                                <CheckCircle2 className={`w-4 h-4 ${eventType === "PUBLIC" ? "text-green-600 dark:text-green-400" : "text-blue-600 dark:text-blue-400"}`} />
+                                <span className={eventType === "PUBLIC" ? "text-green-700 dark:text-green-300" : "text-blue-700 dark:text-blue-300"}>{formatDateTime(attendee.checkinAt)}</span>
                               </>
                             ) : (
                               <>
@@ -205,38 +244,43 @@ export default function AttendeeListModal({
                             )}
                           </div>
                         </td>
-                        <td className="py-4 px-4 text-sm text-gray-600 dark:text-gray-400">
-                          <div className="flex items-center gap-2">
-                            {attendee.checkMidAt ? (
-                              <>
-                                <CheckCircle2 className="w-4 h-4 text-orange-600 dark:text-orange-400" />
-                                <span className="text-orange-700 dark:text-orange-300">{formatDateTime(attendee.checkMidAt)}</span>
-                              </>
-                            ) : (
-                              <>
-                                <XCircle className="w-4 h-4 text-gray-400" />
-                                -
-                              </>
-                            )}
-                          </div>
-                        </td>
-                        <td className="py-4 px-4 text-sm text-gray-600 dark:text-gray-400">
-                          <div className="flex items-center gap-2">
-                            {attendee.checkoutAt ? (
-                              <>
-                                <CheckCircle2 className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                                <span className="text-purple-700 dark:text-purple-300">{formatDateTime(attendee.checkoutAt)}</span>
-                              </>
-                            ) : (
-                              <>
-                                <XCircle className="w-4 h-4 text-gray-400" />
-                                -
-                              </>
-                            )}
-                          </div>
-                        </td>
+                        {eventType !== "PUBLIC" && (
+                          <>
+                            <td className="py-4 px-4 text-sm text-gray-600 dark:text-gray-400">
+                              <div className="flex items-center gap-2">
+                                {attendee.checkMidAt ? (
+                                  <>
+                                    <CheckCircle2 className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+                                    <span className="text-orange-700 dark:text-orange-300">{formatDateTime(attendee.checkMidAt)}</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <XCircle className="w-4 h-4 text-gray-400" />
+                                    -
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-4 px-4 text-sm text-gray-600 dark:text-gray-400">
+                              <div className="flex items-center gap-2">
+                                {attendee.checkoutAt ? (
+                                  <>
+                                    <CheckCircle2 className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                                    <span className="text-purple-700 dark:text-purple-300">{formatDateTime(attendee.checkoutAt)}</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <XCircle className="w-4 h-4 text-gray-400" />
+                                    -
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                          </>
+                        )}
                       </tr>
-                    ))}
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>

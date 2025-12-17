@@ -275,6 +275,7 @@ export const getEventById = async (id: string | number): Promise<Event> => {
   try {
     const response = await axiosInstance.get(`api/events/${id}`)
     const resData: any = response.data
+    console.log(`Fetched event by id ${id}:`, resData)
     // Response structure: { success: true, message: "success", data: { id, name, description, type, date, startTime, endTime, status, locationName, checkInCode, maxCheckInCount, currentCheckInCount, hostClub: { id, name } } }
     // Always return the data object when present
     if (resData && resData.data) return resData.data
@@ -514,20 +515,22 @@ export const registerForEvent = async (eventId: string | number) => {
 }
 
 export interface EventRegistration {
-  clubName: string
-  status: string
   eventId: number
   eventName: string
+  startDate: string
+  endDate: string
+  status: string
+  hostClubName: string
   registeredAt: string
-  attendanceLevel: string
-  date: string
-  committedPoints: number
+  attendanceLevel?: string
+  committedPoints?: number
 }
 
 export const getMyEventRegistrations = async (): Promise<EventRegistration[]> => {
   try {
     const response = await axiosInstance.get(`/api/events/my-registrations`)
     const data: any = response.data
+    console.log(`My event registrations:`, data)
     // Response structure: { success: true, message: "success", data: [...] }
     if (data?.data && Array.isArray(data.data)) return data.data
     if (Array.isArray(data)) return data
