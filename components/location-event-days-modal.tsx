@@ -317,7 +317,7 @@ export function LocationEventDaysModal({
       onOpenChange={onOpenChange}
       title="Location & Event Days"
       description="Choose location and schedule your event days"
-      className="sm:max-w-4xl max-h-[85vh] !fixed !top-[50%] !translate-y-[-50%] z-[80]"
+      className="sm:max-w-4xl max-h-[85vh] !fixed !top-[50%] !translate-y-[-50%] z-[80] !bg-gradient-to-br !from-indigo-50 !to-purple-50 dark:!from-indigo-950 dark:!to-purple-950 !border-4 !border-indigo-400 dark:!border-indigo-600 !shadow-2xl"
     >
       <div className="flex flex-col h-full">
         <ScrollArea className="flex-1 pr-4 max-h-[calc(85vh-200px)]" type="always">
@@ -600,14 +600,14 @@ export function LocationEventDaysModal({
                       return (
                         <button
                           key={day}
-                          onClick={() => !isPast && handleDateClick(day)}
-                          disabled={isPast}
+                          onClick={() => !isPast && !isSelected && handleDateClick(day)}
+                          disabled={isPast || isSelected}
                           className={cn(
                             "h-14 border border-gray-200 dark:border-gray-800 transition-all",
                             "hover:bg-blue-50 dark:hover:bg-blue-950/30",
                             isPast && "bg-gray-100 dark:bg-gray-900 cursor-not-allowed opacity-50",
                             isToday && "ring-2 ring-blue-500 ring-inset",
-                            isSelected && "bg-blue-600 text-white font-bold"
+                            isSelected && "bg-blue-600 text-white font-bold cursor-not-allowed"
                           )}
                         >
                           {day}

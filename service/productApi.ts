@@ -47,6 +47,7 @@ export interface Product {
   clubId: number;
   clubName: string;
   eventId: number;
+  eventStatus?: string;
   createdAt: string;
   redeemCount: number;
   media: ProductMedia[];
@@ -83,7 +84,7 @@ export interface EventProductValidation {
 export interface ProductFilterPayload {
   page?: number;
   size?: number;
-  sort?: string; 
+  sort?: string;
   status?: string;
   type?: string;
   tag?: string;
@@ -316,18 +317,39 @@ export async function checkEventProductValid(
 /**
  * Cập nhật tồn kho (PATCH /api/clubs/{clubId}/products/{id}/stock)
  */
+// export async function updateStock(
+//   clubId: number | string,
+//   productId: number | string,
+//   delta: number,
+//   note: string = ""
+// ): Promise<Product> {
+//   const res = await axiosInstance.patch<ApiResponse<Product>>(
+//     `/api/clubs/${clubId}/products/${productId}/stock`,
+//     null,
+//     {
+//       params: { delta, note },
+//     }
+//   );
+//   return res.data.data;
+// }
+/**
+ * Cập nhật tồn kho (PATCH /api/clubs/{clubId}/products/{id}/stock)
+ * Updated: Gửi data qua Body thay vì Params
+ */
 export async function updateStock(
   clubId: number | string,
   productId: number | string,
   delta: number,
-  note: string = ""
+  note: string = "",
+  reason: string = "CORRECTION" // <-- THÊM MỚI: Mặc định theo Swagger example
 ): Promise<Product> {
   const res = await axiosInstance.patch<ApiResponse<Product>>(
     `/api/clubs/${clubId}/products/${productId}/stock`,
-    null,
     {
-      params: { delta, note },
-    }
+      delta,
+      reason,
+      note
+    } // Gửi object này vào BODY của request
   );
   return res.data.data;
 }
@@ -372,7 +394,7 @@ export async function addMediaToProduct(
   productId: number | string,
   file: File
 ): Promise<ProductMedia> {
-  
+
   const formData = new FormData();
   formData.append("file", file); // Tên key là "file"
 
@@ -396,9 +418,9 @@ export async function addMediaToProduct(
 export async function addBulkMediaToProduct(
   clubId: number | string,
   productId: number | string,
-  files: File[] 
-): Promise<ProductMedia[]> { 
-  
+  files: File[]
+): Promise<ProductMedia[]> {
+
   const formData = new FormData();
   // Lặp qua mảng files và append từng file
   files.forEach((file) => {
@@ -407,7 +429,7 @@ export async function addBulkMediaToProduct(
 
   const res = await axiosInstance.post<ApiResponse<ProductMedia[]>>(
     `/api/clubs/{clubId}/products/${productId}/media/bulk`,
-    formData, 
+    formData,
     {
       headers: {
         "Content-Type": "multipart/form-data",
@@ -441,7 +463,7 @@ export async function setMediaThumbnail(
   clubId: number | string,
   productId: number | string,
   mediaId: number | string
-): Promise<string> { 
+): Promise<string> {
   const res = await axiosInstance.put<ApiResponse<string>>(
     `/api/clubs/${clubId}/products/${productId}/media/${mediaId}/thumbnail`
   );
@@ -457,12 +479,12 @@ export async function updateMediaMetadata(
   productId: number | string,
   mediaId: number | string,
   payload: UpdateMediaMetadataPayload
-): Promise<ProductMedia> { 
+): Promise<ProductMedia> {
   const res = await axiosInstance.put<ApiResponse<ProductMedia>>(
     `/api/clubs/${clubId}/products/${productId}/media/${mediaId}`,
-    null, 
+    null,
     {
-      params: payload 
+      params: payload
     }
   );
   return res.data.data;
@@ -477,7 +499,7 @@ export async function reorderMedia(
   clubId: number | string,
   productId: number | string,
   payload: ReorderMediaPayload
-): Promise<ProductMedia[]> { 
+): Promise<ProductMedia[]> {
   const res = await axiosInstance.put<ApiResponse<ProductMedia[]>>(
     `/api/clubs/${clubId}/products/${productId}/media/reorder`,
     payload

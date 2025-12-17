@@ -283,7 +283,7 @@ export default function AdminEventDetailPage() {
         return (
           <Badge
             variant="secondary"
-            className="bg-blue-900 text-white border-blue-900"
+            className="bg-blue-900 text-white border-blue-900 font-semibold"
           >
             <CheckCircle className="h-3 w-3 mr-1" />
             Completed
@@ -293,7 +293,7 @@ export default function AdminEventDetailPage() {
         return (
           <Badge
             variant="default"
-            className="bg-purple-600 text-white border-purple-600"
+            className="bg-purple-600 text-white border-purple-600 font-semibold"
           >
             <Clock className="h-3 w-3 mr-1" />
             Ongoing
@@ -303,7 +303,7 @@ export default function AdminEventDetailPage() {
         return (
           <Badge
             variant="default"
-            className="bg-green-100 text-green-800 border-green-300"
+            className="bg-green-600 text-white border-green-600 font-semibold"
           >
             <CheckCircle className="h-3 w-3 mr-1" />
             Approved
@@ -313,7 +313,7 @@ export default function AdminEventDetailPage() {
         return (
           <Badge
             variant="outline"
-            className="bg-orange-100 text-orange-800 border-orange-300"
+            className="bg-orange-100 text-orange-700 border-orange-500 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-700 font-semibold"
           >
             <AlertCircle className="h-3 w-3 mr-1" />
             Pending Co-Club Approval
@@ -323,7 +323,7 @@ export default function AdminEventDetailPage() {
         return (
           <Badge
             variant="outline"
-            className="bg-yellow-100 text-yellow-800 border-yellow-300"
+            className="bg-yellow-100 text-yellow-700 border-yellow-500 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-700 font-semibold"
           >
             <AlertCircle className="h-3 w-3 mr-1" />
             Pending Uni-Staff Approval
@@ -333,10 +333,20 @@ export default function AdminEventDetailPage() {
         return (
           <Badge
             variant="destructive"
-            className="bg-red-100 text-red-800 border-red-300"
+            className="font-semibold"
           >
             <XCircle className="h-3 w-3 mr-1" />
             Rejected
+          </Badge>
+        );
+      case "CANCELLED":
+        return (
+          <Badge
+            variant="outline"
+            className="bg-orange-100 text-orange-800 border-orange-400 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-600 font-semibold"
+          >
+            <XCircle className="h-3 w-3 mr-1" />
+            Cancelled
           </Badge>
         );
       default:

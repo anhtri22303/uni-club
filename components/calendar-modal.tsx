@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { Modal } from "@/components/modal";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   ChevronLeft,
@@ -176,37 +177,41 @@ export function CalendarModal({
     const eventDate = eventDateStr ? new Date(eventDateStr) : null;
     const isPast = eventDate && eventDate < today;
 
-    // COMPLETED status always gets dark blue
+    // COMPLETED status - dark blue (matching club-leader/events)
     if (status === "COMPLETED")
-      return "bg-gradient-to-br from-blue-900 to-blue-950 dark:from-blue-900 dark:to-blue-950 text-white dark:text-white border-blue-900 dark:border-blue-800 shadow-sm opacity-70";
+      return "bg-blue-900 text-white border-blue-900 font-semibold";
 
-    // Past events get lighter colors
+    // Expired (past events) - gray (matching club-leader/events)
     if (isPast) {
-      if (status === "REJECTED")
-        return "bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 text-red-600 dark:text-red-400 border-red-200 dark:border-red-700 shadow-sm opacity-60";
-      if (status === "PENDING_COCLUB")
-        return "bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-700 shadow-sm opacity-60";
-      if (status === "PENDING_UNISTAFF" || status === "WAITING")
-        return "bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 text-yellow-600 dark:text-yellow-400 border-yellow-200 dark:border-yellow-700 shadow-sm opacity-60";
-      if (status === "PENDING")
-        return "bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-700 shadow-sm opacity-60";
-      if (status === "APPROVED")
-        return "bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 text-green-600 dark:text-green-400 border-green-200 dark:border-green-700 shadow-sm opacity-60";
-      return "bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-700 shadow-sm opacity-60";
+      return "bg-gray-400 text-white border-gray-400 font-semibold opacity-60";
     }
 
-    // Future/today events get normal vibrant colors
-    if (status === "REJECTED")
-      return "bg-gradient-to-br from-red-100 to-red-200 dark:from-red-900/40 dark:to-red-800/40 text-red-800 dark:text-red-300 border-red-400 dark:border-red-600 shadow-sm";
-    if (status === "PENDING_COCLUB")
-      return "bg-gradient-to-br from-orange-100 to-orange-200 dark:from-orange-900/40 dark:to-orange-800/40 text-orange-800 dark:text-orange-300 border-orange-400 dark:border-orange-600 shadow-sm";
-    if (status === "PENDING_UNISTAFF" || status === "WAITING")
-      return "bg-gradient-to-br from-yellow-100 to-yellow-200 dark:from-yellow-900/40 dark:to-yellow-800/40 text-yellow-800 dark:text-yellow-300 border-yellow-400 dark:border-yellow-600 shadow-sm";
-    if (status === "PENDING")
-      return "bg-gradient-to-br from-amber-100 to-amber-200 dark:from-amber-900/40 dark:to-amber-800/40 text-amber-800 dark:text-amber-300 border-amber-400 dark:border-amber-600 shadow-sm";
+    // ONGOING - purple (matching club-leader/events)
+    if (status === "ONGOING")
+      return "bg-purple-600 text-white border-purple-600 font-semibold";
+
+    // APPROVED - green (matching club-leader/events)
     if (status === "APPROVED")
-      return "bg-gradient-to-br from-green-100 to-green-200 dark:from-green-900/40 dark:to-green-800/40 text-green-800 dark:text-green-300 border-green-400 dark:border-green-600 shadow-sm";
-    return "bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/40 dark:to-blue-800/40 text-blue-800 dark:text-blue-300 border-blue-400 dark:border-blue-600 shadow-sm";
+      return "bg-green-600 text-white border-green-600 font-semibold";
+
+    // PENDING_COCLUB - orange (matching club-leader/events)
+    if (status === "PENDING_COCLUB")
+      return "bg-orange-100 text-orange-700 border-orange-500 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-700 font-semibold";
+
+    // PENDING_UNISTAFF, PENDING, WAITING - yellow (matching club-leader/events)
+    if (status === "PENDING_UNISTAFF" || status === "PENDING" || status === "WAITING")
+      return "bg-yellow-100 text-yellow-700 border-yellow-500 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-700 font-semibold";
+
+    // REJECTED - red (matching club-leader/events)
+    if (status === "REJECTED")
+      return "bg-red-600 text-white border-red-600 font-semibold";
+
+    // CANCELLED - orange (matching club-leader/events)
+    if (status === "CANCELLED")
+      return "bg-orange-100 text-orange-800 border-orange-400 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-600 font-semibold";
+
+    // Default - blue
+    return "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700 font-semibold";
   };
 
   return (
@@ -255,7 +260,7 @@ export function CalendarModal({
               >
                 <ChevronLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </Button>
-              <h2 className="text-base sm:text-xl font-bold min-w-[140px] sm:min-w-[200px] text-center bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent truncate">
+              <h2 className="text-base sm:text-xl font-bold min-w-[140px] sm:min-w-[200px] text-center text-gray-800 dark:text-gray-200 truncate">
                 {monthYear}
               </h2>
               <Button
@@ -270,48 +275,32 @@ export function CalendarModal({
 
             {/* Stats */}
             <div className="flex items-center gap-1.5 sm:gap-3 flex-wrap">
-              <div className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 rounded-lg border border-blue-200/50 dark:border-blue-800/50">
-                <CalendarIcon className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-                <span className="text-xs sm:text-sm font-semibold text-blue-700 dark:text-blue-400 whitespace-nowrap">
+              <div className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-700">
+                <CalendarIcon className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-gray-600 dark:text-gray-400 flex-shrink-0" />
+                <span className="text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">
                   {monthStats.total}{" "}
                   {monthStats.total === 1 ? "Event" : "Events"}
                 </span>
               </div>
               {monthStats.completed > 0 && (
-                <div className="flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-1 sm:py-1.5 bg-gradient-to-br from-blue-900 to-blue-950 rounded-lg border border-blue-900">
-                  <div className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-white flex-shrink-0"></div>
-                  <span className="text-[10px] sm:text-xs font-semibold text-white whitespace-nowrap">
-                    {monthStats.completed}{" "}
-                    <span className="hidden xs:inline">Completed</span>
-                  </span>
-                </div>
+                <Badge variant="secondary" className="text-[10px] sm:text-xs">
+                  {monthStats.completed} Completed
+                </Badge>
               )}
               {monthStats.approved > 0 && (
-                <div className="flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-1 sm:py-1.5 bg-gradient-to-br from-green-100 to-green-200 dark:from-green-900/40 dark:to-green-800/40 rounded-lg border border-green-400 dark:border-green-600">
-                  <div className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-green-600 dark:bg-green-400 flex-shrink-0"></div>
-                  <span className="text-[10px] sm:text-xs font-semibold text-green-800 dark:text-green-300 whitespace-nowrap">
-                    {monthStats.approved}{" "}
-                    <span className="hidden xs:inline">Approved</span>
-                  </span>
-                </div>
+                <Badge variant="secondary" className="text-[10px] sm:text-xs">
+                  {monthStats.approved} Approved
+                </Badge>
               )}
               {monthStats.pending > 0 && (
-                <div className="flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-1 sm:py-1.5 bg-gradient-to-br from-amber-100 to-amber-200 dark:from-amber-900/40 dark:to-amber-800/40 rounded-lg border border-amber-400 dark:border-amber-600">
-                  <div className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-amber-600 dark:bg-amber-400 flex-shrink-0"></div>
-                  <span className="text-[10px] sm:text-xs font-semibold text-amber-800 dark:text-amber-300 whitespace-nowrap">
-                    {monthStats.pending}{" "}
-                    <span className="hidden xs:inline">Pending</span>
-                  </span>
-                </div>
+                <Badge variant="secondary" className="text-[10px] sm:text-xs">
+                  {monthStats.pending} Pending
+                </Badge>
               )}
               {monthStats.rejected > 0 && (
-                <div className="flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-1 sm:py-1.5 bg-gradient-to-br from-red-100 to-red-200 dark:from-red-900/40 dark:to-red-800/40 rounded-lg border border-red-400 dark:border-red-600">
-                  <div className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-red-600 dark:bg-red-400 flex-shrink-0"></div>
-                  <span className="text-[10px] sm:text-xs font-semibold text-red-800 dark:text-red-300 whitespace-nowrap">
-                    {monthStats.rejected}{" "}
-                    <span className="hidden xs:inline">Rejected</span>
-                  </span>
-                </div>
+                <Badge variant="secondary" className="text-[10px] sm:text-xs">
+                  {monthStats.rejected} Rejected
+                </Badge>
               )}
             </div>
 
@@ -328,36 +317,36 @@ export function CalendarModal({
         </div>
 
         {/* Legend */}
-        <div className="flex flex-wrap gap-3 text-xs bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 p-3 rounded-lg border border-blue-200/50 dark:border-blue-800/50">
+        <div className="flex flex-wrap gap-3 text-xs bg-gray-50 dark:bg-gray-900 p-3 rounded-lg border border-gray-200 dark:border-gray-800">
           <div className="flex items-center gap-1.5">
-            <div className="h-3 w-3 rounded-full bg-gradient-to-br from-blue-900 to-blue-950 shadow-sm"></div>
-            <span className="font-medium text-blue-900 dark:text-blue-400">
+            <div className="h-3 w-3 rounded-full bg-blue-600"></div>
+            <span className="font-medium text-gray-700 dark:text-gray-300">
               Completed
             </span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="h-3 w-3 rounded-full bg-gradient-to-br from-green-400 to-green-600 shadow-sm"></div>
-            <span className="font-medium text-green-700 dark:text-green-400">
+            <div className="h-3 w-3 rounded-full bg-green-600"></div>
+            <span className="font-medium text-gray-700 dark:text-gray-300">
               Approved
             </span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="h-3 w-3 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 shadow-sm"></div>
-            <span className="font-medium text-amber-700 dark:text-amber-400">
+            <div className="h-3 w-3 rounded-full bg-amber-600"></div>
+            <span className="font-medium text-gray-700 dark:text-gray-300">
               Pending
             </span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="h-3 w-3 rounded-full bg-gradient-to-br from-red-400 to-red-600 shadow-sm"></div>
-            <span className="font-medium text-red-700 dark:text-red-400">
+            <div className="h-3 w-3 rounded-full bg-red-600"></div>
+            <span className="font-medium text-gray-700 dark:text-gray-300">
               Rejected
             </span>
           </div>
         </div>
 
         {/* Calendar grid */}
-        <div className="border-2 rounded-xl overflow-hidden shadow-lg border-blue-200/50 dark:border-blue-800/50">
-          <div className="grid grid-cols-7 bg-gradient-to-r from-blue-600 to-purple-600">
+        <div className="border-2 rounded-xl overflow-hidden shadow-lg border-gray-200 dark:border-gray-800">
+          <div className="grid grid-cols-7 bg-blue-600 dark:bg-blue-700">
             {[
               "Sunday",
               "Monday",
@@ -424,13 +413,13 @@ export function CalendarModal({
                           className={cn(
                             "text-xs sm:text-sm font-bold h-6 w-6 sm:h-7 sm:w-7 flex items-center justify-center rounded-full transition-all",
                             today &&
-                              "bg-gradient-to-br from-blue-600 to-purple-600 text-white shadow-md scale-110",
+                              "bg-blue-600 text-white",
                             !today &&
                               isWeekend &&
                               "text-red-600 dark:text-red-400",
                             !today &&
                               !isWeekend &&
-                              "text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-800"
+                              "text-gray-700 dark:text-gray-300"
                           )}
                         >
                           {day}

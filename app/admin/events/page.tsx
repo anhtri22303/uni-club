@@ -15,7 +15,7 @@ import { Modal } from "@/components/modal"
 import { QRModal } from "@/components/qr-modal"
 import { CalendarModal } from "@/components/calendar-modal"
 import { useToast } from "@/hooks/use-toast"
-import { Calendar, Plus, Ticket, ChevronLeft, ChevronRight, Eye, Filter, X, Gift } from "lucide-react"
+import { Calendar, Plus, Ticket, ChevronLeft, ChevronRight, Eye, Filter, X, Gift, BarChart3, MapPin } from "lucide-react"
 import { QrCode } from "lucide-react"
 import QRCode from "qrcode"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -24,6 +24,7 @@ import { fetchAdminEvents, AdminEvent, FetchAdminEventsParams } from "@/service/
 import { createEvent, eventQR, timeObjectToString, isEventExpired as isEventExpiredUtil } from "@/service/eventApi"
 import { EventDateTimeDisplay } from "@/components/event-date-time-display"
 import { PhaseSelectionModal } from "@/components/phase-selection-modal"
+import { PublicEventQRButton } from "@/components/public-event-qr-button"
 import { fetchLocation, Location } from "@/service/locationApi"
 import { useQuery } from "@tanstack/react-query"
 
@@ -84,6 +85,25 @@ export default function AdminEventsPage() {
   // Use isEventExpired from eventApi.ts which supports both single-day and multi-day events
   const isEventExpired = (event: AdminEvent) => isEventExpiredUtil(event as any)
 
+  // Helper function to check if event is active (ONGOING and within date/time range)
+  const isEventActive = (event: any) => {
+    // COMPLETED status means event has ended
+    if (event.status === "COMPLETED") return false
+
+    // Must be ONGOING
+    if (event.status !== "ONGOING") return false
+
+    // Must not be expired
+    if (isEventExpired(event)) return false
+
+    // For multi-day events, check if any day exists
+    // For single-day events, check date/endTime
+    const hasValidDate = (event.days && event.days.length > 0) || (event.date && event.endTime)
+    if (!hasValidDate) return false
+
+    return true
+  }
+
   // --- Logic Fetch Data ---
   const loadEvents = async (page: number, keyword: string, filters: EventFilters) => {
     setIsLoading(true)
@@ -120,6 +140,103 @@ export default function AdminEventsPage() {
   useEffect(() => {
     loadEvents(currentPage, searchTerm, activeFilters)
   }, [currentPage, searchTerm, activeFilters])
+
+  // Normalize events data to ensure compatibility with EventDateTimeDisplay component
+  const normalizedEvents = events.map((event) => {
+    // Keep all existing fields including days, startDate, endDate for multi-day events
+    let date = event.date
+    let startTimeStr = event.startTime
+    let endTimeStr = event.endTime
+    let startDateStr = event.startDate
+    let endDateStr = event.endDate
+
+    // If startTime is an ISO string like "2025-12-17T21:30:00", extract date and time
+    if (event.startTime && event.startTime.includes('T')) {
+      const startDate = new Date(event.startTime)
+      if (!date && !event.startDate) {
+        // Only set date if it's not a multi-day event (no startDate/endDate)
+        date = startDate.toISOString().split('T')[0] // Extract YYYY-MM-DD
+      }
+      startTimeStr = startDate.toTimeString().substring(0, 8) // Extract HH:MM:SS
+      
+      // If this looks like a multi-day event (has endTime different date), extract startDate
+      if (!startDateStr) {
+        startDateStr = startDate.toISOString().split('T')[0]
+      }
+    }
+
+    // If endTime is an ISO string, extract time
+    if (event.endTime && event.endTime.includes('T')) {
+      const endDate = new Date(event.endTime)
+      endTimeStr = endDate.toTimeString().substring(0, 8) // Extract HH:MM:SS
+      
+      // Extract endDate for multi-day events
+      if (!endDateStr) {
+        endDateStr = endDate.toISOString().split('T')[0]
+      }
+    }
+
+    // Generate days array if we have startDate and endDate but no days array
+    let daysArray = event.days
+    if (!daysArray && startDateStr && endDateStr && startDateStr !== endDateStr) {
+      // This is a multi-day event without days array, generate it
+      const days = []
+      const currentDate = new Date(startDateStr)
+      const lastDate = new Date(endDateStr)
+      let dayId = 1
+      
+      while (currentDate <= lastDate) {
+        const dateStr = currentDate.toISOString().split('T')[0]
+        days.push({
+          id: dayId++,
+          date: dateStr,
+          startTime: startTimeStr?.substring(0, 5) || "09:00", // HH:MM format
+          endTime: endTimeStr?.substring(0, 5) || "17:00",
+        })
+        currentDate.setDate(currentDate.getDate() + 1)
+      }
+      daysArray = days
+    }
+
+    const normalized = {
+      ...event, // Spread all original event fields first
+      title: event.title || event.name,
+      name: event.name || event.title,
+      type: event.type || "PUBLIC", // Default to PUBLIC if no type specified
+      // Keep multi-day event fields: days, startDate, endDate (if they exist)
+      days: daysArray, // Important: preserve or generate days array for multi-day detection
+      startDate: startDateStr, // First day date
+      endDate: endDateStr, // Last day date
+      // Legacy single-day fields
+      date,
+      startTime: startTimeStr,
+      endTime: endTimeStr,
+      time: startTimeStr, // Legacy field
+      // Explicitly preserve budgetPoints and maxCheckInCount
+      budgetPoints: event.budgetPoints ?? 0,
+      maxCheckInCount: event.maxCheckInCount ?? 1,
+    }
+
+    // Debug: log event data to console
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Event:', normalized.title, 'Type:', normalized.type, 'BudgetPoints:', normalized.budgetPoints, 'MaxCheckIn:', normalized.maxCheckInCount, 'Points per person:', Math.floor(normalized.budgetPoints / normalized.maxCheckInCount))
+    }
+
+    return normalized
+  })
+
+  // Load all events for calendar view (without pagination)
+  const loadAllEventsForCalendar = async () => {
+    try {
+      const data = await fetchAdminEvents({
+        page: 0,
+        size: 9999, // Load all events
+      })
+      setAllEvents(data.content)
+    } catch (error) {
+      console.error("Failed to load all events for calendar:", error)
+    }
+  }
 
   // Load all events for calendar on mount
   useEffect(() => {
@@ -473,9 +590,6 @@ export default function AdminEventsPage() {
               <Button variant="outline" onClick={() => setShowCalendarModal(true)}>
                 <Calendar className="h-4 w-4 mr-2" /> Calendar View
               </Button>
-              <Button onClick={() => setShowCreateModal(true)}>
-                <Plus className="h-4 w-4 mr-2" /> Create Event
-              </Button>
             </div>
           </div>
 
@@ -601,7 +715,7 @@ export default function AdminEventsPage() {
             // Event grid
             <>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                {events.map((event: AdminEvent) => {
+                {normalizedEvents.map((event: AdminEvent) => {
                   const isCompleted = event.status === "COMPLETED"
                   const isCancelled = event.status === "CANCELLED" // Thêm check
                   const expired = isCompleted || isCancelled || isEventExpired(event)
@@ -610,10 +724,12 @@ export default function AdminEventsPage() {
                   let borderColor = ""
                   if (isCompleted) {
                     borderColor = "border-l-4 border-l-blue-900"
-                  } else if (isCancelled) { // CHANGED: Thêm border cho Cancelled
-                    borderColor = "border-l-4 border-l-slate-700"
+                  } else if (isCancelled) {
+                    borderColor = "border-l-4 border-l-orange-500"
                   } else if (expired) {
                     borderColor = "border-l-4 border-l-gray-400"
+                  } else if (event.status === "ONGOING") {
+                    borderColor = "border-l-4 border-l-purple-500"
                   } else if (event.status === "APPROVED") {
                     borderColor = "border-l-4 border-l-green-500"
                   } else if (event.status === "PENDING_COCLUB") {
@@ -647,37 +763,52 @@ export default function AdminEventsPage() {
                               </CardDescription>
                             )}
                           </div> */}
-                      <CardHeader className="p-4">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <CardTitle className="text-lg">{event.title}</CardTitle>
+                      <CardHeader>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <CardTitle className="text-lg line-clamp-2" title={event.title}>
+                              {event.title}
+                            </CardTitle>
+                            {event.description && (
+                              <CardDescription
+                                className="mt-1 text-sm leading-5 max-h-[3.75rem] overflow-hidden"
+                                style={{
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: 3,
+                                  WebkitBoxOrient: 'vertical' as const,
+                                  textOverflow: 'ellipsis'
+                                }}
+                              >
+                                {event.description}
+                              </CardDescription>
+                            )}
                           </div>
-                          {!expired && !isCompleted && !isCancelled && (
+                          <div className="flex flex-col items-end gap-1 shrink-0 min-w-20">
+                            {/* Type badge styled like student/events */}
                             <Badge
-                              variant={
-                                status === "Finished"
-                                  ? "secondary"
-                                  : status === "Soon"
-                                    ? "default"
-                                    : status === "Now"
-                                      ? "destructive"
-                                      : "outline"
+                              variant="outline"
+                              className={
+                                event.type === "PRIVATE"
+                                  ? "bg-purple-100 text-purple-700 border-purple-300 shrink-0 text-xs font-semibold"
+                                  : event.type === "SPECIAL"
+                                    ? "bg-pink-100 text-pink-700 border-pink-300 shrink-0 text-xs font-semibold"
+                                    : "bg-blue-100 text-blue-700 border-blue-300 shrink-0 text-xs font-semibold"
                               }
                             >
-                              {status}
+                              {event.type}
                             </Badge>
-                          )}
+                          </div>
                         </div>
                         {/* Approval status badge */}
-                        <div className="mt-2 flex flex-wrap gap-2">
+                        <div className="mt-2 flex gap-2 flex-wrap">
                           {isCompleted ? (
                             <Badge variant="secondary" className="bg-blue-900 text-white border-blue-900 font-semibold">
                               <span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
                               Completed
                             </Badge>
                           ) : isCancelled ? (
-                            <Badge variant="secondary" className="bg-slate-700 text-white border-slate-700 font-semibold">
-                              <span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5"></span>
+                            <Badge variant="outline" className="bg-orange-100 text-orange-800 border-orange-400 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-600 font-semibold">
+                              <span className="inline-block w-2 h-2 rounded-full bg-orange-500 mr-1.5"></span>
                               Cancelled
                             </Badge>
                           ) : expired ? (
@@ -700,13 +831,13 @@ export default function AdminEventsPage() {
                                 </Badge>
                               )}
                               {event.status === "PENDING_COCLUB" && (
-                                <Badge variant="outline" className="bg-orange-100 text-orange-700 border-orange-500 font-semibold">
+                                <Badge variant="outline" className="bg-orange-100 text-orange-700 border-orange-500 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-700 font-semibold">
                                   <span className="inline-block w-2 h-2 rounded-full bg-orange-500 mr-1.5"></span>
                                   Pending Co-Club Approval
                                 </Badge>
                               )}
                               {event.status === "PENDING_UNISTAFF" && (
-                                <Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-500 font-semibold">
+                                <Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-500 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-700 font-semibold">
                                   <span className="inline-block w-2 h-2 rounded-full bg-yellow-500 mr-1.5"></span>
                                   Pending Uni-Staff Approval
                                 </Badge>
@@ -719,57 +850,60 @@ export default function AdminEventsPage() {
                               )}
                             </>
                           )}
-                          {/* Receive Point badge */}
-                          <Badge
-                            variant="default"
-                            className="flex items-center gap-1 shrink-0 bg-emerald-600 hover:bg-emerald-700 text-xs font-semibold"
-                          >
-                            <Gift className="h-3 w-3" />
-                            {(() => {
-                              const budgetPoints = event.budgetPoints ?? 0
-                              const maxCheckInCount = event.maxCheckInCount ?? 1
-                              return maxCheckInCount > 0 ? Math.floor(budgetPoints / maxCheckInCount) : 0
-                            })()} pts
-                          </Badge>
                         </div>
                       </CardHeader>
-                      {/* <CardContent className="flex-1 flex flex-col">
-                        <div className="space-y-3 flex-1"> */}
-                      <CardContent className="flex-1 flex flex-col p-4">
-                        <div className="space-y-2 flex-1">
+                      <CardContent className="flex-1 flex flex-col">
+                        <div className="space-y-3 flex-1">
                           <EventDateTimeDisplay event={event as any} variant="compact" />
-                          {/* Thay locationName bằng clubName từ API mới */}
-                          {event.clubName && (
+
+                          {event.locationName && (
                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <Ticket className="h-4 w-4" />
-                              {event.clubName}
+                              <MapPin className="h-4 w-4" />
+                              {event.locationName}
                             </div>
                           )}
                         </div>
 
-                        {/* Buttons section */}
-                        {/* <div className="mt-auto pt-4 space-y-3"> */}
-                        <div className="mt-auto pt-3 space-y-2">
-                          <Button variant="outline" className="w-full" onClick={() => router.push(`/admin/events/${event.id}`)}>
+                        {/* Buttons section - pushed to bottom */}
+                        <div className="mt-auto pt-4 space-y-3">
+                          <Button
+                            variant="outline"
+                            className="w-full"
+                            onClick={() => router.push(`/admin/events/${event.id}`)}
+                          >
                             <Eye className="h-4 w-4 mr-2" />
                             View Detail
                           </Button>
-                          {/* QR Code Section */}
-                          {(event.status === "APPROVED" || event.status === "ONGOING") && (
-                            // <div className="mt-3 pt-3 border-t border-muted">
-                            <div className="mt-2 pt-2 border-t border-muted">
-                              <Button
-                                variant="default"
-                                size="sm"
-                                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium"
-                                onClick={() => {
-                                  setSelectedEvent(event)
-                                  setShowPhaseModal(true)
-                                }}
-                              >
-                                <QrCode className="h-4 w-4 mr-2" />
-                                Generate QR Code
-                              </Button>
+
+                          {/* QR Code Section - Only show if ONGOING and event is still active */}
+                          {isEventActive(event) && (
+                            <div className="mt-3 pt-3 border-t border-muted">
+                              {/* Show Public Event QR button for PUBLIC events */}
+                              {event.type === "PUBLIC" ? (
+                                <PublicEventQRButton
+                                  event={{
+                                    id: event.id,
+                                    name: event.name || event.title,
+                                    checkInCode: event.checkInCode,
+                                  }}
+                                  size="sm"
+                                  className="w-full"
+                                />
+                              ) : (
+                                /* Show Generate QR Code button for SPECIAL and PRIVATE events */
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium"
+                                  onClick={() => {
+                                    setSelectedEvent(event)
+                                    setShowPhaseModal(true)
+                                  }}
+                                >
+                                  <QrCode className="h-4 w-4 mr-2" />
+                                  Generate QR Code
+                                </Button>
+                              )}
                             </div>
                           )}
                         </div>

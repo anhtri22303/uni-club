@@ -10,8 +10,9 @@ import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import { fetchLocation, postLocation, deleteLocation, Location, LocationsApiResponse, CreateLocationRequest, updateLocation, UpdateLocationRequest } from "@/service/locationApi"
 import {
-  Search, MapPin, Building2, Users, ArrowUpDown, SortAsc, SortDesc, Grid3x3, List, ChevronLeft, ChevronRight, Plus, X, Trash2
+  Search, MapPin, Building2, Users, ArrowUpDown, SortAsc, SortDesc, Grid3x3, List, ChevronLeft, ChevronRight, Plus, X, Trash2, Calendar, Pencil
 } from "lucide-react"
+import LocationEventsCalendarModal from "@/components/location-events-calendar-modal"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -55,6 +56,10 @@ export default function UniStaffLocationsPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [locationToDelete, setLocationToDelete] = useState<Location | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+
+  // Calendar modal state
+  const [calendarModalOpen, setCalendarModalOpen] = useState(false)
+  const [selectedLocationForCalendar, setSelectedLocationForCalendar] = useState<Location | null>(null)
 
   // Fetch locations
   useEffect(() => {
@@ -173,9 +178,18 @@ export default function UniStaffLocationsPage() {
   }
 
   /**
-   * (MỚI) Xử lý khi nhấn vào Card (mở modal ở chế độ sửa)
+   * (MỚI) Xử lý khi nhấn vào Card (mở calendar modal)
    */
-  const handleEditClick = (location: Location) => {
+  const handleCardClick = (location: Location) => {
+    setSelectedLocationForCalendar(location)
+    setCalendarModalOpen(true)
+  }
+
+  /**
+   * (MỚI) Xử lý khi nhấn vào nút Edit (mở modal ở chế độ sửa)
+   */
+  const handleEditClick = (location: Location, e: React.MouseEvent) => {
+    e.stopPropagation() // Prevent card click event
     setEditingLocation(location)
     setFormData({
       name: location.name,
@@ -661,16 +675,28 @@ export default function UniStaffLocationsPage() {
                   <Card
                     key={location.id}
                     className="hover:shadow-lg transition-shadow cursor-pointer group relative dark:border-slate-700"
-                    onClick={() => handleEditClick(location)} // mới
+                    onClick={() => handleCardClick(location)} // mở calendar modal
                   >
+                    {/* Edit Button */}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute top-2 right-10 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-blue-100 dark:hover:bg-blue-900/50 hover:text-blue-600 dark:hover:text-blue-400"
+                      onClick={(e) => handleEditClick(location, e)}
+                      title="Edit location"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+
                     {/* Delete Button */}
                     <Button
                       variant="ghost"
                       size="icon"
                       className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-red-100 dark:hover:bg-red-900/50 hover:text-red-600 dark:hover:text-red-400"
                       onClick={(e) => handleDeleteClick(location, e)}
+                      title="Delete location"
                     >
-                      <X className="h-4 w-4" />
+                      <Trash2 className="h-4 w-4" />
                     </Button>
 
                     <CardHeader className="pb-3">
@@ -678,12 +704,6 @@ export default function UniStaffLocationsPage() {
                         <CardTitle className="text-base sm:text-lg line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors min-w-0">
                           {location.name}
                         </CardTitle>
-                        <Badge
-                          variant="outline"
-                          className="shrink-0 text-xs"
-                        >
-                          #{location.id}
-                        </Badge>
                       </div>
                       <Badge
                         variant="outline"
@@ -911,6 +931,16 @@ export default function UniStaffLocationsPage() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+
+          {/* Calendar Modal */}
+          <LocationEventsCalendarModal
+            location={selectedLocationForCalendar}
+            isOpen={calendarModalOpen}
+            onClose={() => {
+              setCalendarModalOpen(false)
+              setSelectedLocationForCalendar(null)
+            }}
+          />
         </div>
       </AppShell>
     </ProtectedRoute>

@@ -5,19 +5,8 @@ import { useRouter, useParams } from "next/navigation";
 import ReactCrop, { Crop, PixelCrop } from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
 import {
-  getProductById,
-  Product,
-  AddProductPayload,
-  updateProduct,
-  UpdateProductPayload,
-  addMediaToProduct,
-  deleteMediaFromProduct,
-  setMediaThumbnail,
-  getStockHistory,
-  StockHistory,
-  updateStock,
-  checkEventProductValid,
-  EventProductValidation,
+  getProductById, Product, AddProductPayload, updateProduct, UpdateProductPayload, addMediaToProduct, deleteMediaFromProduct,
+  setMediaThumbnail, getStockHistory, StockHistory, updateStock, checkEventProductValid, EventProductValidation,
 } from "@/service/productApi";
 import { getTags, Tag as ProductTag } from "@/service/tagApi";
 import { getEventByClubId, Event } from "@/service/eventApi";
@@ -29,38 +18,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
-  ArrowLeft,
-  Save,
-  Loader2,
-  Package,
-  DollarSign,
-  Archive,
-  Tag,
-  Image as ImageIcon,
-  CheckCircle,
-  Upload,
-  Trash,
-  Star,
-  History,
-  Plus,
-  XCircle,
-  Video as VideoIcon,
-  Play,
-  Eye,
-  HandCoins,
-  Search,
-  AlertCircle,
-  WalletCards,
+  ArrowLeft, Save, Loader2, Package, DollarSign, Archive, Tag, Image as ImageIcon, CheckCircle, Upload, Trash, Star,
+  History, Plus, XCircle, Video as VideoIcon, Play, Eye, HandCoins, Search, AlertCircle, WalletCards,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -68,32 +33,14 @@ import { Switch } from "@/components/ui/switch";
 import { LoadingSkeleton } from "@/components/loading-skeleton";
 import { getClubIdFromToken } from "@/service/clubApi";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -104,6 +51,14 @@ interface FixedTagIds {
   clubTagId: number | null;
   eventTagId: number | null;
 }
+
+// --- NEW: Định nghĩa danh sách lý do xuất kho (Khớp với Enum Java) ---
+const STOCK_REMOVAL_REASONS = [
+  { value: "LOSS_DAMAGE", label: "Loss / Damage (Mất / Hư hỏng)" },
+  { value: "RETURN_SUPPLIER", label: "Return to Supplier (Trả nhà cung cấp)" },
+  { value: "INTERNAL_USE", label: "Internal Use (Sử dụng nội bộ)" },
+  { value: "CORRECTION", label: "Correction (Điều chỉnh kiểm kê)" },
+];
 
 export default function EditProductPage() {
   const router = useRouter();
@@ -139,6 +94,8 @@ export default function EditProductPage() {
   const [stockChange, setStockChange] = useState<string>("");
   const [stockNote, setStockNote] = useState<string>("");
   const [isStockLoading, setIsStockLoading] = useState(false);
+  // --- NEW: State cho lý do nhập/xuất kho ---
+  const [stockReason, setStockReason] = useState<string>("");
   // STATE ĐỂ HIỂN THỊ GIÁ
   const [displayPrice, setDisplayPrice] = useState<string>("");
   //Biến kiểm tra xem có bị Archived không
@@ -693,69 +650,176 @@ export default function EditProductPage() {
     }
   };
 
-  // Handler cho Nhập kho
+  // --- Handler Update Stock ---
+  // const handleUpdateStock = async () => {
+  //   if (!clubId || !productId) return;
+
+  //   const delta = parseFormattedNumber(stockChange);
+
+  //   if (isNaN(delta) || delta === 0) {
+  //     toast({
+  //       title: "Error",
+  //       description: "Please enter a valid number (e.g. 50 or -10).",
+  //       variant: "destructive",
+  //     });
+  //     return;
+  //   }
+
+  //   const isRemoving = delta < 0;
+
+  //   // VALIDATION LOGIC MỚI
+  //   if (isRemoving) {
+  //     // Nếu là xuất kho (số âm): Bắt buộc chọn lý do
+  //     if (!stockReason) {
+  //       toast({
+  //         title: "Error",
+  //         description: "Please select a reason for removing stock.",
+  //         variant: "destructive",
+  //       });
+  //       return;
+  //     }
+  //     // Note là optional, không cần check
+  //   } else {
+  //     // Nếu là nhập kho (số dương): Bắt buộc nhập Note (như cũ)
+  //     if (!stockNote.trim()) {
+  //       toast({
+  //         title: "Error",
+  //         description: "Please provide a note for this stock addition.",
+  //         variant: "destructive",
+  //       });
+  //       return;
+  //     }
+  //   }
+
+  //   setIsStockLoading(true);
+  //   try {
+  //     // --- LOGIC KẾT HỢP DỮ LIỆU ---
+  //     let finalReason = "CORRECTION"; // Mặc định cho nhập kho
+  //     let finalNote = stockNote.trim();
+
+  //     if (isRemoving) {
+  //       finalReason = stockReason; // Lấy từ dropdown
+  //       // Tìm label để gộp vào note cho dễ đọc trong lịch sử
+  //       const reasonLabel = STOCK_REMOVAL_REASONS.find(r => r.value === stockReason)?.label || stockReason;
+
+  //       // Gộp Dropdown info vào Note: "[Loss/Damage] - Chi tiết người dùng nhập"
+  //       finalNote = finalNote
+  //         ? `[${reasonLabel}] - ${finalNote}`
+  //         : `[${reasonLabel}]`;
+  //     }
+
+  //     // Gọi API với tham số mới (reason)
+  //     await updateStock(clubId, productId, delta, finalNote, finalReason);
+
+  //     toast({ title: "Success", description: "Stock updated successfully!" });
+
+  //     // Reset form
+  //     setIsStockDialogOpen(false);
+  //     setStockChange("");
+  //     setStockNote("");
+  //     setStockReason(""); // Reset lý do
+
+  //     // Invalidate queries
+  //     queryClient.invalidateQueries({ queryKey: queryKeys.productsByClubId(clubId) });
+  //     queryClient.invalidateQueries({ queryKey: ["stockHistory", clubId, productId] });
+  //     await fetchProductData(clubId, productId);
+
+  //   } catch (error: any) {
+  //     toast({
+  //       title: "Error",
+  //       description: (error as any).response?.data?.message || error.message || "Failed to update stock.",
+  //       variant: "destructive",
+  //     });
+  //   } finally {
+  //     setIsStockLoading(false);
+  //   }
+  // };
   const handleUpdateStock = async () => {
     if (!clubId || !productId) return;
-    // SỬ DỤNG HÀM PARSE MỚI
+
     const delta = parseFormattedNumber(stockChange);
 
+    // Validate cơ bản
     if (isNaN(delta) || delta === 0) {
       toast({
         title: "Error",
-        description:
-          "Please enter a valid number to add or remove stock (e.g. 50 or -10).",
+        description: "Please enter a valid number (e.g. 50 or -10).",
         variant: "destructive",
       });
       return;
     }
-    if (!stockNote.trim()) {
-      toast({
-        title: "Error",
-        description: "Please provide a note for this stock change.",
-        variant: "destructive",
-      });
-      return;
+
+    const isRemoving = delta < 0;
+
+    // VALIDATION LOGIC
+    if (isRemoving) {
+      if (!stockReason) {
+        toast({
+          title: "Error",
+          description: "Please select a reason for removing stock.",
+          variant: "destructive",
+        });
+        return;
+      }
+    } else {
+      if (!stockNote.trim()) {
+        toast({
+          title: "Error",
+          description: "Please provide a note for this stock addition.",
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     setIsStockLoading(true);
     try {
-      // Gọi API (API 'updateStock' vẫn nhận 'delta' là number)
-      await updateStock(clubId, productId, delta, stockNote);
+      // --- SỬA ĐỔI LOGIC REASON TẠI ĐÂY ---
+
+      // 1. Xác định Reason:
+      // - Nếu xuất kho (isRemoving = true): Lấy từ biến stockReason (dropdown).
+      // - Nếu nhập kho (isRemoving = false): Gán là null (hoặc undefined) để không gửi reason lên BE.
+      const finalReason = isRemoving ? stockReason : undefined;
+
+      // 2. Xử lý Note:
+      let finalNote = stockNote.trim();
+
+      if (isRemoving) {
+        // Chỉ khi xuất kho mới cần gộp Label của Reason vào Note cho dễ đọc
+        const reasonLabel = STOCK_REMOVAL_REASONS.find(r => r.value === stockReason)?.label || stockReason;
+        finalNote = finalNote
+          ? `[${reasonLabel}] - ${finalNote}`
+          : `[${reasonLabel}]`;
+      }
+
+      // 3. Gọi API
+      // (Lưu ý: Nếu file api definition của bạn bắt buộc reason là string, bạn có thể cần sửa file api thành string | null)
+      await updateStock(clubId, productId, delta, finalNote, finalReason);
 
       toast({ title: "Success", description: "Stock updated successfully!" });
 
-      // Đóng dialog và reset
+      // Reset form
       setIsStockDialogOpen(false);
-      setStockChange(""); // Reset về rỗng
+      setStockChange("");
       setStockNote("");
+      setStockReason("");
 
-      // 1. Báo cho trang list biết (vì stockQuantity thay đổi)
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.productsByClubId(clubId),
-      });
-
-      // 2. Báo cho dialog lịch sử biết (đã có)
-      queryClient.invalidateQueries({
-        queryKey: ["stockHistory", clubId, productId],
-      });
-
+      // Refresh data
+      queryClient.invalidateQueries({ queryKey: queryKeys.productsByClubId(clubId) });
+      queryClient.invalidateQueries({ queryKey: ["stockHistory", clubId, productId] });
       await fetchProductData(clubId, productId);
-      queryClient.invalidateQueries({
-        queryKey: ["stockHistory", clubId, productId],
-      });
+
     } catch (error: any) {
       toast({
         title: "Error",
-        description:
-          (error as any).response?.data?.message ||
-          error.message ||
-          "Failed to update stock.",
+        description: (error as any).response?.data?.message || error.message || "Failed to update stock.",
         variant: "destructive",
       });
     } finally {
       setIsStockLoading(false);
     }
   };
+
 
   // Hook fetch Lịch sử Tồn kho
   const { data: stockHistory = [], isLoading: historyLoading } = useQuery<
@@ -804,23 +868,39 @@ export default function EditProductPage() {
     }
   };
 
-  // --- NEW: LOGIC TÍNH TOÁN NGÂN SÁCH KHI UPDATE STOCK ---
+  // --- LOGIC TÍNH TOÁN NGÂN SÁCH KHI UPDATE STOCK ---
   // 1. Parse số lượng thay đổi
   const deltaStock = parseFormattedNumber(stockChange);
+  const absDelta = Math.abs(deltaStock); // Lấy giá trị tuyệt đối để nhân giá tiền
+  const unitPrice = product?.pointCost || 0;
 
   // 2. Kiểm tra xem đang thêm hàng (+) hay bớt hàng (-)
   const isAddingStock = deltaStock > 0;
+  const isRemovingStock = deltaStock < 0;
 
-  // 3. Tính tổng chi phí (chỉ tính khi thêm hàng)
-  const estimatedCost = isAddingStock ? (product?.pointCost || 0) * deltaStock : 0;
+  // 3. Xác định xem lý do xuất kho có được hoàn tiền không (Dựa trên ảnh Business Rule)
+  // CORRECTION (Nhập sai) & RETURN_SUPPLIER (Trả hàng) => ĐƯỢC hoàn điểm
+  const isRefundableReason = isRemovingStock && (stockReason === "CORRECTION" || stockReason === "RETURN_SUPPLIER");
 
-  // 4. Lấy số dư hiện tại
+  // 4. Tính toán số tiền
+  // Chi phí phải trả khi nhập hàng
+  const estimatedCost = isAddingStock ? (unitPrice * absDelta) : 0;
+  // Số tiền được hoàn lại khi xuất hàng (nếu đúng lý do)
+  const estimatedRefund = isRefundableReason ? (unitPrice * absDelta) : 0;
+
+  // 5. Lấy số dư hiện tại
   const currentBalance = clubWallet?.balancePoints ?? 0;
 
-  // 5. Kiểm tra đủ tiền (Nếu bớt hàng hoặc không đổi thì luôn true)
-  const isBalanceSufficient = !isAddingStock || (estimatedCost <= currentBalance);
-  // --- NEW END ---
+  // 6. Tính số dư dự kiến sau giao dịch
+  let projectedBalance = currentBalance;
+  if (isAddingStock) {
+    projectedBalance -= estimatedCost;
+  } else if (isRemovingStock) {
+    projectedBalance += estimatedRefund;
+  }
 
+  // 7. Kiểm tra đủ tiền (Chỉ cần check khi nhập hàng)
+  const isBalanceSufficient = !isAddingStock || (estimatedCost <= currentBalance);
 
   if (loading && !product) {
     // Chỉ hiển thị skeleton khi tải lần đầu
@@ -1223,9 +1303,7 @@ export default function EditProductPage() {
 
             {/* Cột phải: Thông tin phụ */}
             <div className="md:col-span-2 space-y-6">
-              {/* ───────────────────────────────────────────── */}
               {/* CARD STATUS & CLASSIFICATION */}
-              {/* ───────────────────────────────────────────── */}
               <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 dark:bg-slate-800 dark:border-slate-700 overflow-hidden">
                 {/* Gradient line */}
                 <div className="h-2 bg-gradient-to-r from-orange-400 via-orange-500 to-amber-500" />
@@ -1383,9 +1461,7 @@ export default function EditProductPage() {
                 </CardContent>
               </Card>
 
-              {/* ───────────────────────────────────────────── */}
               {/* CARD PRICE & INVENTORY */}
-              {/* ───────────────────────────────────────────── */}
               <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 dark:bg-slate-800 dark:border-slate-700 overflow-hidden">
                 <div className="h-2 bg-gradient-to-r from-indigo-400 via-indigo-500 to-blue-500" />
 
@@ -1752,7 +1828,16 @@ export default function EditProductPage() {
         </Dialog>
 
         {/* Dialog Thêm hàng hóa */}
-        <Dialog open={isStockDialogOpen} onOpenChange={setIsStockDialogOpen}>
+        {/* <Dialog open={isStockDialogOpen} onOpenChange={setIsStockDialogOpen}> */}
+        <Dialog open={isStockDialogOpen} onOpenChange={(open) => {
+          setIsStockDialogOpen(open);
+          if (!open) {
+            // Reset khi đóng dialog
+            setStockChange("");
+            setStockNote("");
+            setStockReason("");
+          }
+        }}>
           <DialogContent className="sm:max-w-lg dark:bg-slate-800 dark:border-slate-700">
             <DialogHeader>
               <div className="mx-auto w-16 h-16 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center mb-4">
@@ -1765,13 +1850,11 @@ export default function EditProductPage() {
                 Add or remove stock. Use a negative number to remove items.
               </DialogDescription>
             </DialogHeader>
+
             <div className="space-y-6 py-4">
               <div className="space-y-2">
-                <Label
-                  htmlFor="stockChange"
-                  className="text-base font-semibold dark:text-white"
-                >
-                  Stock Change{" "}
+                <Label htmlFor="stockChange" className="text-base font-semibold dark:text-white">
+                  Stock Change
                   <span className="text-red-500 dark:text-red-400">*</span>
                 </Label>
                 <Input
@@ -1785,10 +1868,10 @@ export default function EditProductPage() {
                     const isNegative = value.startsWith("-");
                     // Chỉ lấy số
                     const numericValue = value.replace(/[^0-9]/g, "");
-
                     if (numericValue === "") {
-                      // Cho phép người dùng gõ dấu "-"
                       setStockChange(isNegative ? "-" : "");
+                      // Nếu xóa hết số, reset lý do
+                      if (!isNegative) setStockReason("");
                       return;
                     }
 
@@ -1796,12 +1879,10 @@ export default function EditProductPage() {
                     const formattedValue = formatNumber(numberValue);
 
                     // Set lại giá trị (có dấu phẩy và dấu âm)
-                    setStockChange(
-                      isNegative ? `-${formattedValue}` : formattedValue
-                    );
+                    setStockChange(isNegative ? `-${formattedValue}` : formattedValue);
                   }}
                   placeholder="e.g., 50 (to add) or -10 (to remove)"
-                  className="h-12 border-2 focus:border-indigo-500 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:placeholder:text-slate-400 dark:focus:border-indigo-400 text-lg"
+                  className="h-12 border-2 border-slate-300 focus:border-indigo-500 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:placeholder:text-slate-400 dark:focus:border-indigo-400 text-lg"
                 />
                 <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                   <div className="bg-blue-100 dark:bg-blue-800/50 p-1 rounded">
@@ -1810,108 +1891,129 @@ export default function EditProductPage() {
                   <div className="text-xs text-blue-900 dark:text-blue-200">
                     <p className="font-semibold mb-1">Examples:</p>
                     <p>
-                      • Type <span className="font-bold">50</span> to add 50
-                      items
+                      • Type <span className="font-bold">50</span> to add 50 items
                     </p>
                     <p>
-                      • Type <span className="font-bold">-10</span> to remove 10
-                      items
+                      • Type <span className="font-bold">-10</span> to remove 10 items
                     </p>
                   </div>
                 </div>
               </div>
+
+              {/* --- NEW: DROPDOWN LÝ DO (CHỈ HIỆN KHI SỐ ÂM) --- */}
+              {isRemovingStock && (
+                <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
+                  <Label className="text-base font-semibold dark:text-white">
+                    Reason for Removal <span className="text-red-500 dark:text-red-400">*</span>
+                  </Label>
+                  <Select value={stockReason} onValueChange={setStockReason}>
+                    <SelectTrigger className="h-11 w-full border-2 border-slate-300 focus:border-indigo-500 dark:bg-slate-700 dark:text-white dark:border-slate-600">
+                      <SelectValue placeholder="Select a reason" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {STOCK_REMOVAL_REASONS.map((reason) => (
+                        <SelectItem key={reason.value} value={reason.value}>
+                          {reason.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* NOTE INPUT */}
               <div className="space-y-2">
-                <Label
-                  htmlFor="stockNote"
-                  className="text-base font-semibold dark:text-white"
-                >
-                  Note <span className="text-red-500 dark:text-red-400">*</span>
+                <Label htmlFor="stockNote" className="text-base font-semibold dark:text-white">
+                  Note
+                  {/* --- UPDATE: Dấu sao chỉ hiện khi KHÔNG phải là xuất kho (tức là nhập kho) --- */}
+                  {!isRemovingStock && <span className="text-red-500 dark:text-red-400"> *</span>}
+                  {isRemovingStock && <span className="text-sm font-normal text-muted-foreground ml-1">(Optional)</span>}
                 </Label>
                 <Textarea
                   id="stockNote"
                   value={stockNote}
                   onChange={(e) => setStockNote(e.target.value)}
-                  placeholder="e.g., 'Initial stock import' or 'Manual correction'"
-                  className="border-2 focus:border-indigo-500 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:placeholder:text-slate-400 dark:focus:border-indigo-400 resize-none"
+                  placeholder={isRemovingStock
+                    ? "Additional details (e.g., 'Broken during shipping')..."
+                    : "e.g., 'Initial stock import' or 'Manual correction'"}
+                  className="border-2 border-slate-300 focus:border-indigo-500 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:placeholder:text-slate-400 dark:focus:border-indigo-400 resize-none"
                   rows={4}
                 />
               </div>
 
               {/* --- CHÈN CODE HIỂN THỊ TÍNH TOÁN VÀO ĐÂY (SAU TEXTAREA NOTE) --- */}
-              {/* {isAddingStock && product && (
-                <div className={`p-3 rounded-md border text-sm transition-colors animate-in fade-in zoom-in duration-300 ${isBalanceSufficient
-                    ? "bg-slate-50 border-slate-200 dark:bg-slate-800 dark:border-slate-700"
-                    : "bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800"
+              {product && stockChange && (
+                <div className={`p-4 rounded-lg border text-sm transition-all animate-in fade-in zoom-in duration-300 ${isAddingStock
+                  ? (isBalanceSufficient ? "bg-slate-50 border-slate-200 dark:bg-slate-800 dark:border-slate-700" : "bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800")
+                  : "bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800"
                   }`}>
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-muted-foreground dark:text-slate-400">Estimated Cost:</span>
-                    <span className="font-medium">
-                      {product.pointCost.toLocaleString('en-US')} pts × {deltaStock.toLocaleString('en-US')} = {" "}
-                      <span className={isBalanceSufficient ? "text-slate-900 dark:text-white" : "text-red-600 dark:text-red-400 font-bold"}>
-                        {estimatedCost.toLocaleString('en-US')} pts
-                      </span>
+
+                  {/* DÒNG 1: HIỂN THỊ SỐ TIỀN THAY ĐỔI (CHI PHÍ HOẶC HOÀN LẠI) */}
+                  <div className="flex justify-between items-center mb-2 pb-2 border-b border-dashed border-gray-300 dark:border-gray-600">
+                    <span className="text-muted-foreground dark:text-slate-400 font-medium">
+                      {isAddingStock ? "Estimated Cost (Pay):" : "Estimated Refund (Receive):"}
                     </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground dark:text-slate-400 flex items-center gap-1">
-                      <WalletCards className="w-3 h-3" /> Club Balance:
-                    </span>
-                    <span className={`font-medium ${isBalanceSufficient ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
-                      {currentBalance.toLocaleString('en-US')} pts
-                    </span>
-                  </div>
-                  {!isBalanceSufficient && (
-                    <div className="mt-2 flex items-center text-red-600 dark:text-red-400 text-xs font-semibold">
-                      <XCircle className="h-3 w-3 mr-1" />
-                      Insufficient balance to add this amount of stock.
-                    </div>
-                  )}
-                </div>
-              )} */}
-              {/* --- UPDATE: LUÔN HIỂN THỊ KHUNG TÍNH TOÁN --- */}
-              {product && (
-                <div className={`p-3 rounded-md border text-sm transition-colors animate-in fade-in zoom-in duration-300 ${isBalanceSufficient
-                    ? "bg-slate-50 border-slate-200 dark:bg-slate-800 dark:border-slate-700"
-                    : "bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800"
-                  }`}>
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-muted-foreground dark:text-slate-400">Estimated Cost:</span>
-                    <span className="font-medium">
+                    <span className="font-bold text-base">
                       {isAddingStock ? (
-                        /* Trường hợp nhập kho (+) */
-                        <>
-                          {product.pointCost.toLocaleString('en-US')} pts × {deltaStock.toLocaleString('en-US')} = {" "}
-                          <span className={isBalanceSufficient ? "text-slate-900 dark:text-white" : "text-red-600 dark:text-red-400 font-bold"}>
-                            {estimatedCost.toLocaleString('en-US')} pts
-                          </span>
-                        </>
+                        /* Trường hợp nhập kho (+) -> Hiện số tiền phải trả */
+                        <span className={isBalanceSufficient ? "text-slate-900 dark:text-white" : "text-red-600 dark:text-red-400"}>
+                          - {formatNumber(estimatedCost)} pts
+                        </span>
                       ) : (
-                        /* Trường hợp xuất kho (-) hoặc chưa nhập (0) */
-                        <span className="text-slate-900 dark:text-white">0 pts (No cost)</span>
+                        /* Trường hợp xuất kho (-) -> Hiện số tiền nhận lại hoặc 0 */
+                        isRefundableReason ? (
+                          <span className="text-green-600 dark:text-green-400">
+                            + {formatNumber(estimatedRefund)} pts
+                          </span>
+                        ) : (
+                          <span className="text-gray-500 dark:text-gray-400">
+                            0 pts (No Refund)
+                          </span>
+                        )
                       )}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center">
+
+                  {/* GIẢI THÍCH CHI TIẾT NẾU XUẤT KHO */}
+                  {isRemovingStock && stockReason && (
+                    <div className="mb-2 text-xs italic text-right">
+                      {isRefundableReason
+                        ? <span className="text-green-600">Points returned to wallet ({stockReason})</span>
+                        : <span className="text-orange-600">Loss/Internal use logic: No points returned</span>
+                      }
+                    </div>
+                  )}
+
+                  {/* DÒNG 2: SỐ DƯ VÍ */}
+                  <div className="flex justify-between items-center text-sm">
                     <span className="text-muted-foreground dark:text-slate-400 flex items-center gap-1">
-                      <WalletCards className="w-3 h-3" /> Club Balance:
+                      <WalletCards className="w-4 h-4" /> Wallet Balance:
                     </span>
-                    <span className={`font-medium ${isBalanceSufficient ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
-                      {currentBalance.toLocaleString('en-US')} pts
-                    </span>
+                    <div className="text-right">
+                      {/* Số dư hiện tại -> Mũi tên -> Số dư mới */}
+                      <span className="text-gray-500 line-through mr-2 text-xs">
+                        {formatNumber(currentBalance)}
+                      </span>
+                      <span className={`font-bold ${projectedBalance < 0
+                        ? "text-red-600"
+                        : (projectedBalance > currentBalance ? "text-green-600" : "text-slate-900 dark:text-white")
+                        }`}>
+                        {formatNumber(projectedBalance)} pts
+                      </span>
+                    </div>
                   </div>
 
-                  {/* Chỉ hiện cảnh báo lỗi khi KHÔNG đủ tiền */}
-                  {!isBalanceSufficient && (
-                    <div className="mt-2 flex items-center text-red-600 dark:text-red-400 text-xs font-semibold">
-                      <XCircle className="h-3 w-3 mr-1" />
-                      Insufficient balance to add this amount of stock.
+                  {/* Cảnh báo lỗi khi KHÔNG đủ tiền (Chỉ hiện khi nhập kho) */}
+                  {!isBalanceSufficient && isAddingStock && (
+                    <div className="mt-2 pt-2 border-t border-red-200 dark:border-red-800 flex items-center text-red-600 dark:text-red-400 text-xs font-bold">
+                      <XCircle className="h-4 w-4 mr-1" />
+                      Insufficient balance! You need {formatNumber(estimatedCost - currentBalance)} more points.
                     </div>
                   )}
                 </div>
               )}
-              {/* --- HẾT PHẦN CHÈN --- */}
-            </div>
 
+            </div>
 
             <DialogFooter className="flex gap-2">
               <Button
@@ -1928,17 +2030,14 @@ export default function EditProductPage() {
               </Button>
               <Button
                 onClick={handleUpdateStock}
-                // disabled={
-                //   isStockLoading ||
-                //   parseFormattedNumber(stockChange) === 0 ||
-                //   !stockNote.trim()
-                // }
                 // --- UPDATE: THÊM ĐIỀU KIỆN !isBalanceSufficient ---
                 disabled={
                   isStockLoading ||
                   parseFormattedNumber(stockChange) === 0 ||
-                  !stockNote.trim() ||
-                  !isBalanceSufficient // Chặn nếu không đủ tiền
+                  !isBalanceSufficient ||
+                  // --- UPDATE: Logic Disable Nút ---
+                  (isRemovingStock ? !stockReason : !stockNote.trim())
+                  // Nếu là âm: Phải chọn lý do. Nếu là dương: Phải nhập note.
                 }
                 className="flex-1 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-700 text-white"
               >
