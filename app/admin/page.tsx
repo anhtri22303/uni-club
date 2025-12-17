@@ -369,7 +369,6 @@ export default function PartnerDashboard() {
                         <div className="text-xs text-muted-foreground pt-3 border-t">
                           <div className="flex justify-between">
                             <span>App Version: <span className="font-medium">{monitorStatus.appVersion}</span></span>
-                            <span>Env: <span className="font-medium">{monitorStatus.environment}</span></span>
                           </div>
                           <div>
                             Last checked: {new Date(monitorStatus.lastCheckedAt).toLocaleString("vi-VN")}

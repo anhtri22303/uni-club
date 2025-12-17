@@ -44,6 +44,56 @@ export interface ApiSuccessResponse<T> {
 }
 
 /**
+ * (MỚI) Thông tin ngày cụ thể của event
+ */
+export interface EventDay {
+  id: number;
+  date: string; // YYYY-MM-DD
+  startTime: string; // HH:mm
+  endTime: string; // HH:mm
+}
+
+/**
+ * (MỚI) Thông tin club (host hoặc co-host)
+ */
+export interface EventClub {
+  id: number;
+  name: string;
+  coHostStatus: "APPROVED" | "REJECTED" | "PENDING";
+}
+
+/**
+ * (MỚI) Thông tin chi tiết event tại một location
+ */
+export interface LocationEvent {
+  id: number;
+  name: string;
+  description: string;
+  type: "PUBLIC" | "PRIVATE" | "SPECIAL";
+  startDate: string; // YYYY-MM-DD
+  endDate: string; // YYYY-MM-DD
+  days: EventDay[];
+  status: "COMPLETED" | "ONGOING" | "UPCOMING" | "CANCELLED";
+  checkInCode: string;
+  budgetPoints: number;
+  locationName: string;
+  maxCheckInCount: number;
+  currentCheckInCount: number;
+  commitPointCost: number;
+  hostClub: EventClub;
+  coHostedClubs: EventClub[];
+}
+
+/**
+ * (MỚI) Response API khi lấy events theo location
+ */
+export interface LocationEventsResponse {
+  success: boolean;
+  message: string;
+  data: LocationEvent[];
+}
+
+/**
  * Các interface cho phản hồi phân trang (Pageable)
  * (Giữ nguyên từ file cũ của bạn, vì đây là cấu trúc Page chuẩn)
  */
@@ -181,6 +231,25 @@ export const updateLocation = async (
     return response.data;
   } catch (error) {
     console.error(`Error updating location ${id}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * (MỚI) Lấy danh sách events theo locationId
+ * Tương ứng với: GET /api/events/by-location/{locationId}
+ * @param locationId ID của location cần lấy danh sách events
+ */
+export const getLocationEvents = async (
+  locationId: number | string
+): Promise<LocationEvent[]> => {
+  try {
+    const response = await axiosInstance.get<LocationEventsResponse>(
+      `/api/events/by-location/${locationId}`
+    );
+    return response.data.data;
+  } catch (error) {
+    console.error(`Error fetching events for location ${locationId}:`, error);
     throw error;
   }
 };

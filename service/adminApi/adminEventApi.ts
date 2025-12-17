@@ -21,19 +21,56 @@ export interface Page<T> {
 }
 
 /**
+ * Event Day structure for multi-day events
+ */
+export interface EventDay {
+    id: number
+    date: string // Format: YYYY-MM-DD
+    startTime: string // Format: HH:MM
+    endTime: string // Format: HH:MM
+}
+
+/**
  * Thông tin chi tiết của một sự kiện (Admin view)
  * Dựa trên response của GET /api/admin/events và GET /api/admin/events/{id}
  */
 export interface AdminEvent {
     id: number
     title: string
+    name?: string // Some events use 'name' instead of 'title'
     description: string
-    clubName: string
-    majorName: string
-    startTime: string // ISO date string
-    endTime: string // ISO date string
-    status: string // (vd: "PENDING_COCLUB", "APPROVED", "REJECTED")
-    totalParticipants: number
+    type?: "PUBLIC" | "PRIVATE" | "SPECIAL" | string
+    clubName?: string
+    majorName?: string
+    locationName?: string
+    locationId?: number
+    // Multi-day event fields
+    startDate?: string // Format: YYYY-MM-DD (first day)
+    endDate?: string // Format: YYYY-MM-DD (last day)
+    days?: EventDay[]
+    // Legacy single-day fields
+    date?: string // Format: YYYY-MM-DD
+    startTime: string // ISO date string or HH:MM format
+    endTime: string // ISO date string or HH:MM format
+    time?: string // Legacy time field
+    status: string // (vd: "PENDING_COCLUB", "APPROVED", "REJECTED", "ONGOING", "COMPLETED", "CANCELLED")
+    totalParticipants?: number
+    maxCheckInCount: number // Required for badge points calculation
+    currentCheckInCount?: number
+    budgetPoints: number // Required for badge points calculation
+    commitPointCost?: number
+    checkInCode?: string
+    registrationDeadline?: string
+    hostClub?: {
+        id: number
+        name: string
+    }
+    coHostedClubs?: Array<{
+        id: number
+        name: string
+        coHostStatus: string
+    }>
+    prototypeId?: number | null
 }
 
 /**
