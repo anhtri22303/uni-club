@@ -22,6 +22,9 @@ import {
     Trophy, RotateCw, Lock, Unlock, CheckCircle2, Trash2, Eye, Search, FileText, History, Info, LayoutDashboard, RefreshCcw, Wallet
 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import {
+    AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 // --- Helper Functions ---
 const generateYearOptions = () => {
@@ -32,7 +35,14 @@ const generateYearOptions = () => {
     }
     return years
 }
-
+const getFeedbackColor = (score: number | undefined) => {
+    const s = score ?? 0;
+    if (s === 0) return "text-muted-foreground"; // Chưa có đánh giá (Xám)
+    if (s < 2.5) return "text-red-600 font-bold"; // Tệ (Đỏ)
+    if (s < 3.5) return "text-orange-500 font-bold"; // Trung bình (Cam)
+    if (s < 4.5) return "text-lime-600 font-bold"; // Khá (Xanh lá nhạt)
+    return "text-green-600 font-bold"; // Tốt (Xanh lá đậm)
+}
 const generateMonthOptions = () => [
     { value: 1, label: "January" }, { value: 2, label: "February" }, { value: 3, label: "March" },
     { value: 4, label: "April" }, { value: 5, label: "May" }, { value: 6, label: "June" },
@@ -57,23 +67,24 @@ const ClubActivityDetail = ({ breakdown, loading }: { breakdown: ClubActivityBre
 
     return (
         <div className="space-y-6">
-            {/* Card Final Score to giống club-leader */}
+            {/* Card Total Score */}
             <Card className="bg-primary/5 border-primary/50 border-2">
                 <CardHeader className="pb-2">
                     <CardDescription className="flex items-center gap-2 text-primary font-bold">
                         <Trophy className="h-5 w-5" /> TOTAL CLUB SCORE
                     </CardDescription>
                     <CardTitle className="text-6xl text-primary font-black">
-                        {breakdown.finalScore?.toFixed(1) || 0}
+                        {(breakdown.finalScore ?? 0).toFixed(1)}
                     </CardTitle>
                     <div className="flex gap-2 mt-2">
                         <Badge className={getAwardBadgeColor(breakdown.awardLevel)}>{breakdown.awardLevel}</Badge>
-                        <Badge variant="secondary">Rank Score: {breakdown.awardScore?.toFixed(1)}</Badge>
+                        <Badge variant="secondary">Rank Score: {(breakdown.awardScore ?? 0).toFixed(1)}</Badge>
                     </div>
                 </CardHeader>
             </Card>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Member Activity Card */}
                 <Card>
                     <CardHeader className="pb-3 bg-blue-50/50">
                         <CardTitle className="text-sm flex items-center gap-2 text-blue-700">
@@ -81,11 +92,15 @@ const ClubActivityDetail = ({ breakdown, loading }: { breakdown: ClubActivityBre
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="pt-4">
-                        <div className="text-2xl font-bold text-blue-600">{breakdown.avgMemberActivityScore?.toFixed(1)}</div>
+                        {/* Đảm bảo tên thuộc tính khớp với API trả về */}
+                        <div className="text-2xl font-bold text-blue-600">
+                            {(breakdown.avgMemberActivityScore ?? 0).toFixed(1)}
+                        </div>
                         <p className="text-xs text-muted-foreground mt-1">Average score of all members in club</p>
                     </CardContent>
                 </Card>
 
+                {/* Staff Performance Card */}
                 <Card>
                     <CardHeader className="pb-3 bg-yellow-50/50">
                         <CardTitle className="text-sm flex items-center gap-2 text-yellow-700">
@@ -93,7 +108,10 @@ const ClubActivityDetail = ({ breakdown, loading }: { breakdown: ClubActivityBre
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="pt-4">
-                        <div className="text-2xl font-bold text-yellow-600">{breakdown.staffPerformanceScore?.toFixed(1)}</div>
+                        {/* Đảm bảo tên thuộc tính khớp với API trả về */}
+                        <div className="text-2xl font-bold text-yellow-600">
+                            {(breakdown.staffPerformanceScore ?? 0).toFixed(1)}
+                        </div>
                         <p className="text-xs text-muted-foreground mt-1">Score based on event organizing quality</p>
                     </CardContent>
                 </Card>
@@ -120,17 +138,17 @@ export default function UniStaffActivityReportPage() {
     const [selectedClubId, setSelectedClubId] = useState<number | null>(null) // For Modal
     const [breakdownData, setBreakdownData] = useState<ClubActivityBreakdown | null>(null) // For Modal
     const [isLoadingBreakdown, setIsLoadingBreakdown] = useState(false) // For Modal
-
     // --- Tab 2: Inspector State ---
     const [inspectorClubId, setInspectorClubId] = useState<string>("")
     const [inspectorLoading, setInspectorLoading] = useState(false)
     const [clubHistory, setClubHistory] = useState<ClubActivityHistoryItem[]>([])
     const [clubEvents, setClubEvents] = useState<ClubEventContribution[]>([])
     const [hasSearched, setHasSearched] = useState(false)
-
     // List Master Club (Lấy từ API /api/clubs) dùng cho Dropdown
     const [allClubsList, setAllClubsList] = useState<Club[]>([])
 
+    const [confirmLockId, setConfirmLockId] = useState<number | null>(null);
+    const [confirmApproveId, setConfirmApproveId] = useState<number | null>(null);
     // --- Load Master Club List (Chạy 1 lần đầu) ---
     useEffect(() => {
         const loadAllClubs = async () => {
@@ -177,12 +195,6 @@ export default function UniStaffActivityReportPage() {
         }
     }, [selectedYear, selectedMonth, toast])
 
-    // useEffect(() => {
-    //     // Chỉ load ranking khi ở tab ranking hoặc khi đổi thời gian
-    //     if (activeTab === "ranking") {
-    //         loadClubRanking()
-    //     }
-    // }, [loadClubRanking, activeTab])
     useEffect(() => {
         if (activeTab === "overview") loadMonthlySummary()
         if (activeTab === "ranking") loadClubRanking()
@@ -205,25 +217,28 @@ export default function UniStaffActivityReportPage() {
         setIsProcessing(true)
         try {
             const result = await approveClubActivity({ clubId, year: selectedYear, month: selectedMonth })
-            // Cập nhật list ranking
-            setClubs(prev => prev.map(c => c.clubId === clubId ? { ...c, locked: true } : c))
+
+            // Cập nhật list ranking với dữ liệu mới nhất từ result
+            setClubs(prev => prev.map(c => c.clubId === clubId ? { ...c, ...result, locked: true } : c))
 
             toast({
                 title: "Approved & Rewarded",
                 description: (
                     <div className="flex flex-col gap-1">
                         <p>Reward: +{result.rewardPoints} points distributed.</p>
-                        <p className="text-xs font-mono">New Wallet Balance: {result.walletBalance.toLocaleString()}</p>
+                        <p className="text-xs font-mono">Balance: {result.walletBalance?.toLocaleString()}</p>
                     </div>
                 ),
                 className: "bg-green-700 text-white border-none"
             })
         } catch (error: any) {
+            console.error("Approve error:", error)
             toast({ title: "Approval Failed", description: error.message, variant: "destructive" })
         } finally {
             setIsProcessing(false)
         }
     }
+
     // --- 3. Fetch Data for Inspector ---
     const handleInspectClub = async () => {
         if (!inspectorClubId) return;
@@ -258,8 +273,16 @@ export default function UniStaffActivityReportPage() {
         setIsProcessing(true)
         try {
             const updatedList = await recalculateAllClubs({ year: selectedYear, month: selectedMonth })
-            setClubs(updatedList)
-            toast({ title: "Calculation Complete", description: `Updated ${updatedList.length} clubs.`, className: "bg-green-600 text-white" })
+
+            // Thay vì chỉ setClubs(updatedList), hãy gọi lại hàm loadRanking 
+            // để đảm bảo hiển thị đầy đủ danh sách CLB từ database
+            await loadClubRanking()
+
+            toast({
+                title: "Calculation Complete",
+                description: `Updated ${updatedList.length} clubs.`,
+                className: "bg-green-600 text-white"
+            })
         } catch (error: any) {
             toast({ title: "Failed", description: error.message, variant: "destructive" })
         } finally {
@@ -267,20 +290,22 @@ export default function UniStaffActivityReportPage() {
         }
     }
 
-    // ... (Giữ nguyên các hàm handleLock, handleApprove, handleDelete, handleViewDetail)
     const handleLock = async (clubId: number) => {
         setIsProcessing(true)
         try {
             const updatedRecord = await lockClubActivity({ clubId, year: selectedYear, month: selectedMonth })
-            setClubs(prev => prev.map(c => c.clubId === clubId ? updatedRecord : c))
+
+            // Cập nhật state một cách an toàn
+            setClubs(prev => prev.map(c => c.clubId === clubId ? { ...c, ...updatedRecord, locked: true } : c))
+
             toast({ title: "Locked", description: "Club activity has been locked." })
         } catch (error: any) {
-            toast({ title: "Lock Failed", description: error.message, variant: "destructive" })
+            console.error("Lock error:", error) // Log ra để debug
+            toast({ title: "Lock Failed", description: error.message || "Something went wrong", variant: "destructive" })
         } finally {
             setIsProcessing(false)
         }
     }
-
     const handleApprove = async (clubId: number) => {
         setIsProcessing(true)
         try {
@@ -314,14 +339,26 @@ export default function UniStaffActivityReportPage() {
             const data = await getClubActivityBreakdown({ clubId, year: selectedYear, month: selectedMonth });
             setBreakdownData(data);
         } catch (error: any) {
-            // Tìm club trong danh sách hiện tại nếu gọi breakdown lỗi
             const club = clubs.find(c => c.clubId === clubId);
             if (club) {
-                // Ép kiểu hoặc map dữ liệu tương ứng
                 setBreakdownData(club as unknown as ClubActivityBreakdown);
             }
         } finally {
             setIsLoadingBreakdown(false);
+        }
+    };
+
+    const onConfirmLock = async () => {
+        if (confirmLockId) {
+            await handleLock(confirmLockId);
+            setConfirmLockId(null);
+        }
+    };
+
+    const onConfirmApprove = async () => {
+        if (confirmApproveId) {
+            await handleApproveExtended(confirmApproveId);
+            setConfirmApproveId(null);
         }
     };
 
@@ -377,10 +414,14 @@ export default function UniStaffActivityReportPage() {
                                                     <TableCell className="font-medium">{item.clubName}</TableCell>
                                                     <TableCell className="text-center">{item.totalEvents}</TableCell>
                                                     <TableCell className="text-center">
-                                                        <Badge variant="secondary">{item.eventSuccessRate}%</Badge>
+                                                        {/* <Badge variant="secondary">{item.eventSuccessRate}%</Badge> */}
+                                                        {Math.round(item.eventSuccessRate * 100)}%
                                                     </TableCell>
-                                                    <TableCell className="text-center font-mono">{item.totalCheckins.toLocaleString()}</TableCell>
-                                                    <TableCell className="text-center text-yellow-600 font-bold">{item.avgFeedback.toFixed(1)} ⭐</TableCell>
+                                                    <TableCell className="text-center">{item.totalCheckins.toLocaleString()}</TableCell>
+                                                    {/* <TableCell className="text-center text-yellow-600 font-bold"> */}
+                                                    <TableCell className={`text-center font-bold ${getFeedbackColor(item.avgFeedback)}`}>
+                                                        {item.avgFeedback.toFixed(1)} ⭐
+                                                    </TableCell>
                                                 </TableRow>
                                             ))}
                                         </TableBody>
@@ -391,25 +432,25 @@ export default function UniStaffActivityReportPage() {
 
                         {/* TAB 2: RANKING LIST */}
                         <TabsContent value="ranking" className="space-y-4">
-                            <div className="flex flex-col sm:flex-row justify-between items-end sm:items-center gap-4 bg-muted/20 p-3 rounded-lg border">
+                            <div className="flex flex-col sm:flex-row justify-between items-end sm:items-center gap-4 bg-muted/20 p-3 rounded-lg border bg-white">
                                 <div className="flex items-center gap-3">
                                     <div className="grid gap-1.5">
                                         <Label className="text-xs text-muted-foreground">Year</Label>
                                         <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(Number(v))} disabled={isProcessing}>
-                                            <SelectTrigger className="w-[100px] h-9 bg-white dark:bg-slate-950"><SelectValue /></SelectTrigger>
+                                            <SelectTrigger className="w-[100px] h-9 bg-white dark:bg-slate-950 border border-slate-300"><SelectValue /></SelectTrigger>
                                             <SelectContent>{yearOptions.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
                                         </Select>
                                     </div>
                                     <div className="grid gap-1.5">
                                         <Label className="text-xs text-muted-foreground">Month</Label>
                                         <Select value={String(selectedMonth)} onValueChange={(v) => setSelectedMonth(Number(v))} disabled={isProcessing}>
-                                            <SelectTrigger className="w-[130px] h-9 bg-white dark:bg-slate-950"><SelectValue /></SelectTrigger>
+                                            <SelectTrigger className="w-[130px] h-9 bg-white dark:bg-slate-950 border border-slate-300"><SelectValue /></SelectTrigger>
                                             <SelectContent>{monthOptions.map(m => <SelectItem key={m.value} value={String(m.value)}>{m.label}</SelectItem>)}</SelectContent>
                                         </Select>
                                     </div>
                                 </div>
 
-                                <Button onClick={handleRecalculateAll} disabled={isProcessing} size="sm" className="gap-2 bg-blue-600 hover:bg-blue-700 h-9">
+                                <Button onClick={handleRecalculateAll} disabled={isProcessing} size="sm" className="gap-2 bg-primary hover:bg-primary/90 h-9">
                                     {isProcessing ? <RotateCw className="h-3.5 w-3.5 animate-spin" /> : <RotateCw className="h-3.5 w-3.5" />}
                                     Recalculate All
                                 </Button>
@@ -431,11 +472,11 @@ export default function UniStaffActivityReportPage() {
                                                 {/* Các cột chỉ số tương tự club-leader */}
                                                 <TableHead className="text-center font-semibold text-foreground">
                                                     <div className="flex items-center justify-center gap-2">
-                                                        <span>Sessions</span>
+                                                        <span>Events</span>
                                                         <TooltipProvider>
                                                             <Tooltip>
                                                                 <TooltipTrigger><Info className="h-3.5 w-3.5 text-muted-foreground" /></TooltipTrigger>
-                                                                <TooltipContent><p>Total sessions held by club</p></TooltipContent>
+                                                                <TooltipContent><p>Total events held by club</p></TooltipContent>
                                                             </Tooltip>
                                                         </TooltipProvider>
                                                     </div>
@@ -453,10 +494,32 @@ export default function UniStaffActivityReportPage() {
                                                     </div>
                                                 </TableHead>
 
-                                                <TableHead className="text-center text-blue-600 bg-blue-50/50">Member Score</TableHead>
-                                                <TableHead className="text-center text-yellow-600 bg-yellow-50/50">Staff Score</TableHead>
+                                                {/* <TableHead className="text-center text-blue-600 bg-blue-50/50">Feedback Score</TableHead> */}
+                                                <TableHead className="text-center text-blue-600 bg-blue-50/50">
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <span>Feedback Score</span>
+                                                        <TooltipProvider>
+                                                            <Tooltip>
+                                                                <TooltipTrigger><Info className="h-3.5 w-3.5 text-muted-foreground" /></TooltipTrigger>
+                                                                <TooltipContent><p>Average events feedback score from members</p></TooltipContent>
+                                                            </Tooltip>
+                                                        </TooltipProvider>
+                                                    </div>
+                                                </TableHead>
+                                                {/* <TableHead className="text-center text-yellow-600 bg-yellow-50/50">Rank Score</TableHead> */}
+                                                <TableHead className="text-center text-yellow-600 bg-yellow-50/50">
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <span>Rank Score</span>
+                                                        <TooltipProvider>
+                                                            <Tooltip>
+                                                                <TooltipTrigger><Info className="h-3.5 w-3.5 text-muted-foreground" /></TooltipTrigger>
+                                                                <TooltipContent><p>Score based on club achievement level</p></TooltipContent>
+                                                            </Tooltip>
+                                                        </TooltipProvider>
+                                                    </div>
+                                                </TableHead>
                                                 <TableHead className="text-right font-bold bg-muted/30 pr-6">Final Score</TableHead>
-                                                <TableHead className="text-center">Award</TableHead>
+                                                <TableHead className="text-center">Award Rank</TableHead>
                                                 <TableHead className="text-right pr-6">Actions</TableHead>
                                             </TableRow>
                                         </TableHeader>
@@ -483,11 +546,13 @@ export default function UniStaffActivityReportPage() {
 
                                                         {/* Hiển thị Tỉ lệ thành công sự kiện từ API mới */}
                                                         <TableCell className="text-center font-medium text-slate-600">
-                                                            {club.eventSuccessRate?.toFixed(1)}%
+                                                            {/* {club.eventSuccessRate?.toFixed(1)}% */}
+                                                            {(club.eventSuccessRate * 100).toFixed(0)}%
                                                         </TableCell>
 
-                                                        <TableCell className="text-center font-mono text-blue-600 bg-blue-50/30">
-                                                            {club.avgFeedback.toFixed(1)}
+                                                        {/* <TableCell className="text-center font-mono text-blue-600 bg-blue-50/30"> */}
+                                                        <TableCell className={`text-center font-mono bg-blue-50/30 ${getFeedbackColor(club.avgFeedback)}`}>
+                                                            {club.avgFeedback.toFixed(2)}
                                                         </TableCell>
 
                                                         <TableCell className="text-center font-mono text-yellow-600 bg-yellow-50/30">
@@ -504,34 +569,28 @@ export default function UniStaffActivityReportPage() {
                                                             </Badge>
                                                         </TableCell>
 
-                                                        {/* <TableCell className="text-right">
+                                                        <TableCell className="text-right">
                                                             <div className="flex items-center justify-end gap-1">
                                                                 <Button variant="ghost" size="icon" onClick={() => handleViewDetail(club.clubId)}>
                                                                     <Eye className="h-4 w-4" />
                                                                 </Button>
-                                                                {!club.locked ? (
-                                                                    <Button variant="ghost" size="icon" onClick={() => handleLock(club.clubId)}>
-                                                                        <Lock className="h-4 w-4 text-orange-500" />
-                                                                    </Button>
-                                                                ) : (
-                                                                    <Button variant="ghost" size="icon" onClick={() => handleApprove(club.clubId)}>
-                                                                        <CheckCircle2 className="h-4 w-4 text-green-600" />
-                                                                    </Button>
-                                                                )}
-                                                            </div>
-                                                        </TableCell> */}
-                                                        <TableCell className="text-right">
-                                                            <div className="flex items-center justify-end gap-1">
-                                                                <Button variant="ghost" size="icon" title="View Detail" onClick={() => handleViewDetail(club.clubId)}>
-                                                                    <Eye className="h-4 w-4" />
-                                                                </Button>
 
                                                                 {!club.locked ? (
-                                                                    <Button variant="ghost" size="icon" title="Lock Report" onClick={() => handleLock(club.clubId)}>
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        title="Lock Report"
+                                                                        onClick={() => setConfirmLockId(club.clubId)} // Thay đổi ở đây
+                                                                    >
                                                                         <Lock className="h-4 w-4 text-orange-500" />
                                                                     </Button>
                                                                 ) : (
-                                                                    <Button variant="ghost" size="icon" title="Approve & Reward" onClick={() => handleApproveExtended(club.clubId)}>
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        title="Approve & Reward"
+                                                                        onClick={() => setConfirmApproveId(club.clubId)} // Thay đổi ở đây
+                                                                    >
                                                                         <CheckCircle2 className="h-4 w-4 text-green-600" />
                                                                     </Button>
                                                                 )}
@@ -700,6 +759,48 @@ export default function UniStaffActivityReportPage() {
                             </DialogFooter>
                         </DialogContent>
                     </Dialog>
+
+                    {/* Confirm Lock Dialog */}
+                    <AlertDialog open={!!confirmLockId} onOpenChange={(open) => !open && setConfirmLockId(null)}>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle className="flex items-center gap-2">
+                                    <Lock className="h-5 w-5 text-orange-500" /> Confirm Lock Report
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Are you sure you want to lock this club's activity report?
+                                    Once locked, the club leader will no longer be able to edit event data for this month.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={onConfirmLock} className="bg-orange-600 hover:bg-orange-700">
+                                    Lock Report
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+
+                    {/* Confirm Approve & Reward Dialog */}
+                    <AlertDialog open={!!confirmApproveId} onOpenChange={(open) => !open && setConfirmApproveId(null)}>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle className="flex items-center gap-2 text-green-600">
+                                    <CheckCircle2 className="h-5 w-5" /> Approve & Distribute Rewards
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    This action will finalize the ranking and **distribute reward points** to all eligible club members.
+                                    This process cannot be undone.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={onConfirmApprove} className="bg-green-700 hover:bg-green-800">
+                                    Approve & Reward
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
 
                 </div>
             </AppShell>
