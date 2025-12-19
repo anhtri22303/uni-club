@@ -320,28 +320,6 @@ export const getTrendingClubs = async ({
   }
 };
 
-/**
- * 4. GET: Bảng xếp hạng các CLB (Ranking)
- * Sắp xếp theo điểm giảm dần.
- */
-// export const getClubRanking = async ({
-//   year,
-//   month,
-// }: BasePeriodParams): Promise<ClubMonthlyActivity[]> => {
-//   try {
-//     const response = await axiosInstance.get<ClubActivityListResponse>(
-//       `/api/club-activity/ranking`,
-//       { params: { year, month } }
-//     );
-//     if (response.data && response.data.success && Array.isArray(response.data.data)) {
-//       return response.data.data;
-//     }
-//     return [];
-//   } catch (error) {
-//     console.error("Error fetching club ranking:", error);
-//     throw error;
-//   }
-// };
 export const getClubRanking = async ({
   year,
   month,
@@ -490,39 +468,6 @@ export const getMonthlySummary = async ({
 // ==========================================
 // CÁC HÀM ACTION (ADMIN/STAFF)
 // ==========================================
-
-// /**
-//  * 9. POST: Tính lại điểm cho 1 CLB
-//  */
-// export const recalculateClubActivity = async ({ clubId, year, month }: ClubPeriodParams): Promise<ClubMonthlyActivity> => {
-//   const response = await axiosInstance.post<ClubActivitySingleResponse>(
-//     `/api/club-activity/${clubId}/recalculate`, null, { params: { year, month } }
-//   );
-//   if (response.data?.success) return response.data.data;
-//   throw new Error(response.data?.message || "Failed to recalculate");
-// };
-
-// /**
-//  * 10. POST: Khóa dữ liệu tháng
-//  */
-// export const lockClubActivity = async ({ clubId, year, month }: ClubPeriodParams): Promise<ClubMonthlyActivity> => {
-//   const response = await axiosInstance.post<ClubActivitySingleResponse>(
-//     `/api/club-activity/${clubId}/lock`, null, { params: { year, month } }
-//   );
-//   if (response.data?.success) return response.data.data;
-//   throw new Error(response.data?.message || "Failed to lock");
-// };
-
-// /**
-//  * 11. POST: Duyệt cấp điểm thưởng
-//  */
-// export const approveClubActivity = async ({ clubId, year, month }: ClubPeriodParams): Promise<ApproveResult> => {
-//   const response = await axiosInstance.post<ClubApproveResponse>(
-//     `/api/club-activity/${clubId}/approve`, null, { params: { year, month } }
-//   );
-//   if (response.data?.success) return response.data.data;
-//   throw new Error(response.data?.message || "Failed to approve");
-// };
 /**
  * 9. POST: Tính lại điểm cho 1 CLB (ADMIN)
  */

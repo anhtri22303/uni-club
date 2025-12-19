@@ -53,7 +53,7 @@ interface ClubMember {
   joinedAt: string | null;
 }
 
-const POINT_EXCHANGE_RATE = 1000; // 1 điểm = 1000 VND
+const POINT_EXCHANGE_RATE = 100; // 1 điểm = 100 VND
 
 export default function ClubLeaderRewardDistributionPage() {
   const { clubMemberships } = useData();
