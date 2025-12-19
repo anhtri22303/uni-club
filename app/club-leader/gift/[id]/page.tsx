@@ -656,6 +656,7 @@ export default function EditProductPage() {
 
   //   const delta = parseFormattedNumber(stockChange);
 
+  //   // Validate cơ bản
   //   if (isNaN(delta) || delta === 0) {
   //     toast({
   //       title: "Error",
@@ -667,9 +668,8 @@ export default function EditProductPage() {
 
   //   const isRemoving = delta < 0;
 
-  //   // VALIDATION LOGIC MỚI
+  //   // VALIDATION LOGIC
   //   if (isRemoving) {
-  //     // Nếu là xuất kho (số âm): Bắt buộc chọn lý do
   //     if (!stockReason) {
   //       toast({
   //         title: "Error",
@@ -678,9 +678,7 @@ export default function EditProductPage() {
   //       });
   //       return;
   //     }
-  //     // Note là optional, không cần check
   //   } else {
-  //     // Nếu là nhập kho (số dương): Bắt buộc nhập Note (như cũ)
   //     if (!stockNote.trim()) {
   //       toast({
   //         title: "Error",
@@ -693,22 +691,24 @@ export default function EditProductPage() {
 
   //   setIsStockLoading(true);
   //   try {
-  //     // --- LOGIC KẾT HỢP DỮ LIỆU ---
-  //     let finalReason = "CORRECTION"; // Mặc định cho nhập kho
+  //     // 1. Xác định Reason:
+  //     // - Nếu xuất kho (isRemoving = true): Lấy từ biến stockReason (dropdown).
+  //     // - Nếu nhập kho (isRemoving = false): Gán là null (hoặc undefined) để không gửi reason lên BE.
+  //     const finalReason = isRemoving ? stockReason : undefined;
+
+  //     // 2. Xử lý Note:
   //     let finalNote = stockNote.trim();
 
   //     if (isRemoving) {
-  //       finalReason = stockReason; // Lấy từ dropdown
-  //       // Tìm label để gộp vào note cho dễ đọc trong lịch sử
+  //       // Chỉ khi xuất kho mới cần gộp Label của Reason vào Note cho dễ đọc
   //       const reasonLabel = STOCK_REMOVAL_REASONS.find(r => r.value === stockReason)?.label || stockReason;
-
-  //       // Gộp Dropdown info vào Note: "[Loss/Damage] - Chi tiết người dùng nhập"
   //       finalNote = finalNote
   //         ? `[${reasonLabel}] - ${finalNote}`
   //         : `[${reasonLabel}]`;
   //     }
 
-  //     // Gọi API với tham số mới (reason)
+  //     // 3. Gọi API
+  //     // (Lưu ý: Nếu file api definition của bạn bắt buộc reason là string, bạn có thể cần sửa file api thành string | null)
   //     await updateStock(clubId, productId, delta, finalNote, finalReason);
 
   //     toast({ title: "Success", description: "Stock updated successfully!" });
@@ -717,11 +717,26 @@ export default function EditProductPage() {
   //     setIsStockDialogOpen(false);
   //     setStockChange("");
   //     setStockNote("");
-  //     setStockReason(""); // Reset lý do
+  //     setStockReason("");
 
-  //     // Invalidate queries
+  //     // --- PHẦN QUAN TRỌNG NHẤT: CẬP NHẬT UI TỨC THÌ (REAL-TIME) ---
+  //     // 1. Cập nhật danh sách sản phẩm (để table bên ngoài cập nhật số tồn kho)
   //     queryClient.invalidateQueries({ queryKey: queryKeys.productsByClubId(clubId) });
+
+  //     // 2. Cập nhật lịch sử kho (Stock History)
   //     queryClient.invalidateQueries({ queryKey: ["stockHistory", clubId, productId] });
+
+  //     // 3. Cập nhật VÍ CLUB (Cập nhật số tiền trong Dialog hiện tại)
+  //     queryClient.invalidateQueries({ queryKey: queryKeys.clubWallet(clubId) });
+
+  //     // 4. [NEW] Cập nhật THÔNG TIN CLUB (Để Sidebar/Widget cập nhật nếu dùng hook useClub)
+  //     queryClient.invalidateQueries({ queryKey: queryKeys.clubDetail(clubId) });
+
+  //     // 5. [NEW] Cập nhật PROFILE (Giống trang Student - cập nhật nếu Sidebar dùng useFullProfile/useProfile)
+  //     queryClient.invalidateQueries({ queryKey: queryKeys.profile });
+  //     queryClient.invalidateQueries({ queryKey: queryKeys.fullProfile });
+
+  //     // 6. Tải lại data sản phẩm hiện tại (để field Current Stock trong form cập nhật)
   //     await fetchProductData(clubId, productId);
 
   //   } catch (error: any) {
@@ -734,12 +749,13 @@ export default function EditProductPage() {
   //     setIsStockLoading(false);
   //   }
   // };
+  // --- Handler Update Stock ---
   const handleUpdateStock = async () => {
     if (!clubId || !productId) return;
 
     const delta = parseFormattedNumber(stockChange);
 
-    // Validate cơ bản
+    // Validate số lượng
     if (isNaN(delta) || delta === 0) {
       toast({
         title: "Error",
@@ -751,62 +767,59 @@ export default function EditProductPage() {
 
     const isRemoving = delta < 0;
 
-    // VALIDATION LOGIC
-    if (isRemoving) {
-      if (!stockReason) {
-        toast({
-          title: "Error",
-          description: "Please select a reason for removing stock.",
-          variant: "destructive",
-        });
-        return;
-      }
-    } else {
-      if (!stockNote.trim()) {
-        toast({
-          title: "Error",
-          description: "Please provide a note for this stock addition.",
-          variant: "destructive",
-        });
-        return;
-      }
+    // Validate Reason & Note
+    if (isRemoving && !stockReason) {
+      toast({ title: "Error", description: "Reason is required for removing stock.", variant: "destructive" });
+      return;
+    }
+    if (!isRemoving && !stockNote.trim()) {
+      toast({ title: "Error", description: "Note is required for adding stock.", variant: "destructive" });
+      return;
     }
 
     setIsStockLoading(true);
     try {
-      // --- SỬA ĐỔI LOGIC REASON TẠI ĐÂY ---
-
-      // 1. Xác định Reason:
-      // - Nếu xuất kho (isRemoving = true): Lấy từ biến stockReason (dropdown).
-      // - Nếu nhập kho (isRemoving = false): Gán là null (hoặc undefined) để không gửi reason lên BE.
+      // 1. Chuẩn bị dữ liệu gửi đi
       const finalReason = isRemoving ? stockReason : undefined;
-
-      // 2. Xử lý Note:
       let finalNote = stockNote.trim();
 
       if (isRemoving) {
-        // Chỉ khi xuất kho mới cần gộp Label của Reason vào Note cho dễ đọc
         const reasonLabel = STOCK_REMOVAL_REASONS.find(r => r.value === stockReason)?.label || stockReason;
-        finalNote = finalNote
-          ? `[${reasonLabel}] - ${finalNote}`
-          : `[${reasonLabel}]`;
+        finalNote = finalNote ? `[${reasonLabel}] - ${finalNote}` : `[${reasonLabel}]`;
       }
 
-      // 3. Gọi API
-      // (Lưu ý: Nếu file api definition của bạn bắt buộc reason là string, bạn có thể cần sửa file api thành string | null)
+      // 2. Gọi API Update Stock
       await updateStock(clubId, productId, delta, finalNote, finalReason);
 
       toast({ title: "Success", description: "Stock updated successfully!" });
 
-      // Reset form
+      // Reset form Dialog
       setIsStockDialogOpen(false);
       setStockChange("");
       setStockNote("");
       setStockReason("");
 
-      // Refresh data
-      queryClient.invalidateQueries({ queryKey: queryKeys.productsByClubId(clubId) });
-      queryClient.invalidateQueries({ queryKey: ["stockHistory", clubId, productId] });
+      // --- CẬP NHẬT UI TOÀN DIỆN (FIX TRIỆT ĐỂ VẤN ĐỀ KHÔNG RELOAD) ---
+      // Chiến thuật: Invalidate Key Gốc (Root Key) để bắt trọn mọi biến thể (String/Number)
+
+      await Promise.all([
+        // 1. Quét sạch mọi query liên quan đến Ví Club (["club-wallet", ...])
+        queryClient.invalidateQueries({ queryKey: ["club-wallet"] }),
+
+        // 2. Quét sạch mọi query liên quan đến thông tin Club (["clubs", ...])
+        // Sidebar thường lấy số dư từ API chi tiết Club (useClub)
+        queryClient.invalidateQueries({ queryKey: ["clubs"] }),
+
+        // 3. Quét sạch Profile (đề phòng Sidebar dùng useFullProfile như trang Student)
+        queryClient.invalidateQueries({ queryKey: ["fullProfile"] }),
+        queryClient.invalidateQueries({ queryKey: ["profile"] }),
+
+        // 4. Cập nhật dữ liệu sản phẩm & lịch sử trong trang hiện tại
+        queryClient.invalidateQueries({ queryKey: queryKeys.productsByClubId(clubId) }),
+        queryClient.invalidateQueries({ queryKey: ["stockHistory", clubId, productId] }),
+      ]);
+
+      // 5. Fetch lại data sản phẩm thủ công để chắc chắn form hiển thị đúng
       await fetchProductData(clubId, productId);
 
     } catch (error: any) {
@@ -819,7 +832,6 @@ export default function EditProductPage() {
       setIsStockLoading(false);
     }
   };
-
 
   // Hook fetch Lịch sử Tồn kho
   const { data: stockHistory = [], isLoading: historyLoading } = useQuery<

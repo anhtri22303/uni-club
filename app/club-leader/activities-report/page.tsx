@@ -10,15 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
-    getClubMemberActivity,
-    getClubMemberActivityLive,
-    updateBulkMonthlyActivity,
-    MemberActivityFullScore,
-    MemberActivityShortItem,
-    UpdateBulkMonthlyActivityBody,
-    MonthlyActivityItem,
-    ActivityLevel,
-    autoGenerateMonthlyReport,
+    getClubMemberActivity, getClubMemberActivityLive, updateBulkMonthlyActivity, MemberActivityFullScore, MemberActivityShortItem,
+    UpdateBulkMonthlyActivityBody, MonthlyActivityItem, ActivityLevel, autoGenerateMonthlyReport,
 } from "@/service/memberActivityReportApi"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
@@ -29,7 +22,6 @@ import { Input } from "@/components/ui/input"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
-// --- Helper Functions ---
 const generateYearOptions = () => {
     const currentYear = new Date().getFullYear()
     const years = []
@@ -58,13 +50,10 @@ const getLevelBadgeColor = (level: string) => {
 }
 
 const formatNumberInput = (value: string) => {
-    // 1. Loại bỏ tất cả ký tự KHÔNG phải là số (a-z, ký tự đặc biệt, khoảng trắng...)
-    // Chỉ giữ lại các chữ số từ 0 đến 9
+    // 1. Loại bỏ tất cả ký tự KHÔNG phải là số (a-z, ký tự đặc biệt, khoảng trắng...), Chỉ giữ lại các chữ số từ 0 đến 9
     const rawValue = value.replace(/[^0-9]/g, '');
-
     // 2. Nếu rỗng (do xóa hết hoặc chưa nhập) thì trả về rỗng
     if (rawValue === '') return '';
-
     // 3. Chuyển thành số và format có dấu phẩy (Ví dụ: 1000 -> 1,000)
     // Number() sẽ tự động loại bỏ số 0 ở đầu (ví dụ 05 -> 5)
     return Number(rawValue).toLocaleString('en-US');
@@ -170,39 +159,32 @@ const ActivityScoreDetail = ({ score }: { score: DisplayActivityItem }) => {
 
 export default function ActivityReportPage() {
     const { toast } = useToast()
-
     // Time State
     const [yearOptions] = useState(generateYearOptions())
     const [monthOptions] = useState(generateMonthOptions())
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
-
     // Data State
     const [activities, setActivities] = useState<DisplayActivityItem[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [selectedMember, setSelectedMember] = useState<DisplayActivityItem | null>(null)
-
     // Logic State
-    const [attendanceBaseInput, setAttendanceBaseInput] = useState<string>("")
-    const [staffBaseInput, setStaffBaseInput] = useState<string>("")
+    // const [attendanceBaseInput, setAttendanceBaseInput] = useState<string>("")
+    // const [staffBaseInput, setStaffBaseInput] = useState<string>("")
     const [isCalculating, setIsCalculating] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
     const [isGenerating, setIsGenerating] = useState(false)
-
     // Flag: Đã tính điểm chưa? Nếu true -> Hiện cột điểm. Nếu false -> Ẩn cột điểm.
     const [showScores, setShowScores] = useState(false)
     const [clubId] = useState(() => getClubIdFromToken())
-
     // 1. Load Data (Mặc định chỉ tải thông tin hoạt động - Short API)
     const loadActivities = useCallback(async () => {
         if (!clubId) return
-
         setIsLoading(true)
         setShowScores(false) // Reset về chế độ chỉ xem Stats khi đổi tháng/năm/load lại
-
         // Reset inputs để người dùng nhập mới nếu muốn tính toán
-        setAttendanceBaseInput("")
-        setStaffBaseInput("")
+        // setAttendanceBaseInput("")
+        // setStaffBaseInput("")
 
         try {
             // Gọi API Short (Chỉ lấy Stats: Event, Session, Penalty...)
@@ -228,9 +210,10 @@ export default function ActivityReportPage() {
     // 2. Calculate Live Score (Gọi API Full và Merge)
     const handleLiveCalculation = async () => {
         if (!clubId) return
-
-        const attBase = Number(attendanceBaseInput.replace(/,/g, ''))
-        const stfBase = Number(staffBaseInput.replace(/,/g, ''))
+        // const attBase = Number(attendanceBaseInput.replace(/,/g, ''))
+        // const stfBase = Number(staffBaseInput.replace(/,/g, ''))
+        const attBase = 0
+        const stfBase = 0
 
         if (isNaN(attBase) || attBase < 0 || isNaN(stfBase) || stfBase < 0) {
             toast({ title: "Invalid Input", description: "Base scores must be valid positive numbers.", variant: "destructive" })
@@ -245,9 +228,6 @@ export default function ActivityReportPage() {
                 attendanceBase: attBase,
                 staffBase: stfBase
             })
-
-            // Ép kiểu liveData sang DisplayActivityItem và set vào state
-            // Vì Live Data đã bao gồm đầy đủ cả Stats và Score nên ta dùng trực tiếp
             setActivities(liveData)
             setShowScores(true) // Bật cờ để hiển thị các cột điểm số
 
@@ -297,7 +277,7 @@ export default function ActivityReportPage() {
                     attendanceTotalScore: fullItem.attendanceTotalScore,
                     staffBaseScore: fullItem.staffBaseScore,
                     totalStaffCount: fullItem.totalStaffCount,
-                    staffEvaluation: fullItem.staffEvaluation,
+                    staffEvaluation: fullItem.staffEvaluation || "NONE",
                     staffMultiplier: fullItem.staffMultiplier,
                     staffScore: fullItem.staffScore,
                     staffTotalScore: fullItem.staffTotalScore,
@@ -363,8 +343,6 @@ export default function ActivityReportPage() {
             setIsGenerating(false);
         }
     };
-
-
     useEffect(() => {
         loadActivities()
     }, [selectedYear, selectedMonth, clubId, loadActivities])
@@ -406,7 +384,8 @@ export default function ActivityReportPage() {
                                 <Calculator className="h-5 w-5" /> Configuration & Calculation
                             </CardTitle>
                             <CardDescription>
-                                Set base scores and click calculate to preview member points.
+                                {/* Set base scores and click calculate to preview member points. */}
+                                Select time period and click calculate to preview member points.
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -430,9 +409,8 @@ export default function ActivityReportPage() {
                                         </SelectContent>
                                     </Select>
                                 </div>
-
                                 {/* Scoring Inputs */}
-                                <div className="space-y-2">
+                                {/* <div className="space-y-2">
                                     <Label className="text-blue-600">Attendance Base Score</Label>
                                     <div className="relative">
                                         <Input
@@ -444,10 +422,9 @@ export default function ActivityReportPage() {
                                             onChange={(e) => setAttendanceBaseInput(formatNumberInput(e.target.value))}
                                             className="pl-8 pr-10 border-slate-300"
                                         />
-                                        <Users className="h-4 w-4 absolute left-2.5 top-3 text-muted-foreground" />
-
-                                        {/* Nút Clear bên phải - Chỉ hiện khi có dữ liệu */}
-                                        {attendanceBaseInput && (
+                                        <Users className="h-4 w-4 absolute left-2.5 top-3 text-muted-foreground" /> */}
+                                {/* Nút Clear bên phải - Chỉ hiện khi có dữ liệu */}
+                                {/* {attendanceBaseInput && (
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
@@ -460,8 +437,8 @@ export default function ActivityReportPage() {
                                             </Button>
                                         )}
                                     </div>
-                                </div>
-                                <div className="space-y-2">
+                                </div> */}
+                                {/* <div className="space-y-2">
                                     <Label className="text-yellow-600">Staff Base Score</Label>
                                     <div className="relative">
                                         <Input
@@ -471,10 +448,9 @@ export default function ActivityReportPage() {
                                             onChange={(e) => setStaffBaseInput(formatNumberInput(e.target.value))}
                                             className="pl-8 pr-10 border-slate-300"
                                         />
-                                        <Star className="h-4 w-4 absolute left-2.5 top-3 text-muted-foreground" />
-
-                                        {/* Nút Clear bên phải - Chỉ hiện khi có dữ liệu */}
-                                        {staffBaseInput && (
+                                        <Star className="h-4 w-4 absolute left-2.5 top-3 text-muted-foreground" /> */}
+                                {/* Nút Clear bên phải - Chỉ hiện khi có dữ liệu */}
+                                {/* {staffBaseInput && (
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
@@ -487,12 +463,12 @@ export default function ActivityReportPage() {
                                             </Button>
                                         )}
                                     </div>
-                                </div>
-
+                                </div> */}
                                 {/* Calculate Button */}
                                 <Button
                                     onClick={handleLiveCalculation}
-                                    disabled={isLoading || isCalculating || !attendanceBaseInput || !staffBaseInput}
+                                    // disabled={isLoading || isCalculating || !attendanceBaseInput || !staffBaseInput}
+                                    disabled={isLoading || isCalculating}
                                     className="w-full"
                                 >
                                     {isCalculating ? <RotateCw className="h-4 w-4 animate-spin" /> : <Calculator className="h-4 w-4 mr-2" />}
@@ -569,7 +545,7 @@ export default function ActivityReportPage() {
                                         {/* --- NHÓM PHỤ (Events & Penalty) --- */}
                                         {/* <TableHead className="w-[120px] text-center text-muted-foreground">Events (A/R)</TableHead>
                                         <TableHead className="w-[80px] text-center text-red-500">Penalty</TableHead> */}
-                                        <TableHead className="w-[120px] text-center text-muted-foreground">
+                                        {/* <TableHead className="w-[120px] text-center text-muted-foreground">
                                             <div className="flex items-center justify-center gap-2">
                                                 <span>Events</span>
                                                 <Tooltip>
@@ -581,7 +557,7 @@ export default function ActivityReportPage() {
                                                     </TooltipContent>
                                                 </Tooltip>
                                             </div>
-                                        </TableHead>
+                                        </TableHead> */}
 
                                         <TableHead className="w-[80px] text-center text-red-500">
                                             <div className="flex items-center justify-center gap-2">
@@ -598,14 +574,7 @@ export default function ActivityReportPage() {
                                         </TableHead>
 
                                         {/* --- NHÓM ĐIỂM SỐ (Chỉ hiện khi Calculate) --- */}
-                                        {/* {showScores && (
-                                            <>
-                                                <TableHead className="text-center text-blue-600 bg-blue-50/50">Level</TableHead>
-                                                <TableHead className="text-center text-blue-600 bg-blue-50/50">Att. Score</TableHead>
-                                                <TableHead className="text-center text-yellow-600 bg-yellow-50/50">Staff Score</TableHead>
-                                                <TableHead className="text-center font-bold bg-muted/30">Final Score</TableHead>
-                                            </>
-                                        )} */}
+
                                         {showScores && (
                                             <>
                                                 {/* Cột Level */}
@@ -670,7 +639,6 @@ export default function ActivityReportPage() {
                                                 </TableHead>
                                             </>
                                         )}
-
                                     </TableRow>
                                 </TableHeader>
 
@@ -682,7 +650,7 @@ export default function ActivityReportPage() {
                                                 <TableCell><Skeleton className="h-5 w-20" /></TableCell>
                                                 <TableCell><Skeleton className="h-5 w-16 mx-auto" /></TableCell>
                                                 <TableCell><Skeleton className="h-5 w-16 mx-auto" /></TableCell>
-                                                <TableCell><Skeleton className="h-5 w-16 mx-auto" /></TableCell>
+                                                {/* <TableCell><Skeleton className="h-5 w-16 mx-auto" /></TableCell> */}
                                                 <TableCell><Skeleton className="h-5 w-8 mx-auto" /></TableCell>
                                                 {showScores && (
                                                     <>
@@ -709,27 +677,22 @@ export default function ActivityReportPage() {
                                             >
                                                 <TableCell className="font-medium pl-5">{member.fullName}</TableCell>
                                                 <TableCell className="text-muted-foreground text-sm text-center">{member.studentCode}</TableCell>
-
                                                 {/* 1. Sessions (Attendance) - CHÍNH */}
                                                 <TableCell className="text-center font-medium">
                                                     {member.totalClubPresent ?? 0}/{member.totalClubSessions ?? 0}
                                                 </TableCell>
-
                                                 {/* 2. Staff Count - CHÍNH */}
                                                 <TableCell className="text-center font-medium">
                                                     {member.totalStaffCount ?? 0}
                                                 </TableCell>
-
                                                 {/* 3. Events - PHỤ */}
-                                                <TableCell className="text-center text-muted-foreground">
+                                                {/* <TableCell className="text-center text-muted-foreground">
                                                     {member.totalEventAttended ?? 0}/{member.totalEventRegistered ?? 0}
-                                                </TableCell>
-
+                                                </TableCell> */}
                                                 {/* 4. Penalty - PHỤ */}
                                                 <TableCell className="text-center font-bold text-red-500">
                                                     {member.totalPenaltyPoints > 0 ? `-${member.totalPenaltyPoints}` : "0"}
                                                 </TableCell>
-
                                                 {/* 5. Score Columns - Hiện khi showScores = true */}
                                                 {showScores && (
                                                     <>
@@ -756,9 +719,6 @@ export default function ActivityReportPage() {
                             </Table>
                         </CardContent>
                     </Card>
-
-
-
                     {/* Detail Modal (Chỉ mở được khi showScores = true) */}
                     <Dialog open={!!selectedMember} onOpenChange={(open) => !open && setSelectedMember(null)}>
                         <DialogContent className="sm:max-w-[600px]">

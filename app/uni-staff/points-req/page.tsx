@@ -14,13 +14,20 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
-    usePointRequests, // <-- Hook mới từ Bước 1
+    usePointRequests,
     reviewPointRequest,
     PointRequest,
     ReviewPointRequestPayload,
 } from "@/service/pointRequestsApi"
+import {
+    getPendingCashouts,
+    approveCashout,
+    rejectCashout,
+    CashoutResponse
+} from "@/service/exchangeClubPointApi";
+import { useExchangeRequests } from "@/hooks/use-query-hooks"
 
 export default function UniStaffPointRequestsPage() {
     const [searchTerm, setSearchTerm] = useState("")
@@ -30,9 +37,12 @@ export default function UniStaffPointRequestsPage() {
 
     // State cho modal duyệt đơn
     const [showReviewModal, setShowReviewModal] = useState(false)
-    const [selectedRequest, setSelectedRequest] = useState<PointRequest | null>(null)
+    // const [selectedRequest, setSelectedRequest] = useState<PointRequest | null>(null)
+    const [selectedRequest, setSelectedRequest] = useState<(PointRequest & CashoutResponse) | null>(null);
     const [reviewNote, setReviewNote] = useState("")
     const [isApproving, setIsApproving] = useState(false)
+    // State phân loại đơn
+    const [requestType, setRequestType] = useState<"ADD_POINTS" | "CASHOUT">("ADD_POINTS");
 
     // Pagination state
     const [page, setPage] = useState(0)
@@ -42,12 +52,19 @@ export default function UniStaffPointRequestsPage() {
     const queryClient = useQueryClient()
 
     // 1. Fetch dữ liệu bằng React Query
-    const {
-        data: response,
-        isLoading: loading,
-        error,
-    } = usePointRequests()
-    const allRequests: PointRequest[] = response?.data || []
+    // const {
+    //     data: response,
+    //     isLoading: loading,
+    //     error,
+    // } = usePointRequests()
+    // const { data: response, isLoading: loading } = useQuery({
+    //     queryKey: ["requests", requestType],
+    //     queryFn: () => requestType === "ADD_POINTS" ? getAllPointRequests() : getPendingCashouts()
+    // });
+
+    // const allRequests: PointRequest[] = response?.data || []
+    const { data: listData, isLoading: loading, error } = useExchangeRequests(requestType);
+    const allRequests = (listData || []) as (PointRequest & CashoutResponse)[];
 
     // 2. Logic duyệt đơn (Giống như trang Table tôi gửi trước)
     const reviewMutation = useMutation({
@@ -78,27 +95,88 @@ export default function UniStaffPointRequestsPage() {
         },
     })
 
+    const approveCashoutMutation = useMutation({
+        mutationFn: ({ id, note }: { id: number; note: string }) => approveCashout(id, note),
+        onSuccess: () => {
+            toast({ title: "Success", description: "Cashout approved." });
+            queryClient.invalidateQueries({ queryKey: ["cashouts", "pending"] });
+            setShowReviewModal(false);
+        },
+        onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" })
+    });
+
+    const rejectCashoutMutation = useMutation({
+        mutationFn: ({ id, reason }: { id: number; reason: string }) => rejectCashout(id, reason),
+        onSuccess: () => {
+            toast({ title: "Success", description: "Cashout rejected." });
+            queryClient.invalidateQueries({ queryKey: ["cashouts", "pending"] });
+            setShowReviewModal(false);
+        },
+        onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" })
+    });
+
     // 3. Handlers để mở modal và submit
+    // const handleOpenReviewModal = (
+    //     request: PointRequest,
+    //     action: "approve" | "reject"
+    // ) => {
+    //     setSelectedRequest(request)
+    //     setIsApproving(action === "approve")
+    //     setReviewNote(request.staffNote || "") // Tải note cũ nếu có
+    //     setShowReviewModal(true)
+    // }
     const handleOpenReviewModal = (
-        request: PointRequest,
+        // Thay đổi PointRequest thành kiểu kết hợp (PointRequest & CashoutResponse)
+        request: PointRequest & CashoutResponse,
         action: "approve" | "reject"
     ) => {
-        setSelectedRequest(request)
-        setIsApproving(action === "approve")
-        setReviewNote(request.staffNote || "") // Tải note cũ nếu có
-        setShowReviewModal(true)
-    }
+        setSelectedRequest(request);
+        setIsApproving(action === "approve");
 
+        // Thuộc tính staffNote tồn tại ở cả 2 interface nên TypeScript sẽ hiểu
+        setReviewNote(request.staffNote || "");
+
+        setShowReviewModal(true);
+    };
+
+    // const handleSubmitReview = () => {
+    //     if (!selectedRequest) return
+
+    //     const payload: ReviewPointRequestPayload = {
+    //         approve: isApproving,
+    //         note: reviewNote.trim() || (isApproving ? "Approved" : "Rejected"),
+    //     }
+    //     reviewMutation.mutate({ id: selectedRequest.id, payload })
+    // }
     const handleSubmitReview = () => {
-        if (!selectedRequest) return
+        // Giải quyết lỗi 'selectedRequest' is possibly 'null'
+        if (!selectedRequest) return;
 
-        const payload: ReviewPointRequestPayload = {
-            approve: isApproving,
-            note: reviewNote.trim() || (isApproving ? "Approved" : "Rejected"),
+        if (requestType === "ADD_POINTS") {
+            // Định nghĩa payload rõ ràng để tránh lỗi "No value exists in scope"
+            const payload: ReviewPointRequestPayload = {
+                approve: isApproving,
+                note: reviewNote.trim() || (isApproving ? "Approved" : "Rejected"),
+            };
+
+            reviewMutation.mutate({ id: selectedRequest.id, payload });
+        } else {
+            // Logic cho đơn Cashout (Đã có Mutation ở bước 1)
+            const noteOrReason = reviewNote.trim() || (isApproving ? "Approved" : "Rejected");
+
+            if (isApproving) {
+                approveCashoutMutation.mutate({
+                    id: selectedRequest.id,
+                    note: noteOrReason
+                });
+            } else {
+                rejectCashoutMutation.mutate({
+                    id: selectedRequest.id,
+                    reason: noteOrReason
+                });
+            }
         }
-        reviewMutation.mutate({ id: selectedRequest.id, payload })
-    }
-
+    };
     // 4. Lọc và Phân trang (Logic từ trang Event)
     const filteredRequests = allRequests
         .filter((req) => {
@@ -305,6 +383,26 @@ export default function UniStaffPointRequestsPage() {
                         </Button>
                     </div>
 
+                    {/* Request Type Toggle */}
+                    <div className="flex gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg w-fit border border-slate-300">
+                        <Button
+                            variant={requestType === "ADD_POINTS" ? "default" : "ghost"}
+                            size="sm"
+                            onClick={() => setRequestType("ADD_POINTS")}
+                            className="text-xs"
+                        >
+                            Point Top-up Requests
+                        </Button>
+                        <Button
+                            variant={requestType === "CASHOUT" ? "default" : "ghost"}
+                            size="sm"
+                            onClick={() => setRequestType("CASHOUT")}
+                            className="text-xs"
+                        >
+                            Cashout Requests
+                        </Button>
+                    </div>
+
                     {/* Filters (Đã đơn giản hóa từ trang Event) */}
                     <div className="flex items-center gap-2 max-w-sm w-full">
                         <Search className="h-4 w-4 text-muted-foreground" />
@@ -356,8 +454,119 @@ export default function UniStaffPointRequestsPage() {
                                 </CardContent>
                             </Card>
                         ) : (
+                            // paginated.map((request) => {
+                            //     // Border màu (Lấy từ trang Event)
+                            //     let borderClass = ""
+                            //     if (request.status === "APPROVED") {
+                            //         borderClass = "border-l-4 border-l-green-500"
+                            //     } else if (request.status === "PENDING") {
+                            //         borderClass = "border-l-4 border-l-yellow-500"
+                            //     } else if (request.status === "REJECTED") {
+                            //         borderClass = "border-l-4 border-l-red-500 opacity-70"
+                            //     }
+
+                            //     return (
+                            //         <Card
+                            //             key={request.id}
+                            //             className={`hover:shadow-md transition-shadow ${borderClass}`}
+                            //         >
+                            //             {/* Bỏ Link vì các nút action nằm ngay trên Card */}
+                            //             <CardContent className="p-6">
+                            //                 <div className="flex items-start justify-between">
+                            //                     <div className="flex-1">
+                            //                         {/* Dòng 1: Tên Club + Status */}
+                            //                         <div className="flex items-center gap-3 mb-2">
+                            //                             <Building className="h-5 w-5 text-muted-foreground" />
+                            //                             <h3 className="font-semibold text-lg">
+                            //                                 {request.clubName}
+                            //                             </h3>
+                            //                             {getStatusBadge(request.status)}
+                            //                         </div>
+
+                            //                         {/* Dòng 2: Số điểm xin */}
+                            //                         <div className="flex items-center gap-2 mb-3">
+                            //                             <DollarSign className="h-5 w-5 text-green-600" />
+                            //                             <span className="text-xl font-bold text-green-700">
+                            //                                 {request.requestedPoints.toLocaleString()}{" "}
+                            //                                 points
+                            //                             </span>
+                            //                         </div>
+
+                            //                         {/* Dòng 3: Lý do */}
+                            //                         <p className="text-muted-foreground mb-3 line-clamp-2">
+                            //                             <strong>Reason:</strong> {request.reason}
+                            //                         </p>
+
+                            //                         {/* Dòng 4: Note của Staff (nếu có) */}
+                            //                         {request.staffNote &&
+                            //                             request.status !== "PENDING" && (
+                            //                                 <p className="text-sm text-gray-500 italic border-l-2 pl-2">
+                            //                                     <strong>Staff Note:</strong>{" "}
+                            //                                     {request.staffNote}
+                            //                                 </p>
+                            //                             )}
+                            //                     </div>
+
+                            //                     {/* Nút Actions (Lấy từ trang Event) */}
+                            //                     <div className="flex items-center gap-2 ml-4">
+                            //                         {/* Chỉ hiển thị nút khi đang ở tab PENDING */}
+                            //                         {request.status === "PENDING" && (
+                            //                             <>
+                            //                                 <Button
+                            //                                     size="sm"
+                            //                                     variant="default"
+                            //                                     className="h-8 w-8 p-0"
+                            //                                     onClick={(e) => {
+                            //                                         e.preventDefault()
+                            //                                         handleOpenReviewModal(request, "approve")
+                            //                                     }}
+                            //                                     disabled={reviewMutation.isPending}
+                            //                                 >
+                            //                                     <CheckCircle className="h-4 w-4" />
+                            //                                 </Button>
+                            //                                 <Button
+                            //                                     size="sm"
+                            //                                     variant="destructive"
+                            //                                     className="h-8 w-8 p-0"
+                            //                                     onClick={(e) => {
+                            //                                         e.preventDefault()
+                            //                                         handleOpenReviewModal(request, "reject")
+                            //                                     }}
+                            //                                     disabled={reviewMutation.isPending}
+                            //                                 >
+                            //                                     <XCircle className="h-4 w-4" />
+                            //                                 </Button>
+                            //                             </>
+                            //                         )}
+                            //                         {/* Nút Edit cho các đơn đã duyệt */}
+                            //                         {request.status !== "PENDING" && (
+                            //                             <Button
+                            //                                 size="sm"
+                            //                                 variant="outline"
+                            //                                 className="h-8"
+                            //                                 onClick={(e) => {
+                            //                                     e.preventDefault()
+                            //                                     handleOpenReviewModal(
+                            //                                         request,
+                            //                                         request.status === "APPROVED"
+                            //                                             ? "approve"
+                            //                                             : "reject"
+                            //                                     )
+                            //                                 }}
+                            //                                 disabled={reviewMutation.isPending}
+                            //                             >
+                            //                                 <Eye className="h-3 w-3 mr-1" />
+                            //                                 View/Edit Note
+                            //                             </Button>
+                            //                         )}
+                            //                     </div>
+                            //                 </div>
+                            //             </CardContent>
+                            //         </Card>
+                            //     )
+                            // })
                             paginated.map((request) => {
-                                // Border màu (Lấy từ trang Event)
+                                // 1. Xác định border màu dựa trên status
                                 let borderClass = ""
                                 if (request.status === "APPROVED") {
                                     borderClass = "border-l-4 border-l-green-500"
@@ -367,16 +576,24 @@ export default function UniStaffPointRequestsPage() {
                                     borderClass = "border-l-4 border-l-red-500 opacity-70"
                                 }
 
+                                // 2. Lấy các giá trị linh hoạt dựa trên requestType
+                                const displayPoints = requestType === "ADD_POINTS"
+                                    ? request.requestedPoints
+                                    : request.pointsRequested;
+
+                                const displayReason = requestType === "ADD_POINTS"
+                                    ? request.reason
+                                    : request.leaderNote;
+
                                 return (
                                     <Card
-                                        key={request.id}
+                                        key={`${requestType}-${request.id}`} // Dùng key kết hợp để tránh trùng lặp khi đổi tab
                                         className={`hover:shadow-md transition-shadow ${borderClass}`}
                                     >
-                                        {/* Bỏ Link vì các nút action nằm ngay trên Card */}
                                         <CardContent className="p-6">
                                             <div className="flex items-start justify-between">
                                                 <div className="flex-1">
-                                                    {/* Dòng 1: Tên Club + Status */}
+                                                    {/* Dòng 1: Tên Club + Status Badge */}
                                                     <div className="flex items-center gap-3 mb-2">
                                                         <Building className="h-5 w-5 text-muted-foreground" />
                                                         <h3 className="font-semibold text-lg">
@@ -385,80 +602,70 @@ export default function UniStaffPointRequestsPage() {
                                                         {getStatusBadge(request.status)}
                                                     </div>
 
-                                                    {/* Dòng 2: Số điểm xin */}
-                                                    <div className="flex items-center gap-2 mb-3">
-                                                        <DollarSign className="h-5 w-5 text-green-600" />
-                                                        <span className="text-xl font-bold text-green-700">
-                                                            {request.requestedPoints.toLocaleString()}{" "}
-                                                            points
-                                                        </span>
-                                                    </div>
+                                                    {/* Dòng 2: Số điểm & Quy đổi VND (Nếu là Cashout) */}
+                                                    <div className="flex flex-col gap-1 mb-3">
+                                                        <div className="flex items-center gap-2">
+                                                            <DollarSign className={`h-5 w-5 ${requestType === 'CASHOUT' ? 'text-emerald-600' : 'text-blue-600'}`} />
+                                                            <span className={`text-xl font-bold ${requestType === 'CASHOUT' ? 'text-emerald-700' : 'text-blue-700'}`}>
+                                                                {displayPoints?.toLocaleString()} points
+                                                            </span>
+                                                        </div>
 
-                                                    {/* Dòng 3: Lý do */}
-                                                    <p className="text-muted-foreground mb-3 line-clamp-2">
-                                                        <strong>Reason:</strong> {request.reason}
-                                                    </p>
-
-                                                    {/* Dòng 4: Note của Staff (nếu có) */}
-                                                    {request.staffNote &&
-                                                        request.status !== "PENDING" && (
-                                                            <p className="text-sm text-gray-500 italic border-l-2 pl-2">
-                                                                <strong>Staff Note:</strong>{" "}
-                                                                {request.staffNote}
+                                                        {/* Chỉ hiển thị dòng này nếu là đơn CASHOUT */}
+                                                        {requestType === "CASHOUT" && (
+                                                            <p className="text-sm font-semibold text-emerald-600 ml-7">
+                                                                Equivalent: {(displayPoints * 1000).toLocaleString()} VND
                                                             </p>
                                                         )}
+                                                    </div>
+
+                                                    {/* Dòng 3: Lý do từ Club Leader */}
+                                                    <p className="text-muted-foreground mb-3 line-clamp-2">
+                                                        <strong className="text-foreground">Reason:</strong> {displayReason || "No reason provided"}
+                                                    </p>
+
+                                                    {/* Dòng 4: Ghi chú của Staff (nếu đã xử lý) */}
+                                                    {request.staffNote && request.status !== "PENDING" && (
+                                                        <div className="bg-slate-50 dark:bg-slate-900 p-2 rounded border-l-2 border-slate-300">
+                                                            <p className="text-sm text-slate-600 italic">
+                                                                <strong>Staff Note:</strong> {request.staffNote}
+                                                            </p>
+                                                        </div>
+                                                    )}
                                                 </div>
 
-                                                {/* Nút Actions (Lấy từ trang Event) */}
+                                                {/* Nút Actions */}
                                                 <div className="flex items-center gap-2 ml-4">
-                                                    {/* Chỉ hiển thị nút khi đang ở tab PENDING */}
-                                                    {request.status === "PENDING" && (
+                                                    {request.status === "PENDING" ? (
                                                         <>
                                                             <Button
                                                                 size="sm"
                                                                 variant="default"
-                                                                className="h-8 w-8 p-0"
-                                                                onClick={(e) => {
-                                                                    e.preventDefault()
-                                                                    handleOpenReviewModal(request, "approve")
-                                                                }}
-                                                                disabled={reviewMutation.isPending}
+                                                                className="h-9 w-9 p-0 bg-green-600 hover:bg-green-700"
+                                                                onClick={() => handleOpenReviewModal(request as any, "approve")}
+                                                                disabled={reviewMutation.isPending || approveCashoutMutation.isPending}
                                                             >
-                                                                <CheckCircle className="h-4 w-4" />
+                                                                <CheckCircle className="h-5 w-5" />
                                                             </Button>
                                                             <Button
                                                                 size="sm"
                                                                 variant="destructive"
-                                                                className="h-8 w-8 p-0"
-                                                                onClick={(e) => {
-                                                                    e.preventDefault()
-                                                                    handleOpenReviewModal(request, "reject")
-                                                                }}
-                                                                disabled={reviewMutation.isPending}
+                                                                className="h-9 w-9 p-0"
+                                                                onClick={() => handleOpenReviewModal(request as any, "reject")}
+                                                                disabled={reviewMutation.isPending || rejectCashoutMutation.isPending}
                                                             >
-                                                                <XCircle className="h-4 w-4" />
+                                                                <XCircle className="h-5 w-5" />
                                                             </Button>
                                                         </>
-                                                    )}
-                                                    {/* Nút Edit cho các đơn đã duyệt */}
-                                                    {request.status !== "PENDING" && (
+                                                    ) : (
                                                         <Button
                                                             size="sm"
                                                             variant="outline"
-                                                            className="h-8"
-                                                            onClick={(e) => {
-                                                                e.preventDefault()
-                                                                handleOpenReviewModal(
-                                                                    request,
-                                                                    request.status === "APPROVED"
-                                                                        ? "approve"
-                                                                        : "reject"
-                                                                )
-                                                            }}
-                                                            disabled={reviewMutation.isPending}
+                                                            className="h-9"
+                                                            onClick={() => handleOpenReviewModal(request as any, "approve")}
                                                         >
-                                                            <Eye className="h-3 w-3 mr-1" />
-                                                            View/Edit Note
+                                                            <Eye className="h-4 w-4 mr-2" />
+                                                            Details
                                                         </Button>
                                                     )}
                                                 </div>
@@ -467,6 +674,7 @@ export default function UniStaffPointRequestsPage() {
                                     </Card>
                                 )
                             })
+
                         )}
                     </div>
 
@@ -559,9 +767,8 @@ export default function UniStaffPointRequestsPage() {
                 {/* Modal để Approve/Reject (Lấy từ trang Table) */}
                 <Dialog open={showReviewModal} onOpenChange={setShowReviewModal}>
                     <DialogContent>
-                        <DialogHeader>
+                        {/* <DialogHeader>
                             <DialogTitle>
-                                {/* Cho phép edit note cũ */}
                                 {selectedRequest?.status === "PENDING"
                                     ? isApproving
                                         ? "Approve"
@@ -576,7 +783,30 @@ export default function UniStaffPointRequestsPage() {
                                 </strong>
                                 .
                             </DialogDescription>
+                        </DialogHeader> */}
+                        <DialogHeader>
+                            <DialogTitle>
+                                {selectedRequest?.status === "PENDING"
+                                    ? isApproving ? "Approve" : "Reject"
+                                    : "View/Edit Note for"} Point Request
+                            </DialogTitle>
+                            <DialogDescription>
+                                Request from <strong>{selectedRequest?.clubName}</strong> for{" "}
+                                <strong>
+                                    {/* Logic hiển thị số điểm động dựa trên loại đơn */}
+                                    {(requestType === "ADD_POINTS"
+                                        ? selectedRequest?.requestedPoints
+                                        : selectedRequest?.pointsRequested
+                                    )?.toLocaleString()} points
+                                </strong>
+                                {/* Hiển thị thêm VND nếu là đơn Cashout */}
+                                {requestType === "CASHOUT" && selectedRequest && (
+                                    <span> ({(selectedRequest.pointsRequested * 1000).toLocaleString()} VND)</span>
+                                )}
+                                .
+                            </DialogDescription>
                         </DialogHeader>
+
                         <div className="py-4 space-y-2">
                             <Label htmlFor="review-note">
                                 Note{" "}
