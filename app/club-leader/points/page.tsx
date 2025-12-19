@@ -4,11 +4,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { AppShell } from "@/components/app-shell";
 import { ProtectedRoute } from "@/contexts/protected-route";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardFooter,
+  Card, CardContent, CardHeader, CardTitle, CardFooter,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,73 +16,33 @@ import membershipApi, { ApiMembership } from "@/service/membershipApi";
 import { useToast } from "@/hooks/use-toast";
 import { usePagination } from "@/hooks/use-pagination";
 import {
-  Users,
-  Award,
-  ChevronLeft,
-  ChevronRight,
-  Send,
-  Filter,
-  X,
-  Wallet,
-  History,
-  TriangleAlert,
-  PlusCircle,
-  DownloadCloud, // Icon mới
-  RefreshCw,     // Icon mới
-  Trash2,
-  HandCoins,
-  Coins,
-  MessageSquare,        // Icon mới
-  AlertCircle,
+  Users, Award, ChevronLeft, ChevronRight, Send, Filter, X, Wallet, History, TriangleAlert, PlusCircle, DownloadCloud, RefreshCw, Trash2, HandCoins,
+  Coins, MessageSquare, AlertCircle, Banknote
 } from "lucide-react";
 import { getClubById, getClubIdFromToken } from "@/service/clubApi";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  getClubWallet,
-  ApiClubWallet,
-  rewardPointsToMembers,
-  getWalletTransactions,
-  ApiWalletTransaction,
+  getClubWallet, ApiClubWallet, rewardPointsToMembers, getWalletTransactions, ApiWalletTransaction,
 } from "@/service/walletApi";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-  DialogDescription,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { createPointRequest } from "@/service/pointRequestsApi";
 import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-  TooltipProvider,
+  Tooltip, TooltipTrigger, TooltipContent, TooltipProvider,
 } from "@/components/ui/tooltip";
 import {
-  getClubPenaltyRules,
-  PenaltyRule,
-  createClubPenalty,
+  getClubPenaltyRules, PenaltyRule, createClubPenalty,
 } from "@/service/disciplineApi";
-// --- IMPORT MỚI ---
 import { getClubMemberActivity } from "@/service/memberActivityReportApi";
+import { postCashoutRequest } from "@/service/exchangeClubPointApi";
 
 interface ClubMember {
   id: string;
@@ -97,6 +53,8 @@ interface ClubMember {
   joinedAt: string | null;
 }
 
+const POINT_EXCHANGE_RATE = 1000; // 1 điểm = 1000 VND
+
 export default function ClubLeaderRewardDistributionPage() {
   const { clubMemberships } = useData();
   const { toast } = useToast();
@@ -104,19 +62,16 @@ export default function ClubLeaderRewardDistributionPage() {
   const [loading, setLoading] = useState(true);
   const [clubWallet, setClubWallet] = useState<ApiClubWallet | null>(null);
   const [walletLoading, setWalletLoading] = useState(false);
-
   // === Data Members ===
   const [apiMembers, setApiMembers] = useState<ApiMembership[] | null>(null);
   const [membersLoading, setMembersLoading] = useState(false);
   const [membersError, setMembersError] = useState<string | null>(null);
   const [selectedMembers, setSelectedMembers] = useState<Record<string, boolean>>({});
   const [targetUserIds, setTargetUserIds] = useState<number[]>([]);
-
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilters, setActiveFilters] = useState<Record<string, any>>({});
   const [showFilters, setShowFilters] = useState(false);
-
   // History Modal
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [transactions, setTransactions] = useState<ApiWalletTransaction[]>([]);
@@ -165,6 +120,12 @@ export default function ClubLeaderRewardDistributionPage() {
   const recipientCount = targetUserIds.length;
   const currentRewardAmount = typeof rewardAmount === 'number' ? rewardAmount : 0;
   const totalRequired = currentRewardAmount * recipientCount;
+
+  // Cashout Modal (Xin đổi điểm)
+  const [showCashoutModal, setShowCashoutModal] = useState(false);
+  const [cashoutPoints, setCashoutPoints] = useState<number | "">("");
+  const [cashoutNote, setCashoutNote] = useState("");
+  const [isSubmittingCashout, setIsSubmittingCashout] = useState(false);
 
   // Kiểm tra xem có vượt quá số dư không
   const isOverBudget = totalRequired > currentBalance;
@@ -439,6 +400,53 @@ export default function ClubLeaderRewardDistributionPage() {
     toast({ title: "Reset", description: "Switched back to manual input mode." });
   };
 
+  // --- exchange points logic ---
+  const handleCreateCashoutRequest = async () => {
+    if (!managedClub?.id) return;
+    if (cashoutPoints === "" || cashoutPoints <= 0) {
+      toast({ title: "Invalid Points", description: "Please enter points to exchange.", variant: "destructive" });
+      return;
+    }
+
+    // Kiểm tra xem số điểm xin đổi có vượt quá số dư ví không
+    if (Number(cashoutPoints) > (clubWallet?.balancePoints || 0)) {
+      toast({ title: "Insufficient Balance", description: "Exchange points exceed club balance.", variant: "destructive" });
+      return;
+    }
+
+    setIsSubmittingCashout(true);
+    try {
+      await postCashoutRequest({
+        clubId: managedClub.id,
+        points: Number(cashoutPoints),
+        note: cashoutNote,
+      });
+
+      toast({
+        title: "Cashout Request Sent",
+        description: `Successfully requested to exchange ${Number(cashoutPoints).toLocaleString()} points.`
+      });
+
+      // Reset form & đóng modal
+      setShowCashoutModal(false);
+      setCashoutPoints("");
+      setCashoutNote("");
+
+      // Cập nhật lại ví (nếu API trừ điểm ngay hoặc để user biết số dư)
+      const walletData = await getClubWallet(managedClub.id);
+      setClubWallet(walletData);
+
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.response?.data?.message || "Failed to send cashout request.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmittingCashout(false);
+    }
+  };
+
   // --- MAIN DISTRIBUTION LOGIC (UPDATED) ---
   const handleDistributeRewards = async () => {
     // Validation
@@ -650,7 +658,7 @@ export default function ClubLeaderRewardDistributionPage() {
   // Filter transactions based on type and date
   const filteredTransactions = useMemo(() => {
     let filtered = [...transactions];
-    
+
     // Filter by incoming/outgoing
     if (historyTypeFilter !== "all") {
       if (historyTypeFilter === "incoming") {
@@ -659,20 +667,20 @@ export default function ClubLeaderRewardDistributionPage() {
         filtered = filtered.filter(t => t.amount < 0);
       }
     }
-    
+
     // Filter by transaction type
     if (historyTransactionTypeFilter !== "all") {
       filtered = filtered.filter(t => t.type === historyTransactionTypeFilter);
     }
-    
+
     // Filter by date
     if (historyDateFilter !== "all") {
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      
+
       filtered = filtered.filter(t => {
         const transactionDate = new Date(t.createdAt);
-        
+
         switch (historyDateFilter) {
           case "today":
             return transactionDate >= today;
@@ -693,7 +701,7 @@ export default function ClubLeaderRewardDistributionPage() {
         }
       });
     }
-    
+
     return filtered;
   }, [transactions, historyTypeFilter, historyDateFilter, historyTransactionTypeFilter]);
 
@@ -800,9 +808,22 @@ export default function ClubLeaderRewardDistributionPage() {
                       <p className="text-sm font-medium">#{clubWallet.walletId}</p>
                     </div>
                   )}
-                  <Button variant="outline" size="sm" onClick={handleOpenHistoryModal} className="gap-2">
+                  {/* <Button variant="outline" size="sm" onClick={handleOpenHistoryModal} className="gap-2">
                     <History className="h-4 w-4" /> History
-                  </Button>
+                  </Button> */}
+                  <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => setShowCashoutModal(true)}
+                      className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+                    >
+                      <Banknote className="h-4 w-4" /> Exchange Points
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={handleOpenHistoryModal} className="gap-2 bg-white">
+                      <History className="h-4 w-4" /> History
+                    </Button>
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -1168,7 +1189,7 @@ export default function ClubLeaderRewardDistributionPage() {
             <DialogHeader>
               <DialogTitle>History</DialogTitle>
             </DialogHeader>
-            
+
             <div className="flex-1 overflow-y-auto space-y-4">
               {/* Filters */}
               <div className="flex gap-3 flex-wrap">
@@ -1185,7 +1206,7 @@ export default function ClubLeaderRewardDistributionPage() {
                     <SelectItem value="outgoing">Outgoing Only</SelectItem>
                   </SelectContent>
                 </Select>
-                
+
                 <Select value={historyTransactionTypeFilter} onValueChange={(value) => {
                   setHistoryTransactionTypeFilter(value);
                   setHistoryCurrentPage(1);
@@ -1202,7 +1223,7 @@ export default function ClubLeaderRewardDistributionPage() {
                     ))}
                   </SelectContent>
                 </Select>
-                
+
                 <Select value={historyDateFilter} onValueChange={(value) => {
                   setHistoryDateFilter(value);
                   setHistoryCurrentPage(1);
@@ -1218,7 +1239,7 @@ export default function ClubLeaderRewardDistributionPage() {
                     <SelectItem value="year">This Year</SelectItem>
                   </SelectContent>
                 </Select>
-                
+
                 {(historyTypeFilter !== "all" || historyDateFilter !== "all" || historyTransactionTypeFilter !== "all") && (
                   <Button
                     variant="outline"
@@ -1235,7 +1256,7 @@ export default function ClubLeaderRewardDistributionPage() {
                   </Button>
                 )}
               </div>
-              
+
               {/* Statistics */}
               {!transactionsLoading && filteredTransactions.length > 0 && (
                 <div className="flex gap-3">
@@ -1259,7 +1280,7 @@ export default function ClubLeaderRewardDistributionPage() {
                   </div>
                 </div>
               )}
-              
+
               {/* Table */}
               {transactionsLoading ? <p>Loading...</p> : filteredTransactions.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
@@ -1295,7 +1316,7 @@ export default function ClubLeaderRewardDistributionPage() {
                       ))}
                     </TableBody>
                   </Table>
-                  
+
                   {/* Pagination */}
                   {historyTotalPages > 1 && (
                     <div className="flex items-center justify-between pt-4 border-t">
@@ -1369,28 +1390,20 @@ export default function ClubLeaderRewardDistributionPage() {
                       type="text"                  // Đổi thành text để hiển thị được dấu ","
                       inputMode="numeric"          // Giúp hiển thị bàn phím số trên điện thoại
                       placeholder="e.g. 5,000"
-
                       // LOGIC HIỂN THỊ: Nếu có giá trị, format thêm dấu phẩy
                       value={
                         requestPoints === ""
                           ? ""
                           : new Intl.NumberFormat("en-US").format(Number(requestPoints))
                       }
-
                       // LOGIC CẬP NHẬT: Xóa dấu phẩy trước khi lưu vào state
                       onChange={(e) => {
-                        // Lấy giá trị thô từ input (vd: "5,000")
                         const rawValue = e.target.value;
-
-                        // Xóa tất cả dấu phẩy để lấy số (vd: "5000")
                         const numericString = rawValue.replace(/,/g, "");
-
-                        // Kiểm tra xem chuỗi còn lại có phải là số không (chỉ chứa ký tự 0-9)
                         if (/^\d*$/.test(numericString)) {
                           setRequestPoints(numericString === "" ? "" : Number(numericString));
                         }
                       }}
-
                       className="pl-4 pr-12 h-11 text-lg font-medium border-slate-300 focus-visible:ring-primary"
                     />
                     <div className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
@@ -1443,32 +1456,12 @@ export default function ClubLeaderRewardDistributionPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-
-        {/* Penalty Modal */}
-        {/* <Dialog open={showPenaltyModal} onOpenChange={setShowPenaltyModal}>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Issue Penalty</DialogTitle></DialogHeader>
-            <Select value={String(selectedRuleId)} onValueChange={v => setSelectedRuleId(Number(v))}>
-              <SelectTrigger><SelectValue placeholder="Select Rule" /></SelectTrigger>
-              <SelectContent>
-                {penaltyRules.map(r => <SelectItem key={r.id} value={String(r.id)}>{r.name} (-{r.penaltyPoints})</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Textarea placeholder="Reason" value={penaltyReason} onChange={e => setPenaltyReason(e.target.value)} />
-            <DialogFooter>
-              <Button variant="destructive" onClick={handleCreatePenalty} disabled={isSubmittingPenalty}>Confirm</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog> */}
         {/* Penalty Modal - Redesigned */}
         <Dialog open={showPenaltyModal} onOpenChange={setShowPenaltyModal}>
           <DialogContent className="sm:max-w-[500px] gap-0 p-0 overflow-hidden border-red-200 dark:border-red-900">
-
-            {/* HEADER: Tông màu đỏ cảnh báo */}
             <div className="bg-red-50 dark:bg-red-900/20 p-6 border-b border-red-100 dark:border-red-900/50 flex flex-col items-center text-center space-y-3">
               <div className="h-14 w-14 rounded-full bg-red-100 dark:bg-red-900/50 flex items-center justify-center mb-1">
                 <div className="bg-white dark:bg-red-950 p-2 rounded-full shadow-sm">
-                  {/* Import icon Gavel từ lucide-react nếu chưa có, hoặc dùng TriangleAlert */}
                   <TriangleAlert className="h-6 w-6 text-red-600 dark:text-red-400" />
                 </div>
               </div>
@@ -1481,7 +1474,6 @@ export default function ClubLeaderRewardDistributionPage() {
                   Apply a disciplinary action and deduct points.
                 </DialogDescription>
               </div>
-
               {/* Hiển thị Target Member - Tránh phạt nhầm người */}
               {memberToPenalize && (
                 <div className="flex items-center gap-3 bg-white dark:bg-slate-800 px-4 py-2 rounded-full border border-red-100 dark:border-red-900 shadow-sm mt-2 animate-in fade-in zoom-in duration-300">
@@ -1501,10 +1493,7 @@ export default function ClubLeaderRewardDistributionPage() {
               )}
             </div>
 
-            {/* BODY: Form nhập liệu */}
             <div className="p-6 space-y-5">
-
-              {/* 1. Chọn Quy Tắc Phạt */}
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
                   Violation Type
@@ -1529,12 +1518,11 @@ export default function ClubLeaderRewardDistributionPage() {
                     ))}
                   </SelectContent>
                 </Select>
-
                 {/* Hiển thị preview số điểm bị trừ khi chọn rule */}
                 {selectedRuleId && penaltyRules.find(r => r.id === selectedRuleId) && (
                   <div className="flex items-start gap-3 p-3 bg-red-50 dark:bg-red-900/10 rounded-md border border-red-100 dark:border-red-900/30">
                     <div className="mt-0.5 text-red-600">
-                      <AlertCircle className="h-4 w-4" /> {/* Cần import AlertCircle */}
+                      <AlertCircle className="h-4 w-4" />
                     </div>
                     <div className="text-sm">
                       <span className="font-semibold text-red-700 dark:text-red-400">
@@ -1547,8 +1535,6 @@ export default function ClubLeaderRewardDistributionPage() {
                   </div>
                 )}
               </div>
-
-              {/* 2. Lý do chi tiết */}
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
                   Incident Details
@@ -1562,7 +1548,6 @@ export default function ClubLeaderRewardDistributionPage() {
               </div>
             </div>
 
-            {/* FOOTER */}
             <DialogFooter className="p-6 pt-2 bg-slate-50 dark:bg-slate-900/50 sm:justify-between items-center">
               <Button
                 variant="ghost"
@@ -1591,6 +1576,187 @@ export default function ClubLeaderRewardDistributionPage() {
           </DialogContent>
         </Dialog>
 
+        {/* Cashout Request Modal (Đổi điểm CLB) */}
+        {/* <Dialog open={showCashoutModal} onOpenChange={setShowCashoutModal}>
+          <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden">
+            <DialogHeader className="p-6 pb-4 bg-emerald-50 dark:bg-emerald-900/20 border-b dark:border-emerald-800">
+              <DialogTitle className="flex items-center gap-2 text-xl text-emerald-700 dark:text-emerald-400">
+                <Banknote className="h-6 w-6" />
+                Club Points Exchange
+              </DialogTitle>
+              <DialogDescription>
+                Convert club points into cash/funds for external club purposes.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="p-6 space-y-5">
+              <div className="p-3 rounded-md bg-slate-50 border border-slate-300 dark:bg-slate-800 dark:border-slate-700 flex justify-between">
+                <span className="text-sm">Available Balance:</span>
+                <span className="font-bold text-primary">{clubWallet?.balancePoints?.toLocaleString() ?? 0} pts</span>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="cashout-points" className="font-semibold">Points to Exchange</Label>
+                  <div className="relative">
+                    <Input
+                      id="cashout-points"
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="0"
+                      value={cashoutPoints === "" ? "" : new Intl.NumberFormat("en-US").format(Number(cashoutPoints))}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/,/g, "");
+                        if (/^\d*$/.test(val)) setCashoutPoints(val === "" ? "" : Number(val));
+                      }}
+                      className="h-11 text-lg pr-12 border-emerald-300 focus-visible:ring-emerald-500"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">pts</span>
+                  </div>
+                  {Number(cashoutPoints) > (clubWallet?.balancePoints || 0) && (
+                    <p className="text-xs text-red-500 flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" /> Exceeds available points
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="cashout-note" className="font-semibold">Note / Purpose</Label>
+                  <Textarea
+                    id="cashout-note"
+                    placeholder="Reason for exchanging points (e.g., Buy supplies, Social activities...)"
+                    value={cashoutNote}
+                    onChange={(e) => setCashoutNote(e.target.value)}
+                    className="min-h-[100px] border-emerald-300 focus-visible:ring-emerald-500"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter className="p-6 pt-2 sm:justify-end gap-2">
+              <Button variant="ghost" onClick={() => setShowCashoutModal(false)}
+                className="border border-emerald-300"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleCreateCashoutRequest}
+                disabled={isSubmittingCashout || !cashoutPoints || Number(cashoutPoints) <= 0 || Number(cashoutPoints) > (clubWallet?.balancePoints || 0)}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white min-w-[140px]"
+              >
+                {isSubmittingCashout ? (
+                  <><RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Sending...</>
+                ) : (
+                  <><Send className="mr-2 h-4 w-4" /> Submit Request</>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog> */}
+        {/* Cashout Request Modal (Đổi điểm CLB) */}
+        <Dialog open={showCashoutModal} onOpenChange={setShowCashoutModal}>
+          <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden">
+            <DialogHeader className="p-6 pb-4 bg-emerald-50 dark:bg-emerald-900/20 border-b dark:border-emerald-800">
+              <DialogTitle className="flex items-center gap-2 text-xl text-emerald-700 dark:text-emerald-400">
+                <Banknote className="h-6 w-6" />
+                Club Points Exchange
+              </DialogTitle>
+              <DialogDescription>
+                Convert club points into cash/funds for external club purposes.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="p-6 space-y-5">
+              {/* Hiển thị Số dư hiện tại & Số tiền tương ứng */}
+              <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Available Balance:</span>
+                  <span className="font-bold text-emerald-600">
+                    {clubWallet?.balancePoints?.toLocaleString() ?? 0} pts
+                  </span>
+                </div>
+                <div className="flex justify-between items-center pt-2 border-t border-slate-200 dark:border-slate-700">
+                  <span className="text-sm text-muted-foreground">Equivalent Value:</span>
+                  <span className="font-semibold text-slate-700 dark:text-slate-300">
+                    {((clubWallet?.balancePoints ?? 0) * POINT_EXCHANGE_RATE).toLocaleString()} VND
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {/* Nhập số điểm muốn đổi */}
+                <div className="space-y-2">
+                  <Label htmlFor="cashout-points" className="font-semibold text-sm">Points to Exchange</Label>
+                  <div className="relative">
+                    <Input
+                      id="cashout-points"
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="0"
+                      value={cashoutPoints === "" ? "" : new Intl.NumberFormat("en-US").format(Number(cashoutPoints))}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/,/g, "");
+                        if (/^\d*$/.test(val)) setCashoutPoints(val === "" ? "" : Number(val));
+                      }}
+                      className="h-11 text-lg pr-12 border-emerald-200 focus-visible:ring-emerald-500"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-medium">pts</span>
+                  </div>
+
+                  {/* Hiển thị số tiền quy đổi thực tế & số dư dự kiến */}
+                  {Number(cashoutPoints) > 0 && (
+                    <div className="mt-3 p-3 bg-emerald-50/50 dark:bg-emerald-900/10 rounded-md border border-emerald-100 dark:border-emerald-800/50 space-y-1 animate-in fade-in slide-in-from-top-1">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-emerald-700 dark:text-emerald-400">Receive Amount:</span>
+                        <span className="font-bold text-emerald-700 dark:text-emerald-400">
+                          {(Number(cashoutPoints) * POINT_EXCHANGE_RATE).toLocaleString()} VND
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-xs pt-1 border-t border-emerald-100 dark:border-emerald-800/50">
+                        <span className="text-muted-foreground">Estimated Remaining:</span>
+                        <span className={`font-medium ${Number(cashoutPoints) > (clubWallet?.balancePoints || 0) ? "text-red-500" : "text-slate-600"}`}>
+                          {(Math.max(0, (clubWallet?.balancePoints || 0) - Number(cashoutPoints))).toLocaleString()} pts
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {Number(cashoutPoints) > (clubWallet?.balancePoints || 0) && (
+                    <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+                      <AlertCircle className="h-3 w-3" /> Exceeds available points
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="cashout-note" className="font-semibold text-sm">Note / Purpose</Label>
+                  <Textarea
+                    id="cashout-note"
+                    placeholder="Reason for exchanging points (e.g., Buy supplies, Social activities...)"
+                    value={cashoutNote}
+                    onChange={(e) => setCashoutNote(e.target.value)}
+                    className="min-h-[100px] border-emerald-100 focus-visible:ring-emerald-500 resize-none"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter className="p-6 pt-2 bg-slate-50/50 dark:bg-slate-900/20 sm:justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowCashoutModal(false)}>Cancel</Button>
+              <Button
+                onClick={handleCreateCashoutRequest}
+                disabled={isSubmittingCashout || !cashoutPoints || Number(cashoutPoints) <= 0 || Number(cashoutPoints) > (clubWallet?.balancePoints || 0)}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white min-w-[140px] shadow-sm"
+              >
+                {isSubmittingCashout ? (
+                  <><RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Sending...</>
+                ) : (
+                  <><Send className="mr-2 h-4 w-4" /> Submit Request</>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
       </AppShell>
     </ProtectedRoute>
