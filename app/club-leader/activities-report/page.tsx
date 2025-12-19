@@ -277,7 +277,7 @@ export default function ActivityReportPage() {
                     attendanceTotalScore: fullItem.attendanceTotalScore,
                     staffBaseScore: fullItem.staffBaseScore,
                     totalStaffCount: fullItem.totalStaffCount,
-                    staffEvaluation: fullItem.staffEvaluation,
+                    staffEvaluation: fullItem.staffEvaluation || "NONE",
                     staffMultiplier: fullItem.staffMultiplier,
                     staffScore: fullItem.staffScore,
                     staffTotalScore: fullItem.staffTotalScore,
