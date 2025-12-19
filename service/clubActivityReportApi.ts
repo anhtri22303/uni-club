@@ -13,20 +13,20 @@ export interface ClubMonthlyActivity {
   clubName: string;
   year: number;
   month: number;
-  
+
   // Chỉ số hoạt động
   totalEvents: number;
   avgFeedback: number;
   avgCheckinRate: number;
   avgMemberActivityScore: number;
   staffPerformanceScore: number;
-  
+
   // Kết quả chấm điểm
   awardScore: number;
   awardLevel: string;
   finalScore: number;
   rewardPoints: number;
-  
+
   // Trạng thái khóa
   locked?: boolean;
   lockedAt?: string;
@@ -92,10 +92,62 @@ export interface ClubEventContribution {
 }
 
 /**
+ * Interface dùng chung cho kết quả Recalculate, Lock và các item trong Ranking
+ * Khớp với response: /api/club-activity/{clubId}/recalculate, /lock và /ranking
+ */
+export interface ClubActivityProcessResult {
+  clubId: number;
+  clubName: string;
+  year: number;
+  month: number;
+  totalEvents: number;
+  eventSuccessRate: number;
+  avgFeedback: number;
+  finalScore: number;
+  awardScore: number;
+  awardLevel: string;
+  rewardPoints: number;
+  locked: boolean;
+  lockedAt: string;
+  lockedBy: string;
+}
+
+/**
  * Interface 7: Kết quả Approve
  */
-export interface ApproveResult extends ClubMonthlyActivity {
-  walletBalance?: number;
+// export interface ApproveResult extends ClubMonthlyActivity {
+//   walletBalance?: number;
+// }
+export interface ApproveResult {
+  clubId: number;
+  clubName: string;
+  year: number;
+  month: number;
+  rewardPoints: number;
+  locked: boolean;
+  lockedAt: string;
+  lockedBy: string;
+  walletBalance: number;
+  approved: boolean;
+  approvedBy: string;
+  approvedAt: string;
+}
+
+/**
+ * Interface mới: Tóm tắt hoạt động hàng tháng của tất cả CLB
+ * Dùng cho: /api/club-activity/monthly-summary
+ */
+export interface ClubMonthlySummary {
+  clubId: number;
+  clubName: string;
+  year: number;
+  month: number;
+  totalEvents: number;
+  completedEvents: number;
+  eventSuccessRate: number;
+  totalCheckins: number;
+  totalFeedbacks: number;
+  avgFeedback: number;
 }
 
 // ==========================================
@@ -144,12 +196,6 @@ export interface ClubEventContributionResponse {
   data: ClubEventContribution[];
 }
 
-export interface ClubApproveResponse {
-  success: boolean;
-  message: string;
-  data: ApproveResult;
-}
-
 export interface CheckExistsResponse {
   success: boolean;
   message: string;
@@ -162,6 +208,29 @@ export interface StandardApiResponse {
   data: Record<string, never> | null;
 }
 
+export interface ClubMonthlySummaryResponse {
+  success: boolean;
+  message: string;
+  data: ClubMonthlySummary[];
+}
+
+export interface ClubProcessResponse {
+  success: boolean;
+  message: string;
+  data: ClubActivityProcessResult;
+}
+
+export interface ClubApproveResponse {
+  success: boolean;
+  message: string;
+  data: ApproveResult;
+}
+
+export interface ClubRankingListResponse {
+  success: boolean;
+  message: string;
+  data: ClubActivityProcessResult[];
+}
 // ==========================================
 // 3. PARAMETERS
 // ==========================================
@@ -253,20 +322,37 @@ export const getTrendingClubs = async ({
 
 /**
  * 4. GET: Bảng xếp hạng các CLB (Ranking)
- * /api/club-activity/ranking
+ * Sắp xếp theo điểm giảm dần.
  */
+// export const getClubRanking = async ({
+//   year,
+//   month,
+// }: BasePeriodParams): Promise<ClubMonthlyActivity[]> => {
+//   try {
+//     const response = await axiosInstance.get<ClubActivityListResponse>(
+//       `/api/club-activity/ranking`,
+//       { params: { year, month } }
+//     );
+//     if (response.data && response.data.success && Array.isArray(response.data.data)) {
+//       return response.data.data;
+//     }
+//     return [];
+//   } catch (error) {
+//     console.error("Error fetching club ranking:", error);
+//     throw error;
+//   }
+// };
 export const getClubRanking = async ({
   year,
   month,
-}: BasePeriodParams): Promise<ClubMonthlyActivity[]> => {
+}: BasePeriodParams): Promise<ClubActivityProcessResult[]> => {
   try {
-    const response = await axiosInstance.get<ClubActivityListResponse>(
+    const response = await axiosInstance.get<ClubRankingListResponse | ClubActivityProcessResult[]>(
       `/api/club-activity/ranking`,
       { params: { year, month } }
     );
-    if (response.data && response.data.success && Array.isArray(response.data.data)) {
-      return response.data.data;
-    }
+    if (Array.isArray(response.data)) return response.data;
+    if ('success' in response.data && response.data.success) return response.data.data;
     return [];
   } catch (error) {
     console.error("Error fetching club ranking:", error);
@@ -337,7 +423,7 @@ export const checkClubActivityExists = async ({
       { params: { year, month } }
     );
     if (typeof response.data === 'object' && 'success' in response.data) {
-        return (response.data as CheckExistsResponse).success && !!(response.data as CheckExistsResponse).data;
+      return (response.data as CheckExistsResponse).success && !!(response.data as CheckExistsResponse).data;
     }
     if (typeof response.data === 'boolean') return response.data;
     return false;
@@ -370,15 +456,78 @@ export const getClubEventContributions = async ({
   }
 };
 
+/**
+ * 8.5 GET: Tổng quan hoạt động các CLB trong tháng
+ * /api/club-activity/monthly-summary
+ */
+export const getMonthlySummary = async ({
+  year,
+  month,
+}: BasePeriodParams): Promise<ClubMonthlySummary[]> => {
+  try {
+    const response = await axiosInstance.get<ClubMonthlySummaryResponse>(
+      `/api/club-activity/monthly-summary`,
+      { params: { year, month } }
+    );
+
+    // Trường hợp API bọc trong Standard Response
+    if (response.data && response.data.success && Array.isArray(response.data.data)) {
+      return response.data.data;
+    }
+
+    // Trường hợp API trả về thẳng mảng dữ liệu (như mô tả trong JSON của bạn)
+    if (Array.isArray(response.data)) {
+      return response.data;
+    }
+
+    return [];
+  } catch (error) {
+    console.error("Error fetching monthly summary:", error);
+    throw error;
+  }
+};
+
 // ==========================================
 // CÁC HÀM ACTION (ADMIN/STAFF)
 // ==========================================
 
+// /**
+//  * 9. POST: Tính lại điểm cho 1 CLB
+//  */
+// export const recalculateClubActivity = async ({ clubId, year, month }: ClubPeriodParams): Promise<ClubMonthlyActivity> => {
+//   const response = await axiosInstance.post<ClubActivitySingleResponse>(
+//     `/api/club-activity/${clubId}/recalculate`, null, { params: { year, month } }
+//   );
+//   if (response.data?.success) return response.data.data;
+//   throw new Error(response.data?.message || "Failed to recalculate");
+// };
+
+// /**
+//  * 10. POST: Khóa dữ liệu tháng
+//  */
+// export const lockClubActivity = async ({ clubId, year, month }: ClubPeriodParams): Promise<ClubMonthlyActivity> => {
+//   const response = await axiosInstance.post<ClubActivitySingleResponse>(
+//     `/api/club-activity/${clubId}/lock`, null, { params: { year, month } }
+//   );
+//   if (response.data?.success) return response.data.data;
+//   throw new Error(response.data?.message || "Failed to lock");
+// };
+
+// /**
+//  * 11. POST: Duyệt cấp điểm thưởng
+//  */
+// export const approveClubActivity = async ({ clubId, year, month }: ClubPeriodParams): Promise<ApproveResult> => {
+//   const response = await axiosInstance.post<ClubApproveResponse>(
+//     `/api/club-activity/${clubId}/approve`, null, { params: { year, month } }
+//   );
+//   if (response.data?.success) return response.data.data;
+//   throw new Error(response.data?.message || "Failed to approve");
+// };
 /**
- * 9. POST: Tính lại điểm cho 1 CLB
+ * 9. POST: Tính lại điểm cho 1 CLB (ADMIN)
  */
-export const recalculateClubActivity = async ({ clubId, year, month }: ClubPeriodParams): Promise<ClubMonthlyActivity> => {
-  const response = await axiosInstance.post<ClubActivitySingleResponse>(
+export const recalculateClubActivity = async ({ clubId, year, month }: ClubPeriodParams): Promise<ClubActivityProcessResult> => {
+  const response = await axiosInstance.post<ClubProcessResponse>(
     `/api/club-activity/${clubId}/recalculate`, null, { params: { year, month } }
   );
   if (response.data?.success) return response.data.data;
@@ -386,10 +535,10 @@ export const recalculateClubActivity = async ({ clubId, year, month }: ClubPerio
 };
 
 /**
- * 10. POST: Khóa dữ liệu tháng
+ * 10. POST: Khóa dữ liệu tháng (ADMIN/STAFF)
  */
-export const lockClubActivity = async ({ clubId, year, month }: ClubPeriodParams): Promise<ClubMonthlyActivity> => {
-  const response = await axiosInstance.post<ClubActivitySingleResponse>(
+export const lockClubActivity = async ({ clubId, year, month }: ClubPeriodParams): Promise<ClubActivityProcessResult> => {
+  const response = await axiosInstance.post<ClubProcessResponse>(
     `/api/club-activity/${clubId}/lock`, null, { params: { year, month } }
   );
   if (response.data?.success) return response.data.data;
@@ -397,7 +546,7 @@ export const lockClubActivity = async ({ clubId, year, month }: ClubPeriodParams
 };
 
 /**
- * 11. POST: Duyệt cấp điểm thưởng
+ * 11. POST: Duyệt cấp điểm thưởng (ADMIN/STAFF)
  */
 export const approveClubActivity = async ({ clubId, year, month }: ClubPeriodParams): Promise<ApproveResult> => {
   const response = await axiosInstance.post<ClubApproveResponse>(
@@ -409,12 +558,20 @@ export const approveClubActivity = async ({ clubId, year, month }: ClubPeriodPar
 
 /**
  * 12. POST: Tính lại điểm toàn bộ CLB (Batch)
+ * Cập nhật kiểu trả về thành ClubActivityProcessResult[]
  */
-export const recalculateAllClubs = async ({ year, month }: BasePeriodParams): Promise<ClubMonthlyActivity[]> => {
-  const response = await axiosInstance.post<ClubActivityListResponse>(
-    `/api/club-activity/recalculate-all`, null, { params: { year, month } }
+export const recalculateAllClubs = async ({
+  year,
+  month
+}: BasePeriodParams): Promise<ClubActivityProcessResult[]> => {
+  const response = await axiosInstance.post<ClubRankingListResponse>(
+    `/api/club-activity/recalculate-all`,
+    null,
+    { params: { year, month } }
   );
-  if (response.data?.success && Array.isArray(response.data.data)) return response.data.data;
+  if (response.data?.success && Array.isArray(response.data.data)) {
+    return response.data.data;
+  }
   return [];
 };
 
