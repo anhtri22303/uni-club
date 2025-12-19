@@ -8,8 +8,9 @@ import { useToast } from "@/hooks/use-toast";
 import { CheckCircle, Clock } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { eventCheckin } from "@/service/eventApi";
+import { eventCheckin, getEventCheckinByToken } from "@/service/eventApi";
 import { Badge } from "@/components/ui/badge";
+import { Modal } from "@/components/modal";
 
 export default function MemberCheckinByTimeAndCodePage() {
   const { toast } = useToast();
@@ -17,6 +18,8 @@ export default function MemberCheckinByTimeAndCodePage() {
   const router = useRouter();
   const [isCheckinLoading, setIsCheckinLoading] = useState(false);
   const [isCheckedIn, setIsCheckedIn] = useState(false);
+  const [showAlreadyCheckedInModal, setShowAlreadyCheckedInModal] = useState(false);
+  const [alreadyCheckedInMessage, setAlreadyCheckedInMessage] = useState("");
 
   // Get time (phase) and token from URL
   const checkInTime = (params as any)?.time || null;
@@ -25,6 +28,29 @@ export default function MemberCheckinByTimeAndCodePage() {
   useEffect(() => {
     console.debug("Check-in phase from URL:", checkInTime);
     console.debug("Check-in token from URL:", checkInCode);
+    
+    // Check attendance status when page loads
+    const checkAttendanceStatus = async () => {
+      if (!checkInCode || typeof checkInCode !== "string") {
+        return;
+      }
+
+      try {
+        const statusData = await getEventCheckinByToken(checkInCode);
+        console.log("Attendance status:", statusData);
+
+        // If user has already checked in, show modal
+        if (statusData.checkedIn) {
+          setAlreadyCheckedInMessage(statusData.message || "You have already checked in");
+          setShowAlreadyCheckedInModal(true);
+        }
+      } catch (error) {
+        console.error("Error checking attendance status:", error);
+        // Don't show error toast, just log it - user can still try to check in
+      }
+    };
+
+    checkAttendanceStatus();
   }, [checkInTime, checkInCode]);
 
   // Get phase display information
@@ -201,6 +227,31 @@ export default function MemberCheckinByTimeAndCodePage() {
             </Card>
           </div>
         </div>
+
+        {/* Already Checked-In Modal */}
+        <Modal
+          open={showAlreadyCheckedInModal}
+          onOpenChange={(open) => {
+            setShowAlreadyCheckedInModal(open);
+            if (!open) {
+              router.push("/student/events");
+            }
+          }}
+          title="Already Checked In"
+        >
+          <div className="space-y-4">
+            <p className="text-center text-lg">{alreadyCheckedInMessage}</p>
+            <Button
+              className="w-full"
+              onClick={() => {
+                setShowAlreadyCheckedInModal(false);
+                router.push("/student/events");
+              }}
+            >
+              Go to Events
+            </Button>
+          </div>
+        </Modal>
       </AppShell>
     </ProtectedRoute>
   );

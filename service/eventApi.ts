@@ -585,6 +585,33 @@ export const eventCheckin = async (eventJwtToken: string, level: string = "NONE"
   }
 }
 
+/**
+ * GET /api/events/attendance/scan
+ * Check if user has already checked in using attendance token
+ * @param attendanceToken - QR attendance token (from [code] param)
+ * @returns { success: boolean, message: string, data: { phase: string, checkedIn: boolean, eventId: number, message: string } }
+ */
+export interface EventCheckinByTokenResponse {
+  phase: string
+  checkedIn: boolean
+  eventId: number
+  message: string
+}
+
+export const getEventCheckinByToken = async (attendanceToken: string): Promise<EventCheckinByTokenResponse> => {
+  try {
+    const response = await axiosInstance.get(`/api/events/attendance/scan`, {
+      params: { attendanceToken }
+    })
+    const data: any = response.data
+    // Response structure: { success: true, message: "success", data: { phase, checkedIn, eventId, message } }
+    return data.data
+  } catch (error) {
+    console.error("Error checking attendance status:", error)
+    throw error
+  }
+}
+
 export const eventCheckinPublic = async (code: string) => {
   try {
     const response = await axiosInstance.post(
