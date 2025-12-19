@@ -17,7 +17,9 @@ import { getWallet, ApiMembershipWallet } from "@/service/walletApi"
 import { getMemberRedeemOrders } from "@/service/redeemApi"
 import { getAllPenaltyRules, PenaltyRule } from "@/service/disciplineApi";
 import { getMyStaff, MyStaffEvent } from "@/service/eventStaffApi";
-import { getClubWallet, ApiClubWallet } from "@/service/walletApi" // Đảm bảo đã import
+import { getClubWallet, ApiClubWallet } from "@/service/walletApi"
+import { fetchAllPointRequests } from "@/service/pointRequestsApi";
+import { getPendingCashouts } from "@/service/exchangeClubPointApi";
 
 // ============================================
 // INTERFACES
@@ -160,6 +162,15 @@ export const queryKeys = {
 
     // My Staff Events
     myStaffEvents: () => ["my-staff-events"] as const,
+
+    // Point Requests (Xin thêm điểm)
+    pointRequests: ["point-requests"] as const,
+    pointRequestsList: () => [...queryKeys.pointRequests, "list"] as const,
+
+    // Cashouts (Xin rút/đổi điểm)
+    cashouts: ["cashouts"] as const,
+    cashoutsPending: () => [...queryKeys.cashouts, "pending"] as const,
+    cashoutsByClub: (clubId: number | string) => [...queryKeys.cashouts, "club", clubId] as const,
 }
 
 // ============================================
@@ -1087,4 +1098,33 @@ export function useMyStaffEvents(enabled = true) {
         enabled,
         staleTime: 3 * 60 * 1000, // 3 minutes (staff assignments can change)
     })
+}
+
+// ============================================
+// EXCHANGE & POINT REQUESTS QUERIES
+// ============================================
+
+/**
+ * Hook dùng cho Uni-staff để lấy danh sách đơn dựa trên loại đơn (Request Type)
+ */
+export function useExchangeRequests(requestType: "ADD_POINTS" | "CASHOUT", enabled = true) {
+    return useQuery({
+        // Tách biệt queryKey để tránh xung đột cache giữa 2 loại đơn
+        queryKey: requestType === "ADD_POINTS"
+            ? ["point-requests", "all"]
+            : ["cashouts", "pending"],
+        queryFn: async () => {
+            if (requestType === "ADD_POINTS") {
+                // Sử dụng hàm fetchAllPointRequests từ pointRequestsApi.ts
+                const response = await fetchAllPointRequests();
+                return response.data || []; // pointRequestsApi.ts trả về ApiResponse<PointRequest[]>
+            } else {
+                // Sử dụng hàm getPendingCashouts từ exchangeClubPointApi.ts
+                // Hàm này đã được xử lý để trả về mảng trực tiếp trong file service của bạn
+                return await getPendingCashouts();
+            }
+        },
+        enabled,
+        staleTime: 2 * 60 * 1000,
+    });
 }
