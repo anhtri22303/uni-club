@@ -10,8 +10,9 @@ import { useToast } from "@/hooks/use-toast"
 import { CheckCircle, Clock, Calendar, MapPin, Users, Loader2 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { getEventByCode, eventCheckinPublic } from '@/service/eventApi'
+import { getEventByCode, eventCheckinPublic, getPublicEventCheckin } from '@/service/eventApi'
 import { EventDateTimeDisplay } from "@/components/event-date-time-display"
+import { Modal } from "@/components/modal"
 
 export default function StudentPublicCheckinPage() {
   const { toast } = useToast()
@@ -21,6 +22,7 @@ export default function StudentPublicCheckinPage() {
   const [loading, setLoading] = useState(true)
   const [isCheckinLoading, setIsCheckinLoading] = useState(false)
   const [isCheckedIn, setIsCheckedIn] = useState(false)
+  const [showAlreadyCheckedInModal, setShowAlreadyCheckedInModal] = useState(false)
 
   // Get check-in code from URL
   const checkInCode = (params as any)?.checkInCode || null
@@ -55,6 +57,30 @@ export default function StudentPublicCheckinPage() {
 
     loadEventDetail()
   }, [checkInCode, toast])
+
+  // Check if user has already checked in
+  useEffect(() => {
+    const checkPublicAttendanceStatus = async () => {
+      if (!checkInCode || typeof checkInCode !== "string") {
+        return
+      }
+
+      try {
+        const statusData = await getPublicEventCheckin(checkInCode)
+        console.log("Public attendance status:", statusData)
+
+        // If user has already checked in, show modal
+        if (statusData.checkedIn) {
+          setShowAlreadyCheckedInModal(true)
+        }
+      } catch (error) {
+        console.error("Error checking public attendance status:", error)
+        // Don't show error toast, just log it - user can still try to check in
+      }
+    }
+
+    checkPublicAttendanceStatus()
+  }, [checkInCode])
 
   const handleCheckin = async () => {
     if (!checkInCode || typeof checkInCode !== 'string') {
@@ -101,6 +127,11 @@ export default function StudentPublicCheckinPage() {
         variant: "destructive",
         duration: 3000,
       });
+
+      // Redirect to profile page after error
+      setTimeout(() => {
+        router.push("/profile");
+      }, 3000);
     } finally {
       setIsCheckinLoading(false)
     }
@@ -255,12 +286,36 @@ export default function StudentPublicCheckinPage() {
                 {/* Info Note */}
                 <div className="text-center text-sm text-muted-foreground">
                   <p>This is a public event - no registration required</p>
-                  <p className="text-xs mt-1">Code: {event.checkInCode}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
+
+        {/* Already Checked-In Modal */}
+        <Modal
+          open={showAlreadyCheckedInModal}
+          onOpenChange={(open) => {
+            setShowAlreadyCheckedInModal(open)
+            if (!open) {
+              router.push("/profile")
+            }
+          }}
+          title="Already Checked In"
+        >
+          <div className="space-y-4">
+            <p className="text-center text-lg">You have already checked in</p>
+            <Button
+              className="w-full"
+              onClick={() => {
+                setShowAlreadyCheckedInModal(false)
+                router.push("/profile")
+              }}
+            >
+              Go to Profile
+            </Button>
+          </div>
+        </Modal>
       </AppShell>
     </ProtectedRoute>
   )

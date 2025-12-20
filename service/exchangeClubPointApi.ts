@@ -1,5 +1,7 @@
 import axiosInstance from "@/lib/axiosInstance";
 
+export type CashoutStatus = "PENDING" | "APPROVED" | "REJECTED";
+
 // Định nghĩa Interface cho dữ liệu Cashout
 export interface CashoutResponse {
   id: number;
@@ -109,6 +111,41 @@ export const rejectCashout = async (id: number | string, reason: string) => {
     return response.data;
   } catch (error: any) {
     console.error("Error rejecting cashout:", error.response?.data || error.message);
+    throw error;
+  }
+};
+
+// 6. (ADMIN) XEM DANH SÁCH ĐƠN RÚT ĐIỂM THEO TRẠNG THÁI
+export const getAdminCashoutsByStatus = async (status: CashoutStatus) => {
+  try {
+    const response = await axiosInstance.get<ApiResponse<CashoutResponse[]>>(
+      `/api/admin/cashouts/status/${status}`
+    );
+    if (response.data?.success) {
+      return response.data.data;
+    }
+    return [];
+  } catch (error: any) {
+    console.error(`Error fetching admin cashouts with status ${status}:`, error.response?.data || error.message);
+    throw error;
+  }
+};
+
+// 7. XEM ĐƠN RÚT ĐIỂM CỦA CLB THEO TRẠNG THÁI
+export const getMyClubCashoutsByStatus = async (
+  clubId: number | string,
+  status: CashoutStatus
+) => {
+  try {
+    const response = await axiosInstance.get<ApiResponse<CashoutResponse[]>>(
+      `/api/cashouts/my-club/${clubId}/status/${status}`
+    );
+    if (response.data?.success) {
+      return response.data.data;
+    }
+    return [];
+  } catch (error: any) {
+    console.error(`Error fetching club ${clubId} cashouts with status ${status}:`, error.response?.data || error.message);
     throw error;
   }
 };

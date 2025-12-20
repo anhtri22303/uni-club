@@ -200,8 +200,8 @@ export default function AdminEventsPage() {
 
     const normalized = {
       ...event, // Spread all original event fields first
-      title: event.title || event.name,
-      name: event.name || event.title,
+      title: event.title || event.name || "Untitled Event",
+      name: event.name || event.title || "Untitled Event",
       type: event.type || "PUBLIC", // Default to PUBLIC if no type specified
       // Keep multi-day event fields: days, startDate, endDate (if they exist)
       days: daysArray, // Important: preserve or generate days array for multi-day detection
@@ -879,7 +879,7 @@ export default function AdminEventsPage() {
                           {isEventActive(event) && (
                             <div className="mt-3 pt-3 border-t border-muted">
                               {/* Show Public Event QR button for PUBLIC events */}
-                              {event.type === "PUBLIC" ? (
+                              {event.type === "PUBLIC" && event.checkInCode ? (
                                 <PublicEventQRButton
                                   event={{
                                     id: event.id,
@@ -889,7 +889,7 @@ export default function AdminEventsPage() {
                                   size="sm"
                                   className="w-full"
                                 />
-                              ) : (
+                              ) : event.type !== "PUBLIC" ? (
                                 /* Show Generate QR Code button for SPECIAL and PRIVATE events */
                                 <Button
                                   variant="default"
@@ -903,7 +903,7 @@ export default function AdminEventsPage() {
                                   <QrCode className="h-4 w-4 mr-2" />
                                   Generate QR Code
                                 </Button>
-                              )}
+                              ) : null}
                             </div>
                           )}
                         </div>

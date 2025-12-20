@@ -42,7 +42,9 @@ import {
   getClubPenaltyRules, PenaltyRule, createClubPenalty,
 } from "@/service/disciplineApi";
 import { getClubMemberActivity } from "@/service/memberActivityReportApi";
-import { postCashoutRequest } from "@/service/exchangeClubPointApi";
+import {
+  postCashoutRequest, getCashoutsByClubId, type CashoutResponse
+} from "@/service/exchangeClubPointApi";
 
 interface ClubMember {
   id: string;
@@ -52,7 +54,6 @@ interface ClubMember {
   status: string;
   joinedAt: string | null;
 }
-
 const POINT_EXCHANGE_RATE = 100; // 1 điểm = 100 VND
 
 export default function ClubLeaderRewardDistributionPage() {
@@ -81,13 +82,11 @@ export default function ClubLeaderRewardDistributionPage() {
   const [historyTransactionTypeFilter, setHistoryTransactionTypeFilter] = useState<string>("all");
   const [historyCurrentPage, setHistoryCurrentPage] = useState(1);
   const [historyPageSize] = useState(8);
-
   // Request Modal
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [requestPoints, setRequestPoints] = useState<number | "">("");
   const [requestReason, setRequestReason] = useState("");
   const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
-
   // Penalty Modal
   const [showPenaltyModal, setShowPenaltyModal] = useState(false);
   const [penaltyRules, setPenaltyRules] = useState<PenaltyRule[]>([]);
@@ -96,37 +95,47 @@ export default function ClubLeaderRewardDistributionPage() {
   const [penaltyReason, setPenaltyReason] = useState("");
   const [isSubmittingPenalty, setIsSubmittingPenalty] = useState(false);
   const [memberToPenalize, setMemberToPenalize] = useState<any>(null);
-
   // === NEW STATE FOR SYNCING SCORES ===
   const [showSyncModal, setShowSyncModal] = useState(false);
   const [syncYear, setSyncYear] = useState(new Date().getFullYear());
   const [syncMonth, setSyncMonth] = useState(new Date().getMonth() + 1);
   const [isSyncing, setIsSyncing] = useState(false);
-
   // Lưu điểm riêng cho từng member: Key là userId (number), Value là score (number)
   // Nếu null -> Chế độ Manual (nhập chung 1 số). Nếu object -> Chế độ Sync.
   const [individualScores, setIndividualScores] = useState<Record<number, number> | null>(null);
-
   // Progress bar khi gửi điểm hàng loạt
   const [distributionProgress, setDistributionProgress] = useState<{ current: number, total: number } | null>(null);
-
   // === Reward State (Existing) ===
   const [rewardAmount, setRewardAmount] = useState<number | "">("");
   const [rewardReason, setRewardReason] = useState("");
   const [isDistributing, setIsDistributing] = useState(false);
-
   // --- LOGIC CHECK BALANCE (MỚI) ---
   const currentBalance = clubWallet?.balancePoints || 0;
   const recipientCount = targetUserIds.length;
   const currentRewardAmount = typeof rewardAmount === 'number' ? rewardAmount : 0;
   const totalRequired = currentRewardAmount * recipientCount;
-
   // Cashout Modal (Xin đổi điểm)
   const [showCashoutModal, setShowCashoutModal] = useState(false);
   const [cashoutPoints, setCashoutPoints] = useState<number | "">("");
   const [cashoutNote, setCashoutNote] = useState("");
   const [isSubmittingCashout, setIsSubmittingCashout] = useState(false);
-
+  // State cho danh sách đơn đổi điểm
+  const [showCashoutHistoryModal, setShowCashoutHistoryModal] = useState(false);
+  const [cashoutRequests, setCashoutRequests] = useState<CashoutResponse[]>([]);
+  const [cashoutHistoryLoading, setCashoutHistoryLoading] = useState(false);
+  // Hàm tải danh sách đơn đổi điểm
+  const loadCashoutHistory = async () => {
+    if (!managedClub?.id) return;
+    setCashoutHistoryLoading(true);
+    try {
+      const data = await getCashoutsByClubId(managedClub.id);
+      setCashoutRequests(data);
+    } catch (err) {
+      toast({ title: "Error", description: "Failed to load exchange history", variant: "destructive" });
+    } finally {
+      setCashoutHistoryLoading(false);
+    }
+  };
   // Kiểm tra xem có vượt quá số dư không
   const isOverBudget = totalRequired > currentBalance;
 
@@ -551,16 +560,9 @@ export default function ClubLeaderRewardDistributionPage() {
       }
     }
   };
-
-  // --- Other Handlers ---
   const handleRewardAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // 1. Lấy giá trị từ ô input (vd: "1,1112")
     const rawValue = e.target.value;
-
-    // 2. Xóa tất cả dấu phẩy đi (thành "11112")
     const numericString = rawValue.replace(/,/g, "");
-
-    // 3. Kiểm tra xem chuỗi sau khi xóa phẩy có phải là số không
     if (numericString === "" || /^\d+$/.test(numericString)) {
       setRewardAmount(numericString === "" ? "" : parseInt(numericString, 10));
     }
@@ -820,6 +822,18 @@ export default function ClubLeaderRewardDistributionPage() {
                     >
                       <Banknote className="h-4 w-4" /> Exchange Points
                     </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setShowCashoutHistoryModal(true);
+                        loadCashoutHistory();
+                      }}
+                      className="gap-2 bg-white border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                    >
+                      <History className="h-4 w-4" /> Exchange History
+                    </Button>
+
                     <Button variant="outline" size="sm" onClick={handleOpenHistoryModal} className="gap-2 bg-white">
                       <History className="h-4 w-4" /> History
                     </Button>
@@ -1367,7 +1381,6 @@ export default function ClubLeaderRewardDistributionPage() {
             </DialogHeader>
 
             <div className="p-6 space-y-5">
-              {/* INFO BANNER: Hiển thị số dư hiện tại để tham khảo */}
               <div className="flex items-center justify-between p-3 rounded-md bg-blue-50 border border-blue-100 dark:bg-blue-900/20 dark:border-blue-800">
                 <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
                   Current Wallet Balance
@@ -1378,7 +1391,6 @@ export default function ClubLeaderRewardDistributionPage() {
               </div>
 
               <div className="space-y-4">
-                {/* INPUT POINTS: Làm to và rõ ràng */}
                 <div className="space-y-2">
                   <Label htmlFor="req-points" className="text-sm font-semibold flex items-center gap-2">
                     <Coins className="h-4 w-4 text-yellow-500" />
@@ -1390,13 +1402,11 @@ export default function ClubLeaderRewardDistributionPage() {
                       type="text"                  // Đổi thành text để hiển thị được dấu ","
                       inputMode="numeric"          // Giúp hiển thị bàn phím số trên điện thoại
                       placeholder="e.g. 5,000"
-                      // LOGIC HIỂN THỊ: Nếu có giá trị, format thêm dấu phẩy
                       value={
                         requestPoints === ""
                           ? ""
                           : new Intl.NumberFormat("en-US").format(Number(requestPoints))
                       }
-                      // LOGIC CẬP NHẬT: Xóa dấu phẩy trước khi lưu vào state
                       onChange={(e) => {
                         const rawValue = e.target.value;
                         const numericString = rawValue.replace(/,/g, "");
@@ -1577,83 +1587,6 @@ export default function ClubLeaderRewardDistributionPage() {
         </Dialog>
 
         {/* Cashout Request Modal (Đổi điểm CLB) */}
-        {/* <Dialog open={showCashoutModal} onOpenChange={setShowCashoutModal}>
-          <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden">
-            <DialogHeader className="p-6 pb-4 bg-emerald-50 dark:bg-emerald-900/20 border-b dark:border-emerald-800">
-              <DialogTitle className="flex items-center gap-2 text-xl text-emerald-700 dark:text-emerald-400">
-                <Banknote className="h-6 w-6" />
-                Club Points Exchange
-              </DialogTitle>
-              <DialogDescription>
-                Convert club points into cash/funds for external club purposes.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="p-6 space-y-5">
-              <div className="p-3 rounded-md bg-slate-50 border border-slate-300 dark:bg-slate-800 dark:border-slate-700 flex justify-between">
-                <span className="text-sm">Available Balance:</span>
-                <span className="font-bold text-primary">{clubWallet?.balancePoints?.toLocaleString() ?? 0} pts</span>
-              </div>
-
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="cashout-points" className="font-semibold">Points to Exchange</Label>
-                  <div className="relative">
-                    <Input
-                      id="cashout-points"
-                      type="text"
-                      inputMode="numeric"
-                      placeholder="0"
-                      value={cashoutPoints === "" ? "" : new Intl.NumberFormat("en-US").format(Number(cashoutPoints))}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/,/g, "");
-                        if (/^\d*$/.test(val)) setCashoutPoints(val === "" ? "" : Number(val));
-                      }}
-                      className="h-11 text-lg pr-12 border-emerald-300 focus-visible:ring-emerald-500"
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">pts</span>
-                  </div>
-                  {Number(cashoutPoints) > (clubWallet?.balancePoints || 0) && (
-                    <p className="text-xs text-red-500 flex items-center gap-1">
-                      <AlertCircle className="h-3 w-3" /> Exceeds available points
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="cashout-note" className="font-semibold">Note / Purpose</Label>
-                  <Textarea
-                    id="cashout-note"
-                    placeholder="Reason for exchanging points (e.g., Buy supplies, Social activities...)"
-                    value={cashoutNote}
-                    onChange={(e) => setCashoutNote(e.target.value)}
-                    className="min-h-[100px] border-emerald-300 focus-visible:ring-emerald-500"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <DialogFooter className="p-6 pt-2 sm:justify-end gap-2">
-              <Button variant="ghost" onClick={() => setShowCashoutModal(false)}
-                className="border border-emerald-300"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleCreateCashoutRequest}
-                disabled={isSubmittingCashout || !cashoutPoints || Number(cashoutPoints) <= 0 || Number(cashoutPoints) > (clubWallet?.balancePoints || 0)}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white min-w-[140px]"
-              >
-                {isSubmittingCashout ? (
-                  <><RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Sending...</>
-                ) : (
-                  <><Send className="mr-2 h-4 w-4" /> Submit Request</>
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog> */}
-        {/* Cashout Request Modal (Đổi điểm CLB) */}
         <Dialog open={showCashoutModal} onOpenChange={setShowCashoutModal}>
           <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden">
             <DialogHeader className="p-6 pb-4 bg-emerald-50 dark:bg-emerald-900/20 border-b dark:border-emerald-800">
@@ -1698,21 +1631,21 @@ export default function ClubLeaderRewardDistributionPage() {
                         const val = e.target.value.replace(/,/g, "");
                         if (/^\d*$/.test(val)) setCashoutPoints(val === "" ? "" : Number(val));
                       }}
-                      className="h-11 text-lg pr-12 border-emerald-200 focus-visible:ring-emerald-500"
+                      className="h-11 text-lg pr-12 border-emerald-300 focus-visible:ring-emerald-500"
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-medium">pts</span>
                   </div>
 
                   {/* Hiển thị số tiền quy đổi thực tế & số dư dự kiến */}
                   {Number(cashoutPoints) > 0 && (
-                    <div className="mt-3 p-3 bg-emerald-50/50 dark:bg-emerald-900/10 rounded-md border border-emerald-100 dark:border-emerald-800/50 space-y-1 animate-in fade-in slide-in-from-top-1">
+                    <div className="mt-3 p-3 bg-emerald-50/50 dark:bg-emerald-900/10 rounded-md border border-emerald-300 dark:border-emerald-800/50 space-y-1 animate-in fade-in slide-in-from-top-1">
                       <div className="flex justify-between text-sm">
                         <span className="text-emerald-700 dark:text-emerald-400">Receive Amount:</span>
                         <span className="font-bold text-emerald-700 dark:text-emerald-400">
                           {(Number(cashoutPoints) * POINT_EXCHANGE_RATE).toLocaleString()} VND
                         </span>
                       </div>
-                      <div className="flex justify-between text-xs pt-1 border-t border-emerald-100 dark:border-emerald-800/50">
+                      <div className="flex justify-between text-xs pt-1 border-t border-emerald-300 dark:border-emerald-800/50">
                         <span className="text-muted-foreground">Estimated Remaining:</span>
                         <span className={`font-medium ${Number(cashoutPoints) > (clubWallet?.balancePoints || 0) ? "text-red-500" : "text-slate-600"}`}>
                           {(Math.max(0, (clubWallet?.balancePoints || 0) - Number(cashoutPoints))).toLocaleString()} pts
@@ -1735,7 +1668,7 @@ export default function ClubLeaderRewardDistributionPage() {
                     placeholder="Reason for exchanging points (e.g., Buy supplies, Social activities...)"
                     value={cashoutNote}
                     onChange={(e) => setCashoutNote(e.target.value)}
-                    className="min-h-[100px] border-emerald-100 focus-visible:ring-emerald-500 resize-none"
+                    className="min-h-[100px] border-emerald-300 focus-visible:ring-emerald-500 resize-none"
                   />
                 </div>
               </div>
@@ -1745,7 +1678,15 @@ export default function ClubLeaderRewardDistributionPage() {
               <Button variant="outline" onClick={() => setShowCashoutModal(false)}>Cancel</Button>
               <Button
                 onClick={handleCreateCashoutRequest}
-                disabled={isSubmittingCashout || !cashoutPoints || Number(cashoutPoints) <= 0 || Number(cashoutPoints) > (clubWallet?.balancePoints || 0)}
+                // Thêm điều kiện: !cashoutNote.trim() (bắt buộc nhập note)
+                // Và Number(cashoutPoints) < 10000 (tối thiểu 10,000 điểm)
+                disabled={
+                  isSubmittingCashout ||
+                  !cashoutPoints ||
+                  Number(cashoutPoints) < 10000 ||
+                  Number(cashoutPoints) > (clubWallet?.balancePoints || 0) ||
+                  !cashoutNote.trim()
+                }
                 className="bg-emerald-600 hover:bg-emerald-700 text-white min-w-[140px] shadow-sm"
               >
                 {isSubmittingCashout ? (
@@ -1754,6 +1695,132 @@ export default function ClubLeaderRewardDistributionPage() {
                   <><Send className="mr-2 h-4 w-4" /> Submit Request</>
                 )}
               </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Modal xem lịch sử đơn đổi điểm */}
+        <Dialog open={showCashoutHistoryModal} onOpenChange={setShowCashoutHistoryModal}>
+          <DialogContent className="sm:max-w-[800px] max-h-[85vh] flex flex-col p-0">
+            <DialogHeader className="p-6 pb-2">
+              <DialogTitle className="flex items-center gap-2">
+                <Banknote className="h-5 w-5 text-emerald-600" />
+                Points Exchange Requests
+              </DialogTitle>
+              <DialogDescription>
+                Track the status of your requests to convert club points to cash.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="flex-1 overflow-y-auto p-6 pt-0">
+              {cashoutHistoryLoading ? (
+                <div className="flex justify-center py-10"><RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+              ) : cashoutRequests.length === 0 ? (
+                <div className="text-center py-10 text-muted-foreground border rounded-lg bg-slate-50">
+                  No exchange requests found.
+                </div>
+              ) : (
+                // <Table>
+                //   <TableHeader>
+                //     <TableRow>
+                //       <TableHead>Date</TableHead>
+                //       <TableHead>Points</TableHead>
+                //       <TableHead>Amount (VND)</TableHead>
+                //       <TableHead>Status</TableHead>
+                //       <TableHead>Note</TableHead>
+                //     </TableRow>
+                //   </TableHeader>
+                //   <TableBody>
+                //     {cashoutRequests.map((req) => (
+                //       <TableRow key={req.id}>
+                //         <TableCell className="whitespace-nowrap">
+                //           {new Date(req.requestedAt).toLocaleDateString('en-GB')}
+                //         </TableCell>
+                //         <TableCell className="font-medium text-emerald-600">
+                //           {req.pointsRequested.toLocaleString()}
+                //         </TableCell>
+                //         <TableCell>
+                //           {req.cashAmount.toLocaleString()} đ
+                //         </TableCell>
+                //         <TableCell>
+                //           <Badge variant={
+                //             req.status === "APPROVED" ? "default" :
+                //               req.status === "REJECTED" ? "destructive" : "secondary"
+                //           } className={req.status === "APPROVED" ? "bg-emerald-500" : ""}>
+                //             {req.status}
+                //           </Badge>
+                //         </TableCell>
+                //         <TableCell className="max-w-[200px] truncate" title={req.leaderNote}>
+                //           <div className="text-xs">
+                //             <p className="font-semibold">Me: {req.leaderNote || "No note"}</p>
+                //             {req.staffNote && <p className="text-red-500 mt-1">University Staff: {req.staffNote}</p>}
+                //           </div>
+                //         </TableCell>
+                //       </TableRow>
+                //     ))}
+                //   </TableBody>
+                // </Table>
+                <div className="relative w-full overflow-x-auto border rounded-md">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-slate-50 dark:bg-slate-900">
+                        <TableHead className="min-w-[100px]">Date</TableHead>
+                        <TableHead className="min-w-[100px]">Points</TableHead>
+                        <TableHead className="min-w-[120px]">Amount (VND)</TableHead>
+                        <TableHead className="min-w-[100px]">Status</TableHead>
+                        {/* Tăng min-width cho cột Note để xem được nhiều hơn */}
+                        <TableHead className="min-w-[250px]">Notes & Feedback</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {cashoutRequests.map((req) => (
+                        <TableRow key={req.id} className="hover:bg-slate-50/50">
+                          <TableCell className="whitespace-nowrap">
+                            {new Date(req.requestedAt).toLocaleDateString('en-GB')}
+                          </TableCell>
+                          <TableCell className="font-bold text-emerald-600 whitespace-nowrap">
+                            {req.pointsRequested.toLocaleString()} pts
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap font-medium text-slate-700 dark:text-slate-300">
+                            {req.cashAmount.toLocaleString()} đ
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={
+                              req.status === "APPROVED" ? "default" :
+                                req.status === "REJECTED" ? "destructive" : "secondary"
+                            } className={req.status === "APPROVED" ? "bg-emerald-500 hover:bg-emerald-600" : ""}>
+                              {req.status}
+                            </Badge>
+                          </TableCell>
+                          {/* Bỏ truncate ở đây để nội dung có thể xuống dòng thay vì bị cắt bớt */}
+                          <TableCell>
+                            <div className="space-y-1.5 py-1">
+                              <div className="flex items-start gap-1">
+                                <span className="text-[10px] font-bold uppercase text-slate-400 mt-0.5 shrink-0">Leader:</span>
+                                <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+                                  {req.leaderNote || "No note provided"}
+                                </p>
+                              </div>
+                              {req.staffNote && (
+                                <div className="flex items-start gap-1 p-2 rounded bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30">
+                                  <span className="text-[10px] font-bold uppercase text-red-500 mt-0.5 shrink-0">Staff:</span>
+                                  <p className="text-xs leading-relaxed text-red-600 dark:text-red-400 italic">
+                                    {req.staffNote}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                
+              )}
+            </div>
+            <DialogFooter className="p-4 bg-slate-50 border-t">
+              <Button variant="outline" onClick={() => setShowCashoutHistoryModal(false)}>Close</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

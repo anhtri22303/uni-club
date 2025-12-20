@@ -19,7 +19,7 @@ import { getAllPenaltyRules, PenaltyRule } from "@/service/disciplineApi";
 import { getMyStaff, MyStaffEvent } from "@/service/eventStaffApi";
 import { getClubWallet, ApiClubWallet } from "@/service/walletApi"
 import { fetchAllPointRequests } from "@/service/pointRequestsApi";
-import { getPendingCashouts } from "@/service/exchangeClubPointApi";
+import { getPendingCashouts, getAdminCashoutsByStatus, CashoutStatus } from "@/service/exchangeClubPointApi";
 
 // ============================================
 // INTERFACES
@@ -1107,21 +1107,25 @@ export function useMyStaffEvents(enabled = true) {
 /**
  * Hook dùng cho Uni-staff để lấy danh sách đơn dựa trên loại đơn (Request Type)
  */
-export function useExchangeRequests(requestType: "ADD_POINTS" | "CASHOUT", enabled = true) {
+export function useExchangeRequests(
+    requestType: "ADD_POINTS" | "CASHOUT",
+    status: CashoutStatus = "PENDING", // Thêm tham số status
+    enabled = true
+) {
     return useQuery({
-        // Tách biệt queryKey để tránh xung đột cache giữa 2 loại đơn
+        // Thêm status vào queryKey để React Query tự động fetch lại khi đổi Tab
         queryKey: requestType === "ADD_POINTS"
-            ? ["point-requests", "all"]
-            : ["cashouts", "pending"],
+            ? ["point-requests", "all", status]
+            : ["cashouts", "admin-list", status],
         queryFn: async () => {
             if (requestType === "ADD_POINTS") {
-                // Sử dụng hàm fetchAllPointRequests từ pointRequestsApi.ts
                 const response = await fetchAllPointRequests();
-                return response.data || []; // pointRequestsApi.ts trả về ApiResponse<PointRequest[]>
+                const allData = response.data || [];
+                // Nếu API ADD_POINTS chưa hỗ trợ filter status ở backend, ta filter ở đây
+                return allData.filter((req: any) => req.status === status);
             } else {
-                // Sử dụng hàm getPendingCashouts từ exchangeClubPointApi.ts
-                // Hàm này đã được xử lý để trả về mảng trực tiếp trong file service của bạn
-                return await getPendingCashouts();
+                // Sử dụng API ADMIN MỚI: Xem theo trạng thái
+                return await getAdminCashoutsByStatus(status);
             }
         },
         enabled,
