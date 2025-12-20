@@ -153,6 +153,11 @@ export default function MemberCheckinByTimeAndCodePage() {
         variant: "destructive",
         duration: 3000,
       });
+
+      // Redirect to events page after error
+      setTimeout(() => {
+        router.push("/student/events");
+      }, 3000);
     } finally {
       setIsCheckinLoading(false);
     }

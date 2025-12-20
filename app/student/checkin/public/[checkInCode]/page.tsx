@@ -127,6 +127,11 @@ export default function StudentPublicCheckinPage() {
         variant: "destructive",
         duration: 3000,
       });
+
+      // Redirect to profile page after error
+      setTimeout(() => {
+        router.push("/profile");
+      }, 3000);
     } finally {
       setIsCheckinLoading(false)
     }
