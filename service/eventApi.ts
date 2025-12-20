@@ -628,6 +628,33 @@ export const eventCheckinPublic = async (code: string) => {
   }
 }
 
+/**
+ * GET /api/events/public/attendance/status
+ * Check if user has already checked in to a public event
+ * @param checkInCode - Public event check-in code
+ * @returns { success: boolean, message: string, data: { eventId: number, checkedAt: string, checkedIn: boolean, eventType: string } }
+ */
+export interface PublicEventCheckinStatusResponse {
+  eventId: number
+  checkedAt: string
+  checkedIn: boolean
+  eventType: string
+}
+
+export const getPublicEventCheckin = async (checkInCode: string): Promise<PublicEventCheckinStatusResponse> => {
+  try {
+    const response = await axiosInstance.get(`/api/events/public/attendance/status`, {
+      params: { checkInCode }
+    })
+    const data: any = response.data
+    // Response structure: { success: true, message: "success", data: { eventId, checkedAt, checkedIn, eventType } }
+    return data.data
+  } catch (error) {
+    console.error("Error checking public event attendance status:", error)
+    throw error
+  }
+}
+
 export interface EventSummary {
   refundedCount: number
   totalRegistered: number
