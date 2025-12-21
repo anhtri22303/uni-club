@@ -80,7 +80,8 @@ export default function UniStaffClubsPage() {
     load()
     return () => {
       mounted = false
-    }pathname])
+    }
+  }, [pathname])
 
   // Fetch Majors - Re-fetch when pathname changes
   useEffect(() => {
@@ -95,8 +96,7 @@ export default function UniStaffClubsPage() {
     };
 
     loadMajors();
-  }, [pathnameadMajors();
-  }, []);
+  }, [pathname]);
 
   // Map API data to match admin/clubs - Sử dụng useMemo để tính toán
   const enhancedClubs = useMemo(() => {
