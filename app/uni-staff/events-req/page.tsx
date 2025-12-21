@@ -275,7 +275,8 @@ export default function UniStaffEventRequestsPage() {
 			// Filter by active tab status
 			const eventStatus = (evt.status ?? "").toUpperCase()
 			const matchTab = eventStatus === activeTab ||
-				(activeTab === "PENDING_UNISTAFF" && eventStatus === "PENDING_COCLUB")
+				(activeTab === "PENDING_UNISTAFF" && eventStatus === "PENDING_COCLUB") ||
+				(activeTab === "REJECTED" && eventStatus === "CANCELLED")
 			
 			if (!matchTab) return false
 
@@ -420,6 +421,14 @@ export default function UniStaffEventRequestsPage() {
 					dark:border-red-700 font-semibold">
 						<span className="inline-block w-2 h-2 rounded-full bg-red-600 dark:bg-red-400 mr-1.5"></span>
 						Rejected
+					</Badge>
+				)
+			case "CANCELLED":
+				return (
+					<Badge variant="destructive" className="bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-900/50 dark:text-orange-300 
+					dark:border-orange-700 font-semibold">
+						<span className="inline-block w-2 h-2 rounded-full bg-orange-600 dark:bg-orange-400 mr-1.5"></span>
+						Cancelled
 					</Badge>
 				)
 			default:
@@ -592,10 +601,11 @@ export default function UniStaffEventRequestsPage() {
 		hasValidDateTime(e) &&
 		!isEventExpired(e)
 	).length
-	const rejectedCount = events.filter((e) =>
-		(e.status ?? "").toUpperCase() === "REJECTED" &&
-		hasValidDateTime(e)
-	).length
+	const rejectedCount = events.filter((e) => {
+		const status = (e.status ?? "").toUpperCase()
+		return (status === "REJECTED" || status === "CANCELLED") &&
+			hasValidDateTime(e)
+	}).length
 	const completedCount = events.filter((e) =>
 		(e.status ?? "").toUpperCase() === "COMPLETED" &&
 		hasValidDateTime(e)

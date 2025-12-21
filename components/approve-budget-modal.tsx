@@ -31,7 +31,7 @@ const getBudgetCalculationPolicies = (
       {
         label: isPublicOrDefault ? "Reward Point for Each Check-in" : "Commit Point Cost",
         points: isPublicOrDefault
-          ? `${commitPointCost} pts (default for PUBLIC events)`
+          ? `${commitPointCost} pts (For PUBLIC events)`
           : `${commitPointCost} pts`,
       },
       {
@@ -86,24 +86,28 @@ export function ApproveBudgetModal(props: ApproveBudgetModalProps) {
   );
   const [policyChecked, setPolicyChecked] = useState(false);
 
-  // Logic: Nếu event là PUBLIC hoặc commitPointCost = 0 thì mặc định = 100
+  // Logic: Sử dụng commitPointCost thực tế từ API
+  // Nếu commitPointCost = 0 thì mặc định = 50 cho PUBLIC events
   const effectiveCommitPointCost = useMemo(() => {
-    if (eventType?.toUpperCase() === "PUBLIC" || commitPointCost === 0) {
-      return 50;
+    const isPublicEvent = eventType?.toUpperCase() === "PUBLIC";
+    if (isPublicEvent) {
+      // PUBLIC: Dùng commitPointCost từ API, nếu = 0 thì mặc định 50
+      return commitPointCost > 0 ? commitPointCost : 50;
     }
+    // PRIVATE/SPECIAL: Dùng commitPointCost từ API
     return commitPointCost;
   }, [eventType, commitPointCost]);
 
   // Tính suggested budget: PUBLIC events không nhân x2, các event khác nhân x2
   const suggestedBudget = useMemo(() => {
-    const isPublicEvent = eventType?.toUpperCase() === "PUBLIC" || commitPointCost === 0;
+    const isPublicEvent = eventType?.toUpperCase() === "PUBLIC";
     if (isPublicEvent) {
-      // PUBLIC: Commit Point × Max Check-in Count (không x2)
+      // PUBLIC: commitPointCost × maxCheckInCount (không x2)
       return effectiveCommitPointCost * maxCheckInCount;
     }
     // PRIVATE/SPECIAL: Commit Point × Max Check-in Count × 2
     return effectiveCommitPointCost * maxCheckInCount * 2;
-  }, [effectiveCommitPointCost, maxCheckInCount, eventType, commitPointCost]);
+  }, [effectiveCommitPointCost, maxCheckInCount, eventType]);
 
   // Tạo policies động dựa trên dữ liệu thực tế
   const budgetPolicies = useMemo(
@@ -112,22 +116,15 @@ export function ApproveBudgetModal(props: ApproveBudgetModalProps) {
         effectiveCommitPointCost,
         maxCheckInCount,
         suggestedBudget,
-        eventType?.toUpperCase() === "PUBLIC" || commitPointCost === 0
+        eventType?.toUpperCase() === "PUBLIC"
       ),
-    [effectiveCommitPointCost, maxCheckInCount, suggestedBudget, eventType, commitPointCost]
+    [effectiveCommitPointCost, maxCheckInCount, suggestedBudget, eventType]
   );
 
   useEffect(() => {
     if (!open) return;
     setApprovedPointsInput(defaultRequestPoints ? String(defaultRequestPoints) : "");
-    // Debug: Kiểm tra dữ liệu nhận được
-    const isPublic = eventType?.toUpperCase() === "PUBLIC" || commitPointCost === 0;
-    const effectiveCommit = isPublic ? 100 : commitPointCost;
-    const calculatedBudget = isPublic 
-      ? effectiveCommit * maxCheckInCount 
-      : effectiveCommit * maxCheckInCount * 2;
-
-  }, [open, defaultRequestPoints, commitPointCost, maxCheckInCount, eventType]);
+  }, [open, defaultRequestPoints]);
 
   const approvedPoints = useMemo(() => {
     const n = Number(approvedPointsInput);

@@ -1304,9 +1304,9 @@ export default function EventDetailPage() {
                           </span>
                         ) : eventSummary ? (
                           event.type === "PUBLIC" ? (
-                            `${eventSummary.checkedInCount} / ${event.maxCheckInCount}`
+                            `${event.currentCheckInCount} / ${event.maxCheckInCount}`
                           ) : (
-                            `${eventSummary.checkedInCount} / ${eventSummary.totalRegistered}`
+                            `${event.currentCheckInCount} / ${eventSummary.totalRegistered}`
                           )
                         ) : (
                           `${event.currentCheckInCount} / ${event.maxCheckInCount}`
@@ -1327,8 +1327,7 @@ export default function EventDetailPage() {
                       eventSummary
                         ? event.type === "PUBLIC"
                           ? `${
-                              event.maxCheckInCount -
-                              eventSummary.checkedInCount
+                              event.maxCheckInCount - event.currentCheckInCount
                             } remaining`
                           : `${
                               event.maxCheckInCount -
@@ -1397,7 +1396,7 @@ export default function EventDetailPage() {
                               Loading...
                             </span>
                           ) : event.type === "PUBLIC" ? (
-                            `${event.maxCheckInCount} ${event.type === "PUBLIC" ? "checked in" : "registered"}`
+                            `${event.currentCheckInCount} checked in`
                           ) : (
                             `${eventSummary.totalRegistered} registered`
                           )}
