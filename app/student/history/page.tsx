@@ -535,6 +535,7 @@ export default function MemberHistoryPage() {
           maxCheckInCount: event.maxCheckInCount,
           currentCheckInCount: event.currentCheckInCount,
           commitPointCost: event.commitPointCost,
+          rewardPerParticipant: event.rewardPerParticipant,
           hostClub: event.hostClub,
           coHostedClubs: event.coHostedClubs,
         },
@@ -1663,9 +1664,15 @@ export default function MemberHistoryPage() {
                                   <p className="text-xs text-muted-foreground mt-1">
                                     📍 {activity.data.locationName} | 🕒 {formatEventDateTime(activity.data)}
                                   </p>
-                                  <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
-                                    Commit points: {activity.data.commitPointCost} points
-                                  </p>
+                                  {activity.data.type === "PUBLIC" ? (
+                                    <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                                      Reward: {activity.data.rewardPerParticipant ?? 0} points
+                                    </p>
+                                  ) : (
+                                    <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                                      Commit points: {activity.data.commitPointCost} points
+                                    </p>
+                                  )}
                                 </>
                               ) : (
                                 <>

@@ -81,32 +81,47 @@ export async function insertMembersData(clubId: number, editorRef: React.RefObje
 export async function insertEventsData(clubId: number, editorRef: React.RefObject<HTMLDivElement>, afterChange: AfterChange) {
   try {
     const events = await getEventByClubId(clubId)
-    const totalEvents = events.length
-    const approvedEvents = events.filter((e: Event) => e.status === "APPROVED").length
-    const ongoingEvents = events.filter((e: Event) => e.status === "ONGOING").length
-    const completedEvents = events.filter((e: Event) => e.status === "COMPLETED").length
-    const publicEvents = events.filter((e: Event) => e.type === "PUBLIC").length
-    const totalBudget = events.reduce((sum: number, e: Event) => sum + (e.budgetPoints || 0), 0)
+    
+    // Sort events by date (newest first)
+    const sortedEvents = events.sort((a: Event, b: Event) => {
+      // Get start date for comparison
+      const dateA = a.startDate || a.date || '1970-01-01'
+      const dateB = b.startDate || b.date || '1970-01-01'
+      
+      // Compare dates (newest first)
+      return new Date(dateB).getTime() - new Date(dateA).getTime()
+    })
+    
+    const totalEvents = sortedEvents.length
+    const approvedEvents = sortedEvents.filter((e: Event) => e.status === "APPROVED").length
+    const ongoingEvents = sortedEvents.filter((e: Event) => e.status === "ONGOING").length
+    const completedEvents = sortedEvents.filter((e: Event) => e.status === "COMPLETED").length
+    const publicEvents = sortedEvents.filter((e: Event) => e.type === "PUBLIC").length
+    const totalBudget = sortedEvents.reduce((sum: number, e: Event) => sum + (e.budgetPoints || 0), 0)
+    const totalPublicReward = sortedEvents
+      .filter((e: Event) => e.type === "PUBLIC")
+      .reduce((sum: number, e: Event) => sum + ((e.rewardPerParticipant || 0) * (e.maxCheckInCount || 0)), 0)
     
     let html = `
       <div style="margin: 15px 0; page-break-inside: avoid;">
         <h2 style="font-size: 16px; font-weight: bold; margin-bottom: 10px; color: #1a1a1a;">Club Events</h2>
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 10px;">
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 9px;">
           <thead>
             <tr style="background-color: #f3f4f6;">
-              <th style="border: 1px solid #d1d5db; padding: 5px; text-align: left; font-weight: 600; width: 4%;">No.</th>
-              <th style="border: 1px solid #d1d5db; padding: 5px; text-align: left; font-weight: 600; width: 26%;">Event Name</th>
-              <th style="border: 1px solid #d1d5db; padding: 5px; text-align: left; font-weight: 600; width: 20%;">Date Range</th>
-              <th style="border: 1px solid #d1d5db; padding: 5px; text-align: center; font-weight: 600; width: 6%;">Days</th>
-              <th style="border: 1px solid #d1d5db; padding: 5px; text-align: left; font-weight: 600; width: 10%;">Type</th>
-              <th style="border: 1px solid #d1d5db; padding: 5px; text-align: left; font-weight: 600; width: 12%;">Status</th>
-              <th style="border: 1px solid #d1d5db; padding: 5px; text-align: left; font-weight: 600; width: 22%;">Location</th>
+              <th style="border: 1px solid #d1d5db; padding: 4px; text-align: left; font-weight: 600; width: 3%;">No.</th>
+              <th style="border: 1px solid #d1d5db; padding: 4px; text-align: left; font-weight: 600; width: 22%;">Event Name</th>
+              <th style="border: 1px solid #d1d5db; padding: 4px; text-align: left; font-weight: 600; width: 16%;">Date Range</th>
+              <th style="border: 1px solid #d1d5db; padding: 4px; text-align: center; font-weight: 600; width: 5%;">Days</th>
+              <th style="border: 1px solid #d1d5db; padding: 4px; text-align: left; font-weight: 600; width: 9%;">Type</th>
+              <th style="border: 1px solid #d1d5db; padding: 4px; text-align: right; font-weight: 600; width: 9%;">Points</th>
+              <th style="border: 1px solid #d1d5db; padding: 4px; text-align: left; font-weight: 600; width: 11%;">Status</th>
+              <th style="border: 1px solid #d1d5db; padding: 4px; text-align: left; font-weight: 600; width: 25%;">Location</th>
             </tr>
           </thead>
           <tbody>
     `
     
-    events.forEach((event: Event, index: number) => {
+    sortedEvents.forEach((event: Event, index: number) => {
       const bgColor = index % 2 === 0 ? "#ffffff" : "#f9fafb"
       
       // Format date range - compact version
@@ -135,17 +150,28 @@ export async function insertEventsData(clubId: number, editorRef: React.RefObjec
       const coHostCount = event.coHostedClubs?.length || 0
       const coHostInfo = coHostCount > 0 ? ` (+${coHostCount})` : ""
       
+      // Calculate points display based on event type
+      let pointsDisplay = ""
+      if (event.type === "PUBLIC") {
+        const reward = event.rewardPerParticipant || 0
+        pointsDisplay = `${reward}pt/p`
+      } else {
+        const commit = event.commitPointCost || 0
+        pointsDisplay = `${commit}pt`
+      }
+      
       html += `
         <tr style="background-color: ${bgColor};">
-          <td style="border: 1px solid #d1d5db; padding: 4px; text-align: center; font-size: 9px;">${index + 1}</td>
-          <td style="border: 1px solid #d1d5db; padding: 4px; word-wrap: break-word; font-size: 9px; line-height: 1.3;">
+          <td style="border: 1px solid #d1d5db; padding: 3px; text-align: center; font-size: 8px;">${index + 1}</td>
+          <td style="border: 1px solid #d1d5db; padding: 3px; word-wrap: break-word; font-size: 8px; line-height: 1.3;">
             ${event.name}${coHostInfo}
           </td>
-          <td style="border: 1px solid #d1d5db; padding: 4px; font-size: 9px; white-space: nowrap;">${dateDisplay}</td>
-          <td style="border: 1px solid #d1d5db; padding: 4px; text-align: center; font-size: 9px;">${daysCount}</td>
-          <td style="border: 1px solid #d1d5db; padding: 4px; font-size: 9px;">${event.type}</td>
-          <td style="border: 1px solid #d1d5db; padding: 4px; font-size: 9px;">${event.status}</td>
-          <td style="border: 1px solid #d1d5db; padding: 4px; word-wrap: break-word; font-size: 9px; line-height: 1.3;">${event.locationName}</td>
+          <td style="border: 1px solid #d1d5db; padding: 3px; font-size: 8px; white-space: nowrap;">${dateDisplay}</td>
+          <td style="border: 1px solid #d1d5db; padding: 3px; text-align: center; font-size: 8px;">${daysCount}</td>
+          <td style="border: 1px solid #d1d5db; padding: 3px; font-size: 8px;">${event.type}</td>
+          <td style="border: 1px solid #d1d5db; padding: 3px; text-align: right; font-size: 8px;">${pointsDisplay}</td>
+          <td style="border: 1px solid #d1d5db; padding: 3px; font-size: 8px;">${event.status}</td>
+          <td style="border: 1px solid #d1d5db; padding: 3px; word-wrap: break-word; font-size: 8px; line-height: 1.3;">${event.locationName}</td>
         </tr>
       `
     })
@@ -160,13 +186,14 @@ export async function insertEventsData(clubId: number, editorRef: React.RefObjec
           <p style="margin: 3px 0; font-size: 11px;"><strong>Ongoing Events:</strong> ${ongoingEvents}</p>
           <p style="margin: 3px 0; font-size: 11px;"><strong>Completed Events:</strong> ${completedEvents}</p>
           <p style="margin: 3px 0; font-size: 11px;"><strong>Public Events:</strong> ${publicEvents}</p>
-          <p style="margin: 3px 0; font-size: 11px;"><strong>Total Budget:</strong> ${totalBudget.toLocaleString()} points</p>
+          <p style="margin: 3px 0; font-size: 11px;"><strong>Total Budget (Private/Special):</strong> ${totalBudget.toLocaleString()} points</p>
+          <p style="margin: 3px 0; font-size: 11px;"><strong>Total Public Rewards:</strong> ${totalPublicReward.toLocaleString()} points</p>
         </div>
       </div>
     `
     
     append(editorRef, html, afterChange)
-    toast.success(`${events.length} events inserted`)
+    toast.success(`${sortedEvents.length} events inserted (sorted by date)`)
   } catch {
     toast.error("Failed to insert events data")
   }

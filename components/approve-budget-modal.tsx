@@ -60,6 +60,7 @@ type ApproveBudgetModalProps = {
   hostClubName?: string;
   defaultRequestPoints?: number;
   commitPointCost?: number;
+  rewardPerParticipant?: number;
   maxCheckInCount?: number;
   eventType?: string; // Thêm eventType để kiểm tra PUBLIC
   onApproved?: (approvedBudgetPoints: number) => void;
@@ -74,6 +75,7 @@ export function ApproveBudgetModal(props: ApproveBudgetModalProps) {
     hostClubName,
     defaultRequestPoints = 0,
     commitPointCost = 0,
+    rewardPerParticipant = 0,
     maxCheckInCount = 0,
     eventType,
     onApproved,
@@ -86,17 +88,16 @@ export function ApproveBudgetModal(props: ApproveBudgetModalProps) {
   );
   const [policyChecked, setPolicyChecked] = useState(false);
 
-  // Logic: Sử dụng commitPointCost thực tế từ API
-  // Nếu commitPointCost = 0 thì mặc định = 50 cho PUBLIC events
+  // Logic: Sử dụng rewardPerParticipant cho PUBLIC events, commitPointCost cho non-PUBLIC events
   const effectiveCommitPointCost = useMemo(() => {
     const isPublicEvent = eventType?.toUpperCase() === "PUBLIC";
     if (isPublicEvent) {
-      // PUBLIC: Dùng commitPointCost từ API, nếu = 0 thì mặc định 50
-      return commitPointCost > 0 ? commitPointCost : 50;
+      // PUBLIC: Dùng rewardPerParticipant từ API
+      return rewardPerParticipant > 0 ? rewardPerParticipant : 0;
     }
     // PRIVATE/SPECIAL: Dùng commitPointCost từ API
     return commitPointCost;
-  }, [eventType, commitPointCost]);
+  }, [eventType, commitPointCost, rewardPerParticipant]);
 
   // Tính suggested budget: PUBLIC events không nhân x2, các event khác nhân x2
   const suggestedBudget = useMemo(() => {

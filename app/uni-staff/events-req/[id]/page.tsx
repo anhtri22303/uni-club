@@ -24,6 +24,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Ticket,
+  Gift,
 } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
@@ -802,19 +803,35 @@ export default function EventRequestDetailPage({
                     <EventDateTimeDisplay event={request} variant="detailed" />
                   </div>
 
-                  {/* Commit Point Cost */}
-                  {request.commitPointCost !== undefined && request.type !== "PUBLIC" && (
-                    <div>
-                      <label className="text-sm font-medium text-muted-foreground">
-                        Commit Point
-                      </label>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Ticket className="h-4 w-4 text-emerald-500" />
-                        <span className="font-semibold text-emerald-600">
-                          {request.commitPointCost} points
-                        </span>
+                  {/* Commit Point Cost or Reward Point */}
+                  {request.type === "PUBLIC" ? (
+                    request.rewardPerParticipant !== undefined && (
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">
+                          Reward Point
+                        </label>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Gift className="h-4 w-4 text-emerald-500" />
+                          <span className="font-semibold text-emerald-600">
+                            {request.rewardPerParticipant} points
+                          </span>
+                        </div>
                       </div>
-                    </div>
+                    )
+                  ) : (
+                    request.commitPointCost !== undefined && (
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">
+                          Commit Point
+                        </label>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Ticket className="h-4 w-4 text-emerald-500" />
+                          <span className="font-semibold text-emerald-600">
+                            {request.commitPointCost} points
+                          </span>
+                        </div>
+                      </div>
+                    )
                   )}
 
                   <div>
@@ -1601,6 +1618,7 @@ export default function EventRequestDetailPage({
               }
               defaultRequestPoints={request.budgetPoints || 0}
               commitPointCost={request.commitPointCost || 0}
+              rewardPerParticipant={request.rewardPerParticipant || 0}
               maxCheckInCount={request.maxCheckInCount || 0}
               eventType={request.type || request.eventType}
               onApproved={(approvedBudgetPoints) => {

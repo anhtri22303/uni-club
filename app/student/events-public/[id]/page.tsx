@@ -33,6 +33,7 @@ import {
   timeObjectToString,
   EventDay,
 } from "@/service/eventApi";
+import { fetchProfile, UserProfile } from "@/service/userApi";
 import { EventDateTimeDisplay } from "@/components/event-date-time-display";
 import {
   getFeedbackByEventId,
@@ -69,6 +70,7 @@ interface EventDetail {
   currentCheckInCount: number;
   budgetPoints?: number;
   commitPointCost?: number;
+  rewardPerParticipant?: number;
   hostClub: {
     id: number;
     name: string;
@@ -108,6 +110,8 @@ export default function PublicEventDetailPage() {
   const [existingFeedback, setExistingFeedback] = useState<Feedback | null>(
     null
   );
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [isHostClubMember, setIsHostClubMember] = useState(false);
 
   useEffect(() => {
     const loadEventDetail = async () => {
@@ -157,6 +161,29 @@ export default function PublicEventDetailPage() {
 
     loadEventDetail();
   }, [params.id, toast]);
+
+  // Load user profile to check club membership
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      try {
+        const profile = await fetchProfile();
+        setUserProfile(profile);
+      } catch (error) {
+        console.error("Failed to load user profile:", error);
+      }
+    };
+
+    loadUserProfile();
+  }, []);
+
+  // Check if user is member of host club
+  useEffect(() => {
+    if (event && userProfile) {
+      const clubIds = userProfile.clubs?.map(club => club.clubId) || [];
+      const isMember = clubIds.includes(event.hostClub.id);
+      setIsHostClubMember(isMember);
+    }
+  }, [event, userProfile]);
 
   // Load current user's feedbacks to check if already submitted for this event
   useEffect(() => {
@@ -387,7 +414,9 @@ export default function PublicEventDetailPage() {
             </div>
             <div className="flex items-center gap-3">
               {/* Show Feedback button for APPROVED, ONGOING, or COMPLETED events */}
+              {/* Only show if user IS a member of the host club */}
               {event &&
+                isHostClubMember &&
                 (event.status === "APPROVED" ||
                   event.status === "ONGOING" ||
                   event.status === "COMPLETED") && (
@@ -444,12 +473,6 @@ export default function PublicEventDetailPage() {
                   </CardTitle>
                   <div className="flex items-center gap-3">
                     {renderTypeBadge(event.type)}
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm text-muted-foreground">Event ID</div>
-                  <div className="font-mono text-lg font-semibold">
-                    #{event.id}
                   </div>
                 </div>
               </div>
@@ -509,33 +532,48 @@ export default function PublicEventDetailPage() {
               {/* Points Information */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Points Information</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="p-4 bg-muted/50 rounded-lg">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                      <Ticket className="h-4 w-4" />
-                      <span>Commit Point Cost</span>
-                    </div>
-                    <div className="font-semibold text-lg">
-                      {event.commitPointCost ?? 0} points
-                    </div>
-                  </div>
+                {event.type === "PUBLIC" ? (
                   <div className="p-4 bg-emerald-50 dark:bg-emerald-950/20 rounded-lg border border-emerald-200 dark:border-emerald-800">
                     <div className="flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-400 mb-1">
                       <Gift className="h-4 w-4" />
-                      <span>Receive Point</span>
+                      <span>Reward Point</span>
                     </div>
                     <div className="font-semibold text-lg text-emerald-700 dark:text-emerald-400">
-                      {(() => {
-                        const budgetPoints = event.budgetPoints ?? 0
-                        const maxCheckInCount = event.maxCheckInCount ?? 1
-                        return maxCheckInCount > 0 ? Math.floor(budgetPoints / maxCheckInCount) : 0
-                      })()} points
+                      {event.rewardPerParticipant ?? 0} points
                     </div>
                     <div className="text-xs text-emerald-600 dark:text-emerald-500 mt-1">
                       Per full attendance
                     </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-4 bg-muted/50 rounded-lg">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                        <Ticket className="h-4 w-4" />
+                        <span>Commit Point Cost</span>
+                      </div>
+                      <div className="font-semibold text-lg">
+                        {event.commitPointCost ?? 0} points
+                      </div>
+                    </div>
+                    <div className="p-4 bg-emerald-50 dark:bg-emerald-950/20 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                      <div className="flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-400 mb-1">
+                        <Gift className="h-4 w-4" />
+                        <span>Receive Point</span>
+                      </div>
+                      <div className="font-semibold text-lg text-emerald-700 dark:text-emerald-400">
+                        {(() => {
+                          const budgetPoints = event.budgetPoints ?? 0
+                          const maxCheckInCount = event.maxCheckInCount ?? 1
+                          return maxCheckInCount > 0 ? Math.floor(budgetPoints / maxCheckInCount) : 0
+                        })()} points
+                      </div>
+                      <div className="text-xs text-emerald-600 dark:text-emerald-500 mt-1">
+                        Per full attendance
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <Separator />

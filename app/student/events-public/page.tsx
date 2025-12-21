@@ -349,12 +349,7 @@ export default function PublicEventsPage() {
                           )}
                           <Badge variant="default" className="flex items-center gap-1 shrink-0 bg-emerald-600 hover:bg-emerald-700">
                             <Gift className="h-3 w-3" />
-                            {(() => {
-                              const budgetPoints = event.budgetPoints ?? 0
-                              const maxCheckInCount = event.maxCheckInCount ?? 1
-                              const receivePoint = maxCheckInCount > 0 ? Math.floor(budgetPoints / maxCheckInCount) : 0
-                              return receivePoint
-                            })()} pts
+                            {event.rewardPerParticipant ?? 0} pts
                           </Badge>
                         </div>
 

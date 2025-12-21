@@ -1,24 +1,22 @@
 import { useState, useEffect } from "react"
 import { Modal } from "@/components/modal"
 import { Button } from "@/components/ui/button"
-import { QrCode, Maximize2, Minimize2, RotateCcw, Monitor, Smartphone, Copy, Download } from "lucide-react"
+import { QrCode, Maximize2, Minimize2, RotateCcw, Copy, Download } from "lucide-react"
 
 interface QRModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   eventName: string
   checkInCode: string
-  qrRotations: { local: string[]; prod: string[]; mobile?: string[] }
-  qrLinks: { local?: string; prod?: string; mobile?: string }
+  qrRotations: string[]
+  qrLink: string
   countdown: number
   isFullscreen: boolean
   setIsFullscreen: (v: boolean) => void
-  activeEnvironment: 'local' | 'prod' | 'mobile'
-  setActiveEnvironment: (v: 'local' | 'prod' | 'mobile') => void
   displayedIndex: number
   isFading: boolean
-  handleCopyLink: (env: 'local' | 'prod' | 'mobile') => void
-  handleDownloadQR?: (env: 'local' | 'prod' | 'mobile') => void
+  handleCopyLink: () => void
+  handleDownloadQR?: () => void
 }
 
 export function QRModal({
@@ -27,12 +25,10 @@ export function QRModal({
   eventName,
   checkInCode,
   qrRotations,
-  qrLinks,
+  qrLink,
   countdown,
   isFullscreen,
   setIsFullscreen,
-  activeEnvironment,
-  setActiveEnvironment,
   displayedIndex,
   isFading,
   handleCopyLink,
@@ -67,45 +63,6 @@ export function QRModal({
               </Button>
             </div>
 
-            {/* Environment Selector (adds Mobile tab) */}
-            <div className="flex items-center justify-center">
-              <div className="flex bg-muted rounded-lg p-1">
-                <button
-                  onClick={() => setActiveEnvironment('prod')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                    activeEnvironment === 'prod' 
-                      ? 'bg-background shadow-sm text-blue-600 dark:text-blue-400' 
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  <Monitor className="h-4 w-4" />
-                  Production
-                </button>
-                <button
-                  onClick={() => setActiveEnvironment('local')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                    activeEnvironment === 'local' 
-                      ? 'bg-background shadow-sm text-blue-600 dark:text-blue-400' 
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  <Smartphone className="h-4 w-4" />
-                  Development
-                </button>
-                <button
-                  onClick={() => setActiveEnvironment('mobile')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                    activeEnvironment === 'mobile' 
-                      ? 'bg-background shadow-sm text-blue-600 dark:text-blue-400' 
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  <Smartphone className="h-4 w-4" />
-                  Mobile
-                </button>
-              </div>
-            </div>
-
             {/* QR Code Display */}
             <div className="flex flex-col items-center space-y-4">
               {/* Countdown Timer */}
@@ -116,34 +73,17 @@ export function QRModal({
 
               {/* QR Code */}
               <div className="relative p-8 bg-white dark:bg-gray-800 rounded-xl border-2 border-dashed border-muted-foreground/20 shadow-lg">
-                {activeEnvironment === 'mobile' ? (
-                  // Mobile deep link QR: prefer DataURL variants from qrRotations.mobile, fallback to qrLinks.mobile
-                  <>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={
-                        qrRotations.mobile && qrRotations.mobile.length
-                          ? qrRotations.mobile[displayedIndex % qrRotations.mobile.length]
-                          : qrLinks.mobile
-                            ? `https://api.qrserver.com/v1/create-qr-code/?size=640x640&data=${encodeURIComponent(qrLinks.mobile)}`
-                            : ''
-                      }
-                      alt={`QR Code mobile`}
-                      className={`w-64 h-64 transition-opacity duration-300 ${isFading ? 'opacity-0' : 'opacity-100'}`}
-                    />
-                    <div className="absolute -top-2 -right-2 px-3 py-1 bg-blue-600 text-white text-xs font-medium rounded-full">MOBILE</div>
-                  </>
-                ) : qrRotations[activeEnvironment as 'local' | 'prod']?.length ? (
+                {qrRotations?.length > 0 ? (
                   <>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img 
-                      src={qrRotations[activeEnvironment][displayedIndex % qrRotations[activeEnvironment].length]} 
-                      alt={`QR Code ${activeEnvironment}`} 
+                      src={qrRotations[displayedIndex % qrRotations.length]} 
+                      alt="QR Code" 
                       className={`w-64 h-64 transition-opacity duration-300 ${isFading ? 'opacity-0' : 'opacity-100'}`} 
                     />
-                    {/* Environment Badge */}
+                    {/* Live Badge */}
                     <div className="absolute -top-2 -right-2 px-3 py-1 bg-blue-600 text-white text-xs font-medium rounded-full">
-                      {activeEnvironment === 'prod' ? 'LIVE' : 'DEV'}
+                      LIVE
                     </div>
                   </>
                 ) : (
@@ -160,7 +100,7 @@ export function QRModal({
               <div className="flex items-center gap-3">
                 <Button
                   variant="outline"
-                  onClick={() => handleCopyLink(activeEnvironment)}
+                  onClick={handleCopyLink}
                   className="flex items-center gap-2"
                 >
                   <Copy className="h-4 w-4" />
@@ -169,7 +109,7 @@ export function QRModal({
                 {handleDownloadQR && (
                   <Button
                     variant="outline"
-                    onClick={() => handleDownloadQR(activeEnvironment)}
+                    onClick={handleDownloadQR}
                     className="flex items-center gap-2"
                   >
                     <Download className="h-4 w-4" />
@@ -218,27 +158,19 @@ export function QRModal({
 
               {/* Large QR Code */}
               <div className="relative">
-                {(activeEnvironment === 'mobile' && qrRotations.mobile && qrRotations.mobile.length) || (activeEnvironment !== 'mobile' && qrRotations[activeEnvironment as 'local' | 'prod']?.length) ? (
+                {qrRotations?.length > 0 ? (
                   <>
                     <div className="p-12 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={
-                          activeEnvironment === 'mobile'
-                            ? (qrRotations.mobile && qrRotations.mobile.length
-                                ? qrRotations.mobile[displayedIndex % qrRotations.mobile.length]
-                                : qrLinks.mobile
-                                  ? `https://api.qrserver.com/v1/create-qr-code/?size=960x960&data=${encodeURIComponent(qrLinks.mobile)}`
-                                  : '')
-                            : qrRotations[activeEnvironment as 'local' | 'prod'][displayedIndex % qrRotations[activeEnvironment as 'local' | 'prod'].length]
-                        }
-                        alt={`QR Code ${activeEnvironment}`}
+                        src={qrRotations[displayedIndex % qrRotations.length]}
+                        alt="QR Code"
                         className={`w-96 h-96 transition-opacity duration-300 ${isFading ? 'opacity-0' : 'opacity-100'}`}
                       />
                     </div>
                     {/* Large Environment Badge */}
                     <div className="absolute -top-4 -right-4 px-6 py-3 bg-blue-600 text-white font-bold rounded-full text-lg shadow-lg">
-                      {activeEnvironment === 'prod' ? 'PRODUCTION' : activeEnvironment === 'mobile' ? 'MOBILE' : 'DEVELOPMENT'}
+                      PRODUCTION
                     </div>
                   </>
                 ) : (
@@ -256,7 +188,7 @@ export function QRModal({
                 <Button
                   size="lg"
                   variant="secondary"
-                  onClick={() => handleCopyLink(activeEnvironment)}
+                  onClick={handleCopyLink}
                   className="flex items-center gap-3 text-lg px-8 py-4"
                 >
                   <Copy className="h-6 w-6" />
@@ -266,7 +198,7 @@ export function QRModal({
                   <Button
                     size="lg"
                     variant="secondary"
-                    onClick={() => handleDownloadQR(activeEnvironment)}
+                    onClick={handleDownloadQR}
                     className="flex items-center gap-3 text-lg px-8 py-4"
                   >
                     <Download className="h-6 w-6" />

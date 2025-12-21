@@ -103,23 +103,12 @@ export default function AdminEventDetailPage() {
 
   // QR Code states
   const [showQrModal, setShowQrModal] = useState(false);
-  const [qrLinks, setQrLinks] = useState<{
-    local?: string;
-    prod?: string;
-    mobile?: string;
-  }>({});
-  const [qrRotations, setQrRotations] = useState<{
-    local: string[];
-    prod: string[];
-    mobile?: string[];
-  }>({ local: [], prod: [] });
+  const [qrLink, setQrLink] = useState<string>("");
+  const [qrRotations, setQrRotations] = useState<string[]>([]);
   const [visibleIndex, setVisibleIndex] = useState(0);
   const [displayedIndex, setDisplayedIndex] = useState(0);
   const [isFading, setIsFading] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [activeEnvironment, setActiveEnvironment] = useState<
-    "local" | "prod" | "mobile"
-  >("prod");
   const [selectedPhase, setSelectedPhase] = useState<string>("");
   const ROTATION_INTERVAL_MS = 30 * 1000;
   const VARIANTS = 3;
@@ -204,10 +193,8 @@ export default function AdminEventDetailPage() {
         );
         const { token } = await eventQR(event.id, selectedPhase);
 
-        // Create URLs with new token and phase
+        // Create production URL only
         const prodUrl = `https://uniclub.id.vn/student/checkin/${selectedPhase}/${token}`;
-        const localUrl = `http://localhost:3000/student/checkin/${selectedPhase}/${token}`;
-        const mobileLink = `exp://192.168.1.50:8081/--/student/checkin/${selectedPhase}/${token}`;
 
         // Generate QR code variants
         const styleVariants = [
@@ -216,33 +203,14 @@ export default function AdminEventDetailPage() {
           { color: { dark: "#222222", light: "#FFFFFF" }, margin: 0 },
         ];
 
-        const localQrVariantsPromises = Array.from({ length: VARIANTS }).map(
-          (_, i) =>
-            QRCode.toDataURL(localUrl, styleVariants[i % styleVariants.length])
-        );
-        const localQrVariants = await Promise.all(localQrVariantsPromises);
-
         const prodQrVariantsPromises = Array.from({ length: VARIANTS }).map(
           (_, i) =>
             QRCode.toDataURL(prodUrl, styleVariants[i % styleVariants.length])
         );
         const prodQrVariants = await Promise.all(prodQrVariantsPromises);
 
-        const mobileVariantsPromises = Array.from({ length: VARIANTS }).map(
-          (_, i) =>
-            QRCode.toDataURL(
-              mobileLink,
-              styleVariants[i % styleVariants.length]
-            )
-        );
-        const mobileVariants = await Promise.all(mobileVariantsPromises);
-
-        setQrRotations({
-          local: localQrVariants,
-          prod: prodQrVariants,
-          mobile: mobileVariants,
-        });
-        setQrLinks({ local: localUrl, prod: prodUrl, mobile: mobileLink });
+        setQrRotations(prodQrVariants);
+        setQrLink(prodUrl);
         setVisibleIndex((i) => i + 1);
       } catch (err) {
         console.error("Failed to regenerate QR code:", err);
@@ -449,10 +417,8 @@ export default function AdminEventDetailPage() {
       );
       const { token, expiresIn } = await eventQR(event.id, phase);
 
-      // Create URLs with token and phase (path parameter format)
+      // Create production URL only
       const prodUrl = `https://uniclub.id.vn/student/checkin/${phase}/${token}`;
-      const localUrl = `http://localhost:3000/student/checkin/${phase}/${token}`;
-      const mobileLink = `exp://192.168.1.50:8081/--/student/checkin/${phase}/${token}`;
 
       // Generate QR code variants
       const styleVariants = [
@@ -461,13 +427,6 @@ export default function AdminEventDetailPage() {
         { color: { dark: "#222222", light: "#FFFFFF" }, margin: 0 },
       ];
 
-      // Generate QR variants for local environment
-      const localQrVariantsPromises = Array.from({ length: VARIANTS }).map(
-        (_, i) =>
-          QRCode.toDataURL(localUrl, styleVariants[i % styleVariants.length])
-      );
-      const localQrVariants = await Promise.all(localQrVariantsPromises);
-
       // Generate QR variants for production environment
       const prodQrVariantsPromises = Array.from({ length: VARIANTS }).map(
         (_, i) =>
@@ -475,20 +434,9 @@ export default function AdminEventDetailPage() {
       );
       const prodQrVariants = await Promise.all(prodQrVariantsPromises);
 
-      // Generate QR variants for mobile
-      const mobileVariantsPromises = Array.from({ length: VARIANTS }).map(
-        (_, i) =>
-          QRCode.toDataURL(mobileLink, styleVariants[i % styleVariants.length])
-      );
-      const mobileVariants = await Promise.all(mobileVariantsPromises);
-
-      // Set different URLs for local, production, and mobile
-      setQrRotations({
-        local: localQrVariants,
-        prod: prodQrVariants,
-        mobile: mobileVariants,
-      });
-      setQrLinks({ local: localUrl, prod: prodUrl, mobile: mobileLink });
+      // Set production URL and QR variants
+      setQrRotations(prodQrVariants);
+      setQrLink(prodUrl);
       setVisibleIndex(0);
       setDisplayedIndex(0);
       setSelectedPhase(phase);
@@ -517,47 +465,31 @@ export default function AdminEventDetailPage() {
     }
   };
 
-  const handleDownloadQR = async (environment: "local" | "prod" | "mobile") => {
+  const handleDownloadQR = async () => {
     try {
-      let qrDataUrl: string | undefined;
-      if (environment === "local") {
-        qrDataUrl =
-          qrRotations.local[displayedIndex % qrRotations.local.length];
-      } else if (environment === "prod") {
-        qrDataUrl = qrRotations.prod[displayedIndex % qrRotations.prod.length];
-      } else {
-        // mobile: use pre-generated QR from qrRotations.mobile, or fallback to qrLinks.mobile
-        if (qrRotations.mobile && qrRotations.mobile.length > 0) {
-          qrDataUrl =
-            qrRotations.mobile[displayedIndex % qrRotations.mobile.length];
-        } else if (qrLinks.mobile) {
-          // Fallback: generate QR using external API with the correct mobile link (includes phase)
-          qrDataUrl = `https://api.qrserver.com/v1/create-qr-code/?size=640x640&data=${encodeURIComponent(
-            qrLinks.mobile
-          )}`;
-        } else {
-          toast({
-            title: "No QR",
-            description: "Mobile QR not available",
-            variant: "destructive",
-          });
-          return;
-        }
+      if (!qrRotations || qrRotations.length === 0) {
+        toast({
+          title: "No QR",
+          description: "QR code not available",
+          variant: "destructive",
+        });
+        return;
       }
 
+      const qrDataUrl = qrRotations[displayedIndex % qrRotations.length];
       if (!qrDataUrl) return;
 
       const link = document.createElement("a");
       link.download = `qr-code-${event?.name?.replace(
         /[^a-zA-Z0-9]/g,
         "-"
-      )}-${environment}.png`;
+      )}.png`;
       link.href = qrDataUrl;
       link.click();
 
       toast({
         title: "Downloaded",
-        description: `QR code downloaded for ${environment} environment`,
+        description: "QR code downloaded successfully",
       });
     } catch (err) {
       toast({
@@ -568,23 +500,14 @@ export default function AdminEventDetailPage() {
     }
   };
 
-  const handleCopyLink = async (environment: "local" | "prod" | "mobile") => {
+  const handleCopyLink = async () => {
     try {
-      let link: string | undefined;
-      if (environment === "mobile") {
-        link = qrLinks.mobile;
-      } else {
-        link = environment === "local" ? qrLinks.local : qrLinks.prod;
-      }
+      if (!qrLink) return;
 
-      if (!link) return;
-
-      await navigator.clipboard.writeText(link);
+      await navigator.clipboard.writeText(qrLink);
       toast({
         title: "Copied",
-        description: `${
-          environment.charAt(0).toUpperCase() + environment.slice(1)
-        } link copied to clipboard`,
+        description: "Link copied to clipboard",
       });
     } catch {
       toast({
@@ -1045,12 +968,10 @@ export default function AdminEventDetailPage() {
             eventName={event.name ?? ""}
             checkInCode={event.checkInCode ?? ""}
             qrRotations={qrRotations}
-            qrLinks={qrLinks}
+            qrLink={qrLink}
             countdown={countdown}
             isFullscreen={isFullscreen}
             setIsFullscreen={setIsFullscreen}
-            activeEnvironment={activeEnvironment}
-            setActiveEnvironment={setActiveEnvironment}
             displayedIndex={displayedIndex}
             isFading={isFading}
             handleCopyLink={handleCopyLink}

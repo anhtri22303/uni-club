@@ -24,37 +24,19 @@ export function PublicEventQRButton({
   className = ""
 }: PublicEventQRButtonProps) {
   const [showQrModal, setShowQrModal] = useState(false)
-  const [qrLinks, setQrLinks] = useState<{
-    local?: string
-    prod?: string
-    mobile?: string
-  }>({})
-  const [qrRotations, setQrRotations] = useState<{
-    local: string[]
-    prod: string[]
-    mobile?: string[]
-  }>({ local: [], prod: [] })
+  const [qrLink, setQrLink] = useState<string>("")
+  const [qrRotations, setQrRotations] = useState<string[]>([])
   const [displayedIndex, setDisplayedIndex] = useState(0)
   const [isFading, setIsFading] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const [activeEnvironment, setActiveEnvironment] = useState<
-    "local" | "prod" | "mobile"
-  >("prod")
   const [countdown, setCountdown] = useState(15)
   const ROTATION_INTERVAL_MS = 15 * 1000 // 15 seconds
 
   const generateQRCodes = async () => {
     try {
-      const localUrl = `http://localhost:3000/student/checkin/public/${event.checkInCode}`
-      const prodUrl = `https://uniclub.id.vn//student/checkin/public/${event.checkInCode}`
-      // Mobile deep link - adjust IP address based on your mobile setup
-      const mobileLink = `exp://192.168.1.50:8081/--/student/checkin/public/${event.checkInCode}`
+      const prodUrl = `https://uniclub.id.vn/student/checkin/public/${event.checkInCode}`
 
-      setQrLinks({
-        local: localUrl,
-        prod: prodUrl,
-        mobile: mobileLink,
-      })
+      setQrLink(prodUrl)
 
       // Generate 3 QR code variants with different styles for rotation effect
       const styleVariants = [
@@ -63,23 +45,11 @@ export function PublicEventQRButton({
         { color: { dark: "#222222", light: "#FFFFFF" }, margin: 0, width: 300 },
       ]
 
-      const localQRs = await Promise.all(
-        styleVariants.map((style) => QRCode.toDataURL(localUrl, style))
-      )
-
       const prodQRs = await Promise.all(
         styleVariants.map((style) => QRCode.toDataURL(prodUrl, style))
       )
 
-      const mobileQRs = await Promise.all(
-        styleVariants.map((style) => QRCode.toDataURL(mobileLink, style))
-      )
-
-      setQrRotations({
-        local: localQRs,
-        prod: prodQRs,
-        mobile: mobileQRs,
-      })
+      setQrRotations(prodQRs)
     } catch (err) {
       console.error("Error generating QR codes:", err)
     }
@@ -126,25 +96,23 @@ export function PublicEventQRButton({
     return () => clearTimeout(t)
   }, [displayedIndex, showQrModal])
 
-  const handleCopyLink = async (environment: "local" | "prod" | "mobile") => {
+  const handleCopyLink = async () => {
     try {
-      const link = qrLinks[environment]
-      if (!link) return
-      await navigator.clipboard.writeText(link)
+      if (!qrLink) return
+      await navigator.clipboard.writeText(qrLink)
       // You can add a toast notification here
     } catch {
       console.error("Failed to copy link")
     }
   }
 
-  const handleDownloadQR = async (environment: "local" | "prod" | "mobile") => {
+  const handleDownloadQR = async () => {
     try {
-      const qrs = qrRotations[environment as "local" | "prod"]
-      if (!qrs || qrs.length === 0) return
+      if (!qrRotations || qrRotations.length === 0) return
 
       const link = document.createElement("a")
-      link.href = qrs[displayedIndex]
-      link.download = `public-event-${event.id}-${environment}-qr.png`
+      link.href = qrRotations[displayedIndex]
+      link.download = `public-event-${event.id}-qr.png`
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
@@ -171,12 +139,10 @@ export function PublicEventQRButton({
         eventName={event.name}
         checkInCode={event.checkInCode}
         qrRotations={qrRotations}
-        qrLinks={qrLinks}
+        qrLink={qrLink}
         countdown={countdown}
         isFullscreen={isFullscreen}
         setIsFullscreen={setIsFullscreen}
-        activeEnvironment={activeEnvironment}
-        setActiveEnvironment={setActiveEnvironment}
         displayedIndex={displayedIndex}
         isFading={isFading}
         handleCopyLink={handleCopyLink}
