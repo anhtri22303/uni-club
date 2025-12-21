@@ -93,12 +93,8 @@ export default function ClubLeaderEventsPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [viewMode, setViewMode] = useState<"hosted" | "cohost">("hosted"); // Toggle between hosted and co-host events
 
-  // Add fullscreen and environment states
+  // Add fullscreen state for QR modal
   const [isFullscreen, setIsFullscreen] = useState(false);
-  // support 'mobile' environment for deep-link QR
-  const [activeEnvironment, setActiveEnvironment] = useState<
-    "local" | "prod" | "mobile"
-  >("prod");
 
   // Fetch locations on mount
   useEffect(() => {
@@ -278,16 +274,8 @@ export default function ClubLeaderEventsPage() {
   const [showPhaseModal, setShowPhaseModal] = useState(false);
   const [isGeneratingQR, setIsGeneratingQR] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
-  const [qrLinks, setQrLinks] = useState<{
-    local?: string;
-    prod?: string;
-    mobile?: string;
-  }>({});
-  const [qrRotations, setQrRotations] = useState<{
-    local: string[];
-    prod: string[];
-    mobile?: string[];
-  }>({ local: [], prod: [] });
+  const [qrLink, setQrLink] = useState<string>("");
+  const [qrRotations, setQrRotations] = useState<string[]>([]);
   const [visibleIndex, setVisibleIndex] = useState(0);
   const [displayedIndex, setDisplayedIndex] = useState(0);
   const [isFading, setIsFading] = useState(false);
@@ -320,10 +308,8 @@ export default function ClubLeaderEventsPage() {
         );
         const { token } = await eventQR(selectedEvent.id, selectedPhase);
 
-        // Create URLs with new token and phase
+        // Create production URL only
         const prodUrl = `https://uniclub.id.vn/student/checkin/${selectedPhase}/${token}`;
-        const localUrl = `http://localhost:3000/student/checkin/${selectedPhase}/${token}`;
-        const mobileLink = `exp://192.168.1.50:8081/--/student/checkin/${selectedPhase}/${token}`;
 
         // Generate QR code variants
         const styleVariants = [
@@ -332,33 +318,14 @@ export default function ClubLeaderEventsPage() {
           { color: { dark: "#222222", light: "#FFFFFF" }, margin: 0 },
         ];
 
-        const localQrVariantsPromises = Array.from({ length: VARIANTS }).map(
-          (_, i) =>
-            QRCode.toDataURL(localUrl, styleVariants[i % styleVariants.length])
-        );
-        const localQrVariants = await Promise.all(localQrVariantsPromises);
-
         const prodQrVariantsPromises = Array.from({ length: VARIANTS }).map(
           (_, i) =>
             QRCode.toDataURL(prodUrl, styleVariants[i % styleVariants.length])
         );
         const prodQrVariants = await Promise.all(prodQrVariantsPromises);
 
-        const mobileVariantsPromises = Array.from({ length: VARIANTS }).map(
-          (_, i) =>
-            QRCode.toDataURL(
-              mobileLink,
-              styleVariants[i % styleVariants.length]
-            )
-        );
-        const mobileVariants = await Promise.all(mobileVariantsPromises);
-
-        setQrRotations({
-          local: localQrVariants,
-          prod: prodQrVariants,
-          mobile: mobileVariants,
-        });
-        setQrLinks({ local: localUrl, prod: prodUrl, mobile: mobileLink });
+        setQrRotations(prodQrVariants);
+        setQrLink(prodUrl);
         setVisibleIndex((i) => i + 1);
       } catch (err) {
         console.error("Failed to regenerate QR code:", err);
@@ -401,6 +368,7 @@ export default function ClubLeaderEventsPage() {
     locationId: 0,
     maxCheckInCount: 100,
     commitPointCost: 0,
+    rewardPerParticipant: 0,
   });
 
   // Separate state for managing event days
@@ -671,6 +639,7 @@ export default function ClubLeaderEventsPage() {
       locationId: 0,
       maxCheckInCount: 100,
       commitPointCost: 0,
+      rewardPerParticipant: 0,
     });
     setEventDays([{
       date: "",
@@ -712,8 +681,14 @@ export default function ClubLeaderEventsPage() {
       validationErrors.push("Max Check-ins must be greater than 0");
     }
 
-    if (formData.commitPointCost < 0) {
-      validationErrors.push("Point Cost cannot be negative");
+    if (formData.type === "PUBLIC") {
+      if (formData.rewardPerParticipant < 0) {
+        validationErrors.push("Reward Point cannot be negative");
+      }
+    } else {
+      if (formData.commitPointCost < 0) {
+        validationErrors.push("Point Cost cannot be negative");
+      }
     }
 
     // Validate event days
@@ -774,6 +749,7 @@ export default function ClubLeaderEventsPage() {
 
       // Ensure numeric values are properly converted (not NaN or null)
       const commitPointCost = Number(formData.commitPointCost) || 0;
+      const rewardPerParticipant = Number(formData.rewardPerParticipant) || 0;
 
       // Convert eventDays to API format - send as simple time strings (HH:MM)
       const daysPayload = eventDays.map(day => ({
@@ -793,7 +769,8 @@ export default function ClubLeaderEventsPage() {
         registrationDeadline: formData.registrationDeadline,
         locationId: formData.locationId,
         maxCheckInCount: formData.maxCheckInCount,
-        commitPointCost: commitPointCost,
+        commitPointCost: formData.type === "PUBLIC" ? 0 : commitPointCost,
+        rewardPerParticipant: formData.type === "PUBLIC" ? rewardPerParticipant : 0,
       };
 
 
@@ -840,34 +817,9 @@ export default function ClubLeaderEventsPage() {
   };
 
   // Helper functions for QR actions
-  const handleDownloadQR = (environment: "local" | "prod" | "mobile") => {
+  const handleDownloadQR = () => {
     try {
-      let qrDataUrl: string | undefined;
-      if (environment === "local") {
-        qrDataUrl =
-          qrRotations.local[displayedIndex % (qrRotations.local.length || 1)];
-      } else if (environment === "prod") {
-        qrDataUrl =
-          qrRotations.prod[displayedIndex % (qrRotations.prod.length || 1)];
-      } else {
-        // mobile: use pre-generated QR from qrRotations.mobile, or fallback to qrLinks.mobile
-        if (qrRotations.mobile && qrRotations.mobile.length > 0) {
-          qrDataUrl =
-            qrRotations.mobile[displayedIndex % qrRotations.mobile.length];
-        } else if (qrLinks.mobile) {
-          // Fallback: generate QR using external API with the correct mobile link (includes phase)
-          qrDataUrl = `https://api.qrserver.com/v1/create-qr-code/?size=640x640&data=${encodeURIComponent(
-            qrLinks.mobile
-          )}`;
-        } else {
-          toast({
-            title: "No QR",
-            description: "Mobile QR not available",
-            variant: "destructive",
-          });
-          return;
-        }
-      }
+      const qrDataUrl = qrRotations[displayedIndex % (qrRotations.length || 1)];
 
       if (!qrDataUrl) return;
 
@@ -875,13 +827,13 @@ export default function ClubLeaderEventsPage() {
       link.download = `qr-code-${selectedEvent?.name?.replace(
         /[^a-zA-Z0-9]/g,
         "-"
-      )}-${environment}.png`;
+      )}-production.png`;
       link.href = qrDataUrl;
       link.click();
 
       toast({
         title: "Downloaded",
-        description: `QR code downloaded for ${environment} environment`,
+        description: "QR code downloaded successfully",
       });
     } catch (err) {
       toast({
@@ -902,10 +854,8 @@ export default function ClubLeaderEventsPage() {
 
       const { token, expiresIn } = await eventQR(selectedEvent.id, phase);
 
-      // Create URLs with token and phase (path parameter format)
+      // Create production URL only
       const prodUrl = `https://uniclub.id.vn/student/checkin/${phase}/${token}`;
-      const localUrl = `http://localhost:3000/student/checkin/${phase}/${token}`;
-      const mobileLink = `exp://192.168.1.50:8081/--/student/checkin/${phase}/${token}`;
 
       // Generate QR code variants
       const styleVariants = [
@@ -914,13 +864,6 @@ export default function ClubLeaderEventsPage() {
         { color: { dark: "#222222", light: "#FFFFFF" }, margin: 0 },
       ];
 
-      // Generate QR variants for local environment
-      const localQrVariantsPromises = Array.from({ length: VARIANTS }).map(
-        (_, i) =>
-          QRCode.toDataURL(localUrl, styleVariants[i % styleVariants.length])
-      );
-      const localQrVariants = await Promise.all(localQrVariantsPromises);
-
       // Generate QR variants for production environment
       const prodQrVariantsPromises = Array.from({ length: VARIANTS }).map(
         (_, i) =>
@@ -928,19 +871,8 @@ export default function ClubLeaderEventsPage() {
       );
       const prodQrVariants = await Promise.all(prodQrVariantsPromises);
 
-      // Generate QR variants for mobile
-      const mobileVariantsPromises = Array.from({ length: VARIANTS }).map(
-        (_, i) =>
-          QRCode.toDataURL(mobileLink, styleVariants[i % styleVariants.length])
-      );
-      const mobileVariants = await Promise.all(mobileVariantsPromises);
-
-      setQrRotations({
-        local: localQrVariants,
-        prod: prodQrVariants,
-        mobile: mobileVariants,
-      });
-      setQrLinks({ local: localUrl, prod: prodUrl, mobile: mobileLink });
+      setQrRotations(prodQrVariants);
+      setQrLink(prodUrl);
       setVisibleIndex(0);
       setDisplayedIndex(0);
       setSelectedPhase(phase);
@@ -969,22 +901,14 @@ export default function ClubLeaderEventsPage() {
     }
   };
 
-  const handleCopyLink = async (environment: "local" | "prod" | "mobile") => {
+  const handleCopyLink = async () => {
     try {
-      let link: string | undefined;
-      if (environment === "mobile") {
-        link = qrLinks.mobile;
-      } else {
-        link = environment === "local" ? qrLinks.local : qrLinks.prod;
-      }
+      if (!qrLink) return;
 
-      if (!link) return;
-
-      await navigator.clipboard.writeText(link);
+      await navigator.clipboard.writeText(qrLink);
       toast({
         title: "Copied",
-        description: `${environment.charAt(0).toUpperCase() + environment.slice(1)
-          } link copied to clipboard`,
+        description: "Production link copied to clipboard",
       });
     } catch {
       toast({
@@ -1907,37 +1831,61 @@ export default function ClubLeaderEventsPage() {
                   )}
                 </div>
 
-                <div className="space-y-1.5">
-                  <Label
-                    htmlFor="commitPointCost"
-                    className="text-sm flex items-center gap-1.5"
-                  >
-                    {formData.type === "PUBLIC" ? "Reward Point" : "Commit Point"}
-                    <span className="text-red-500">*</span>
-                  </Label>
+                {formData.type === "PUBLIC" ? (
+                  <div className="space-y-1.5">
+                    <Label
+                      htmlFor="rewardPerParticipant"
+                      className="text-sm flex items-center gap-1.5"
+                    >
+                      Reward Point
+                      <span className="text-red-500">*</span>
+                    </Label>
 
-                  <Input
-                    id="commitPointCost"
-                    type="text"
-                    inputMode="numeric" // Tốt cho di động
-                    value={formData.commitPointCost.toLocaleString("en-US")}
-                    onChange={(e) => {
-                      const cleanValue = e.target.value.replace(/[^0-9]/g, ""); // Xóa mọi thứ không phải số
-                      const numValue =
-                        cleanValue === "" ? 0 : Number.parseInt(cleanValue, 10);
-                      setFormData({ ...formData, commitPointCost: numValue });
-                    }}
-                    className="h-9 transition-all duration-200 focus:ring-2 focus:ring-blue-500 border-slate-300"
-                    placeholder="0"
-                    required
-                  />
-                  {/* Sub text - conditional based on event type */}
-                  {formData.type === "PUBLIC" ? (
+                    <Input
+                      id="rewardPerParticipant"
+                      type="text"
+                      inputMode="numeric"
+                      value={formData.rewardPerParticipant.toLocaleString("en-US")}
+                      onChange={(e) => {
+                        const cleanValue = e.target.value.replace(/[^0-9]/g, "");
+                        const numValue =
+                          cleanValue === "" ? 0 : Number.parseInt(cleanValue, 10);
+                        setFormData({ ...formData, rewardPerParticipant: numValue });
+                      }}
+                      className="h-9 transition-all duration-200 focus:ring-2 focus:ring-blue-500 border-slate-300"
+                      placeholder="0"
+                      required
+                    />
                     <p className="text-xs text-slate-400 -mt-1">(Reward Points for each person checking in)</p>
-                  ) : formData.type !== "PUBLIC" && (
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    <Label
+                      htmlFor="commitPointCost"
+                      className="text-sm flex items-center gap-1.5"
+                    >
+                      Commit Point
+                      <span className="text-red-500">*</span>
+                    </Label>
+
+                    <Input
+                      id="commitPointCost"
+                      type="text"
+                      inputMode="numeric"
+                      value={formData.commitPointCost.toLocaleString("en-US")}
+                      onChange={(e) => {
+                        const cleanValue = e.target.value.replace(/[^0-9]/g, "");
+                        const numValue =
+                          cleanValue === "" ? 0 : Number.parseInt(cleanValue, 10);
+                        setFormData({ ...formData, commitPointCost: numValue });
+                      }}
+                      className="h-9 transition-all duration-200 focus:ring-2 focus:ring-blue-500 border-slate-300"
+                      placeholder="0"
+                      required
+                    />
                     <p className="text-xs text-slate-400 -mt-1">(ticket price)</p>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-3 gap-3">
@@ -2160,12 +2108,10 @@ export default function ClubLeaderEventsPage() {
               eventName={selectedEvent.name ?? ""}
               checkInCode={selectedEvent.checkInCode ?? ""}
               qrRotations={qrRotations}
-              qrLinks={qrLinks}
+              qrLink={qrLink}
               countdown={countdown}
               isFullscreen={isFullscreen}
               setIsFullscreen={setIsFullscreen}
-              activeEnvironment={activeEnvironment}
-              setActiveEnvironment={setActiveEnvironment}
               displayedIndex={displayedIndex}
               isFading={isFading}
               handleCopyLink={handleCopyLink}

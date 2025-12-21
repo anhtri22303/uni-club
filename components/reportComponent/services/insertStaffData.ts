@@ -30,8 +30,15 @@ type EditorRef = RefObject<HTMLDivElement>
 type AnyRecord = Record<string, any>
 
 function append(editorRef: EditorRef, html: string, afterChange: AfterChange) {
-  if (!editorRef.current) return
+  console.log("🔍 [append] editorRef:", editorRef)
+  console.log("🔍 [append] editorRef.current:", editorRef.current)
+  if (!editorRef.current) {
+    console.error("❌ [append] editorRef.current is null/undefined!")
+    return
+  }
+  console.log("🔍 [append] Current innerHTML length:", editorRef.current.innerHTML.length)
   editorRef.current.innerHTML += html + "<p><br></p>"
+  console.log("🔍 [append] New innerHTML length:", editorRef.current.innerHTML.length)
   setTimeout(() => afterChange(), 50)
 }
 
@@ -81,8 +88,11 @@ export async function insertStaffClubsTable(editorRef: EditorRef, afterChange: A
   toast.loading("Loading university clubs...")
   try {
     const response = await fetchClub({ page: 0, size: 200, sort: ["name"] })
+    console.log("🔍 [insertStaffClubsTable] Raw API response:", response)
     toast.dismiss()
     const clubs = normalizeContent(response)
+    console.log("🔍 [insertStaffClubsTable] Normalized clubs:", clubs)
+    console.log("🔍 [insertStaffClubsTable] Clubs length:", clubs.length)
     if (clubs.length === 0) {
       toast.info("No clubs found")
       return
@@ -153,7 +163,10 @@ export async function insertStaffClubsTable(editorRef: EditorRef, afterChange: A
       </div>
     `
 
+    console.log("🔍 [insertStaffClubsTable] HTML length:", html.length)
+    console.log("🔍 [insertStaffClubsTable] editorRef.current exists:", !!editorRef.current)
     append(editorRef, html, afterChange)
+    console.log("🔍 [insertStaffClubsTable] Content appended successfully")
     toast.success(`Inserted ${clubs.length} clubs`)
   } catch (error) {
     console.error("Failed to insert staff clubs table", error)
@@ -173,10 +186,17 @@ export async function insertStaffEventsTable(editorRef: EditorRef, afterChange: 
       return
     }
 
+    // Sort by date (newest first)
+    const sortedEvents = events.sort((a: AnyRecord, b: AnyRecord) => {
+      const dateA = a.startDate || a.date || '1970-01-01'
+      const dateB = b.startDate || b.date || '1970-01-01'
+      return new Date(dateB).getTime() - new Date(dateA).getTime()
+    })
+
     const statusMap = new Map<string, number>()
     const typeMap = new Map<string, number>()
 
-    events.forEach((event: AnyRecord) => {
+    sortedEvents.forEach((event: AnyRecord) => {
       const status = (event.status || "UNKNOWN").toUpperCase()
       statusMap.set(status, (statusMap.get(status) || 0) + 1)
       const type = (event.type || event.category || "UNDEFINED").toUpperCase()
@@ -199,7 +219,7 @@ export async function insertStaffEventsTable(editorRef: EditorRef, afterChange: 
           University Event Requests
         </h2>
         <p style="margin-bottom: 16px; color: #4b5563; font-size: 14px;">
-          ${pluralLabel(events.length, "event", "events")} tracked across ${statusMap.size} statuses and ${typeMap.size} event types.
+          ${pluralLabel(sortedEvents.length, "event", "events")} tracked across ${statusMap.size} statuses and ${typeMap.size} event types.
         </p>
         <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 18px;">
           <thead>
@@ -209,22 +229,42 @@ export async function insertStaffEventsTable(editorRef: EditorRef, afterChange: 
               <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left;">Date</th>
               <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left;">Status</th>
               <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left;">Type</th>
+              <th style="border: 1px solid #d1d5db; padding: 10px; text-align: right;">Points</th>
               <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left;">Host Club</th>
             </tr>
           </thead>
           <tbody>
     `
 
-    events.forEach((event: AnyRecord, index: number) => {
+    // Calculate metrics
+    let totalBudget = 0
+    let totalPublicReward = 0
+    
+    sortedEvents.forEach((event: AnyRecord, index: number) => {
       const bg = index % 2 === 0 ? "#ffffff" : "#f9fafb"
       const hostName = event.hostClub?.name || event.clubName || "-"
+      
+      // Calculate points display based on event type
+      let pointsDisplay = ""
+      const eventType = (event.type || event.category || "").toUpperCase()
+      if (eventType === "PUBLIC") {
+        const reward = event.rewardPerParticipant || 0
+        pointsDisplay = `${reward}pt/p`
+        totalPublicReward += reward * (event.maxCheckInCount || 0)
+      } else {
+        const commit = event.commitPointCost || 0
+        pointsDisplay = `${commit}pt`
+        totalBudget += event.budgetPoints || 0
+      }
+      
       html += `
         <tr style="background-color: ${bg};">
           <td style="border: 1px solid #e5e7eb; padding: 8px;">${index + 1}</td>
           <td style="border: 1px solid #e5e7eb; padding: 8px;">${event.name || event.title || "-"}</td>
-          <td style="border: 1px solid #e5e7eb; padding: 8px;">${formatDate(event.date)}</td>
+          <td style="border: 1px solid #e5e7eb; padding: 8px;">${formatDate(event.date || event.startDate)}</td>
           <td style="border: 1px solid #e5e7eb; padding: 8px;">${(event.status || "-").toUpperCase()}</td>
-          <td style="border: 1px solid #e5e7eb; padding: 8px;">${(event.type || event.category || "-").toUpperCase()}</td>
+          <td style="border: 1px solid #e5e7eb; padding: 8px;">${eventType}</td>
+          <td style="border: 1px solid #e5e7eb; padding: 8px; text-align: right;">${pointsDisplay}</td>
           <td style="border: 1px solid #e5e7eb; padding: 8px;">${hostName}</td>
         </tr>
       `
@@ -233,7 +273,7 @@ export async function insertStaffEventsTable(editorRef: EditorRef, afterChange: 
     html += `
           </tbody>
         </table>
-        <div style="display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+        <div style="display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 16px;">
           <div style="padding: 16px; border-left: 4px solid #16a34a; background: #ecfdf5;">
             <h3 style="margin: 0 0 8px 0; font-size: 15px; font-weight: 600; color: #047857;">
               Status Distribution
@@ -251,11 +291,16 @@ export async function insertStaffEventsTable(editorRef: EditorRef, afterChange: 
             </ul>
           </div>
         </div>
+        <div style="padding: 16px; border-left: 4px solid #0891b2; background: #ecfeff;">
+          <h3 style="margin: 0 0 8px 0; font-size: 15px; font-weight: 600; color: #0e7490;">Budget Allocation</h3>
+          <p style="margin: 3px 0; font-size: 13px; color: #164e63;"><strong>Total Budget (Private/Special):</strong> ${totalBudget.toLocaleString()} points</p>
+          <p style="margin: 3px 0; font-size: 13px; color: #164e63;"><strong>Total Public Rewards:</strong> ${totalPublicReward.toLocaleString()} points</p>
+        </div>
       </div>
     `
 
     append(editorRef, html, afterChange)
-    toast.success(`Inserted ${events.length} events`)
+    toast.success(`Inserted ${sortedEvents.length} events (sorted by date)`)
   } catch (error) {
     console.error("Failed to insert staff events table", error)
     toast.dismiss()
@@ -272,6 +317,13 @@ export async function insertStaffSettledEventsTable(editorRef: EditorRef, afterC
       toast.info("No settled events recorded")
       return
     }
+
+    // Sort by date (newest first)
+    const sortedEvents = events.sort((a: AnyRecord, b: AnyRecord) => {
+      const dateA = a.startDate || a.date || '1970-01-01'
+      const dateB = b.startDate || b.date || '1970-01-01'
+      return new Date(dateB).getTime() - new Date(dateA).getTime()
+    })
 
     let html = `
       <div style="margin: 24px 0; page-break-inside: avoid;">
@@ -296,14 +348,15 @@ export async function insertStaffSettledEventsTable(editorRef: EditorRef, afterC
     `
 
     let totalBudget = 0
-    events.forEach((event: AnyRecord, index: number) => {
+    sortedEvents.forEach((event: AnyRecord, index: number) => {
       const bg = index % 2 === 0 ? "#ffffff" : "#f9fafb"
       totalBudget += Number(event.budgetPoints || 0)
+      const eventDate = event.startDate || event.date || event.endDate
       html += `
         <tr style="background-color: ${bg};">
           <td style="border: 1px solid #e5e7eb; padding: 8px;">${index + 1}</td>
           <td style="border: 1px solid #e5e7eb; padding: 8px;">${event.name || "-"}</td>
-          <td style="border: 1px solid #e5e7eb; padding: 8px;">${formatDate(event.date)}</td>
+          <td style="border: 1px solid #e5e7eb; padding: 8px;">${formatDate(eventDate)}</td>
           <td style="border: 1px solid #e5e7eb; padding: 8px;">${(event.budgetPoints || 0).toLocaleString()}</td>
           <td style="border: 1px solid #e5e7eb; padding: 8px;">${event.hostClub?.name || "-"}</td>
           <td style="border: 1px solid #e5e7eb; padding: 8px;">${event.locationName || "-"}</td>
@@ -323,7 +376,7 @@ export async function insertStaffSettledEventsTable(editorRef: EditorRef, afterC
     `
 
     append(editorRef, html, afterChange)
-    toast.success(`Inserted ${events.length} settled events`)
+    toast.success(`Inserted ${sortedEvents.length} settled events (sorted by date)`)
   } catch (error) {
     console.error("Failed to insert settled events table", error)
     toast.dismiss()
@@ -406,8 +459,15 @@ export async function insertStaffClubApplicationsTable(editorRef: EditorRef, aft
       return
     }
 
+    // Sort by submittedAt (newest first)
+    const sortedApplications = applications.sort((a: AnyRecord, b: AnyRecord) => {
+      const dateA = a.submittedAt || '1970-01-01'
+      const dateB = b.submittedAt || '1970-01-01'
+      return new Date(dateB).getTime() - new Date(dateA).getTime()
+    })
+
     const statusMap = new Map<string, number>()
-    applications.forEach((app: AnyRecord) => {
+    sortedApplications.forEach((app: AnyRecord) => {
       const status = (app.status || "UNKNOWN").toUpperCase()
       statusMap.set(status, (statusMap.get(status) || 0) + 1)
     })
@@ -423,7 +483,7 @@ export async function insertStaffClubApplicationsTable(editorRef: EditorRef, aft
           Club Formation Applications
         </h2>
         <p style="margin-bottom: 16px; color: #4b5563; font-size: 14px;">
-          ${pluralLabel(applications.length, "application", "applications")} submitted by students across the university.
+          ${pluralLabel(sortedApplications.length, "application", "applications")} submitted by students across the university.
         </p>
         <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
           <thead>
@@ -439,7 +499,7 @@ export async function insertStaffClubApplicationsTable(editorRef: EditorRef, aft
           <tbody>
     `
 
-    applications.forEach((app: AnyRecord, index: number) => {
+    sortedApplications.forEach((app: AnyRecord, index: number) => {
       const bg = index % 2 === 0 ? "#ffffff" : "#f9fafb"
       const reviewer = app.reviewedBy?.fullName || "-"
       html += `
@@ -469,7 +529,7 @@ export async function insertStaffClubApplicationsTable(editorRef: EditorRef, aft
     `
 
     append(editorRef, html, afterChange)
-    toast.success(`Inserted ${applications.length} club applications`)
+    toast.success(`Inserted ${sortedApplications.length} club applications (sorted by date)`)
   } catch (error) {
     console.error("Failed to insert club applications table", error)
     toast.dismiss()
@@ -488,10 +548,17 @@ export async function insertStaffPointRequestsTable(editorRef: EditorRef, afterC
       return
     }
 
+    // Sort by createdAt (newest first)
+    const sortedRequests = requests.sort((a, b) => {
+      const dateA = a.createdAt || '1970-01-01'
+      const dateB = b.createdAt || '1970-01-01'
+      return new Date(dateB).getTime() - new Date(dateA).getTime()
+    })
+
     const statusMap = new Map<string, number>()
     let totalRequested = 0
 
-    requests.forEach((req) => {
+    sortedRequests.forEach((req) => {
       const status = (req.status || "UNKNOWN").toUpperCase()
       statusMap.set(status, (statusMap.get(status) || 0) + 1)
       totalRequested += Number(req.requestedPoints || 0)
@@ -524,7 +591,7 @@ export async function insertStaffPointRequestsTable(editorRef: EditorRef, afterC
           <tbody>
     `
 
-    requests.forEach((req, index) => {
+    sortedRequests.forEach((req, index) => {
       const bg = index % 2 === 0 ? "#ffffff" : "#f9fafb"
       html += `
         <tr style="background-color: ${bg};">
@@ -553,7 +620,7 @@ export async function insertStaffPointRequestsTable(editorRef: EditorRef, afterC
     `
 
     append(editorRef, html, afterChange)
-    toast.success(`Inserted ${requests.length} point requests`)
+    toast.success(`Inserted ${sortedRequests.length} point requests (sorted by date)`)
   } catch (error) {
     console.error("Failed to insert point requests table", error)
     toast.dismiss()
@@ -860,7 +927,14 @@ export async function insertStaffUniToClubTransactionsTable(editorRef: EditorRef
       return
     }
 
-    const rows = transactions
+    // Sort by createdAt (newest first)
+    const sortedTransactions = transactions.sort((a: AnyRecord, b: AnyRecord) => {
+      const dateA = a.createdAt || '1970-01-01'
+      const dateB = b.createdAt || '1970-01-01'
+      return new Date(dateB).getTime() - new Date(dateA).getTime()
+    })
+
+    const rows = sortedTransactions
       .map(
         (txn, index) => `
           <tr style="background-color: ${index % 2 === 0 ? "#ffffff" : "#f9fafb"};">
@@ -874,7 +948,7 @@ export async function insertStaffUniToClubTransactionsTable(editorRef: EditorRef
       )
       .join("")
 
-    const totalAmount = transactions.reduce((acc, txn) => acc + Number(txn.amount || 0), 0)
+    const totalAmount = sortedTransactions.reduce((acc, txn) => acc + Number(txn.amount || 0), 0)
 
     const html = `
       <div style="margin: 24px 0; page-break-inside: avoid;">
@@ -882,8 +956,8 @@ export async function insertStaffUniToClubTransactionsTable(editorRef: EditorRef
           University-to-Club Point Distributions
         </h2>
         <p style="margin-bottom: 16px; color: #4b5563; font-size: 14px;">
-          ${pluralLabel(transactions.length, "transaction", "transactions")} processed totaling
-          <strong>${totalAmount.toLocaleString()}</strong> points.
+          ${pluralLabel(sortedTransactions.length, "transaction", "transactions")} processed totaling
+          <strong>${totalAmount.toLocaleString()}</strong> points (sorted by date).
         </p>
         <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
           <thead>
@@ -1192,7 +1266,14 @@ export async function insertStaffUniToEventTransactionsTable(editorRef: EditorRe
       return
     }
 
-    const rows = transactions
+    // Sort by createdAt (newest first)
+    const sortedTransactions = transactions.sort((a: AnyRecord, b: AnyRecord) => {
+      const dateA = a.createdAt || '1970-01-01'
+      const dateB = b.createdAt || '1970-01-01'
+      return new Date(dateB).getTime() - new Date(dateA).getTime()
+    })
+
+    const rows = sortedTransactions
       .map(
         (txn, index) => `
           <tr style="background-color: ${index % 2 === 0 ? "#ffffff" : "#f9fafb"};">
@@ -1235,7 +1316,7 @@ export async function insertStaffUniToEventTransactionsTable(editorRef: EditorRe
     `
 
     append(editorRef, html, afterChange)
-    toast.success("Inserted event transactions table")
+    toast.success("Inserted event transactions table (sorted by date)")
   } catch (error) {
     console.error("Failed to insert uni-to-event transactions table", error)
     toast.dismiss()
@@ -1602,8 +1683,6 @@ export async function insertStaffStudentRegistryTable(editorRef: EditorRef, afte
             <tr style="background-color: #f3f4f6;">
               <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left;">Student Code</th>
               <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left;">Full Name</th>
-              <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left;">Major</th>
-              <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left;">Class</th>
             </tr>
           </thead>
           <tbody>
@@ -1616,8 +1695,6 @@ export async function insertStaffStudentRegistryTable(editorRef: EditorRef, afte
         <tr style="background-color: ${bg};">
           <td style="border: 1px solid #e5e7eb; padding: 8px; font-weight: 600;">${student.studentCode || "-"}</td>
           <td style="border: 1px solid #e5e7eb; padding: 8px;">${student.fullName || "-"}</td>
-          <td style="border: 1px solid #e5e7eb; padding: 8px;">${student.major || "-"}</td>
-          <td style="border: 1px solid #e5e7eb; padding: 8px;">${student.className || "-"}</td>
         </tr>
       `
     })
@@ -1669,7 +1746,7 @@ export async function insertStaffProductsTable(editorRef: EditorRef, afterChange
 
     const clubCounts = new Map<string, number>()
     const statusCounts = {
-      AVAILABLE: 0,
+      ACTIVE: 0,
       OUT_OF_STOCK: 0,
       INACTIVE: 0,
     }
@@ -1680,12 +1757,19 @@ export async function insertStaffProductsTable(editorRef: EditorRef, afterChange
       const clubName = product.clubName || "Unknown Club"
       clubCounts.set(clubName, (clubCounts.get(clubName) || 0) + 1)
       
-      if (product.status === "AVAILABLE") statusCounts.AVAILABLE++
-      else if (product.status === "OUT_OF_STOCK") statusCounts.OUT_OF_STOCK++
-      else statusCounts.INACTIVE++
+      // Determine actual status based on API status and stock
+      if (product.status === "ACTIVE") {
+        if (product.stockQuantity > 0) {
+          statusCounts.ACTIVE++
+        } else {
+          statusCounts.OUT_OF_STOCK++
+        }
+      } else {
+        statusCounts.INACTIVE++
+      }
       
-      totalStock += product.stock || 0
-      totalValue += (product.price || 0) * (product.stock || 0)
+      totalStock += product.stockQuantity || 0
+      totalValue += (product.pointCost || 0) * (product.stockQuantity || 0)
     })
 
     let html = `
@@ -1713,26 +1797,25 @@ export async function insertStaffProductsTable(editorRef: EditorRef, afterChange
       const bg = index % 2 === 0 ? "#ffffff" : "#f9fafb"
       
       let statusBadge = ""
-      switch (product.status) {
-        case "AVAILABLE":
+      // Determine status based on API status field and stock quantity
+      if (product.status === "ACTIVE") {
+        if (product.stockQuantity > 0) {
           statusBadge = '<span style="background: #d1fae5; color: #065f46; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">AVAILABLE</span>'
-          break
-        case "OUT_OF_STOCK":
+        } else {
           statusBadge = '<span style="background: #fed7aa; color: #9a3412; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">OUT OF STOCK</span>'
-          break
-        case "INACTIVE":
-          statusBadge = '<span style="background: #f3f4f6; color: #4b5563; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">INACTIVE</span>'
-          break
-        default:
-          statusBadge = '<span style="background: #f3f4f6; color: #4b5563; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">UNKNOWN</span>'
+        }
+      } else if (product.status === "INACTIVE") {
+        statusBadge = '<span style="background: #f3f4f6; color: #4b5563; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">INACTIVE</span>'
+      } else {
+        statusBadge = '<span style="background: #f3f4f6; color: #4b5563; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">UNKNOWN</span>'
       }
       
       html += `
         <tr style="background-color: ${bg};">
-          <td style="border: 1px solid #e5e7eb; padding: 8px; font-weight: 600;">${product.productName || "-"}</td>
+          <td style="border: 1px solid #e5e7eb; padding: 8px; font-weight: 600;">${product.name || "-"}</td>
           <td style="border: 1px solid #e5e7eb; padding: 8px;">${product.clubName || "-"}</td>
-          <td style="border: 1px solid #e5e7eb; padding: 8px; text-align: center;">${(product.price || 0).toLocaleString()}</td>
-          <td style="border: 1px solid #e5e7eb; padding: 8px; text-align: center;">${(product.stock || 0).toLocaleString()}</td>
+          <td style="border: 1px solid #e5e7eb; padding: 8px; text-align: center;">${(product.pointCost || 0).toLocaleString()}</td>
+          <td style="border: 1px solid #e5e7eb; padding: 8px; text-align: center;">${(product.stockQuantity || 0).toLocaleString()}</td>
           <td style="border: 1px solid #e5e7eb; padding: 8px; text-align: center;">${statusBadge}</td>
         </tr>
       `
@@ -1752,7 +1835,7 @@ export async function insertStaffProductsTable(editorRef: EditorRef, afterChange
             Product Statistics
           </h3>
           <ul style="margin: 0; padding-left: 18px; color: #1f2937; font-size: 13px;">
-            <li>Available: <strong>${statusCounts.AVAILABLE}</strong></li>
+            <li>Active (In Stock): <strong>${statusCounts.ACTIVE}</strong></li>
             <li>Out of Stock: <strong>${statusCounts.OUT_OF_STOCK}</strong></li>
             <li>Inactive: <strong>${statusCounts.INACTIVE}</strong></li>
             <li>Total Inventory: <strong>${totalStock.toLocaleString()}</strong> items</li>

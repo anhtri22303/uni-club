@@ -36,6 +36,7 @@ export interface Event {
   currentCheckInCount: number
   budgetPoints: number
   commitPointCost: number
+  rewardPerParticipant: number
   hostClub: {
     id: number
     name: string
@@ -71,6 +72,7 @@ export interface CreateEventPayload {
   locationId: number
   maxCheckInCount: number
   commitPointCost: number
+  rewardPerParticipant: number
 }
 
 // Helper function to convert time string (HH:MM:SS or HH:MM) to TimeObject

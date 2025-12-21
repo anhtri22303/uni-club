@@ -250,8 +250,8 @@ export default function AdminEventsPage() {
   const [showPhaseModal, setShowPhaseModal] = useState(false)
   const [isGeneratingQR, setIsGeneratingQR] = useState(false)
   const [showQrModal, setShowQrModal] = useState(false)
-  const [qrLinks, setQrLinks] = useState<{ local?: string; prod?: string; mobile?: string }>({})
-  const [qrRotations, setQrRotations] = useState<{ local: string[]; prod: string[]; mobile?: string[] }>({ local: [], prod: [] })
+  const [qrLink, setQrLink] = useState<string>("")
+  const [qrRotations, setQrRotations] = useState<string[]>([])
   const [visibleIndex, setVisibleIndex] = useState(0)
   const [displayedIndex, setDisplayedIndex] = useState(0)
   const [isFading, setIsFading] = useState(false)
@@ -276,8 +276,6 @@ export default function AdminEventsPage() {
         const { token } = await eventQR(selectedEvent.id, selectedPhase)
 
         const prodUrl = `https://uniclub.id.vn/student/checkin/${selectedPhase}/${token}`
-        const localUrl = `http://localhost:3000/student/checkin/${selectedPhase}/${token}`
-        const mobileLink = `exp://192.168.1.50:8081/--/student/checkin/${selectedPhase}/${token}`
 
         const styleVariants = [
           { color: { dark: '#000000', light: '#FFFFFF' }, margin: 1 },
@@ -285,23 +283,13 @@ export default function AdminEventsPage() {
           { color: { dark: '#222222', light: '#FFFFFF' }, margin: 0 },
         ]
 
-        const localQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) =>
-          QRCode.toDataURL(localUrl, styleVariants[i % styleVariants.length])
-        )
-        const localQrVariants = await Promise.all(localQrVariantsPromises)
-
         const prodQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) =>
           QRCode.toDataURL(prodUrl, styleVariants[i % styleVariants.length])
         )
         const prodQrVariants = await Promise.all(prodQrVariantsPromises)
 
-        const mobileVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) =>
-          QRCode.toDataURL(mobileLink, styleVariants[i % styleVariants.length])
-        )
-        const mobileVariants = await Promise.all(mobileVariantsPromises)
-
-        setQrRotations({ local: localQrVariants, prod: prodQrVariants, mobile: mobileVariants })
-        setQrLinks({ local: localUrl, prod: prodUrl, mobile: mobileLink })
+        setQrRotations(prodQrVariants)
+        setQrLink(prodUrl)
         setVisibleIndex((i) => i + 1)
       } catch (err) {
         console.error('Failed to regenerate QR code:', err)
@@ -443,8 +431,6 @@ export default function AdminEventsPage() {
       const { token, expiresIn } = await eventQR(selectedEvent.id, phase)
 
       const prodUrl = `https://uniclub.id.vn/student/checkin/${phase}/${token}`
-      const localUrl = `http://localhost:3000/student/checkin/${phase}/${token}`
-      const mobileLink = `exp://192.168.1.50:8081/--/student/checkin/${phase}/${token}`
 
       const styleVariants = [
         { color: { dark: '#000000', light: '#FFFFFF' }, margin: 1 },
@@ -452,23 +438,13 @@ export default function AdminEventsPage() {
         { color: { dark: '#222222', light: '#FFFFFF' }, margin: 0 },
       ]
 
-      const localQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) =>
-        QRCode.toDataURL(localUrl, styleVariants[i % styleVariants.length])
-      )
-      const localQrVariants = await Promise.all(localQrVariantsPromises)
-
       const prodQrVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) =>
         QRCode.toDataURL(prodUrl, styleVariants[i % styleVariants.length])
       )
       const prodQrVariants = await Promise.all(prodQrVariantsPromises)
 
-      const mobileVariantsPromises = Array.from({ length: VARIANTS }).map((_, i) =>
-        QRCode.toDataURL(mobileLink, styleVariants[i % styleVariants.length])
-      )
-      const mobileVariants = await Promise.all(mobileVariantsPromises)
-
-      setQrRotations({ local: localQrVariants, prod: prodQrVariants, mobile: mobileVariants })
-      setQrLinks({ local: localUrl, prod: prodUrl, mobile: mobileLink })
+      setQrRotations(prodQrVariants)
+      setQrLink(prodUrl)
       setVisibleIndex(0)
       setDisplayedIndex(0)
       setSelectedPhase(phase)
@@ -493,55 +469,38 @@ export default function AdminEventsPage() {
     }
   }
 
-  const handleDownloadQR = (environment: 'local' | 'prod' | 'mobile') => {
+  const handleDownloadQR = () => {
     try {
-      let qrDataUrl: string | undefined
-      if (environment === 'local') {
-        qrDataUrl = qrRotations.local[displayedIndex % (qrRotations.local.length || 1)]
-      } else if (environment === 'prod') {
-        qrDataUrl = qrRotations.prod[displayedIndex % (qrRotations.prod.length || 1)]
-      } else {
-        if (qrRotations.mobile && qrRotations.mobile.length > 0) {
-          qrDataUrl = qrRotations.mobile[displayedIndex % qrRotations.mobile.length]
-        } else if (qrLinks.mobile) {
-          qrDataUrl = `https://api.qrserver.com/v1/create-qr-code/?size=640x640&data=${encodeURIComponent(qrLinks.mobile)}`
-        } else {
-          toast({ title: 'No QR', description: 'Mobile QR not available', variant: 'destructive' })
-          return
-        }
+      if (!qrRotations || qrRotations.length === 0) {
+        toast({ title: 'No QR', description: 'QR code not available', variant: 'destructive' })
+        return
       }
 
+      const qrDataUrl = qrRotations[displayedIndex % qrRotations.length]
       if (!qrDataUrl) return
 
       const link = document.createElement('a')
-      link.download = `qr-code-${selectedEvent?.title?.replace(/[^a-zA-Z0-9]/g, '-')}-${environment}.png`
+      link.download = `qr-code-${selectedEvent?.title?.replace(/[^a-zA-Z0-9]/g, '-')}.png`
       link.href = qrDataUrl
       link.click()
 
       toast({
         title: 'Downloaded',
-        description: `QR code downloaded for ${environment} environment`
+        description: 'QR code downloaded successfully'
       })
     } catch (err) {
       toast({ title: 'Download failed', description: 'Could not download QR code', variant: 'destructive' })
     }
   }
 
-  const handleCopyLink = async (environment: 'local' | 'prod' | 'mobile') => {
+  const handleCopyLink = async () => {
     try {
-      let link: string | undefined
-      if (environment === 'mobile') {
-        link = qrLinks.mobile
-      } else {
-        link = environment === 'local' ? qrLinks.local : qrLinks.prod
-      }
+      if (!qrLink) return
 
-      if (!link) return
-
-      await navigator.clipboard.writeText(link)
+      await navigator.clipboard.writeText(qrLink)
       toast({
         title: 'Copied',
-        description: `${environment.charAt(0).toUpperCase() + environment.slice(1)} link copied to clipboard`
+        description: 'Link copied to clipboard'
       })
     } catch {
       toast({ title: 'Copy failed', description: 'Could not copy link to clipboard', variant: 'destructive' })
@@ -1094,12 +1053,10 @@ export default function AdminEventsPage() {
               eventName={selectedEvent.title ?? ''} // Dùng .title thay vì .name
               checkInCode={''} // API mới không có checkInCode
               qrRotations={qrRotations}
-              qrLinks={qrLinks}
+              qrLink={qrLink}
               countdown={countdown}
               isFullscreen={isFullscreen}
               setIsFullscreen={setIsFullscreen}
-              activeEnvironment={activeEnvironment}
-              setActiveEnvironment={setActiveEnvironment}
               displayedIndex={displayedIndex}
               isFading={isFading}
               handleCopyLink={handleCopyLink}
