@@ -178,6 +178,11 @@ export default function UniStaffActivityReportPage() {
 
     const [confirmLockId, setConfirmLockId] = useState<number | null>(null);
     const [confirmApproveId, setConfirmApproveId] = useState<number | null>(null);
+    
+    // Pagination state for Inspector tab
+    const [eventsPage, setEventsPage] = useState(1)
+    const [historyPage, setHistoryPage] = useState(1)
+    const itemsPerPage = 5
     // --- Load Master Club List (Chạy 1 lần đầu) ---
     useEffect(() => {
         const loadAllClubs = async () => {
@@ -274,6 +279,8 @@ export default function UniStaffActivityReportPage() {
         const cId = parseInt(inspectorClubId);
         setInspectorLoading(true);
         setHasSearched(true);
+        setEventsPage(1); // Reset pagination
+        setHistoryPage(1); // Reset pagination
 
         try {
             const [historyRes, eventsRes] = await Promise.all([
@@ -297,6 +304,19 @@ export default function UniStaffActivityReportPage() {
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedYear, selectedMonth])
+
+    // Pagination calculations
+    const paginatedEvents = clubEvents.slice(
+        (eventsPage - 1) * itemsPerPage,
+        eventsPage * itemsPerPage
+    )
+    const totalEventPages = Math.ceil(clubEvents.length / itemsPerPage)
+
+    const paginatedHistory = clubHistory.slice(
+        (historyPage - 1) * itemsPerPage,
+        historyPage * itemsPerPage
+    )
+    const totalHistoryPages = Math.ceil(clubHistory.length / itemsPerPage)
 
     // --- Actions ---
     const handleRecalculateAll = async () => {
@@ -699,9 +719,9 @@ export default function UniStaffActivityReportPage() {
                             </Card>
 
                             {hasSearched && (
-                                <div className="grid md:grid-cols-2 gap-6">
-                                    {/* Event Table */}
-                                    <Card className="h-full">
+                                <div className="grid md:grid-cols-[2fr_1fr] gap-6">
+                                    {/* Event Table - Wider column (left) */}
+                                    <Card className="h-full flex flex-col">
                                         <CardHeader>
                                             <CardTitle className="flex items-center gap-2">
                                                 <FileText className="h-5 w-5 text-blue-500" />
@@ -709,7 +729,7 @@ export default function UniStaffActivityReportPage() {
                                             </CardTitle>
                                             <CardDescription>How events impacted the score this month.</CardDescription>
                                         </CardHeader>
-                                        <CardContent>
+                                        <CardContent className="flex-1 flex flex-col">
                                             <Table>
                                                 <TableHeader>
                                                     <TableRow>
@@ -723,10 +743,10 @@ export default function UniStaffActivityReportPage() {
                                                     {clubEvents.length === 0 ? (
                                                         <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">No events found for this month.</TableCell></TableRow>
                                                     ) : (
-                                                        clubEvents.map((evt, idx) => (
+                                                        paginatedEvents.map((evt, idx) => (
                                                             <TableRow key={idx}>
                                                                 <TableCell className="font-medium">{evt.eventName}</TableCell>
-                                                                <TableCell className="text-center">{evt.feedback.toFixed(1)}</TableCell>
+                                                                <TableCell className={`text-center ${getFeedbackColor(evt.feedback)}`}>{evt.feedback.toFixed(1)}</TableCell>
                                                                 <TableCell className="text-center">{evt.checkinRate}%</TableCell>
                                                                 <TableCell className="text-right"><Badge variant="secondary">{evt.weight}</Badge></TableCell>
                                                             </TableRow>
@@ -734,11 +754,51 @@ export default function UniStaffActivityReportPage() {
                                                     )}
                                                 </TableBody>
                                             </Table>
+                                            
+                                            {/* Pagination for Events */}
+                                            {totalEventPages > 1 && (
+                                                <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                                                    <p className="text-sm text-muted-foreground">
+                                                        Showing {((eventsPage - 1) * itemsPerPage) + 1} to {Math.min(eventsPage * itemsPerPage, clubEvents.length)} of {clubEvents.length} events
+                                                    </p>
+                                                    <div className="flex gap-2">
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => setEventsPage(p => Math.max(1, p - 1))}
+                                                            disabled={eventsPage === 1}
+                                                        >
+                                                            Previous
+                                                        </Button>
+                                                        <div className="flex items-center gap-1">
+                                                            {Array.from({ length: totalEventPages }, (_, i) => i + 1).map(page => (
+                                                                <Button
+                                                                    key={page}
+                                                                    variant={page === eventsPage ? "default" : "outline"}
+                                                                    size="sm"
+                                                                    onClick={() => setEventsPage(page)}
+                                                                    className="w-8 h-8 p-0"
+                                                                >
+                                                                    {page}
+                                                                </Button>
+                                                            ))}
+                                                        </div>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => setEventsPage(p => Math.min(totalEventPages, p + 1))}
+                                                            disabled={eventsPage === totalEventPages}
+                                                        >
+                                                            Next
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </CardContent>
                                     </Card>
 
-                                    {/* History Table */}
-                                    <Card className="h-full">
+                                    {/* History Table - Narrower column (right) */}
+                                    <Card className="h-full flex flex-col">
                                         <CardHeader>
                                             <CardTitle className="flex items-center gap-2">
                                                 <History className="h-5 w-5 text-purple-500" />
@@ -746,7 +806,7 @@ export default function UniStaffActivityReportPage() {
                                             </CardTitle>
                                             <CardDescription>Score tracking over the months.</CardDescription>
                                         </CardHeader>
-                                        <CardContent>
+                                        <CardContent className="flex-1 flex flex-col">
                                             <Table>
                                                 <TableHeader>
                                                     <TableRow>
@@ -759,7 +819,7 @@ export default function UniStaffActivityReportPage() {
                                                     {clubHistory.length === 0 ? (
                                                         <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-8">No history recorded.</TableCell></TableRow>
                                                     ) : (
-                                                        clubHistory.map((item, idx) => (
+                                                        paginatedHistory.map((item, idx) => (
                                                             <TableRow key={idx} className={item.month === selectedMonth ? "bg-muted/50 border-l-2 border-primary" : ""}>
                                                                 <TableCell className="font-medium">Month {item.month}</TableCell>
                                                                 <TableCell className="text-right font-bold">{item.score.toFixed(1)}</TableCell>
@@ -773,6 +833,46 @@ export default function UniStaffActivityReportPage() {
                                                     )}
                                                 </TableBody>
                                             </Table>
+                                            
+                                            {/* Pagination for History */}
+                                            {totalHistoryPages > 1 && (
+                                                <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                                                    <p className="text-sm text-muted-foreground">
+                                                        Page {historyPage} of {totalHistoryPages}
+                                                    </p>
+                                                    <div className="flex gap-2">
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => setHistoryPage(p => Math.max(1, p - 1))}
+                                                            disabled={historyPage === 1}
+                                                        >
+                                                            Previous
+                                                        </Button>
+                                                        <div className="flex items-center gap-1">
+                                                            {Array.from({ length: totalHistoryPages }, (_, i) => i + 1).map(page => (
+                                                                <Button
+                                                                    key={page}
+                                                                    variant={page === historyPage ? "default" : "outline"}
+                                                                    size="sm"
+                                                                    onClick={() => setHistoryPage(page)}
+                                                                    className="w-8 h-8 p-0"
+                                                                >
+                                                                    {page}
+                                                                </Button>
+                                                            ))}
+                                                        </div>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => setHistoryPage(p => Math.min(totalHistoryPages, p + 1))}
+                                                            disabled={historyPage === totalHistoryPages}
+                                                        >
+                                                            Next
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </CardContent>
                                     </Card>
                                 </div>
