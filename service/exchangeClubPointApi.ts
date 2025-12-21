@@ -11,7 +11,7 @@ export interface CashoutResponse {
   requestedByName: string;
   pointsRequested: number;
   cashAmount: number;
-  status: "PENDING" | "APPROVED" | "REJECTED";
+  status: CashoutStatus;
   leaderNote: string;
   staffNote: string;
   requestedAt: string;
@@ -24,128 +24,98 @@ interface ApiResponse<T> {
   data: T;
 }
 
-// 1. GỬI ĐƠN XIN RÚT ĐIỂM CLB (POST /api/cashouts)
+/** * NHÓM API DÀNH CHO CLUB LEADER
+ */
+
+// 1. Gửi đơn xin rút điểm CLB (POST /api/cashouts)
 export const postCashoutRequest = async (payload: {
   clubId: number | string;
   points: number;
   note?: string;
 }) => {
-  try {
-    const response = await axiosInstance.post<ApiResponse<CashoutResponse>>(
-      "/api/cashouts",
-      null, // Body để null vì tham số truyền qua query string theo hình ảnh
-      {
-        params: {
-          clubId: payload.clubId,
-          points: payload.points,
-          note: payload.note,
-        },
-      }
-    );
-    return response.data;
-  } catch (error: any) {
-    console.error("Error posting cashout request:", error.response?.data || error.message);
-    throw error;
-  }
+  const response = await axiosInstance.post<ApiResponse<CashoutResponse>>(
+    "/api/cashouts",
+    null,
+    { params: payload }
+  );
+  return response.data;
 };
 
-// 2. XEM DANH SÁCH ĐƠN RÚT ĐIỂM CỦA CLB (GET /api/cashouts/my-club/{clubId})
+// 2. Xem chi tiết một đơn rút điểm (GET /api/cashouts/{id})
+export const getCashoutDetail = async (id: number | string) => {
+  const response = await axiosInstance.get<ApiResponse<CashoutResponse>>(
+    `/api/cashouts/${id}`
+  );
+  return response.data;
+};
+
+// 3. Xem danh sách đơn rút điểm của CLB mình (GET /api/cashouts/my-club/{clubId})
 export const getCashoutsByClubId = async (clubId: number | string) => {
-  try {
-    const response = await axiosInstance.get<ApiResponse<CashoutResponse[]>>(
-      `/api/cashouts/my-club/${clubId}`
-    );
-    if (response.data?.success) {
-      return response.data.data;
-    }
-    return [];
-  } catch (error: any) {
-    console.error(`Error fetching cashouts for club ${clubId}:`, error.response?.data || error.message);
-    throw error;
-  }
+  const response = await axiosInstance.get<ApiResponse<CashoutResponse[]>>(
+    `/api/cashouts/my-club/${clubId}`
+  );
+  return response.data.data || [];
 };
 
-// 3. (ADMIN) XEM DANH SÁCH ĐƠN ĐANG CHỜ DUYỆT (GET /api/admin/cashouts/pending)
-export const getPendingCashouts = async () => {
-  try {
-    const response = await axiosInstance.get<ApiResponse<CashoutResponse[]>>(
-      "/api/admin/cashouts/pending"
-    );
-    if (response.data?.success) {
-      return response.data.data;
-    }
-    return [];
-  } catch (error: any) {
-    console.error("Error fetching pending cashouts:", error.response?.data || error.message);
-    throw error;
-  }
+// 4. Xem lịch sử đơn rút điểm đã xử lý (Approved/Rejected) của CLB (GET /api/cashouts/my-club/{clubId}/history)
+export const getMyClubCashoutHistory = async (clubId: number | string) => {
+  const response = await axiosInstance.get<ApiResponse<CashoutResponse[]>>(
+    `/api/cashouts/my-club/${clubId}/history`
+  );
+  return response.data.data || [];
 };
 
-// 4. (ADMIN) DUYỆT ĐƠN XIN RÚT ĐIỂM (POST /api/admin/cashouts/{id}/approve)
+/** * NHÓM API DÀNH CHO STAFF / ADMIN
+ */
+
+// 5. Xem TẤT CẢ đơn rút điểm trong hệ thống (GET /api/admin/cashouts)
+export const getAllAdminCashouts = async () => {
+  const response = await axiosInstance.get<ApiResponse<CashoutResponse[]>>(
+    "/api/admin/cashouts"
+  );
+  return response.data.data || [];
+};
+
+// 6. Xem danh sách đơn rút điểm ĐANG CHỜ DUYỆT (GET /api/admin/cashouts/pending)
+export const getAdminPendingCashouts = async () => {
+  const response = await axiosInstance.get<ApiResponse<CashoutResponse[]>>(
+    "/api/admin/cashouts/pending"
+  );
+  return response.data.data || [];
+};
+
+// 7. Xem danh sách đơn rút điểm ĐÃ DUYỆT (GET /api/admin/cashouts/approved)
+export const getAdminApprovedCashouts = async () => {
+  const response = await axiosInstance.get<ApiResponse<CashoutResponse[]>>(
+    "/api/admin/cashouts/approved"
+  );
+  return response.data.data || [];
+};
+
+// 8. Xem danh sách đơn rút điểm BỊ TỪ CHỐI (GET /api/admin/cashouts/rejected)
+export const getAdminRejectedCashouts = async () => {
+  const response = await axiosInstance.get<ApiResponse<CashoutResponse[]>>(
+    "/api/admin/cashouts/rejected"
+  );
+  return response.data.data || [];
+};
+
+// 9. Duyệt đơn xin rút điểm (POST /api/admin/cashouts/{id}/approve)
 export const approveCashout = async (id: number | string, note?: string) => {
-  try {
-    const response = await axiosInstance.post<ApiResponse<any>>(
-      `/api/admin/cashouts/${id}/approve`,
-      null,
-      {
-        params: { note }, // Truyền note qua query
-      }
-    );
-    return response.data;
-  } catch (error: any) {
-    console.error("Error approving cashout:", error.response?.data || error.message);
-    throw error;
-  }
+  const response = await axiosInstance.post<ApiResponse<any>>(
+    `/api/admin/cashouts/${id}/approve`,
+    null,
+    { params: { note } }
+  );
+  return response.data;
 };
 
-// 5. (ADMIN) TỪ CHỐI ĐƠN XIN RÚT ĐIỂM (POST /api/admin/cashouts/{id}/reject)
+// 10. Từ chối đơn xin rút điểm (POST /api/admin/cashouts/{id}/reject)
 export const rejectCashout = async (id: number | string, reason: string) => {
-  try {
-    const response = await axiosInstance.post<ApiResponse<any>>(
-      `/api/admin/cashouts/${id}/reject`,
-      null,
-      {
-        params: { reason }, // Truyền reason qua query
-      }
-    );
-    return response.data;
-  } catch (error: any) {
-    console.error("Error rejecting cashout:", error.response?.data || error.message);
-    throw error;
-  }
-};
-
-// 6. (ADMIN) XEM DANH SÁCH ĐƠN RÚT ĐIỂM THEO TRẠNG THÁI
-export const getAdminCashoutsByStatus = async (status: CashoutStatus) => {
-  try {
-    const response = await axiosInstance.get<ApiResponse<CashoutResponse[]>>(
-      `/api/admin/cashouts/status/${status}`
-    );
-    if (response.data?.success) {
-      return response.data.data;
-    }
-    return [];
-  } catch (error: any) {
-    console.error(`Error fetching admin cashouts with status ${status}:`, error.response?.data || error.message);
-    throw error;
-  }
-};
-
-// 7. XEM ĐƠN RÚT ĐIỂM CỦA CLB THEO TRẠNG THÁI
-export const getMyClubCashoutsByStatus = async (
-  clubId: number | string,
-  status: CashoutStatus
-) => {
-  try {
-    const response = await axiosInstance.get<ApiResponse<CashoutResponse[]>>(
-      `/api/cashouts/my-club/${clubId}/status/${status}`
-    );
-    if (response.data?.success) {
-      return response.data.data;
-    }
-    return [];
-  } catch (error: any) {
-    console.error(`Error fetching club ${clubId} cashouts with status ${status}:`, error.response?.data || error.message);
-    throw error;
-  }
+  const response = await axiosInstance.post<ApiResponse<any>>(
+    `/api/admin/cashouts/${id}/reject`,
+    null,
+    { params: { reason } }
+  );
+  return response.data;
 };
