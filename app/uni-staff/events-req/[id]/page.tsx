@@ -392,6 +392,16 @@ export default function EventRequestDetailPage({
             Rejected
           </Badge>
         );
+      case "CANCELLED":
+        return (
+          <Badge
+            variant="destructive"
+            className="bg-orange-100 text-orange-700 border-orange-500 dark:bg-orange-900/50 dark:text-orange-300 dark:border-orange-700"
+          >
+            <XCircle className="h-3 w-3 mr-1" />
+            Cancelled
+          </Badge>
+        );
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -898,8 +908,8 @@ export default function EventRequestDetailPage({
                                   ? "Loading..."
                                   : eventSummary
                                   ? request.type === "PUBLIC"
-                                    ? `${eventSummary.checkedInCount} / ${request.maxCheckInCount}`
-                                    : `${eventSummary.checkedInCount} / ${eventSummary.totalRegistered}`
+                                    ? `${Math.max(eventSummary.checkedInCount, request.currentCheckInCount)} / ${request.maxCheckInCount}`
+                                    : `${Math.max(eventSummary.checkedInCount, request.currentCheckInCount)} / ${eventSummary.totalRegistered}`
                                   : `${request.currentCheckInCount} / ${request.maxCheckInCount}`
                                 : `${request.currentCheckInCount} / ${request.maxCheckInCount}`}
                             </div>
@@ -916,7 +926,7 @@ export default function EventRequestDetailPage({
                                 ? request.type === "PUBLIC"
                                   ? `${
                                       request.maxCheckInCount -
-                                      eventSummary.checkedInCount
+                                      Math.max(eventSummary.checkedInCount, request.currentCheckInCount)
                                     } remaining`
                                   : `${
                                       request.maxCheckInCount -

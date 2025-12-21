@@ -19,7 +19,7 @@ import { getAllPenaltyRules, PenaltyRule } from "@/service/disciplineApi";
 import { getMyStaff, MyStaffEvent } from "@/service/eventStaffApi";
 import { getClubWallet, ApiClubWallet } from "@/service/walletApi"
 import { fetchAllPointRequests } from "@/service/pointRequestsApi";
-import { getPendingCashouts, getAdminCashoutsByStatus, CashoutStatus } from "@/service/exchangeClubPointApi";
+import { CashoutStatus, getAllAdminCashouts } from "@/service/exchangeClubPointApi";
 
 // ============================================
 // INTERFACES
@@ -1107,25 +1107,47 @@ export function useMyStaffEvents(enabled = true) {
 /**
  * Hook dùng cho Uni-staff để lấy danh sách đơn dựa trên loại đơn (Request Type)
  */
+// export function useExchangeRequests(
+//     requestType: "ADD_POINTS" | "CASHOUT",
+//     status: CashoutStatus = "PENDING", // Thêm tham số status
+//     enabled = true
+// ) {
+//     return useQuery({
+//         // Thêm status vào queryKey để React Query tự động fetch lại khi đổi Tab
+//         queryKey: requestType === "ADD_POINTS"
+//             ? ["point-requests", "all", status]
+//             : ["cashouts", "admin-list", status],
+//         queryFn: async () => {
+//             if (requestType === "ADD_POINTS") {
+//                 const response = await fetchAllPointRequests();
+//                 const allData = response.data || [];
+//                 // Nếu API ADD_POINTS chưa hỗ trợ filter status ở backend, ta filter ở đây
+//                 return allData.filter((req: any) => req.status === status);
+//             } else {
+//                 // Sử dụng API ADMIN MỚI: Xem theo trạng thái
+//                 return await getAdminCashoutsByStatus(status);
+//             }
+//         },
+//         enabled,
+//         staleTime: 2 * 60 * 1000,
+//     });
+// }
 export function useExchangeRequests(
     requestType: "ADD_POINTS" | "CASHOUT",
-    status: CashoutStatus = "PENDING", // Thêm tham số status
     enabled = true
 ) {
     return useQuery({
-        // Thêm status vào queryKey để React Query tự động fetch lại khi đổi Tab
+        // Bỏ status khỏi queryKey để dữ liệu stats không bị reset khi đổi tab
         queryKey: requestType === "ADD_POINTS"
-            ? ["point-requests", "all", status]
-            : ["cashouts", "admin-list", status],
+            ? ["point-requests", "admin-all"]
+            : ["cashouts", "admin-all"],
         queryFn: async () => {
             if (requestType === "ADD_POINTS") {
                 const response = await fetchAllPointRequests();
-                const allData = response.data || [];
-                // Nếu API ADD_POINTS chưa hỗ trợ filter status ở backend, ta filter ở đây
-                return allData.filter((req: any) => req.status === status);
+                return response.data || [];
             } else {
-                // Sử dụng API ADMIN MỚI: Xem theo trạng thái
-                return await getAdminCashoutsByStatus(status);
+                // Sử dụng API lấy TẤT CẢ các đơn admin
+                return await getAllAdminCashouts();
             }
         },
         enabled,

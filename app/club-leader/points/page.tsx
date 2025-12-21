@@ -54,7 +54,7 @@ interface ClubMember {
   status: string;
   joinedAt: string | null;
 }
-const POINT_EXCHANGE_RATE = 100; // 1 điểm = 100 VND
+const POINT_EXCHANGE_RATE = 100; // 1 point = 100 VND
 
 export default function ClubLeaderRewardDistributionPage() {
   const { clubMemberships } = useData();
@@ -95,13 +95,11 @@ export default function ClubLeaderRewardDistributionPage() {
   const [penaltyReason, setPenaltyReason] = useState("");
   const [isSubmittingPenalty, setIsSubmittingPenalty] = useState(false);
   const [memberToPenalize, setMemberToPenalize] = useState<any>(null);
-  // === NEW STATE FOR SYNCING SCORES ===
+  // === SYNCING SCORES ===
   const [showSyncModal, setShowSyncModal] = useState(false);
   const [syncYear, setSyncYear] = useState(new Date().getFullYear());
   const [syncMonth, setSyncMonth] = useState(new Date().getMonth() + 1);
   const [isSyncing, setIsSyncing] = useState(false);
-  // Lưu điểm riêng cho từng member: Key là userId (number), Value là score (number)
-  // Nếu null -> Chế độ Manual (nhập chung 1 số). Nếu object -> Chế độ Sync.
   const [individualScores, setIndividualScores] = useState<Record<number, number> | null>(null);
   // Progress bar khi gửi điểm hàng loạt
   const [distributionProgress, setDistributionProgress] = useState<{ current: number, total: number } | null>(null);
@@ -119,10 +117,13 @@ export default function ClubLeaderRewardDistributionPage() {
   const [cashoutPoints, setCashoutPoints] = useState<number | "">("");
   const [cashoutNote, setCashoutNote] = useState("");
   const [isSubmittingCashout, setIsSubmittingCashout] = useState(false);
-  // State cho danh sách đơn đổi điểm
   const [showCashoutHistoryModal, setShowCashoutHistoryModal] = useState(false);
   const [cashoutRequests, setCashoutRequests] = useState<CashoutResponse[]>([]);
   const [cashoutHistoryLoading, setCashoutHistoryLoading] = useState(false);
+  // State cho danh sách đơn đổi điểm
+  const hasPendingCashout = useMemo(() => {
+    return cashoutRequests.some(req => req.status === "PENDING");
+  }, [cashoutRequests]);
   // Hàm tải danh sách đơn đổi điểm
   const loadCashoutHistory = async () => {
     if (!managedClub?.id) return;
@@ -149,6 +150,7 @@ export default function ClubLeaderRewardDistributionPage() {
       setLoading(true);
       setMembersLoading(true);
       setPenaltyRulesLoading(true);
+      loadCashoutHistory();
 
       try {
         const clubId = getClubIdFromToken();
@@ -412,12 +414,28 @@ export default function ClubLeaderRewardDistributionPage() {
   // --- exchange points logic ---
   const handleCreateCashoutRequest = async () => {
     if (!managedClub?.id) return;
-    if (cashoutPoints === "" || cashoutPoints <= 0) {
-      toast({ title: "Invalid Points", description: "Please enter points to exchange.", variant: "destructive" });
+
+    // 1. Validate số điểm tối thiểu
+    if (Number(cashoutPoints) < 10000) {
+      toast({
+        title: "Minimum Amount Required",
+        description: "You must exchange at least 10,000 points per request.",
+        variant: "destructive"
+      });
       return;
     }
 
-    // Kiểm tra xem số điểm xin đổi có vượt quá số dư ví không
+    // 2. Validate đơn Pending (Dựa trên thông tin từ server/hình ảnh 960acb.png)
+    if (hasPendingCashout) {
+      toast({
+        title: "Request Blocked",
+        description: "There is already a pending cashout request for this club. Please wait for it to be processed.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // 3. Validate số dư ví
     if (Number(cashoutPoints) > (clubWallet?.balancePoints || 0)) {
       toast({ title: "Insufficient Balance", description: "Exchange points exceed club balance.", variant: "destructive" });
       return;
@@ -436,19 +454,19 @@ export default function ClubLeaderRewardDistributionPage() {
         description: `Successfully requested to exchange ${Number(cashoutPoints).toLocaleString()} points.`
       });
 
-      // Reset form & đóng modal
       setShowCashoutModal(false);
       setCashoutPoints("");
       setCashoutNote("");
 
-      // Cập nhật lại ví (nếu API trừ điểm ngay hoặc để user biết số dư)
+      // Tải lại lịch sử để cập nhật trạng thái hasPendingCashout ngay lập tức
+      loadCashoutHistory();
       const walletData = await getClubWallet(managedClub.id);
       setClubWallet(walletData);
 
     } catch (err: any) {
       toast({
         title: "Error",
-        description: err.response?.data?.message || "Failed to send cashout request.",
+        description: err.response?.data?.message || err.response?.data?.error || "Failed to send cashout request.",
         variant: "destructive"
       });
     } finally {
@@ -835,7 +853,7 @@ export default function ClubLeaderRewardDistributionPage() {
                     </Button>
 
                     <Button variant="outline" size="sm" onClick={handleOpenHistoryModal} className="gap-2 bg-white">
-                      <History className="h-4 w-4" /> History
+                      <History className="h-4 w-4" /> Transaction History
                     </Button>
                   </div>
                 </div>
@@ -1620,7 +1638,7 @@ export default function ClubLeaderRewardDistributionPage() {
                 {/* Nhập số điểm muốn đổi */}
                 <div className="space-y-2">
                   <Label htmlFor="cashout-points" className="font-semibold text-sm">Points to Exchange</Label>
-                  <div className="relative">
+                  {/* <div className="relative">
                     <Input
                       id="cashout-points"
                       type="text"
@@ -1634,7 +1652,42 @@ export default function ClubLeaderRewardDistributionPage() {
                       className="h-11 text-lg pr-12 border-emerald-300 focus-visible:ring-emerald-500"
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-medium">pts</span>
+                  </div> */}
+                  <div className="relative">
+                    <Input
+                      id="cashout-points"
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="Min 10,000"
+                      value={cashoutPoints === "" ? "" : new Intl.NumberFormat("en-US").format(Number(cashoutPoints))}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/,/g, "");
+                        if (/^\d*$/.test(val)) setCashoutPoints(val === "" ? "" : Number(val));
+                      }}
+                      className={`h-11 text-lg pr-12 border-emerald-300 focus-visible:ring-emerald-500 ${(Number(cashoutPoints) > 0 && Number(cashoutPoints) < 10000) || hasPendingCashout ? "border-red-500 focus-visible:ring-red-500" : ""
+                        }`}
+                      disabled={hasPendingCashout} // Vô hiệu hóa input nếu đã có đơn pending
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-medium">pts</span>
                   </div>
+
+                  {/* Cảnh báo số điểm tối thiểu */}
+                  {Number(cashoutPoints) > 0 && Number(cashoutPoints) < 10000 && (
+                    <p className="text-xs text-red-500 flex items-center gap-1 mt-1 animate-in fade-in slide-in-from-top-1">
+                      <AlertCircle className="h-3 w-3" /> Minimum exchange amount is 10,000 points.
+                    </p>
+                  )}
+
+                  {/* Cảnh báo nếu đã có đơn Pending */}
+                  {hasPendingCashout && (
+                    <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-md flex items-start gap-2 text-amber-800 animate-in zoom-in duration-200">
+                      <TriangleAlert className="h-4 w-4 mt-0.5 shrink-0" />
+                      <div className="text-xs">
+                        <p className="font-bold">Pending Request Exists</p>
+                        <p>You already have a pending request. You cannot submit a new one until the current one is Approved or Rejected.</p>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Hiển thị số tiền quy đổi thực tế & số dư dự kiến */}
                   {Number(cashoutPoints) > 0 && (
@@ -1720,46 +1773,6 @@ export default function ClubLeaderRewardDistributionPage() {
                   No exchange requests found.
                 </div>
               ) : (
-                // <Table>
-                //   <TableHeader>
-                //     <TableRow>
-                //       <TableHead>Date</TableHead>
-                //       <TableHead>Points</TableHead>
-                //       <TableHead>Amount (VND)</TableHead>
-                //       <TableHead>Status</TableHead>
-                //       <TableHead>Note</TableHead>
-                //     </TableRow>
-                //   </TableHeader>
-                //   <TableBody>
-                //     {cashoutRequests.map((req) => (
-                //       <TableRow key={req.id}>
-                //         <TableCell className="whitespace-nowrap">
-                //           {new Date(req.requestedAt).toLocaleDateString('en-GB')}
-                //         </TableCell>
-                //         <TableCell className="font-medium text-emerald-600">
-                //           {req.pointsRequested.toLocaleString()}
-                //         </TableCell>
-                //         <TableCell>
-                //           {req.cashAmount.toLocaleString()} đ
-                //         </TableCell>
-                //         <TableCell>
-                //           <Badge variant={
-                //             req.status === "APPROVED" ? "default" :
-                //               req.status === "REJECTED" ? "destructive" : "secondary"
-                //           } className={req.status === "APPROVED" ? "bg-emerald-500" : ""}>
-                //             {req.status}
-                //           </Badge>
-                //         </TableCell>
-                //         <TableCell className="max-w-[200px] truncate" title={req.leaderNote}>
-                //           <div className="text-xs">
-                //             <p className="font-semibold">Me: {req.leaderNote || "No note"}</p>
-                //             {req.staffNote && <p className="text-red-500 mt-1">University Staff: {req.staffNote}</p>}
-                //           </div>
-                //         </TableCell>
-                //       </TableRow>
-                //     ))}
-                //   </TableBody>
-                // </Table>
                 <div className="relative w-full overflow-x-auto border rounded-md">
                   <Table>
                     <TableHeader>
@@ -1792,7 +1805,6 @@ export default function ClubLeaderRewardDistributionPage() {
                               {req.status}
                             </Badge>
                           </TableCell>
-                          {/* Bỏ truncate ở đây để nội dung có thể xuống dòng thay vì bị cắt bớt */}
                           <TableCell>
                             <div className="space-y-1.5 py-1">
                               <div className="flex items-start gap-1">
@@ -1816,7 +1828,7 @@ export default function ClubLeaderRewardDistributionPage() {
                     </TableBody>
                   </Table>
                 </div>
-                
+
               )}
             </div>
             <DialogFooter className="p-4 bg-slate-50 border-t">

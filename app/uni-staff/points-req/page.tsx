@@ -19,7 +19,7 @@ import {
     usePointRequests, reviewPointRequest, PointRequest, ReviewPointRequestPayload,
 } from "@/service/pointRequestsApi"
 import {
-    getPendingCashouts, approveCashout, rejectCashout, CashoutResponse
+    approveCashout, rejectCashout, CashoutResponse
 } from "@/service/exchangeClubPointApi";
 import { useExchangeRequests } from "@/hooks/use-query-hooks"
 
@@ -43,21 +43,30 @@ export default function UniStaffPointRequestsPage() {
     const { toast } = useToast()
     const queryClient = useQueryClient()
 
-    // 1. Fetch dữ liệu bằng React Query
-    // const {
-    //     data: response,
-    //     isLoading: loading,
-    //     error,
-    // } = usePointRequests()
-    // const { data: response, isLoading: loading } = useQuery({
-    //     queryKey: ["requests", requestType],
-    //     queryFn: () => requestType === "ADD_POINTS" ? getAllPointRequests() : getPendingCashouts()
-    // });
+    // 1. Fetch dữ liệu đồng thời cho cả 2 loại đơn (để lấy số liệu Badge)
+    const { data: topupData, isLoading: topupLoading, error: topupError } = useExchangeRequests("ADD_POINTS");
+    const { data: cashoutData, isLoading: cashoutLoading, error: cashoutError } = useExchangeRequests("CASHOUT");
 
-    // const allRequests: PointRequest[] = response?.data || []
-    // const { data: listData, isLoading: loading, error } = useExchangeRequests(requestType);
-    const { data: listData, isLoading: loading, error } = useExchangeRequests(requestType, activeTab);
-    const allRequests = (listData || []) as (PointRequest & CashoutResponse)[];
+    // 2. Xác định dữ liệu nào đang được hiển thị dựa trên requestType (FIX LỖI REDECLARE)
+    const allRequests = ((requestType === "ADD_POINTS" ? topupData : cashoutData) || []) as (PointRequest & CashoutResponse)[];
+
+    // 3. Gom trạng thái loading và error
+    const loading = topupLoading || cashoutLoading;
+    const error = topupError || cashoutError;
+
+    // 4. Tính toán số lượng cho các thẻ Stats (dựa trên loại đơn đang xem)
+    const pendingCount = allRequests.filter((e) => (e.status ?? "PENDING") === "PENDING").length;
+    const approvedCount = allRequests.filter((e) => e.status === "APPROVED").length;
+    const rejectedCount = allRequests.filter((e) => e.status === "REJECTED").length;
+
+    // 5. Tính toán số lượng PENDING cho Badge trên Tab (không thay đổi khi chuyển Tab)
+    const pendingTopupCount = (topupData as PointRequest[])?.filter(
+        (req) => req.status === "PENDING"
+    ).length || 0;
+
+    const pendingCashoutCount = (cashoutData as CashoutResponse[])?.filter(
+        (req) => req.status === "PENDING"
+    ).length || 0;
 
     // 2. Logic duyệt đơn (Giống như trang Table tôi gửi trước)
     const reviewMutation = useMutation({
@@ -68,15 +77,11 @@ export default function UniStaffPointRequestsPage() {
             id: number
             payload: ReviewPointRequestPayload
         }) => reviewPointRequest(id, payload),
+
         onSuccess: () => {
-            toast({
-                title: "Success",
-                description: "Request reviewed successfully."
-            })
-            queryClient.invalidateQueries({ queryKey: ["point-requests"] })
-            setShowReviewModal(false)
-            setSelectedRequest(null)
-            setReviewNote("")
+            toast({ title: "Success", description: "Point request reviewed successfully." });
+            queryClient.invalidateQueries({ queryKey: ["point-requests", "admin-all"] }); // Đồng bộ với useExchangeRequests
+            setShowReviewModal(false);
         },
         onError: (err: any) => {
             toast({
@@ -91,8 +96,8 @@ export default function UniStaffPointRequestsPage() {
     const approveCashoutMutation = useMutation({
         mutationFn: ({ id, note }: { id: number; note: string }) => approveCashout(id, note),
         onSuccess: () => {
-            toast({ title: "Success", description: "Cashout approved." });
-            queryClient.invalidateQueries({ queryKey: ["cashouts", "pending"] });
+            toast({ title: "Success", description: "Cashout handled." });
+            queryClient.invalidateQueries({ queryKey: ["cashouts", "admin-all"] }); // Đồng bộ với useExchangeRequests
             setShowReviewModal(false);
         },
         onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" })
@@ -101,23 +106,14 @@ export default function UniStaffPointRequestsPage() {
     const rejectCashoutMutation = useMutation({
         mutationFn: ({ id, reason }: { id: number; reason: string }) => rejectCashout(id, reason),
         onSuccess: () => {
-            toast({ title: "Success", description: "Cashout rejected." });
-            queryClient.invalidateQueries({ queryKey: ["cashouts", "pending"] });
+            toast({ title: "Success", description: "Cashout handled." });
+            queryClient.invalidateQueries({ queryKey: ["cashouts", "admin-all"] }); // Đồng bộ với useExchangeRequests
             setShowReviewModal(false);
         },
         onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" })
     });
 
     // 3. Handlers để mở modal và submit
-    // const handleOpenReviewModal = (
-    //     request: PointRequest,
-    //     action: "approve" | "reject"
-    // ) => {
-    //     setSelectedRequest(request)
-    //     setIsApproving(action === "approve")
-    //     setReviewNote(request.staffNote || "") // Tải note cũ nếu có
-    //     setShowReviewModal(true)
-    // }
     const handleOpenReviewModal = (
         // Thay đổi PointRequest thành kiểu kết hợp (PointRequest & CashoutResponse)
         request: PointRequest & CashoutResponse,
@@ -132,15 +128,6 @@ export default function UniStaffPointRequestsPage() {
         setShowReviewModal(true);
     };
 
-    // const handleSubmitReview = () => {
-    //     if (!selectedRequest) return
-
-    //     const payload: ReviewPointRequestPayload = {
-    //         approve: isApproving,
-    //         note: reviewNote.trim() || (isApproving ? "Approved" : "Rejected"),
-    //     }
-    //     reviewMutation.mutate({ id: selectedRequest.id, payload })
-    // }
     const handleSubmitReview = () => {
         // Giải quyết lỗi 'selectedRequest' is possibly 'null'
         if (!selectedRequest) return;
@@ -171,35 +158,22 @@ export default function UniStaffPointRequestsPage() {
             }
         }
     };
-    // 4. Lọc và Phân trang (Logic từ trang Event)
-    // const filteredRequests = allRequests
-    //     .filter((req) => {
-    //         // Lọc theo Tab
-    //         const matchTab = (req.status || "PENDING") === activeTab
-    //         // Lọc theo Search Term
-    //         const q = searchTerm.trim().toLowerCase()
-    //         const matchSearch =
-    //             q === "" ||
-    //             req.clubName?.toLowerCase().includes(q) ||
-    //             req.reason?.toLowerCase().includes(q)
-
-    //         return matchTab && matchSearch
-    //     })
-    //     .sort((a, b) => b.id - a.id)
     const filteredRequests = allRequests
         .filter((req) => {
-            // matchTab không cần thiết nữa vì listData trả về đã đúng status
-            const q = searchTerm.trim().toLowerCase()
+            // QUAN TRỌNG: Thêm lại dòng lọc theo Tab mà trước đó bạn đã xóa
+            const matchTab = (req.status || "PENDING") === activeTab;
+
+            const q = searchTerm.trim().toLowerCase();
             const matchSearch =
                 q === "" ||
                 req.clubName?.toLowerCase().includes(q) ||
                 (requestType === "ADD_POINTS"
                     ? req.reason?.toLowerCase().includes(q)
-                    : req.leaderNote?.toLowerCase().includes(q))
+                    : req.leaderNote?.toLowerCase().includes(q));
 
-            return matchSearch
+            return matchTab && matchSearch; // Phải thỏa mãn cả tab và tìm kiếm
         })
-        .sort((a, b) => b.id - a.id)
+        .sort((a, b) => b.id - a.id);
 
     // Kẹp trang khi filter thay đổi
     useEffect(() => {
@@ -251,17 +225,6 @@ export default function UniStaffPointRequestsPage() {
                 return <Badge variant="outline">{status}</Badge>
         }
     }
-
-    // 6. Tính toán các thẻ Stats (Lấy từ trang Event)
-    const pendingCount = allRequests.filter(
-        (e) => (e.status ?? "PENDING") === "PENDING"
-    ).length
-    const approvedCount = allRequests.filter(
-        (e) => e.status === "APPROVED"
-    ).length
-    const rejectedCount = allRequests.filter(
-        (e) => e.status === "REJECTED"
-    ).length
 
     return (
         <ProtectedRoute allowedRoles={["uni_staff"]}>
@@ -395,17 +358,34 @@ export default function UniStaffPointRequestsPage() {
                             variant={requestType === "ADD_POINTS" ? "default" : "ghost"}
                             size="sm"
                             onClick={() => setRequestType("ADD_POINTS")}
-                            className="text-xs"
+                            className="text-xs gap-2"
                         >
                             Point Top-up Requests
+                            {pendingTopupCount > 0 && (
+                                <Badge
+                                    variant="secondary"
+                                    className="bg-yellow-500 text-white hover:bg-yellow-600 px-1.5 h-5 min-w-[20px] justify-center shadow-sm"
+                                >
+                                    {pendingTopupCount}
+                                </Badge>
+                            )}
                         </Button>
+
                         <Button
                             variant={requestType === "CASHOUT" ? "default" : "ghost"}
                             size="sm"
                             onClick={() => setRequestType("CASHOUT")}
-                            className="text-xs"
+                            className="text-xs gap-2"
                         >
                             Cashout Requests
+                            {pendingCashoutCount > 0 && (
+                                <Badge
+                                    variant="secondary"
+                                    className="bg-orange-500 text-white hover:bg-orange-600 px-1.5 h-5 min-w-[20px] justify-center shadow-sm"
+                                >
+                                    {pendingCashoutCount}
+                                </Badge>
+                            )}
                         </Button>
                     </div>
 
@@ -530,7 +510,7 @@ export default function UniStaffPointRequestsPage() {
                                                 </div>
 
                                                 {/* Nút Actions */}
-                                                <div className="flex items-center gap-2 ml-4">
+                                                {/* <div className="flex items-center gap-2 ml-4">
                                                     {request.status === "PENDING" && (
                                                         <>
                                                             <Button
@@ -550,6 +530,43 @@ export default function UniStaffPointRequestsPage() {
                                                                 disabled={reviewMutation.isPending || rejectCashoutMutation.isPending}
                                                             >
                                                                 <XCircle className="h-5 w-5" />
+                                                            </Button>
+                                                        </>
+                                                    )}
+                                                </div> */}
+                                                <div className="flex items-center gap-2 ml-4">
+                                                    {request.status === "PENDING" && (
+                                                        <>
+                                                            <Button
+                                                                size="sm"
+                                                                variant="default"
+                                                                className="h-9 w-9 p-0 bg-green-600 hover:bg-green-700"
+                                                                onClick={() => handleOpenReviewModal(request as any, "approve")}
+                                                                // VÔ HIỆU HÓA KHI BẤT KỲ MUTATION NÀO ĐANG CHẠY
+                                                                disabled={reviewMutation.isPending || approveCashoutMutation.isPending || rejectCashoutMutation.isPending}
+                                                            >
+                                                                {/* HIỂN THỊ LOADER NẾU ĐANG XỬ LÝ (Tùy chọn) */}
+                                                                {(reviewMutation.isPending || approveCashoutMutation.isPending) && selectedRequest?.id === request.id && isApproving ? (
+                                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                                ) : (
+                                                                    <CheckCircle className="h-5 w-5" />
+                                                                )}
+                                                            </Button>
+
+                                                            <Button
+                                                                size="sm"
+                                                                variant="destructive"
+                                                                className="h-9 w-9 p-0"
+                                                                onClick={() => handleOpenReviewModal(request as any, "reject")}
+                                                                // VÔ HIỆU HÓA KHI BẤT KỲ MUTATION NÀO ĐANG CHẠY
+                                                                disabled={reviewMutation.isPending || approveCashoutMutation.isPending || rejectCashoutMutation.isPending}
+                                                            >
+                                                                {/* HIỂN THỊ LOADER NẾU ĐANG XỬ LÝ (Tùy chọn) */}
+                                                                {(reviewMutation.isPending || rejectCashoutMutation.isPending) && selectedRequest?.id === request.id && !isApproving ? (
+                                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                                ) : (
+                                                                    <XCircle className="h-5 w-5" />
+                                                                )}
                                                             </Button>
                                                         </>
                                                     )}
@@ -641,9 +658,9 @@ export default function UniStaffPointRequestsPage() {
                                     setPage(0)
                                 }}
                             >
-                                <option value={3}>3</option>
-                                <option value={6}>6</option>
-                                <option value={12}>12</option>
+                                <option value={10}>10</option>
+                                <option value={20}>20</option>
+                                <option value={30}>30</option>
                             </select>
                         </div>
                     </div>
