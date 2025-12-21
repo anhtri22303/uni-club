@@ -1203,7 +1203,7 @@ export default function UniversityStaffRewardPage() {
                                 variant="outline"
                                 size="sm"
                                 onClick={handleToggleSelectAll}
-                                className="rounded-lg"
+                                className="rounded-lg border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 hover:bg-primary dark:hover:bg-primary hover:text-black"
                             >
                                 {allSelected ? "Deselect All" : "Select All"}
                             </Button>
@@ -1320,7 +1320,7 @@ export default function UniversityStaffRewardPage() {
                                     <div className="space-y-2">
                                         <Label>Year</Label>
                                         <Select value={String(syncYear)} onValueChange={(v) => setSyncYear(Number(v))}>
-                                            <SelectTrigger><SelectValue /></SelectTrigger>
+                                            <SelectTrigger className="border border-slate-300"><SelectValue /></SelectTrigger>
                                             <SelectContent>
                                                 {[2024, 2025, 2026].map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
                                             </SelectContent>
@@ -1329,7 +1329,7 @@ export default function UniversityStaffRewardPage() {
                                     <div className="space-y-2">
                                         <Label>Month</Label>
                                         <Select value={String(syncMonth)} onValueChange={(v) => setSyncMonth(Number(v))}>
-                                            <SelectTrigger><SelectValue /></SelectTrigger>
+                                            <SelectTrigger className="border border-slate-300"><SelectValue /></SelectTrigger>
                                             <SelectContent>
                                                 {[...Array(12)].map((_, i) => <SelectItem key={i} value={String(i + 1)}>Month {i + 1}</SelectItem>)}
                                             </SelectContent>

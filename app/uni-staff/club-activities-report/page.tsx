@@ -20,18 +20,19 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
 import {
     Trophy, RotateCw, Lock, Unlock, CheckCircle2, Trash2, Eye, Search, FileText, History, Info, LayoutDashboard, RefreshCcw, Wallet,
-    Star
+    Star, Filter
 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import {
     AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
 // --- Helper Functions ---
-const generateYearOptions = () => {
+const generateYearOptions = (range = 10) => {
     const currentYear = new Date().getFullYear()
     const years = []
-    for (let i = currentYear; i >= currentYear - 3; i--) {
+    for (let i = currentYear; i >= currentYear - range; i--) {
         years.push(i)
     }
     return years
@@ -84,35 +85,6 @@ const ClubActivityDetail = ({ breakdown, loading }: { breakdown: ClubActivityBre
                 </CardHeader>
             </Card>
 
-            {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card>
-                    <CardHeader className="pb-3 bg-blue-50/50">
-                        <CardTitle className="text-sm flex items-center gap-2 text-blue-700">
-                            Member Activity
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-4">
-                        <div className="text-2xl font-bold text-blue-600">
-                            {(breakdown.avgMemberActivityScore ?? 0).toFixed(1)}
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">Average score of all members in club</p>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader className="pb-3 bg-yellow-50/50">
-                        <CardTitle className="text-sm flex items-center gap-2 text-yellow-700">
-                            Staff Performance
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-4">
-                        <div className="text-2xl font-bold text-yellow-600">
-                            {(breakdown.staffPerformanceScore ?? 0).toFixed(1)}
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">Score based on event organizing quality</p>
-                    </CardContent>
-                </Card>
-            </div> */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Thẻ Reward Points mới */}
                 <Card className="border-green-200 bg-green-50/30">
@@ -178,11 +150,47 @@ export default function UniStaffActivityReportPage() {
 
     const [confirmLockId, setConfirmLockId] = useState<number | null>(null);
     const [confirmApproveId, setConfirmApproveId] = useState<number | null>(null);
-    
     // Pagination state for Inspector tab
     const [eventsPage, setEventsPage] = useState(1)
     const [historyPage, setHistoryPage] = useState(1)
-    const itemsPerPage = 5
+    const itemsPerPage = 10
+    // State cho Filter
+    const [filterFeedback, setFilterFeedback] = useState<string>("all")
+    const [filterCheckin, setFilterCheckin] = useState<string>("all")
+    const [filterWeight, setFilterWeight] = useState<string>("all")
+
+    // Hàm reset filter
+    const handleClearFilters = () => {
+        setFilterFeedback("all")
+        setFilterCheckin("all")
+        setFilterWeight("all")
+    }
+
+    // Logic lọc dữ liệu
+    const filteredEvents = clubEvents.filter(evt => {
+        const matchFeedback = filterFeedback === "all" ||
+            (filterFeedback === "high" && evt.feedback >= 4) ||
+            (filterFeedback === "medium" && evt.feedback >= 2.5 && evt.feedback < 4) ||
+            (filterFeedback === "low" && evt.feedback < 2.5 && evt.feedback > 0) ||
+            (filterFeedback === "none" && evt.feedback === 0);
+
+        const matchCheckin = filterCheckin === "all" ||
+            (filterCheckin === "high" && Math.round(evt.checkinRate) >= 80) ||
+            (filterCheckin === "medium" && Math.round(evt.checkinRate) >= 50 && Math.round(evt.checkinRate) < 80) ||
+            (filterCheckin === "low" && Math.round(evt.checkinRate) < 50);
+
+        const matchWeight = filterWeight === "all" ||
+            (filterWeight === "high" && evt.weight >= 50) ||
+            (filterWeight === "medium" && evt.weight >= 20 && evt.weight < 50) ||
+            (filterWeight === "low" && evt.weight < 20);
+
+        return matchFeedback && matchCheckin && matchWeight;
+    });
+    // Tính toán phân trang trên danh sách ĐÃ LỌC
+    const paginatedEvents = filteredEvents.slice((eventsPage - 1) * itemsPerPage, eventsPage * itemsPerPage)
+    const totalEventPages = Math.ceil(filteredEvents.length / itemsPerPage)
+
+
     // --- Load Master Club List (Chạy 1 lần đầu) ---
     useEffect(() => {
         const loadAllClubs = async () => {
@@ -233,19 +241,6 @@ export default function UniStaffActivityReportPage() {
         if (activeTab === "overview") loadMonthlySummary()
         if (activeTab === "ranking") loadClubRanking()
     }, [activeTab, loadMonthlySummary, loadClubRanking])
-
-    // const handleSingleRecalculate = async (clubId: number) => {
-    //     setIsProcessing(true)
-    //     try {
-    //         const updated = await recalculateClubActivity({ clubId, year: selectedYear, month: selectedMonth })
-    //         setClubs(prev => prev.map(c => c.clubId === clubId ? updated : c))
-    //         toast({ title: "Updated", description: `Recalculated score for ${updated.clubName}` })
-    //     } catch (error: any) {
-    //         toast({ title: "Error", description: error.message, variant: "destructive" })
-    //     } finally {
-    //         setIsProcessing(false)
-    //     }
-    // }
 
     const handleApproveExtended = async (clubId: number) => {
         setIsProcessing(true)
@@ -305,12 +300,12 @@ export default function UniStaffActivityReportPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedYear, selectedMonth])
 
-    // Pagination calculations
-    const paginatedEvents = clubEvents.slice(
-        (eventsPage - 1) * itemsPerPage,
-        eventsPage * itemsPerPage
-    )
-    const totalEventPages = Math.ceil(clubEvents.length / itemsPerPage)
+    // // Pagination calculations
+    // const paginatedEvents = clubEvents.slice(
+    //     (eventsPage - 1) * itemsPerPage,
+    //     eventsPage * itemsPerPage
+    // )
+    // const totalEventPages = Math.ceil(clubEvents.length / itemsPerPage)
 
     const paginatedHistory = clubHistory.slice(
         (historyPage - 1) * itemsPerPage,
@@ -324,10 +319,7 @@ export default function UniStaffActivityReportPage() {
         try {
             const updatedList = await recalculateAllClubs({ year: selectedYear, month: selectedMonth })
 
-            // Thay vì chỉ setClubs(updatedList), hãy gọi lại hàm loadRanking 
-            // để đảm bảo hiển thị đầy đủ danh sách CLB từ database
             await loadClubRanking()
-
             toast({
                 title: "Calculation Complete",
                 description: `Updated ${updatedList.length} clubs.`,
@@ -369,19 +361,6 @@ export default function UniStaffActivityReportPage() {
         }
     }
 
-    // const handleDelete = async (clubId: number) => {
-    //     if (!confirm("Are you sure? This will delete the monthly record.")) return;
-    //     setIsProcessing(true)
-    //     try {
-    //         await deleteClubActivity({ clubId, year: selectedYear, month: selectedMonth })
-    //         setClubs(prev => prev.filter(c => c.clubId !== clubId))
-    //         toast({ title: "Reset", description: "Record deleted." })
-    //     } catch (error: any) {
-    //         toast({ title: "Reset Failed", description: error.message, variant: "destructive" })
-    //     } finally {
-    //         setIsProcessing(false)
-    //     }
-    // }
     const handleViewDetail = async (clubId: number) => {
         setSelectedClubId(clubId);
         setIsLoadingBreakdown(true);
@@ -568,8 +547,38 @@ export default function UniStaffActivityReportPage() {
                                                         </TooltipProvider>
                                                     </div>
                                                 </TableHead>
-                                                <TableHead className="text-center font-semibold text-green-600">Reward Points</TableHead>
-                                                <TableHead className="text-right font-bold bg-muted/30 pr-6">Final Score</TableHead>
+                                                {/* <TableHead className="text-center font-semibold text-green-600">Reward Points</TableHead> */}
+                                                <TableHead className="text-center font-semibold text-green-600">
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <span>Reward Points</span>
+                                                        <TooltipProvider>
+                                                            <Tooltip>
+                                                                <TooltipTrigger>
+                                                                    <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                                                                </TooltipTrigger>
+                                                                <TooltipContent>
+                                                                    <p>Total points to be distributed to club members this month</p>
+                                                                </TooltipContent>
+                                                            </Tooltip>
+                                                        </TooltipProvider>
+                                                    </div>
+                                                </TableHead>
+                                                {/* <TableHead className="text-right font-bold bg-muted/30 pr-6">Final Score</TableHead> */}
+                                                <TableHead className="text-right font-bold bg-muted/30 pr-6">
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <span>Final Score</span>
+                                                        <TooltipProvider>
+                                                            <Tooltip>
+                                                                <TooltipTrigger>
+                                                                    <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                                                                </TooltipTrigger>
+                                                                <TooltipContent>
+                                                                    <p>Weighted aggregate score used for monthly ranking</p>
+                                                                </TooltipContent>
+                                                            </Tooltip>
+                                                        </TooltipProvider>
+                                                    </div>
+                                                </TableHead>
                                                 <TableHead className="text-center">Award Rank</TableHead>
                                                 <TableHead className="text-right pr-6">Actions</TableHead>
                                             </TableRow>
@@ -603,11 +612,11 @@ export default function UniStaffActivityReportPage() {
                                                         </TableCell>
 
                                                         {/* <TableCell className="text-center font-mono text-blue-600 bg-blue-50/30"> */}
-                                                        <TableCell className={`text-center font-mono bg-blue-50/30 ${getFeedbackColor(club.avgFeedback)}`}>
+                                                        <TableCell className={`text-center bg-blue-50/30 ${getFeedbackColor(club.avgFeedback)}`}>
                                                             {club.avgFeedback.toFixed(2)}
                                                         </TableCell>
 
-                                                        <TableCell className="text-center font-mono text-yellow-600 bg-yellow-50/30">
+                                                        <TableCell className="text-center text-yellow-600 bg-yellow-50/30">
                                                             {club.awardScore.toFixed(0)}
                                                         </TableCell>
                                                         <TableCell className="text-center font-bold text-green-600 bg-green-50/30">
@@ -676,7 +685,7 @@ export default function UniStaffActivityReportPage() {
                                         <div className="grid w-full md:w-1/3 gap-1.5">
                                             <Label>Club Name</Label>
                                             <Select value={inspectorClubId} onValueChange={setInspectorClubId}>
-                                                <SelectTrigger className="bg-white dark:bg-slate-950">
+                                                <SelectTrigger className="bg-white dark:bg-slate-950 border border-slate-300">
                                                     <SelectValue placeholder="Select a club..." />
                                                 </SelectTrigger>
                                                 <SelectContent>
@@ -696,14 +705,14 @@ export default function UniStaffActivityReportPage() {
                                             <div className="grid gap-1.5">
                                                 <Label>Year</Label>
                                                 <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
-                                                    <SelectTrigger className="w-[100px] bg-white dark:bg-slate-950"><SelectValue /></SelectTrigger>
+                                                    <SelectTrigger className="w-[100px] bg-white dark:bg-slate-950 border border-slate-300"><SelectValue /></SelectTrigger>
                                                     <SelectContent>{yearOptions.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
                                                 </Select>
                                             </div>
                                             <div className="grid gap-1.5">
                                                 <Label>Month</Label>
                                                 <Select value={String(selectedMonth)} onValueChange={(v) => setSelectedMonth(Number(v))}>
-                                                    <SelectTrigger className="w-[130px] bg-white dark:bg-slate-950"><SelectValue /></SelectTrigger>
+                                                    <SelectTrigger className="w-[130px] bg-white dark:bg-slate-950 border border-slate-300"><SelectValue /></SelectTrigger>
                                                     <SelectContent>{monthOptions.map(m => <SelectItem key={m.value} value={String(m.value)}>{m.label}</SelectItem>)}</SelectContent>
                                                 </Select>
                                             </div>
@@ -722,21 +731,120 @@ export default function UniStaffActivityReportPage() {
                                 <div className="grid md:grid-cols-[2fr_1fr] gap-6">
                                     {/* Event Table - Wider column (left) */}
                                     <Card className="h-full flex flex-col">
-                                        <CardHeader>
-                                            <CardTitle className="flex items-center gap-2">
-                                                <FileText className="h-5 w-5 text-blue-500" />
-                                                Event Contributions ({selectedMonth}/{selectedYear})
-                                            </CardTitle>
-                                            <CardDescription>How events impacted the score this month.</CardDescription>
+                                        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                                            <div>
+                                                <CardTitle className="flex items-center gap-2">
+                                                    <FileText className="h-5 w-5 text-blue-500" />
+                                                    Event Contributions ({selectedMonth}/{selectedYear})
+                                                </CardTitle>
+                                                <CardDescription>How events impacted the score this month.</CardDescription>
+                                            </div>
+
+                                            {/* Nút Filters & Sort */}
+                                            <Popover>
+                                                <PopoverTrigger asChild>
+                                                    <Button variant="outline" size="sm" className="gap-2 bg-[#008BB1] text-white hover:bg-[#007696] hover:text-white border-none">
+                                                        <Filter className="h-4 w-4" /> Filters & Sort
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-[600px] p-4" align="end">
+                                                    <div className="space-y-4">
+                                                        <div className="flex items-center justify-between">
+                                                            <h4 className="font-bold leading-none text-slate-700">Filter Event Information</h4>
+                                                            <Button
+                                                                variant="ghost"
+                                                                className="h-auto p-2 text-xs text-black hover:bg-primary hover:text-white "
+                                                                onClick={handleClearFilters}
+                                                            >
+                                                                Clear all
+                                                            </Button>
+                                                        </div>
+
+                                                        {/* Sử dụng flex để dàn hàng ngang các phần tử lọc */}
+                                                        <div className="flex flex-row items-start gap-4">
+                                                            <div className="flex-1 space-y-1.5">
+                                                                <Label className="text-xs font-semibold text-muted-foreground">Feedback Score</Label>
+                                                                <Select value={filterFeedback} onValueChange={setFilterFeedback}>
+                                                                    <SelectTrigger className="h-9 border-slate-300"><SelectValue placeholder="All Levels" /></SelectTrigger>
+                                                                    <SelectContent>
+                                                                        <SelectItem value="all">All Levels</SelectItem>
+                                                                        <SelectItem value="high">Good (≥ 4.0)</SelectItem>
+                                                                        <SelectItem value="medium">Average (2.5 - 4.0)</SelectItem>
+                                                                        <SelectItem value="low">Poor (&lt; 2.5)</SelectItem>
+                                                                        <SelectItem value="none">No Feedback</SelectItem>
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            </div>
+
+                                                            <div className="flex-1 space-y-1.5">
+                                                                <Label className="text-xs font-semibold text-muted-foreground">Check-in Rate</Label>
+                                                                <Select value={filterCheckin} onValueChange={setFilterCheckin}>
+                                                                    <SelectTrigger className="h-9 border-slate-300"><SelectValue placeholder="All Rates" /></SelectTrigger>
+                                                                    <SelectContent>
+                                                                        <SelectItem value="all">All Rates</SelectItem>
+                                                                        <SelectItem value="high">High (≥ 80%)</SelectItem>
+                                                                        <SelectItem value="medium">Medium (50% - 80%)</SelectItem>
+                                                                        <SelectItem value="low">Low (&lt; 50%)</SelectItem>
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            </div>
+
+                                                            <div className="flex-1 space-y-1.5">
+                                                                <Label className="text-xs font-semibold text-muted-foreground">Weight (Points)</Label>
+                                                                <Select value={filterWeight} onValueChange={setFilterWeight}>
+                                                                    <SelectTrigger className="h-9 border-slate-300"><SelectValue placeholder="All Weights" /></SelectTrigger>
+                                                                    <SelectContent>
+                                                                        <SelectItem value="all">All Weights</SelectItem>
+                                                                        <SelectItem value="high">High (≥ 50pt)</SelectItem>
+                                                                        <SelectItem value="medium">Medium (20pt - 50pt)</SelectItem>
+                                                                        <SelectItem value="low">Low (&lt; 20pt)</SelectItem>
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </PopoverContent>
+                                            </Popover>
                                         </CardHeader>
+
                                         <CardContent className="flex-1 flex flex-col">
                                             <Table>
                                                 <TableHeader>
                                                     <TableRow>
                                                         <TableHead>Event Name</TableHead>
-                                                        <TableHead className="text-center">Feedback</TableHead>
-                                                        <TableHead className="text-center">Check-in</TableHead>
-                                                        <TableHead className="text-right">Weight</TableHead>
+                                                        <TableHead className="text-center w-[100px]">
+                                                            <div className="flex items-center justify-center gap-2">
+                                                                <span>Feedback</span>
+                                                                <TooltipProvider>
+                                                                    <Tooltip>
+                                                                        <TooltipTrigger><Info className="h-3.5 w-3.5 text-muted-foreground" /></TooltipTrigger>
+                                                                        <TooltipContent><p>Average attendee feedback for this specific event</p></TooltipContent>
+                                                                    </Tooltip>
+                                                                </TooltipProvider>
+                                                            </div>
+                                                        </TableHead>
+                                                        <TableHead className="text-center w-[100px]">
+                                                            <div className="flex items-center justify-center gap-2">
+                                                                <span>Check-in</span>
+                                                                <TooltipProvider>
+                                                                    <Tooltip>
+                                                                        <TooltipTrigger><Info className="h-3.5 w-3.5 text-muted-foreground" /></TooltipTrigger>
+                                                                        <TooltipContent><p>Percentage of registered participants who attended</p></TooltipContent>
+                                                                    </Tooltip>
+                                                                </TooltipProvider>
+                                                            </div>
+                                                        </TableHead>
+                                                        <TableHead className="text-right w-[100px]">
+                                                            <div className="flex items-center justify-end gap-2">
+                                                                <span>Weight</span>
+                                                                <TooltipProvider>
+                                                                    <Tooltip>
+                                                                        <TooltipTrigger><Info className="h-3.5 w-3.5 text-muted-foreground" /></TooltipTrigger>
+                                                                        <TooltipContent><p>Weight represents the overall success level of an event, based on participant feedback and attendance rate</p></TooltipContent>
+                                                                    </Tooltip>
+                                                                </TooltipProvider>
+                                                            </div>
+                                                        </TableHead>
                                                     </TableRow>
                                                 </TableHeader>
                                                 <TableBody>
@@ -745,16 +853,22 @@ export default function UniStaffActivityReportPage() {
                                                     ) : (
                                                         paginatedEvents.map((evt, idx) => (
                                                             <TableRow key={idx}>
-                                                                <TableCell className="font-medium">{evt.eventName}</TableCell>
+                                                                {/* <TableCell className="font-medium">{evt.eventName}</TableCell> */}
+                                                                <TableCell className="font-medium max-w-[200px] md:max-w-none">
+                                                                    <div className="truncate" title={evt.eventName}>
+                                                                        {evt.eventName}
+                                                                    </div>
+                                                                </TableCell>
                                                                 <TableCell className={`text-center ${getFeedbackColor(evt.feedback)}`}>{evt.feedback.toFixed(1)}</TableCell>
-                                                                <TableCell className="text-center">{evt.checkinRate}%</TableCell>
+                                                                {/* <TableCell className="text-center">{evt.checkinRate}%</TableCell> */}
+                                                                <TableCell className="text-center">{Math.round(evt.checkinRate)}%</TableCell>
                                                                 <TableCell className="text-right"><Badge variant="secondary">{evt.weight}</Badge></TableCell>
                                                             </TableRow>
                                                         ))
                                                     )}
                                                 </TableBody>
                                             </Table>
-                                            
+
                                             {/* Pagination for Events */}
                                             {totalEventPages > 1 && (
                                                 <div className="flex items-center justify-between mt-4 pt-4 border-t">
@@ -797,6 +911,7 @@ export default function UniStaffActivityReportPage() {
                                         </CardContent>
                                     </Card>
 
+
                                     {/* History Table - Narrower column (right) */}
                                     <Card className="h-full flex flex-col">
                                         <CardHeader>
@@ -807,74 +922,60 @@ export default function UniStaffActivityReportPage() {
                                             <CardDescription>Score tracking over the months.</CardDescription>
                                         </CardHeader>
                                         <CardContent className="flex-1 flex flex-col">
-                                            <Table>
-                                                <TableHeader>
-                                                    <TableRow>
-                                                        <TableHead>Month</TableHead>
-                                                        <TableHead className="text-right">Score</TableHead>
-                                                        <TableHead className="text-right">Status</TableHead>
-                                                    </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                    {clubHistory.length === 0 ? (
-                                                        <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-8">No history recorded.</TableCell></TableRow>
-                                                    ) : (
-                                                        paginatedHistory.map((item, idx) => (
-                                                            <TableRow key={idx} className={item.month === selectedMonth ? "bg-muted/50 border-l-2 border-primary" : ""}>
-                                                                <TableCell className="font-medium">Month {item.month}</TableCell>
-                                                                <TableCell className="text-right font-bold">{item.score.toFixed(1)}</TableCell>
-                                                                <TableCell className="text-right">
-                                                                    {item.score >= 80 ? <span className="text-green-600 text-xs">High</span> :
-                                                                        item.score >= 50 ? <span className="text-yellow-600 text-xs">Average</span> :
-                                                                            <span className="text-red-500 text-xs">Low</span>}
-                                                                </TableCell>
-                                                            </TableRow>
-                                                        ))
-                                                    )}
-                                                </TableBody>
-                                            </Table>
-                                            
-                                            {/* Pagination for History */}
-                                            {totalHistoryPages > 1 && (
-                                                <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                                                    <p className="text-sm text-muted-foreground">
-                                                        Page {historyPage} of {totalHistoryPages}
-                                                    </p>
-                                                    <div className="flex gap-2">
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={() => setHistoryPage(p => Math.max(1, p - 1))}
-                                                            disabled={historyPage === 1}
-                                                        >
-                                                            Previous
-                                                        </Button>
-                                                        <div className="flex items-center gap-1">
-                                                            {Array.from({ length: totalHistoryPages }, (_, i) => i + 1).map(page => (
-                                                                <Button
-                                                                    key={page}
-                                                                    variant={page === historyPage ? "default" : "outline"}
-                                                                    size="sm"
-                                                                    onClick={() => setHistoryPage(page)}
-                                                                    className="w-8 h-8 p-0"
-                                                                >
-                                                                    {page}
-                                                                </Button>
-                                                            ))}
-                                                        </div>
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={() => setHistoryPage(p => Math.min(totalHistoryPages, p + 1))}
-                                                            disabled={historyPage === totalHistoryPages}
-                                                        >
-                                                            Next
-                                                        </Button>
-                                                    </div>
-                                                </div>
-                                            )}
+                                            {/* Thêm max-h để table không quá dài nếu có nhiều dữ liệu, hoặc để tự nhiên */}
+                                            {/* <div className="overflow-auto max-h-[400px]"> */}
+                                            <div>
+                                                <Table>
+                                                    <TableHeader>
+                                                        <TableRow>
+                                                            <TableHead>Month</TableHead>
+                                                            <TableHead className="text-right">
+                                                                <div className="flex items-center justify-end gap-2">
+                                                                    <span>Score</span>
+                                                                    <TooltipProvider>
+                                                                        <Tooltip>
+                                                                            <TooltipTrigger><Info className="h-3.5 w-3.5 text-muted-foreground" /></TooltipTrigger>
+                                                                            <TooltipContent><p>Final calculated score for that month</p></TooltipContent>
+                                                                        </Tooltip>
+                                                                    </TooltipProvider>
+                                                                </div>
+                                                            </TableHead>
+                                                            <TableHead className="text-right">
+                                                                <div className="flex items-center justify-end gap-2">
+                                                                    <span>Status</span>
+                                                                    <TooltipProvider>
+                                                                        <Tooltip>
+                                                                            <TooltipTrigger><Info className="h-3.5 w-3.5 text-muted-foreground" /></TooltipTrigger>
+                                                                            <TooltipContent><p>Performance rating based on monthly score thresholds</p></TooltipContent>
+                                                                        </Tooltip>
+                                                                    </TooltipProvider>
+                                                                </div>
+                                                            </TableHead>
+                                                        </TableRow>
+                                                    </TableHeader>
+                                                    <TableBody>
+                                                        {clubHistory.length === 0 ? (
+                                                            <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-8">No history recorded.</TableCell></TableRow>
+                                                        ) : (
+                                                            /* Thay paginatedHistory bằng clubHistory để hiện toàn bộ */
+                                                            clubHistory.map((item, idx) => (
+                                                                <TableRow key={idx} className={item.month === selectedMonth ? "bg-muted/50 border-l-2 border-primary" : ""}>
+                                                                    <TableCell className="font-medium">Month {item.month}</TableCell>
+                                                                    <TableCell className="text-right font-bold">{item.score.toFixed(1)}</TableCell>
+                                                                    <TableCell className="text-right">
+                                                                        {item.score >= 80 ? <span className="text-green-600 text-xs">High</span> :
+                                                                            item.score >= 50 ? <span className="text-yellow-600 text-xs">Average</span> :
+                                                                                <span className="text-red-500 text-xs">Low</span>}
+                                                                    </TableCell>
+                                                                </TableRow>
+                                                            ))
+                                                        )}
+                                                    </TableBody>
+                                                </Table>
+                                            </div>
                                         </CardContent>
                                     </Card>
+
                                 </div>
                             )}
                         </TabsContent>
