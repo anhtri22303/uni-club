@@ -23,6 +23,7 @@ import {
 } from "@/service/exchangeClubPointApi";
 import { useExchangeRequests } from "@/hooks/use-query-hooks"
 
+const POINT_CONVERSION_RATE = 100; // 1 point = 100 VND
 export default function UniStaffPointRequestsPage() {
     const [searchTerm, setSearchTerm] = useState("")
     const [activeTab, setActiveTab] = useState<"PENDING" | "APPROVED" | "REJECTED">("PENDING")
@@ -489,7 +490,7 @@ export default function UniStaffPointRequestsPage() {
                                                         {/* Chỉ hiển thị dòng này nếu là đơn CASHOUT */}
                                                         {requestType === "CASHOUT" && (
                                                             <p className="text-sm font-semibold text-emerald-600 ml-7">
-                                                                Equivalent: {(displayPoints * 100).toLocaleString()} VND
+                                                                Equivalent: {(displayPoints * POINT_CONVERSION_RATE).toLocaleString()} VND
                                                             </p>
                                                         )}
                                                     </div>
@@ -686,7 +687,7 @@ export default function UniStaffPointRequestsPage() {
                                 </strong>
                                 {/* Hiển thị thêm VND nếu là đơn Cashout */}
                                 {requestType === "CASHOUT" && selectedRequest && (
-                                    <span> ({(selectedRequest.pointsRequested * 1000).toLocaleString()} VND)</span>
+                                    <span> ({(selectedRequest.pointsRequested * POINT_CONVERSION_RATE).toLocaleString()} VND)</span>
                                 )}
                                 .
                             </DialogDescription>
