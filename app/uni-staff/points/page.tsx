@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { useToast } from "@/hooks/use-toast"
 import { usePagination } from "@/hooks/use-pagination"
-import { Users, ShieldCheck, ChevronLeft, ChevronRight, Send, UserCircle, History, Search, X } from "lucide-react"
+import { Users, ShieldCheck, ChevronLeft, ChevronRight, Send, UserCircle, History, Search, X, RefreshCw } from "lucide-react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -22,6 +22,7 @@ import { useSearchParams } from "next/navigation"
 import { fetchClub } from "@/service/clubApi"
 import { pointsToClubs, getUniToClubTransactions, ApiUniToClubTransaction, getUniToEventTransactions, ApiUniToEventTransaction } from "@/service/walletApi"
 import { usePointRequests, PointRequest } from "@/service/pointRequestsApi"
+import { getClubRanking } from "@/service/clubActivityReportApi";
 
 // Định nghĩa một kiểu dữ liệu cơ bản cho Club
 interface Club {
@@ -31,7 +32,6 @@ interface Club {
     memberCount?: number;
     leaderName?: string | null;
 }
-
 export default function UniversityStaffRewardPage() {
     const { toast } = useToast()
     const searchParams = useSearchParams()
@@ -43,7 +43,6 @@ export default function UniversityStaffRewardPage() {
     const [targetClubIds, setTargetClubIds] = useState<number[]>([]) // State lưu danh sách clubId đã chọn
     const [rewardAmount, setRewardAmount] = useState<number | ''>('')
     const [isDistributing, setIsDistributing] = useState(false)
-
     // History modal state
     const [showHistoryModal, setShowHistoryModal] = useState(false)
     const [transactions, setTransactions] = useState<ApiUniToClubTransaction[]>([])
@@ -53,7 +52,6 @@ export default function UniversityStaffRewardPage() {
     const [historyTransactionTypeFilter, setHistoryTransactionTypeFilter] = useState<string>("all")
     const [historyCurrentPage, setHistoryCurrentPage] = useState(1)
     const [historyPageSize] = useState(8)
-
     // Event Points modal state
     const [showEventPointsModal, setShowEventPointsModal] = useState(false)
     const [eventTransactions, setEventTransactions] = useState<ApiUniToEventTransaction[]>([])
@@ -67,7 +65,6 @@ export default function UniversityStaffRewardPage() {
     const [customReason, setCustomReason] = useState<string>("")
     const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null)
     const [searchQuery, setSearchQuery] = useState<string>("")
-
     // Fetch approved point requests
     const { data: pointRequestsResponse } = usePointRequests()
     const allPointRequests: PointRequest[] = pointRequestsResponse?.data || []
@@ -75,7 +72,13 @@ export default function UniversityStaffRewardPage() {
         allPointRequests.filter(req => req.status === "APPROVED"),
         [allPointRequests]
     )
-
+    // State for sync modal 
+    const [showSyncModal, setShowSyncModal] = useState(false);
+    const [syncYear, setSyncYear] = useState(new Date().getFullYear());
+    const [syncMonth, setSyncMonth] = useState(new Date().getMonth() + 1);
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [individualClubScores, setIndividualClubScores] = useState<Record<number, number> | null>(null);
+    const [distributionProgress, setDistributionProgress] = useState<{ current: number, total: number } | null>(null);
     // Tải danh sách tất cả các CLB khi component được mount bằng API thật
     useEffect(() => {
         const loadClubs = async () => {
@@ -210,14 +213,7 @@ export default function UniversityStaffRewardPage() {
             club.name.toLowerCase().includes(searchQuery.toLowerCase())
         )
     }, [allClubs, searchQuery])
-    //  --------------------------------- 
 
-    // const allSelected = useMemo(() => {
-    //     if (allClubs.length === 0) {
-    //         return false
-    //     }
-    //     return allClubs.every((club) => selectedClubs[String(club.id)] === true)
-    // }, [allClubs, selectedClubs])
     const allSelected = useMemo(() => {
         if (filteredClubs.length === 0) { //  THAY ĐỔI
             return false
@@ -225,26 +221,15 @@ export default function UniversityStaffRewardPage() {
         return filteredClubs.every((club) => selectedClubs[String(club.id)] === true) //  THAY ĐỔI
     }, [filteredClubs, selectedClubs]) //  THAY ĐỔI
 
-
-
     const {
         currentPage,
         totalPages,
         paginatedData: paginatedClubs,
         setCurrentPage,
-    } = usePagination({ data: filteredClubs, initialPageSize: 8 })
+    } = usePagination({ data: filteredClubs, initialPageSize: 10 })
 
     const handleDistributeRewards = async () => {
-        if (rewardAmount === '' || rewardAmount <= 0) {
-            toast({
-                title: "Error",
-                description: "Please enter a valid reward amount.",
-                variant: "destructive"
-            })
-            return
-        }
-
-        //  Kiểm tra targetClubIds thay vì filter lại
+        // 1. Kiểm tra danh sách CLB (Cả 2 chế độ đều cần)
         if (targetClubIds.length === 0) {
             toast({
                 title: "No clubs selected",
@@ -254,29 +239,26 @@ export default function UniversityStaffRewardPage() {
             return
         }
 
-        //  --- KIỂM TRA LÝ DO --- 
+        // 2. Kiểm tra logic nhập điểm dựa trên chế độ
+        if (!individualClubScores) {
+            // Chế độ Manual: Bắt buộc có rewardAmount
+            if (rewardAmount === '' || rewardAmount <= 0) {
+                toast({
+                    title: "Error",
+                    description: "Please enter a valid reward amount for manual distribution.",
+                    variant: "destructive"
+                })
+                return
+            }
+        }
+
+        // 3. Xác định lý do (Reason)
         let finalReason = ""
         if (reasonType === "monthly") {
-            finalReason = "Monthly club points" // Lý do theo yêu cầu
+            finalReason = "Monthly club points"
         } else if (reasonType === "fromRequest") {
-            if (!selectedRequestId) {
-                toast({
-                    title: "Reason Required",
-                    description: "Please select a point request to use its reason.",
-                    variant: "destructive"
-                })
-                return
-            }
             const selectedRequest = approvedRequests.find(req => req.id === selectedRequestId)
-            if (!selectedRequest || !selectedRequest.reason) {
-                toast({
-                    title: "Invalid Request",
-                    description: "Selected point request not found or has no reason.",
-                    variant: "destructive"
-                })
-                return
-            }
-            finalReason = selectedRequest.reason
+            finalReason = selectedRequest?.reason || ""
         } else {
             finalReason = customReason.trim()
         }
@@ -284,51 +266,87 @@ export default function UniversityStaffRewardPage() {
         if (!finalReason) {
             toast({
                 title: "Reason Required",
-                description: "Please select a reason or enter a custom reason for the distribution.",
+                description: "Please provide a reason for the distribution.",
                 variant: "destructive"
             })
             return
         }
-        //  ------------------------- 
 
+        // 4. Thực hiện phân phối
         setIsDistributing(true)
         try {
-            //  Sử dụng targetClubIds đã được chuẩn bị sẵn
-            const response = await pointsToClubs(
-                targetClubIds,
-                rewardAmount as number,
-                finalReason
-            )
+            // if (individualClubScores) {
+            //     // CASE: SYNC MODE - Gửi điểm riêng lẻ
+            //     let successCount = 0;
+            //     // Dùng for...of để đảm bảo async/await hoạt động tuần tự, tránh quá tải server
+            //     for (const clubId of targetClubIds) {
+            //         const points = individualClubScores[clubId];
+            //         if (points && points > 0) {
+            //             await pointsToClubs([clubId], points, finalReason);
+            //             successCount++;
+            //         }
+            //     }
+            //     toast({
+            //         title: "Sync Distribution Complete",
+            //         description: `Successfully distributed specific points to ${successCount} clubs.`
+            //     });
+            //     handleClearSync(); // Tự động thoát chế độ sync sau khi xong
+            // } else {
+            //     // CASE: MANUAL MODE - Gửi 1 mức điểm chung cho mảng IDs
+            //     const response = await pointsToClubs(targetClubIds, rewardAmount as number, finalReason);
+            //     if (response.success) {
+            //         toast({ title: "Success", description: response.message || "Points distributed successfully." });
+            //         setRewardAmount('');
+            //         setSelectedClubs({});
+            //         setTargetClubIds([]);
+            //     }
+            // }
+            if (individualClubScores) {
+                // CASE: SYNC MODE
+                const total = targetClubIds.length;
+                setDistributionProgress({ current: 0, total }); // Bắt đầu tiến trình
 
-            if (response.success) {
+                let successCount = 0;
+                for (let i = 0; i < total; i++) {
+                    const clubId = targetClubIds[i];
+                    const points = individualClubScores[clubId];
+
+                    if (points && points > 0) {
+                        try {
+                            await pointsToClubs([clubId], points, finalReason);
+                            successCount++;
+                        } catch (error) {
+                            console.error(`Failed for club ${clubId}`, error);
+                        }
+                    }
+                    // Cập nhật thanh tiến trình sau mỗi request
+                    setDistributionProgress({ current: i + 1, total });
+                }
+
                 toast({
-                    title: "Success",
-                    description: response.message || `Distributed ${rewardAmount} points to ${targetClubIds.length} club(s).`
-                })
-                setRewardAmount('')
-                setCustomReason('')
-                setSelectedRequestId(null)
-                setReasonType("monthly")
-                //  Reset selections
-                setSelectedClubs({})
-                setTargetClubIds([])
+                    title: "Distribution Complete",
+                    description: `Successfully sent points to ${successCount}/${total} clubs.`
+                });
+                handleClearSync();
             } else {
-                throw new Error(response.message || "Failed to distribute points")
+                // CASE: MANUAL MODE (Gửi 1 request duy nhất cho tất cả)
+                const response = await pointsToClubs(targetClubIds, rewardAmount as number, finalReason);
+                if (response.success) {
+                    toast({ title: "Success", description: "Points distributed successfully." });
+                    // Reset states...
+                }
             }
         } catch (err: any) {
+            // Giữ nguyên logic catch lỗi của bạn...
             const errorMessage = err?.response?.data?.error || err?.response?.data?.message || err.message || "An error occurred."
-            const isTimeout = err?.code === 'ECONNABORTED' || errorMessage.toLowerCase().includes('timeout')
-
             toast({
-                title: isTimeout ? "Request Timeout" : "Distribution Error",
-                description: isTimeout
-                    ? `The request took too long (processing ${targetClubIds.length} clubs). The points may still be distributed successfully. 
-                    Please check the transaction history.`
-                    : errorMessage,
+                title: "Distribution Error",
+                description: errorMessage,
                 variant: "destructive"
             })
         } finally {
-            setIsDistributing(false)
+            setIsDistributing(false);
+            setDistributionProgress(null);
         }
     }
 
@@ -356,6 +374,71 @@ export default function UniversityStaffRewardPage() {
         setHistoryCurrentPage(1)
         loadTransactionHistory()
     }
+
+    const handleSyncRankingScores = async () => {
+        setIsSyncing(true);
+        try {
+            const rankingData = await getClubRanking({ year: syncYear, month: syncMonth });
+
+            if (!rankingData || rankingData.length === 0) {
+                toast({
+                    title: "No Data Found",
+                    description: "No ranking data found for this period.",
+                    variant: "destructive"
+                });
+                return;
+            }
+
+            const scoreMap: Record<number, number> = {};
+            const clubIdsToSelect: number[] = [];
+
+            rankingData.forEach((item) => {
+                if (item.rewardPoints && item.rewardPoints > 0) {
+                    scoreMap[item.clubId] = item.rewardPoints;
+                    clubIdsToSelect.push(item.clubId);
+                }
+            });
+
+            setIndividualClubScores(scoreMap);
+
+            // Tự động chọn các CLB có điểm trong danh sách hiển thị
+            setSelectedClubs((prev) => {
+                const newSelected = { ...prev };
+                allClubs.forEach(club => {
+                    if (scoreMap[Number(club.id)]) {
+                        newSelected[String(club.id)] = true;
+                    }
+                });
+                return newSelected;
+            });
+
+            setTargetClubIds(clubIdsToSelect);
+            setReasonType("other");
+            setCustomReason(`Monthly Activity Reward - ${syncMonth}/${syncYear}`);
+            setShowSyncModal(false);
+
+            toast({
+                title: "Scores Synced",
+                description: `Imported reward points for ${Object.keys(scoreMap).length} clubs.`,
+            });
+        } catch (error: any) {
+            toast({
+                title: "Sync Failed",
+                description: "Could not fetch ranking data.",
+                variant: "destructive"
+            });
+        } finally {
+            setIsSyncing(false);
+        }
+    };
+
+    const handleClearSync = () => {
+        setIndividualClubScores(null);
+        setRewardAmount("");
+        setTargetClubIds([]);
+        setSelectedClubs({});
+        toast({ title: "Reset", description: "Switched back to manual mode." });
+    };
 
     // Get badge color for transaction type
     const getTransactionTypeBadgeColor = (type: string) => {
@@ -397,19 +480,19 @@ export default function UniversityStaffRewardPage() {
     // Filter Club transactions
     const filteredHistoryTransactions = useMemo(() => {
         let filtered = [...transactions];
-        
+
         if (historyTransactionTypeFilter !== "all") {
             filtered = filtered.filter(t => t.type === historyTransactionTypeFilter);
         }
-        
+
         if (historyDateFilter !== "all") {
             const now = new Date();
             const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-            
+
             filtered = filtered.filter(t => {
                 const transactionDate = new Date(t.createdAt);
                 const transactionDay = new Date(transactionDate.getFullYear(), transactionDate.getMonth(), transactionDate.getDate());
-                
+
                 switch (historyDateFilter) {
                     case "today":
                         return transactionDay.getTime() === today.getTime();
@@ -426,7 +509,7 @@ export default function UniversityStaffRewardPage() {
                 }
             });
         }
-        
+
         return filtered;
     }, [transactions, historyDateFilter, historyTransactionTypeFilter]);
 
@@ -448,19 +531,19 @@ export default function UniversityStaffRewardPage() {
     // Filter Event transactions
     const filteredEventTransactions = useMemo(() => {
         let filtered = [...eventTransactions];
-        
+
         if (eventTransactionTypeFilter !== "all") {
             filtered = filtered.filter(t => t.type === eventTransactionTypeFilter);
         }
-        
+
         if (eventDateFilter !== "all") {
             const now = new Date();
             const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-            
+
             filtered = filtered.filter(t => {
                 const transactionDate = new Date(t.createdAt);
                 const transactionDay = new Date(transactionDate.getFullYear(), transactionDate.getMonth(), transactionDate.getDate());
-                
+
                 switch (eventDateFilter) {
                     case "today":
                         return transactionDay.getTime() === today.getTime();
@@ -477,7 +560,7 @@ export default function UniversityStaffRewardPage() {
                 }
             });
         }
-        
+
         return filtered;
     }, [eventTransactions, eventDateFilter, eventTransactionTypeFilter]);
 
@@ -585,7 +668,7 @@ export default function UniversityStaffRewardPage() {
                                     University to Club Transaction History
                                 </DialogTitle>
                             </DialogHeader>
-                            
+
                             <div className="flex-1 overflow-y-auto space-y-4">
                                 {/* Filters */}
                                 <div className="flex gap-3 flex-wrap">
@@ -605,7 +688,7 @@ export default function UniversityStaffRewardPage() {
                                             ))}
                                         </SelectContent>
                                     </Select>
-                                    
+
                                     <Select value={historyDateFilter} onValueChange={(value) => {
                                         setHistoryDateFilter(value);
                                         setHistoryCurrentPage(1);
@@ -621,7 +704,7 @@ export default function UniversityStaffRewardPage() {
                                             <SelectItem value="year">This Year</SelectItem>
                                         </SelectContent>
                                     </Select>
-                                    
+
                                     {(historyDateFilter !== "all" || historyTransactionTypeFilter !== "all") && (
                                         <Button
                                             variant="outline"
@@ -637,7 +720,7 @@ export default function UniversityStaffRewardPage() {
                                         </Button>
                                     )}
                                 </div>
-                                
+
                                 {/* Statistics */}
                                 {!transactionsLoading && filteredHistoryTransactions.length > 0 && (
                                     <div className="flex gap-3">
@@ -652,7 +735,7 @@ export default function UniversityStaffRewardPage() {
                                         </div>
                                     </div>
                                 )}
-                                
+
                                 {/* Table */}
                                 {transactionsLoading ? (
                                     <div className="flex flex-col items-center justify-center py-12">
@@ -722,7 +805,7 @@ export default function UniversityStaffRewardPage() {
                                                 </Table>
                                             </div>
                                         </TooltipProvider>
-                                        
+
                                         {/* Pagination */}
                                         {historyTotalPages > 1 && (
                                             <div className="flex items-center justify-between pt-4 border-t">
@@ -767,7 +850,7 @@ export default function UniversityStaffRewardPage() {
                                     University to Event Transaction History
                                 </DialogTitle>
                             </DialogHeader>
-                            
+
                             <div className="flex-1 overflow-y-auto space-y-4">
                                 {/* Filters */}
                                 <div className="flex gap-3 flex-wrap">
@@ -787,7 +870,7 @@ export default function UniversityStaffRewardPage() {
                                             ))}
                                         </SelectContent>
                                     </Select>
-                                    
+
                                     <Select value={eventDateFilter} onValueChange={(value) => {
                                         setEventDateFilter(value);
                                         setEventCurrentPage(1);
@@ -803,7 +886,7 @@ export default function UniversityStaffRewardPage() {
                                             <SelectItem value="year">This Year</SelectItem>
                                         </SelectContent>
                                     </Select>
-                                    
+
                                     {(eventDateFilter !== "all" || eventTransactionTypeFilter !== "all") && (
                                         <Button
                                             variant="outline"
@@ -819,7 +902,7 @@ export default function UniversityStaffRewardPage() {
                                         </Button>
                                     )}
                                 </div>
-                                
+
                                 {/* Statistics */}
                                 {!eventTransactionsLoading && filteredEventTransactions.length > 0 && (
                                     <div className="flex gap-3">
@@ -834,7 +917,7 @@ export default function UniversityStaffRewardPage() {
                                         </div>
                                     </div>
                                 )}
-                                
+
                                 {/* Table */}
                                 {eventTransactionsLoading ? (
                                     <div className="flex flex-col items-center justify-center py-12">
@@ -904,7 +987,7 @@ export default function UniversityStaffRewardPage() {
                                                 </Table>
                                             </div>
                                         </TooltipProvider>
-                                        
+
                                         {/* Pagination */}
                                         {eventTotalPages > 1 && (
                                             <div className="flex items-center justify-between pt-4 border-t">
@@ -941,9 +1024,20 @@ export default function UniversityStaffRewardPage() {
                     </Dialog>
 
                     <Card>
-                        <CardHeader>
+                        {/* <CardHeader> */}
+                        <CardHeader className="flex flex-row items-center justify-between">
                             <CardTitle>Set Reward Parameters</CardTitle>
+                            {!individualClubScores ? (
+                                <Button variant="outline" size="sm" onClick={() => setShowSyncModal(true)} className="text-blue-600 border-blue-200">
+                                    Sync from Activity Report
+                                </Button>
+                            ) : (
+                                <Button variant="destructive" size="sm" onClick={handleClearSync}>
+                                    Clear Sync Data
+                                </Button>
+                            )}
                         </CardHeader>
+
                         <CardContent className="space-y-4">
                             {/* Grid 2 cột */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -1057,15 +1151,21 @@ export default function UniversityStaffRewardPage() {
                         <CardFooter className="pt-0 justify-end ">
                             <Button
                                 onClick={handleDistributeRewards}
+                                // disabled={
+                                //     isDistributing ||
+                                //     rewardAmount === '' ||
+                                //     rewardAmount <= 0 ||
+                                //     selectedCount === 0 ||
+                                //     isReasonInvalid
+                                // }
                                 disabled={
                                     isDistributing ||
-                                    rewardAmount === '' ||
-                                    rewardAmount <= 0 ||
                                     selectedCount === 0 ||
-                                    isReasonInvalid //  THÊM ĐIỀU KIỆN VÔ HIỆU HÓA
+                                    isReasonInvalid ||
+                                    (!individualClubScores && (rewardAmount === '' || rewardAmount <= 0))
                                 }
                             >
-                                {isDistributing ? (
+                                {/* {isDistributing ? (
                                     <div className="flex items-center gap-2">
                                         <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
                                         Distributing to {selectedCount} club(s)... Please wait
@@ -1074,6 +1174,20 @@ export default function UniversityStaffRewardPage() {
                                     <>
                                         <Send className="mr-2 h-4 w-4" />
                                         Distribute {rewardAmount || 0} points to {selectedCount} club(s)
+                                    </>
+                                )} */}
+                                {isDistributing ? (
+                                    <div className="flex items-center gap-2">
+                                        <RefreshCw className="h-4 w-4 animate-spin" />
+                                        {distributionProgress
+                                            ? `Syncing (${distributionProgress.current}/${distributionProgress.total})...`
+                                            : "Processing..."
+                                        }
+                                    </div>
+                                ) : (
+                                    <>
+                                        <Send className="mr-2 h-4 w-4" />
+                                        Distribute {individualClubScores ? "Sync" : (rewardAmount || 0)} points to {selectedCount} club(s)
                                     </>
                                 )}
                             </Button>
@@ -1121,16 +1235,10 @@ export default function UniversityStaffRewardPage() {
                             )}
                         </div>
                     )}
-                    {/*  -------------------------  */}
 
                     <div className="space-y-4">
                         {loading ? (
                             <p>Loading clubs...</p>
-                            // ) : error ? (
-                            //     <p className="text-red-500">{error}</p>
-                            // ) : allClubs.length === 0 ? (
-                            //     <p>No active clubs found.</p>
-                            // ) : (
                         ) : error ? (
                             <p className="text-red-500">{error}</p>
                         ) : allClubs.length === 0 ? ( //  Cập nhật logic hiển thị
@@ -1181,7 +1289,11 @@ export default function UniversityStaffRewardPage() {
                                                         size="sm"
                                                         className={isSelected ? "border-primary text-primary" : ""}
                                                     >
-                                                        + {rewardAmount || 0} pts
+                                                        {/* + {rewardAmount || 0} pts */}
+                                                        + {individualClubScores
+                                                            ? (individualClubScores[Number(club.id)] || 0).toLocaleString()
+                                                            : (rewardAmount || 0).toLocaleString()
+                                                        } pts
                                                     </Button>
                                                 </div>
                                             </CardContent>
@@ -1197,6 +1309,44 @@ export default function UniversityStaffRewardPage() {
                             </>
                         )}
                     </div>
+
+                    <Dialog open={showSyncModal} onOpenChange={setShowSyncModal}>
+                        <DialogContent className="sm:max-w-[400px]">
+                            <DialogHeader>
+                                <DialogTitle>Sync Reward Points from Ranking</DialogTitle>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label>Year</Label>
+                                        <Select value={String(syncYear)} onValueChange={(v) => setSyncYear(Number(v))}>
+                                            <SelectTrigger><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                                {[2024, 2025, 2026].map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Month</Label>
+                                        <Select value={String(syncMonth)} onValueChange={(v) => setSyncMonth(Number(v))}>
+                                            <SelectTrigger><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                                {[...Array(12)].map((_, i) => <SelectItem key={i} value={String(i + 1)}>Month {i + 1}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex justify-end gap-2">
+                                <Button variant="outline" onClick={() => setShowSyncModal(false)}>Cancel</Button>
+                                <Button onClick={handleSyncRankingScores} disabled={isSyncing}>
+                                    {isSyncing ? "Syncing..." : "Sync Points"}
+                                </Button>
+                            </div>
+                        </DialogContent>
+                    </Dialog>
+
+
                 </div>
             </AppShell>
         </ProtectedRoute>
