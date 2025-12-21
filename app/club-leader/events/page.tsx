@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { ProtectedRoute } from "@/contexts/protected-route";
 import {
@@ -74,6 +74,7 @@ import { PublicEventQRButton } from "@/components/public-event-qr-button";
 
 export default function ClubLeaderEventsPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [userClubId, setUserClubId] = useState<number | null>(() =>
@@ -96,7 +97,7 @@ export default function ClubLeaderEventsPage() {
   // Add fullscreen state for QR modal
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Fetch locations on mount
+  // Fetch locations on mount - Re-fetch when pathname changes (fix navigation issue)
   useEffect(() => {
     const loadLocations = async () => {
       setLocationsLoading(true);
@@ -121,7 +122,7 @@ export default function ClubLeaderEventsPage() {
       }
     };
     loadLocations();
-  }, []);
+  }, [pathname]);
 
   // Fetch clubs on mount
   useEffect(() => {
@@ -145,7 +146,7 @@ export default function ClubLeaderEventsPage() {
       }
     };
     loadClubs();
-  }, []);
+  }, [pathname]);
 
   // USE REACT QUERY for club and events
   const { data: managedClub, isLoading: clubLoading } = useClub(

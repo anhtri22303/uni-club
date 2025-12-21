@@ -35,6 +35,7 @@ interface Club {
 }
 
 export default function UniStaffFeedbacksPage() {
+  const pathname = usePathname()
   const [clubs, setClubs] = useState<Club[]>([])
   const [selectedClub, setSelectedClub] = useState<string>("")
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([])
@@ -46,7 +47,7 @@ export default function UniStaffFeedbacksPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
 
-  // Fetch clubs on mount
+  // Fetch clubs on mount - Re-fetch when pathname changes (fix navigation issue)
   useEffect(() => {
     const fetchClubs = async () => {
       try {
@@ -67,7 +68,7 @@ export default function UniStaffFeedbacksPage() {
     }
 
     fetchClubs()
-  }, [])
+  }, [pathname])
 
   // Fetch feedbacks when club is selected
   useEffect(() => {

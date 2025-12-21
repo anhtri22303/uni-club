@@ -307,6 +307,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       "intendedPath",
       "requirePasswordReset",
       "resetEmail",
+      "student-events-selected-club-id", // Student events page selected club
+      "student-gift-selected-club-id", // Student gift page selected club
     ];
 
 
