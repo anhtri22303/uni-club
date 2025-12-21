@@ -12,14 +12,15 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Label } from "@/components/ui/label"
 import {
-    getClubRanking, recalculateAllClubs, lockClubActivity, approveClubActivity, deleteClubActivity, getClubActivityBreakdown, getClubEventContributions,
+    getClubRanking, recalculateAllClubs, lockClubActivity, approveClubActivity, getClubActivityBreakdown, getClubEventContributions,
     getClubActivityHistory, getMonthlySummary, ClubActivityProcessResult, ApproveResult, ClubMonthlySummary, ClubActivityBreakdown, ClubEventContribution, ClubActivityHistoryItem
 } from "@/service/clubActivityReportApi"
 import { fetchClub, Club } from "@/service/clubApi"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
 import {
-    Trophy, RotateCw, Lock, Unlock, CheckCircle2, Trash2, Eye, Search, FileText, History, Info, LayoutDashboard, RefreshCcw, Wallet
+    Trophy, RotateCw, Lock, Unlock, CheckCircle2, Trash2, Eye, Search, FileText, History, Info, LayoutDashboard, RefreshCcw, Wallet,
+    Star
 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import {
@@ -83,8 +84,7 @@ const ClubActivityDetail = ({ breakdown, loading }: { breakdown: ClubActivityBre
                 </CardHeader>
             </Card>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Member Activity Card */}
+            {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Card>
                     <CardHeader className="pb-3 bg-blue-50/50">
                         <CardTitle className="text-sm flex items-center gap-2 text-blue-700">
@@ -92,7 +92,6 @@ const ClubActivityDetail = ({ breakdown, loading }: { breakdown: ClubActivityBre
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="pt-4">
-                        {/* Đảm bảo tên thuộc tính khớp với API trả về */}
                         <div className="text-2xl font-bold text-blue-600">
                             {(breakdown.avgMemberActivityScore ?? 0).toFixed(1)}
                         </div>
@@ -100,7 +99,6 @@ const ClubActivityDetail = ({ breakdown, loading }: { breakdown: ClubActivityBre
                     </CardContent>
                 </Card>
 
-                {/* Staff Performance Card */}
                 <Card>
                     <CardHeader className="pb-3 bg-yellow-50/50">
                         <CardTitle className="text-sm flex items-center gap-2 text-yellow-700">
@@ -108,14 +106,45 @@ const ClubActivityDetail = ({ breakdown, loading }: { breakdown: ClubActivityBre
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="pt-4">
-                        {/* Đảm bảo tên thuộc tính khớp với API trả về */}
                         <div className="text-2xl font-bold text-yellow-600">
                             {(breakdown.staffPerformanceScore ?? 0).toFixed(1)}
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">Score based on event organizing quality</p>
                     </CardContent>
                 </Card>
+            </div> */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Thẻ Reward Points mới */}
+                <Card className="border-green-200 bg-green-50/30">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm flex items-center gap-2 text-green-700">
+                            <Wallet className="h-4 w-4" /> Reward Points
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-3xl font-bold text-green-600">
+                            +{breakdown.rewardPoints?.toLocaleString()}
+                        </div>
+                        <p className="text-[10px] text-muted-foreground mt-1">Points to be distributed to members</p>
+                    </CardContent>
+                </Card>
+
+                {/* Thẻ Feedback trung bình (Giữ lại hoặc thay thế) */}
+                <Card className="border-blue-200 bg-blue-50/30">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm flex items-center gap-2 text-blue-700">
+                            <Star className="h-4 w-4" /> Feedback Avg
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className={`text-3xl font-bold ${getFeedbackColor(breakdown.avgFeedback)}`}>
+                            {breakdown.avgFeedback?.toFixed(1)}
+                        </div>
+                        <p className="text-[10px] text-muted-foreground mt-1">Based on {breakdown.totalEvents} events</p>
+                    </CardContent>
+                </Card>
             </div>
+
         </div>
     )
 }
@@ -248,7 +277,8 @@ export default function UniStaffActivityReportPage() {
 
         try {
             const [historyRes, eventsRes] = await Promise.all([
-                getClubActivityHistory({ clubId: cId, year: selectedYear }),
+                // getClubActivityHistory({ clubId: cId, year: selectedYear }),
+                getClubActivityHistory(cId, selectedYear),
                 getClubEventContributions({ clubId: cId, year: selectedYear, month: selectedMonth })
             ]);
             setClubHistory(historyRes);
@@ -319,19 +349,19 @@ export default function UniStaffActivityReportPage() {
         }
     }
 
-    const handleDelete = async (clubId: number) => {
-        if (!confirm("Are you sure? This will delete the monthly record.")) return;
-        setIsProcessing(true)
-        try {
-            await deleteClubActivity({ clubId, year: selectedYear, month: selectedMonth })
-            setClubs(prev => prev.filter(c => c.clubId !== clubId))
-            toast({ title: "Reset", description: "Record deleted." })
-        } catch (error: any) {
-            toast({ title: "Reset Failed", description: error.message, variant: "destructive" })
-        } finally {
-            setIsProcessing(false)
-        }
-    }
+    // const handleDelete = async (clubId: number) => {
+    //     if (!confirm("Are you sure? This will delete the monthly record.")) return;
+    //     setIsProcessing(true)
+    //     try {
+    //         await deleteClubActivity({ clubId, year: selectedYear, month: selectedMonth })
+    //         setClubs(prev => prev.filter(c => c.clubId !== clubId))
+    //         toast({ title: "Reset", description: "Record deleted." })
+    //     } catch (error: any) {
+    //         toast({ title: "Reset Failed", description: error.message, variant: "destructive" })
+    //     } finally {
+    //         setIsProcessing(false)
+    //     }
+    // }
     const handleViewDetail = async (clubId: number) => {
         setSelectedClubId(clubId);
         setIsLoadingBreakdown(true);
@@ -509,7 +539,7 @@ export default function UniStaffActivityReportPage() {
                                                 {/* <TableHead className="text-center text-yellow-600 bg-yellow-50/50">Rank Score</TableHead> */}
                                                 <TableHead className="text-center text-yellow-600 bg-yellow-50/50">
                                                     <div className="flex items-center justify-center gap-2">
-                                                        <span>Rank Score</span>
+                                                        <span>Award Score</span>
                                                         <TooltipProvider>
                                                             <Tooltip>
                                                                 <TooltipTrigger><Info className="h-3.5 w-3.5 text-muted-foreground" /></TooltipTrigger>
@@ -518,6 +548,7 @@ export default function UniStaffActivityReportPage() {
                                                         </TooltipProvider>
                                                     </div>
                                                 </TableHead>
+                                                <TableHead className="text-center font-semibold text-green-600">Reward Points</TableHead>
                                                 <TableHead className="text-right font-bold bg-muted/30 pr-6">Final Score</TableHead>
                                                 <TableHead className="text-center">Award Rank</TableHead>
                                                 <TableHead className="text-right pr-6">Actions</TableHead>
@@ -547,7 +578,8 @@ export default function UniStaffActivityReportPage() {
                                                         {/* Hiển thị Tỉ lệ thành công sự kiện từ API mới */}
                                                         <TableCell className="text-center font-medium text-slate-600">
                                                             {/* {club.eventSuccessRate?.toFixed(1)}% */}
-                                                            {(club.eventSuccessRate * 100).toFixed(0)}%
+                                                            {/* {(club.eventSuccessRate * 100).toFixed(0)}% */}
+                                                            {Math.round(club.eventSuccessRate * 100)}%
                                                         </TableCell>
 
                                                         {/* <TableCell className="text-center font-mono text-blue-600 bg-blue-50/30"> */}
@@ -558,7 +590,9 @@ export default function UniStaffActivityReportPage() {
                                                         <TableCell className="text-center font-mono text-yellow-600 bg-yellow-50/30">
                                                             {club.awardScore.toFixed(0)}
                                                         </TableCell>
-
+                                                        <TableCell className="text-center font-bold text-green-600 bg-green-50/30">
+                                                            +{club.rewardPoints?.toLocaleString()}
+                                                        </TableCell>
                                                         <TableCell className="text-right font-bold text-lg bg-muted/20 pr-6">
                                                             {club.finalScore.toFixed(0)}
                                                         </TableCell>
