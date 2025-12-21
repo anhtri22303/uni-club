@@ -416,10 +416,10 @@ export default function ClubLeaderRewardDistributionPage() {
     if (!managedClub?.id) return;
 
     // 1. Validate số điểm tối thiểu
-    if (Number(cashoutPoints) < 10000) {
+    if (Number(cashoutPoints) < 1000) {
       toast({
         title: "Minimum Amount Required",
-        description: "You must exchange at least 10,000 points per request.",
+        description: "You must exchange at least 1,000 points per request.",
         variant: "destructive"
       });
       return;
@@ -1658,13 +1658,13 @@ export default function ClubLeaderRewardDistributionPage() {
                       id="cashout-points"
                       type="text"
                       inputMode="numeric"
-                      placeholder="Min 10,000"
+                      placeholder="Min 1,000"
                       value={cashoutPoints === "" ? "" : new Intl.NumberFormat("en-US").format(Number(cashoutPoints))}
                       onChange={(e) => {
                         const val = e.target.value.replace(/,/g, "");
                         if (/^\d*$/.test(val)) setCashoutPoints(val === "" ? "" : Number(val));
                       }}
-                      className={`h-11 text-lg pr-12 border-emerald-300 focus-visible:ring-emerald-500 ${(Number(cashoutPoints) > 0 && Number(cashoutPoints) < 10000) || hasPendingCashout ? "border-red-500 focus-visible:ring-red-500" : ""
+                      className={`h-11 text-lg pr-12 border-emerald-300 focus-visible:ring-emerald-500 ${(Number(cashoutPoints) > 0 && Number(cashoutPoints) < 1000) || hasPendingCashout ? "border-red-500 focus-visible:ring-red-500" : ""
                         }`}
                       disabled={hasPendingCashout} // Vô hiệu hóa input nếu đã có đơn pending
                     />
@@ -1672,9 +1672,9 @@ export default function ClubLeaderRewardDistributionPage() {
                   </div>
 
                   {/* Cảnh báo số điểm tối thiểu */}
-                  {Number(cashoutPoints) > 0 && Number(cashoutPoints) < 10000 && (
+                  {Number(cashoutPoints) > 0 && Number(cashoutPoints) < 1000 && (
                     <p className="text-xs text-red-500 flex items-center gap-1 mt-1 animate-in fade-in slide-in-from-top-1">
-                      <AlertCircle className="h-3 w-3" /> Minimum exchange amount is 10,000 points.
+                      <AlertCircle className="h-3 w-3" /> Minimum exchange amount is 1,000 points.
                     </p>
                   )}
 
@@ -1732,11 +1732,11 @@ export default function ClubLeaderRewardDistributionPage() {
               <Button
                 onClick={handleCreateCashoutRequest}
                 // Thêm điều kiện: !cashoutNote.trim() (bắt buộc nhập note)
-                // Và Number(cashoutPoints) < 10000 (tối thiểu 10,000 điểm)
+                // Và Number(cashoutPoints) < 1000 (tối thiểu 1,000 điểm)
                 disabled={
                   isSubmittingCashout ||
                   !cashoutPoints ||
-                  Number(cashoutPoints) < 10000 ||
+                  Number(cashoutPoints) < 1000 ||
                   Number(cashoutPoints) > (clubWallet?.balancePoints || 0) ||
                   !cashoutNote.trim()
                 }

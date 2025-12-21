@@ -489,7 +489,7 @@ export default function UniStaffPointRequestsPage() {
                                                         {/* Chỉ hiển thị dòng này nếu là đơn CASHOUT */}
                                                         {requestType === "CASHOUT" && (
                                                             <p className="text-sm font-semibold text-emerald-600 ml-7">
-                                                                Equivalent: {(displayPoints * 1000).toLocaleString()} VND
+                                                                Equivalent: {(displayPoints * 100).toLocaleString()} VND
                                                             </p>
                                                         )}
                                                     </div>
