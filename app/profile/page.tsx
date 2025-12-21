@@ -23,7 +23,6 @@ import { ChangePasswordModal } from "@/components/change-password"
 import { CompleteProfileModal } from "@/components/complete-profile-modal"
 import { ApiMembershipWallet, getClubWallet, ApiClubWallet } from "@/service/walletApi"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from "@/components/ui/select"
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
 import { Major, fetchMajors } from "@/service/majorApi" // Import từ majorApi
 import { fetchUser } from "@/service/userApi"
 import { fetchEvent } from "@/service/eventApi"
@@ -1542,18 +1541,17 @@ export default function ProfilePage() {
                       const isClubWallet = membership.ownerType === "CLUB"
                       const pointsCardStyle = getPointsCardStyle(membership.balancePoints, isClubWallet)
                       return (
-                        <HoverCard key={membership.walletId} openDelay={300} closeDelay={100}>
-                          <HoverCardTrigger asChild>
-                            <div 
-                              className="cursor-pointer"
-                              onClick={() => {
-                                if (auth.role === "club_leader") {
-                                  router.push("/club-leader/points")
-                                } else if (auth.role === "student") {
-                                  router.push("/student/history?tab=wallet")
-                                }
-                              }}
-                            >
+                        <div 
+                          key={membership.walletId}
+                          className="cursor-pointer"
+                          onClick={() => {
+                            if (auth.role === "club_leader") {
+                              router.push("/club-leader/points")
+                            } else if (auth.role === "student") {
+                              router.push("/student/history?tab=wallet")
+                            }
+                          }}
+                        >
                               <Card
                                 className={`shadow-lg border-0 transition-all duration-300 ${pointsCardStyle.cardClassName}`}
                               >
@@ -1575,62 +1573,7 @@ export default function ProfilePage() {
                                   </div>
                                 </CardContent>
                               </Card>
-                            </div>
-                          </HoverCardTrigger>
-                          <HoverCardContent className="w-80 p-0 z-[100]" align="start" side="left" sideOffset={10}>
-                          <div className="p-4 border-b bg-gradient-to-r from-blue-50 to-purple-50 dark:from-slate-800 dark:to-slate-900">
-                            <h4 className="font-semibold text-base flex items-center gap-2">
-                              <Flame className="h-5 w-5 text-orange-500" />
-                              Point Levels Guide
-                            </h4>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Earn points to unlock colorful flame effects
-                            </p>
-                          </div>
-                          <div className="max-h-[400px] overflow-y-auto">
-                            {pointLevels.map((level, index) => {
-                              const isCurrentLevel = membership.balancePoints >= level.min && (index === 0 || membership.balancePoints < pointLevels[index - 1].min)
-                              return (
-                                <div
-                                  key={level.min}
-                                  className={`p-3 border-b last:border-0 transition-all ${
-                                    isCurrentLevel
-                                      ? "bg-blue-50 dark:bg-blue-900/20 border-l-4 border-l-blue-500"
-                                      : "hover:bg-slate-50 dark:hover:bg-slate-800/50"
-                                  }`}
-                                >
-                                  <div className="flex items-center justify-between gap-3">
-                                    <div className="flex items-center gap-3 flex-1">
-                                      <div className={`w-10 h-10 rounded-lg bg-gradient-to-r ${level.gradient} flex items-center justify-center shadow-md`}>
-                                        <Flame className="h-5 w-5 text-white" />
-                                      </div>
-                                      <div>
-                                        <div className="flex items-center gap-2">
-                                          <span className="font-semibold text-sm">{level.name}</span>
-                                          {isCurrentLevel && (
-                                            <span className="text-xs px-2 py-0.5 bg-blue-500 text-white rounded-full font-medium">
-                                              Current
-                                            </span>
-                                          )}
-                                        </div>
-                                        <div className="flex flex-col gap-0.5">
-                                          <span className="text-xs font-medium text-muted-foreground">{level.label} points</span>
-                                          <span className="text-xs text-muted-foreground/80 italic">{level.desc}</span>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              )
-                            })}
-                          </div>
-                          <div className="p-3 bg-slate-50 dark:bg-slate-900 border-t">
-                            <p className="text-xs text-center text-muted-foreground">
-                              🔥 Keep earning points to reach higher levels!
-                            </p>
-                          </div>
-                        </HoverCardContent>
-                      </HoverCard>
+                        </div>
                     )
                   })}
                 </>
