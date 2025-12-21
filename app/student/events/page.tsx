@@ -31,6 +31,7 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useQueryClient } from "@tanstack/react-query"
+import { fetchProfile, type UserProfile } from "@/service/userApi"
 
 // Import data
 import clubs from "@/src/data/clubs.json"
@@ -57,24 +58,32 @@ export default function MemberEventsPage() {
 
 
 
-  // Get user's club IDs from sessionStorage
+  // Get user's club IDs from API fetchProfile
   useEffect(() => {
-    try {
-      const saved = safeSessionStorage.getItem("uniclub-auth")
-      if (saved) {
-        const parsed = JSON.parse(saved)
-
-        if (parsed.clubIds && Array.isArray(parsed.clubIds)) {
-          const clubIdNumbers = parsed.clubIds.map((id: any) => Number(id)).filter((id: number) => !isNaN(id))
-          setUserClubIds(clubIdNumbers)
-        } else if (parsed.clubId) {
-          const clubIdNumber = Number(parsed.clubId)
-          setUserClubIds([clubIdNumber])
+    const fetchUserClubs = async () => {
+      try {
+        const profile: UserProfile | null = await fetchProfile()
+        
+        if (!profile) {
+          console.error("Failed to fetch profile: Profile data is null")
+          setUserClubIds([])
+          return
         }
+
+        const clubs = profile?.clubs || []
+        if (clubs && Array.isArray(clubs) && clubs.length > 0) {
+          const clubIds = clubs.map((club: any) => club.clubId)
+          setUserClubIds(clubIds)
+        } else {
+          setUserClubIds([])
+        }
+      } catch (error) {
+        console.error("Failed to fetch profile for club IDs:", error)
+        setUserClubIds([])
       }
-    } catch (error) {
-      console.error("Failed to get clubIds from sessionStorage:", error)
     }
+
+    fetchUserClubs()
   }, [])
 
   // Fetch club data and registrations

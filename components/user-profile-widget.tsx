@@ -248,20 +248,26 @@ export function UserProfileWidget() {
       }
     }
 
-    // For club leaders, add club wallet at the beginning
-    if (auth.role === "club_leader" && clubWallet) {
-      const clubWalletEntry: ApiMembershipWallet = {
-        walletId: clubWallet.walletId,
-        balancePoints: clubWallet.balancePoints,
-        ownerType: clubWallet.ownerType,
-        clubId: clubWallet.clubId,
-        clubName: clubWallet.clubName || "Club Wallet",
-        userId: clubWallet.userId || 0,
-        userFullName: clubWallet.userFullName || ""
-      };
+    // For club leaders, filter out USER wallet and add club wallet
+    if (auth.role === "club_leader") {
+      // Remove USER wallet from list
+      walletsList = walletsList.filter((w: any) => w.ownerType !== "USER");
       
-      // Add club wallet at the beginning
-      walletsList = [clubWalletEntry, ...walletsList];
+      // Add club wallet at the beginning if available
+      if (clubWallet) {
+        const clubWalletEntry: ApiMembershipWallet = {
+          walletId: clubWallet.walletId,
+          balancePoints: clubWallet.balancePoints,
+          ownerType: clubWallet.ownerType,
+          clubId: clubWallet.clubId,
+          clubName: clubWallet.clubName || "Club Wallet",
+          userId: clubWallet.userId || 0,
+          userFullName: clubWallet.userFullName || ""
+        };
+        
+        // Add club wallet at the beginning
+        walletsList = [clubWalletEntry, ...walletsList];
+      }
     }
 
     // Map data - đổi tên wallet cá nhân thành "My Point"
@@ -443,6 +449,30 @@ export function UserProfileWidget() {
                 </DropdownMenu>
               ) : (
                 // Static points card when 0 or 1 membership
+                auth.role === "club_leader" ? (
+                  // No hover card for club leaders
+                  <div 
+                    className="cursor-pointer"
+                    onClick={() => {
+                      router.push("/club-leader/points")
+                    }}
+                  >
+                    <div className={`rounded-lg p-0 overflow-hidden shadow-sm mt-4 ${pointsStyle.cardClassName}`}>
+                      <div className="p-3 flex items-center justify-between gap-2">
+                        <div className="flex-1 min-w-0 overflow-hidden">
+                          <p className={`text-xs font-medium transition-colors duration-300 ${pointsStyle.subtitleColorClassName} truncate`}>
+                            {memberships.length > 0 ? "Points" : "No Wallet"}
+                          </p>
+                          <p className={`text-2xl font-bold transition-colors duration-300 ${pointsStyle.textColorClassName} truncate`}>{userPoints.toLocaleString()}</p>
+                        </div>
+                        <div className={`p-2 rounded-full transition-colors duration-300 flex-shrink-0 ${pointsStyle.iconBgClassName}`}>
+                          <Flame className={`h-5 w-5 transition-colors duration-300 ${pointsStyle.iconColorClassName} ${pointsStyle.animationClassName}`} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  // Hover card for students
                 <HoverCard openDelay={300} closeDelay={100}>
                   <HoverCardTrigger asChild>
                     <div 
@@ -524,6 +554,7 @@ export function UserProfileWidget() {
                     </div>
                   </HoverCardContent>
                 </HoverCard>
+                )
               )
             )
           )}

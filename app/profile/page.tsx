@@ -259,6 +259,11 @@ export default function ProfilePage() {
           }
         }
 
+        // For club leaders, filter out USER wallet (only show CLUB wallet)
+        if (auth.role === "club_leader") {
+          walletsList = walletsList.filter((w: any) => w.ownerType !== "USER")
+        }
+
         setMemberships(walletsList)
       }
 
@@ -274,6 +279,25 @@ export default function ProfilePage() {
           if (clubId) {
             const wallet = await getClubWallet(clubId)
             setClubWallet(wallet)
+            
+            // Merge club wallet into memberships at the beginning
+            if (wallet) {
+              const clubWalletEntry: ApiMembershipWallet = {
+                walletId: wallet.walletId,
+                balancePoints: wallet.balancePoints,
+                ownerType: wallet.ownerType,
+                clubId: wallet.clubId,
+                clubName: wallet.clubName || "Club Wallet",
+                userId: wallet.userId || 0,
+                userFullName: wallet.userFullName || ""
+              }
+              
+              // Remove any existing club wallet with same ID to avoid duplicates
+              setMemberships(prev => {
+                const filtered = prev.filter(m => m.walletId !== wallet.walletId)
+                return [clubWalletEntry, ...filtered]
+              })
+            }
           }
         } catch (error) {
           console.error("Failed to load club wallet:", error)
@@ -1515,7 +1539,8 @@ export default function ProfilePage() {
                 ) : memberships.length > 0 ? (
                   <>
                     {memberships.map((membership) => {
-                      const pointsCardStyle = getPointsCardStyle(membership.balancePoints)
+                      const isClubWallet = membership.ownerType === "CLUB"
+                      const pointsCardStyle = getPointsCardStyle(membership.balancePoints, isClubWallet)
                       return (
                         <HoverCard key={membership.walletId} openDelay={300} closeDelay={100}>
                           <HoverCardTrigger asChild>
@@ -1608,46 +1633,6 @@ export default function ProfilePage() {
                       </HoverCard>
                     )
                   })}
-
-                  {/* Club Wallet Card for Club Leaders */}
-                  {auth.role === "club_leader" && (
-                    clubWalletLoading ? (
-                      <Card className="shadow-lg border-0 animate-pulse">
-                        <CardContent className="p-4 flex items-center justify-between">
-                          <div className="flex-1 min-w-0 space-y-2">
-                            <div className="h-4 w-24 bg-slate-200 dark:bg-slate-700 rounded" />
-                            <div className="h-8 w-28 bg-slate-200 dark:bg-slate-700 rounded" />
-                          </div>
-                          <div className="p-3 rounded-full bg-slate-200 dark:bg-slate-700">
-                            <div className="h-6 w-6" />
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ) : clubWallet ? (
-                      <Card
-                        className={`shadow-lg border-0 transition-all duration-300 cursor-pointer hover:shadow-xl ${getPointsCardStyle(clubWallet.balancePoints, true).cardClassName}`}
-                        onClick={() => router.push("/club-leader/points")}
-                      >
-                        <CardContent className="p-4 flex items-center justify-between">
-                          <div className="flex-1 min-w-0">
-                            <p className={`text-sm font-medium transition-colors duration-300 ${getPointsCardStyle(clubWallet.balancePoints, true).subtitleColorClassName} truncate`}>
-                              Club Points
-                            </p>
-                            <p className={`text-3xl font-bold transition-colors duration-300 ${getPointsCardStyle(clubWallet.balancePoints, true).textColorClassName}`}>
-                              {clubWallet.balancePoints.toLocaleString()}
-                            </p>
-                          </div>
-                          <div className={`p-3 rounded-full transition-colors duration-300 ${getPointsCardStyle(clubWallet.balancePoints, true).iconBgClassName}`}>
-                            <Flame className={
-                              `h-6 w-6 transition-colors duration-300 
-                              ${getPointsCardStyle(clubWallet.balancePoints, true).iconColorClassName} 
-                              ${getPointsCardStyle(clubWallet.balancePoints, true).animationClassName}`
-                            } />
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ) : null
-                  )}
                 </>
               ) : (
                 // Show empty state when no wallets

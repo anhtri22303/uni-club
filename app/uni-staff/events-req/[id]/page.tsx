@@ -1078,7 +1078,7 @@ export default function EventRequestDetailPage({
                     )}
                 </CardContent>
               </Card>
-
+{/* 
               {(request.purpose || request.description) && (
                 <Card>
                   <CardHeader>
@@ -1093,7 +1093,7 @@ export default function EventRequestDetailPage({
                     </p>
                   </CardContent>
                 </Card>
-              )}
+              )} */}
             </div>
 
             {/* Sidebar Information */}
@@ -1131,7 +1131,7 @@ export default function EventRequestDetailPage({
                       <span className="font-semibold">
                         {request.hostClub ? (
                           <>
-                            {request.hostClub.name} (#{request.hostClub.id})
+                            {request.hostClub.name} 
                           </>
                         ) : (
                           <>

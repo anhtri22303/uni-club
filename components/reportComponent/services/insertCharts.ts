@@ -1,6 +1,6 @@
 import { toast } from "sonner"
 import { getMembersByClubId } from "@/service/membershipApi"
-import { getEventByClubId } from "@/service/eventApi"
+import { getEventByClubId, type Event } from "@/service/eventApi"
 import { getMemberApplyByClubId } from "@/service/memberApplicationApi"
 import { getProducts } from "@/service/productApi"
 import { getClubRedeemOrders } from "@/service/redeemApi"
@@ -50,14 +50,20 @@ export async function insertMembersChart(clubId: number, editorRef: React.RefObj
 export async function insertEventsChart(clubId: number, editorRef: React.RefObject<HTMLDivElement>, afterChange: AfterChange) {
   try {
     const events = await getEventByClubId(clubId)
-    const approvedCount = events.filter((e: any) => e.status === "APPROVED").length
-    const pendingCount = events.filter((e: any) => e.status === "PENDING_UNISTAFF" || e.status === "PENDING_COCLUB").length
-    const rejectedCount = events.filter((e: any) => e.status === "REJECTED").length
+    const approvedCount = events.filter((e: Event) => e.status === "APPROVED").length
+    const pendingCount = events.filter((e: Event) => e.status === "PENDING_UNISTAFF" || e.status === "PENDING_COCLUB").length
+    const rejectedCount = events.filter((e: Event) => e.status === "REJECTED").length
+    const completedCount = events.filter((e: Event) => e.status === "COMPLETED").length
+    const ongoingCount = events.filter((e: Event) => e.status === "ONGOING").length
+    
     const chartData = [
       { name: "Approved", value: approvedCount, color: "#22c55e" },
+      { name: "Completed", value: completedCount, color: "#10b981" },
+      { name: "Ongoing", value: ongoingCount, color: "#3b82f6" },
       { name: "Pending", value: pendingCount, color: "#eab308" },
       { name: "Rejected", value: rejectedCount, color: "#ef4444" },
     ].filter((item) => item.value > 0)
+    
     const html = `
       <div style="margin: 25px 0; page-break-inside: avoid;">
         <h2 style="font-size: 18px; font-weight: bold; margin-bottom: 10px; color: #111827;">Events Overview</h2>
@@ -66,6 +72,8 @@ export async function insertEventsChart(clubId: number, editorRef: React.RefObje
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
             <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Total Events:</strong> ${events.length}</p>
             <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Approved:</strong> ${approvedCount}</p>
+            <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Completed:</strong> ${completedCount}</p>
+            <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Ongoing:</strong> ${ongoingCount}</p>
             <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Pending:</strong> ${pendingCount}</p>
             <p style="margin: 0; font-size: 13px; color: #374151;"><strong>Rejected:</strong> ${rejectedCount}</p>
           </div>

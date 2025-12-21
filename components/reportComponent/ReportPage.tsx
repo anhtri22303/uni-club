@@ -93,6 +93,11 @@ import {
   insertStaffClubOverviewChart,
   insertStaffClubOverviewByMonthChart,
 } from "@/components/reportComponent/services/insertStaffData"
+import {
+  insertMemberActivityHistoryTable,
+  insertMemberActivityLiveTable,
+  insertClubActivitySummaryTable,
+} from "@/components/reportComponent/services/insertMemberActivityData"
 import { 
   saveReportToSession, 
   loadReportFromSession, 
@@ -910,6 +915,21 @@ export function ReportPage({ allowedRoles }: ReportPageProps) {
     return insertOrdersData()
   }
 
+  const handleInsertMemberActivityHistory = () => {
+    if (!ensureClubContext()) return
+    return insertMemberActivityHistoryTable(clubData!.id, editorRef, afterChange)
+  }
+
+  const handleInsertMemberActivityLive = () => {
+    if (!ensureClubContext()) return
+    return insertMemberActivityLiveTable(clubData!.id, editorRef, afterChange)
+  }
+
+  const handleInsertClubActivitySummary = () => {
+    if (!ensureClubContext()) return
+    return insertClubActivitySummaryTable(clubData!.id, editorRef, afterChange)
+  }
+
   const handleManualSave = () => {
     if (clubData && editorRef.current) {
       const currentContent = editorRef.current.innerHTML
@@ -1197,6 +1217,9 @@ export function ReportPage({ allowedRoles }: ReportPageProps) {
             onOrdersChart={insertOrdersChart}
             onApplicationsChart={insertApplicationsChart}
             onWalletChart={() => insertWalletData()}
+            onMemberActivityHistoryTable={handleInsertMemberActivityHistory}
+            onMemberActivityLiveTable={handleInsertMemberActivityLive}
+            onClubActivitySummaryTable={handleInsertClubActivitySummary}
           />
         </div>
       </div>
