@@ -22,10 +22,10 @@ import { Input } from "@/components/ui/input"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
-const generateYearOptions = () => {
+const generateYearOptions = (range = 10) => {
     const currentYear = new Date().getFullYear()
     const years = []
-    for (let i = currentYear; i >= currentYear - 3; i--) {
+    for (let i = currentYear; i >= currentYear - range; i--) {
         years.push(i)
     }
     return years
@@ -101,11 +101,11 @@ const ActivityScoreDetail = ({ score }: { score: DisplayActivityItem }) => {
                     <CardContent className="pt-4 space-y-3">
                         <div className="flex justify-between text-sm">
                             <span className="text-muted-foreground">Base Score:</span>
-                            <span className="font-mono font-medium">{score.attendanceBaseScore ?? 0}</span>
+                            <span className="font-medium">{score.attendanceBaseScore ?? 0}</span>
                         </div>
                         <div className="flex justify-between text-sm">
                             <span className="text-muted-foreground">Multiplier:</span>
-                            <Badge variant="outline" className="font-mono">
+                            <Badge variant="outline" className="">
                                 {(score.attendanceMultiplier ?? 0).toFixed(1)}x
                             </Badge>
                         </div>
@@ -132,7 +132,7 @@ const ActivityScoreDetail = ({ score }: { score: DisplayActivityItem }) => {
                     <CardContent className="pt-4 space-y-3">
                         <div className="flex justify-between text-sm">
                             <span className="text-muted-foreground">Base Score:</span>
-                            <span className="font-mono font-medium">{score.staffBaseScore ?? 0}</span>
+                            <span className=" font-medium">{score.staffBaseScore ?? 0}</span>
                         </div>
                         <div className="flex justify-between text-sm">
                             <span className="text-muted-foreground">Evaluation:</span>
@@ -701,10 +701,10 @@ export default function ActivityReportPage() {
                                                                 {member.activityLevel || "UNKNOWN"}
                                                             </Badge>
                                                         </TableCell>
-                                                        <TableCell className="text-center font-mono text-blue-600 bg-blue-50/30">
+                                                        <TableCell className="text-center text-blue-600 bg-blue-50/30">
                                                             {member.attendanceTotalScore?.toFixed(0) ?? 0}
                                                         </TableCell>
-                                                        <TableCell className="text-center font-mono text-yellow-600 bg-yellow-50/30">
+                                                        <TableCell className="text-center text-yellow-600 bg-yellow-50/30">
                                                             {member.staffTotalScore?.toFixed(0) ?? 0}
                                                         </TableCell>
                                                         <TableCell className="text-right font-bold text-lg bg-muted/20 pr-10">

@@ -45,6 +45,7 @@ import { getClubMemberActivity } from "@/service/memberActivityReportApi";
 import {
   postCashoutRequest, getCashoutsByClubId, type CashoutResponse
 } from "@/service/exchangeClubPointApi";
+import { useFullProfile } from "@/hooks/use-query-hooks"; // Điều chỉnh đường dẫn nếu cần
 
 interface ClubMember {
   id: string;
@@ -57,6 +58,9 @@ interface ClubMember {
 const POINT_EXCHANGE_RATE = 100; // 1 point = 100 VND
 
 export default function ClubLeaderRewardDistributionPage() {
+  const { data: currentUser } = useFullProfile();
+
+
   const { clubMemberships } = useData();
   const { toast } = useToast();
   const [managedClub, setManagedClub] = useState<any>(null);
@@ -65,6 +69,14 @@ export default function ClubLeaderRewardDistributionPage() {
   const [walletLoading, setWalletLoading] = useState(false);
   // === Data Members ===
   const [apiMembers, setApiMembers] = useState<ApiMembership[] | null>(null);
+  const currentUserInClub = useMemo(() => {
+    if (!currentUser || !apiMembers) return null;
+    // Tìm membership của người đang đăng nhập trong club này
+    return apiMembers.find((m: any) => Number(m.userId) === currentUser.id);
+  }, [currentUser, apiMembers]);
+
+  const currentUserClubRole = currentUserInClub?.clubRole; // LEADER, VICE_LEADER, v.v.
+
   const [membersLoading, setMembersLoading] = useState(false);
   const [membersError, setMembersError] = useState<string | null>(null);
   const [selectedMembers, setSelectedMembers] = useState<Record<string, boolean>>({});
@@ -120,6 +132,8 @@ export default function ClubLeaderRewardDistributionPage() {
   const [showCashoutHistoryModal, setShowCashoutHistoryModal] = useState(false);
   const [cashoutRequests, setCashoutRequests] = useState<CashoutResponse[]>([]);
   const [cashoutHistoryLoading, setCashoutHistoryLoading] = useState(false);
+
+
   // State cho danh sách đơn đổi điểm
   const hasPendingCashout = useMemo(() => {
     return cashoutRequests.some(req => req.status === "PENDING");
@@ -731,8 +745,32 @@ export default function ClubLeaderRewardDistributionPage() {
     const endIndex = startIndex + historyPageSize;
     return filteredTransactions.slice(startIndex, endIndex);
   }, [filteredTransactions, historyCurrentPage, historyPageSize]);
-
   const historyTotalPages = Math.ceil(filteredTransactions.length / historyPageSize);
+
+  const canPenalizeMember = (targetMember: any) => {
+    if (!currentUser || !currentUserClubRole) return false;
+
+    const targetUserId = Number(targetMember.userId);
+    const targetRole = targetMember.role; // LEADER hoặc VICE_LEADER hoặc MEMBER
+
+    // 1. Không thể tự phạt chính mình
+    if (targetUserId === currentUser.id) return false;
+
+    // 2. Nếu là LEADER: có quyền phạt tất cả mọi người (trừ chính mình)
+    if (currentUserClubRole === "LEADER") {
+      return true;
+    }
+
+    // 3. Nếu là VICE_LEADER:
+    if (currentUserClubRole === "VICE_LEADER") {
+      // Không thể phạt LEADER
+      if (targetRole === "LEADER") return false;
+      // Có thể phạt những người còn lại (MEMBER, VICE_LEADER khác nếu có)
+      return true;
+    }
+
+    return false;
+  };
 
   const handleOpenPenaltyModal = (member: any) => {
     setMemberToPenalize(member);
@@ -828,9 +866,6 @@ export default function ClubLeaderRewardDistributionPage() {
                       <p className="text-sm font-medium">#{clubWallet.walletId}</p>
                     </div>
                   )}
-                  {/* <Button variant="outline" size="sm" onClick={handleOpenHistoryModal} className="gap-2">
-                    <History className="h-4 w-4" /> History
-                  </Button> */}
                   <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
                     <Button
                       variant="default"
@@ -1126,9 +1161,38 @@ export default function ClubLeaderRewardDistributionPage() {
                         </div>
 
                         <div className="flex items-center gap-3">
-                          <Button variant="destructive" size="icon" className="h-8 w-8" onClick={() => handleOpenPenaltyModal(member)}>
+                          {/* <Button variant="destructive" size="icon" className="h-8 w-8" onClick={() => handleOpenPenaltyModal(member)}>
                             <TriangleAlert className="h-4 w-4" />
-                          </Button>
+                          </Button> */}
+                          {/* LOGIC VALIDATE PENALTY BUTTON */}
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span> {/* Cần thẻ span bọc ngoài button disabled để tooltip hoạt động */}
+                                  <Button
+                                    variant="destructive"
+                                    size="icon"
+                                    className={`h-8 w-8 transition-all ${!canPenalizeMember(member) ? "opacity-20 grayscale cursor-not-allowed" : ""
+                                      }`}
+                                    onClick={() => handleOpenPenaltyModal(member)}
+                                    disabled={!canPenalizeMember(member)}
+                                  >
+                                    <TriangleAlert className="h-4 w-4" />
+                                  </Button>
+                                </span>
+                              </TooltipTrigger>
+                              {!canPenalizeMember(member) && (
+                                <TooltipContent side="left">
+                                  <p>
+                                    {Number(member.userId) === currentUser?.id
+                                      ? "You cannot penalize yourself"
+                                      : `You don't have permission to penalize the ${member.role}`}
+                                  </p>
+                                </TooltipContent>
+                              )}
+                            </Tooltip>
+                          </TooltipProvider>
+
                           <input
                             type="checkbox"
                             checked={isSelected}
@@ -1638,21 +1702,7 @@ export default function ClubLeaderRewardDistributionPage() {
                 {/* Nhập số điểm muốn đổi */}
                 <div className="space-y-2">
                   <Label htmlFor="cashout-points" className="font-semibold text-sm">Points to Exchange</Label>
-                  {/* <div className="relative">
-                    <Input
-                      id="cashout-points"
-                      type="text"
-                      inputMode="numeric"
-                      placeholder="0"
-                      value={cashoutPoints === "" ? "" : new Intl.NumberFormat("en-US").format(Number(cashoutPoints))}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/,/g, "");
-                        if (/^\d*$/.test(val)) setCashoutPoints(val === "" ? "" : Number(val));
-                      }}
-                      className="h-11 text-lg pr-12 border-emerald-300 focus-visible:ring-emerald-500"
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-medium">pts</span>
-                  </div> */}
+
                   <div className="relative">
                     <Input
                       id="cashout-points"
