@@ -23,7 +23,6 @@ import { ChangePasswordModal } from "@/components/change-password"
 import { CompleteProfileModal } from "@/components/complete-profile-modal"
 import { ApiMembershipWallet, getClubWallet, ApiClubWallet } from "@/service/walletApi"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from "@/components/ui/select"
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
 import { Major, fetchMajors } from "@/service/majorApi" // Import từ majorApi
 import { fetchUser } from "@/service/userApi"
 import { fetchEvent } from "@/service/eventApi"
@@ -259,6 +258,11 @@ export default function ProfilePage() {
           }
         }
 
+        // For club leaders, filter out USER wallet (only show CLUB wallet)
+        if (auth.role === "club_leader") {
+          walletsList = walletsList.filter((w: any) => w.ownerType !== "USER")
+        }
+
         setMemberships(walletsList)
       }
 
@@ -274,6 +278,25 @@ export default function ProfilePage() {
           if (clubId) {
             const wallet = await getClubWallet(clubId)
             setClubWallet(wallet)
+            
+            // Merge club wallet into memberships at the beginning
+            if (wallet) {
+              const clubWalletEntry: ApiMembershipWallet = {
+                walletId: wallet.walletId,
+                balancePoints: wallet.balancePoints,
+                ownerType: wallet.ownerType,
+                clubId: wallet.clubId,
+                clubName: wallet.clubName || "Club Wallet",
+                userId: wallet.userId || 0,
+                userFullName: wallet.userFullName || ""
+              }
+              
+              // Remove any existing club wallet with same ID to avoid duplicates
+              setMemberships(prev => {
+                const filtered = prev.filter(m => m.walletId !== wallet.walletId)
+                return [clubWalletEntry, ...filtered]
+              })
+            }
           }
         } catch (error) {
           console.error("Failed to load club wallet:", error)
@@ -1515,20 +1538,20 @@ export default function ProfilePage() {
                 ) : memberships.length > 0 ? (
                   <>
                     {memberships.map((membership) => {
-                      const pointsCardStyle = getPointsCardStyle(membership.balancePoints)
+                      const isClubWallet = membership.ownerType === "CLUB"
+                      const pointsCardStyle = getPointsCardStyle(membership.balancePoints, isClubWallet)
                       return (
-                        <HoverCard key={membership.walletId} openDelay={300} closeDelay={100}>
-                          <HoverCardTrigger asChild>
-                            <div 
-                              className="cursor-pointer"
-                              onClick={() => {
-                                if (auth.role === "club_leader") {
-                                  router.push("/club-leader/points")
-                                } else if (auth.role === "student") {
-                                  router.push("/student/history?tab=wallet")
-                                }
-                              }}
-                            >
+                        <div 
+                          key={membership.walletId}
+                          className="cursor-pointer"
+                          onClick={() => {
+                            if (auth.role === "club_leader") {
+                              router.push("/club-leader/points")
+                            } else if (auth.role === "student") {
+                              router.push("/student/history?tab=wallet")
+                            }
+                          }}
+                        >
                               <Card
                                 className={`shadow-lg border-0 transition-all duration-300 ${pointsCardStyle.cardClassName}`}
                               >
@@ -1550,104 +1573,9 @@ export default function ProfilePage() {
                                   </div>
                                 </CardContent>
                               </Card>
-                            </div>
-                          </HoverCardTrigger>
-                          <HoverCardContent className="w-80 p-0 z-[100]" align="start" side="left" sideOffset={10}>
-                          <div className="p-4 border-b bg-gradient-to-r from-blue-50 to-purple-50 dark:from-slate-800 dark:to-slate-900">
-                            <h4 className="font-semibold text-base flex items-center gap-2">
-                              <Flame className="h-5 w-5 text-orange-500" />
-                              Point Levels Guide
-                            </h4>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Earn points to unlock colorful flame effects
-                            </p>
-                          </div>
-                          <div className="max-h-[400px] overflow-y-auto">
-                            {pointLevels.map((level, index) => {
-                              const isCurrentLevel = membership.balancePoints >= level.min && (index === 0 || membership.balancePoints < pointLevels[index - 1].min)
-                              return (
-                                <div
-                                  key={level.min}
-                                  className={`p-3 border-b last:border-0 transition-all ${
-                                    isCurrentLevel
-                                      ? "bg-blue-50 dark:bg-blue-900/20 border-l-4 border-l-blue-500"
-                                      : "hover:bg-slate-50 dark:hover:bg-slate-800/50"
-                                  }`}
-                                >
-                                  <div className="flex items-center justify-between gap-3">
-                                    <div className="flex items-center gap-3 flex-1">
-                                      <div className={`w-10 h-10 rounded-lg bg-gradient-to-r ${level.gradient} flex items-center justify-center shadow-md`}>
-                                        <Flame className="h-5 w-5 text-white" />
-                                      </div>
-                                      <div>
-                                        <div className="flex items-center gap-2">
-                                          <span className="font-semibold text-sm">{level.name}</span>
-                                          {isCurrentLevel && (
-                                            <span className="text-xs px-2 py-0.5 bg-blue-500 text-white rounded-full font-medium">
-                                              Current
-                                            </span>
-                                          )}
-                                        </div>
-                                        <div className="flex flex-col gap-0.5">
-                                          <span className="text-xs font-medium text-muted-foreground">{level.label} points</span>
-                                          <span className="text-xs text-muted-foreground/80 italic">{level.desc}</span>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              )
-                            })}
-                          </div>
-                          <div className="p-3 bg-slate-50 dark:bg-slate-900 border-t">
-                            <p className="text-xs text-center text-muted-foreground">
-                              🔥 Keep earning points to reach higher levels!
-                            </p>
-                          </div>
-                        </HoverCardContent>
-                      </HoverCard>
+                        </div>
                     )
                   })}
-
-                  {/* Club Wallet Card for Club Leaders */}
-                  {auth.role === "club_leader" && (
-                    clubWalletLoading ? (
-                      <Card className="shadow-lg border-0 animate-pulse">
-                        <CardContent className="p-4 flex items-center justify-between">
-                          <div className="flex-1 min-w-0 space-y-2">
-                            <div className="h-4 w-24 bg-slate-200 dark:bg-slate-700 rounded" />
-                            <div className="h-8 w-28 bg-slate-200 dark:bg-slate-700 rounded" />
-                          </div>
-                          <div className="p-3 rounded-full bg-slate-200 dark:bg-slate-700">
-                            <div className="h-6 w-6" />
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ) : clubWallet ? (
-                      <Card
-                        className={`shadow-lg border-0 transition-all duration-300 cursor-pointer hover:shadow-xl ${getPointsCardStyle(clubWallet.balancePoints, true).cardClassName}`}
-                        onClick={() => router.push("/club-leader/points")}
-                      >
-                        <CardContent className="p-4 flex items-center justify-between">
-                          <div className="flex-1 min-w-0">
-                            <p className={`text-sm font-medium transition-colors duration-300 ${getPointsCardStyle(clubWallet.balancePoints, true).subtitleColorClassName} truncate`}>
-                              Club Points
-                            </p>
-                            <p className={`text-3xl font-bold transition-colors duration-300 ${getPointsCardStyle(clubWallet.balancePoints, true).textColorClassName}`}>
-                              {clubWallet.balancePoints.toLocaleString()}
-                            </p>
-                          </div>
-                          <div className={`p-3 rounded-full transition-colors duration-300 ${getPointsCardStyle(clubWallet.balancePoints, true).iconBgClassName}`}>
-                            <Flame className={
-                              `h-6 w-6 transition-colors duration-300 
-                              ${getPointsCardStyle(clubWallet.balancePoints, true).iconColorClassName} 
-                              ${getPointsCardStyle(clubWallet.balancePoints, true).animationClassName}`
-                            } />
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ) : null
-                  )}
                 </>
               ) : (
                 // Show empty state when no wallets

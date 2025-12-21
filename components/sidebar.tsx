@@ -165,6 +165,7 @@ const navigationConfig = {
     { href: "/uni-staff/student-codes", label: "Student Codes", icon: Code },
     { href: "/uni-staff/feedbacks", label: "Feedbacks", icon: MessagesSquare },
     { href: "/uni-staff/products", label: "Products", icon: Package },
+    { href: "/uni-staff/club-activities-report", label: "Club Activities Report", icon: ClipboardPenLine },
     {
       label: "Policy Management",
       icon: FileText,
@@ -205,7 +206,6 @@ const navigationConfig = {
       ],
     },
     { href: "/uni-staff/points", label: "Points Staff", icon: HandCoins },
-    { href: "/uni-staff/club-activities-report", label: "Club Activities Report", icon: ClipboardPenLine },
     { href: "/uni-staff/report", label: "Report", icon: FileBarChart },
 
     // { href: "/uni-staff/reports", label: "Reports", icon: BarChart3 },

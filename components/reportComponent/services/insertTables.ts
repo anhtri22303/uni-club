@@ -1,12 +1,12 @@
 import { toast } from "sonner"
 import { getMembersByClubId, getLeaveReq, type LeaveRequest } from "@/service/membershipApi"
-import { getEventByClubId, getEventCoHost } from "@/service/eventApi"
+import { getEventByClubId, getEventCoHost, type Event, isMultiDayEvent, getEventDateRange, formatEventDateRange } from "@/service/eventApi"
 import { getProducts } from "@/service/productApi"
 import { getMemberApplyByClubId } from "@/service/memberApplicationApi"
 import { getClubRedeemOrders } from "@/service/redeemApi"
 import { getClubWallet, getClubToMemberTransactions } from "@/service/walletApi"
 import { getFeedbackByClubId, type Feedback } from "@/service/feedbackApi"
-import { getClubMemberActivity, getClubActivitySummary, type MemberActivityShortItem, type ClubActivitySummary } from "@/service/memberActivityReportApi"
+import { getClubMemberActivity, getClubMemberActivityLive, getClubActivitySummary, type MemberActivityShortItem, type MemberActivityFullScore, type ClubActivitySummary } from "@/service/memberActivityReportApi"
 import { fetchClubAttendanceHistory, type FetchClubAttendanceHistoryParams } from "@/service/attendanceApi"
 import { getEventStaff, getEvaluateEventStaff, type EventStaff, type StaffEvaluation } from "@/service/eventStaffApi"
 
@@ -82,54 +82,89 @@ export async function insertEventsData(clubId: number, editorRef: React.RefObjec
   try {
     const events = await getEventByClubId(clubId)
     const totalEvents = events.length
-    const approvedEvents = events.filter((e: any) => e.status === "APPROVED").length
-    const ongoingEvents = events.filter((e: any) => e.status === "ONGOING").length
-    const completedEvents = events.filter((e: any) => e.status === "COMPLETED").length
-    const publicEvents = events.filter((e: any) => e.type === "PUBLIC").length
-    const totalBudget = events.reduce((sum: number, e: any) => sum + (e.budgetPoints || 0), 0)
+    const approvedEvents = events.filter((e: Event) => e.status === "APPROVED").length
+    const ongoingEvents = events.filter((e: Event) => e.status === "ONGOING").length
+    const completedEvents = events.filter((e: Event) => e.status === "COMPLETED").length
+    const publicEvents = events.filter((e: Event) => e.type === "PUBLIC").length
+    const totalBudget = events.reduce((sum: number, e: Event) => sum + (e.budgetPoints || 0), 0)
+    
     let html = `
-      <div style="margin: 20px 0; page-break-inside: avoid;">
-        <h2 style="font-size: 20px; font-weight: bold; margin-bottom: 15px; color: #1a1a1a;">Club Events</h2>
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+      <div style="margin: 15px 0; page-break-inside: avoid;">
+        <h2 style="font-size: 16px; font-weight: bold; margin-bottom: 10px; color: #1a1a1a;">Club Events</h2>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 10px;">
           <thead>
             <tr style="background-color: #f3f4f6;">
-              <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left; font-weight: 600;">No.</th>
-              <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left; font-weight: 600;">Event Name</th>
-              <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left; font-weight: 600;">Date</th>
-              <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left; font-weight: 600;">Type</th>
-              <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left; font-weight: 600;">Status</th>
-              <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left; font-weight: 600;">Location</th>
+              <th style="border: 1px solid #d1d5db; padding: 5px; text-align: left; font-weight: 600; width: 4%;">No.</th>
+              <th style="border: 1px solid #d1d5db; padding: 5px; text-align: left; font-weight: 600; width: 26%;">Event Name</th>
+              <th style="border: 1px solid #d1d5db; padding: 5px; text-align: left; font-weight: 600; width: 20%;">Date Range</th>
+              <th style="border: 1px solid #d1d5db; padding: 5px; text-align: center; font-weight: 600; width: 6%;">Days</th>
+              <th style="border: 1px solid #d1d5db; padding: 5px; text-align: left; font-weight: 600; width: 10%;">Type</th>
+              <th style="border: 1px solid #d1d5db; padding: 5px; text-align: left; font-weight: 600; width: 12%;">Status</th>
+              <th style="border: 1px solid #d1d5db; padding: 5px; text-align: left; font-weight: 600; width: 22%;">Location</th>
             </tr>
           </thead>
           <tbody>
     `
-    events.forEach((event: any, index: number) => {
+    
+    events.forEach((event: Event, index: number) => {
       const bgColor = index % 2 === 0 ? "#ffffff" : "#f9fafb"
+      
+      // Format date range - compact version
+      let dateDisplay = ""
+      if (isMultiDayEvent(event)) {
+        const { start, end } = getEventDateRange(event)
+        // Format: 12-20 to 12-22 (shorter)
+        const startParts = start.split('-')
+        const endParts = end.split('-')
+        if (start === end) {
+          dateDisplay = start
+        } else if (startParts[0] === endParts[0] && startParts[1] === endParts[1]) {
+          // Same month: 2025-12-20 to 12-22
+          dateDisplay = `${start} to ${endParts[2]}`
+        } else {
+          dateDisplay = `${start} to ${end}`
+        }
+      } else {
+        dateDisplay = event.date || "N/A"
+      }
+      
+      // Get number of days
+      const daysCount = isMultiDayEvent(event) && event.days ? event.days.length : 1
+      
+      // Get co-host info - compact
+      const coHostCount = event.coHostedClubs?.length || 0
+      const coHostInfo = coHostCount > 0 ? ` (+${coHostCount})` : ""
+      
       html += `
         <tr style="background-color: ${bgColor};">
-          <td style="border: 1px solid #d1d5db; padding: 8px; white-space: nowrap;">${index + 1}</td>
-          <td style="border: 1px solid #d1d5db; padding: 8px; word-wrap: break-word; max-width: 150px;">${event.name}</td>
-          <td style="border: 1px solid #d1d5db; padding: 8px; white-space: nowrap;">${event.date}</td>
-          <td style="border: 1px solid #d1d5db; padding: 8px; white-space: nowrap;">${event.type}</td>
-          <td style="border: 1px solid #d1d5db; padding: 8px;">${event.status}</td>
-          <td style="border: 1px solid #d1d5db; padding: 8px; word-wrap: break-word; max-width: 120px;">${event.locationName}</td>
+          <td style="border: 1px solid #d1d5db; padding: 4px; text-align: center; font-size: 9px;">${index + 1}</td>
+          <td style="border: 1px solid #d1d5db; padding: 4px; word-wrap: break-word; font-size: 9px; line-height: 1.3;">
+            ${event.name}${coHostInfo}
+          </td>
+          <td style="border: 1px solid #d1d5db; padding: 4px; font-size: 9px; white-space: nowrap;">${dateDisplay}</td>
+          <td style="border: 1px solid #d1d5db; padding: 4px; text-align: center; font-size: 9px;">${daysCount}</td>
+          <td style="border: 1px solid #d1d5db; padding: 4px; font-size: 9px;">${event.type}</td>
+          <td style="border: 1px solid #d1d5db; padding: 4px; font-size: 9px;">${event.status}</td>
+          <td style="border: 1px solid #d1d5db; padding: 4px; word-wrap: break-word; font-size: 9px; line-height: 1.3;">${event.locationName}</td>
         </tr>
       `
     })
+    
     html += `
           </tbody>
         </table>
-        <div style="margin-top: 20px; padding-left: 15px; border-left: 3px solid #000000;">
-          <h3 style="font-size: 16px; font-weight: bold; margin-bottom: 10px; color: #000000;">Event Metrics</h3>
-          <p style="margin: 5px 0; font-size: 14px;"><strong>Total Events:</strong> ${totalEvents}</p>
-          <p style="margin: 5px 0; font-size: 14px;"><strong>Approved Events:</strong> ${approvedEvents}</p>
-          <p style="margin: 5px 0; font-size: 14px;"><strong>Ongoing Events:</strong> ${ongoingEvents}</p>
-          <p style="margin: 5px 0; font-size: 14px;"><strong>Completed Events:</strong> ${completedEvents}</p>
-          <p style="margin: 5px 0; font-size: 14px;"><strong>Public Events:</strong> ${publicEvents}</p>
-          <p style="margin: 5px 0; font-size: 14px;"><strong>Total Budget:</strong> ${totalBudget.toLocaleString()} points</p>
+        <div style="margin-top: 12px; padding-left: 12px; border-left: 3px solid #000000;">
+          <h3 style="font-size: 13px; font-weight: bold; margin-bottom: 8px; color: #000000;">Event Metrics</h3>
+          <p style="margin: 3px 0; font-size: 11px;"><strong>Total Events:</strong> ${totalEvents}</p>
+          <p style="margin: 3px 0; font-size: 11px;"><strong>Approved Events:</strong> ${approvedEvents}</p>
+          <p style="margin: 3px 0; font-size: 11px;"><strong>Ongoing Events:</strong> ${ongoingEvents}</p>
+          <p style="margin: 3px 0; font-size: 11px;"><strong>Completed Events:</strong> ${completedEvents}</p>
+          <p style="margin: 3px 0; font-size: 11px;"><strong>Public Events:</strong> ${publicEvents}</p>
+          <p style="margin: 3px 0; font-size: 11px;"><strong>Total Budget:</strong> ${totalBudget.toLocaleString()} points</p>
         </div>
       </div>
     `
+    
     append(editorRef, html, afterChange)
     toast.success(`${events.length} events inserted`)
   } catch {
@@ -199,47 +234,63 @@ export async function insertApplicationsData(clubId: number, editorRef: React.Re
     const approvedCount = applications.filter((a: any) => a.status === "APPROVED").length
     const rejectedCount = applications.filter((a: any) => a.status === "REJECTED").length
     const approvalRate = totalApplications > 0 ? ((approvedCount / totalApplications) * 100).toFixed(1) : 0
+    
     let html = `
-      <div style="margin: 20px 0; page-break-inside: avoid;">
-        <h2 style="font-size: 20px; font-weight: bold; margin-bottom: 15px; color: #1a1a1a;">Membership Applications</h2>
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+      <div style="margin: 15px 0; page-break-inside: avoid;">
+        <h2 style="font-size: 16px; font-weight: bold; margin-bottom: 10px; color: #1a1a1a;">Membership Applications</h2>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 10px;">
           <thead>
             <tr style="background-color: #f3f4f6;">
-              <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left; font-weight: 600;">No.</th>
-              <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left; font-weight: 600;">Applicant Name</th>
-              <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left; font-weight: 600;">Student Code</th>
-              <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left; font-weight: 600;">Status</th>
-              <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left; font-weight: 600;">Applied Date</th>
+              <th style="border: 1px solid #d1d5db; padding: 5px; text-align: left; font-weight: 600; width: 6%;">No.</th>
+              <th style="border: 1px solid #d1d5db; padding: 5px; text-align: left; font-weight: 600; width: 30%;">Applicant Name</th>
+              <th style="border: 1px solid #d1d5db; padding: 5px; text-align: left; font-weight: 600; width: 20%;">Student Code</th>
+              <th style="border: 1px solid #d1d5db; padding: 5px; text-align: left; font-weight: 600; width: 18%;">Status</th>
+              <th style="border: 1px solid #d1d5db; padding: 5px; text-align: left; font-weight: 600; width: 26%;">Applied Date</th>
             </tr>
           </thead>
           <tbody>
     `
-  applications.forEach((app: any, index: number) => {
-    const bgColor = index % 2 === 0 ? "#ffffff" : "#f9fafb"
+    
+    applications.forEach((app: any, index: number) => {
+      const bgColor = index % 2 === 0 ? "#ffffff" : "#f9fafb"
+      
+      // Format date
+      const appliedDate = app.createdAt ? new Date(app.createdAt).toLocaleDateString('en-US', {
+        month: '2-digit',
+        day: '2-digit', 
+        year: 'numeric'
+      }) : 'N/A'
+      
+      // Get student code - check multiple possible field names
+      const studentCode = app.studentCode || app.applicantStudentCode || app.applicantEmail?.split('@')[0] || 'N/A'
+      
+      html += `
+        <tr style="background-color: ${bgColor};">
+          <td style="border: 1px solid #d1d5db; padding: 4px; text-align: center; font-size: 9px;">${index + 1}</td>
+          <td style="border: 1px solid #d1d5db; padding: 4px; font-size: 9px; line-height: 1.3;">${app.applicantName || 'N/A'}</td>
+          <td style="border: 1px solid #d1d5db; padding: 4px; font-size: 9px;">${studentCode}</td>
+          <td style="border: 1px solid #d1d5db; padding: 4px; font-size: 9px;">${app.status || 'PENDING'}</td>
+          <td style="border: 1px solid #d1d5db; padding: 4px; font-size: 9px;">${appliedDate}</td>
+        </tr>
+      `
+    })
+    
     html += `
-      <tr style="background-color: ${bgColor};">
-        <td style="border: 1px solid #d1d5db; padding: 8px;">${index + 1}</td>
-        <td style="border: 1px solid #d1d5db; padding: 8px;">${app.applicantName}</td>
-        <td style="border: 1px solid #d1d5db; padding: 8px;">${app.studentCode || 'N/A'}</td>
-        <td style="border: 1px solid #d1d5db; padding: 8px;">${app.status}</td>
-        <td style="border: 1px solid #d1d5db; padding: 8px;">${new Date(app.createdAt).toLocaleDateString()}</td>
-      </tr>
-    `
-  })
-  html += `
           </tbody>
         </table>
-        <div style="margin-top: 20px; padding-left: 15px; border-left: 3px solid #000000;">
-          <h3 style="font-size: 16px; font-weight: bold; margin-bottom: 10px; color: #000000;">Application Metrics</h3>
-          <p style="margin: 5px 0; font-size: 14px;"><strong>Total Applications:</strong> ${totalApplications}</p>
-          <p style="margin: 5px 0; font-size: 14px;"><strong>Pending:</strong> ${pendingCount}</p>
-          <p style="margin: 5px 0; font-size: 14px;"><strong>Approved:</strong> ${approvedCount}</p>
-          <p style="margin: 5px 0; font-size: 14px;"><strong>Rejected:</strong> ${rejectedCount}</p>
-          <p style="margin: 5px 0; font-size: 14px;"><strong>Approval Rate:</strong> ${approvalRate}%</p>
+        <div style="margin-top: 12px; padding-left: 12px; border-left: 3px solid #000000;">
+          <h3 style="font-size: 13px; font-weight: bold; margin-bottom: 8px; color: #000000;">Application Metrics</h3>
+          <p style="margin: 3px 0; font-size: 11px;"><strong>Total Applications:</strong> ${totalApplications}</p>
+          <p style="margin: 3px 0; font-size: 11px;"><strong>Pending:</strong> ${pendingCount}</p>
+          <p style="margin: 3px 0; font-size: 11px;"><strong>Approved:</strong> ${approvedCount}</p>
+          <p style="margin: 3px 0; font-size: 11px;"><strong>Rejected:</strong> ${rejectedCount}</p>
+          <p style="margin: 3px 0; font-size: 11px;"><strong>Approval Rate:</strong> ${approvalRate}%</p>
         </div>
       </div>
     `
+    
     append(editorRef, html, afterChange)
+    toast.success(`${applications.length} applications inserted`)
   } catch {
     toast.error("Failed to insert applications data")
   }
@@ -391,23 +442,22 @@ export async function insertFeedbackData(clubId: number, editorRef: React.RefObj
     const poorCount = feedbacks.filter(fb => fb.rating <= 2).length
     
     let html = `
-      <div style="margin: 20px 0; page-break-inside: avoid;">
-        <h2 style="font-size: 20px; font-weight: bold; margin-bottom: 15px; color: #1a1a1a;">Event Feedbacks</h2>
-        <div style="margin-bottom: 20px; padding-left: 15px; border-left: 3px solid #000000;">
-          <h3 style="font-size: 16px; font-weight: bold; margin-bottom: 10px; color: #000000;">Overall Metrics</h3>
-          <p style="margin: 5px 0; font-size: 14px;"><strong>Total Feedbacks:</strong> ${totalFeedbacks}</p>
-          <p style="margin: 5px 0; font-size: 14px;"><strong>Average Rating:</strong> ${avgRating} ⭐ / 5.0</p>
-          <p style="margin: 5px 0; font-size: 14px;"><strong>Excellent (≥4★):</strong> ${excellentCount} (${((excellentCount/totalFeedbacks)*100).toFixed(1)}%)</p>
-          <p style="margin: 5px 0; font-size: 14px;"><strong>Poor (≤2★):</strong> ${poorCount} (${((poorCount/totalFeedbacks)*100).toFixed(1)}%)</p>
+      <div style="margin: 15px 0; page-break-inside: avoid;">
+        <h2 style="font-size: 16px; font-weight: bold; margin-bottom: 10px; color: #1a1a1a;">Event Feedbacks</h2>
+        <div style="margin-bottom: 12px; padding-left: 12px; border-left: 3px solid #000000;">
+          <h3 style="font-size: 13px; font-weight: bold; margin-bottom: 8px; color: #000000;">Overall Metrics</h3>
+          <p style="margin: 3px 0; font-size: 11px;"><strong>Total Feedbacks:</strong> ${totalFeedbacks}</p>
+          <p style="margin: 3px 0; font-size: 11px;"><strong>Average Rating:</strong> ${avgRating} ⭐ / 5.0</p>
+          <p style="margin: 3px 0; font-size: 11px;"><strong>Excellent (≥4★):</strong> ${excellentCount} (${((excellentCount/totalFeedbacks)*100).toFixed(1)}%)</p>
+          <p style="margin: 3px 0; font-size: 11px;"><strong>Poor (≤2★):</strong> ${poorCount} (${((poorCount/totalFeedbacks)*100).toFixed(1)}%)</p>
         </div>
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 10px;">
           <thead>
             <tr style="background-color: #f3f4f6;">
-              <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left; font-weight: 600;">Event</th>
-              <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left; font-weight: 600;">Rating</th>
-              <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left; font-weight: 600;">Comment</th>
-              <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left; font-weight: 600;">Member</th>
-              <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left; font-weight: 600;">Date</th>
+              <th style="border: 1px solid #d1d5db; padding: 5px; text-align: left; font-weight: 600; width: 25%;">Event</th>
+              <th style="border: 1px solid #d1d5db; padding: 5px; text-align: left; font-weight: 600; width: 15%;">Rating</th>
+              <th style="border: 1px solid #d1d5db; padding: 5px; text-align: left; font-weight: 600; width: 45%;">Comment</th>
+              <th style="border: 1px solid #d1d5db; padding: 5px; text-align: left; font-weight: 600; width: 15%;">Date</th>
             </tr>
           </thead>
           <tbody>
@@ -419,11 +469,10 @@ export async function insertFeedbackData(clubId: number, editorRef: React.RefObj
       const comment = fb.comment ? fb.comment.substring(0, 100) + (fb.comment.length > 100 ? "..." : "") : "No comment"
       html += `
         <tr style="background-color: ${bgColor};">
-          <td style="border: 1px solid #d1d5db; padding: 8px; max-width: 120px; word-wrap: break-word;">${fb.eventName}</td>
-          <td style="border: 1px solid #d1d5db; padding: 8px; white-space: nowrap;">${stars} (${fb.rating})</td>
-          <td style="border: 1px solid #d1d5db; padding: 8px; max-width: 200px; word-wrap: break-word;">${comment}</td>
-          <td style="border: 1px solid #d1d5db; padding: 8px; white-space: nowrap;">${fb.memberName}</td>
-          <td style="border: 1px solid #d1d5db; padding: 8px; white-space: nowrap;">${new Date(fb.createdAt).toLocaleDateString()}</td>
+          <td style="border: 1px solid #d1d5db; padding: 4px; word-wrap: break-word; font-size: 9px; line-height: 1.3;">${fb.eventName}</td>
+          <td style="border: 1px solid #d1d5db; padding: 4px; white-space: nowrap; font-size: 9px;">${stars} (${fb.rating})</td>
+          <td style="border: 1px solid #d1d5db; padding: 4px; word-wrap: break-word; font-size: 9px; line-height: 1.3;">${comment}</td>
+          <td style="border: 1px solid #d1d5db; padding: 4px; white-space: nowrap; font-size: 9px;">${new Date(fb.createdAt).toLocaleDateString()}</td>
         </tr>
       `
     })
@@ -431,12 +480,12 @@ export async function insertFeedbackData(clubId: number, editorRef: React.RefObj
     html += `
           </tbody>
         </table>
-        <div style="margin-top: 20px; padding-left: 15px; border-left: 3px solid #000000;">
-          <h3 style="font-size: 16px; font-weight: bold; margin-bottom: 10px; color: #000000;">By Event</h3>
+        <div style="margin-top: 12px; padding-left: 12px; border-left: 3px solid #000000;">
+          <h3 style="font-size: 13px; font-weight: bold; margin-bottom: 8px; color: #000000;">By Event</h3>
     `
     
     Array.from(eventGroups.values()).slice(0, 5).forEach((group) => {
-      html += `<p style="margin: 5px 0; font-size: 14px;"><strong>${group.eventName}:</strong> ${group.avgRating.toFixed(1)} ⭐ (${group.feedbacks.length} feedbacks)</p>`
+      html += `<p style="margin: 3px 0; font-size: 11px;"><strong>${group.eventName}:</strong> ${group.avgRating.toFixed(1)} ⭐ (${group.feedbacks.length} feedbacks)</p>`
     })
     
     html += `
@@ -527,19 +576,19 @@ export async function insertActivityScoresData(clubId: number, editorRef: React.
     const year = currentDate.getFullYear()
     const month = currentDate.getMonth() + 1
     
-    const activities = await getClubMemberActivity({ clubId, year, month })
+    const activities = await getClubMemberActivityLive({ clubId })
     const summary = await getClubActivitySummary({ clubId, year, month })
     toast.dismiss()
     
     if (activities.length === 0) {
-      toast.info("No activity data found for this month")
+      toast.info("No activity data found")
       return
     }
     
-    // Sort by total score descending
-    const sortedActivities = [...activities].sort((a, b) => b.totalScore - a.totalScore)
-    const avgScore = (activities.reduce((sum, a) => sum + a.totalScore, 0) / activities.length).toFixed(2)
-    const topScore = sortedActivities[0]?.totalScore || 0
+    // Sort by final score descending
+    const sortedActivities = [...activities].sort((a, b) => b.finalScore - a.finalScore)
+    const avgScore = (activities.reduce((sum, a) => sum + a.finalScore, 0) / activities.length).toFixed(2)
+    const topScore = sortedActivities[0]?.finalScore || 0
     
     let html = `
       <div style="margin: 20px 0; page-break-inside: avoid;">
@@ -552,7 +601,7 @@ export async function insertActivityScoresData(clubId: number, editorRef: React.
     `
     
     if (summary.memberOfMonth) {
-      html += `<p style="margin: 5px 0; font-size: 14px;"><strong>🏆 Member of Month:</strong> ${summary.memberOfMonth.fullName} (${summary.memberOfMonth.totalScore} pts)</p>`
+      html += `<p style="margin: 5px 0; font-size: 14px;"><strong>🏆 Member of Month:</strong> ${summary.memberOfMonth.fullName} (${summary.memberOfMonth.finalScore} pts)</p>`
     }
     
     html += `
@@ -580,10 +629,10 @@ export async function insertActivityScoresData(clubId: number, editorRef: React.
           <td style="border: 1px solid #d1d5db; padding: 8px; text-align: center; white-space: nowrap;">${medal} ${index + 1}</td>
           <td style="border: 1px solid #d1d5db; padding: 8px; max-width: 150px; word-wrap: break-word;">${activity.fullName}</td>
           <td style="border: 1px solid #d1d5db; padding: 8px; white-space: nowrap;">${activity.studentCode}</td>
-          <td style="border: 1px solid #d1d5db; padding: 8px; text-align: center;">${activity.totalApprovedEvents}</td>
-          <td style="border: 1px solid #d1d5db; padding: 8px; text-align: center;">${activity.totalAttendedSessions}</td>
+          <td style="border: 1px solid #d1d5db; padding: 8px; text-align: center;">${activity.totalEventAttended}</td>
+          <td style="border: 1px solid #d1d5db; padding: 8px; text-align: center;">${activity.totalClubPresent}</td>
           <td style="border: 1px solid #d1d5db; padding: 8px; text-align: center; color: ${activity.totalPenaltyPoints > 0 ? '#ef4444' : '#6b7280'};">${activity.totalPenaltyPoints}</td>
-          <td style="border: 1px solid #d1d5db; padding: 8px; text-align: center; font-weight: 600;">${activity.totalScore.toFixed(2)}</td>
+          <td style="border: 1px solid #d1d5db; padding: 8px; text-align: center; font-weight: 600;">${activity.finalScore.toFixed(2)}</td>
         </tr>
       `
     })
@@ -593,10 +642,10 @@ export async function insertActivityScoresData(clubId: number, editorRef: React.
         </table>
         <div style="margin-top: 20px; padding-left: 15px; border-left: 3px solid #000000;">
           <h3 style="font-size: 16px; font-weight: bold; margin-bottom: 10px; color: #000000;">Performance Distribution</h3>
-          <p style="margin: 5px 0; font-size: 14px;"><strong>Excellent (≥80 pts):</strong> ${sortedActivities.filter(a => a.totalScore >= 80).length} members</p>
-          <p style="margin: 5px 0; font-size: 14px;"><strong>Good (50-79 pts):</strong> ${sortedActivities.filter(a => a.totalScore >= 50 && a.totalScore < 80).length} members</p>
-          <p style="margin: 5px 0; font-size: 14px;"><strong>Average (20-49 pts):</strong> ${sortedActivities.filter(a => a.totalScore >= 20 && a.totalScore < 50).length} members</p>
-          <p style="margin: 5px 0; font-size: 14px;"><strong>Low (&lt;20 pts):</strong> ${sortedActivities.filter(a => a.totalScore < 20).length} members</p>
+          <p style="margin: 5px 0; font-size: 14px;"><strong>Excellent (≥80 pts):</strong> ${sortedActivities.filter(a => a.finalScore >= 80).length} members</p>
+          <p style="margin: 5px 0; font-size: 14px;"><strong>Good (50-79 pts):</strong> ${sortedActivities.filter(a => a.finalScore >= 50 && a.finalScore < 80).length} members</p>
+          <p style="margin: 5px 0; font-size: 14px;"><strong>Average (20-49 pts):</strong> ${sortedActivities.filter(a => a.finalScore >= 20 && a.finalScore < 50).length} members</p>
+          <p style="margin: 5px 0; font-size: 14px;"><strong>Low (&lt;20 pts):</strong> ${sortedActivities.filter(a => a.finalScore < 20).length} members</p>
         </div>
       </div>
     `
@@ -620,47 +669,74 @@ export async function insertCoHostEventsData(clubId: number, editorRef: React.Re
     }
     
     const totalEvents = coHostEvents.length
-    const approvedEvents = coHostEvents.filter((e: any) => e.status === "APPROVED").length
-    const completedEvents = coHostEvents.filter((e: any) => e.status === "COMPLETED").length
-    const ongoingEvents = coHostEvents.filter((e: any) => e.status === "ONGOING").length
+    const approvedEvents = coHostEvents.filter((e: Event) => e.status === "APPROVED").length
+    const completedEvents = coHostEvents.filter((e: Event) => e.status === "COMPLETED").length
+    const ongoingEvents = coHostEvents.filter((e: Event) => e.status === "ONGOING").length
     
     let html = `
-      <div style="margin: 20px 0; page-break-inside: avoid;">
-        <h2 style="font-size: 20px; font-weight: bold; margin-bottom: 15px; color: #1a1a1a;">Co-Host Events</h2>
-        <div style="margin-bottom: 20px; padding-left: 15px; border-left: 3px solid #000000;">
-          <h3 style="font-size: 16px; font-weight: bold; margin-bottom: 10px; color: #000000;">Summary</h3>
-          <p style="margin: 5px 0; font-size: 14px;"><strong>Total Co-Host Events:</strong> ${totalEvents}</p>
-          <p style="margin: 5px 0; font-size: 14px;"><strong>Approved:</strong> ${approvedEvents}</p>
-          <p style="margin: 5px 0; font-size: 14px;"><strong>Ongoing:</strong> ${ongoingEvents}</p>
-          <p style="margin: 5px 0; font-size: 14px;"><strong>Completed:</strong> ${completedEvents}</p>
+      <div style="margin: 15px 0; page-break-inside: avoid;">
+        <h2 style="font-size: 16px; font-weight: bold; margin-bottom: 10px; color: #1a1a1a;">Co-Host Events</h2>
+        <div style="margin-bottom: 12px; padding-left: 12px; border-left: 3px solid #000000;">
+          <h3 style="font-size: 13px; font-weight: bold; margin-bottom: 8px; color: #000000;">Summary</h3>
+          <p style="margin: 3px 0; font-size: 11px;"><strong>Total Co-Host Events:</strong> ${totalEvents}</p>
+          <p style="margin: 3px 0; font-size: 11px;"><strong>Approved:</strong> ${approvedEvents}</p>
+          <p style="margin: 3px 0; font-size: 11px;"><strong>Ongoing:</strong> ${ongoingEvents}</p>
+          <p style="margin: 3px 0; font-size: 11px;"><strong>Completed:</strong> ${completedEvents}</p>
         </div>
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 10px;">
           <thead>
             <tr style="background-color: #f3f4f6;">
-              <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left; font-weight: 600;">No.</th>
-              <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left; font-weight: 600;">Event Name</th>
-              <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left; font-weight: 600;">Location</th>
-              <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left; font-weight: 600;">Date</th>
-              <th style="border: 1px solid #d1d5db; padding: 10px; text-align: left; font-weight: 600;">Status</th>
+              <th style="border: 1px solid #d1d5db; padding: 5px; text-align: left; font-weight: 600; width: 4%;">No.</th>
+              <th style="border: 1px solid #d1d5db; padding: 5px; text-align: left; font-weight: 600; width: 28%;">Event Name</th>
+              <th style="border: 1px solid #d1d5db; padding: 5px; text-align: left; font-weight: 600; width: 18%;">Host Club</th>
+              <th style="border: 1px solid #d1d5db; padding: 5px; text-align: left; font-weight: 600; width: 18%;">Location</th>
+              <th style="border: 1px solid #d1d5db; padding: 5px; text-align: left; font-weight: 600; width: 16%;">Date Range</th>
+              <th style="border: 1px solid #d1d5db; padding: 5px; text-align: center; font-weight: 600; width: 6%;">Days</th>
+              <th style="border: 1px solid #d1d5db; padding: 5px; text-align: left; font-weight: 600; width: 10%;">Status</th>
             </tr>
           </thead>
           <tbody>
     `
     
-    coHostEvents.forEach((event: any, index: number) => {
+    coHostEvents.forEach((event: Event, index: number) => {
       const bgColor = index % 2 === 0 ? "#ffffff" : "#f9fafb"
       const statusColor = 
         event.status === "COMPLETED" ? "#10b981" :
         event.status === "ONGOING" ? "#3b82f6" :
         event.status === "APPROVED" ? "#f59e0b" : "#6b7280"
       
+      // Format date range - compact version
+      let dateDisplay = ""
+      if (isMultiDayEvent(event)) {
+        const { start, end } = getEventDateRange(event)
+        const startParts = start.split('-')
+        const endParts = end.split('-')
+        if (start === end) {
+          dateDisplay = start
+        } else if (startParts[0] === endParts[0] && startParts[1] === endParts[1]) {
+          dateDisplay = `${start} to ${endParts[2]}`
+        } else {
+          dateDisplay = `${start} to ${end}`
+        }
+      } else {
+        dateDisplay = event.date || "N/A"
+      }
+      
+      // Get number of days
+      const daysCount = isMultiDayEvent(event) && event.days ? event.days.length : 1
+      
+      // Get host club name
+      const hostClubName = event.hostClub?.name || event.clubName || "N/A"
+      
       html += `
         <tr style="background-color: ${bgColor};">
-          <td style="border: 1px solid #d1d5db; padding: 8px; white-space: nowrap;">${index + 1}</td>
-          <td style="border: 1px solid #d1d5db; padding: 8px; max-width: 200px; word-wrap: break-word;">${event.name}</td>
-          <td style="border: 1px solid #d1d5db; padding: 8px; white-space: nowrap;">${event.location || "N/A"}</td>
-          <td style="border: 1px solid #d1d5db; padding: 8px; white-space: nowrap;">${new Date(event.startTime).toLocaleDateString()}</td>
-          <td style="border: 1px solid #d1d5db; padding: 8px; white-space: nowrap; color: ${statusColor}; font-weight: 600;">${event.status}</td>
+          <td style="border: 1px solid #d1d5db; padding: 4px; text-align: center; font-size: 9px;">${index + 1}</td>
+          <td style="border: 1px solid #d1d5db; padding: 4px; word-wrap: break-word; font-size: 9px; line-height: 1.3;">${event.name}</td>
+          <td style="border: 1px solid #d1d5db; padding: 4px; word-wrap: break-word; font-size: 9px; line-height: 1.3;">${hostClubName}</td>
+          <td style="border: 1px solid #d1d5db; padding: 4px; word-wrap: break-word; font-size: 9px; line-height: 1.3;">${event.locationName || "N/A"}</td>
+          <td style="border: 1px solid #d1d5db; padding: 4px; font-size: 9px; white-space: nowrap;">${dateDisplay}</td>
+          <td style="border: 1px solid #d1d5db; padding: 4px; text-align: center; font-size: 9px;">${daysCount}</td>
+          <td style="border: 1px solid #d1d5db; padding: 4px; font-size: 9px; color: ${statusColor}; font-weight: 600;">${event.status}</td>
         </tr>
       `
     })
@@ -694,18 +770,31 @@ export async function insertAttendanceData(clubId: number, editorRef: React.RefO
       dates.push(dateString)
       promises.push(
         fetchClubAttendanceHistory({ clubId, date: dateString })
-          .then(response => ({ date: dateString, data: response.data }))
+          .then((response: any) => {
+            // Check if response has error or is unsuccessful
+            if (response.error || response.success === false || !response.data) {
+              return { date: dateString, data: null }
+            }
+            return { date: dateString, data: response }
+          })
           .catch(() => ({ date: dateString, data: null }))
       )
     }
     
     const results = await Promise.all(promises)
-    const validSessions = results.filter(r => r.data !== null && r.data.records && r.data.records.length > 0)
+    const validSessions = results.filter(r => 
+      r.data !== null && 
+      r.data.success !== false &&
+      !r.data.error &&
+      r.data.data && 
+      r.data.data.records && 
+      r.data.data.records.length > 0
+    )
     
     toast.dismiss()
     
     if (validSessions.length === 0) {
-      toast.info("No attendance records found in the last 30 days")
+      toast.info("No attendance data available. The club may not have any attendance sessions recorded.")
       return
     }
     
@@ -718,8 +807,8 @@ export async function insertAttendanceData(clubId: number, editorRef: React.RefO
     let excusedCount = 0
     
     validSessions.forEach(session => {
-      if (session.data && session.data.records) {
-        session.data.records.forEach((record: any) => {
+      if (session.data && session.data.data && session.data.data.records) {
+        session.data.data.records.forEach((record: any) => {
           totalRecords++
           if (record.status === "PRESENT") presentCount++
           else if (record.status === "LATE") lateCount++
@@ -761,7 +850,7 @@ export async function insertAttendanceData(clubId: number, editorRef: React.RefO
     
     validSessions.slice(0, 15).forEach((session, index) => {
       const bgColor = index % 2 === 0 ? "#ffffff" : "#f9fafb"
-      const records = session.data.records || []
+      const records = session.data.data.records || []
       const present = records.filter((r: any) => r.status === "PRESENT").length
       const late = records.filter((r: any) => r.status === "LATE").length
       const absent = records.filter((r: any) => r.status === "ABSENT").length
@@ -797,9 +886,11 @@ export async function insertAttendanceData(clubId: number, editorRef: React.RefO
     `
     
     append(editorRef, html, afterChange)
+    toast.success(`${validSessions.length} attendance sessions inserted`)
   } catch (error) {
+    toast.dismiss()
     console.error("Failed to insert attendance data:", error)
-    toast.error("Failed to insert attendance data")
+    toast.error("Failed to load attendance data. Please try again later.")
   }
 }
 

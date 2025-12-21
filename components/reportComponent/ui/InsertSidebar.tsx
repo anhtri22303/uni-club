@@ -48,6 +48,10 @@ type Props = {
   onOrdersChart?: () => void
   onApplicationsChart?: () => void
   onWalletChart?: () => void
+  // Member Activity Report
+  onMemberActivityHistoryTable?: () => void
+  onMemberActivityLiveTable?: () => void
+  onClubActivitySummaryTable?: () => void
 }
 
 function renderCustomSections(sections: CustomSidebarSection[], disabled?: boolean) {
@@ -97,6 +101,9 @@ export function InsertSidebar(props: Props) {
     onOrdersChart,
     onApplicationsChart,
     onWalletChart,
+    onMemberActivityHistoryTable,
+    onMemberActivityLiveTable,
+    onClubActivitySummaryTable,
   } = props
 
   if (customContent) {
@@ -226,7 +233,7 @@ export function InsertSidebar(props: Props) {
                   Wallet & Points
                 </Button>
               </div>
-              {(onFeedbackTable || onLeaveRequestsTable || onActivityScoresTable || onCoHostEventsTable || onAttendanceTable || onEventStaffTable) && (
+              {(onFeedbackTable || onLeaveRequestsTable || onActivityScoresTable || onCoHostEventsTable || onAttendanceTable || onEventStaffTable || onMemberActivityHistoryTable || onMemberActivityLiveTable || onClubActivitySummaryTable) && (
                 <>
                   <Separator className="my-2" />
                   <div className="space-y-2 mb-2">
@@ -247,6 +254,24 @@ export function InsertSidebar(props: Props) {
                       <Button type="button" variant="outline" className="w-full justify-start text-sm" disabled={disabled} onClick={onAttendanceTable}>
                         <CheckCircle className="h-4 w-4 mr-2" />
                         Attendance
+                      </Button>
+                    )}
+                    {onMemberActivityHistoryTable && (
+                      <Button type="button" variant="outline" className="w-full justify-start text-sm" disabled={disabled} onClick={onMemberActivityHistoryTable}>
+                        <ClipboardList className="h-4 w-4 mr-2" />
+                        Monthly Activity History
+                      </Button>
+                    )}
+                    {onMemberActivityLiveTable && (
+                      <Button type="button" variant="outline" className="w-full justify-start text-sm" disabled={disabled} onClick={onMemberActivityLiveTable}>
+                        <BarChart3 className="h-4 w-4 mr-2" />
+                        Live Activity Report
+                      </Button>
+                    )}
+                    {onClubActivitySummaryTable && (
+                      <Button type="button" variant="outline" className="w-full justify-start text-sm" disabled={disabled} onClick={onClubActivitySummaryTable}>
+                        <Users className="h-4 w-4 mr-2" />
+                        Club Activity Summary
                       </Button>
                     )}
                   </div>
