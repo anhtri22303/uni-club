@@ -136,17 +136,49 @@ export default function EventStaffPage() {
   }
 
   // Filter events based on status and time
-  const activeEvents = events.filter((event) => {
-    const isApprovedOrOngoing = ["APPROVED", "ONGOING"].includes(event.status)
-    const expired = isEventExpired(event)
-    return isApprovedOrOngoing && !expired
-  })
+  const activeEvents = events
+    .filter((event) => {
+      const isApprovedOrOngoing = ["APPROVED", "ONGOING"].includes(event.status)
+      const expired = isEventExpired(event)
+      return isApprovedOrOngoing && !expired
+    })
+    .sort((a, b) => {
+      // Sort by date (soonest first for active events)
+      const dateA = a.startDate || a.date || '1970-01-01'
+      const dateB = b.startDate || b.date || '1970-01-01'
+      const dateComparison = new Date(dateA).getTime() - new Date(dateB).getTime()
+      
+      // If same date, sort by start time (earliest first)
+      if (dateComparison === 0) {
+        const timeA = typeof a.startTime === 'string' ? a.startTime : (a.startTime ? `${String(a.startTime.hour).padStart(2, '0')}:${String(a.startTime.minute).padStart(2, '0')}:00` : '00:00:00')
+        const timeB = typeof b.startTime === 'string' ? b.startTime : (b.startTime ? `${String(b.startTime.hour).padStart(2, '0')}:${String(b.startTime.minute).padStart(2, '0')}:00` : '00:00:00')
+        return timeA.localeCompare(timeB)
+      }
+      
+      return dateComparison
+    })
 
-  const completedEvents = events.filter((event) => {
-    const isCompleted = event.status === "COMPLETED"
-    const expired = isEventExpired(event)
-    return isCompleted || expired
-  })
+  const completedEvents = events
+    .filter((event) => {
+      const isCompleted = event.status === "COMPLETED"
+      const expired = isEventExpired(event)
+      return isCompleted || expired
+    })
+    .sort((a, b) => {
+      // Sort by date (newest first)
+      const dateA = a.startDate || a.date || '1970-01-01'
+      const dateB = b.startDate || b.date || '1970-01-01'
+      const dateComparison = new Date(dateB).getTime() - new Date(dateA).getTime()
+      
+      // If same date, sort by start time
+      if (dateComparison === 0) {
+        const timeA = typeof a.startTime === 'string' ? a.startTime : (a.startTime ? `${String(a.startTime.hour).padStart(2, '0')}:${String(a.startTime.minute).padStart(2, '0')}:00` : '00:00:00')
+        const timeB = typeof b.startTime === 'string' ? b.startTime : (b.startTime ? `${String(b.startTime.hour).padStart(2, '0')}:${String(b.startTime.minute).padStart(2, '0')}:00` : '00:00:00')
+        return timeA.localeCompare(timeB)
+      }
+      
+      return dateComparison
+    })
 
   const getStatusBadge = (status: string) => {
     switch (status.toUpperCase()) {

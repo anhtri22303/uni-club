@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useMemo } from "react"
+import { usePathname } from "next/navigation"
 import { AppShell } from "@/components/app-shell"
 import { ProtectedRoute } from "@/contexts/protected-route"
 import { Badge } from "@/components/ui/badge"
@@ -28,6 +29,7 @@ type ClubApiItem = {
 
 export default function UniStaffClubsPage() {
   const { toast } = useToast()
+  const pathname = usePathname()
   const [clubs, setClubs] = useState<ClubApiItem[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -45,7 +47,7 @@ export default function UniStaffClubsPage() {
   // State để lưu description đang cần xem chi tiết
   const [selectedDescription, setSelectedDescription] = useState<string | null>(null)
 
-  // Fetch club list
+  // Fetch club list - Re-fetch when pathname changes (fix navigation issue)
   useEffect(() => {
     let mounted = true
     const load = async () => {
@@ -79,9 +81,9 @@ export default function UniStaffClubsPage() {
     return () => {
       mounted = false
     }
-  }, [])
+  }, [pathname])
 
-  // Thêm useEffect để fetch Majors
+  // Fetch Majors - Re-fetch when pathname changes
   useEffect(() => {
     const loadMajors = async () => {
       try {
@@ -94,7 +96,7 @@ export default function UniStaffClubsPage() {
     };
 
     loadMajors();
-  }, []);
+  }, [pathname]);
 
   // Map API data to match admin/clubs - Sử dụng useMemo để tính toán
   const enhancedClubs = useMemo(() => {

@@ -107,6 +107,14 @@ export default function MemberGiftPage() {
 	const isLoading = clubsLoading || profileLoading || (productsLoading && !selectedClubId); // Chỉ loading chính khi đang tải club hoặc chưa chọn club
 
 	// Luôn refresh khi mở trang Gift để đảm bảo dữ liệu mới
+	// Read selectedClubId from sessionStorage on mount
+	useEffect(() => {
+		const savedClubId = safeSessionStorage.getItem("student-gift-selected-club-id")
+		if (savedClubId) {
+			setSelectedClubId(savedClubId)
+		}
+	}, [])
+
 	useEffect(() => {
 		// Làm mới cache các query liên quan và yêu cầu refresh UI
 		queryClient.invalidateQueries({ queryKey: queryKeys.profile })
@@ -172,21 +180,49 @@ export default function MemberGiftPage() {
 			setUserClubsDetails(details as any[]);
 			const validClubIds = details.map(c => String(c.id));
 
+			// Check if there's a saved club ID in sessionStorage
+			const savedClubId = safeSessionStorage.getItem("student-gift-selected-club-id");
+
+			// Priority 1: clubId from URL query
 			if (clubIdFromQuery && validClubIds.includes(clubIdFromQuery)) {
 				if (selectedClubId !== clubIdFromQuery) {
 					setSelectedClubId(clubIdFromQuery);
+					safeSessionStorage.setItem("student-gift-selected-club-id", clubIdFromQuery);
 				}
 				return;
 			}
+
+			// Priority 2: Current selected club is valid
 			if (selectedClubId && validClubIds.includes(selectedClubId)) {
 				return;
 			}
-			if (validClubIds.length > 0) {
-				setSelectedClubId(validClubIds[0]);
+
+			// Priority 3: Saved club ID from sessionStorage
+			if (savedClubId && validClubIds.includes(savedClubId)) {
+				if (selectedClubId !== savedClubId) {
+					setSelectedClubId(savedClubId);
+				}
+				return;
+			}
+
+			// Priority 4: Default to first club and save it
+			if (validClubIds.length > 0 && selectedClubId === null) {
+				const firstClubId = validClubIds[0];
+				setSelectedClubId(firstClubId);
+				safeSessionStorage.setItem("student-gift-selected-club-id", firstClubId);
+			}
+
+			// Validate saved club ID is still valid (user still a member)
+			if (savedClubId && !validClubIds.includes(savedClubId)) {
+				// Saved club is no longer valid, reset to first club
+				if (validClubIds.length > 0) {
+					const firstClubId = validClubIds[0];
+					setSelectedClubId(firstClubId);
+					safeSessionStorage.setItem("student-gift-selected-club-id", firstClubId);
+				}
 			}
 		}
 	}, [userClubIds, clubsData, clubIdFromQuery, selectedClubId]);
-	//
 
 	// Logic lọc (Luôn lọc 'ACTIVE' trước, sau đó filter theo tab và search)
 	const filteredProducts = useMemo(() => {
@@ -372,8 +408,9 @@ export default function MemberGiftPage() {
 								<Select
 									value={selectedClubId || ""}
 									onValueChange={(value) => {
-										setSelectedClubId(value)
-										router.push(`/student/gift?clubId=${value}`, { scroll: false })
+									setSelectedClubId(value)
+									safeSessionStorage.setItem("student-gift-selected-club-id", value)
+									router.push(`/student/gift?clubId=${value}`, { scroll: false })
 										setCurrentPage(1)
 									}}
 								>

@@ -58,6 +58,14 @@ export default function MemberEventsPage() {
 
 
 
+  // Read selectedClubId from sessionStorage on mount
+  useEffect(() => {
+    const savedClubId = safeSessionStorage.getItem("student-events-selected-club-id")
+    if (savedClubId) {
+      setSelectedClubId(savedClubId)
+    }
+  }, [])
+
   // Get user's club IDs from API fetchProfile
   useEffect(() => {
     const fetchUserClubs = async () => {
@@ -104,9 +112,25 @@ export default function MemberEventsPage() {
         .map((id) => clubsData.find((club: any) => club.id === id))
         .filter(Boolean) // Loại bỏ (filter out) bất kỳ club nào không tìm thấy (undefined)
       setUserClubsDetails(details as any[])
-      // Chỉ đặt nếu 'details' có và 'selectedClubId' chưa được set (vẫn là null)
-      if (details.length > 0 && selectedClubId === null) {
-        setSelectedClubId(String(details[0].id))
+      
+      // Check if there's a saved club ID in sessionStorage
+      const savedClubId = safeSessionStorage.getItem("student-events-selected-club-id")
+      
+      // Only set default if no saved value and selectedClubId is null
+      if (details.length > 0 && selectedClubId === null && !savedClubId) {
+        const firstClubId = String(details[0].id)
+        setSelectedClubId(firstClubId)
+        safeSessionStorage.setItem("student-events-selected-club-id", firstClubId)
+      }
+      
+      // Validate saved club ID is still valid (user still a member)
+      if (savedClubId && !userClubIds.includes(Number(savedClubId))) {
+        // Saved club is no longer valid, reset to first club
+        if (details.length > 0) {
+          const firstClubId = String(details[0].id)
+          setSelectedClubId(firstClubId)
+          safeSessionStorage.setItem("student-events-selected-club-id", firstClubId)
+        }
       }
     }
   }, [userClubIds, clubsData, selectedClubId]) // Chạy lại khi 3 danh sách này sẵn sàng
@@ -411,6 +435,7 @@ export default function MemberEventsPage() {
                 value={selectedClubId || ""}
                 onValueChange={(value) => {
                   setSelectedClubId(value)
+                  safeSessionStorage.setItem("student-events-selected-club-id", value)
                   setCurrentPage(1) // Reset về trang 1 khi đổi filter
                 }}
               >

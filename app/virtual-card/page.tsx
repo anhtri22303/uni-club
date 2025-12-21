@@ -444,10 +444,12 @@ export default function VirtualCardPage() {
                       <SelectContent>
                         {availableClubIds.map((clubId) => {
                           const membership = profileData?.memberships?.find(m => m.clubId === clubId)
+                          const clubData = allClubsData.find(c => c.clubId === clubId)
+                          const clubName = membership?.clubName || clubData?.clubName || `Club ${clubId}`
                           return (
                             <SelectItem key={clubId} value={clubId.toString()}>
                               <div className="flex items-center gap-2">
-                                <span className="font-medium">{membership?.clubName || `Club ${clubId}`}</span>
+                                <span className="font-medium">{clubName}</span>
                                 {membership?.level && (
                                   <span className="text-xs text-gray-500">({membership.level})</span>
                                 )}

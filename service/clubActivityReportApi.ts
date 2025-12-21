@@ -83,10 +83,29 @@ export interface ClubMonthlySummary {
 }
 
 // Các interface khác giữ nguyên...
-export interface ClubTrendingItem { clubId: number; clubName: string; currentScore: number; previousScore: number; scoreDiff: number; percentGrowth: number; }
-export interface ClubComparisonResult { clubA: ClubActivityBreakdown; clubB: ClubActivityBreakdown; }
-export interface ClubActivityHistoryItem { month: number; score: number; }
-export interface ClubEventContribution { eventId: number; eventName: string; feedback: number; checkinRate: number; weight: number; }
+export interface ClubTrendingItem {
+  clubId: number;
+  clubName: string;
+  currentScore: number;
+  previousScore: number;
+  scoreDiff: number;
+  percentGrowth: number;
+}
+export interface ClubComparisonResult {
+  clubA: ClubActivityBreakdown;
+  clubB: ClubActivityBreakdown;
+}
+export interface ClubActivityHistoryItem {
+  month: number;
+  score: number;
+}
+export interface ClubEventContribution {
+  eventId: number;
+  eventName: string;
+  feedback: number;
+  checkinRate: number;
+  weight: number;
+}
 
 // ==========================================
 // 2. HELPERS
@@ -104,44 +123,44 @@ const handleData = <T>(response: any): T => {
 // 3. API FUNCTIONS
 // ==========================================
 
-export const getClubActivityReport = async (params: ClubPeriodParams) => 
+export const getClubActivityReport = async (params: ClubPeriodParams) =>
   handleData<ClubMonthlyActivity>(await axiosInstance.get(`/api/club-activity/${params.clubId}`, { params }));
 
-export const getClubActivityBreakdown = async (params: ClubPeriodParams) => 
+export const getClubActivityBreakdown = async (params: ClubPeriodParams) =>
   handleData<ClubActivityBreakdown>(await axiosInstance.get(`/api/club-activity/${params.clubId}/breakdown`, { params }));
 
-export const getTrendingClubs = async (params: BasePeriodParams) => 
+export const getTrendingClubs = async (params: BasePeriodParams) =>
   handleData<ClubTrendingItem[]>(await axiosInstance.get(`/api/club-activity/trending`, { params }));
 
-export const getClubRanking = async (params: BasePeriodParams) => 
+export const getClubRanking = async (params: BasePeriodParams) =>
   handleData<ClubActivityProcessResult[]>(await axiosInstance.get(`/api/club-activity/ranking`, { params }));
 
-export const compareClubs = async (params: CompareParams) => 
+export const compareClubs = async (params: CompareParams) =>
   handleData<ClubComparisonResult>(await axiosInstance.get(`/api/club-activity/compare`, { params }));
 
-export const getClubActivityHistory = async (clubId: number, year: number) => 
+export const getClubActivityHistory = async (clubId: number, year: number) =>
   handleData<ClubActivityHistoryItem[]>(await axiosInstance.get(`/api/club-activity/${clubId}/history`, { params: { year } }));
 
-export const checkClubActivityExists = async (params: ClubPeriodParams) => 
+export const checkClubActivityExists = async (params: ClubPeriodParams) =>
   handleData<boolean>(await axiosInstance.get(`/api/club-activity/${params.clubId}/exists`, { params }));
 
-export const getClubEventContributions = async (params: ClubPeriodParams) => 
+export const getClubEventContributions = async (params: ClubPeriodParams) =>
   handleData<ClubEventContribution[]>(await axiosInstance.get(`/api/club-activity/${params.clubId}/events`, { params }));
 
-export const getMonthlySummary = async (params: BasePeriodParams) => 
+export const getMonthlySummary = async (params: BasePeriodParams) =>
   handleData<ClubMonthlySummary[]>(await axiosInstance.get(`/api/club-activity/monthly-summary`, { params }));
 
 // ACTIONS
-export const recalculateClubActivity = async (params: ClubPeriodParams) => 
+export const recalculateClubActivity = async (params: ClubPeriodParams) =>
   handleData<ClubActivityProcessResult>(await axiosInstance.post(`/api/club-activity/${params.clubId}/recalculate`, null, { params }));
 
-export const lockClubActivity = async (params: ClubPeriodParams) => 
+export const lockClubActivity = async (params: ClubPeriodParams) =>
   handleData<ClubActivityProcessResult>(await axiosInstance.post(`/api/club-activity/${params.clubId}/lock`, null, { params }));
 
-export const approveClubActivity = async (params: ClubPeriodParams) => 
+export const approveClubActivity = async (params: ClubPeriodParams) =>
   handleData<ApproveResult>(await axiosInstance.post(`/api/club-activity/${params.clubId}/approve`, null, { params }));
 
-export const recalculateAllClubs = async (params: BasePeriodParams) => 
+export const recalculateAllClubs = async (params: BasePeriodParams) =>
   handleData<ClubActivityProcessResult[]>(await axiosInstance.post(`/api/club-activity/recalculate-all`, null, { params }));
 
 // Params Types
