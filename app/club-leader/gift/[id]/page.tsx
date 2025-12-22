@@ -651,105 +651,6 @@ export default function EditProductPage() {
   };
 
   // --- Handler Update Stock ---
-  // const handleUpdateStock = async () => {
-  //   if (!clubId || !productId) return;
-
-  //   const delta = parseFormattedNumber(stockChange);
-
-  //   // Validate cơ bản
-  //   if (isNaN(delta) || delta === 0) {
-  //     toast({
-  //       title: "Error",
-  //       description: "Please enter a valid number (e.g. 50 or -10).",
-  //       variant: "destructive",
-  //     });
-  //     return;
-  //   }
-
-  //   const isRemoving = delta < 0;
-
-  //   // VALIDATION LOGIC
-  //   if (isRemoving) {
-  //     if (!stockReason) {
-  //       toast({
-  //         title: "Error",
-  //         description: "Please select a reason for removing stock.",
-  //         variant: "destructive",
-  //       });
-  //       return;
-  //     }
-  //   } else {
-  //     if (!stockNote.trim()) {
-  //       toast({
-  //         title: "Error",
-  //         description: "Please provide a note for this stock addition.",
-  //         variant: "destructive",
-  //       });
-  //       return;
-  //     }
-  //   }
-
-  //   setIsStockLoading(true);
-  //   try {
-  //     // 1. Xác định Reason:
-  //     // - Nếu xuất kho (isRemoving = true): Lấy từ biến stockReason (dropdown).
-  //     // - Nếu nhập kho (isRemoving = false): Gán là null (hoặc undefined) để không gửi reason lên BE.
-  //     const finalReason = isRemoving ? stockReason : undefined;
-
-  //     // 2. Xử lý Note:
-  //     let finalNote = stockNote.trim();
-
-  //     if (isRemoving) {
-  //       // Chỉ khi xuất kho mới cần gộp Label của Reason vào Note cho dễ đọc
-  //       const reasonLabel = STOCK_REMOVAL_REASONS.find(r => r.value === stockReason)?.label || stockReason;
-  //       finalNote = finalNote
-  //         ? `[${reasonLabel}] - ${finalNote}`
-  //         : `[${reasonLabel}]`;
-  //     }
-
-  //     // 3. Gọi API
-  //     // (Lưu ý: Nếu file api definition của bạn bắt buộc reason là string, bạn có thể cần sửa file api thành string | null)
-  //     await updateStock(clubId, productId, delta, finalNote, finalReason);
-
-  //     toast({ title: "Success", description: "Stock updated successfully!" });
-
-  //     // Reset form
-  //     setIsStockDialogOpen(false);
-  //     setStockChange("");
-  //     setStockNote("");
-  //     setStockReason("");
-
-  //     // --- PHẦN QUAN TRỌNG NHẤT: CẬP NHẬT UI TỨC THÌ (REAL-TIME) ---
-  //     // 1. Cập nhật danh sách sản phẩm (để table bên ngoài cập nhật số tồn kho)
-  //     queryClient.invalidateQueries({ queryKey: queryKeys.productsByClubId(clubId) });
-
-  //     // 2. Cập nhật lịch sử kho (Stock History)
-  //     queryClient.invalidateQueries({ queryKey: ["stockHistory", clubId, productId] });
-
-  //     // 3. Cập nhật VÍ CLUB (Cập nhật số tiền trong Dialog hiện tại)
-  //     queryClient.invalidateQueries({ queryKey: queryKeys.clubWallet(clubId) });
-
-  //     // 4. [NEW] Cập nhật THÔNG TIN CLUB (Để Sidebar/Widget cập nhật nếu dùng hook useClub)
-  //     queryClient.invalidateQueries({ queryKey: queryKeys.clubDetail(clubId) });
-
-  //     // 5. [NEW] Cập nhật PROFILE (Giống trang Student - cập nhật nếu Sidebar dùng useFullProfile/useProfile)
-  //     queryClient.invalidateQueries({ queryKey: queryKeys.profile });
-  //     queryClient.invalidateQueries({ queryKey: queryKeys.fullProfile });
-
-  //     // 6. Tải lại data sản phẩm hiện tại (để field Current Stock trong form cập nhật)
-  //     await fetchProductData(clubId, productId);
-
-  //   } catch (error: any) {
-  //     toast({
-  //       title: "Error",
-  //       description: (error as any).response?.data?.message || error.message || "Failed to update stock.",
-  //       variant: "destructive",
-  //     });
-  //   } finally {
-  //     setIsStockLoading(false);
-  //   }
-  // };
-  // --- Handler Update Stock ---
   const handleUpdateStock = async () => {
     if (!clubId || !productId) return;
 
@@ -805,20 +706,16 @@ export default function EditProductPage() {
       await Promise.all([
         // 1. Quét sạch mọi query liên quan đến Ví Club (["club-wallet", ...])
         queryClient.invalidateQueries({ queryKey: ["club-wallet"] }),
-
         // 2. Quét sạch mọi query liên quan đến thông tin Club (["clubs", ...])
         // Sidebar thường lấy số dư từ API chi tiết Club (useClub)
         queryClient.invalidateQueries({ queryKey: ["clubs"] }),
-
         // 3. Quét sạch Profile (đề phòng Sidebar dùng useFullProfile như trang Student)
         queryClient.invalidateQueries({ queryKey: ["fullProfile"] }),
         queryClient.invalidateQueries({ queryKey: ["profile"] }),
-
         // 4. Cập nhật dữ liệu sản phẩm & lịch sử trong trang hiện tại
         queryClient.invalidateQueries({ queryKey: queryKeys.productsByClubId(clubId) }),
         queryClient.invalidateQueries({ queryKey: ["stockHistory", clubId, productId] }),
       ]);
-
       // 5. Fetch lại data sản phẩm thủ công để chắc chắn form hiển thị đúng
       await fetchProductData(clubId, productId);
 
@@ -885,24 +782,18 @@ export default function EditProductPage() {
   const deltaStock = parseFormattedNumber(stockChange);
   const absDelta = Math.abs(deltaStock); // Lấy giá trị tuyệt đối để nhân giá tiền
   const unitPrice = product?.pointCost || 0;
-
   // 2. Kiểm tra xem đang thêm hàng (+) hay bớt hàng (-)
   const isAddingStock = deltaStock > 0;
   const isRemovingStock = deltaStock < 0;
-
   // 3. Xác định xem lý do xuất kho có được hoàn tiền không (Dựa trên ảnh Business Rule)
   // CORRECTION (Nhập sai) & RETURN_SUPPLIER (Trả hàng) => ĐƯỢC hoàn điểm
   const isRefundableReason = isRemovingStock && (stockReason === "CORRECTION" || stockReason === "RETURN_SUPPLIER");
-
-  // 4. Tính toán số tiền
-  // Chi phí phải trả khi nhập hàng
+  // 4. Tính toán số tiền Chi phí phải trả khi nhập hàng
   const estimatedCost = isAddingStock ? (unitPrice * absDelta) : 0;
   // Số tiền được hoàn lại khi xuất hàng (nếu đúng lý do)
   const estimatedRefund = isRefundableReason ? (unitPrice * absDelta) : 0;
-
   // 5. Lấy số dư hiện tại
   const currentBalance = clubWallet?.balancePoints ?? 0;
-
   // 6. Tính số dư dự kiến sau giao dịch
   let projectedBalance = currentBalance;
   if (isAddingStock) {
@@ -910,7 +801,6 @@ export default function EditProductPage() {
   } else if (isRemovingStock) {
     projectedBalance += estimatedRefund;
   }
-
   // 7. Kiểm tra đủ tiền (Chỉ cần check khi nhập hàng)
   const isBalanceSufficient = !isAddingStock || (estimatedCost <= currentBalance);
 

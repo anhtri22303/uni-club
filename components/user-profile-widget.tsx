@@ -13,7 +13,7 @@ import { getClubIdFromToken } from "@/service/clubApi"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
 
-import { useFullProfile } from "@/hooks/use-query-hooks"
+import { useClubWallet, useFullProfile } from "@/hooks/use-query-hooks"
 import { LoadingSpinner } from "@/components/loading-spinner"
 import { CompleteProfileModal } from "@/components/complete-profile-modal"
 import { useQueryClient } from "@tanstack/react-query"
@@ -184,8 +184,9 @@ export function UserProfileWidget() {
   // GỌI HOOK `useFullProfile`
   const { data: profile, isLoading: profileLoading } = useFullProfile(true);
   const [selectedWalletId, setSelectedWalletId] = useState<string>("")
-  const [clubWallet, setClubWallet] = useState<ApiClubWallet | null>(null)
-  const [clubWalletLoading, setClubWalletLoading] = useState(false)
+  // const [clubWallet, setClubWallet] = useState<ApiClubWallet | null>(null)
+  // const [clubWalletLoading, setClubWalletLoading] = useState(false)
+  
   const widgetCollapsed = false; // Luôn hiển thị
   // const [widgetCollapsed, setWidgetCollapsed] = useState<boolean>(true)
 
@@ -205,25 +206,32 @@ export function UserProfileWidget() {
   }, [profile, profileLoading])
 
   // Load club wallet for club leaders
-  useEffect(() => {
-    const loadClubWallet = async () => {
-      if (auth.role === "club_leader" && !profileLoading) {
-        setClubWalletLoading(true)
-        try {
-          const clubId = getClubIdFromToken()
-          if (clubId) {
-            const wallet = await getClubWallet(clubId)
-            setClubWallet(wallet)
-          }
-        } catch (error) {
-          console.error("Failed to load club wallet:", error)
-        } finally {
-          setClubWalletLoading(false)
-        }
-      }
-    }
-    loadClubWallet()
-  }, [auth.role, profileLoading])
+  // useEffect(() => {
+  //   const loadClubWallet = async () => {
+  //     if (auth.role === "club_leader" && !profileLoading) {
+  //       setClubWalletLoading(true)
+  //       try {
+  //         const clubId = getClubIdFromToken()
+  //         if (clubId) {
+  //           const wallet = await getClubWallet(clubId)
+  //           setClubWallet(wallet)
+  //         }
+  //       } catch (error) {
+  //         console.error("Failed to load club wallet:", error)
+  //       } finally {
+  //         setClubWalletLoading(false)
+  //       }
+  //     }
+  //   }
+  //   loadClubWallet()
+  // }, [auth.role, profileLoading])
+
+  const clubId = getClubIdFromToken(); // Lấy clubId từ token
+  const { data: clubWallet, isLoading: clubWalletLoading } = useClubWallet(
+    clubId,
+    auth.role === "club_leader" // Chỉ enable khi là leader
+  );
+
 
   if (!auth.role || !auth.user) return null
   // DÙNG useMemo ĐỂ LẤY DỮ LIỆU TỪ `profile` (thay thế cho useEffect)
@@ -252,7 +260,7 @@ export function UserProfileWidget() {
     if (auth.role === "club_leader") {
       // Remove USER wallet from list
       walletsList = walletsList.filter((w: any) => w.ownerType !== "USER");
-      
+
       // Add club wallet at the beginning if available
       if (clubWallet) {
         const clubWalletEntry: ApiMembershipWallet = {
@@ -264,7 +272,7 @@ export function UserProfileWidget() {
           userId: clubWallet.userId || 0,
           userFullName: clubWallet.userFullName || ""
         };
-        
+
         // Add club wallet at the beginning
         walletsList = [clubWalletEntry, ...walletsList];
       }
@@ -337,7 +345,7 @@ export function UserProfileWidget() {
   const shouldShowPoints = auth.role === "student" || auth.role === "club_leader"
   const tierInfo = getTierInfo(userPoints, auth.role)
   const TierIcon = tierInfo.icon
-  
+
   // Use fixed blue color for Club Wallet, otherwise use points-based color
   const selectedMembership = memberships.find(m => m.walletId.toString() === selectedWalletId)
   const isClubWallet = selectedMembership?.ownerType === "CLUB"
@@ -381,7 +389,7 @@ export function UserProfileWidget() {
               memberships.length >= 2 ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <div 
+                    <div
                       className={`rounded-lg p-0 overflow-hidden shadow-md cursor-pointer hover:shadow-lg hover:scale-[1.02] transition-all duration-200 mt-4 ${pointsStyle.cardClassName} ring-2 ring-transparent hover:ring-white/20`}
                       onClick={() => {
                         if (auth.role === "club_leader") {
@@ -449,7 +457,7 @@ export function UserProfileWidget() {
                 </DropdownMenu>
               ) : (
                 // Static points card when 0 or 1 membership
-                <div 
+                <div
                   className="cursor-pointer"
                   onClick={() => {
                     if (auth.role === "club_leader") {
