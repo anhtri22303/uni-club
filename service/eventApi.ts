@@ -72,7 +72,7 @@ export interface CreateEventPayload {
   locationId: number
   maxCheckInCount: number
   commitPointCost: number
-  rewardPerParticipant: number
+  rewardPerParticipant?: number // Optional - only for PUBLIC events
 }
 
 // Helper function to convert time string (HH:MM:SS or HH:MM) to TimeObject
