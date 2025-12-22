@@ -747,7 +747,7 @@ export default function UniStaffLocationsPage() {
                   <Card
                     key={location.id}
                     className="hover:shadow-md transition-shadow cursor-pointer group relative dark:border-slate-700"
-                    onClick={() => handleEditClick(location)}
+                    onClick={() => handleCardClick(location)}
                   >
                     {/* Delete Button */}
                     <Button
