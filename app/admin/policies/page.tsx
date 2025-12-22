@@ -36,19 +36,6 @@ export default function AdminPoliciesPage() {
     const queryClient = useQueryClient()
 
     // USE REACT QUERY for admin policies
-    // const {
-    //     data: policies,
-    //     isLoading: loading,
-    //     isError,
-    //     error,
-    // } = useQuery({
-    //     queryKey: ["adminMultiplierPolicies"],
-    //     queryFn: fetchAdminMultiplierPolicies,
-    //     // SỬA LỖI 1: Trích xuất `data` từ đối tượng wrapper
-    //     select: (res) => res.data || [],
-    //     // SỬA LỖI 2: initialData phải khớp với kiểu ApiResponse
-    //     initialData: { success: true, message: "", data: [] },
-    // })
     const {
         data: policies,
         isLoading: loading,
@@ -78,11 +65,14 @@ export default function AdminPoliciesPage() {
     const [editPolicy, setEditPolicy] = useState<Partial<AdminMultiplierPolicy>>({})
     const [createOpen, setCreateOpen] = useState(false)
     const [createPolicy, setCreatePolicy] = useState<Partial<AdminMultiplierPolicy>>({
-        name: "",
-        description: "",
+        policyName: "",
+        policyDescription: "",
         targetType: "MEMBER",
-        levelOrStatus: "",
-        minEvents: 0,
+        activityType: "SESSION_ATTENDANCE", // Field mới
+        conditionType: "ABSOLUTE",         // Field mới
+        ruleName: "Default Rule",          // Field mới
+        minThreshold: 0,                   // Thay cho minEvents
+        maxThreshold: 0,                   // Field mới
         multiplier: 1,
         active: true,
         effectiveFrom: getDefaultDateTime(),
@@ -94,16 +84,15 @@ export default function AdminPoliciesPage() {
     }
 
     const filtered = useMemo(() => {
-        if (!query) return policies
-        const q = query.toLowerCase()
+        if (!query) return policies;
+        const q = query.toLowerCase();
         return policies.filter(
             (p) =>
-                (p.name || "").toLowerCase().includes(q) ||
-                (p.description || "").toLowerCase().includes(q) ||
-                (p.targetType || "").toLowerCase().includes(q) ||
-                (p.levelOrStatus || "").toLowerCase().includes(q),
-        )
-    }, [policies, query])
+                (p.policyName || "").toLowerCase().includes(q) ||
+                (p.activityType || "").toLowerCase().includes(q) ||
+                (p.ruleName || "").toLowerCase().includes(q)
+        );
+    }, [policies, query]);
 
     // Minimal pagination state
     const [page, setPage] = useState(0)
@@ -157,7 +146,7 @@ export default function AdminPoliciesPage() {
             if (res.success) {
                 toast({
                     title: "Update successful",
-                    description: res.message || `Policy updated: ${res.data.name}`,
+                    description: res.message || `Policy updated: ${res.data.policyName}`,
                 })
                 setSelected(res.data)
                 setDialogOpen(false)
@@ -189,16 +178,13 @@ export default function AdminPoliciesPage() {
             if (res.success) {
                 toast({
                     title: "Create success",
-                    description: res.message || `Policy created: ${res.data.name}`,
+                    description: res.message || `Policy created: ${res.data.policyName}`,
                 })
                 setCreateOpen(false)
                 // reset fields
                 setCreatePolicy({
-                    name: "",
-                    description: "",
+                    policyName: "",
                     targetType: "MEMBER",
-                    levelOrStatus: "",
-                    minEvents: 0,
                     multiplier: 1,
                     active: true,
                     effectiveFrom: getDefaultDateTime(),
@@ -312,16 +298,16 @@ export default function AdminPoliciesPage() {
                                     <Table>
                                         <TableHeader>
                                             <TableRow>
-                                                <TableHead className="w-[3rem] text-center">ID</TableHead>
-                                                <TableHead>Name</TableHead>
-                                                <TableHead className="w-[8rem]">Target</TableHead>
-                                                <TableHead className="w-[10rem]">Level/Status</TableHead>
-                                                <TableHead className="w-[8rem] text-center">Min Events</TableHead>
-                                                <TableHead className="w-[8rem] text-center">Multiplier</TableHead>
-                                                <TableHead className="w-[8rem] text-center">Status</TableHead>
-                                                <TableHead className="w-[6rem] text-center">Action</TableHead>
+                                                <TableHead className="text-left pl-10 w-[280px]">policyName</TableHead>
+                                                <TableHead className="text-left pl-10 w-[240px]">Activity</TableHead>
+                                                <TableHead className="text-center w-[120px]">Target</TableHead>
+                                                <TableHead className="text-center w-[160px]">Threshold (Min-Max)</TableHead>
+                                                <TableHead className="text-center w-[250px]">Multiplier</TableHead>
+                                                <TableHead className="text-center w-[100px]">Status</TableHead>
+                                                <TableHead className="text-center w-[100px]">Action</TableHead>
                                             </TableRow>
                                         </TableHeader>
+
                                         <TableBody>
                                             {loading ? (
                                                 [...Array(5)].map((_, i) => (
@@ -346,44 +332,78 @@ export default function AdminPoliciesPage() {
                                                             : "bg-slate-50 dark:bg-slate-800"
                                                             } hover:bg-slate-100 dark:hover:bg-slate-700`}
                                                     >
-                                                        <TableCell className="text-sm text-muted-foreground text-center">
-                                                            {p.id}
+                                                        {/* 1. Policy Name */}
+                                                        {/* <TableCell className="font-medium"> */}
+                                                        <TableCell className="font-medium break-words max-w-[150px]">
+                                                            {p.policyName || p.id}
                                                         </TableCell>
-                                                        <TableCell className="font-medium text-primary/90">
-                                                            {p.name || "(No name)"}
-                                                        </TableCell>
+
+                                                        {/* 2. Activity - Badge cho Activity Type */}
                                                         <TableCell>
-                                                            <Badge variant={p.targetType === "CLUB" ? "default" : "secondary"}>
-                                                                {p.targetType === "CLUB" ? <Users className="h-3 w-3 mr-1" /> : <UserCheck className="h-3 w-3 mr-1" />}
-                                                                {p.targetType}
+                                                            <Badge variant="outline" className=" bg-cyan-500 text-white border-none flex w-fit items-center gap-1">
+                                                                {p.targetType === "CLUB" ? <Users className="h-3 w-3" /> : <UserCheck className="h-3 w-3" />}
+                                                                {p.activityType}
                                                             </Badge>
                                                         </TableCell>
-                                                        <TableCell className="text-sm text-muted-foreground">
-                                                            {p.levelOrStatus}
+
+
+                                                        {/* 3. Target - Hiển thị ruleName hoặc targetType */}
+                                                        <TableCell className="font-bold text-center">
+                                                            <span className={
+                                                                p.targetType === "MEMBER"
+                                                                    ? "text-orange-500"
+                                                                    : "text-cyan-600"
+                                                            }>
+                                                                {p.targetType}
+                                                            </span>
                                                         </TableCell>
-                                                        <TableCell className="text-sm text-center">
-                                                            {p.minEvents}
+
+                                                        {/* 4. Threshold - Hiển thị khoảng Min-Max */}
+                                                        {/* <TableCell className="text-center">
+                                                            {p.minThreshold} - {p.maxThreshold}
+                                                        </TableCell> */}
+                                                        {/* Nếu cả hai đều trống hoặc bằng 0 tùy logic, hiện dấu gạch ngang */}
+                                                        <TableCell className="text-center whitespace-nowrap">
+                                                            {(!p.minThreshold && !p.maxThreshold) ? (
+                                                                <span className="text-muted-foreground">-</span>
+                                                            ) : (
+                                                                <>
+                                                                    <span className="font-medium">{p.minThreshold ?? 0}</span>
+                                                                    <span className="mx-1 text-muted-foreground">-</span>
+                                                                    <span className="font-medium">{p.maxThreshold || "∞"}</span>
+                                                                </>
+                                                            )}
                                                         </TableCell>
-                                                        <TableCell className="text-sm text-center font-bold text-blue-600">
-                                                            {p.multiplier}x
-                                                        </TableCell>
+
+                                                        {/* 5. Multiplier - Tên activityType và giá trị x */}
                                                         <TableCell className="text-center">
-                                                            <Badge variant={p.active ? "default" : "destructive"}>
+                                                            <div className="text-xs text-muted-foreground">{p.activityType}</div>
+                                                            <div className="font-bold text-blue-600">{p.multiplier}x</div>
+                                                        </TableCell>
+
+                                                        {/* 6. Action - Các nút điều khiển */}
+                                                        <TableCell className="text-center">
+                                                            <Badge
+                                                                variant={p.active ? "default" : "destructive"}
+                                                                className={p.active ? "bg-cyan-500 hover:bg-cyan-600" : "bg-red-500 hover:bg-red-600"}
+                                                            >
                                                                 {p.active ? "Active" : "Inactive"}
                                                             </Badge>
                                                         </TableCell>
                                                         <TableCell>
-                                                            <div className="flex gap-2 justify-center">
-                                                                <Button size="sm" onClick={() => openDetail(p)}>
+                                                            {/* <div className="flex gap-2 justify-center"> */}
+                                                            <div className="flex gap-2 justify-center items-center">
+
+                                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-cyan-600" onClick={() => openDetail(p)}>
                                                                     <Eye className="h-4 w-4" />
                                                                 </Button>
-
                                                                 <AlertDialog>
                                                                     <AlertDialogTrigger asChild>
-                                                                        <Button size="sm" variant="destructive">
+                                                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-red-500">
                                                                             <Trash className="h-4 w-4" />
                                                                         </Button>
                                                                     </AlertDialogTrigger>
+
                                                                     <AlertDialogContent>
                                                                         <AlertDialogHeader>
                                                                             <AlertDialogTitle>
@@ -393,7 +413,7 @@ export default function AdminPoliciesPage() {
                                                                                 This action cannot be undone. The following policy will be
                                                                                 permanently deleted:
                                                                                 <br />
-                                                                                <strong className="mt-2 block">{p.name}</strong>
+                                                                                <strong className="mt-2 block">{p.policyName}</strong>
                                                                             </AlertDialogDescription>
                                                                         </AlertDialogHeader>
                                                                         <AlertDialogFooter>
@@ -408,6 +428,7 @@ export default function AdminPoliciesPage() {
                                                                             </AlertDialogAction>
                                                                         </AlertDialogFooter>
                                                                     </AlertDialogContent>
+
                                                                 </AlertDialog>
                                                             </div>
                                                         </TableCell>
@@ -417,7 +438,7 @@ export default function AdminPoliciesPage() {
                                         </TableBody>
                                     </Table>
                                 </div>
-                                {/* Pagination controls (Giữ nguyên) */}
+                                {/* Pagination controls */}
                                 <div className="mt-3 flex items-center justify-between">
                                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                         <div>Showing</div>
@@ -499,107 +520,92 @@ export default function AdminPoliciesPage() {
                     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                         <DialogContent className="sm:max-w-[600px]">
                             <DialogHeader>
-                                <DialogTitle>Policy Detail / Edit</DialogTitle>
-                                <DialogDescription>
-                                    Modify policy fields and press Save to persist changes.
-                                </DialogDescription>
+                                <DialogTitle>Edit Multiplier Policy</DialogTitle>
+                                <DialogDescription>Update the parameters for the ID policy.: {selected?.id}</DialogDescription>
                             </DialogHeader>
 
                             <div className="mt-2 space-y-4 max-h-[70vh] overflow-y-auto pr-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="edit-name">Policy Name</Label>
+                                    <Label>Policy Name</Label>
                                     <Input
-                                        id="edit-name"
-                                        value={editPolicy.name || ""}
-                                        onChange={(e) => handleFormChange("edit", "name", e.target.value)}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="edit-desc">Description</Label>
-                                    <Textarea
-                                        id="edit-desc"
-                                        value={editPolicy.description || ""}
-                                        onChange={(e) => handleFormChange("edit", "description", e.target.value)}
+                                        value={editPolicy.policyName || ""}
+                                        onChange={(e) => handleFormChange("edit", "policyName", e.target.value)}
+                                        className="border-slate-300"
                                     />
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <Label htmlFor="edit-targetType">Target Type</Label>
-                                        <Select
-                                            value={editPolicy.targetType || "MEMBER"}
-                                            onValueChange={(value) => handleFormChange("edit", "targetType", value)}
-                                        >
-                                            <SelectTrigger id="edit-targetType">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="MEMBER">MEMBER</SelectItem>
-                                                <SelectItem value="CLUB">CLUB</SelectItem>
-                                            </SelectContent>
-                                        </Select>
+                                        <Label>Activity Type</Label>
+                                        <Input disabled value={editPolicy.activityType || ""} className="bg-slate-100 border-slate-300" />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="edit-levelOrStatus">Level or Status</Label>
+                                        <Label>Rule Name</Label>
                                         <Input
-                                            id="edit-levelOrStatus"
-                                            placeholder="e.g., BRONZE, SILVER..."
-                                            value={editPolicy.levelOrStatus || ""}
-                                            onChange={(e) => handleFormChange("edit", "levelOrStatus", e.target.value)}
+                                            value={editPolicy.ruleName || ""}
+                                            onChange={(e) => handleFormChange("edit", "ruleName", e.target.value)}
+                                            className="border-slate-300"
                                         />
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-3 gap-4">
                                     <div className="space-y-2">
-                                        <Label htmlFor="edit-minEvents">Min. Events</Label>
+                                        <Label>Min Threshold</Label>
                                         <Input
-                                            id="edit-minEvents"
                                             type="number"
-                                            value={editPolicy.minEvents || 0}
-                                            onChange={(e) => handleFormChange("edit", "minEvents", Number(e.target.value))}
+                                            value={editPolicy.minThreshold ?? 0}
+                                            onChange={(e) => handleFormChange("edit", "minThreshold", Number(e.target.value))}
+                                            className="border-slate-300"
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="edit-multiplier">Multiplier</Label>
+                                        <Label>Max Threshold</Label>
                                         <Input
-                                            id="edit-multiplier"
+                                            type="number"
+                                            value={editPolicy.maxThreshold ?? 0}
+                                            onChange={(e) => handleFormChange("edit", "maxThreshold", Number(e.target.value))}
+                                            className="border-slate-300"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Multiplier</Label>
+                                        <Input
                                             type="number"
                                             step="0.1"
-                                            value={editPolicy.multiplier || 1}
+                                            value={editPolicy.multiplier ?? 1}
                                             onChange={(e) => handleFormChange("edit", "multiplier", Number(e.target.value))}
+                                            className="border-slate-300"
                                         />
                                     </div>
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="edit-effectiveFrom">Effective From</Label>
+                                    <Label>Effective From</Label>
                                     <Input
-                                        id="edit-effectiveFrom"
                                         type="datetime-local"
                                         value={editPolicy.effectiveFrom || ""}
                                         onChange={(e) => handleFormChange("edit", "effectiveFrom", e.target.value)}
+                                        className="border-slate-300 w-full max-w-[200px]"
                                     />
                                 </div>
 
-                                <div className="flex items-center gap-2 pt-2">
+                                <div className="flex items-center gap-2 pt-2 border-t">
                                     <input
-                                        id="edit-active"
+                                        id="edit-active-check"
                                         type="checkbox"
                                         checked={editPolicy.active || false}
                                         onChange={(e) => handleFormChange("edit", "active", e.target.checked)}
-                                        className="h-4 w-4"
-                                        title="Mark policy as active"
+                                        className="h-4 w-4 accent-cyan-600"
                                     />
-                                    <Label htmlFor="edit-active">Active</Label>
+                                    <Label htmlFor="edit-active-check" className="cursor-pointer">Active Policy</Label>
                                 </div>
                             </div>
-                            <DialogFooter className="mt-4">
-                                <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                                    Close
-                                </Button>
-                                <Button onClick={handleSave} disabled={saving}>
-                                    {saving ? "Saving..." : "Save"}
+
+                            <DialogFooter>
+                                <Button variant="outline" onClick={() => setDialogOpen(false)}>Close</Button>
+                                <Button onClick={handleSave} disabled={saving} className="bg-cyan-600 hover:bg-cyan-700">
+                                    {saving ? "Saving..." : "Save Changes"}
                                 </Button>
                             </DialogFooter>
                         </DialogContent>
@@ -609,78 +615,115 @@ export default function AdminPoliciesPage() {
                     <Dialog open={createOpen} onOpenChange={setCreateOpen}>
                         <DialogContent className="sm:max-w-[600px]">
                             <DialogHeader>
-                                <DialogTitle>Create Policy</DialogTitle>
-                                <DialogDescription>Enter policy details and press Create.</DialogDescription>
+                                <DialogTitle>Create New Multiplier Policy</DialogTitle>
+                                <DialogDescription>Enter details to create a new scoring system policy.</DialogDescription>
                             </DialogHeader>
 
                             <div className="mt-2 space-y-4 max-h-[70vh] overflow-y-auto pr-4">
+                                {/* Policy Name */}
                                 <div className="space-y-2">
-                                    <Label htmlFor="create-name">Policy Name</Label>
+                                    <Label htmlFor="create-policyName">Policy Name</Label>
                                     <Input
-                                        id="create-name"
-                                        placeholder="e.g., Bronze Member Bonus"
-                                        value={createPolicy.name || ""}
-                                        onChange={(e) => handleFormChange("create", "name", e.target.value)}
-                                        className="border-slate-300"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="create-desc">Description</Label>
-                                    <Textarea
-                                        id="create-desc"
-                                        placeholder="Policy for rewarding bronze members..."
-                                        value={createPolicy.description || ""}
-                                        onChange={(e) => handleFormChange("create", "description", e.target.value)}
+                                        id="create-policyName"
+                                        placeholder="Example: Diligent Bronze Member"
+                                        value={createPolicy.policyName || ""}
+                                        onChange={(e) => handleFormChange("create", "policyName", e.target.value)}
                                         className="border-slate-300"
                                     />
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
+                                    {/* Target Type */}
                                     <div className="space-y-2">
-                                        <Label htmlFor="create-targetType">Target Type</Label>
+                                        <Label>Target Type</Label>
                                         <Select
-                                            value={createPolicy.targetType || "MEMBER"}
-                                            onValueChange={(value) => handleFormChange("create", "targetType", value)}
+                                            value={createPolicy.targetType}
+                                            onValueChange={(val) => handleFormChange("create", "targetType", val)}
                                         >
-                                            <SelectTrigger id="create-targetType" className="border-slate-300">
-                                                <SelectValue />
-                                            </SelectTrigger>
+                                            <SelectTrigger className="border-slate-300"><SelectValue /></SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="MEMBER">MEMBER</SelectItem>
                                                 <SelectItem value="CLUB">CLUB</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
+
+                                    {/* Activity Type */}
                                     <div className="space-y-2">
-                                        <Label htmlFor="create-levelOrStatus">Level or Status</Label>
-                                        <Input
-                                            id="create-levelOrStatus"
-                                            placeholder="e.g., BRONZE, SILVER..."
-                                            value={createPolicy.levelOrStatus || ""}
-                                            onChange={(e) => handleFormChange("create", "levelOrStatus", e.target.value)}
-                                            className="border-slate-300"
-                                        />
+                                        <Label>Activity Type</Label>
+                                        <Select
+                                            value={createPolicy.activityType}
+                                            onValueChange={(val) => handleFormChange("create", "activityType", val)}
+                                        >
+                                            <SelectTrigger className="border-slate-300"><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="SESSION_ATTENDANCE">SESSION_ATTENDANCE</SelectItem>
+                                                <SelectItem value="CLUB_EVENT_ACTIVITY">CLUB_EVENT_ACTIVITY</SelectItem>
+                                                <SelectItem value="STAFF_EVALUATION">STAFF_EVALUATION</SelectItem>
+                                                <SelectItem value="FINAL_SCORE">FINAL_SCORE</SelectItem>
+                                            </SelectContent>
+                                        </Select>
                                     </div>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
+                                    {/* Rule Name (Target hiển thị trên bảng) */}
                                     <div className="space-y-2">
-                                        <Label htmlFor="create-minEvents">Min. Events</Label>
+                                        <Label>Rule Name (Target Level)</Label>
                                         <Input
-                                            id="create-minEvents"
-                                            type="number"
-                                            value={createPolicy.minEvents || 0}
-                                            onChange={(e) => handleFormChange("create", "minEvents", Number(e.target.value))}
+                                            placeholder="Examples: LOW, NORMAL, GOOD"
+                                            value={createPolicy.ruleName || ""}
+                                            onChange={(e) => handleFormChange("create", "ruleName", e.target.value)}
                                             className="border-slate-300"
                                         />
                                     </div>
+
+                                    {/* Condition Type */}
                                     <div className="space-y-2">
-                                        <Label htmlFor="create-multiplier">Multiplier</Label>
+                                        <Label>Condition Type</Label>
+                                        <Select
+                                            value={createPolicy.conditionType}
+                                            onValueChange={(val) => handleFormChange("create", "conditionType", val)}
+                                        >
+                                            <SelectTrigger className="border-slate-300"><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="ABSOLUTE">ABSOLUTE</SelectItem>
+                                                <SelectItem value="PERCENTAGE">PERCENTAGE</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-3 gap-4">
+                                    {/* Min Threshold */}
+                                    <div className="space-y-2">
+                                        <Label>Min Threshold</Label>
                                         <Input
-                                            id="create-multiplier"
+                                            type="number"
+                                            value={createPolicy.minThreshold || 0}
+                                            onChange={(e) => handleFormChange("create", "minThreshold", Number(e.target.value))}
+                                            className="border-slate-300"
+                                        />
+                                    </div>
+
+                                    {/* Max Threshold */}
+                                    <div className="space-y-2">
+                                        <Label>Max Threshold</Label>
+                                        <Input
+                                            type="number"
+                                            value={createPolicy.maxThreshold || 0}
+                                            onChange={(e) => handleFormChange("create", "maxThreshold", Number(e.target.value))}
+                                            className="border-slate-300"
+                                        />
+                                    </div>
+
+                                    {/* Multiplier */}
+                                    <div className="space-y-2">
+                                        <Label>Multiplier (x)</Label>
+                                        <Input
                                             type="number"
                                             step="0.1"
-                                            value={createPolicy.multiplier || 1}
+                                            value={createPolicy.multiplier || 0}
                                             onChange={(e) => handleFormChange("create", "multiplier", Number(e.target.value))}
                                             className="border-slate-300"
                                         />
@@ -688,25 +731,20 @@ export default function AdminPoliciesPage() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="create-effectiveFrom">Effective From</Label>
+                                    <Label>Effective From</Label>
                                     <Input
-                                        id="create-effectiveFrom"
                                         type="datetime-local"
                                         value={createPolicy.effectiveFrom || ""}
                                         onChange={(e) => handleFormChange("create", "effectiveFrom", e.target.value)}
-                                        className="border-slate-300"
+                                        className="border-slate-300 w-full max-w-[200px]"
                                     />
                                 </div>
-
-                                {/* 'Active' is true by default on create */}
                             </div>
 
-                            <DialogFooter className="mt-4">
-                                <Button variant="outline" onClick={() => setCreateOpen(false)}>
-                                    Cancel
-                                </Button>
+                            <DialogFooter>
+                                <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
                                 <Button onClick={handleCreate} disabled={creating}>
-                                    {creating ? "Creating..." : "Create"}
+                                    {creating ? "Creating..." : "Create Policy"}
                                 </Button>
                             </DialogFooter>
                         </DialogContent>
