@@ -394,37 +394,71 @@ export default function ClubLeaderGiftPage() {
     }
 
     setSubmitting(true)
+    // try {
+    //   // Đảm bảo eventId là 0 nếu không phải EVENT_ITEM
+    //   const payload: AddProductPayload = {
+    //     ...form,
+    //     eventId: form.type === "EVENT_ITEM" ? form.eventId : 0, // (từ productType sang type)
+    //   }
+
+    //   await addProduct(clubId, payload)
+
+    //   toast({ title: "Success", description: "Create successful products!", variant: "success" })
+    //   setOpen(false)
+    //   // setForm(initialFormState) // Reset form
+    //   // Reset form về trạng thái có tag "club"
+    //   if (fixedTagIds.clubTagId) {
+    //     setForm({
+    //       ...initialFormState,
+    //       tagIds: [fixedTagIds.clubTagId]
+    //     });
+    //   } else {
+    //     setForm(initialFormState);
+    //   }
+    //   setTagSearchTerm("") // Reset search tag khi tạo thành công
+    //   queryClient.invalidateQueries({ queryKey: queryKeys.productsByClubId(clubId) })
     try {
-      // Đảm bảo eventId là 0 nếu không phải EVENT_ITEM
       const payload: AddProductPayload = {
         ...form,
-        eventId: form.type === "EVENT_ITEM" ? form.eventId : 0, // (từ productType sang type)
+        eventId: form.type === "EVENT_ITEM" ? form.eventId : 0,
       }
 
+      // 1. Gọi API tạo sản phẩm
       await addProduct(clubId, payload)
 
-      toast({ title: "Success", description: "Create successful products!", variant: "success" })
+      toast({ title: "Success", description: "Product created successfully!", variant: "success" })
       setOpen(false)
-      // setForm(initialFormState) // Reset form
-      // Reset form về trạng thái có tag "club"
+
+      // 2. KÍCH HOẠT CẬP NHẬT UI TOÀN CỤC (FIX SIDEBAR REFRESH)
+      await Promise.all([
+        // Làm mới ví Club để Sidebar/Widget cập nhật điểm mới ngay lập tức
+        queryClient.invalidateQueries({ queryKey: ["club-wallet"] }),
+
+        // Làm mới thông tin Profile (đề phòng Widget dùng useFullProfile)
+        queryClient.invalidateQueries({ queryKey: ["fullProfile"] }),
+        queryClient.invalidateQueries({ queryKey: ["profile"] }),
+
+        // Làm mới danh sách sản phẩm ở trang hiện tại
+        queryClient.invalidateQueries({ queryKey: queryKeys.productsByClubId(clubId) }),
+
+        // Làm mới thông tin Club nói chung
+        queryClient.invalidateQueries({ queryKey: ["clubs"] })
+      ]);
+
+      // Reset form
       if (fixedTagIds.clubTagId) {
-        setForm({
-          ...initialFormState,
-          tagIds: [fixedTagIds.clubTagId]
-        });
+        setForm({ ...initialFormState, tagIds: [fixedTagIds.clubTagId] });
       } else {
         setForm(initialFormState);
       }
-      setTagSearchTerm("") // Reset search tag khi tạo thành công
-      queryClient.invalidateQueries({ queryKey: queryKeys.productsByClubId(clubId) })
+      setTagSearchTerm("")
+
     } catch (err: any) {
-      // toast({ title: "Error", description: err.message || "Create a failed product", variant: "destructive" })
       console.error("Create product error:", err.response || err) // Log lỗi chi tiết hơn
       toast({
         title: "Error",
         // Sử dụng hàm helper mới
         description: parseApiError(err),
-        // DÒNG CŨ: description: err.message || "Create a failed product", 
         variant: "destructive"
       })
     } finally {
@@ -734,8 +768,8 @@ export default function ClubLeaderGiftPage() {
 
                   {/* --- KHUNG TÍNH TOÁN NGÂN SÁCH --- */}
                   <div className={`p-3 rounded-md border text-sm transition-colors ${isBalanceSufficient
-                      ? "bg-slate-50 border-slate-200 dark:bg-slate-800 dark:border-slate-700"
-                      : "bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800"
+                    ? "bg-slate-50 border-slate-200 dark:bg-slate-800 dark:border-slate-700"
+                    : "bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800"
                     }`}>
                     <div className="flex justify-between items-center mb-1">
                       <span className="text-muted-foreground dark:text-slate-400">Total Cost required:</span>

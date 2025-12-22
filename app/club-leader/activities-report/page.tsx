@@ -691,7 +691,10 @@ export default function ActivityReportPage() {
                                                 </TableCell> */}
                                                 {/* 4. Penalty - PHỤ */}
                                                 <TableCell className="text-center font-bold text-red-500">
-                                                    {member.totalPenaltyPoints > 0 ? `-${member.totalPenaltyPoints}` : "0"}
+                                                    {/* {member.totalPenaltyPoints > 0 ? `-${member.totalPenaltyPoints}` : "0"} */}
+                                                    {member.totalPenaltyPoints !== 0
+                                                        ? `-${Math.abs(member.totalPenaltyPoints)}`
+                                                        : "0"}
                                                 </TableCell>
                                                 {/* 5. Score Columns - Hiện khi showScores = true */}
                                                 {showScores && (
