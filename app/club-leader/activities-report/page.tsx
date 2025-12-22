@@ -41,11 +41,17 @@ const generateMonthOptions = () => {
 }
 
 const getLevelBadgeColor = (level: string) => {
-    switch (level) {
-        case "HIGH": return "bg-green-100 text-green-700 border-green-300 dark:bg-green-950 dark:text-green-300 dark:border-green-700"
-        case "MEDIUM": return "bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-700"
-        case "LOW": return "bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-950 dark:text-orange-300 dark:border-orange-700"
-        default: return "bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-950 dark:text-gray-300 dark:border-gray-700"
+    switch (level?.toUpperCase()) {
+        case "EXCELLENT":
+            return "bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800";
+        case "GOOD":
+            return "bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800";
+        case "AVERAGE":
+            return "bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800";
+        case "LOW":
+            return "bg-red-100 text-red-700 border-red-300 dark:bg-red-950 dark:text-red-300 dark:border-red-800";
+        default:
+            return "bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-900 dark:text-gray-400 dark:border-gray-800";
     }
 }
 
@@ -409,61 +415,7 @@ export default function ActivityReportPage() {
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                {/* Scoring Inputs */}
-                                {/* <div className="space-y-2">
-                                    <Label className="text-blue-600">Attendance Base Score</Label>
-                                    <div className="relative">
-                                        <Input
-                                            type="text" // <--- Đổi thành text để hiện dấu phẩy
-                                            placeholder="e.g. 100"
-                                            // Giá trị hiển thị
-                                            value={attendanceBaseInput}
-                                            // Khi nhập: format rồi mới set state
-                                            onChange={(e) => setAttendanceBaseInput(formatNumberInput(e.target.value))}
-                                            className="pl-8 pr-10 border-slate-300"
-                                        />
-                                        <Users className="h-4 w-4 absolute left-2.5 top-3 text-muted-foreground" /> */}
-                                {/* Nút Clear bên phải - Chỉ hiện khi có dữ liệu */}
-                                {/* {attendanceBaseInput && (
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={() => setAttendanceBaseInput("")}
-                                                className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full 
-                                                text-slate-400 hover:bg-primary hover:text-primary-foreground transition-colors"
-                                            >
-                                                <X className="h-4 w-4" />
-                                                <span className="sr-only">Clear</span>
-                                            </Button>
-                                        )}
-                                    </div>
-                                </div> */}
-                                {/* <div className="space-y-2">
-                                    <Label className="text-yellow-600">Staff Base Score</Label>
-                                    <div className="relative">
-                                        <Input
-                                            type="text" // <--- Đổi thành text
-                                            placeholder="e.g. 100"
-                                            value={staffBaseInput}
-                                            onChange={(e) => setStaffBaseInput(formatNumberInput(e.target.value))}
-                                            className="pl-8 pr-10 border-slate-300"
-                                        />
-                                        <Star className="h-4 w-4 absolute left-2.5 top-3 text-muted-foreground" /> */}
-                                {/* Nút Clear bên phải - Chỉ hiện khi có dữ liệu */}
-                                {/* {staffBaseInput && (
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={() => setStaffBaseInput("")}
-                                                className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full text-slate-400 hover:bg-primary 
-                                                hover:text-primary-foreground transition-colors"
-                                            >
-                                                <X className="h-4 w-4" />
-                                                <span className="sr-only">Clear</span>
-                                            </Button>
-                                        )}
-                                    </div>
-                                </div> */}
+
                                 {/* Calculate Button */}
                                 <Button
                                     onClick={handleLiveCalculation}
@@ -513,8 +465,6 @@ export default function ActivityReportPage() {
                                         <TableHead className="w-[100px] text-center">Student ID</TableHead>
 
                                         {/* --- NHÓM CHÍNH (Attendance & Staff) --- */}
-                                        {/* <TableHead className="w-[120px] text-center font-semibold text-foreground">Sessions (P/T)</TableHead>
-                                        <TableHead className="w-[100px] text-center font-semibold text-foreground">Staff Count</TableHead> */}
                                         <TableHead className="w-[120px] text-center font-semibold text-foreground">
                                             <div className="flex items-center justify-center gap-2">
                                                 <span>Sessions</span>
@@ -543,22 +493,6 @@ export default function ActivityReportPage() {
                                         </TableHead>
 
                                         {/* --- NHÓM PHỤ (Events & Penalty) --- */}
-                                        {/* <TableHead className="w-[120px] text-center text-muted-foreground">Events (A/R)</TableHead>
-                                        <TableHead className="w-[80px] text-center text-red-500">Penalty</TableHead> */}
-                                        {/* <TableHead className="w-[120px] text-center text-muted-foreground">
-                                            <div className="flex items-center justify-center gap-2">
-                                                <span>Events</span>
-                                                <Tooltip>
-                                                    <TooltipTrigger>
-                                                        <Info className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground transition-colors" />
-                                                    </TooltipTrigger>
-                                                    <TooltipContent>
-                                                        <p>Attended / Registered Events (A/R)</p>
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                            </div>
-                                        </TableHead> */}
-
                                         <TableHead className="w-[80px] text-center text-red-500">
                                             <div className="flex items-center justify-center gap-2">
                                                 <span>Penalty</span>
@@ -574,7 +508,6 @@ export default function ActivityReportPage() {
                                         </TableHead>
 
                                         {/* --- NHÓM ĐIỂM SỐ (Chỉ hiện khi Calculate) --- */}
-
                                         {showScores && (
                                             <>
                                                 {/* Cột Level */}
@@ -700,7 +633,10 @@ export default function ActivityReportPage() {
                                                 {showScores && (
                                                     <>
                                                         <TableCell className="text-center bg-blue-50/30">
-                                                            <Badge variant="outline" className={getLevelBadgeColor(member.activityLevel as ActivityLevel || "UNKNOWN")}>
+                                                            <Badge variant="outline"
+                                                                // className={getLevelBadgeColor(member.activityLevel as ActivityLevel || "UNKNOWN")}
+                                                                className={`font-bold ${getLevelBadgeColor(member.activityLevel || "UNKNOWN")}`}
+                                                            >
                                                                 {member.activityLevel || "UNKNOWN"}
                                                             </Badge>
                                                         </TableCell>
