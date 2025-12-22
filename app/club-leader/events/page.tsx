@@ -765,15 +765,18 @@ export default function ClubLeaderEventsPage() {
         hostClubId,
         name: formData.name,
         description: formData.description,
-        type: formData.type as "PUBLIC" | "PRIVATE",
+        type: formData.type as "PUBLIC" | "PRIVATE" | "SPECIAL",
         days: daysPayload,
         registrationDeadline: formData.registrationDeadline,
         locationId: formData.locationId,
         maxCheckInCount: formData.maxCheckInCount,
         commitPointCost: formData.type === "PUBLIC" ? 0 : commitPointCost,
-        rewardPerParticipant: formData.type === "PUBLIC" ? rewardPerParticipant : 0,
       };
 
+      // Only add rewardPerParticipant for PUBLIC events
+      if (formData.type === "PUBLIC") {
+        payload.rewardPerParticipant = rewardPerParticipant;
+      }
 
       // Add coHostClubIds if any are selected
       if (selectedCoHostClubIds.length > 0) {
