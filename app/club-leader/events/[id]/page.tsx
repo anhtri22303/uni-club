@@ -1009,45 +1009,26 @@ export default function EventDetailPage() {
                   List Staff
                 </Button>
               )}
-              {/* Show More Time and End Event buttons only when status is ONGOING */}
+              {/* Show End Event button only when status is ONGOING */}
               {event.status === "ONGOING" && (
-                <>
-                  <Button
-                    onClick={() => setShowTimeExtensionModal(true)}
-                    disabled={isExtendingTime || isEndingEvent}
-                    className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700"
-                  >
-                    {isExtendingTime ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Extending...
-                      </>
-                    ) : (
-                      <>
-                        <ClockIcon className="h-4 w-4 mr-2" />
-                        More Time
-                      </>
-                    )}
-                  </Button>
-                  <Button
-                    onClick={handleEndEvent}
-                    disabled={isEndingEvent || isExtendingTime}
-                    variant="destructive"
-                    className="bg-red-600 hover:bg-red-700"
-                  >
-                    {isEndingEvent ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Ending Event...
-                      </>
-                    ) : (
-                      <>
-                        <XCircle className="h-4 w-4 mr-2" />
-                        End Event
-                      </>
-                    )}
-                  </Button>
-                </>
+                <Button
+                  onClick={handleEndEvent}
+                  disabled={isEndingEvent}
+                  variant="destructive"
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  {isEndingEvent ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Ending Event...
+                    </>
+                  ) : (
+                    <>
+                      <XCircle className="h-4 w-4 mr-2" />
+                      End Event
+                    </>
+                  )}
+                </Button>
               )}
               <div className="flex items-center gap-2">
                 <Eye className="h-5 w-5 text-muted-foreground" />
