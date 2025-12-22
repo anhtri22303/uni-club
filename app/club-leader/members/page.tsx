@@ -74,6 +74,10 @@ export default function ClubLeaderMembersPage() {
   )
   const membersError = membersQueryError ? String(membersQueryError) : null
 
+  // Console log data from useClubMembers API
+  useEffect(() => {
+    console.log('useClubMembers API data:', apiMembers)
+  }, [apiMembers])
 
   // Filters state
   const [searchTerm, setSearchTerm] = useState("")

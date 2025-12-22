@@ -61,6 +61,7 @@ export async function getMembersByClubId(
   const res = await axiosInstance.get<ApiResponse<ApiMembership[]>>(
     `/api/clubs/${clubId}/members`
   );
+  
   return res.data.data || [];
 }
 

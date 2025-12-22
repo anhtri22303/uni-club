@@ -147,17 +147,22 @@ export function ApproveBudgetModal(props: ApproveBudgetModalProps) {
         description: `Approved ${approvedPoints.toLocaleString()} pts for ${
           hostClubName || "club"
         }`,
+        duration: 3000,
       });
       onApproved?.(approvedPoints);
       onOpenChange(false);
     } catch (err: any) {
+      const errorMessage =
+        err?.response?.data?.error ||
+        err?.response?.data?.message ||
+        err?.message ||
+        "Could not approve budget";
+      
       toast({
         title: "Approval failed",
-        description:
-          err?.response?.data?.message ||
-          err?.message ||
-          "Could not approve budget",
+        description: errorMessage,
         variant: "destructive",
+        duration: 8000,
       });
     } finally {
       setSubmitting(false);
