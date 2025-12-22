@@ -487,7 +487,7 @@ export default function UniStaffTagsPage() {
                                             placeholder="Search by name or description..."
                                             value={searchQuery}
                                             onChange={(e) => setSearchQuery(e.target.value)}
-                                            className="pl-10 pr-10 w-full border-slate-200"
+                                            className="pl-10 pr-10 w-full border-slate-300"
                                         />
                                         {/* Nút Clear (X) */}
                                         {searchQuery && (
@@ -506,7 +506,7 @@ export default function UniStaffTagsPage() {
                                 <div className="flex gap-2 w-full sm:w-auto">
                                     {/* Tag Filter */}
                                     <Select value={tagFilter} onValueChange={(v) => setTagFilter(v as TagFilter)}>
-                                        <SelectTrigger className="w-full sm:w-[140px]">
+                                        <SelectTrigger className="w-full sm:w-[140px] border-slate-300">
                                             <SelectValue placeholder="All Tags" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -522,7 +522,7 @@ export default function UniStaffTagsPage() {
                                         setSortField(field)
                                         setSortOrder(order)
                                     }}>
-                                        <SelectTrigger className="w-full sm:w-[190px]">
+                                        <SelectTrigger className="w-full sm:w-[190px] border-slate-300">
                                             <ArrowUpDown className="h-4 w-4 mr-2 flex-shrink-0" />
                                             <SelectValue />
                                         </SelectTrigger>
@@ -542,7 +542,7 @@ export default function UniStaffTagsPage() {
                                             variant={viewMode === "grid" ? "default" : "ghost"}
                                             size="default"
                                             onClick={() => setViewMode("grid")}
-                                            className="rounded-r-none"
+                                            className="rounded-r-none border border-slate-300"
                                         >
                                             <Grid3x3 className="h-4 w-4" />
                                         </Button>
@@ -550,7 +550,7 @@ export default function UniStaffTagsPage() {
                                             variant={viewMode === "list" ? "default" : "ghost"}
                                             size="default"
                                             onClick={() => setViewMode("list")}
-                                            className="rounded-l-none"
+                                            className="rounded-l-none border border-slate-300"
                                         >
                                             <List className="h-4 w-4" />
                                         </Button>

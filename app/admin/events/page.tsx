@@ -546,7 +546,9 @@ export default function AdminEventsPage() {
               <p className="text-muted-foreground">Admin: Manage all club events and activities</p>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={() => setShowCalendarModal(true)}>
+              <Button variant="outline" onClick={() => setShowCalendarModal(true)}
+                className="flex items-center gap-2 bg-white border-slate-300 dark:bg-slate-900 dark:border-slate-700"
+                >
                 <Calendar className="h-4 w-4 mr-2" /> Calendar View
               </Button>
             </div>
@@ -562,9 +564,10 @@ export default function AdminEventsPage() {
                   setSearchTerm(e.target.value)
                   setCurrentPage(0)
                 }}
-                className="max-w-sm"
+                className="max-w-sm border-slate-300 bg-white" 
               />
-              <Button variant="outline" size="sm" onClick={() => setShowFilters(!showFilters)} className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setShowFilters(!showFilters)} 
+              className="flex items-center gap-2 bg-white border-slate-300 dark:bg-slate-900 dark:border-slate-700">
                 <Filter className="h-4 w-4" />
                 Filters
                 {hasActiveFilters && (
