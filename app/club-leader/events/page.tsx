@@ -1128,6 +1128,7 @@ export default function ClubLeaderEventsPage() {
                         </SelectItem>
                         <SelectItem value="REJECTED">Rejected</SelectItem>
                         <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                        <SelectItem value="COMPLETED">Completed</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

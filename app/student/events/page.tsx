@@ -772,7 +772,9 @@ export default function MemberEventsPage() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {myRegistrations.map((registration) => (
+                    {[...myRegistrations]
+                      .sort((a, b) => new Date(b.registeredAt).getTime() - new Date(a.registeredAt).getTime())
+                      .map((registration) => (
                       <Card key={registration.eventId} className="hover:shadow-md transition-shadow">
                         <CardHeader className="pb-3">
                           <div className="flex items-start justify-between">
