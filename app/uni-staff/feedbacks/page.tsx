@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
+import { usePathname } from "next/navigation"
 import { AppShell } from "@/components/app-shell"
 import { ProtectedRoute } from "@/contexts/protected-route"
 import { getFeedbackByClubId, Feedback } from "@/service/feedbackApi"
@@ -41,11 +42,32 @@ export default function UniStaffFeedbacksPage() {
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([])
   const [loading, setLoading] = useState(false)
   const [loadingClubs, setLoadingClubs] = useState(true)
+  const [isInitialized, setIsInitialized] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedEvent, setSelectedEvent] = useState<string>("all")
   const [selectedRating, setSelectedRating] = useState<string>("all")
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
+
+  // Initialize selectedClub from sessionStorage or default to "5"
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedClubId = sessionStorage.getItem("uni-staff-feedbacks-selected-club")
+      if (savedClubId) {
+        setSelectedClub(savedClubId)
+      } else {
+        setSelectedClub("5") // Default to club ID 5
+      }
+      setIsInitialized(true)
+    }
+  }, [])
+
+  // Save selectedClub to sessionStorage whenever it changes
+  useEffect(() => {
+    if (isInitialized && selectedClub && typeof window !== "undefined") {
+      sessionStorage.setItem("uni-staff-feedbacks-selected-club", selectedClub)
+    }
+  }, [selectedClub, isInitialized])
 
   // Fetch clubs on mount - Re-fetch when pathname changes (fix navigation issue)
   useEffect(() => {
@@ -97,16 +119,32 @@ export default function UniStaffFeedbacksPage() {
     fetchFeedbacks()
   }, [selectedClub])
 
-  // Get unique events for filter
+  // Get unique events for filter, sorted by most recent feedback
   const uniqueEvents = useMemo(() => {
-    const events = feedbacks.map((f) => ({
+    // Create a map of eventId -> latest createdAt
+    const eventLatestDate = new Map<number, string>()
+    feedbacks.forEach((f) => {
+      const currentLatest = eventLatestDate.get(f.eventId)
+      if (!currentLatest || f.createdAt > currentLatest) {
+        eventLatestDate.set(f.eventId, f.createdAt)
+      }
+    })
+
+    // Get unique events with their latest date
+    const eventsWithDate = feedbacks.map((f) => ({
       id: f.eventId,
       name: f.eventName,
+      latestDate: eventLatestDate.get(f.eventId) || f.createdAt,
     }))
+    
     const unique = Array.from(
-      new Map(events.map((e) => [e.id, e])).values()
+      new Map(eventsWithDate.map((e) => [e.id, e])).values()
     )
-    return unique
+    
+    // Sort by latest date (most recent first)
+    return unique.sort((a, b) => 
+      new Date(b.latestDate).getTime() - new Date(a.latestDate).getTime()
+    )
   }, [feedbacks])
 
   // Filter feedbacks
@@ -127,12 +165,43 @@ export default function UniStaffFeedbacksPage() {
     })
   }, [feedbacks, searchTerm, selectedEvent, selectedRating])
 
+  // Sort feedbacks: group by event, then by date (newest first)
+  const sortedFeedbacks = useMemo(() => {
+    // Group feedbacks by eventId
+    const grouped = new Map<number, Feedback[]>()
+    filteredFeedbacks.forEach((feedback) => {
+      const group = grouped.get(feedback.eventId) || []
+      group.push(feedback)
+      grouped.set(feedback.eventId, group)
+    })
+
+    // Sort feedbacks within each group by date (newest first)
+    grouped.forEach((group) => {
+      group.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    })
+
+    // Get latest date for each event to sort groups
+    const eventLatestDates = Array.from(grouped.entries()).map(([eventId, group]) => ({
+      eventId,
+      latestDate: group[0].createdAt, // Already sorted, so first is newest
+      feedbacks: group,
+    }))
+
+    // Sort groups by their latest feedback date (newest first)
+    eventLatestDates.sort((a, b) => 
+      new Date(b.latestDate).getTime() - new Date(a.latestDate).getTime()
+    )
+
+    // Flatten the sorted groups
+    return eventLatestDates.flatMap((item) => item.feedbacks)
+  }, [filteredFeedbacks])
+
   // Pagination
-  const totalPages = Math.ceil(filteredFeedbacks.length / itemsPerPage)
+  const totalPages = Math.ceil(sortedFeedbacks.length / itemsPerPage)
   const paginatedFeedbacks = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage
-    return filteredFeedbacks.slice(startIndex, startIndex + itemsPerPage)
-  }, [filteredFeedbacks, currentPage])
+    return sortedFeedbacks.slice(startIndex, startIndex + itemsPerPage)
+  }, [sortedFeedbacks, currentPage])
 
   // Reset to page 1 when filters change
   useEffect(() => {
@@ -454,8 +523,8 @@ export default function UniStaffFeedbacksPage() {
                         <div className="flex items-center justify-between mt-6 pt-6 border-t">
                           <p className="text-sm text-muted-foreground">
                             Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
-                            {Math.min(currentPage * itemsPerPage, filteredFeedbacks.length)} of{" "}
-                            {filteredFeedbacks.length} feedbacks
+                            {Math.min(currentPage * itemsPerPage, sortedFeedbacks.length)} of{" "}
+                            {sortedFeedbacks.length} feedbacks
                           </p>
                           <div className="flex gap-2">
                             <Button

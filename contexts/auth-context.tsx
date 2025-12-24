@@ -309,6 +309,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       "resetEmail",
       "student-events-selected-club-id", // Student events page selected club
       "student-gift-selected-club-id", // Student gift page selected club
+      "uni-staff-feedbacks-selected-club", // Uni staff feedbacks page selected club
     ];
 
 
