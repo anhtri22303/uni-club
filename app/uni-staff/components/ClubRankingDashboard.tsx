@@ -604,15 +604,19 @@ export default function ClubRankingDashboard({
           }
         />
 
-        <RankingCard
-          title="Best Discipline"
-          icon={ShieldCheck}
-          clubs={bestDisciplineClubs}
-          valueKey="totalDiscipline"
-          valueLabel="Violations"
-          valueFormatter={(v) => `${v}`}
-          gradient="bg-gradient-to-br from-rose-100 to-rose-200 dark:from-rose-950 dark:to-rose-900 border border-rose-200 dark:border-rose-800"
-        />
+        <Card className="bg-gradient-to-br from-rose-100 to-rose-200 dark:from-rose-950 dark:to-rose-900 border border-rose-200 dark:border-rose-800 transition-all hover:shadow-xl">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg sm:text-xl text-gray-900 dark:text-white">
+              <ShieldCheck className="h-5 w-5 sm:h-6 sm:w-6" />
+              Best Discipline
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px] flex items-center justify-center">
+              <p className="text-lg font-semibold text-gray-600 dark:text-gray-300">Coming soon</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
 
