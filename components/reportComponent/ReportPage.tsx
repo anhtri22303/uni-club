@@ -255,7 +255,7 @@ export function ReportPage({ allowedRoles }: ReportPageProps) {
         const saveTime = new Date()
         setLastAutoSave(saveTime)
       }
-    }, 60000)
+    }, 10000)
     return () => {
       clearInterval(autoSaveInterval)
     }
@@ -527,6 +527,8 @@ export function ReportPage({ allowedRoles }: ReportPageProps) {
         if (editorRef.current) {
           HistoryManager.saveToHistory(editorRef.current.innerHTML)
         }
+        // Trigger auto-save countdown
+        window.dispatchEvent(new Event('content-changed'))
       }, 1500)
     })
     contentDiv.addEventListener('keydown', (e) => {
